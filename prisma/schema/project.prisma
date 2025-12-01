@@ -1,0 +1,12 @@
+model Project {
+    id        String    @id @default(uuid())
+    clientId  String
+    name      String
+    address   String?
+    startDate DateTime?
+    endDate   DateTime?
+
+    client Client @relation("ClientProjects", fields: [clientId], references: [id])
+
+    @@schema("project")
+}
