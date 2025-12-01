@@ -9,7 +9,10 @@
     "build": "bun build src/index.ts --outdir=dist",
     "postbuild": "echo Build completed!",
     "start": "bun dist/index.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.1",

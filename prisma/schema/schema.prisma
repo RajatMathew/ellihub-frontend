@@ -9,9 +9,10 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  password String
+  id              String           @id @default(uuid())
+  email           String           @unique
+  password        String
+  projectManagers ProjectManager[]
 
   @@schema("directory")
 }
