@@ -8,23 +8,13 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'API Reference', link: '/api/' },
+      { text: 'Developer Guide', link: '/developer-guide/' },
+      { text: 'API Guide', link: '/api-guide/' },
     ],
-    sidebar: {
-      '/api/': [
-        {
-          text: 'API Reference',
-          items: [
-            { text: 'Introduction', link: '/api/' },
-            { text: 'Endpoints', link: '/api/endpoints' },
-          ],
-        },
-      ],
-    },
     darkModeSwitchLabel: 'Switch to dark mode',
     lightModeSwitchTitle: 'Switch to light mode',
     footer: {
-      message: '',
+      message: 'Prepared with ❤️ by Mohammed Yasim',
       copyright: 'Copyright © 2026 Zubble Inc.',
     },
   },
