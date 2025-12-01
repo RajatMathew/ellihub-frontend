@@ -1,5 +1,9 @@
 {
   "name": "elle-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core API for Elle application",
+  "author": "Mohammed Yasim <yasim@azba.in>",
   "scripts": {
     "predev": "prisma generate",
     "dev": "bun run --hot src/index.ts",
