@@ -7,3 +7,5 @@ node_modules/
 build/
 dist/
 cache/
+
+dist/index.js
