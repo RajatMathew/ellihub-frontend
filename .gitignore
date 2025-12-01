@@ -2,3 +2,8 @@
 node_modules/
 
 /src/generated/prisma
+
+# production
+build/
+dist/
+cache/

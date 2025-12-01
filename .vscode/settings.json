@@ -6,5 +6,8 @@
   "prettier.requireConfig": true,
   "[prisma]": {
     "editor.defaultFormatter": "Prisma.prisma-insider"
+  },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
   }
 }

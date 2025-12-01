@@ -11,7 +11,14 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": "./",
     "paths": {
-      "@utils": ["src/utils"]
+      "@api/*": ["src/api/*"],
+      "@db/*": ["src/lib/db/*"],
+      "@handler/*": ["src/handler/*"],
+      "@lib/*": ["src/lib/*"],
+      "@middleware": ["src/middleware"],
+      "@modules/*": ["src/modules/*"],
+      "@utils": ["src/utils"],
+      "@utils/*": ["src/utils/*"]
     }
   }
 }
