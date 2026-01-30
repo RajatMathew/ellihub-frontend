@@ -2,13 +2,13 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "nodenext",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "ignoreDeprecations": "6.0",
+    // "ignoreDeprecations": "6.0",
     "baseUrl": "./",
     "paths": {
       "@api/*": ["src/api/*"],

@@ -10,3 +10,5 @@ cache/
 
 dist/index.js
 src/lib/db
+
+.env

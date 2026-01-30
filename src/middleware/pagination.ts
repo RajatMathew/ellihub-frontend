@@ -12,12 +12,6 @@ export type PaginationParams = {
   filter?: Record<string, any>;
 };
 
-declare module 'hono' {
-  interface ContextVariableMap {
-    pagination: PaginationParams;
-  }
-}
-
 export interface IPaginationResponse {
   currentPage: number;
   totalPages: number;
