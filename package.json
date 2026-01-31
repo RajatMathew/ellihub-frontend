@@ -6,6 +6,7 @@
   "author": "Mohammed Yasim <yasim@azba.in>",
   "scripts": {
     "predev": "prisma generate",
+    "auth:generate": "bunx @better-auth/cli generate --output=./prisma/schema/auth.prisma",
     "dev": "bun run --hot src/index.ts",
     "lint": "eslint --ext .ts src/",
     "format": "prettier --write src/",

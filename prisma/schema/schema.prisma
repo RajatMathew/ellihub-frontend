@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client"
   output   = "../../src/lib/db"
@@ -5,14 +6,5 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public", "directory", "project"]
 }
 
-model User {
-  id              String           @id @default(uuid())
-  email           String           @unique
-  password        String
-  projectManagers ProjectManager[]
-
-  @@schema("directory")
-}

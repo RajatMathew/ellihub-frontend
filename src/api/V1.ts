@@ -1,7 +1,7 @@
 import {
-  paginationExampleModule,
-  routePatternExampleModule,
-  serviceExampleModule,
+    paginationExampleModule,
+    routePatternExampleModule,
+    serviceExampleModule,
 } from '@modules/example';
 import { Hono } from 'hono';
 
