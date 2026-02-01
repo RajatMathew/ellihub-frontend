@@ -1,14 +1,15 @@
+import { IPaginatedResponse } from '@middleware';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 
 import type { Context } from 'hono';
 
 export function success<T>(
     c: Context,
-    data: T | T[],
+    data: T | T[] | IPaginatedResponse<T>,
+    status: ContentfulStatusCode = 200,
     message = 'OK',
     count?: number,
-    name = 'data',
-    status: ContentfulStatusCode = 200
+    name = 'data'
 ) {
     const path = c.req.path;
     const startTime = c.get('startTime');
