@@ -1,4 +1,5 @@
 import { auth } from '@lib/auth';
+import { PermissionStatement, ResourceName } from '@lib/permissions';
 import { createMiddleware } from 'hono/factory';
 
 export const authMiddleware = createMiddleware(async (c, next) => {
@@ -18,7 +19,12 @@ export const authMiddleware = createMiddleware(async (c, next) => {
 });
 
 // Permission middleware factory
-export const requirePermission = (permissions: Record<string, string[]>) => {
+
+type PartialPermissions = {
+    [K in ResourceName]?: Array<PermissionStatement[K][number]>;
+};
+
+export const requirePermission = (permissions: PartialPermissions) => {
     return createMiddleware(async (c, next) => {
         const hasPermission = await auth.api.hasPermission({
             headers: c.req.raw.headers,

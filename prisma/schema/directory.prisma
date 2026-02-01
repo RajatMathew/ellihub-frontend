@@ -1,0 +1,101 @@
+model Vendor {
+  id      String       @id
+  name    String
+  type    VendorType
+  taxId   String
+  status  VendorStatus
+  address String?
+  email   String?
+  phone   String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  contacts Contact[]
+}
+
+enum VendorType {
+  MATERIAL
+  FABRICATION
+  INSTALLATION
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+  PROSPECT
+}
+
+model GeneralContractor {
+  id      String   @id
+  name    String
+  type    GCType
+  status  GCStatus
+  address String?
+  email   String?
+  phone   String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  contacts Contact[]
+}
+
+enum GCType {
+  PUBLIC
+  PRIVATE
+  INSTITUTIONAL
+  CIVIL
+}
+
+enum GCStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+}
+
+model Contact {
+  id                  String             @id
+  name                String
+  emails              Json
+  phoneNumbers        Json
+  jobTitle            String
+  vendorId            String?
+  vendor              Vendor?            @relation(fields: [vendorId], references: [id])
+  generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
+  generalContractorId String?
+  tags                String[]
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CostCodeCategory {
+  id          String  @id
+  name        String
+  description String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  costCodes CostCode[]
+}
+
+model CostCode {
+  id                 String           @id
+  name               String
+  code               String
+  description        String?
+  costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
+  costCodeCategoryId String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}

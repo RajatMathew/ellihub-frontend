@@ -1,6 +1,7 @@
 import { bodySchema, paramsSchema, querySchema } from '@modules/example/models/example';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
+import { requirePermission } from 'src/middleware/auth';
 
 const app = new Hono();
 
@@ -16,10 +17,15 @@ app.post('/', zValidator('json', bodySchema), async (c: Context) => {
 });
 
 // Example route with path parameter
-app.get('/:param', zValidator('param', paramsSchema), async (c: Context) => {
-    const { param } = c.req.param();
-    return success(c, { param }, 'Parameter received successfully');
-});
+app.get(
+    '/:param',
+    zValidator('param', paramsSchema),
+    requirePermission({ project: ['create'] }),
+    async (c: Context) => {
+        const { param } = c.req.param();
+        return success(c, { param }, 'Parameter received successfully');
+    }
+);
 
 // Example route with path parameter
 app.put(

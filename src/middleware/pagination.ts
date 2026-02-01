@@ -12,15 +12,6 @@ export type PaginationParams = {
     filter?: Record<string, any>;
 };
 
-export interface IPaginationResponse {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-}
-
 export interface IPaginatedResponse<T> {
     [key: string]:
         | T[]
