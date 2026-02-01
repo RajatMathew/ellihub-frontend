@@ -49,6 +49,21 @@ export const CostCodeService = {
         });
     },
 
+    getCostCodeCategories: async (): Promise<CostCodeCategory[]> => {
+        return await prisma.costCodeCategory.findMany();
+    },
+
+    deleteCostCodeCategory: async (id: string): Promise<void> => {
+        z.parse(z.ulid(), id);
+
+        await prisma.costCodeCategory.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+            },
+        });
+    },
+
     createCostCode: async (request: CostCodeCreateRequest): Promise<CostCode> => {
         z.parse(CostCodeCreateSchema, request);
 
@@ -119,5 +134,16 @@ export const CostCodeService = {
         ]);
 
         return getPaginatedResponse(data, count, params);
+    },
+
+    deleteCostCode: async (id: string): Promise<void> => {
+        z.parse(z.ulid(), id);
+
+        await prisma.costCode.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+            },
+        });
     },
 };
