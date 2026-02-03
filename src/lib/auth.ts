@@ -21,8 +21,8 @@ export const auth = betterAuth({
                 maximumRolesPerOrganization: 50, // Optional limit
             },
             // Since you don't need multiple orgs:
-            allowUserToCreateOrganization: false, // Prevent users from creating orgs
-            organizationLimit: 1,
+            // allowUserToCreateOrganization: false, // Prevent users from creating orgs
+            // organizationLimit: 1,
         }),
     ],
 });

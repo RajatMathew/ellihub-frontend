@@ -104,12 +104,12 @@ export const CostCodeService = {
     },
 
     getCostCodes: async (params: PaginationParams): Promise<IPaginatedResponse<CostCode>> => {
-        const { filter, size, page, sortBy, sortOrder } = params;
-        const search: string | undefined = filter?.search;
+        const { filter, skip, take, sortBy, sortOrder } = params;
+        const { search, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,
-            ...filter,
+            ...restFilter,
             ...(search && {
                 OR: [
                     { name: { contains: search, mode: 'insensitive' as const } },
@@ -125,8 +125,8 @@ export const CostCodeService = {
 
             prisma.costCode.findMany({
                 where: whereClause,
-                skip: page * size,
-                take: size,
+                skip,
+                take,
                 orderBy: {
                     [sortBy as keyof CostCode]: sortOrder,
                 },

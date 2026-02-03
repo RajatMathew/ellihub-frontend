@@ -6,3 +6,14 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Configuration {
+  id     String  @id
+  name   String
+  value  String
+  type   String
+  parent String?
+  child  String?
+  key1   String?
+  key2   String?
+}

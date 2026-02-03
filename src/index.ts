@@ -1,6 +1,7 @@
 import { errorHandler } from '@handler/error';
 import { auth } from '@lib/auth';
 import { performanceMiddleware } from '@middleware';
+import { costCodeRoutes } from '@modules/cost-code';
 import { NotFoundError } from '@utils';
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
@@ -25,8 +26,11 @@ app.use(
         rewriteRequestPath: (path) => path.replace(/^\/documentation/, ''),
     })
 );
+
+app.route('/api/cost-code', costCodeRoutes);
+
 // 404 Not Found handler
-app.notFound((c) => {
+app.notFound(() => {
     throw new NotFoundError('Not Found');
 });
 // Global error handler
