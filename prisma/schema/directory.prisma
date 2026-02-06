@@ -79,7 +79,7 @@ model CostCodeCategory {
   id          String  @id
   name        String
   description String?
-
+  tenantId String
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -91,6 +91,7 @@ model CostCode {
   id                 String           @id
   name               String
   code               String
+  tenantId             String
   description        String?
   costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
   costCodeCategoryId String
