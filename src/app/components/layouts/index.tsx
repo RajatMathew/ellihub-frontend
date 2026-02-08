@@ -1,22 +1,32 @@
+import { useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-// import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
-// import { useMenu } from "@app/hooks/use-menu";
 import { LayoutProvider } from "@app/providers/layout";
+import { getTitleForPathname, routeTree } from "@app/routing/config";
+
+const DEFAULT_TITLE = "Elle Hub";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  // const { pathname } = useLocation();
-  // const { getCurrentItem } = useMenu(pathname);
+  const { pathname } = useLocation();
+  const title = useMemo(
+    () => getTitleForPathname(pathname, routeTree) ?? DEFAULT_TITLE,
+    [pathname],
+  );
 
-  // const item = getCurrentItem(MENU_SIDEBAR_MAIN);
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
 
   return (
     <>
-      <Helmet>{/* <title>{item?.title}</title> */}</Helmet>
+      <Helmet>
+        <title>{title}</title>
+      </Helmet>
       <LayoutProvider
         bodyClassName="lg:bg-muted lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
         style={

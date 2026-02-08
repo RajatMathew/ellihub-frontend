@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { useLoadingBar } from "react-top-loading-bar";
-import { AppRoutingSetup } from "./app-main";
-import { Header } from "@app/components/header/header";
-import Sidebar from "@app/components/sidebar/sidebar";
+import { AppRoutingSetup, HeaderRoutingSetup } from "./setup";
 import { useLayout } from "@app/hooks/use-layout";
 import { HeaderBreadcrumbs } from "@app/components/header/header-breadcrumbs";
+
+/** Lazy-loaded so mobile users don't fetch the sidebar chunk until desktop layout. */
+const Sidebar = lazy(() => import("@app/components/sidebar/sidebar"));
 
 export function AppRouting() {
   const { start, complete } = useLoadingBar({
@@ -49,10 +50,12 @@ export function AppRouting() {
         role="content"
       >
         {isMobile && <HeaderBreadcrumbs />}
-        <Header />
+        <HeaderRoutingSetup />
         {!isMobile && (
           <aside className="dark fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)">
-            <Sidebar />
+            <Suspense fallback={null}>
+              <Sidebar />
+            </Suspense>
           </aside>
         )}
         <AppRoutingSetup />
