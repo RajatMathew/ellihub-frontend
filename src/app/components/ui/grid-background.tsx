@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { HTMLMotionProps, motion } from "motion/react";
+import type { HTMLMotionProps } from "motion/react";
+import { motion } from "motion/react";
 import { cn } from "@app/lib/utils";
 
 type GridSize =

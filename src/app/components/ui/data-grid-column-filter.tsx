@@ -1,4 +1,4 @@
-import * as React from "react";
+import type { ComponentType } from "react";
 import { cn } from "@app/lib/utils";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@app/components/ui/popover";
 import { Separator } from "@app/components/ui/separator";
-import { Column } from "@tanstack/react-table";
+import { type Column } from "@tanstack/react-table";
 import { Check, CirclePlus } from "lucide-react";
 
 interface DataGridColumnFilterProps<TData, TValue> {
@@ -26,7 +26,7 @@ interface DataGridColumnFilterProps<TData, TValue> {
   options: {
     label: string;
     value: string;
-    icon?: React.ComponentType<{ className?: string }>;
+    icon?: ComponentType<{ className?: string }>;
   }[];
 }
 

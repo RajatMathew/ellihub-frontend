@@ -1,12 +1,8 @@
 "use client";
 
 import * as React from "react";
-import {
-  HTMLMotionProps,
-  motion,
-  useMotionValue,
-  useSpring,
-} from "motion/react";
+import type { HTMLMotionProps } from "motion/react";
+import { motion, useMotionValue, useSpring } from "motion/react";
 import { cn } from "@app/lib/utils";
 
 type HoverBackgroundProps = HTMLMotionProps<"div"> & {

@@ -1,14 +1,14 @@
 import * as React from "react";
-import { CSSProperties, Fragment, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { Checkbox } from "@app/components/ui/checkbox";
 import { useDataGrid } from "@app/components/ui/data-grid";
 import {
-  Cell,
-  Column,
+  type Cell,
+  type Column,
   flexRender,
-  Header,
-  HeaderGroup,
-  Row,
+  type Header,
+  type HeaderGroup,
+  type Row,
 } from "@tanstack/react-table";
 import { cva } from "class-variance-authority";
 import { cn } from "@app/lib/utils";
@@ -98,7 +98,7 @@ function DataGridTableHeadRow<TData>({
       className={cn(
         "bg-muted/40",
         props.tableLayout?.headerBorder && "[&>th]:border-b",
-        props.tableLayout?.cellBorder && "[&_>:last-child]:border-e-0",
+        props.tableLayout?.cellBorder && "*:last:border-e-0",
         props.tableLayout?.stripped && "bg-transparent",
         props.tableLayout?.headerBackground === false && "bg-transparent",
         props.tableClassNames?.headerRow,
@@ -223,10 +223,10 @@ function DataGridTableBodyRowSkeleton({ children }: { children: ReactNode }) {
         !props.tableLayout?.stripped &&
           props.tableLayout?.rowBorder &&
           "border-b border-border [&:not(:last-child)>td]:border-b",
-        props.tableLayout?.cellBorder && "[&_>:last-child]:border-e-0",
+        props.tableLayout?.cellBorder && "*:last:border-e-0",
         props.tableLayout?.stripped &&
           "odd:bg-muted/90 hover:bg-transparent odd:hover:bg-muted",
-        table.options.enableRowSelection && "[&_>:first-child]:relative",
+        table.options.enableRowSelection && "*:first:relative",
         props.tableClassNames?.bodyRow,
       )}
     >
@@ -300,10 +300,10 @@ function DataGridTableBodyRow<TData>({
         !props.tableLayout?.stripped &&
           props.tableLayout?.rowBorder &&
           "border-b border-border [&:not(:last-child)>td]:border-b",
-        props.tableLayout?.cellBorder && "[&_>:last-child]:border-e-0",
+        props.tableLayout?.cellBorder && "*:last:border-e-0",
         props.tableLayout?.stripped &&
           "odd:bg-muted/90 hover:bg-transparent odd:hover:bg-muted",
-        table.options.enableRowSelection && "[&_>:first-child]:relative",
+        table.options.enableRowSelection && "*:first:relative",
         props.tableClassNames?.bodyRow,
       )}
     >

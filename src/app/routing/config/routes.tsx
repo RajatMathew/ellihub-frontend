@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- routeTree is config data, components are for routing */
 import { lazy } from "react";
 import { Navigate } from "react-router-dom";
 import type { RouteDef } from "./types";

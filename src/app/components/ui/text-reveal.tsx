@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { motion, useInView, Variants } from "motion/react";
+import { motion, useInView, type Variants } from "motion/react";
 import { cn } from "@app/lib/utils";
 
 type RevealVariant =
@@ -273,7 +273,9 @@ export function TextReveal({
 
   useEffect(() => {
     if (shouldAnimate && !hasAnimated) {
-      setHasAnimated(true);
+      setTimeout(() => {
+        setHasAnimated(true);
+      }, 0);
     }
   }, [shouldAnimate, hasAnimated]);
 

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- codeVariants exported for styling API */
 import * as React from "react";
 import { useCopyToClipboard } from "@app/hooks/use-copy-to-clipboard";
 import { cn } from "@app/lib/utils";
@@ -45,7 +46,7 @@ function Code({
   children,
   ...props
 }: CodeProps) {
-  const { copy, copied } = useCopyToClipboard();
+  const { copyToClipboard, isCopied } = useCopyToClipboard();
   const Comp = asChild ? SlotPrimitive.Slot : "code";
   const textToCopy = copyText || (typeof children === "string" ? children : "");
 
@@ -67,9 +68,9 @@ function Code({
           size="sm"
           variant="ghost"
           className="h-4 w-4 p-0 opacity-60 hover:opacity-100"
-          onClick={() => copy(textToCopy)}
+          onClick={() => copyToClipboard(textToCopy)}
         >
-          {copied ? (
+          {isCopied ? (
             <Check className="h-3 w-3" />
           ) : (
             <Copy className="h-3 w-3" />

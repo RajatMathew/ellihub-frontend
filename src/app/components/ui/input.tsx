@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- input variants exported for styling API */
 import * as React from "react";
 import { cn } from "@app/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

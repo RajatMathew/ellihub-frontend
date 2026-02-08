@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { cn } from "@app/lib/utils";
-import { ItemInstance } from "@headless-tree/core";
+import { type ItemInstance } from "@headless-tree/core";
 import { ChevronDownIcon, SquareMinus, SquarePlus } from "lucide-react";
 import { Slot as SlotPrimitive } from "radix-ui";
 
@@ -105,7 +105,7 @@ function TreeItem<T = any>({
         data-slot="tree-item"
         style={mergedStyle}
         className={cn(
-          "z-10 ps-(--tree-padding) outline-hidden select-none not-last:pb-0.5 focus:z-20 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "z-10 ps-(--tree-padding) outline-hidden select-none not-last:pb-0.5 focus:z-20 data-disabled:pointer-events-none data-disabled:opacity-50",
           className,
         )}
         data-focus={

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef } from "react";
-import { motion, useInView, UseInViewOptions } from "motion/react";
+import { motion, useInView, type UseInViewOptions } from "motion/react";
 import { cn } from "@app/lib/utils";
 
 interface ShimmeringTextProps {
@@ -60,7 +60,7 @@ export function ShimmeringText({
     <motion.span
       ref={ref}
       className={cn(
-        "relative inline-block bg-[length:250%_100%,auto] bg-clip-text text-transparent",
+        "relative inline-block bg-length:250%_100%,auto bg-clip-text text-transparent",
         "[--base-color:var(--color-zinc-400)] [--shimmer-color:var(--color-zinc-950)]",
         "[background-repeat:no-repeat,padding-box]",
         "[--shimmer-bg:linear-gradient(90deg,transparent_calc(50%-var(--spread)),var(--shimmer-color),transparent_calc(50%+var(--spread)))]",

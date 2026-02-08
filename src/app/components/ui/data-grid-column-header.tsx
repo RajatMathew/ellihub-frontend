@@ -1,4 +1,4 @@
-import { HTMLAttributes, ReactNode } from "react";
+import { type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@app/lib/utils";
 import { Button } from "@app/components/ui/button";
 import { useDataGrid } from "@app/components/ui/data-grid";
@@ -15,7 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@app/components/ui/dropdown-menu";
-import { Column } from "@tanstack/react-table";
+import { type Column } from "@tanstack/react-table";
 import {
   ArrowDown,
   ArrowLeft,

@@ -1,19 +1,22 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- dateInputStyles and types exported for API */
 import { cn } from "@app/lib/utils";
 import { inputVariants } from "@app/components/ui/input";
 import type { VariantProps } from "class-variance-authority";
 import {
   composeRenderProps,
-  DateFieldProps,
   DateField as DateFieldRa,
-  DateInputProps as DateInputPropsRa,
   DateInput as DateInputRa,
-  DateSegmentProps,
   DateSegment as DateSegmentRa,
+  TimeField as TimeFieldRa,
+} from "react-aria-components";
+import type {
+  DateFieldProps,
+  DateInputProps as DateInputPropsRa,
+  DateSegmentProps,
   DateValue as DateValueRa,
   TimeFieldProps,
-  TimeField as TimeFieldRa,
   TimeValue as TimeValueRa,
 } from "react-aria-components";
 
@@ -24,7 +27,7 @@ function DateField<T extends DateValueRa>({
 }: DateFieldProps<T>) {
   return (
     <DateFieldRa
-      className={composeRenderProps(className, (className) => cn(className))}
+      className={composeRenderProps(className, (className: string | undefined) => cn(className))}
       data-slot="datefield"
       {...props}
     >
@@ -40,7 +43,7 @@ function TimeField<T extends TimeValueRa>({
 }: TimeFieldProps<T>) {
   return (
     <TimeFieldRa
-      className={composeRenderProps(className, (className) => cn(className))}
+      className={composeRenderProps(className, (className: string | undefined) => cn(className))}
       data-slot="datefield"
       {...props}
     >
@@ -49,10 +52,11 @@ function TimeField<T extends TimeValueRa>({
   );
 }
 
-function DateSegment({ className, ...props }: DateSegmentProps) {
+function DateSegment({ segment, className, ...props }: DateSegmentProps) {
   return (
     <DateSegmentRa
-      className={composeRenderProps(className, (className) =>
+      segment={segment}
+      className={composeRenderProps(className, (className: string | undefined) =>
         cn(
           `
             text-foreground inline-flex rounded px-0.5 caret-transparent outline-hidden data-[type=literal]:text-muted-foreground/70 data-[type=literal]:px-0
@@ -90,12 +94,12 @@ function DateInput({
   return (
     <DateInputRa
       data-slot="input"
-      className={composeRenderProps(className, (className) =>
+      className={composeRenderProps(className, (className: string | undefined) =>
         cn(inputVariants({ variant }), dateInputStyles, className),
       )}
       {...props}
     >
-      {(segment) => <DateSegment segment={segment} />}
+      {(segment: Parameters<NonNullable<DateInputPropsRa["children"]>>[0]) => <DateSegment segment={segment} />}
     </DateInputRa>
   );
 }

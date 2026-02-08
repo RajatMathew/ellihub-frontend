@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   animate,
   motion,
   useInView,
-  UseInViewOptions,
+  type UseInViewOptions,
   useMotionValue,
 } from "motion/react";
 import { cn } from "@app/lib/utils";

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Button } from "@app/components/ui/button";
 import { useDataGrid } from "@app/components/ui/data-grid";
 import {

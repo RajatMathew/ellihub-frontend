@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@app/lib/utils";
-import { cva, VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { Circle } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 

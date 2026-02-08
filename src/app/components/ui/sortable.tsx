@@ -7,14 +7,14 @@ import {
   defaultDropAnimation,
   defaultDropAnimationSideEffects,
   DndContext,
-  DragEndEvent,
-  DragOverEvent,
+  type DragEndEvent,
+  type DragOverEvent,
   DragOverlay,
-  DragStartEvent,
-  DropAnimation,
+  type DragStartEvent,
+  type DropAnimation,
   KeyboardSensor,
   PointerSensor,
-  UniqueIdentifier,
+  type UniqueIdentifier,
   useSensor,
   useSensors,
   type DraggableAttributes,
@@ -242,7 +242,7 @@ function Kanban<T>({
             overIndex,
           );
           const newColumns: Record<string, T[]> = {};
-          newOrder.forEach((key) => {
+          newOrder.forEach((key: string) => {
             newColumns[key] = columns[key];
           });
           setColumns(newColumns);
@@ -432,7 +432,7 @@ function KanbanColumnHandle({
       {...listeners}
       className={cn(
         "opacity-0 transition-opacity group-hover/kanban-column:opacity-100",
-        cursor && (isDragging ? "!cursor-grabbing" : "!cursor-grab"),
+        cursor && (isDragging ? "cursor-grabbing!" : "cursor-grab!"),
         className,
       )}
     >
@@ -526,7 +526,7 @@ function KanbanItemHandle({
       data-disabled={disabled}
       {...listeners}
       className={cn(
-        cursor && (isDragging ? "!cursor-grabbing" : "!cursor-grab"),
+        cursor && (isDragging ? "cursor-grabbing!" : "cursor-grab!"),
         className,
       )}
     >
@@ -621,7 +621,7 @@ function KanbanOverlay({ children, className }: KanbanOverlayProps) {
         className={cn(
           "pointer-events-none",
           className,
-          activeId ? "!cursor-grabbing" : "",
+          activeId ? "cursor-grabbing!" : "",
         )}
       >
         {content}
@@ -859,7 +859,7 @@ function SortableItemHandle({
       data-disabled={disabled}
       {...listeners}
       className={cn(
-        cursor && (isDragging ? "!cursor-grabbing" : "!cursor-grab"),
+        cursor && (isDragging ? "cursor-grabbing!" : "cursor-grab!"),
         className,
       )}
     >

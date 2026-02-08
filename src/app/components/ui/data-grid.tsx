@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, ReactNode, useContext } from "react";
+/* eslint-disable react-refresh/only-export-components -- useDataGrid and types exported for API */
+import { createContext, useContext } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@app/lib/utils";
-import {
+import type {
   ColumnFiltersState,
   RowData,
   SortingState,

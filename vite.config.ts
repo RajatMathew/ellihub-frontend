@@ -6,6 +6,27 @@ import path from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            const match = id.match(/node_modules[\\/](@?[^\\/]+)/);
+            const pkg = match ? match[1].replace("@", "") : "";
+            if (pkg === "react" || pkg === "react-dom" || pkg === "scheduler") return "react";
+            if (pkg.startsWith("react-router")) return "router";
+            if (pkg.startsWith("tanstack")) return "tanstack";
+            if (pkg === "recharts" || pkg.startsWith("d3-")) return "charts";
+            if (pkg === "motion") return "motion";
+            if (pkg === "radix-ui" || pkg === "lucide-react") return "ui-vendor";
+            return "vendor";
+          }
+        },
+        chunkFileNames: "assets/[name]-[hash].js",
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
   },

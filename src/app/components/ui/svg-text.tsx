@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ElementType, ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ElementType,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@app/lib/utils";
 
 export interface SvgTextProps {

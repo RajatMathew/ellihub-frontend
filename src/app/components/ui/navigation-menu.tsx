@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- navigation primitives exported for API */
 import * as React from "react";
 import { cn } from "@app/lib/utils";
 import { cva } from "class-variance-authority";

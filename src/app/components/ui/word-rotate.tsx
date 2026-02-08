@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
-  MotionProps,
+  type MotionProps,
   useInView,
-  UseInViewOptions,
-  Variants,
+  type UseInViewOptions,
+  type Variants,
 } from "motion/react";
 import { cn } from "@app/lib/utils";
 
@@ -155,7 +155,9 @@ export function WordRotate({
 
   useEffect(() => {
     if (!shouldStart) return;
-    setHasAnimated(true);
+    setTimeout(() => {
+      setHasAnimated(true);
+    }, 0);
     const interval = setInterval(() => {
       setShow(false);
       setTimeout(() => {

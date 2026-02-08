@@ -5,7 +5,7 @@ import { cn } from "@app/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@app/components/ui/dialog";
 import { type DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import { Check, LucideIcon, Search } from "lucide-react";
+import { Check, type LucideIcon, Search } from "lucide-react";
 
 function Command({
   className,

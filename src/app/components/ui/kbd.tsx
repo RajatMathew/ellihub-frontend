@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- kbdVariants exported for styling API */
 import * as React from "react";
 import { cn } from "@app/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

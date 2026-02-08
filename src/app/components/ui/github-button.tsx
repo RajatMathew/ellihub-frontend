@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- githubButtonVariants and types exported for API */
 import React, { useCallback, useEffect, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Star } from "lucide-react";

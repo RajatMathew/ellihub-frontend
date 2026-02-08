@@ -1,4 +1,4 @@
-import { RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from "react";
 
 interface UseScrollPositionProps {
   targetRef?: RefObject<HTMLElement | Document | undefined>; // Ref to the scrollable element
@@ -23,13 +23,13 @@ export function useScrollPosition({
       setScrollPosition(scrollY);
     };
 
-    scrollable.addEventListener('scroll', updatePosition);
+    scrollable.addEventListener("scroll", updatePosition);
 
     // Set the initial position
     updatePosition();
 
     return () => {
-      scrollable.removeEventListener('scroll', updatePosition);
+      scrollable.removeEventListener("scroll", updatePosition);
     };
   }, [targetRef]);
 

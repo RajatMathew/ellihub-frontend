@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-refresh/only-export-components -- form hooks and components exported for API */
 import * as React from "react";
 import { cn } from "@app/lib/utils";
 import { Label } from "@app/components/ui/label";
@@ -7,12 +8,10 @@ import { Slot } from "@radix-ui/react-slot";
 import { Label as LabelPrimitive } from "radix-ui";
 import {
   Controller,
-  ControllerProps,
-  FieldPath,
-  FieldValues,
   FormProvider,
   useFormContext,
 } from "react-hook-form";
+import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form";
 
 const Form = FormProvider;
 
