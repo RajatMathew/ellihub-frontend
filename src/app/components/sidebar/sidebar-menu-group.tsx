@@ -8,6 +8,7 @@ import {
 } from "@app/components/ui/accordion-menu";
 import { Badge } from "@app/components/ui/badge";
 import type { MenuConfig } from "@app/config/types";
+import { getSidebarResolutionBase, resolvePath } from "@app/lib/utils";
 import { useCallback, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -47,12 +48,22 @@ export function SidebarGroupMenu({
   containerClassName = "space-y-7.5 px-2.5",
 }: SidebarGroupMenuProps) {
   const { pathname } = useLocation();
+  const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
 
+  // Resolve relative menu paths (e.g. "../overview") to absolute for comparison with pathname
   const matchPath = useCallback(
-    (path: string): boolean =>
-      path === pathname ||
-      (path.length > 1 && pathname.startsWith(path) && path !== "/app"),
-    [pathname],
+    (path: string): boolean => {
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith("../") ? path.slice(3) : path;
+      const resolved = resolvePath(base, toResolve);
+      return (
+        pathname === resolved ||
+        (resolved.length > 1 &&
+          pathname.startsWith(resolved) &&
+          resolved !== "/app")
+      );
+    },
+    [pathname, base, stripLeadingDotDotSlash],
   );
 
   const defaultClassNames = useMemo(

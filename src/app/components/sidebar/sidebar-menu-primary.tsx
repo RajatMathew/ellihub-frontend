@@ -7,17 +7,27 @@ import {
 } from "@app/components/ui/accordion-menu";
 import { Badge } from "@app/components/ui/badge";
 import type { MenuConfig } from "@app/config/types";
+import { getSidebarResolutionBase, resolvePath } from "@app/lib/utils";
 import { Link, useLocation } from "react-router-dom";
 
 export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
   const { pathname } = useLocation();
+  const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
 
-  // Memoize matchPath to prevent unnecessary re-renders
+  // Resolve relative menu paths (e.g. "../projects") to absolute for comparison with pathname
   const matchPath = useCallback(
-    (path: string): boolean =>
-      path === pathname ||
-      (path.length > 1 && pathname.startsWith(path) && path !== "/app"),
-    [pathname],
+    (path: string): boolean => {
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith("../") ? path.slice(3) : path;
+      const resolved = resolvePath(base, toResolve);
+      return (
+        pathname === resolved ||
+        (resolved.length > 1 &&
+          pathname.startsWith(resolved) &&
+          resolved !== "/app")
+      );
+    },
+    [pathname, base, stripLeadingDotDotSlash],
   );
 
   return (
