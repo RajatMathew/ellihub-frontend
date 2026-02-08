@@ -27,21 +27,26 @@ export function resolvePath(basePathname: string, path: string): string {
 }
 
 /**
- * For project routes (/app/project/:id/...), sidebar links like "../vendors/purchase-orders"
- * are meant relative to the project root, not the current pathname (otherwise we'd resolve
- * to .../vendors/vendors/purchase-orders). Returns the base pathname for resolving menu
- * paths and whether to strip a leading "../" (use project root as base).
+ * Sidebar menu paths like "../directory/contacts" or "../vendors/purchase-orders" are
+ * relative to the layout root (/app or /app/project/:id), not the current pathname.
+ * Resolving from the full pathname would produce wrong paths (e.g. .../directory/directory/contacts).
+ * Returns the base pathname for resolving and whether to strip a leading "../".
  */
 export function getSidebarResolutionBase(pathname: string): {
   base: string;
   stripLeadingDotDotSlash: boolean;
 } {
   const segments = pathname.replace(/\/$/, '').split('/').filter(Boolean);
+  if (segments[0] !== 'app') {
+    return { base: pathname, stripLeadingDotDotSlash: false };
+  }
   const projectIndex = segments.indexOf('project');
-  const isProjectRoute = projectIndex !== -1 && segments[projectIndex + 1] && segments[0] === 'app';
+  const isProjectRoute = projectIndex !== -1 && segments[projectIndex + 1];
   if (isProjectRoute) {
     const projectRoot = '/' + segments.slice(0, projectIndex + 2).join('/');
     return { base: projectRoot, stripLeadingDotDotSlash: true };
   }
-  return { base: pathname, stripLeadingDotDotSlash: false };
+  // Main app: /app, /app/directory/contacts, etc. — resolve "../..." relative to /app
+  const appRoot = '/app';
+  return { base: appRoot, stripLeadingDotDotSlash: true };
 }

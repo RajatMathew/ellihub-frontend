@@ -1,6 +1,6 @@
 import { ThemeProvider } from 'next-themes';
 import { HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 
 import HelpApp from '@core/help';
 
@@ -21,6 +21,30 @@ function FrameWork() {
           <Routes>
             <Route path="app/*" element={<App />} />
             <Route path="help/*" element={<HelpApp />} />
+            <Route
+              path="/"
+              element={
+                <div>
+                  Home Page (to be implemented) <Link to="/app">Go to App</Link>
+                </div>
+              }
+            />
+            <Route
+              path="login"
+              element={
+                <div>
+                  Login Page (to be implemented) <Link to="/app">Go to App</Link>
+                </div>
+              }
+            />
+            <Route
+              path="sign-out"
+              element={
+                <div>
+                  Sign Out Page (to be implemented) <Link to="/app">Go to App</Link>
+                </div>
+              }
+            />
             <Route path="*" element={<Navigate to="/app" />} />
           </Routes>
         </BrowserRouter>

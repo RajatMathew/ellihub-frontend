@@ -1,15 +1,16 @@
 import { useLayout } from '@app/hooks/use-layout';
+import { UserDropdownMenu } from '@app/shared/topbar/user-dropdown-menu';
 
 import { HeaderBreadcrumbs } from './header-breadcrumbs';
 import HeaderHamburger from './header-hamburger';
 import { HeaderMenu } from './header-menu';
-import { HeaderToolbar } from './header-toolbar';
 
 interface HeaderProps {
   breadcrumbs?: boolean | React.ReactNode;
+  toolbar?: React.ReactNode;
 }
 
-export function Header({ breadcrumbs = true }: HeaderProps) {
+export function Header({ breadcrumbs = true, toolbar }: HeaderProps) {
   const { isMobile } = useLayout();
 
   return (
@@ -18,7 +19,14 @@ export function Header({ breadcrumbs = true }: HeaderProps) {
         {isMobile && <HeaderMenu />}
         <HeaderHamburger>{!isMobile && breadcrumbs && <HeaderBreadcrumbs />}</HeaderHamburger>
         <div className="flex items-center gap-2.5">
-          <HeaderToolbar />
+          {toolbar && toolbar}
+          <UserDropdownMenu
+            trigger={
+              <div className="size-10 rounded-full shrink-0 cursor-pointer bg-muted flex items-center justify-center shadow border-2">
+                <div className="text-xs text-primary font-extrabold">PE</div>
+              </div>
+            }
+          />
         </div>
       </div>
     </header>
