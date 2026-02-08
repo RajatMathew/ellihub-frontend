@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import path from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -21,4 +22,11 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      "@app": path.resolve(__dirname, "src/app"),
+      "@core": path.resolve(__dirname, "src/core"),
+      "@modules": path.resolve(__dirname, "src/modules"),
+    },
+  },
 });
