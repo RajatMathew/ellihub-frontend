@@ -1,7 +1,8 @@
-import React, { type ComponentPropsWithoutRef, useRef } from "react";
-import { cn } from "@app/lib/utils";
+import React, { useRef, type ComponentPropsWithoutRef } from 'react';
 
-interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
+import { cn } from '@app/lib/utils';
+
+interface MarqueeProps extends ComponentPropsWithoutRef<'div'> {
   /**
    * Optional CSS class name to apply custom styles
    */
@@ -41,7 +42,7 @@ interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
   /**
    * ARIA live region politeness
    */
-  ariaLive?: "off" | "polite" | "assertive";
+  ariaLive?: 'off' | 'polite' | 'assertive';
   /**
    * ARIA role
    */
@@ -56,8 +57,8 @@ export function Marquee({
   vertical = false,
   repeat = 4,
   ariaLabel,
-  ariaLive = "off",
-  ariaRole = "marquee",
+  ariaLive = 'off',
+  ariaRole = 'marquee',
   ...props
 }: MarqueeProps) {
   const marqueeRef = useRef<HTMLDivElement>(null);
@@ -68,12 +69,12 @@ export function Marquee({
       ref={marqueeRef}
       data-slot="marquee"
       className={cn(
-        "group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]",
+        'group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]',
         {
-          "flex-row": !vertical,
-          "flex-col": vertical,
+          'flex-row': !vertical,
+          'flex-col': vertical,
         },
-        className,
+        className
       )}
       aria-label={ariaLabel}
       aria-live={ariaLive}
@@ -87,14 +88,12 @@ export function Marquee({
               <div
                 key={i}
                 className={cn(
-                  !vertical
-                    ? "flex-row [gap:var(--gap)]"
-                    : "flex-col [gap:var(--gap)]",
-                  "flex shrink-0 justify-around",
-                  !vertical && "animate-marquee flex-row",
-                  vertical && "animate-marquee-vertical flex-col",
-                  pauseOnHover && "group-hover:[animation-play-state:paused]",
-                  reverse && "[animation-direction:reverse]",
+                  !vertical ? 'flex-row [gap:var(--gap)]' : 'flex-col [gap:var(--gap)]',
+                  'flex shrink-0 justify-around',
+                  !vertical && 'animate-marquee flex-row',
+                  vertical && 'animate-marquee-vertical flex-col',
+                  pauseOnHover && 'group-hover:[animation-play-state:paused]',
+                  reverse && '[animation-direction:reverse]'
                 )}
               >
                 {children}
@@ -102,7 +101,7 @@ export function Marquee({
             ))}
           </>
         ),
-        [repeat, children, vertical, pauseOnHover, reverse],
+        [repeat, children, vertical, pauseOnHover, reverse]
       )}
     </div>
   );

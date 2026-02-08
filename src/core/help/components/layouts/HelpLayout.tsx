@@ -1,6 +1,8 @@
 // src/pages/help/HelpLayout.tsx
-import { NavLink, Outlet } from "react-router-dom";
-import { sidebar } from "@core/help/components/sidebar";
+
+import { NavLink, Outlet } from 'react-router-dom';
+
+import { sidebar } from '@core/help/components/sidebar';
 
 export function HelpLayout() {
   return (
@@ -12,10 +14,10 @@ export function HelpLayout() {
         {sidebar.map((item) => (
           <NavLink
             key={item.slug}
-            to={item.slug === "index" ? "/help" : `/help/${item.slug}`}
+            to={item.slug === 'index' ? '/help' : `/help/${item.slug}`}
             className={({ isActive }) =>
               `block rounded px-3 py-2 text-sm ${
-                isActive ? "bg-muted font-medium" : "hover:bg-muted/50"
+                isActive ? 'bg-muted font-medium' : 'hover:bg-muted/50'
               }`
             }
           >

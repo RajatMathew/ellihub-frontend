@@ -1,17 +1,15 @@
-"use client";
+'use client';
 
 /* eslint-disable react-refresh/only-export-components -- form hooks and components exported for API */
-import * as React from "react";
-import { cn } from "@app/lib/utils";
-import { Label } from "@app/components/ui/label";
-import { Slot } from "@radix-ui/react-slot";
-import { Label as LabelPrimitive } from "radix-ui";
-import {
-  Controller,
-  FormProvider,
-  useFormContext,
-} from "react-hook-form";
-import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form";
+import * as React from 'react';
+
+import { Slot } from '@radix-ui/react-slot';
+import { type Label as LabelPrimitive } from 'radix-ui';
+import { Controller, FormProvider, useFormContext } from 'react-hook-form';
+import type { ControllerProps, FieldPath, FieldValues } from 'react-hook-form';
+
+import { Label } from '@app/components/ui/label';
+import { cn } from '@app/lib/utils';
 
 const Form = FormProvider;
 
@@ -22,9 +20,7 @@ type FormFieldContextValue<
   name: TName;
 };
 
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue,
-);
+const FormFieldContext = React.createContext<FormFieldContextValue>({} as FormFieldContextValue);
 
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
@@ -47,7 +43,7 @@ const useFormField = () => {
   const fieldState = getFieldState(fieldContext.name, formState);
 
   if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>");
+    throw new Error('useFormField should be used within <FormField>');
   }
 
   const { id } = itemContext;
@@ -66,14 +62,9 @@ type FormItemContextValue = {
   id: string;
 };
 
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue,
-);
+const FormItemContext = React.createContext<FormItemContextValue>({} as FormItemContextValue);
 
-function FormItem({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+function FormItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   const id = React.useId();
   const { error } = useFormField();
 
@@ -81,7 +72,7 @@ function FormItem({
     <FormItemContext.Provider value={{ id }}>
       <div
         data-slot="form-item"
-        className={cn("flex flex-col gap-2.5", className)}
+        className={cn('flex flex-col gap-2.5', className)}
         data-invalid={!!error}
         {...props}
       />
@@ -89,16 +80,13 @@ function FormItem({
   );
 }
 
-function FormLabel({
-  className,
-  ...props
-}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+function FormLabel({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   const { formItemId } = useFormField();
 
   return (
     <Label
       data-slot="form-label"
-      className={cn("font-medium text-foreground", className)}
+      className={cn('font-medium text-foreground', className)}
       htmlFor={formItemId}
       {...props}
     />
@@ -106,28 +94,20 @@ function FormLabel({
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
-  const { error, formItemId, formDescriptionId, formMessageId } =
-    useFormField();
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
   return (
     <Slot
       data-slot="form-control"
       id={formItemId}
-      aria-describedby={
-        !error
-          ? `${formDescriptionId}`
-          : `${formDescriptionId} ${formMessageId}`
-      }
+      aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
       aria-invalid={!!error}
       {...props}
     />
   );
 }
 
-function FormDescription({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLParagraphElement>) {
+function FormDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   const { formDescriptionId, error } = useFormField();
 
   if (error) {
@@ -138,7 +118,7 @@ function FormDescription({
     <div
       data-slot="form-description"
       id={formDescriptionId}
-      className={cn("text-xs text-muted-foreground -mt-0.5", className)}
+      className={cn('text-xs text-muted-foreground -mt-0.5', className)}
       {...props}
     />
   );
@@ -160,7 +140,7 @@ function FormMessage({
     <div
       data-slot="form-message"
       id={formMessageId}
-      className={cn("-mt-0.5 text-xs font-normal text-destructive", className)}
+      className={cn('-mt-0.5 text-xs font-normal text-destructive', className)}
       {...props}
     >
       {body}

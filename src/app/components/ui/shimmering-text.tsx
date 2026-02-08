@@ -1,8 +1,10 @@
-"use client";
+'use client';
 
-import React, { useMemo, useRef } from "react";
-import { motion, useInView, type UseInViewOptions } from "motion/react";
-import { cn } from "@app/lib/utils";
+import React, { useMemo, useRef } from 'react';
+
+import { motion, useInView, type UseInViewOptions } from 'motion/react';
+
+import { cn } from '@app/lib/utils';
 
 interface ShimmeringTextProps {
   /** Text to display with shimmer effect */
@@ -22,7 +24,7 @@ interface ShimmeringTextProps {
   /** Whether to animate only once */
   once?: boolean;
   /** Margin for in-view detection (rootMargin) */
-  inViewMargin?: UseInViewOptions["margin"];
+  inViewMargin?: UseInViewOptions['margin'];
   /** Shimmer spread multiplier */
   spread?: number;
   /** Base text color */
@@ -60,29 +62,29 @@ export function ShimmeringText({
     <motion.span
       ref={ref}
       className={cn(
-        "relative inline-block bg-length:250%_100%,auto bg-clip-text text-transparent",
-        "[--base-color:var(--color-zinc-400)] [--shimmer-color:var(--color-zinc-950)]",
-        "[background-repeat:no-repeat,padding-box]",
-        "[--shimmer-bg:linear-gradient(90deg,transparent_calc(50%-var(--spread)),var(--shimmer-color),transparent_calc(50%+var(--spread)))]",
-        "dark:[--base-color:var(--color-zinc-600)] dark:[--shimmer-color:var(--color-white)]",
-        className,
+        'relative inline-block bg-length:250%_100%,auto bg-clip-text text-transparent',
+        '[--base-color:var(--color-zinc-400)] [--shimmer-color:var(--color-zinc-950)]',
+        '[background-repeat:no-repeat,padding-box]',
+        '[--shimmer-bg:linear-gradient(90deg,transparent_calc(50%-var(--spread)),var(--shimmer-color),transparent_calc(50%+var(--spread)))]',
+        'dark:[--base-color:var(--color-zinc-600)] dark:[--shimmer-color:var(--color-white)]',
+        className
       )}
       style={
         {
-          "--spread": `${dynamicSpread}px`,
-          ...(color && { "--base-color": color }),
-          ...(shimmerColor && { "--shimmer-color": shimmerColor }),
+          '--spread': `${dynamicSpread}px`,
+          ...(color && { '--base-color': color }),
+          ...(shimmerColor && { '--shimmer-color': shimmerColor }),
           backgroundImage: `var(--shimmer-bg), linear-gradient(var(--base-color), var(--base-color))`,
         } as React.CSSProperties
       }
       initial={{
-        backgroundPosition: "100% center",
+        backgroundPosition: '100% center',
         opacity: 0,
       }}
       animate={
         shouldAnimate
           ? {
-              backgroundPosition: "0% center",
+              backgroundPosition: '0% center',
               opacity: 1,
             }
           : {}
@@ -93,7 +95,7 @@ export function ShimmeringText({
           duration,
           delay,
           repeatDelay,
-          ease: "linear",
+          ease: 'linear',
         },
         opacity: {
           duration: 0.3,

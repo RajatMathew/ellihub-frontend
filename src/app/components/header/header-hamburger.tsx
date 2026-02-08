@@ -1,6 +1,7 @@
-import { Button } from "@app/components/ui/button";
-import { useLayout } from "@app/hooks/use-layout";
-import { PanelRight } from "lucide-react";
+import { PanelRight } from 'lucide-react';
+
+import { Button } from '@app/components/ui/button';
+import { useLayout } from '@app/hooks/use-layout';
 
 const HeaderHamburger = ({ children }: { children?: React.ReactNode }) => {
   const { isMobile, sidebarToggle } = useLayout();

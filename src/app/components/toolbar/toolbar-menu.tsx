@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from "@app/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from '@app/components/ui/tabs';
 
 export function ToolbarMenu() {
   return (

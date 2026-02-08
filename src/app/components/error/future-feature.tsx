@@ -16,8 +16,8 @@ export default function FutureFeature() {
 
         {/* Description */}
         <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-10">
-          This feature is currently under development and will be introduced in
-          a future release to enhance operational efficiency.
+          This feature is currently under development and will be introduced in a future release to
+          enhance operational efficiency.
         </p>
 
         {/* Footer */}

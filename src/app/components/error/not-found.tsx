@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
-import { Skeleton } from "../ui/skeleton";
+import { Link, useLocation } from 'react-router-dom';
+
+import { Skeleton } from '../ui/skeleton';
 
 export function NotFound() {
   const location = useLocation();

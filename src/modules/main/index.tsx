@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from 'react-router-dom';
 
 /**
  * Main (top-level) layout: renders main area routes via Outlet.

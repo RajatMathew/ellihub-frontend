@@ -16,14 +16,14 @@ export function cn(...inputs: ClassValue[]): string {
  * Used so sidebar menu paths (e.g. "../projects") can be compared to useLocation().pathname.
  */
 export function resolvePath(basePathname: string, path: string): string {
-  if (path.startsWith("/")) return path.replace(/\/$/, "") || "/";
-  const baseSegments = basePathname.replace(/\/$/, "").split("/").filter(Boolean);
-  const relSegments = path.split("/").filter(Boolean);
+  if (path.startsWith('/')) return path.replace(/\/$/, '') || '/';
+  const baseSegments = basePathname.replace(/\/$/, '').split('/').filter(Boolean);
+  const relSegments = path.split('/').filter(Boolean);
   for (const seg of relSegments) {
-    if (seg === "..") baseSegments.pop();
-    else if (seg !== ".") baseSegments.push(seg);
+    if (seg === '..') baseSegments.pop();
+    else if (seg !== '.') baseSegments.push(seg);
   }
-  return "/" + baseSegments.join("/");
+  return '/' + baseSegments.join('/');
 }
 
 /**
@@ -36,12 +36,11 @@ export function getSidebarResolutionBase(pathname: string): {
   base: string;
   stripLeadingDotDotSlash: boolean;
 } {
-  const segments = pathname.replace(/\/$/, "").split("/").filter(Boolean);
-  const projectIndex = segments.indexOf("project");
-  const isProjectRoute =
-    projectIndex !== -1 && segments[projectIndex + 1] && segments[0] === "app";
+  const segments = pathname.replace(/\/$/, '').split('/').filter(Boolean);
+  const projectIndex = segments.indexOf('project');
+  const isProjectRoute = projectIndex !== -1 && segments[projectIndex + 1] && segments[0] === 'app';
   if (isProjectRoute) {
-    const projectRoot = "/" + segments.slice(0, projectIndex + 2).join("/");
+    const projectRoot = '/' + segments.slice(0, projectIndex + 2).join('/');
     return { base: projectRoot, stripLeadingDotDotSlash: true };
   }
   return { base: pathname, stripLeadingDotDotSlash: false };

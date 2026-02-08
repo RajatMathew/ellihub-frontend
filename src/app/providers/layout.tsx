@@ -1,13 +1,14 @@
-import { TooltipProvider } from "@app/components/ui/tooltip";
-import { LayoutContext } from "@app/contexts/layout";
-import { useIsMobile } from "@app/hooks/use-mobile";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from 'react';
 
-const PAGE_MARGIN = "0";
-const HEADER_HEIGHT = "60px";
-const SIDEBAR_WIDTH = "240px";
-const SIDEBAR_COLLAPSED_WIDTH = "0px";
-const TOOLBAR_HEIGHT = "54px";
+import { TooltipProvider } from '@app/components/ui/tooltip';
+import { LayoutContext } from '@app/contexts/layout';
+import { useIsMobile } from '@app/hooks/use-mobile';
+
+const PAGE_MARGIN = '0';
+const HEADER_HEIGHT = '60px';
+const SIDEBAR_WIDTH = '240px';
+const SIDEBAR_COLLAPSED_WIDTH = '0px';
+const TOOLBAR_HEIGHT = '54px';
 
 // Provider component
 interface LayoutProviderProps {
@@ -19,17 +20,17 @@ interface LayoutProviderProps {
 export function LayoutProvider({
   children,
   style: customStyle,
-  bodyClassName = "",
+  bodyClassName = '',
 }: LayoutProviderProps) {
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const defaultStyle: React.CSSProperties = {
-    "--page-margin": PAGE_MARGIN,
-    "--sidebar-width": SIDEBAR_WIDTH,
-    "--sidebar-collapsed-width": SIDEBAR_COLLAPSED_WIDTH,
-    "--header-height": HEADER_HEIGHT,
-    "--toolbar-height": TOOLBAR_HEIGHT,
+    '--page-margin': PAGE_MARGIN,
+    '--sidebar-width': SIDEBAR_WIDTH,
+    '--sidebar-collapsed-width': SIDEBAR_COLLAPSED_WIDTH,
+    '--header-height': HEADER_HEIGHT,
+    '--toolbar-height': TOOLBAR_HEIGHT,
   } as React.CSSProperties;
 
   const style: React.CSSProperties = {

@@ -1,17 +1,12 @@
-import { memo } from "react";
-import {
-  Navigate,
-  Outlet,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
-import { Suspense } from "react";
-import type { RouteDef } from "@app/routing/config/types";
-import { routeTree } from "@app/routing/config/routes";
-import { NotFound } from "@app/components/error/not-found";
-import { DebugViteConfig } from "@app/lib/debug";
-import { ScreenLoader } from "@app/components/screen-loader";
+import { memo, Suspense } from 'react';
+
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+
+import { NotFound } from '@app/components/error/not-found';
+import { ScreenLoader } from '@app/components/screen-loader';
+import { DebugViteConfig } from '@app/lib/debug';
+import { routeTree } from '@app/routing/config/routes';
+import type { RouteDef } from '@app/routing/config/types';
 
 const isDev = import.meta.env.DEV;
 
@@ -22,27 +17,17 @@ function routeTreeToRoutes(nodes: RouteDef[]): React.ReactNode {
     const Element = def.component;
     if (hasChildren) {
       return (
-        <Route
-          key={key}
-          path={def.path}
-          element={Element ? <Element /> : <Outlet />}
-        >
+        <Route key={key} path={def.path} element={Element ? <Element /> : <Outlet />}>
           {routeTreeToRoutes(def.children!)}
         </Route>
       );
     }
-    return (
-      <Route
-        key={key}
-        path={def.path}
-        element={Element ? <Element /> : null}
-      />
-    );
+    return <Route key={key} path={def.path} element={Element ? <Element /> : null} />;
   });
 }
 
 function getTopLevelRoutes(tree: RouteDef[]): RouteDef[] {
-  if (tree.length === 1 && tree[0].path === "/" && tree[0].children?.length) {
+  if (tree.length === 1 && tree[0].path === '/' && tree[0].children?.length) {
     return tree[0].children;
   }
   return tree;

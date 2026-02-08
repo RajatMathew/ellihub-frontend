@@ -1,6 +1,7 @@
-import { Input, InputWrapper } from "@app/components/ui/input";
-import { Badge } from "@app/components/ui/badge";
-import { type InputHTMLAttributes } from "react";
+import { type InputHTMLAttributes } from 'react';
+
+import { Badge } from '@app/components/ui/badge';
+import { Input, InputWrapper } from '@app/components/ui/input';
 
 interface SidebarSearchProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Badge text to display, defaults to "⌘ K" */
@@ -27,9 +28,9 @@ interface SidebarSearchProps extends InputHTMLAttributes<HTMLInputElement> {
  * ```
  */
 export function SidebarSearch({
-  badgeText = "⌘ K",
+  badgeText = '⌘ K',
   onInputChange,
-  placeholder = "Search",
+  placeholder = 'Search',
   ...inputProps
 }: SidebarSearchProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

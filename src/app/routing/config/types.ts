@@ -1,6 +1,6 @@
-import type { ComponentType, LazyExoticComponent } from "react";
+import type { ComponentType, LazyExoticComponent } from 'react';
 
-export type LayoutType = "app" | "minimal"; // "app" = header + sidebar; "minimal" = none
+export type LayoutType = 'app' | 'minimal'; // "app" = header + sidebar; "minimal" = none
 
 export interface BreadcrumbMeta {
   label?: string; // Override path segment for breadcrumb
@@ -10,9 +10,7 @@ export interface BreadcrumbMeta {
 export interface RouteDef {
   path: string;
   /** Lazy component or static import */
-  component:
-    | ComponentType<unknown>
-    | LazyExoticComponent<ComponentType<unknown>>;
+  component: ComponentType<unknown> | LazyExoticComponent<ComponentType<unknown>>;
   /** Default: "app" */
   layout?: LayoutType;
   /** For document title and breadcrumb */

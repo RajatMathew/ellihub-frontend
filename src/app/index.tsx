@@ -1,9 +1,12 @@
-import { AppRouting } from "@app/routing";
-import { Toaster } from "@app/components/ui/sonner";
-import { LoadingBarContainer } from "react-top-loading-bar";
-import "@app/styles/globals.css";
-import { AppLayout } from "./components/layouts";
-import { QueryProvider } from "./providers/query";
+import { LoadingBarContainer } from 'react-top-loading-bar';
+
+import { Toaster } from '@app/components/ui/sonner';
+import { AppRouting } from '@app/routing';
+
+import '@app/styles/globals.css';
+
+import { AppLayout } from './components/layouts';
+import { QueryProvider } from './providers/query';
 
 export function App() {
   return (

@@ -1,7 +1,9 @@
-import { memo } from "react";
-import { Header } from "@app/components/header/header";
-import { mainHeaderConfig, projectHeaderConfig } from "@app/routing/config";
-import { Outlet, Route, Routes } from "react-router-dom";
+import { memo } from 'react';
+
+import { Outlet, Route, Routes } from 'react-router-dom';
+
+import { Header } from '@app/components/header/header';
+import { mainHeaderConfig, projectHeaderConfig } from '@app/routing/config';
 
 function HeaderRoutingSetupInner() {
   return (

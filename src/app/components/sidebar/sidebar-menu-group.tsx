@@ -1,3 +1,7 @@
+import { useCallback, useMemo } from 'react';
+
+import { Link, useLocation } from 'react-router-dom';
+
 import {
   AccordionMenu,
   AccordionMenuIndicator,
@@ -5,12 +9,10 @@ import {
   AccordionMenuSub,
   AccordionMenuSubContent,
   AccordionMenuSubTrigger,
-} from "@app/components/ui/accordion-menu";
-import { Badge } from "@app/components/ui/badge";
-import type { MenuConfig } from "@app/config/types";
-import { getSidebarResolutionBase, resolvePath } from "@app/lib/utils";
-import { useCallback, useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+} from '@app/components/ui/accordion-menu';
+import { Badge } from '@app/components/ui/badge';
+import type { MenuConfig } from '@app/config/types';
+import { getSidebarResolutionBase, resolvePath } from '@app/lib/utils';
 
 interface SidebarGroupMenuProps {
   /** Menu configuration array */
@@ -43,9 +45,9 @@ interface SidebarGroupMenuProps {
  */
 export function SidebarGroupMenu({
   menu,
-  name = "res",
+  name = 'res',
   classNames = {},
-  containerClassName = "space-y-7.5 px-2.5",
+  containerClassName = 'space-y-7.5 px-2.5',
 }: SidebarGroupMenuProps) {
   const { pathname } = useLocation();
   const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
@@ -53,30 +55,26 @@ export function SidebarGroupMenu({
   // Resolve relative menu paths (e.g. "../overview") to absolute for comparison with pathname
   const matchPath = useCallback(
     (path: string): boolean => {
-      const toResolve =
-        stripLeadingDotDotSlash && path.startsWith("../") ? path.slice(3) : path;
+      const toResolve = stripLeadingDotDotSlash && path.startsWith('../') ? path.slice(3) : path;
       const resolved = resolvePath(base, toResolve);
       return (
         pathname === resolved ||
-        (resolved.length > 1 &&
-          pathname.startsWith(resolved) &&
-          resolved !== "/app")
+        (resolved.length > 1 && pathname.startsWith(resolved) && resolved !== '/app')
       );
     },
-    [pathname, base, stripLeadingDotDotSlash],
+    [pathname, base, stripLeadingDotDotSlash]
   );
 
   const defaultClassNames = useMemo(
     () => ({
       item:
         classNames.item ||
-        "h-8.5 px-2.5 text-sm font-normal text-foreground hover:text-primary data-[selected=true]:bg-muted data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100",
+        'h-8.5 px-2.5 text-sm font-normal text-foreground hover:text-primary data-[selected=true]:bg-muted data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
       subTrigger:
-        classNames.subTrigger ||
-        "text-xs font-normal text-muted-foreground hover:bg-transparent",
-      subContent: classNames.subContent || "ps-0",
+        classNames.subTrigger || 'text-xs font-normal text-muted-foreground hover:bg-transparent',
+      subContent: classNames.subContent || 'ps-0',
     }),
-    [classNames],
+    [classNames]
   );
 
   return (
@@ -96,14 +94,10 @@ export function SidebarGroupMenu({
             <AccordionMenuIndicator />
           </AccordionMenuSubTrigger>
 
-          <AccordionMenuSubContent
-            type="single"
-            collapsible
-            parentValue={`${name}-trigger`}
-          >
+          <AccordionMenuSubContent type="single" collapsible parentValue={`${name}-trigger`}>
             {item.children?.map((child, index) => (
-              <AccordionMenuItem key={index} value={child.path || "#"}>
-                <Link to={child.path || "#"}>
+              <AccordionMenuItem key={index} value={child.path || '#'}>
+                <Link to={child.path || '#'}>
                   {child.icon && <child.icon />}
                   <span>{child.title}</span>
                   {child.badge && (

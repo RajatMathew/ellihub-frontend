@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 export function useProjectNavigation() {
   const navigate = useNavigate();
@@ -6,9 +6,7 @@ export function useProjectNavigation() {
   const params = useParams<{ projectId: string }>();
 
   // Decode projectId for internal usage
-  const projectId = params.projectId
-    ? decodeURIComponent(params.projectId)
-    : undefined;
+  const projectId = params.projectId ? decodeURIComponent(params.projectId) : undefined;
 
   const changeProject = (id: string, options?: { replace?: boolean }) => {
     if (!params.projectId) return;
@@ -18,7 +16,7 @@ export function useProjectNavigation() {
 
     const newPath = location.pathname.replace(
       `/project/${encodedCurrentId}`,
-      `/project/${encodedNextId}`,
+      `/project/${encodedNextId}`
     );
 
     navigate(newPath + location.search, {

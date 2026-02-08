@@ -1,16 +1,19 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { useLocation } from "react-router";
-import { useLoadingBar } from "react-top-loading-bar";
-import { AppRoutingSetup, HeaderRoutingSetup } from "./setup";
-import { useLayout } from "@app/hooks/use-layout";
-import { HeaderBreadcrumbs } from "@app/components/header/header-breadcrumbs";
+import { lazy, Suspense, useEffect, useState } from 'react';
+
+import { useLocation } from 'react-router';
+import { useLoadingBar } from 'react-top-loading-bar';
+
+import { HeaderBreadcrumbs } from '@app/components/header/header-breadcrumbs';
+import { useLayout } from '@app/hooks/use-layout';
+
+import { AppRoutingSetup, HeaderRoutingSetup } from './setup';
 
 /** Lazy-loaded so mobile users don't fetch the sidebar chunk until desktop layout. */
-const Sidebar = lazy(() => import("@app/components/sidebar/sidebar"));
+const Sidebar = lazy(() => import('@app/components/sidebar/sidebar'));
 
 export function AppRouting() {
   const { start, complete } = useLoadingBar({
-    color: "var(--color-primary)",
+    color: 'var(--color-primary)',
     shadow: false,
     waitingTime: 400,
     transitionTime: 200,
@@ -31,7 +34,7 @@ export function AppRouting() {
 
   useEffect(() => {
     if (!firstLoad) {
-      start("static");
+      start('static');
 
       // Complete the loading bar after a short delay to simulate page load
       const timer = setTimeout(() => {

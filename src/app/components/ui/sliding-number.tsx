@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, MotionValue, useInView, useSpring, useTransform } from 'framer-motion';
+
+import { motion, useInView, useSpring, useTransform, type MotionValue } from 'framer-motion';
 
 function Digit({
   place,
@@ -32,7 +33,15 @@ function Digit({
   );
 }
 
-function Number({ mv, number, digitHeight }: { mv: MotionValue<number>; number: number; digitHeight: number }) {
+function Number({
+  mv,
+  number,
+  digitHeight,
+}: {
+  mv: MotionValue<number>;
+  number: number;
+  digitHeight: number;
+}) {
   const y = useTransform(mv, (latest: number) => {
     const placeValue = latest % 10;
     const offset = (10 + number - placeValue) % 10;

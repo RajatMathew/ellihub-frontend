@@ -27,12 +27,7 @@ export const SidebarLogo = ({ className }: { className?: string }) => {
               <rect width="111" height="32" fill="white"></rect>
             </clipPath>
             <clipPath id="clip1_99_104">
-              <rect
-                width="20"
-                height="20"
-                fill="white"
-                transform="translate(0 6)"
-              ></rect>
+              <rect width="20" height="20" fill="white" transform="translate(0 6)"></rect>
             </clipPath>
           </defs>
         </svg>

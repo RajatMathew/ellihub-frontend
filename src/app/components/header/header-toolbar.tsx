@@ -1,12 +1,7 @@
-import {
-  Coffee,
-  MessageSquareCode,
-  Pin,
-  ClipboardList,
-  Plus,
-} from "lucide-react";
-import { Button } from "@app/components/ui/button";
-import { useLayout } from "@app/hooks/use-layout";
+import { ClipboardList, Coffee, MessageSquareCode, Pin, Plus } from 'lucide-react';
+
+import { Button } from '@app/components/ui/button';
+import { useLayout } from '@app/hooks/use-layout';
 
 export function HeaderToolbar() {
   const { isMobile } = useLayout();

@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type * as React from 'react';
 import { useCallback, useState } from 'react';
 
 interface UseSliderInputProps {
@@ -7,15 +7,9 @@ interface UseSliderInputProps {
   initialValue: [number, number];
 }
 
-export function useSliderInput({
-  minValue,
-  maxValue,
-  initialValue,
-}: UseSliderInputProps) {
-  const [sliderValues, setSliderValues] =
-    useState<[number, number]>(initialValue);
-  const [inputValues, setInputValues] =
-    useState<[number, number]>(initialValue);
+export function useSliderInput({ minValue, maxValue, initialValue }: UseSliderInputProps) {
+  const [sliderValues, setSliderValues] = useState<[number, number]>(initialValue);
+  const [inputValues, setInputValues] = useState<[number, number]>(initialValue);
 
   // Handle slider changes and sync with input values
   const handleSliderChange = useCallback((values: [number, number]) => {
@@ -33,7 +27,7 @@ export function useSliderInput({
         setInputValues(updatedInputs);
       }
     },
-    [inputValues],
+    [inputValues]
   );
 
   // Validate and update slider values when input loses focus or user presses Enter
@@ -52,7 +46,7 @@ export function useSliderInput({
       setSliderValues(updatedSlider);
       setInputValues(updatedSlider);
     },
-    [sliderValues, minValue, maxValue],
+    [sliderValues, minValue, maxValue]
   );
 
   return {

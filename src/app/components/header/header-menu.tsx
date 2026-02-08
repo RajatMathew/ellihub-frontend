@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
-import { useLayout } from "@app/hooks/use-layout";
+import { lazy, Suspense, useEffect, useState } from 'react';
+
+import { Menu } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
+import { Button } from '@app/components/ui/button';
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetHeader,
   SheetTrigger,
-} from "@app/components/ui/sheet";
-import { Button } from "@app/components/ui/button";
-import Siderbar from "@app/components/sidebar/sidebar";
+} from '@app/components/ui/sheet';
+import { useLayout } from '@app/hooks/use-layout';
+
+const Sidebar = lazy(() => import('@app/components/sidebar/sidebar'));
 
 export function HeaderMenu() {
   const { pathname } = useLocation();
@@ -41,7 +44,9 @@ export function HeaderMenu() {
           >
             <SheetHeader className="p-0 space-y-0" />
             <SheetBody className="flex grow p-0">
-              <Siderbar />
+              <Suspense fallback={null}>
+                <Sidebar />
+              </Suspense>
             </SheetBody>
           </SheetContent>
         </Sheet>

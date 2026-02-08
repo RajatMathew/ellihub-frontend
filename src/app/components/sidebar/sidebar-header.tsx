@@ -1,7 +1,9 @@
-import { Button } from "@app/components/ui/button";
-import { useLayout } from "@app/hooks/use-layout";
-import { PanelRight } from "lucide-react";
-import { SidebarLogo } from "./sidebar-logo";
+import { PanelRight } from 'lucide-react';
+
+import { Button } from '@app/components/ui/button';
+import { useLayout } from '@app/hooks/use-layout';
+
+import { SidebarLogo } from './sidebar-logo';
 
 export function SidebarHeader() {
   const { sidebarToggle } = useLayout();

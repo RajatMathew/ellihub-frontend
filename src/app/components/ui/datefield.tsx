@@ -1,16 +1,14 @@
-"use client";
+'use client';
 
 /* eslint-disable react-refresh/only-export-components -- dateInputStyles and types exported for API */
-import { cn } from "@app/lib/utils";
-import { inputVariants } from "@app/components/ui/input";
-import type { VariantProps } from "class-variance-authority";
+import type { VariantProps } from 'class-variance-authority';
 import {
   composeRenderProps,
   DateField as DateFieldRa,
   DateInput as DateInputRa,
   DateSegment as DateSegmentRa,
   TimeField as TimeFieldRa,
-} from "react-aria-components";
+} from 'react-aria-components';
 import type {
   DateFieldProps,
   DateInputProps as DateInputPropsRa,
@@ -18,13 +16,12 @@ import type {
   DateValue as DateValueRa,
   TimeFieldProps,
   TimeValue as TimeValueRa,
-} from "react-aria-components";
+} from 'react-aria-components';
 
-function DateField<T extends DateValueRa>({
-  className,
-  children,
-  ...props
-}: DateFieldProps<T>) {
+import { inputVariants } from '@app/components/ui/input';
+import { cn } from '@app/lib/utils';
+
+function DateField<T extends DateValueRa>({ className, children, ...props }: DateFieldProps<T>) {
   return (
     <DateFieldRa
       className={composeRenderProps(className, (className: string | undefined) => cn(className))}
@@ -36,11 +33,7 @@ function DateField<T extends DateValueRa>({
   );
 }
 
-function TimeField<T extends TimeValueRa>({
-  className,
-  children,
-  ...props
-}: TimeFieldProps<T>) {
+function TimeField<T extends TimeValueRa>({ className, children, ...props }: TimeFieldProps<T>) {
   return (
     <TimeFieldRa
       className={composeRenderProps(className, (className: string | undefined) => cn(className))}
@@ -65,8 +58,8 @@ function DateSegment({ segment, className, ...props }: DateSegmentProps) {
             data-focused:bg-accent data-focused:data-placeholder:text-foreground data-focused:text-foreground             
             data-disabled:cursor-not-allowed data-disabled:opacity-50
           `,
-          className,
-        ),
+          className
+        )
       )}
       {...props}
       data-invalid
@@ -80,26 +73,23 @@ const dateInputStyles = `
   data-focus-within:has-aria-invalid:ring-destructive/20 dark:data-focus-within:has-aria-invalid:ring-destructive/40 data-focus-within:has-aria-invalid:border-destructive
 `;
 
-interface DateInputProps
-  extends DateInputPropsRa, VariantProps<typeof inputVariants> {
+interface DateInputProps extends DateInputPropsRa, VariantProps<typeof inputVariants> {
   className?: string;
-  variant?: VariantProps<typeof inputVariants>["variant"];
+  variant?: VariantProps<typeof inputVariants>['variant'];
 }
 
-function DateInput({
-  className,
-  variant = "md",
-  ...props
-}: Omit<DateInputProps, "children">) {
+function DateInput({ className, variant = 'md', ...props }: Omit<DateInputProps, 'children'>) {
   return (
     <DateInputRa
       data-slot="input"
       className={composeRenderProps(className, (className: string | undefined) =>
-        cn(inputVariants({ variant }), dateInputStyles, className),
+        cn(inputVariants({ variant }), dateInputStyles, className)
       )}
       {...props}
     >
-      {(segment: Parameters<NonNullable<DateInputPropsRa["children"]>>[0]) => <DateSegment segment={segment} />}
+      {(segment: Parameters<NonNullable<DateInputPropsRa['children']>>[0]) => (
+        <DateSegment segment={segment} />
+      )}
     </DateInputRa>
   );
 }

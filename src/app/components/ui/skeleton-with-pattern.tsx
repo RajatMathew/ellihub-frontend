@@ -1,14 +1,15 @@
-import * as React from "react";
-import { cn } from "@app/lib/utils";
+import * as React from 'react';
 
-interface SkeletonWithPatternProps extends React.ComponentProps<"div"> {
+import { cn } from '@app/lib/utils';
+
+interface SkeletonWithPatternProps extends React.ComponentProps<'div'> {
   patternColor?: string;
   patternOpacity?: number;
 }
 
 function SkeletonWithPattern({
   className,
-  patternColor = "#e5e7eb",
+  patternColor = '#e5e7eb',
   patternOpacity = 0.3,
   ...props
 }: SkeletonWithPatternProps) {
@@ -44,11 +45,11 @@ function SkeletonWithPattern({
   return (
     <div
       data-slot="skeleton-with-pattern"
-      className={cn("animate-pulse rounded-md bg-accent", className)}
+      className={cn('animate-pulse rounded-md bg-accent', className)}
       style={{
         backgroundImage: `url("data:image/svg+xml,${encodedSvg}")`,
-        backgroundSize: "60px 60px",
-        backgroundRepeat: "repeat",
+        backgroundSize: '60px 60px',
+        backgroundRepeat: 'repeat',
       }}
       {...props}
     />

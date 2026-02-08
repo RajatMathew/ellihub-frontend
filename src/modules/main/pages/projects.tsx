@@ -1,9 +1,6 @@
-import { Link } from "react-router-dom";
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarPageTitle,
-} from "@app/components/toolbar/toolbar";
+import { Link } from 'react-router-dom';
+
+import { Toolbar, ToolbarHeading, ToolbarPageTitle } from '@app/components/toolbar/toolbar';
 
 export default function MainProjectsPage() {
   return (

@@ -1,7 +1,7 @@
-import { ScrollArea } from "@app/components/ui/scroll-area";
-import { SidebarHeader } from "./sidebar-header";
+import { ScrollArea } from '@app/components/ui/scroll-area';
+import { SidebarRoutingSetup } from '@app/routing/setup';
 
-import { SidebarRoutingSetup } from "@app/routing/setup";
+import { SidebarHeader } from './sidebar-header';
 
 export default function Sidebar() {
   return (

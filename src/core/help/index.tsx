@@ -1,6 +1,7 @@
-import { Route, Routes } from "react-router-dom";
-import { HelpLayout } from "./components/layouts/HelpLayout";
-import HelpPage from "./pages/HelpPage";
+import { Route, Routes } from 'react-router-dom';
+
+import { HelpLayout } from './components/layouts/HelpLayout';
+import HelpPage from './pages/HelpPage';
 
 const HelpApp = () => {
   return (

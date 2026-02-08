@@ -1,8 +1,4 @@
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarPageTitle,
-} from "@app/components/toolbar/toolbar";
+import { Toolbar, ToolbarHeading, ToolbarPageTitle } from '@app/components/toolbar/toolbar';
 
 export default function MainFilesPage() {
   return (

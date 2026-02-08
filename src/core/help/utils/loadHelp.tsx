@@ -8,7 +8,7 @@ function parseFrontmatter(raw: string): {
   if (!match) return { data: {}, content: raw.trim() };
   const [, front, content] = match;
   const data: { title?: string; order?: number } = {};
-  for (const line of front.split("\n")) {
+  for (const line of front.split('\n')) {
     const titleMatch = line.match(/^title:\s*["']?([^"'\n]+)["']?/);
     if (titleMatch) data.title = titleMatch[1].trim();
     const orderMatch = line.match(/^order:\s*(\d+)/);
@@ -17,9 +17,9 @@ function parseFrontmatter(raw: string): {
   return { data, content: content.trim() };
 }
 
-const files = import.meta.glob("./../docs/*.md", {
-  query: "?raw",
-  import: "default",
+const files = import.meta.glob('./../docs/*.md', {
+  query: '?raw',
+  import: 'default',
   eager: true,
 });
 
@@ -32,7 +32,7 @@ export type HelpPageData = {
 
 export const helpPages: HelpPageData[] = Object.entries(files)
   .map(([path, raw]) => {
-    const slug = path.split("/").pop()!.replace(/\?.*$/, "").replace(".md", "");
+    const slug = path.split('/').pop()!.replace(/\?.*$/, '').replace('.md', '');
     const { data, content } = parseFrontmatter(raw as string);
 
     return {

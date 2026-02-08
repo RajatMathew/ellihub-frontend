@@ -1,12 +1,10 @@
-import { type RefObject, useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from 'react';
 
 interface UseScrollPositionProps {
   targetRef?: RefObject<HTMLElement | Document | undefined>; // Ref to the scrollable element
 }
 
-export function useScrollPosition({
-  targetRef,
-}: UseScrollPositionProps = {}): number {
+export function useScrollPosition({ targetRef }: UseScrollPositionProps = {}): number {
   const [scrollPosition, setScrollPosition] = useState<number>(0);
 
   useEffect(() => {
@@ -16,20 +14,17 @@ export function useScrollPosition({
 
     const updatePosition = () => {
       // Determine if we're scrolling the document or a specific element
-      const scrollY =
-        target === document
-          ? window.scrollY
-          : (target as HTMLElement).scrollTop;
+      const scrollY = target === document ? window.scrollY : (target as HTMLElement).scrollTop;
       setScrollPosition(scrollY);
     };
 
-    scrollable.addEventListener("scroll", updatePosition);
+    scrollable.addEventListener('scroll', updatePosition);
 
     // Set the initial position
     updatePosition();
 
     return () => {
-      scrollable.removeEventListener("scroll", updatePosition);
+      scrollable.removeEventListener('scroll', updatePosition);
     };
   }, [targetRef]);
 

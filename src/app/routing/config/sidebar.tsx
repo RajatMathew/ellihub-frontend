@@ -1,75 +1,74 @@
-import type { MenuConfig } from "@app/config/types";
-import { ArrowLeft } from "lucide-react";
-import { ProjectSwitcher } from "@modules/project/project-switcher";
+import { ArrowLeft } from 'lucide-react';
+
+import type { MenuConfig } from '@app/config/types';
+import { ProjectSwitcher } from '@modules/project/project-switcher';
 
 export const mainSidebarMenu: MenuConfig = [
   {
-    type: "menu",
-    children: [{ title: "Projects", path: "../projects" }],
+    type: 'menu',
+    children: [{ title: 'Projects', path: '../projects' }],
   },
-  { type: "separator" },
+  { type: 'separator' },
   {
-    type: "group-collapsed",
-    title: "Catalog",
-    children: [{ title: "Cost Codes", path: "../catalog/cost-codes" }],
+    type: 'group-collapsed',
+    title: 'Catalog',
+    children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
   },
-  { type: "separator" },
+  { type: 'separator' },
   {
-    type: "group-collapsed",
-    title: "Directory",
+    type: 'group-collapsed',
+    title: 'Directory',
     children: [
-      { title: "Contacts", path: "../directory/contacts" },
-      { title: "General Contracts", path: "../directory/general-contracts" },
-      { title: "Vendors", path: "../directory/vendors" },
+      { title: 'Contacts', path: '../directory/contacts' },
+      { title: 'General Contracts', path: '../directory/general-contracts' },
+      { title: 'Vendors', path: '../directory/vendors' },
     ],
   },
-  { type: "separator" },
+  { type: 'separator' },
   {
-    type: "menu",
+    type: 'menu',
     children: [
-      { title: "HR", path: "../hr" },
-      { title: "Files", path: "../files" },
+      { title: 'HR', path: '../hr' },
+      { title: 'Files', path: '../files' },
     ],
   },
 ];
 
 export const projectSidebarMenu: MenuConfig = [
   {
-    type: "menu",
+    type: 'menu',
+    children: [{ title: 'Back to Projects', path: '../../projects', icon: ArrowLeft }],
+  },
+  { type: 'separator' },
+  { type: 'custom', render: () => <ProjectSwitcher /> },
+  { type: 'separator' },
+  {
+    type: 'menu',
+    children: [{ title: 'Overview', path: '../overview' }],
+  },
+  { type: 'separator' },
+  {
+    type: 'group-collapsed',
+    title: 'GC',
     children: [
-      { title: "Back to Projects", path: "../../projects", icon: ArrowLeft },
+      { title: 'Prime Contracts', path: '../contracts' },
+      { title: 'Prime Change Orders', path: '../change-orders' },
     ],
   },
-  { type: "separator" },
-  { type: "custom", render: () => <ProjectSwitcher /> },
-  { type: "separator" },
+  { type: 'separator' },
   {
-    type: "menu",
-    children: [{ title: "Overview", path: "../overview" }],
-  },
-  { type: "separator" },
-  {
-    type: "group-collapsed",
-    title: "GC",
+    type: 'group-collapsed',
+    title: 'Vendor',
     children: [
-      { title: "Prime Contracts", path: "../contracts" },
-      { title: "Prime Change Orders", path: "../change-orders" },
+      { title: 'RFQs', path: '../rfqs' },
+      { title: 'Purchase Orders', path: '../vendors/purchase-orders' },
+      { title: 'Change Orders', path: '../vendors/change-orders' },
+      { title: 'Invoices', path: '../vendors/invoices' },
     ],
   },
-  { type: "separator" },
+  { type: 'separator' },
   {
-    type: "group-collapsed",
-    title: "Vendor",
-    children: [
-      { title: "RFQs", path: "../rfqs" },
-      { title: "Purchase Orders", path: "../vendors/purchase-orders" },
-      { title: "Change Orders", path: "../vendors/change-orders" },
-      { title: "Invoices", path: "../vendors/invoices" },
-    ],
-  },
-  { type: "separator" },
-  {
-    type: "menu",
-    children: [{ title: "Files", path: "../files" }],
+    type: 'menu',
+    children: [{ title: 'Files', path: '../files' }],
   },
 ];

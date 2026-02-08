@@ -1,11 +1,14 @@
 /* eslint-disable react-refresh/only-export-components -- codeVariants exported for styling API */
-import * as React from "react";
-import { useCopyToClipboard } from "@app/hooks/use-copy-to-clipboard";
-import { cn } from "@app/lib/utils";
-import { Button } from "@app/components/ui/button";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Check, Copy } from "lucide-react";
-import { Slot as SlotPrimitive } from "radix-ui";
+
+import * as React from 'react';
+
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Check, Copy } from 'lucide-react';
+import { Slot as SlotPrimitive } from 'radix-ui';
+
+import { Button } from '@app/components/ui/button';
+import { useCopyToClipboard } from '@app/hooks/use-copy-to-clipboard';
+import { cn } from '@app/lib/utils';
 
 export interface CodeProps
   extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof codeVariants> {
@@ -14,27 +17,24 @@ export interface CodeProps
   copyText?: string;
 }
 
-const codeVariants = cva(
-  "relative rounded-md bg-muted font-mono text-sm font-medium",
-  {
-    variants: {
-      variant: {
-        default: "bg-muted text-muted-foreground",
-        destructive: "bg-destructive/10 text-destructive",
-        outline: "border border-border bg-background text-foreground",
-      },
-      size: {
-        default: "text-sm px-2.5 py-1.5",
-        sm: "text-xs px-2 py-1.5",
-        lg: "text-base px-3 py-1.5",
-      },
+const codeVariants = cva('relative rounded-md bg-muted font-mono text-sm font-medium', {
+  variants: {
+    variant: {
+      default: 'bg-muted text-muted-foreground',
+      destructive: 'bg-destructive/10 text-destructive',
+      outline: 'border border-border bg-background text-foreground',
     },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
+    size: {
+      default: 'text-sm px-2.5 py-1.5',
+      sm: 'text-xs px-2 py-1.5',
+      lg: 'text-base px-3 py-1.5',
     },
   },
-);
+  defaultVariants: {
+    variant: 'default',
+    size: 'default',
+  },
+});
 
 function Code({
   className,
@@ -47,19 +47,12 @@ function Code({
   ...props
 }: CodeProps) {
   const { copyToClipboard, isCopied } = useCopyToClipboard();
-  const Comp = asChild ? SlotPrimitive.Slot : "code";
-  const textToCopy = copyText || (typeof children === "string" ? children : "");
+  const Comp = asChild ? SlotPrimitive.Slot : 'code';
+  const textToCopy = copyText || (typeof children === 'string' ? children : '');
 
   return (
-    <span
-      className={cn("inline-flex items-center gap-2", className)}
-      data-slot="code"
-    >
-      <Comp
-        data-slot="code-panel"
-        className={cn(codeVariants({ variant, size }))}
-        {...props}
-      >
+    <span className={cn('inline-flex items-center gap-2', className)} data-slot="code">
+      <Comp data-slot="code-panel" className={cn(codeVariants({ variant, size }))} {...props}>
         {children}
       </Comp>
       {showCopyButton && textToCopy && (
@@ -70,11 +63,7 @@ function Code({
           className="h-4 w-4 p-0 opacity-60 hover:opacity-100"
           onClick={() => copyToClipboard(textToCopy)}
         >
-          {isCopied ? (
-            <Check className="h-3 w-3" />
-          ) : (
-            <Copy className="h-3 w-3" />
-          )}
+          {isCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </Button>
       )}
     </span>

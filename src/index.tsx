@@ -1,8 +1,10 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { App } from "./app";
-import { HelmetProvider } from "react-helmet-async";
-import { ThemeProvider } from "next-themes";
-import HelpApp from "@core/help";
+import { ThemeProvider } from 'next-themes';
+import { HelmetProvider } from 'react-helmet-async';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+
+import HelpApp from '@core/help';
+
+import { App } from './app';
 
 function FrameWork() {
   return (

@@ -1,14 +1,9 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import {
-  type ElementType,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { cn } from "@app/lib/utils";
+import * as React from 'react';
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react';
+
+import { cn } from '@app/lib/utils';
 
 export interface SvgTextProps {
   /**
@@ -47,14 +42,14 @@ export interface SvgTextProps {
 export function SvgText({
   svg,
   children,
-  className = "",
-  fontSize = "20vw",
-  fontWeight = "bold",
-  as: Component = "div",
+  className = '',
+  fontSize = '20vw',
+  fontWeight = 'bold',
+  as: Component = 'div',
 }: SvgTextProps) {
   const textRef = useRef<HTMLDivElement>(null);
   const [textDimensions, setTextDimensions] = useState({ width: 0, height: 0 });
-  const content = React.Children.toArray(children).join("");
+  const content = React.Children.toArray(children).join('');
   const maskId = React.useId();
 
   useEffect(() => {
@@ -81,15 +76,15 @@ export function SvgText({
   }, [content, fontSize, fontWeight]);
 
   return (
-    <Component className={cn("relative inline-block", className)}>
+    <Component className={cn('relative inline-block', className)}>
       {/* Hidden text for measuring */}
       <div
         ref={textRef}
         className="opacity-0 absolute pointer-events-none font-bold whitespace-nowrap"
         style={{
-          fontSize: typeof fontSize === "number" ? `${fontSize}px` : fontSize,
+          fontSize: typeof fontSize === 'number' ? `${fontSize}px` : fontSize,
           fontWeight,
-          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
         {content}
@@ -102,9 +97,9 @@ export function SvgText({
         height={textDimensions.height}
         viewBox={`0 0 ${textDimensions.width} ${textDimensions.height}`}
         style={{
-          fontSize: typeof fontSize === "number" ? `${fontSize}px` : fontSize,
+          fontSize: typeof fontSize === 'number' ? `${fontSize}px` : fontSize,
           fontWeight,
-          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
         <defs>
@@ -117,10 +112,9 @@ export function SvgText({
               dominantBaseline="central"
               fill="white"
               style={{
-                fontSize:
-                  typeof fontSize === "number" ? `${fontSize}px` : fontSize,
+                fontSize: typeof fontSize === 'number' ? `${fontSize}px` : fontSize,
                 fontWeight,
-                fontFamily: "system-ui, -apple-system, sans-serif",
+                fontFamily: 'system-ui, -apple-system, sans-serif',
               }}
             >
               {content}
@@ -134,24 +128,24 @@ export function SvgText({
             width="100%"
             height="100%"
             style={{
-              overflow: "visible",
+              overflow: 'visible',
             }}
           >
             <div
               style={{
                 width: `${textDimensions.width}px`,
                 height: `${textDimensions.height}px`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <div
                 style={{
-                  width: "400px",
-                  height: "200px",
+                  width: '400px',
+                  height: '200px',
                   transform: `scale(${Math.max(textDimensions.width / 400, textDimensions.height / 200)})`,
-                  transformOrigin: "center",
+                  transformOrigin: 'center',
                 }}
               >
                 {svg}

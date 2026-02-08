@@ -1,30 +1,32 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@app/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
-import { Circle } from "lucide-react";
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
+import * as React from 'react';
 
-type RadioVariant = "primary" | "mono";
-type RadioSize = "sm" | "md" | "lg";
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Circle } from 'lucide-react';
+import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
+
+import { cn } from '@app/lib/utils';
+
+type RadioVariant = 'primary' | 'mono';
+type RadioSize = 'sm' | 'md' | 'lg';
 
 // Define a cva function for the RadioGroup root.
-const radioGroupVariants = cva("grid gap-2.5", {
+const radioGroupVariants = cva('grid gap-2.5', {
   variants: {
     variant: {
-      primary: "",
-      mono: "",
+      primary: '',
+      mono: '',
     },
     size: {
-      sm: "",
-      md: "",
-      lg: "",
+      sm: '',
+      md: '',
+      lg: '',
     },
   },
   defaultVariants: {
-    variant: "primary",
-    size: "md",
+    variant: 'primary',
+    size: 'md',
   },
 });
 
@@ -32,7 +34,7 @@ const radioGroupVariants = cva("grid gap-2.5", {
 const RadioGroupContext = React.createContext<{
   variant: RadioVariant;
   size: RadioSize;
-}>({ variant: "primary", size: "md" });
+}>({ variant: 'primary', size: 'md' });
 
 function RadioGroup({
   className,
@@ -42,9 +44,7 @@ function RadioGroup({
 }: React.ComponentProps<typeof RadioGroupPrimitive.Root> &
   VariantProps<typeof radioGroupVariants>) {
   return (
-    <RadioGroupContext.Provider
-      value={{ variant: variant ?? "primary", size: size ?? "md" }}
-    >
+    <RadioGroupContext.Provider value={{ variant: variant ?? 'primary', size: size ?? 'md' }}>
       <RadioGroupPrimitive.Root
         data-slot="radio-group"
         className={cn(radioGroupVariants({ variant, size }), className)}
@@ -66,23 +66,22 @@ const radioItemVariants = cva(
   {
     variants: {
       size: {
-        sm: "size-4.5 [&_svg]:size-2",
-        md: "size-5 [&_svg]:size-2.5",
-        lg: "size-5.5 [&_svg]:size-3",
+        sm: 'size-4.5 [&_svg]:size-2',
+        md: 'size-5 [&_svg]:size-2.5',
+        lg: 'size-5.5 [&_svg]:size-3',
       },
     },
     defaultVariants: {
-      size: "md",
+      size: 'md',
     },
-  },
+  }
 );
 
 function RadioGroupItem({
   className,
   size,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Item> &
-  VariantProps<typeof radioItemVariants>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item> & VariantProps<typeof radioItemVariants>) {
   // Use the variant and size from context if not provided at the item level.
   const { size: contextSize } = React.useContext(RadioGroupContext);
   const effectiveSize = size ?? contextSize;

@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from 'react-router-dom';
 
 /**
  * Project layout: renders nested project routes (overview, contracts, etc.) via Outlet.
