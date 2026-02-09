@@ -4,11 +4,15 @@ import { lazy } from 'react';
 
 import { Navigate } from 'react-router-dom';
 
+import DelayForDemo from '@app/lib/delay';
+
 import type { RouteDef } from './types';
 
 function NavigateToOverview() {
   return <Navigate to="overview" replace />;
 }
+
+const isDev = import.meta.env.DEV;
 
 // Main (top-level) layout & pages
 const MainLayout = lazy(() => import('@modules/main'));
@@ -31,11 +35,15 @@ const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
 const ProjectFiles = lazy(() => import('@modules/project/pages/files'));
 
+const UIKit = lazy(() => DelayForDemo(import('@core/ui/pages/page'), 5000));
+
 export const routeTree: RouteDef[] = [
   {
     path: '/',
     component: MainLayout,
     children: [
+      isDev ? { path: 'ui', component: UIKit, title: 'UI Kit' } : null,
+
       { path: 'projects', component: MainProjects, title: 'Projects' },
       {
         path: 'catalog/cost-codes',
@@ -98,4 +106,4 @@ export const routeTree: RouteDef[] = [
       },
     ],
   },
-];
+].filter(Boolean) as RouteDef[]; // Filter out falsey values (like the dev-only route in production)

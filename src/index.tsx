@@ -2,6 +2,8 @@ import { ThemeProvider } from 'next-themes';
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 
+import { BrandedLayout } from '@core/auth/layouts/branded';
+import { SignInPage } from '@core/auth/pages/signin-page';
 import HelpApp from '@core/help';
 
 import { App } from './app';
@@ -29,22 +31,17 @@ function FrameWork() {
                 </div>
               }
             />
-            <Route
-              path="login"
-              element={
-                <div>
-                  Login Page (to be implemented) <Link to="/app">Go to App</Link>
-                </div>
-              }
-            />
-            <Route
-              path="sign-out"
-              element={
-                <div>
-                  Sign Out Page (to be implemented) <Link to="/app">Go to App</Link>
-                </div>
-              }
-            />
+            <Route element={<BrandedLayout />}>
+              <Route path="login" element={<SignInPage />} />
+              <Route
+                path="sign-out"
+                element={
+                  <div>
+                    Sign Out Page (to be implemented) <Link to="/app">Go to App</Link>
+                  </div>
+                }
+              />
+            </Route>
             <Route path="*" element={<Navigate to="/app" />} />
           </Routes>
         </BrowserRouter>

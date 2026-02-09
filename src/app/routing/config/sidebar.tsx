@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import type { MenuConfig } from '@app/config/types';
 import { ProjectSwitcher } from '@modules/project/project-switcher';
 
+const isDev = import.meta.env.DEV;
+
 export const mainSidebarMenu: MenuConfig = [
   {
     type: 'menu',
@@ -32,7 +34,15 @@ export const mainSidebarMenu: MenuConfig = [
       { title: 'Files', path: '../files' },
     ],
   },
-];
+  {
+    type: 'separator',
+  },
+
+  isDev && {
+    type: 'menu',
+    children: [{ title: 'UI Kit', path: '../ui', badge: { variant: 'primary', text: 'Dev' } }],
+  },
+].filter(Boolean) as MenuConfig; // Filter out falsey values (like the dev-only menu in production)
 
 export const projectSidebarMenu: MenuConfig = [
   {
