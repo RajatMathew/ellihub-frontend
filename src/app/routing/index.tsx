@@ -52,7 +52,6 @@ export function AppRouting() {
         className="grow lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto"
         role="content"
       >
-        {isMobile && <HeaderBreadcrumbs />}
         <HeaderRoutingSetup />
         {!isMobile && (
           <aside className="dark fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)">
@@ -61,6 +60,7 @@ export function AppRouting() {
             </Suspense>
           </aside>
         )}
+        {isMobile && <HeaderBreadcrumbs />}
         <AppRoutingSetup />
       </main>
     </div>

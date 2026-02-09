@@ -1,9 +1,13 @@
+import { useMatch } from 'react-router-dom';
+
 import { ScrollArea } from '@app/components/ui/scroll-area';
 import { SidebarRoutingSetup } from '@app/routing/setup';
 
 import { SidebarHeader } from './sidebar-header';
 
 export default function Sidebar() {
+  const matches = useMatch('/app/*');
+  console.log('Sidebar match:', matches);
   return (
     <div className="bg-background overflow-hidden border border-border">
       <SidebarHeader />
@@ -12,7 +16,7 @@ export default function Sidebar() {
       </ScrollArea>
       <footer className="shrink-0 px-3 py-2 border-t border-border">
         <span className="text-muted-foreground text-[7pt] font-mono text-center block">
-          {__APP_VERSION__}
+          {__APP_VERSION__} /{' '}
         </span>
       </footer>
     </div>

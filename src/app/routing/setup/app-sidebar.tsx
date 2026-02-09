@@ -8,10 +8,10 @@ import { mainSidebarMenu, projectSidebarMenu } from '@app/routing/config';
 function SidebarRoutingSetupInner() {
   return (
     <Routes>
+      <Route index path="/*" element={<SidebarBuilder menuConfig={mainSidebarMenu} />} />
       <Route path="project/:projectId/*" element={<Outlet />}>
         <Route path="*" element={<SidebarBuilder menuConfig={projectSidebarMenu} />} />
       </Route>
-      <Route index path="/*" element={<SidebarBuilder menuConfig={mainSidebarMenu} />} />
     </Routes>
   );
 }
