@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -11,9 +11,12 @@ import {
   SheetHeader,
   SheetTrigger,
 } from '@app/components/ui/sheet';
+import type { MenuConfig } from '@app/config/types';
 import { useLayout } from '@app/hooks/use-layout';
 
-export function HeaderMenu({ sidebar }: { sidebar?: React.ReactNode }) {
+import Sidebar from '../sidebar/sidebar';
+
+export function HeaderMenu({ menuConfig }: { menuConfig?: MenuConfig }) {
   const { pathname } = useLocation();
   const { isMobile } = useLayout();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -42,7 +45,7 @@ export function HeaderMenu({ sidebar }: { sidebar?: React.ReactNode }) {
           >
             <SheetHeader className="p-0 space-y-0" />
             <SheetBody className="flex grow p-0">
-              <Suspense fallback={null}>{sidebar}</Suspense>
+              {menuConfig && <Sidebar menuConfig={menuConfig} />}
             </SheetBody>
           </SheetContent>
         </Sheet>
