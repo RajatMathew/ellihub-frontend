@@ -40,7 +40,7 @@ app.post('/org-role', zValidator('json', roleCreateSchema), async (c) => {
 });
 
 // Get org roles
-app.get('/org-role', async (c) => {
+app.get('/org-role/list', async (c) => {
     const result = await UserService.getOrgRoles(c.req.raw.headers);
 
     return success(c, result);

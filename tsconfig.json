@@ -9,6 +9,8 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     // "ignoreDeprecations": "6.0",
+    "sourceMap": true,
+    "inlineSourceMap": false,
     "baseUrl": "./",
     "paths": {
       "@api/*": ["src/api/*"],
