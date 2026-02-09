@@ -11,6 +11,8 @@ model User {
   members       Member[]
   invitations   Invitation[]
 
+  projectsLeading Project[]
+
   @@unique([email])
   @@map("user")
 }
