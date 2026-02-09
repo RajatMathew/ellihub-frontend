@@ -6,6 +6,7 @@ import {
   CreditCard,
   FileText,
   Globe,
+  HistoryIcon,
   Moon,
   Settings,
   Shield,
@@ -134,6 +135,13 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <DropdownMenuItem asChild>
+          <Link to="/changes-log" className="flex items-center gap-2">
+            <HistoryIcon />
+            Changes Log
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link to="/help" className="flex items-center gap-2">
