@@ -25,6 +25,7 @@ export const CostCodeService = {
         return await prisma.costCodeCategory.create({
             data: {
                 ...request,
+                tenantId: 'default',
                 id: ulid(),
             },
         });
@@ -41,7 +42,8 @@ export const CostCodeService = {
 
         checkDeletedAt(costCodeCategory);
 
-        return await prisma.costCodeCategory.create({
+        return await prisma.costCodeCategory.update({
+            where: { id: request.id },
             data: {
                 ...request,
                 id: ulid(),
@@ -76,6 +78,7 @@ export const CostCodeService = {
         return await prisma.costCode.create({
             data: {
                 ...request,
+                tenantId: 'default',
                 id: ulid(),
             },
         });

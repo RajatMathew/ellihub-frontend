@@ -1,7 +1,7 @@
 import { createAccessControl } from 'better-auth/plugins/access';
 
 // These are your FIXED permissions
-const statement = {
+export const statement = {
     user: ['manage-permissions'],
     project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
     leave: ['approve', 'view'],

@@ -1,3 +1,4 @@
+
 model User {
   id            String       @id
   name          String
@@ -10,6 +11,11 @@ model User {
   accounts      Account[]
   members       Member[]
   invitations   Invitation[]
+
+  role       String?
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
 
   @@unique([email])
   @@map("user")
@@ -26,6 +32,8 @@ model Session {
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeOrganizationId String?
+
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])

@@ -10,8 +10,13 @@ async function seed() {
 
     try {
         // Create user
-        const user = await auth.api.signUpEmail({
-            body: { email, password, name },
+        const user = await auth.api.createUser({
+            body: {
+                email,
+                password,
+                name,
+                role: 'admin',
+            },
         });
 
         if (!user?.user) throw new Error('Failed to create user');

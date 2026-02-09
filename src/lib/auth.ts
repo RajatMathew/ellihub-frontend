@@ -1,11 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { organization } from 'better-auth/plugins';
+import { admin, organization } from 'better-auth/plugins';
 
 import { ac } from './permissions';
 import { prisma } from './prisma';
 
 export const auth = betterAuth({
+    trustedOrigins: [process.env.CLIENT_URL!],
     database: prismaAdapter(prisma, {
         provider: 'postgresql',
         transaction: true,
@@ -21,8 +22,9 @@ export const auth = betterAuth({
                 maximumRolesPerOrganization: 50, // Optional limit
             },
             // Since you don't need multiple orgs:
-            // allowUserToCreateOrganization: false, // Prevent users from creating orgs
-            // organizationLimit: 1,
+            allowUserToCreateOrganization: false, // Prevent users from creating orgs
+            organizationLimit: 1,
         }),
+        admin(),
     ],
 });
