@@ -42,6 +42,8 @@ model GeneralContractor {
   updatedAt DateTime  @updatedAt
 
   contacts Contact[]
+
+  projects Project[]
 }
 
 enum GCType {
