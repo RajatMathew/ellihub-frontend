@@ -13,6 +13,7 @@ export const auth = betterAuth({
         transaction: true,
     }),
     baseURL: process.env.BETTER_AUTH_BASE_URL!,
+    basePath: '/api/v1/auth',
     emailAndPassword: {
         enabled: true,
     },
