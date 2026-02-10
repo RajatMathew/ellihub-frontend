@@ -60,7 +60,7 @@ export function StatsRow({ items, className }: StatsRowProps) {
           >
             {/* Label with dot */}
             <div className="flex items-center gap-2">
-              <span className={cn('size-[5px] shrink-0 rounded-full', dotColors[variant])} />
+              <span className={cn('size-1.25 shrink-0 rounded-full', dotColors[variant])} />
               <span className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
                 {item.label}
               </span>

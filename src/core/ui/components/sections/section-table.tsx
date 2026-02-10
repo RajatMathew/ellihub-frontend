@@ -84,7 +84,7 @@ export function SectionTable<T>({
             <Input
               placeholder={searchPlaceholder}
               onChange={(e) => onSearch?.(e.target.value)}
-              className="h-7 w-[180px] rounded-sm border-gray-600 bg-gray-800 pl-8 text-[12px] text-white placeholder:text-gray-400"
+              className="h-7 w-45 rounded-sm border-gray-600 bg-gray-800 pl-8 text-[12px] text-white placeholder:text-gray-400"
             />
           </div>
         )}

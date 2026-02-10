@@ -27,7 +27,7 @@ export function BrandedLayout() {
             <Link to="/">
               <img
                 src={toAbsoluteUrl('/media/app/mini-logo.svg')}
-                className="h-[28px] max-w-none"
+                className="h-7 max-w-none"
                 alt=""
               />
             </Link>
