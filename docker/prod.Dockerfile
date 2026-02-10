@@ -44,6 +44,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/src/lib/db ./src/lib/db
+COPY --from=builder /app/prisma ./prisma
 
 # Runtime env: pass from build args or set at container run (env_file / environment in compose)
 ARG BETTER_AUTH_BASE_URL
