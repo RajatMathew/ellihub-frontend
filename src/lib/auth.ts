@@ -2,7 +2,8 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, organization } from 'better-auth/plugins';
 
-import { ac } from './permissions';
+import { initializeOrganizationRoles } from './organization-hooks';
+import { ac, owner } from './permissions';
 import { prisma } from './prisma';
 
 export const auth = betterAuth({
@@ -11,12 +12,16 @@ export const auth = betterAuth({
         provider: 'postgresql',
         transaction: true,
     }),
+    baseURL: process.env.SERVER_URL!,
     emailAndPassword: {
         enabled: true,
     },
     plugins: [
         organization({
             ac, // Required: defines your fixed permissions
+            roles: {
+                owner,
+            },
             dynamicAccessControl: {
                 enabled: true,
                 maximumRolesPerOrganization: 50, // Optional limit
@@ -24,6 +29,12 @@ export const auth = betterAuth({
             // Since you don't need multiple orgs:
             allowUserToCreateOrganization: false, // Prevent users from creating orgs
             organizationLimit: 1,
+            organizationHooks: {
+                afterCreateOrganization: async ({ organization: org }) => {
+                    // Initialize default roles for the organization
+                    await initializeOrganizationRoles(org.id);
+                },
+            },
         }),
         admin(),
     ],

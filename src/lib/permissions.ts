@@ -1,8 +1,10 @@
 import { createAccessControl } from 'better-auth/plugins/access';
+import { ownerAc } from 'better-auth/plugins/organization/access';
 
 // These are your FIXED permissions
 export const statement = {
     user: ['manage-permissions'],
+    role: ['list', 'create', 'update', 'delete'],
     project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
     leave: ['approve', 'view'],
     costCodeGroup: ['create', 'update', 'delete', 'read'],
@@ -10,6 +12,16 @@ export const statement = {
 } as const;
 
 export const ac = createAccessControl(statement);
+
+export const owner = ac.newRole({
+    ...ownerAc.statements,
+    user: ['manage-permissions'],
+    role: ['list', 'create', 'update', 'delete'],
+    project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
+    leave: ['approve', 'view'],
+    costCodeGroup: ['create', 'update', 'delete', 'read'],
+    costCode: ['create', 'update', 'delete', 'read'],
+});
 
 // Export the type
 export type PermissionStatement = typeof statement;
