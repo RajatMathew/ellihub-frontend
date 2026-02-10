@@ -1,16 +1,50 @@
-// model File {
-//     id String @id
+model File {
+    id      String       @id
+    name    String
 
-// }
+    objectId String?
+    mimeType String?
+    size Int?
 
-// model FileEntity {
-//     fileId String 
-//     entityId String
-//     entityType EntityType
-// }
+    parent  File? @relation(fields: [parentId], references: [id], name: "parent", onDelete: Restrict)
+    parentId String?
 
-// enum EntityType {
-//     PROJECT
-//     PROJECT_CO
-//     CO
-// }
+    children File[] @relation(name: "parent")
+
+    type    FileType    
+
+    isDeletable Boolean @default(true)
+
+    private Boolean @default(false)
+
+    createdBy String 
+    deletedBy String?
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+}
+
+enum FileType {
+    FILE
+    FOLDER
+}
+
+
+model FileAccess {
+    fileId String
+    userId String
+
+    permissions FilePermssion[] 
+
+    @@id([fileId, userId])
+}
+
+enum FilePermssion {
+    DELETE
+    READ
+    DOWNLOAD
+    CHANGE_PERMISSION
+    ACCESS
+    CREATE_FILE_WITHIN
+}

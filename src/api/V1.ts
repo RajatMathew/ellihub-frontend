@@ -1,14 +1,18 @@
-import {
-    paginationExampleModule,
-    routePatternExampleModule,
-    serviceExampleModule,
-} from '@modules/example';
+import { auth } from '@lib/auth';
+import { costCodeRoutes } from '@modules/cost-code';
+import { userRoutes } from '@modules/user';
 import { Hono } from 'hono';
+import { authMiddleware } from 'src/middleware/auth';
 
 const app = new Hono();
 
-app.route('/example-pagination', paginationExampleModule);
-app.route('/example-service', serviceExampleModule);
-app.route('/example-pattern', routePatternExampleModule);
+app.on(['POST', 'GET'], '/auth/*', (c) => {
+    return auth.handler(c.req.raw);
+});
+
+app.use('/*', authMiddleware);
+
+app.route('/api/cost-code', costCodeRoutes);
+app.route('/api/users', userRoutes);
 
 export default app;
