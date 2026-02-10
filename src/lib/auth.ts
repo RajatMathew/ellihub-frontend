@@ -7,7 +7,8 @@ import { ac, owner } from './permissions';
 import { prisma } from './prisma';
 
 export const auth = betterAuth({
-    trustedOrigins: [process.env.CLIENT_URL!],
+    trustedOrigins:
+        process.env.NODE_ENV !== 'production' ? ['http://localhost:*'] : [process.env.CLIENT_URL!],
     database: prismaAdapter(prisma, {
         provider: 'postgresql',
         transaction: true,

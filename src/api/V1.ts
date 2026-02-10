@@ -12,7 +12,7 @@ app.on(['POST', 'GET'], '/auth/*', (c) => {
 
 app.use('/*', authMiddleware);
 
-app.route('/api/cost-code', costCodeRoutes);
-app.route('/api/users', userRoutes);
+app.route('/cost-code', costCodeRoutes);
+app.route('/users', userRoutes);
 
 export default app;
