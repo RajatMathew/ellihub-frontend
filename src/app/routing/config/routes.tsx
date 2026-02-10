@@ -2,27 +2,21 @@
 
 import { lazy } from 'react';
 
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 
+import FutureFeature from '@app/components/error/future-feature';
 import DelayForDemo from '@app/lib/delay';
 
 import type { RouteDef } from './types';
 
-function NavigateToOverview() {
-  return <Navigate to="overview" replace />;
+function NavigateTo({ to }: { to: string }) {
+  return <Navigate to={to} replace />;
 }
 
 const isDev = import.meta.env.DEV;
 
 // Main (top-level) layout & pages
-const MainLayout = lazy(() => import('@modules/main'));
-const MainProjects = lazy(() => import('@modules/main/pages/projects'));
-const MainCostCodes = lazy(() => import('@modules/main/pages/cost-codes'));
-const MainContacts = lazy(() => import('@modules/main/pages/contacts'));
-const MainGeneralContracts = lazy(() => import('@modules/main/pages/general-contracts'));
-const MainVendors = lazy(() => import('@modules/main/pages/vendors'));
-const MainHr = lazy(() => import('@modules/main/pages/hr'));
-const MainFiles = lazy(() => import('@modules/main/pages/files'));
+const Costcodes = lazy(() => import('@modules/catalog/routes/costcodes'));
 
 // Project layout & pages
 const ProjectLayout = lazy(() => import('@modules/project'));
@@ -39,41 +33,53 @@ const UIKit = lazy(() => DelayForDemo(import('@core/ui/pages/page'), 5000));
 
 export const routeTree: RouteDef[] = [
   {
-    path: '/',
-    component: MainLayout,
+    component: Outlet,
     children: [
       isDev ? { path: 'ui', component: UIKit, title: 'UI Kit' } : null,
 
-      { path: 'projects', component: MainProjects, title: 'Projects' },
+      { path: 'projects', component: FutureFeature, title: 'Projects' },
+
       {
-        path: 'catalog/cost-codes',
-        component: MainCostCodes,
-        title: 'Cost Codes',
+        path: 'catalog/*',
+        title: 'Catalog',
+        children: [
+          {
+            path: '',
+            index: true,
+            component: () => NavigateTo({ to: 'cost-codes' }),
+          },
+          {
+            path: 'cost-codes/*',
+            component: Costcodes,
+            title: 'Cost Codes',
+          },
+        ],
       },
       {
         path: 'directory/contacts',
-        component: MainContacts,
+        component: FutureFeature,
         title: 'Contacts',
       },
       {
         path: 'directory/general-contracts',
-        component: MainGeneralContracts,
+        component: FutureFeature,
         title: 'General Contracts',
       },
       {
         path: 'directory/vendors',
-        component: MainVendors,
+        component: FutureFeature,
         title: 'Vendors',
       },
-      { path: 'hr', component: MainHr, title: 'HR' },
-      { path: 'files', component: MainFiles, title: 'Files' },
+      { path: 'hr', component: FutureFeature, title: 'HR' },
+      { path: 'files', component: FutureFeature, title: 'Files' },
+      // Project routes (nested under /project/:projectId/*)
       {
         path: 'project/:projectId',
         component: ProjectLayout,
         title: 'Project',
         breadcrumb: { label: 'Project' },
         children: [
-          { path: '', component: NavigateToOverview },
+          { path: '', component: <Navigate to="overview" replace /> },
           { path: 'overview', component: ProjectOverview, title: 'Overview' },
           {
             path: 'contracts',
