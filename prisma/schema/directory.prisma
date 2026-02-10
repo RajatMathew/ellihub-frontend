@@ -13,6 +13,11 @@ model Vendor {
   updatedAt DateTime  @updatedAt
 
   contacts Contact[]
+
+  rfqs RFQ[]
+
+  quotations     VendorQuotation[]
+  purchaseOrders PurchaseOrder[]
 }
 
 enum VendorType {
@@ -42,6 +47,8 @@ model GeneralContractor {
   updatedAt DateTime  @updatedAt
 
   contacts Contact[]
+
+  projects Project[]
 }
 
 enum GCType {
@@ -76,13 +83,13 @@ model Contact {
 }
 
 model CostCodeCategory {
-  id          String  @id
+  id          String    @id
   name        String
   description String?
-  tenantId String
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  tenantId    String
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   costCodes CostCode[]
 }
@@ -91,7 +98,7 @@ model CostCode {
   id                 String           @id
   name               String
   code               String
-  tenantId             String
+  tenantId           String
   description        String?
   costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
   costCodeCategoryId String

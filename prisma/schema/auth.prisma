@@ -12,6 +12,7 @@ model User {
   members       Member[]
   invitations   Invitation[]
 
+  projectsLeading Project[]
   role       String?
   banned     Boolean?  @default(false)
   banReason  String?

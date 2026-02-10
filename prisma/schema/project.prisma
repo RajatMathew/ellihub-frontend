@@ -1,0 +1,243 @@
+model Project {
+  id       String            @id
+  gc       GeneralContractor @relation(fields: [gcId], references: [id])
+  gcId     String
+  leadPM   User              @relation(fields: [leadPMId], references: [id])
+  leadPMId String
+
+  primeContract          PrimeContract?
+  projectScheduleEntries ProjectScheduleEntry[]
+  primeChangeOrders      PrimeChangeOrder[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  rfqs RFQ[]
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PrimeContract {
+  id        String  @id
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String  @unique
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ProjectTeamAssignment {
+  projectId  String
+  employeeId String
+  role       String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@id([projectId, employeeId])
+}
+
+model ProjectScheduleEntry {
+  id          String   @id
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String   @unique
+  date        DateTime
+  description String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PrimeChangeOrder {
+  id          String    @id
+  project     Project   @relation(fields: [projectId], references: [id])
+  projectId   String    @unique
+  date        DateTime
+  title       String
+  description String
+  amount      Float
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lineItems PrimeCOLineItem[]
+}
+
+model PrimeCOLineItem {
+  id          String           @id
+  primeCo     PrimeChangeOrder @relation(fields: [primeCoId], references: [id])
+  primeCoId   String           @map("primeCoid")
+  title       String
+  description String
+  amount      Float
+  costCodeId  String
+  deletedAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model RFQ {
+  id        String  @id
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String  @unique
+
+  title String
+
+  awardedVendor   Vendor?  @relation(fields: [awardedVendorid], references: [id])
+  awardedVendorid String?
+  awardedAmount   Decimal? @db.Decimal(15, 2)
+
+  costCodeId String
+  deadline   DateTime
+
+  status RFQStatus
+
+  createdBy String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  rfqdeliverables RFQDeliverable[]
+
+  vendorQuotations VendorQuotation[]
+  purchaseOrders   PurchaseOrder[]
+}
+
+enum RFQStatus {
+  OPEN
+  CLOSE
+}
+
+model RFQDeliverable {
+  id         String    @id
+  rfq        RFQ       @relation(fields: [rfqId], references: [id])
+  rfqId      String
+  title      String
+  unit       String
+  quantity   Int
+  costCodeId String
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model VendorQuotation {
+  id        String          @id
+  rfq       RFQ             @relation(fields: [rfqId], references: [id])
+  rfqId     String
+  vendor    Vendor          @relation(fields: [vendorId], references: [id])
+  vendorId  String
+  amount    Decimal
+  leadTime  String
+  status    QuotationStatus
+  deletedAt DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+enum QuotationStatus {
+  WAITING
+  ACCEPTED
+  REJECTED
+}
+
+model PurchaseOrder {
+  id        String  @id
+  rfq       RFQ?    @relation(fields: [rfqId], references: [id])
+  rfqId     String?
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+  vendorId  String
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  amount   Decimal
+  leadTime String
+  status   PurchaseOrderStatus
+
+  issueDate    DateTime
+  expectedDate DateTime
+  deliveryDate DateTime
+
+  address String
+
+  createdBy String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems PurchaseOrderLineItem[]
+
+  purchaseOrderCOs PurchaseOrderCO[]
+
+  invoices Invoice[]
+}
+
+enum PurchaseOrderStatus {
+  DELIVERED
+}
+
+model PurchaseOrderLineItem {
+  id              String        @id
+  title           String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String
+  unit            String
+  quantity        Int
+  costCodeId      String
+  price           Decimal
+  amount          Decimal
+  deletedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model PurchaseOrderCO {
+  id                       String                    @id
+  title                    String
+  reason                   String
+  purchaseOrder            PurchaseOrder             @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId          String
+  total                    Decimal
+  deletedAt                DateTime?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  purchaseOrderCOLineItems PurchaseOrderCOLineItem[]
+}
+
+model PurchaseOrderCOLineItem {
+  id         String          @id
+  pco        PurchaseOrderCO @relation(fields: [pcoId], references: [id])
+  pcoId      String
+  unit       String
+  quantity   Int
+  costCodeId String
+  price      Decimal
+  amount     Decimal
+  deletedAt  DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model Invoice {
+  id              String        @id
+  title           String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String
+  status          InvoiceStatus
+  amount          Decimal
+  deletedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum InvoiceStatus {
+  PAID
+  PARTIALLY_PAID
+  UNPAID
+  REJECTED
+}

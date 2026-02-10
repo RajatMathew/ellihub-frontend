@@ -1,0 +1,16 @@
+// model File {
+//     id String @id
+
+// }
+
+// model FileEntity {
+//     fileId String 
+//     entityId String
+//     entityType EntityType
+// }
+
+// enum EntityType {
+//     PROJECT
+//     PROJECT_CO
+//     CO
+// }
