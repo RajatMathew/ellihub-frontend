@@ -3,11 +3,11 @@ services:
         image: postgres:17
         restart: unless-stopped
         environment:
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: ellepass
-            POSTGRES_DB: postgres
+            POSTGRES_USER: ${POSTGRES_USER:-postgres}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ellepass}
+            POSTGRES_DB: ${POSTGRES_DB:-postgres}
         ports:
-            - '5432:5432'
+            - '${POSTGRES_PORT:-5432}:5432'
         volumes:
             - elli_db:/var/lib/postgresql/data
         networks:
