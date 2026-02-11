@@ -5,6 +5,7 @@ import { lazy } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 import FutureFeature from '@app/components/error/future-feature';
+import { NotFound } from '@app/components/error/not-found';
 import DelayForDemo from '@app/lib/delay';
 
 import type { RouteDef } from './types';
@@ -110,6 +111,7 @@ export const routeTree: RouteDef[] = [
           { path: 'files', component: ProjectFiles, title: 'Files' },
         ],
       },
+      { path: '*', component: NotFound, title: 'Not Found' },
     ],
   },
 ].filter(Boolean) as RouteDef[]; // Filter out falsey values (like the dev-only route in production)
