@@ -11,6 +11,15 @@ export const authMiddleware = createMiddleware(async (c, next) => {
         return c.json({ error: 'Unauthorized' }, 401);
     }
 
+    if (!session.session.activeOrganizationId) {
+        await auth.api.setActiveOrganization({
+            body: {
+                organizationSlug: 'default',
+            },
+            headers: c.req.raw.headers,
+        });
+    }
+
     // Attach session to context
     c.set('session', session.session);
     c.set('user', session.user);
