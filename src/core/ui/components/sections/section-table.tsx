@@ -73,7 +73,7 @@ export function SectionTable<T>({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-sm border border-gray-200 bg-white shadow-sm',
+        'overflow-hidden rounded-sm border border-gray-200 bg-background shadow-sm',
         className
       )}
     >
@@ -157,7 +157,7 @@ export function SectionTable<T>({
           <select
             value={pageSize}
             onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="h-7 rounded-sm border border-gray-300 bg-white px-2 text-[13px]"
+            className="h-7 rounded-sm border border-gray-300 bg-background px-2 text-[13px]"
           >
             {pageSizeOptions.map((opt) => (
               <option key={opt} value={opt}>

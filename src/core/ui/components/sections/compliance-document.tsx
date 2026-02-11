@@ -51,7 +51,7 @@ export function ComplianceDocument({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-3 rounded-sm border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50',
+        'flex items-center justify-between gap-3 rounded-sm border border-gray-200 bg-background px-4 py-3 transition-colors hover:bg-gray-50',
         className
       )}
     >

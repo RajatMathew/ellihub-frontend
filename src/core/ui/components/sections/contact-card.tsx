@@ -39,7 +39,7 @@ export function ContactCard({
   return (
     <div
       className={cn(
-        'flex gap-4 rounded-sm border border-gray-200 bg-white p-5 shadow-sm',
+        'flex gap-4 rounded-sm border border-gray-200 bg-background p-5 shadow-sm',
         className
       )}
     >

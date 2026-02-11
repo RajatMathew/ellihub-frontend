@@ -55,7 +55,7 @@ export function SectionHeader({
                   'h-7 rounded-sm border-0 px-3 text-[12px] font-bold tracking-wide uppercase',
                   isPrimary
                     ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-white text-gray-900 hover:bg-gray-100'
+                    : 'bg-background text-gray-900 hover:bg-gray-100'
                 )}
               >
                 {ActionIcon && <ActionIcon className="size-3.5 stroke-[2.5]" />}
