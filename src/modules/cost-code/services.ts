@@ -1,7 +1,7 @@
 import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
-import { IPaginatedResponse, PaginationParams } from '@middleware';
-import { checkDeletedAt, getPaginatedResponse } from '@modules/common/utils';
+import { PaginationParams } from '@middleware';
+import { checkDeletedAt } from '@modules/common/utils';
 import { ulid } from 'ulid';
 import z from 'zod';
 
@@ -106,7 +106,12 @@ export const CostCodeService = {
         });
     },
 
-    getCostCodes: async (params: PaginationParams): Promise<IPaginatedResponse<CostCode>> => {
+    getCostCodes: async (
+        params: PaginationParams
+    ): Promise<{
+        data: CostCode[];
+        count: number;
+    }> => {
         const { filter, skip, take, sortBy, sortOrder } = params;
         const { search, ...restFilter } = filter || {};
 
@@ -136,7 +141,7 @@ export const CostCodeService = {
             }),
         ]);
 
-        return getPaginatedResponse(data, count, params);
+        return { data, count };
     },
 
     deleteCostCode: async (id: string): Promise<void> => {

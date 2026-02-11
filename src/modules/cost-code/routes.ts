@@ -61,8 +61,9 @@ app.get(
     async (c: Context) => {
         const pagination = c.get('pagination');
 
-        const costCodes = await CostCodeService.getCostCodes(pagination);
-        return success(c, costCodes);
+        const { data, count } = await CostCodeService.getCostCodes(pagination);
+
+        return success(c, data, 200, 'OK', count);
     }
 );
 
