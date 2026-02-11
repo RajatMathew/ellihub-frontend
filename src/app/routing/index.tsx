@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useLoadingBar } from 'react-top-loading-bar';
 
-import { HeaderBreadcrumbs } from '@app/components/header/header-breadcrumbs';
 import { useLayout } from '@app/hooks/use-layout';
 
 import { AppRoutingSetup, HeaderRoutingSetup } from './setup';
@@ -50,9 +49,10 @@ export function AppRouting() {
         role="content"
       >
         <HeaderRoutingSetup />
-        {isMobile && <HeaderBreadcrumbs />}
         <AppRoutingSetup />
       </main>
     </div>
   );
 }
+
+export default AppRouting;

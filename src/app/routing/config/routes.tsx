@@ -79,7 +79,7 @@ export const routeTree: RouteDef[] = [
         title: 'Project',
         breadcrumb: { label: 'Project' },
         children: [
-          { path: '', component: <Navigate to="overview" replace /> },
+          { path: '', component: () => NavigateTo({ to: 'overview' }), index: true },
           { path: 'overview', component: ProjectOverview, title: 'Overview' },
           {
             path: 'contracts',

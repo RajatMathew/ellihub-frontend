@@ -1,17 +1,12 @@
 import axios, { type AxiosError } from 'axios';
 
-const baseURL =
-  typeof import.meta.env.VITE_API_BASE_URL === 'string' &&
-  import.meta.env.VITE_API_BASE_URL.length > 0
-    ? import.meta.env.VITE_API_BASE_URL
-    : '/api';
-
 export const api = axios.create({
-  baseURL,
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/v1`,
   timeout: 30_000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor: add auth, logging, etc.

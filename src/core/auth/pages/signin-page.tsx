@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff, LoaderCircleIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
+import { signIn, useSession } from '@app/api';
 import { Alert, AlertIcon, AlertTitle } from '@app/components/ui/alert';
 import { Button } from '@app/components/ui/button';
 import { Checkbox } from '@app/components/ui/checkbox';
@@ -19,15 +20,15 @@ import {
 import { Input } from '@app/components/ui/input';
 import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-schema';
 
-export function SignInPage() {
+export function SignInPageComponent() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Check for success message from password reset or error messages
+  // Handle URL params
   useEffect(() => {
     const pwdReset = searchParams.get('pwd_reset');
     const errorParam = searchParams.get('error');
@@ -54,7 +55,6 @@ export function SignInPage() {
           break;
         default:
           setError(errorDescription || 'Authentication error. Please try again.');
-          break;
       }
     }
   }, [searchParams]);
@@ -62,36 +62,51 @@ export function SignInPage() {
   const form = useForm<SigninSchemaType>({
     resolver: zodResolver(getSigninSchema()),
     defaultValues: {
-      email: 'demo@kt.com',
-      password: 'demo123',
+      email: 'admin@elli.com',
+      password: 'password123',
       rememberMe: true,
     },
   });
+
+  const login = async (data: SigninSchemaType) => {
+    try {
+      await signIn.email(
+        {
+          email: data.email,
+          password: data.password,
+          rememberMe: data.rememberMe,
+        },
+        {
+          onSuccess: () => {
+            setSuccessMessage('Successfully signed in! Redirecting...');
+          },
+          onError: (err) => {
+            setError(err instanceof Error ? err.message : 'Failed to sign in. Please try again.');
+          },
+        }
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   async function onSubmit(values: SigninSchemaType) {
     try {
       setIsProcessing(true);
       setError(null);
 
-      console.log('Attempting to sign in with email:', values.email);
-
-      // Simple validation
       if (!values.email.trim() || !values.password) {
         setError('Email and password are required');
+        setIsProcessing(false);
         return;
       }
 
-      // Get the 'next' parameter from URL if it exists
-      const nextPath = searchParams.get('next') || '/';
-
-      // Use navigate for navigation
-      navigate(nextPath);
+      await login(values);
     } catch (err) {
       console.error('Unexpected sign-in error:', err);
       setError(
         err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.'
       );
-    } finally {
       setIsProcessing(false);
     }
   }
@@ -143,20 +158,18 @@ export function SignInPage() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <div className="flex justify-between items-center gap-2.5">
-                <FormLabel>Password</FormLabel>
-              </div>
+              <FormLabel>Password</FormLabel>
               <div className="relative">
                 <Input
                   placeholder="Your password"
-                  type={passwordVisible ? 'text' : 'password'} // Toggle input type
+                  type={passwordVisible ? 'text' : 'password'}
                   {...field}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   mode="icon"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
+                  onClick={() => setPasswordVisible((prev) => !prev)}
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                 >
                   {passwordVisible ? (
@@ -175,7 +188,7 @@ export function SignInPage() {
           control={form.control}
           name="rememberMe"
           render={({ field }) => (
-            <FormItem className="flex flex-col space-y-2">
+            <FormItem>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FormControl>
@@ -197,7 +210,8 @@ export function SignInPage() {
         <Button type="submit" className="w-full" disabled={isProcessing}>
           {isProcessing ? (
             <span className="flex items-center gap-2">
-              <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Loading...
+              <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+              Loading...
             </span>
           ) : (
             'Sign In'
@@ -217,3 +231,21 @@ export function SignInPage() {
     </Form>
   );
 }
+
+export const SignInPage = () => {
+  const { isPending, data } = useSession();
+  const [searchParams] = useSearchParams();
+  const next_param = searchParams.get('next');
+  const next = next_param ? decodeURIComponent(next_param) : null;
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <LoaderCircleIcon className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (data && data.session) return <Navigate to={next || '/'} replace />;
+
+  return <SignInPageComponent />;
+};

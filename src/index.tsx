@@ -1,7 +1,9 @@
 import { ThemeProvider } from 'next-themes';
 import { HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 
+import { NotFound } from '@app/components/error/not-found';
+import ProtectedLayout from '@app/components/layouts/protected';
 import { BrandedLayout } from '@core/auth/layouts/branded';
 import { SignInPage } from '@core/auth/pages/signin-page';
 import HelpApp from '@core/help';
@@ -21,16 +23,19 @@ function FrameWork() {
       <HelmetProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="app/*" element={<App />} />
-            <Route path="help/*" element={<HelpApp />} />
-            <Route
-              path="/"
-              element={
-                <div>
-                  Home Page (to be implemented) <Link to="/app">Go to App</Link>
-                </div>
-              }
-            />
+            <Route element={<ProtectedLayout />}>
+              <Route path="app/*" element={<App />} />
+              <Route path="help/*" element={<HelpApp />} />
+              <Route
+                path="/"
+                element={
+                  <div>
+                    Home Page (to be implemented) <Link to="/app">Go to App</Link>
+                  </div>
+                }
+              />
+            </Route>
+
             <Route element={<BrandedLayout />}>
               <Route path="login" element={<SignInPage />} />
               <Route
@@ -42,7 +47,7 @@ function FrameWork() {
                 }
               />
             </Route>
-            <Route path="*" element={<Navigate to="/app" />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </HelmetProvider>

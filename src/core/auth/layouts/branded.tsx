@@ -22,7 +22,7 @@ export function BrandedLayout() {
           </Card>
         </div>
 
-        <div className="lg:rounded-xl lg:border lg:border-border lg:m-5 order-1 lg:order-2 bg-top xxl:bg-center xl:bg-cover bg-no-repeat branded-bg">
+        <div className="hidden lg:flex lg:rounded-xl lg:border lg:border-border lg:m-5 order-1 lg:order-2 bg-top xxl:bg-center xl:bg-cover bg-no-repeat branded-bg">
           <div className="flex flex-col p-8 lg:p-16 gap-4">
             <Link to="/">
               <img

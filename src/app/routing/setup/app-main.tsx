@@ -3,7 +3,7 @@ import { memo, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { NotFound } from '@app/components/error/not-found';
-import { ScreenLoader } from '@app/components/screen-loader';
+import { ModuleLoader } from '@app/components/loader/elegant';
 import { DebugViteConfig } from '@app/lib/debug';
 import { routeTree } from '@app/routing/config/routes';
 import type { RouteDef } from '@app/routing/config/types';
@@ -40,7 +40,7 @@ const mainRouteElements = routeTreeToRoutes(topLevelRoutes);
 function AppRoutingSetupInner() {
   const location = useLocation();
   return (
-    <Suspense fallback={<ScreenLoader />} key={location.pathname}>
+    <Suspense fallback={<ModuleLoader />} key={location.pathname}>
       <Routes>
         <Route index element={<Navigate to="projects" replace />} />
         {mainRouteElements}
