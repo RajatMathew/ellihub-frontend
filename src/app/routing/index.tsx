@@ -3,8 +3,6 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useLoadingBar } from 'react-top-loading-bar';
 
-import { useLayout } from '@app/hooks/use-layout';
-
 import { AppRoutingSetup, HeaderRoutingSetup } from './setup';
 
 export function AppRouting() {
@@ -18,8 +16,6 @@ export function AppRouting() {
 
   const [firstLoad, setFirstLoad] = useState(true);
   const location = useLocation();
-
-  const { isMobile } = useLayout();
 
   useEffect(() => {
     if (firstLoad) {

@@ -44,6 +44,17 @@ export default defineConfig({
         short_name: 'Elle',
         description: 'construction company erp',
         theme_color: '#ffffff',
+        background_color: '#ffffff',
+        start_url: '/',
+        display: 'standalone',
+        icons: [
+          {
+            src: '/vite.svg',
+            type: 'image/svg+xml',
+            sizes: 'any',
+            purpose: 'any',
+          },
+        ],
       },
     }),
   ],

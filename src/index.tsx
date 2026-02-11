@@ -5,6 +5,7 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { NotFound } from '@app/components/error/not-found';
 import ProtectedLayout from '@app/components/layouts/protected';
 import { BrandedLayout } from '@core/auth/layouts/branded';
+import SignOutPage from '@core/auth/pages/sign-out';
 import { SignInPage } from '@core/auth/pages/signin-page';
 import HelpApp from '@core/help';
 
@@ -37,15 +38,8 @@ function FrameWork() {
             </Route>
 
             <Route element={<BrandedLayout />}>
-              <Route path="login" element={<SignInPage />} />
-              <Route
-                path="sign-out"
-                element={
-                  <div>
-                    Sign Out Page (to be implemented) <Link to="/app">Go to App</Link>
-                  </div>
-                }
-              />
+              <Route path="sign-in" element={<SignInPage />} />
+              <Route path="sign-out" element={<SignOutPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

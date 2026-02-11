@@ -90,6 +90,8 @@ export function SignInPageComponent() {
     }
   };
 
+  useEffect(() => {}, [error]);
+
   async function onSubmit(values: SigninSchemaType) {
     try {
       setIsProcessing(true);
@@ -120,15 +122,16 @@ export function SignInPageComponent() {
             Welcome back! Log in with your credentials.
           </p>
         </div>
-
-        {error && (
-          <Alert variant="destructive" appearance="light" onClose={() => setError(null)}>
-            <AlertIcon>
-              <AlertCircle />
-            </AlertIcon>
-            <AlertTitle>{error}</AlertTitle>
-          </Alert>
-        )}
+        <div className="h-12">
+          {error && (
+            <Alert variant="destructive" appearance="light" onClose={() => setError(null)}>
+              <AlertIcon>
+                <AlertCircle />
+              </AlertIcon>
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
+          )}
+        </div>
 
         {successMessage && (
           <Alert appearance="light" onClose={() => setSuccessMessage(null)}>

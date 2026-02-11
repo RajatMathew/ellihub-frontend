@@ -17,7 +17,6 @@ import {
 import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { authClient } from '@app/api';
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
@@ -201,9 +200,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             size="sm"
             className="w-full"
             onClick={() => {
-              authClient.signOut().then(() => {
-                navigate('/login');
-              });
+              navigate('/sign-out');
             }}
           >
             Sign Out
