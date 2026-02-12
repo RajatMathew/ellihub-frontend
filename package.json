@@ -24,7 +24,8 @@
         "docs:build": "vitepress build docs",
         "docs:preview": "vitepress preview docs",
         "docker:up": "docker compose up --build",
-        "docker:down": "docker compose down"
+        "docker:down": "docker compose down",
+        "db:seed-cost-codes": "bun run scripts/seed-cost-codes.ts"
     },
     "dependencies": {
         "@hono/swagger-ui": "^0.5.2",
