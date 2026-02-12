@@ -17,7 +17,8 @@ function NavigateTo({ to }: { to: string }) {
 const isDev = import.meta.env.DEV;
 
 // Main (top-level) layout & pages
-const Costcodes = lazy(() => import('@modules/catalog/routes/costcodes'));
+const Costcodes = lazy(() => import('@modules/catalog/routes/costcodes.route'));
+const DirectoryContacts = lazy(() => import('@modules/directory/routes/contacts.route'));
 
 // Project layout & pages
 const ProjectLayout = lazy(() => import('@modules/project'));
@@ -58,7 +59,7 @@ export const routeTree: RouteDef[] = [
       },
       {
         path: 'directory/contacts',
-        component: FutureFeature,
+        component: DirectoryContacts,
         title: 'Contacts',
       },
       {
