@@ -1,5 +1,6 @@
 import { auth } from '@lib/auth';
 import { costCodeRoutes } from '@modules/cost-code';
+import { fileRoutes } from '@modules/file';
 import { userRoutes } from '@modules/user';
 import { Hono } from 'hono';
 import { authMiddleware } from 'src/middleware/auth';
@@ -14,5 +15,6 @@ app.use('/*', authMiddleware);
 
 app.route('/cost-code', costCodeRoutes);
 app.route('/users', userRoutes);
+app.route('/file', fileRoutes);
 
 export default app;
