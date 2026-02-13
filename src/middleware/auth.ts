@@ -3,17 +3,30 @@ import { PermissionStatement, ResourceName } from '@lib/permissions';
 import { createMiddleware } from 'hono/factory';
 
 export const authMiddleware = createMiddleware(async (c, next) => {
-    const session = await auth.api.getSession({
-        headers: c.req.raw.headers,
-    });
+    const WHITELIST = ['/api/v1/file/read'];
 
-    if (!session) {
-        return c.json({ error: 'Unauthorized' }, 401);
+    let whitelist = false;
+
+    for (const p in WHITELIST) {
+        if (c.req.path.startsWith(p)) {
+            whitelist = true;
+            break;
+        }
     }
 
-    // Attach session to context
-    c.set('session', session.session);
-    c.set('user', session.user);
+    if (!whitelist) {
+        const session = await auth.api.getSession({
+            headers: c.req.raw.headers,
+        });
+
+        if (!session) {
+            return c.json({ error: 'Unauthorized' }, 401);
+        }
+
+        // Attach session to context
+        c.set('session', session.session);
+        c.set('user', session.user);
+    }
 
     await next();
 });
