@@ -19,12 +19,12 @@ export const ContactCreateSchema = z
     .object({
         fullName: z.string().min(1),
         professionalRoleId: z.string().ulid().optional(),
-        emails: z.array(EmailItemSchema).optional().default([]),
-        phoneNumbers: z.array(PhoneItemSchema).optional().default([]),
+        email: EmailItemSchema.optional(),
+        phoneNumber: PhoneItemSchema.optional(),
         tags: z.array(z.string()).optional().default([]),
         entityLinks: z.array(EntityLinkItemSchema).optional().default([]),
     })
-    .refine((data) => data.emails.length > 0 || data.phoneNumbers.length > 0, {
+    .refine((data) => data.email || data.phoneNumber, {
         message: 'At least one email or phone number is required',
     });
 
@@ -33,8 +33,8 @@ export type ContactCreateRequest = z.infer<typeof ContactCreateSchema>;
 export const ContactUpdateSchema = z.object({
     fullName: z.string().min(1),
     professionalRoleId: z.string().ulid().nullable(),
-    emails: z.array(EmailItemSchema),
-    phoneNumbers: z.array(PhoneItemSchema),
+    email: EmailItemSchema.nullable(),
+    phoneNumber: PhoneItemSchema.nullable(),
     tags: z.array(z.string()),
 }).partial();
 
@@ -78,3 +78,26 @@ export const ContactEntityTypeUpdateSchema = z.object({
 }).partial();
 
 export type ContactEntityTypeUpdateRequest = z.infer<typeof ContactEntityTypeUpdateSchema>;
+
+// Sub-resource schemas
+export const PhoneAddSchema = z.object({
+    phone: z.string().min(1),
+    label: z.string().min(1),
+});
+
+export type PhoneAddRequest = z.infer<typeof PhoneAddSchema>;
+
+export const EmailAddSchema = z.object({
+    email: z.string().email(),
+    label: z.string().min(1),
+});
+
+export type EmailAddRequest = z.infer<typeof EmailAddSchema>;
+
+export const EntityLinkCreateSchema = z.object({
+    entityTypeId: z.string().ulid(),
+    entityId: z.string().ulid(),
+    isPrimary: z.boolean().optional().default(false),
+});
+
+export type EntityLinkCreateRequest = z.infer<typeof EntityLinkCreateSchema>;

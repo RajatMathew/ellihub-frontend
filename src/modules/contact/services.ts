@@ -1,7 +1,8 @@
-import { Contact } from '@db/client';
+import { Contact, Prisma } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { checkDeletedAt } from '@modules/common/utils';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { ConflictError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
@@ -10,6 +11,9 @@ import {
     ContactEntityTypeCreateRequest,
     ContactEntityTypeUpdateRequest,
     ContactUpdateRequest,
+    EmailAddRequest,
+    EntityLinkCreateRequest,
+    PhoneAddRequest,
     ProfessionalRoleCreateRequest,
     ProfessionalRoleUpdateRequest,
 } from './models';
@@ -62,8 +66,8 @@ export const ContactService = {
                     id: contactId,
                     fullName: contactData.fullName,
                     professionalRoleId: contactData.professionalRoleId,
-                    emails: contactData.emails,
-                    phoneNumbers: contactData.phoneNumbers,
+                    email: contactData.email ?? undefined,
+                    phoneNumber: contactData.phoneNumber ?? undefined,
                     tags: contactData.tags,
                 },
             });
@@ -93,8 +97,13 @@ export const ContactService = {
         count: number;
     }> => {
         const { filter, skip, take, sortBy, sortOrder, search: querySearch } = params;
-        const { search: filterSearch, professionalRoleId, entityTypeId, entityId, ...restFilter } =
-            filter || {};
+        const {
+            search: filterSearch,
+            professionalRoleId,
+            entityTypeId,
+            entityId,
+            ...restFilter
+        } = filter || {};
         const search = querySearch || filterSearch;
 
         const whereClause: Record<string, unknown> = {
@@ -104,7 +113,7 @@ export const ContactService = {
             ...(search && {
                 OR: [
                     { fullName: { contains: search, mode: 'insensitive' as const } },
-                    { emails: { string_contains: search } },
+                    { email: { string_contains: search } },
                 ],
             }),
             ...((entityTypeId || entityId) && {
@@ -174,11 +183,22 @@ export const ContactService = {
             checkDeletedAt(role);
         }
 
+        const data: Record<string, unknown> = {};
+        if (request.fullName !== undefined) data.fullName = request.fullName;
+        if (request.tags !== undefined) data.tags = request.tags;
+        if (request.professionalRoleId !== undefined) {
+            data.professionalRoleId = request.professionalRoleId;
+        }
+        if (request.email !== undefined) {
+            data.email = request.email === null ? Prisma.JsonNull : request.email;
+        }
+        if (request.phoneNumber !== undefined) {
+            data.phoneNumber = request.phoneNumber === null ? Prisma.JsonNull : request.phoneNumber;
+        }
+
         return await prisma.contact.update({
             where: { id },
-            data: {
-                ...request,
-            },
+            data,
             include: contactIncludes,
         });
     },
@@ -364,5 +384,153 @@ export const ContactService = {
             where: { id },
             data: { deletedAt: new Date() },
         });
+    },
+
+    // Sub-resource methods
+    getActiveContact: async (id: string) => {
+        const contact = await prisma.contact.findUnique({
+            where: { id },
+        });
+
+        if (!contact) {
+            throw new NotFoundError('Contact not found');
+        }
+
+        checkDeletedAt(contact);
+        return contact;
+    },
+
+    addPhone: async (contactId: string, data: PhoneAddRequest) => {
+        const contact = await ContactService.getActiveContact(contactId);
+
+        if (contact.phoneNumber !== null) {
+            throw new ConflictError('Contact already has a phone number');
+        }
+
+        return await prisma.contact.update({
+            where: { id: contactId },
+            data: { phoneNumber: data },
+            include: contactIncludes,
+        });
+    },
+
+    removePhone: async (contactId: string) => {
+        const contact = await ContactService.getActiveContact(contactId);
+
+        if (contact.phoneNumber === null) {
+            throw new NotFoundError('Contact does not have a phone number');
+        }
+
+        return await prisma.contact.update({
+            where: { id: contactId },
+            data: { phoneNumber: Prisma.JsonNull },
+            include: contactIncludes,
+        });
+    },
+
+    addEmail: async (contactId: string, data: EmailAddRequest) => {
+        const contact = await ContactService.getActiveContact(contactId);
+
+        if (contact.email !== null) {
+            throw new ConflictError('Contact already has an email');
+        }
+
+        return await prisma.contact.update({
+            where: { id: contactId },
+            data: { email: data },
+            include: contactIncludes,
+        });
+    },
+
+    removeEmail: async (contactId: string) => {
+        const contact = await ContactService.getActiveContact(contactId);
+
+        if (contact.email === null) {
+            throw new NotFoundError('Contact does not have an email');
+        }
+
+        return await prisma.contact.update({
+            where: { id: contactId },
+            data: { email: Prisma.JsonNull },
+            include: contactIncludes,
+        });
+    },
+
+    addEntityLink: async (contactId: string, data: EntityLinkCreateRequest) => {
+        await ContactService.getActiveContact(contactId);
+
+        const entityType = await prisma.contactEntityType.findUnique({
+            where: { id: data.entityTypeId },
+        });
+
+        if (!entityType) {
+            throw new NotFoundError('Entity type not found');
+        }
+
+        checkDeletedAt(entityType);
+
+        try {
+            const link = await prisma.contactEntityLink.create({
+                data: {
+                    id: ulid(),
+                    contactId,
+                    entityTypeId: data.entityTypeId,
+                    entityId: data.entityId,
+                    isPrimary: data.isPrimary,
+                },
+                include: { entityType: true },
+            });
+            return link;
+        } catch (err) {
+            if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002') {
+                throw new ConflictError('This contact is already linked to this entity');
+            }
+            throw err;
+        }
+    },
+
+    removeEntityLink: async (contactId: string, linkId: string) => {
+        await ContactService.getActiveContact(contactId);
+
+        const link = await prisma.contactEntityLink.findUnique({
+            where: { id: linkId },
+        });
+
+        if (!link || link.contactId !== contactId) {
+            throw new NotFoundError('Entity link not found');
+        }
+
+        await prisma.contactEntityLink.delete({
+            where: { id: linkId },
+        });
+    },
+
+    // Directory KPIs
+    getDirectoryKpis: async () => {
+        const [totalContacts, primaryContacts, gcLinks, vendorLinks] = await prisma.$transaction([
+            prisma.contact.count({
+                where: { deletedAt: null },
+            }),
+            prisma.contactEntityLink.count({
+                where: {
+                    isPrimary: true,
+                    contact: { deletedAt: null },
+                },
+            }),
+            prisma.contactEntityLink.count({
+                where: {
+                    entityType: { name: 'General Contractor' },
+                    contact: { deletedAt: null },
+                },
+            }),
+            prisma.contactEntityLink.count({
+                where: {
+                    entityType: { name: 'Vendor' },
+                    contact: { deletedAt: null },
+                },
+            }),
+        ]);
+
+        return { totalContacts, primaryContacts, gcLinks, vendorLinks };
     },
 };

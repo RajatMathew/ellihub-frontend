@@ -68,6 +68,9 @@
         { "name": "Cost Code Categories", "description": "Manage cost code categories" },
         { "name": "Cost Codes", "description": "Manage cost codes" },
         { "name": "Users", "description": "User management" },
-        { "name": "Auth", "description": "Authentication (Better-Auth)" }
+        { "name": "Auth", "description": "Authentication (Better-Auth)" },
+        { "name": "Contacts", "description": "Contact management" },
+        { "name": "Professional Roles", "description": "Manage professional roles for contacts" },
+        { "name": "Contact Entity Types", "description": "Manage contact entity types (Vendor, GC, Architect, etc.)" }
     ]
 }

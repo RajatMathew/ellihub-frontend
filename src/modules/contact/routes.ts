@@ -8,6 +8,9 @@ import {
     ContactEntityTypeCreateSchema,
     ContactEntityTypeUpdateSchema,
     ContactUpdateSchema,
+    EmailAddSchema,
+    EntityLinkCreateSchema,
+    PhoneAddSchema,
     ProfessionalRoleCreateSchema,
     ProfessionalRoleUpdateSchema,
 } from './models';
@@ -93,6 +96,12 @@ app.delete(
     }
 );
 
+// Directory KPIs (must be before /:id to avoid catch-all match)
+app.get('/directory-kpis', requirePermission({ contact: ['read'] }), async (c) => {
+    const kpis = await ContactService.getDirectoryKpis();
+    return success(c, kpis);
+});
+
 // Contact Routes
 app.post(
     '/',
@@ -137,6 +146,64 @@ app.put(
 app.delete('/:id', requirePermission({ contact: ['delete'] }), async (c) => {
     const id = c.req.param('id');
     await ContactService.deleteContact(id);
+    return success(c, null);
+});
+
+// Phone sub-resource
+app.post(
+    '/:id/phones',
+    requirePermission({ contact: ['update'] }),
+    zValidator('json', PhoneAddSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const data = c.req.valid('json');
+        const contact = await ContactService.addPhone(id, data);
+        return success(c, contact, 201);
+    }
+);
+
+app.delete('/:id/phones', requirePermission({ contact: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const contact = await ContactService.removePhone(id);
+    return success(c, contact);
+});
+
+// Email sub-resource
+app.post(
+    '/:id/emails',
+    requirePermission({ contact: ['update'] }),
+    zValidator('json', EmailAddSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const data = c.req.valid('json');
+        const contact = await ContactService.addEmail(id, data);
+        return success(c, contact, 201);
+    }
+);
+
+app.delete('/:id/emails', requirePermission({ contact: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const contact = await ContactService.removeEmail(id);
+    return success(c, contact);
+});
+
+// Entity link sub-resource
+app.post(
+    '/:id/entity-links',
+    requirePermission({ contact: ['update'] }),
+    zValidator('json', EntityLinkCreateSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const data = c.req.valid('json');
+        const link = await ContactService.addEntityLink(id, data);
+        return success(c, link, 201);
+    }
+);
+
+app.delete('/:id/entity-links/:linkId', requirePermission({ contact: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const linkId = c.req.param('linkId');
+    await ContactService.removeEntityLink(id, linkId);
     return success(c, null);
 });
 
