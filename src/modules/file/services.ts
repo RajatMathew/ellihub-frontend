@@ -3,7 +3,7 @@ import { prisma } from '@lib/prisma';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { FolderCreateRequest } from './models';
+import { FileUploadRequest, FolderCreateRequest } from './models';
 
 export const FileService = {
     createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
@@ -48,6 +48,18 @@ export const FileService = {
         return f;
     },
 
+    uploadFile: async (request: FileUploadRequest, objectId: string, userId: string) => {
+        await prisma.file.create({
+            data: {
+                ...request,
+                id: objectId,
+                type: 'FILE',
+                createdBy: userId,
+                objectId,
+            },
+        });
+    },
+
     delete: async (id: string, userId: string) => {
         const access = await prisma.fileAccess.findUnique({
             where: {
@@ -84,5 +96,33 @@ export const FileService = {
                 },
             });
         }
+    },
+
+    createRootFolder: async () => {
+        const rootFolder = await prisma.file.findFirst({
+            where: {
+                name: 'root',
+            },
+        });
+
+        const adminUser = await prisma.user.findUnique({
+            where: {
+                email: 'admin@elli.com',
+            },
+        });
+
+        if (!rootFolder) {
+            await prisma.file.create({
+                data: {
+                    id: ulid(),
+                    createdBy: adminUser!.id,
+                    name: 'root',
+                    type: 'FOLDER',
+                    isDeletable: false,
+                },
+            });
+
+            console.log('Created root folder.');
+        } else console.log('Root folder already exists');
     },
 };
