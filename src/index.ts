@@ -1,7 +1,6 @@
 import v1 from '@api/V1';
 import { errorHandler } from '@handler/error';
 import { cors_config } from '@lib/cors';
-import { startup } from '@lib/startup';
 import { performanceMiddleware } from '@middleware';
 import { NotFoundError } from '@utils';
 import { Hono } from 'hono';
@@ -21,8 +20,6 @@ app.use(
         rewriteRequestPath: (path) => path.replace(/^\/documentation/, ''),
     })
 );
-
-startup();
 
 // 404 Not Found handler
 app.notFound(() => {

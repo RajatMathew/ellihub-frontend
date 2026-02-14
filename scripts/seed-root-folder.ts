@@ -1,5 +1,5 @@
 import { FileService } from '@modules/file/services';
 
-export const startup = async () => {
+export const seedRootFolder = async () => {
     await FileService.createRootFolder();
 };
