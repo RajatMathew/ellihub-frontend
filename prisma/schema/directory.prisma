@@ -86,24 +86,32 @@ model CostCodeCategory {
   id          String    @id
   name        String
   description String?
-  tenantId    String
+  tenantId    String    @default("default")
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   costCodes CostCode[]
+
+  @@index([deletedAt])
+  @@index([tenantId])
 }
 
 model CostCode {
   id                 String           @id
   name               String
   code               String
-  tenantId           String
-  description        String?
+  tenantId           String           @default("default")
+  description        String           @default("")
   costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
   costCodeCategoryId String
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@unique([code, tenantId])
+  @@index([code])
+  @@index([deletedAt])
+  @@index([tenantId])
 }

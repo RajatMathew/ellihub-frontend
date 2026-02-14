@@ -1,62 +1,87 @@
 import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
-import { IPaginatedResponse, PaginationParams } from '@middleware';
-import { checkDeletedAt, getPaginatedResponse } from '@modules/common/utils';
+import { PaginationParams } from '@middleware';
+import { checkDeletedAt } from '@modules/common/utils';
+import { ConflictError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
-import z from 'zod';
 
 import {
     CostCodeCategoryCreateRequest,
-    CostCodeCategoryCreateSchema,
     CostCodeCategoryUpdateRequest,
-    CostCodeCategoryUpdateSchema,
     CostCodeCreateRequest,
-    CostCodeCreateSchema,
     CostCodeUpdateRequest,
-    CostCodeUpdateSchema,
 } from './models';
+
+const TENANT_ID = 'default';
 
 export const CostCodeService = {
     createCostCodeCategory: async (
         request: CostCodeCategoryCreateRequest
     ): Promise<CostCodeCategory> => {
-        z.parse(CostCodeCategoryCreateSchema, request);
-
         return await prisma.costCodeCategory.create({
             data: {
                 ...request,
-                tenantId: 'default',
+                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
     },
 
     updateCostCodeCategory: async (
+        id: string,
         request: CostCodeCategoryUpdateRequest
     ): Promise<CostCodeCategory> => {
-        z.parse(CostCodeCategoryUpdateSchema, request);
-
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
-            where: { id: request.id },
+            where: { id },
         });
+
+        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code category not found');
+        }
 
         checkDeletedAt(costCodeCategory);
 
         return await prisma.costCodeCategory.update({
-            where: { id: request.id },
+            where: { id },
             data: {
                 ...request,
-                id: ulid(),
             },
         });
     },
 
+    getCostCodeCategory: async (id: string): Promise<CostCodeCategory> => {
+        const costCodeCategory = await prisma.costCodeCategory.findUnique({
+            where: { id },
+        });
+
+        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code category not found');
+        }
+
+        checkDeletedAt(costCodeCategory);
+
+        return costCodeCategory;
+    },
+
     getCostCodeCategories: async (): Promise<CostCodeCategory[]> => {
-        return await prisma.costCodeCategory.findMany();
+        return await prisma.costCodeCategory.findMany({
+            where: {
+                deletedAt: null,
+                tenantId: TENANT_ID,
+            },
+        });
     },
 
     deleteCostCodeCategory: async (id: string): Promise<void> => {
-        z.parse(z.ulid(), id);
+        const costCodeCategory = await prisma.costCodeCategory.findUnique({
+            where: { id },
+        });
+
+        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code category not found');
+        }
+
+        checkDeletedAt(costCodeCategory);
 
         await prisma.costCodeCategory.update({
             where: { id },
@@ -67,56 +92,122 @@ export const CostCodeService = {
     },
 
     createCostCode: async (request: CostCodeCreateRequest): Promise<CostCode> => {
-        z.parse(CostCodeCreateSchema, request);
-
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id: request.costCodeCategoryId },
         });
 
+        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code category not found');
+        }
+
         checkDeletedAt(costCodeCategory);
+
+        // Check code uniqueness within tenant (excluding soft-deleted)
+        const existing = await prisma.costCode.findFirst({
+            where: {
+                code: request.code,
+                tenantId: TENANT_ID,
+                deletedAt: null,
+            },
+        });
+
+        if (existing) {
+            throw new ConflictError('A cost code with this code already exists');
+        }
 
         return await prisma.costCode.create({
             data: {
                 ...request,
-                tenantId: 'default',
+                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
     },
 
-    updateCostCode: async (request: CostCodeUpdateRequest): Promise<CostCode> => {
-        z.parse(CostCodeUpdateSchema, request);
-
-        const costCodeCategory = await prisma.costCodeCategory.findUnique({
-            where: { id: request.costCodeCategoryId },
-        });
-
+    updateCostCode: async (
+        id: string,
+        request: CostCodeUpdateRequest
+    ): Promise<CostCode> => {
         const costCode = await prisma.costCode.findUnique({
-            where: { id: request.id },
+            where: { id },
         });
 
-        checkDeletedAt(costCodeCategory);
+        if (!costCode || costCode.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code not found');
+        }
+
         checkDeletedAt(costCode);
 
+        // If costCodeCategoryId is being updated, validate it
+        if (request.costCodeCategoryId) {
+            const costCodeCategory = await prisma.costCodeCategory.findUnique({
+                where: { id: request.costCodeCategoryId },
+            });
+
+            if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+                throw new NotFoundError('Cost code category not found');
+            }
+
+            checkDeletedAt(costCodeCategory);
+        }
+
+        // Check code uniqueness if code is being updated
+        if (request.code) {
+            const existing = await prisma.costCode.findFirst({
+                where: {
+                    code: request.code,
+                    tenantId: TENANT_ID,
+                    deletedAt: null,
+                    NOT: { id },
+                },
+            });
+
+            if (existing) {
+                throw new ConflictError('A cost code with this code already exists');
+            }
+        }
+
         return await prisma.costCode.update({
-            where: { id: request.id },
+            where: { id },
             data: {
                 ...request,
             },
         });
     },
 
-    getCostCodes: async (params: PaginationParams): Promise<IPaginatedResponse<CostCode>> => {
+    getCostCode: async (id: string): Promise<CostCode> => {
+        const costCode = await prisma.costCode.findUnique({
+            where: { id },
+        });
+
+        if (!costCode || costCode.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code not found');
+        }
+
+        checkDeletedAt(costCode);
+
+        return costCode;
+    },
+
+    getCostCodes: async (
+        params: PaginationParams
+    ): Promise<{
+        data: CostCode[];
+        count: number;
+    }> => {
         const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, ...restFilter } = filter || {};
+        const { search, costCodeCategoryId, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,
+            tenantId: TENANT_ID,
             ...restFilter,
+            ...(costCodeCategoryId && { costCodeCategoryId }),
             ...(search && {
                 OR: [
                     { name: { contains: search, mode: 'insensitive' as const } },
                     { code: { contains: search, mode: 'insensitive' as const } },
+                    { description: { contains: search, mode: 'insensitive' as const } },
                 ],
             }),
         };
@@ -136,11 +227,19 @@ export const CostCodeService = {
             }),
         ]);
 
-        return getPaginatedResponse(data, count, params);
+        return { data, count };
     },
 
     deleteCostCode: async (id: string): Promise<void> => {
-        z.parse(z.ulid(), id);
+        const costCode = await prisma.costCode.findUnique({
+            where: { id },
+        });
+
+        if (!costCode || costCode.tenantId !== TENANT_ID) {
+            throw new NotFoundError('Cost code not found');
+        }
+
+        checkDeletedAt(costCode);
 
         await prisma.costCode.update({
             where: { id },
