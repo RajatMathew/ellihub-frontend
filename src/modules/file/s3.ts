@@ -26,12 +26,12 @@ export const s3Service = {
         }
     },
 
-    download: async (fileId: string) => {
+    getDownloadLink: async (fileId: string): Promise<string> => {
         const file = await s3Client.file(fileId);
 
         if (!file) throw new NotFoundError('No file found with id ' + fileId);
 
-        return file;
+        return await s3Client.presign(fileId);
     },
 
     delete: async (fileId: string): Promise<void> => {

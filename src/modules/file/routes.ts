@@ -15,12 +15,10 @@ app.post('/upload', fileMiddleware, async (c) => {
     return success(c, '');
 });
 
-app.get('/read/:id', async (c) => {
-    const f = await s3Service.download(c.req.param('id'));
+app.get('/download/:id', async (c) => {
+    const link = await s3Service.getDownloadLink(c.req.param('id'));
 
-    return c.newResponse(f.stream(), 200, {
-        'Content-Type': f.type,
-    });
+    return success(c, link);
 });
 
 export default app;
