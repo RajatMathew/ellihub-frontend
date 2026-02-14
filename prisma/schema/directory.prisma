@@ -16,6 +16,7 @@ model Vendor {
 
   quotations     VendorQuotation[]
   purchaseOrders PurchaseOrder[]
+  contactLinks   ContactVendor[]
 }
 
 enum VendorType {
@@ -44,7 +45,8 @@ model GeneralContractor {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  projects Project[]
+  projects     Project[]
+  contactLinks ContactGC[]
 }
 
 enum GCType {
@@ -71,17 +73,6 @@ model ProfessionalRole {
   contacts Contact[]
 }
 
-model ContactEntityType {
-  id   String @id
-  name String @unique
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  entityLinks ContactEntityLink[]
-}
-
 model Contact {
   id                 String            @id
   fullName           String
@@ -95,25 +86,39 @@ model Contact {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  entityLinks ContactEntityLink[]
+  vendorLinks ContactVendor[]
+  gcLinks     ContactGC[]
 
   @@index([fullName])
   @@index([deletedAt])
 }
 
-model ContactEntityLink {
-  id           String            @id
-  contactId    String
-  contact      Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  entityTypeId String
-  entityType   ContactEntityType @relation(fields: [entityTypeId], references: [id])
-  entityId     String
-  isPrimary    Boolean           @default(false)
+model ContactVendor {
+  id        String  @id
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  vendorId  String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  isPrimary Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([contactId, entityTypeId, entityId])
+  @@unique([contactId, vendorId])
+}
+
+model ContactGC {
+  id                  String            @id
+  contactId           String
+  contact             Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  generalContractorId String
+  generalContractor   GeneralContractor @relation(fields: [generalContractorId], references: [id], onDelete: Cascade)
+  isPrimary           Boolean           @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contactId, generalContractorId])
 }
 
 model CostCodeCategory {

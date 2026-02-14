@@ -16,6 +16,7 @@ const roles = [
     'Foreman',
     'Safety Officer',
     'Accountant',
+    'Executive',
 ];
 
 async function seed() {

@@ -64,7 +64,7 @@
                         }
                     },
                     "404": {
-                        "description": "Professional role or entity type not found",
+                        "description": "Professional role, vendor, or general contractor not found",
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -92,16 +92,16 @@
                         "description": "Filter by professional role ID (ULID)"
                     },
                     {
-                        "name": "entityTypeId",
+                        "name": "vendorId",
                         "in": "query",
                         "schema": { "type": "string" },
-                        "description": "Filter by entity type ID (ULID)"
+                        "description": "Filter contacts linked to a specific vendor (ULID)"
                     },
                     {
-                        "name": "entityId",
+                        "name": "generalContractorId",
                         "in": "query",
                         "schema": { "type": "string" },
-                        "description": "Filter by linked entity ID (ULID)"
+                        "description": "Filter contacts linked to a specific general contractor (ULID)"
                     },
                     {
                         "name": "page",
@@ -186,7 +186,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Contact details with professional role and entity links",
+                        "description": "Contact details with professional role, vendor links, and GC links",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -458,106 +458,6 @@
                 }
             }
         },
-        "/contacts/entity-types": {
-            "get": {
-                "tags": ["Contact Entity Types"],
-                "summary": "List all contact entity types",
-                "operationId": "listContactEntityTypes",
-                "responses": {
-                    "200": {
-                        "description": "List of contact entity types",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": { "$ref": "#/components/schemas/ContactEntityTypeModel" }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "post": {
-                "tags": ["Contact Entity Types"],
-                "summary": "Create a contact entity type",
-                "operationId": "createContactEntityType",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ContactEntityTypeCreateRequest" },
-                            "example": { "name": "Subcontractor" }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Entity type created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactEntityTypeModel" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Entity type with this name already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/contacts/entity-types/{id}": {
-            "put": {
-                "tags": ["Contact Entity Types"],
-                "summary": "Update a contact entity type",
-                "operationId": "updateContactEntityType",
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactEntityType ID (ULID)" }],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ContactEntityTypeUpdateRequest" },
-                            "example": { "name": "Subcontractor (Electrical)" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Entity type updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactEntityTypeModel" } } }] } } } },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Entity type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Entity type with this name already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "delete": {
-                "tags": ["Contact Entity Types"],
-                "summary": "Delete a contact entity type (soft delete)",
-                "operationId": "deleteContactEntityType",
-                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactEntityType ID (ULID)" }],
-                "responses": {
-                    "200": { "description": "Entity type soft-deleted", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Entity type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
         "/contacts/directory-kpis": {
             "get": {
                 "tags": ["Contacts"],
@@ -658,44 +558,85 @@
                 }
             }
         },
-        "/contacts/{id}/entity-links": {
+        "/contacts/{id}/vendor-links": {
             "post": {
                 "tags": ["Contacts"],
-                "summary": "Link contact to an entity (vendor, GC, etc.)",
-                "operationId": "addEntityLink",
+                "summary": "Link contact to a vendor",
+                "operationId": "addVendorLink",
                 "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/EntityLinkCreateRequest" },
-                            "example": { "entityTypeId": "01JMETYPE0000000000001", "entityId": "01JMENTITY000000000001", "isPrimary": false }
+                            "schema": { "$ref": "#/components/schemas/VendorLinkCreateRequest" },
+                            "example": { "vendorId": "01JMVENDOR000000000001", "isPrimary": false }
                         }
                     }
                 },
                 "responses": {
-                    "201": { "description": "Entity link created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactEntityLink" } } }] } } } },
+                    "201": { "description": "Vendor link created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactVendor" } } }] } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Contact or entity type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "This contact is already linked to this entity", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Contact or vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "This contact is already linked to this vendor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/contacts/{id}/entity-links/{linkId}": {
+        "/contacts/{id}/vendor-links/{linkId}": {
             "delete": {
                 "tags": ["Contacts"],
-                "summary": "Remove an entity link from a contact",
-                "operationId": "removeEntityLink",
+                "summary": "Remove a vendor link from a contact",
+                "operationId": "removeVendorLink",
                 "parameters": [
                     { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" },
-                    { "name": "linkId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactEntityLink ID (ULID)" }
+                    { "name": "linkId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactVendor ID (ULID)" }
                 ],
                 "responses": {
-                    "200": { "description": "Entity link removed", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
+                    "200": { "description": "Vendor link removed", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Contact or entity link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Contact or vendor link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/gc-links": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Link contact to a general contractor",
+                "operationId": "addGCLink",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/GCLinkCreateRequest" },
+                            "example": { "generalContractorId": "01JMGCONT0000000000001", "isPrimary": false }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "GC link created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactGC" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or general contractor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "This contact is already linked to this general contractor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/gc-links/{linkId}": {
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Remove a GC link from a contact",
+                "operationId": "removeGCLink",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" },
+                    { "name": "linkId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactGC ID (ULID)" }
+                ],
+                "responses": {
+                    "200": { "description": "GC link removed", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or GC link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         }
@@ -718,28 +659,23 @@
                     "label": { "type": "string", "example": "Office" }
                 }
             },
-            "EntityLinkItem": {
+            "ContactVendor": {
                 "type": "object",
-                "required": ["entityTypeId", "entityId"],
                 "properties": {
-                    "entityTypeId": { "type": "string", "description": "ContactEntityType ID (ULID)", "example": "01JMABCDEF1234567890XYZW" },
-                    "entityId": { "type": "string", "description": "ID of the linked entity (vendor, GC, etc.)", "example": "01JMABCDEF1234567890VEND" }
+                    "id": { "type": "string", "example": "01JMVLINK0000000000001" },
+                    "contactId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean", "example": false },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
-            "ContactEntityLink": {
+            "ContactGC": {
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string", "example": "01JMLINK00000000000001" },
+                    "id": { "type": "string", "example": "01JMGLINK0000000000001" },
                     "contactId": { "type": "string" },
-                    "entityTypeId": { "type": "string" },
-                    "entityType": {
-                        "type": "object",
-                        "properties": {
-                            "id": { "type": "string" },
-                            "name": { "type": "string", "example": "Vendor" }
-                        }
-                    },
-                    "entityId": { "type": "string" },
+                    "generalContractorId": { "type": "string" },
                     "isPrimary": { "type": "boolean", "example": false },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
@@ -779,9 +715,13 @@
                         "items": { "type": "string" },
                         "example": ["electrical", "primary-contact"]
                     },
-                    "entityLinks": {
+                    "vendorLinks": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/ContactEntityLink" }
+                        "items": { "$ref": "#/components/schemas/ContactVendor" }
+                    },
+                    "gcLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/ContactGC" }
                     },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
@@ -808,9 +748,14 @@
                         "items": { "type": "string" },
                         "default": []
                     },
-                    "entityLinks": {
+                    "vendorLinks": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/EntityLinkItem" },
+                        "items": { "$ref": "#/components/schemas/VendorLinkCreateRequest" },
+                        "default": []
+                    },
+                    "gcLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/GCLinkCreateRequest" },
                         "default": []
                     }
                 }
@@ -851,29 +796,6 @@
                     "name": { "type": "string", "minLength": 1, "example": "Lead Inspector" }
                 }
             },
-            "ContactEntityTypeModel": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "example": "01JMETYPE0000000000001" },
-                    "name": { "type": "string", "example": "Vendor" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "ContactEntityTypeCreateRequest": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {
-                    "name": { "type": "string", "minLength": 1, "example": "Subcontractor" }
-                }
-            },
-            "ContactEntityTypeUpdateRequest": {
-                "type": "object",
-                "description": "All fields are optional (partial update)",
-                "properties": {
-                    "name": { "type": "string", "minLength": 1, "example": "Subcontractor (Electrical)" }
-                }
-            },
             "PhoneAddRequest": {
                 "type": "object",
                 "required": ["phone", "label"],
@@ -890,13 +812,20 @@
                     "label": { "type": "string", "minLength": 1, "example": "Work" }
                 }
             },
-            "EntityLinkCreateRequest": {
+            "VendorLinkCreateRequest": {
                 "type": "object",
-                "required": ["entityTypeId", "entityId"],
+                "required": ["vendorId"],
                 "properties": {
-                    "entityTypeId": { "type": "string", "description": "ContactEntityType ID (ULID)" },
-                    "entityId": { "type": "string", "description": "ID of the entity to link (vendor, GC, etc.)" },
-                    "isPrimary": { "type": "boolean", "default": false, "description": "Whether this is the primary contact for the entity" }
+                    "vendorId": { "type": "string", "description": "Vendor ID (ULID)" },
+                    "isPrimary": { "type": "boolean", "default": false, "description": "Whether this is the primary contact for the vendor" }
+                }
+            },
+            "GCLinkCreateRequest": {
+                "type": "object",
+                "required": ["generalContractorId"],
+                "properties": {
+                    "generalContractorId": { "type": "string", "description": "GeneralContractor ID (ULID)" },
+                    "isPrimary": { "type": "boolean", "default": false, "description": "Whether this is the primary contact for the general contractor" }
                 }
             },
             "DirectoryKpis": {
