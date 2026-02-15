@@ -1,0 +1,842 @@
+{
+    "paths": {
+        "/contacts": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Create a contact",
+                "operationId": "createContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ContactCreateRequest" },
+                            "example": {
+                                "fullName": "John Smith",
+                                "professionalRoleId": "01KHBXVSRR5KJ41TN6FXCZZ8H2",
+                                "email": { "email": "john.smith@acme.com", "label": "Work" },
+                                "phoneNumber": { "phone": "+1-555-0101", "label": "Office" },
+                                "tags": ["electrical"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Contact created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error (e.g. at least one email or phone required)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Professional role, vendor, or general contractor not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "List contacts (paginated)",
+                "operationId": "listContacts",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by fullName or email (case-insensitive on fullName)",
+                        "example": "john"
+                    },
+                    {
+                        "name": "professionalRoleId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by professional role ID (ULID)"
+                    },
+                    {
+                        "name": "vendorId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter contacts linked to a specific vendor (ULID)"
+                    },
+                    {
+                        "name": "generalContractorId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter contacts linked to a specific general contractor (ULID)"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "minimum": 1, "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["fullName", "createdAt", "updatedAt"], "default": "fullName" },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+                        "description": "Sort direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of contacts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/Contact" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{id}": {
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "Get a contact by ID",
+                "operationId": "getContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Contact ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact details with professional role, vendor links, and GC links",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contact not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Contacts"],
+                "summary": "Update a contact",
+                "operationId": "updateContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Contact ID (ULID)"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ContactUpdateRequest" },
+                            "example": {
+                                "fullName": "John D. Smith",
+                                "tags": ["electrical", "senior"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contact updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contact or professional role not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Delete a contact (soft delete)",
+                "operationId": "deleteContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Contact ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact soft-deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "object", "nullable": true, "example": null }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contact not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/professional-roles": {
+            "get": {
+                "tags": ["Professional Roles"],
+                "summary": "List all professional roles",
+                "operationId": "listProfessionalRoles",
+                "responses": {
+                    "200": {
+                        "description": "List of professional roles",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/ProfessionalRole" }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "post": {
+                "tags": ["Professional Roles"],
+                "summary": "Create a professional role",
+                "operationId": "createProfessionalRole",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProfessionalRoleCreateRequest" },
+                            "example": { "name": "Inspector" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Role created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProfessionalRole" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Role with this name already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/professional-roles/{id}": {
+            "put": {
+                "tags": ["Professional Roles"],
+                "summary": "Update a professional role",
+                "operationId": "updateProfessionalRole",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ProfessionalRole ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProfessionalRoleUpdateRequest" },
+                            "example": { "name": "Lead Inspector" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Role updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProfessionalRole" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Role not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Role with this name already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "delete": {
+                "tags": ["Professional Roles"],
+                "summary": "Delete a professional role (soft delete)",
+                "operationId": "deleteProfessionalRole",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ProfessionalRole ID (ULID)" }],
+                "responses": {
+                    "200": { "description": "Role soft-deleted", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Role not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/directory-kpis": {
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "Get directory KPIs",
+                "operationId": "getDirectoryKpis",
+                "responses": {
+                    "200": {
+                        "description": "Directory KPI summary",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/DirectoryKpis" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/phones": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Add a phone number to a contact",
+                "operationId": "addPhone",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PhoneAddRequest" },
+                            "example": { "phone": "+1-555-0101", "label": "Office" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Phone added, returns updated contact", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Contact" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Contact already has a phone number", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Remove the phone number from a contact",
+                "operationId": "removePhone",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }
+                ],
+                "responses": {
+                    "200": { "description": "Phone removed, returns updated contact", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Contact" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact not found or no phone to remove", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/emails": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Add an email to a contact",
+                "operationId": "addEmail",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/EmailAddRequest" },
+                            "example": { "email": "john@acme.com", "label": "Work" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Email added, returns updated contact", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Contact" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Contact already has an email", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Remove the email from a contact",
+                "operationId": "removeEmail",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }
+                ],
+                "responses": {
+                    "200": { "description": "Email removed, returns updated contact", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Contact" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact not found or no email to remove", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/vendor-links": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Link contact to a vendor",
+                "operationId": "addVendorLink",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/VendorLinkCreateRequest" },
+                            "example": { "vendorId": "01JMVENDOR000000000001", "isPrimary": false }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Vendor link created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactVendor" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "This contact is already linked to this vendor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/vendor-links/{linkId}": {
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Remove a vendor link from a contact",
+                "operationId": "removeVendorLink",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" },
+                    { "name": "linkId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactVendor ID (ULID)" }
+                ],
+                "responses": {
+                    "200": { "description": "Vendor link removed", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or vendor link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/gc-links": {
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Link contact to a general contractor",
+                "operationId": "addGCLink",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/GCLinkCreateRequest" },
+                            "example": { "generalContractorId": "01JMGCONT0000000000001", "isPrimary": false }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "GC link created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContactGC" } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or general contractor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "This contact is already linked to this general contractor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contacts/{id}/gc-links/{linkId}": {
+            "delete": {
+                "tags": ["Contacts"],
+                "summary": "Remove a GC link from a contact",
+                "operationId": "removeGCLink",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID (ULID)" },
+                    { "name": "linkId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ContactGC ID (ULID)" }
+                ],
+                "responses": {
+                    "200": { "description": "GC link removed", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "object", "nullable": true, "example": null } } }] } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact or GC link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "EmailItem": {
+                "type": "object",
+                "required": ["email", "label"],
+                "properties": {
+                    "email": { "type": "string", "format": "email", "example": "john.smith@acme.com" },
+                    "label": { "type": "string", "example": "Work" }
+                }
+            },
+            "PhoneItem": {
+                "type": "object",
+                "required": ["phone", "label"],
+                "properties": {
+                    "phone": { "type": "string", "example": "+1-555-0101" },
+                    "label": { "type": "string", "example": "Office" }
+                }
+            },
+            "ContactVendor": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "example": "01JMVLINK0000000000001" },
+                    "contactId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean", "example": false },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ContactGC": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "example": "01JMGLINK0000000000001" },
+                    "contactId": { "type": "string" },
+                    "generalContractorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean", "example": false },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ProfessionalRole": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "example": "01JMROLE00000000000001" },
+                    "name": { "type": "string", "example": "Project Manager" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "Contact": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID", "example": "01JMCTCT00000000000001" },
+                    "fullName": { "type": "string", "example": "John Smith" },
+                    "professionalRoleId": { "type": "string", "nullable": true, "example": "01JMROLE00000000000001" },
+                    "professionalRole": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/ProfessionalRole"
+                    },
+                    "email": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/EmailItem",
+                        "example": { "email": "john.smith@acme.com", "label": "Work" }
+                    },
+                    "phoneNumber": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/PhoneItem",
+                        "example": { "phone": "+1-555-0101", "label": "Office" }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "example": ["electrical", "primary-contact"]
+                    },
+                    "vendorLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/ContactVendor" }
+                    },
+                    "gcLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/ContactGC" }
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "ContactCreateRequest": {
+                "type": "object",
+                "required": ["fullName"],
+                "description": "At least one email or phone number is required",
+                "properties": {
+                    "fullName": { "type": "string", "minLength": 1, "example": "John Smith" },
+                    "professionalRoleId": { "type": "string", "description": "ProfessionalRole ID (ULID)", "nullable": true },
+                    "email": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/EmailItem"
+                    },
+                    "phoneNumber": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/PhoneItem"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "default": []
+                    },
+                    "vendorLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/VendorLinkCreateRequest" },
+                        "default": []
+                    },
+                    "gcLinks": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/GCLinkCreateRequest" },
+                        "default": []
+                    }
+                }
+            },
+            "ContactUpdateRequest": {
+                "type": "object",
+                "description": "All fields are optional (partial update)",
+                "properties": {
+                    "fullName": { "type": "string", "minLength": 1 },
+                    "professionalRoleId": { "type": "string", "nullable": true, "description": "ProfessionalRole ID (ULID). Set to null to remove." },
+                    "email": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/EmailItem",
+                        "description": "Set to null to remove email"
+                    },
+                    "phoneNumber": {
+                        "nullable": true,
+                        "$ref": "#/components/schemas/PhoneItem",
+                        "description": "Set to null to remove phone number"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
+            "ProfessionalRoleCreateRequest": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "example": "Inspector" }
+                }
+            },
+            "ProfessionalRoleUpdateRequest": {
+                "type": "object",
+                "description": "All fields are optional (partial update)",
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "example": "Lead Inspector" }
+                }
+            },
+            "PhoneAddRequest": {
+                "type": "object",
+                "required": ["phone", "label"],
+                "properties": {
+                    "phone": { "type": "string", "minLength": 1, "example": "+1-555-0101" },
+                    "label": { "type": "string", "minLength": 1, "example": "Office" }
+                }
+            },
+            "EmailAddRequest": {
+                "type": "object",
+                "required": ["email", "label"],
+                "properties": {
+                    "email": { "type": "string", "format": "email", "example": "john@acme.com" },
+                    "label": { "type": "string", "minLength": 1, "example": "Work" }
+                }
+            },
+            "VendorLinkCreateRequest": {
+                "type": "object",
+                "required": ["vendorId"],
+                "properties": {
+                    "vendorId": { "type": "string", "description": "Vendor ID (ULID)" },
+                    "isPrimary": { "type": "boolean", "default": false, "description": "Whether this is the primary contact for the vendor" }
+                }
+            },
+            "GCLinkCreateRequest": {
+                "type": "object",
+                "required": ["generalContractorId"],
+                "properties": {
+                    "generalContractorId": { "type": "string", "description": "GeneralContractor ID (ULID)" },
+                    "isPrimary": { "type": "boolean", "default": false, "description": "Whether this is the primary contact for the general contractor" }
+                }
+            },
+            "DirectoryKpis": {
+                "type": "object",
+                "properties": {
+                    "totalContacts": { "type": "integer", "example": 42 },
+                    "primaryContacts": { "type": "integer", "example": 8 },
+                    "gcLinks": { "type": "integer", "example": 15 },
+                    "vendorLinks": { "type": "integer", "example": 23 }
+                }
+            }
+        }
+    }
+}
