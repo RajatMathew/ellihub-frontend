@@ -3,7 +3,7 @@ import { prisma } from '@lib/prisma';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { FolderCreateRequest } from './models';
+import { FileUploadRequest, FolderCreateRequest } from './models';
 
 export const FileService = {
     createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
@@ -46,6 +46,18 @@ export const FileService = {
         });
 
         return f;
+    },
+
+    uploadFile: async (request: FileUploadRequest, objectId: string, userId: string) => {
+        await prisma.file.create({
+            data: {
+                ...request,
+                id: objectId,
+                type: 'FILE',
+                createdBy: userId,
+                objectId,
+            },
+        });
     },
 
     delete: async (id: string, userId: string) => {
