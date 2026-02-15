@@ -12,8 +12,6 @@ model Vendor {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  contacts Contact[]
-
   rfqs RFQ[]
 
   quotations     VendorQuotation[]
@@ -46,8 +44,6 @@ model GeneralContractor {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  contacts Contact[]
-
   projects Project[]
 }
 
@@ -64,22 +60,59 @@ enum GCStatus {
   INACTIVE
 }
 
-model Contact {
-  id                  String             @id
-  name                String
-  emails              Json
-  phoneNumbers        Json
-  jobTitle            String
-  vendorId            String?
-  vendor              Vendor?            @relation(fields: [vendorId], references: [id])
-  generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
-  generalContractorId String?
-  tags                String[]
+model ProfessionalRole {
+  id   String @id
+  name String @unique
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  contacts Contact[]
+}
+
+model ContactEntityType {
+  id   String @id
+  name String @unique
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  entityLinks ContactEntityLink[]
+}
+
+model Contact {
+  id                 String            @id
+  fullName           String
+  professionalRoleId String?
+  professionalRole   ProfessionalRole? @relation(fields: [professionalRoleId], references: [id])
+  emails             Json
+  phoneNumbers       Json
+  tags               String[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  entityLinks ContactEntityLink[]
+
+  @@index([fullName])
+  @@index([deletedAt])
+}
+
+model ContactEntityLink {
+  id           String            @id
+  contactId    String
+  contact      Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  entityTypeId String
+  entityType   ContactEntityType @relation(fields: [entityTypeId], references: [id])
+  entityId     String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([contactId, entityTypeId, entityId])
 }
 
 model CostCodeCategory {
