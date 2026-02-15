@@ -58,7 +58,7 @@ export const routeTree: RouteDef[] = [
         ],
       },
       {
-        path: 'directory/contacts',
+        path: 'directory/contacts/*',
         component: DirectoryContacts,
         title: 'Contacts',
       },
