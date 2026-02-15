@@ -10,7 +10,7 @@
         "dev": "bun run --hot src/index.ts",
         "lint": "eslint --ext .ts src/",
         "format": "prettier --write src/",
-        "prebuild": "prisma generate && vitepress build docs",
+        "prebuild": "prisma generate && vitepress build docs && bun run api:build",
         "build": "bun build src/index.ts --outdir=dist --target=bun",
         "postbuild": "echo Build completed!",
         "start": "bun dist/index.js",
@@ -27,7 +27,8 @@
         "docker:down": "docker compose down",
         "db:seed-cost-codes": "bun run scripts/seed-cost-codes.ts",
         "db:seed-professional-roles": "bun run scripts/seed-professional-roles.ts",
-        "db:seed-contact-entity-types": "bun run scripts/seed-contact-entity-types.ts"
+        "db:seed-contact-entity-types": "bun run scripts/seed-contact-entity-types.ts",
+        "api:build": "bun run scripts/build-openapi.ts"
     },
     "dependencies": {
         "@hono/swagger-ui": "^0.5.2",

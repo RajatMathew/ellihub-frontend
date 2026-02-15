@@ -22,6 +22,9 @@ COPY docs ./docs
 # Copy application source (Prisma generate writes client into src/lib/db)
 COPY src ./src
 
+#copy scripts for prebuild (build-openapi.ts)
+COPY scripts ./scripts
+
 # prisma.config.ts uses env('DATABASE_URL') — read from build arg (e.g. .env); default for when not set
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
@@ -45,6 +48,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/src/lib/db ./src/lib/db
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 # Runtime env: pass from build args or set at container run (env_file / environment in compose)
 ARG BETTER_AUTH_BASE_URL
@@ -59,3 +63,4 @@ EXPOSE 3000
 
 # Start the server (DATABASE_URL, BETTER_AUTH_BASE_URL, CLIENT_URL, NODE_ENV from env_file / environment)
 CMD ["bun", "run", "start"]
+
