@@ -7,7 +7,19 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Mail, MoreHorizontal, Phone, Plus, Search, Trash2, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  Filter,
+  Mail,
+  MoreHorizontal,
+  Phone,
+  Plus,
+  RefreshCcw,
+  Search,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { Avatar, AvatarFallback } from '@app/components/ui/avatar';
@@ -15,6 +27,7 @@ import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
   Card,
+  CardContent,
   CardFooter,
   CardHeader,
   CardTable,
@@ -35,6 +48,13 @@ import {
 } from '@app/components/ui/dropdown-menu';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@app/components/ui/select';
+import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
@@ -44,168 +64,29 @@ import {
 import { Skeleton } from '@app/components/ui/skeleton';
 import { getInitials } from '@app/lib/helpers';
 
-import { useContactsQuery, useDeleteContactMutation, useDirectoryKpisQuery } from '../hooks';
-import type { Contact, ListContactsParams } from '../schemas/contact.schema';
+import {
+  useContactsQuery,
+  useDeleteContactMutation,
+  useDirectoryKpisQuery,
+  useProfessionalRolesQuery,
+  useVendorsQuery,
+} from '../hooks';
+import type { Contact, DirectoryKpis, ListContactsParams } from '../schemas/contact.schema';
 
 /* ---- Constants ---- */
 
 const DEFAULT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const SORT_BY_OPTIONS = ['name', 'jobTitle', 'createdAt'] as const;
+const SORT_BY_OPTIONS = ['fullName', 'createdAt', 'updatedAt'] as const;
 type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
-/* ---- Static seed data (until API is ready) ---- */
-
-const SEED_CONTACTS: Contact[] = [
-  {
-    id: 'ct-001',
-    name: 'John Smith',
-    emails: [{ email: 'john@acmevendor.com', label: 'Work' }],
-    phoneNumbers: [
-      { phone: '212-555-1001', label: 'Office' },
-      { phone: '917-555-2002', label: 'Mobile' },
-    ],
-    jobTitle: 'Project Manager',
-    vendorId: 'ven-001',
-    generalContractorId: null,
-    tags: ['Urgent Only'],
-    deletedAt: null,
-    createdAt: '2026-01-15T10:00:00.000Z',
-    updatedAt: '2026-01-20T14:30:00.000Z',
-  },
-  {
-    id: 'ct-002',
-    name: 'Maria Garcia',
-    emails: [{ email: 'maria@buildcorp.com', label: 'Work' }],
-    phoneNumbers: [],
-    jobTitle: 'Estimator',
-    vendorId: null,
-    generalContractorId: 'gc-001',
-    tags: ['Finance', 'Priority'],
-    deletedAt: null,
-    createdAt: '2026-01-16T09:00:00.000Z',
-    updatedAt: '2026-01-16T09:00:00.000Z',
-  },
-  {
-    id: 'ct-003',
-    name: 'Robert Chen',
-    emails: [{ email: 'robert.chen@fieldwork.com', label: 'Work' }],
-    phoneNumbers: [
-      { phone: '718-555-3003', label: 'Office' },
-      { phone: '646-555-3004', label: 'Mobile' },
-    ],
-    jobTitle: 'Superintendent',
-    vendorId: null,
-    generalContractorId: null,
-    tags: [],
-    deletedAt: null,
-    createdAt: '2026-01-17T08:00:00.000Z',
-    updatedAt: '2026-01-18T11:00:00.000Z',
-  },
-  {
-    id: 'ct-004',
-    name: 'Sarah Johnson',
-    emails: [
-      { email: 'sarah.j@finance.com', label: 'Work' },
-      { email: 'sarah.johnson@gmail.com', label: 'Personal' },
-    ],
-    phoneNumbers: [{ phone: '212-555-4004', label: 'Office' }],
-    jobTitle: 'Accounting',
-    vendorId: 'ven-002',
-    generalContractorId: 'gc-002',
-    tags: ['Finance'],
-    deletedAt: null,
-    createdAt: '2026-01-18T10:00:00.000Z',
-    updatedAt: '2026-01-18T10:00:00.000Z',
-  },
-  {
-    id: 'ct-005',
-    name: 'Mike Davis',
-    emails: [],
-    phoneNumbers: [{ phone: '347-555-5005', label: 'Mobile' }],
-    jobTitle: 'Engineer',
-    vendorId: null,
-    generalContractorId: null,
-    tags: ['Field'],
-    deletedAt: null,
-    createdAt: '2026-01-19T09:00:00.000Z',
-    updatedAt: '2026-01-19T09:00:00.000Z',
-  },
-  {
-    id: 'ct-006',
-    name: 'Angela Rivera',
-    emails: [{ email: 'angela.r@steelworks.com', label: 'Work' }],
-    phoneNumbers: [{ phone: '917-555-6006', label: 'Mobile' }],
-    jobTitle: 'Safety Officer',
-    vendorId: 'ven-003',
-    generalContractorId: null,
-    tags: ['Safety', 'Compliance'],
-    deletedAt: null,
-    createdAt: '2026-01-20T07:30:00.000Z',
-    updatedAt: '2026-01-21T09:00:00.000Z',
-  },
-  {
-    id: 'ct-007',
-    name: 'David Kim',
-    emails: [{ email: 'david.kim@structuralco.com', label: 'Work' }],
-    phoneNumbers: [
-      { phone: '646-555-7007', label: 'Office' },
-      { phone: '917-555-7008', label: 'Mobile' },
-    ],
-    jobTitle: 'Structural Engineer',
-    vendorId: null,
-    generalContractorId: 'gc-003',
-    tags: ['Engineering'],
-    deletedAt: null,
-    createdAt: '2026-01-22T08:00:00.000Z',
-    updatedAt: '2026-01-22T08:00:00.000Z',
-  },
-  {
-    id: 'ct-008',
-    name: 'Lisa Thompson',
-    emails: [{ email: 'lisa.t@designhub.com', label: 'Work' }],
-    phoneNumbers: [{ phone: '212-555-8008', label: 'Office' }],
-    jobTitle: 'Architect',
-    vendorId: 'ven-004',
-    generalContractorId: null,
-    tags: ['Design'],
-    deletedAt: null,
-    createdAt: '2026-01-23T10:00:00.000Z',
-    updatedAt: '2026-01-24T15:00:00.000Z',
-  },
-  {
-    id: 'ct-009',
-    name: 'James Wilson',
-    emails: [{ email: 'j.wilson@concreteplus.com', label: 'Work' }],
-    phoneNumbers: [],
-    jobTitle: 'Foreman',
-    vendorId: 'ven-005',
-    generalContractorId: null,
-    tags: [],
-    deletedAt: null,
-    createdAt: '2026-01-24T11:00:00.000Z',
-    updatedAt: '2026-01-24T11:00:00.000Z',
-  },
-  {
-    id: 'ct-010',
-    name: 'Patricia Adams',
-    emails: [
-      { email: 'padams@legalteam.com', label: 'Work' },
-      { email: 'patricia.a@outlook.com', label: 'Personal' },
-    ],
-    phoneNumbers: [{ phone: '718-555-1010', label: 'Office' }],
-    jobTitle: 'Contracts Manager',
-    vendorId: null,
-    generalContractorId: 'gc-001',
-    tags: ['Legal', 'Contracts'],
-    deletedAt: null,
-    createdAt: '2026-01-25T09:00:00.000Z',
-    updatedAt: '2026-01-26T14:00:00.000Z',
-  },
-];
-
-const SEED_KPIS = { totalContacts: 10, withVendor: 5, withGC: 4 };
+const FALLBACK_KPIS: DirectoryKpis = {
+  totalContacts: 0,
+  primaryContacts: 0,
+  gcLinks: 0,
+  vendorLinks: 0,
+};
 
 /* ---- Search-param helpers ---- */
 
@@ -234,9 +115,10 @@ export function ContactsListPage() {
   const searchQuery = searchParams.get('search') ?? '';
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
-    : 'name';
+    : 'fullName';
   const sortOrder: 'asc' | 'desc' =
     searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
+  const roleFilter = searchParams.get('professionalRoleId') ?? undefined;
 
   // Local search input tracks typing; debounce syncs to URL
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -262,7 +144,7 @@ export function ContactsListPage() {
         return next;
       });
     },
-    [setSearchParams]
+    [setSearchParams],
   );
 
   const handleSearchChange = useCallback(
@@ -273,7 +155,7 @@ export function ContactsListPage() {
         updateParams({ search: value || undefined, page: undefined });
       }, SEARCH_DEBOUNCE_MS);
     },
-    [updateParams]
+    [updateParams],
   );
 
   // Clean up debounce on unmount
@@ -286,16 +168,28 @@ export function ContactsListPage() {
     sortBy,
     sortOrder,
     search: searchQuery || undefined,
+    professionalRoleId: roleFilter,
   };
 
-  const { data, isLoading } = useContactsQuery(filters);
+  const hasActiveFilters = !!searchQuery || !!roleFilter;
+
+  const { data, isLoading, isError, refetch } = useContactsQuery(filters);
   const { data: kpis } = useDirectoryKpisQuery();
+  const { data: professionalRoles } = useProfessionalRolesQuery();
+  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const del = useDeleteContactMutation();
 
-  // Use API data when available, fall back to seed data
-  const listData = data?.data?.length ? data.data : SEED_CONTACTS;
-  const totalCount = data?.pagination?.totalItems ?? SEED_KPIS.totalContacts;
-  const resolvedKpis = kpis ?? SEED_KPIS;
+  // Use API data
+  const listData = data?.data ?? [];
+  const totalCount = data?.pagination?.totalItems ?? 0;
+  const resolvedKpis = kpis ?? FALLBACK_KPIS;
+
+  // Build name lookup maps for vendor/GC IDs → names
+  const vendorNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vendorsData?.data ?? []) map.set(v.id, v.name);
+    return map;
+  }, [vendorsData]);
 
   // Map URL sort state → TanStack SortingState
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -309,19 +203,19 @@ export function ContactsListPage() {
     },
     {
       label: 'Primary Contacts',
-      value: resolvedKpis.totalContacts,
+      value: resolvedKpis.primaryContacts,
       icon: <Users className="size-6 text-info" />,
       bgClass: 'bg-info/10',
     },
     {
       label: 'GC Linked',
-      value: resolvedKpis.withGC,
+      value: resolvedKpis.gcLinks,
       icon: <Users className="size-6 text-success" />,
       bgClass: 'bg-success/10',
     },
     {
       label: 'Vendors Linked',
-      value: resolvedKpis.withVendor,
+      value: resolvedKpis.vendorLinks,
       icon: <Users className="size-6 text-warning" />,
       bgClass: 'bg-warning/10',
     },
@@ -330,13 +224,13 @@ export function ContactsListPage() {
   const columns = useMemo<ColumnDef<Contact>[]>(
     () => [
       {
-        accessorKey: 'name',
+        accessorKey: 'fullName',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Contact Name" />,
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <Avatar className="size-9">
               <AvatarFallback className="text-xs font-semibold">
-                {getInitials(row.original.name, 2)}
+                {getInitials(row.original.fullName, 2)}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
@@ -344,10 +238,12 @@ export function ContactsListPage() {
                 to={`${row.original.id}`}
                 className="text-sm font-medium text-foreground hover:text-primary"
               >
-                {row.original.name}
+                {row.original.fullName}
               </Link>
-              {row.original.jobTitle && (
-                <span className="text-2sm text-muted-foreground">{row.original.jobTitle}</span>
+              {row.original.professionalRole?.name && (
+                <span className="text-2sm text-muted-foreground">
+                  {row.original.professionalRole.name}
+                </span>
               )}
             </div>
           </div>
@@ -366,13 +262,21 @@ export function ContactsListPage() {
         },
       },
       {
-        accessorKey: 'vendorId',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor / Company" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.vendorId ?? '—'}
-          </span>
+        id: 'vendorLinks',
+        header: ({ column }) => (
+          <DataGridColumnHeader column={column} title="Vendor / Company" />
         ),
+        cell: ({ row }) => {
+          const links = row.original.vendorLinks;
+          if (!links?.length)
+            return <span className="text-sm text-muted-foreground">—</span>;
+          const firstName = vendorNames.get(links[0].vendorId) ?? links[0].vendorId;
+          return (
+            <span className="text-sm text-muted-foreground">
+              {links.length === 1 ? firstName : `${firstName} +${links.length - 1}`}
+            </span>
+          );
+        },
         meta: {
           headerClassName: 'min-w-[180px]',
           skeleton: <Skeleton className="h-3.5 w-24" />,
@@ -383,13 +287,13 @@ export function ContactsListPage() {
         id: 'email',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
         cell: ({ row }) => {
-          const firstEmail = row.original.emails?.[0];
-          if (!firstEmail) return <span className="text-sm text-muted-foreground">—</span>;
+          const email = row.original.email;
+          if (!email) return <span className="text-sm text-muted-foreground">—</span>;
           return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Mail className="size-3.5" />
-              <a href={`mailto:${firstEmail.email}`} className="hover:text-primary">
-                {firstEmail.email}
+              <a href={`mailto:${email.email}`} className="hover:text-primary">
+                {email.email}
               </a>
             </div>
           );
@@ -409,13 +313,13 @@ export function ContactsListPage() {
         id: 'phone',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
         cell: ({ row }) => {
-          const firstPhone = row.original.phoneNumbers?.[0];
-          if (!firstPhone) return <span className="text-sm text-muted-foreground">—</span>;
+          const phone = row.original.phoneNumber;
+          if (!phone) return <span className="text-sm text-muted-foreground">—</span>;
           return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="size-3.5" />
-              <a href={`tel:${firstPhone.phone}`} className="hover:text-primary">
-                {firstPhone.phone}
+              <a href={`tel:${phone.phone}`} className="hover:text-primary">
+                {phone.phone}
               </a>
             </div>
           );
@@ -432,12 +336,12 @@ export function ContactsListPage() {
         enableSorting: false,
       },
       {
-        accessorKey: 'jobTitle',
+        id: 'role',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Roles" />,
         cell: ({ row }) =>
-          row.original.jobTitle ? (
+          row.original.professionalRole?.name ? (
             <Badge variant="primary" appearance="light" size="sm">
-              {row.original.jobTitle}
+              {row.original.professionalRole.name}
             </Badge>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
@@ -446,6 +350,7 @@ export function ContactsListPage() {
           headerClassName: 'min-w-[150px]',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
         },
+        enableSorting: false,
       },
       {
         id: 'actions',
@@ -489,7 +394,7 @@ export function ContactsListPage() {
         enableSorting: false,
       },
     ],
-    [del]
+    [del, vendorNames],
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -531,10 +436,10 @@ export function ContactsListPage() {
         // Sorting cleared — reset to defaults
         updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
       } else {
-        const newSortBy = isSortByField(col.id) ? col.id : 'name';
+        const newSortBy = isSortByField(col.id) ? col.id : 'fullName';
         const newSortOrder = col.desc ? 'desc' : 'asc';
         updateParams({
-          sortBy: newSortBy === 'name' ? undefined : newSortBy,
+          sortBy: newSortBy === 'fullName' ? undefined : newSortBy,
           sortOrder: newSortOrder === 'asc' ? undefined : newSortOrder,
           page: undefined,
         });
@@ -550,7 +455,9 @@ export function ContactsListPage() {
           <ToolbarHeading>
             <ToolbarPageTitle>Contacts</ToolbarPageTitle>
             <span className="text-sm text-muted-foreground">
-              All Contacts: {totalCount}
+              {hasActiveFilters
+                ? `Showing ${totalCount} result${totalCount !== 1 ? 's' : ''}`
+                : `All Contacts: ${totalCount}`}
             </span>
           </ToolbarHeading>
           <ToolbarActions>
@@ -582,33 +489,100 @@ export function ContactsListPage() {
         <CardHeader>
           <CardTitle>Contact Directory</CardTitle>
           <CardToolbar>
-            <InputWrapper variant="sm">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search contacts..."
-                value={searchInput}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
-            </InputWrapper>
+            <div className="flex items-center gap-2.5">
+              <Select
+                value={roleFilter ?? 'all'}
+                onValueChange={(value) =>
+                  updateParams({
+                    professionalRoleId: value === 'all' ? undefined : value,
+                    page: undefined,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 w-[180px] text-xs">
+                  <Filter className="size-3.5 mr-1.5" />
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {professionalRoles?.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <InputWrapper variant="sm">
+                <Search className="size-4" />
+                <Input
+                  placeholder="Search contacts..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+              </InputWrapper>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setSearchInput('');
+                    updateParams({
+                      search: undefined,
+                      professionalRoleId: undefined,
+                      page: undefined,
+                    });
+                  }}
+                >
+                  <X className="size-3.5" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </CardToolbar>
         </CardHeader>
-        <DataGrid
-          table={table}
-          recordCount={totalCount}
-          isLoading={isLoading}
-          tableLayout={{
-            cellBorder: false,
-            rowBorder: true,
-            headerBackground: true,
-          }}
-        >
-          <CardTable>
-            <DataGridTable />
-          </CardTable>
-          <CardFooter>
-            <DataGridPagination />
-          </CardFooter>
-        </DataGrid>
+        {isError ? (
+          <CardContent>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <AlertCircle className="size-10 text-destructive/60" />
+              <p className="text-sm font-medium">Failed to load contacts</p>
+              <p className="text-xs text-muted-foreground">
+                Something went wrong. Please try again.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                <RefreshCcw className="size-3.5" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        ) : (
+          <DataGrid
+            table={table}
+            recordCount={totalCount}
+            isLoading={isLoading}
+            emptyMessage={
+              <div className="flex flex-col items-center gap-2 py-8">
+                <Users className="size-10 text-muted-foreground/50" />
+                <p className="text-sm font-medium">No contacts yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Click &quot;+ Add Contact&quot; to get started.
+                </p>
+              </div>
+            }
+            tableLayout={{
+              cellBorder: false,
+              rowBorder: true,
+              headerBackground: true,
+            }}
+          >
+            <CardTable>
+              <DataGridTable />
+            </CardTable>
+            <CardFooter>
+              <DataGridPagination />
+            </CardFooter>
+          </DataGrid>
+        )}
       </Card>
     </div>
   );

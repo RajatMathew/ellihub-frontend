@@ -1,15 +1,17 @@
+import { z } from 'zod';
+
 import api from '@app/api';
 import {
-  contactDetailSchema,
   contactPaginatedResponseSchema,
   contactSchema,
   directoryKpisSchema,
+  professionalRoleSchema,
   type Contact,
-  type ContactDetail,
   type ContactPaginatedResponse,
   type CreateContactInput,
   type DirectoryKpis,
   type ListContactsParams,
+  type ProfessionalRole,
   type UpdateContactInput,
 } from '@modules/directory/schemas/contact.schema';
 
@@ -25,9 +27,10 @@ export const contactsApi = {
     if (params?.search) query.search = params.search;
 
     const filter: Record<string, string> = {};
-    if (params?.jobTitle) filter.jobTitle = params.jobTitle;
+    if (params?.professionalRoleId) filter.professionalRoleId = params.professionalRoleId;
     if (params?.vendorId) filter.vendorId = params.vendorId;
-    if (params?.generalContractorId) filter.generalContractorId = params.generalContractorId;
+    if (params?.generalContractorId)
+      filter.generalContractorId = params.generalContractorId;
     if (Object.keys(filter).length > 0) query.filter = JSON.stringify(filter);
 
     const res = await api.get(BASE, { params: query });
@@ -44,16 +47,18 @@ export const contactsApi = {
     });
   },
 
-  async getById(id: string): Promise<ContactDetail> {
+  async getById(id: string): Promise<Contact> {
     const res = await api.get(`${BASE}/${id}`);
-    return contactDetailSchema.parse(res.data?.data ?? res.data);
+    return contactSchema.parse(res.data?.data ?? res.data);
   },
 
+  // TODO: Full implementation when CRUD UI is built
   async create(data: CreateContactInput): Promise<Contact> {
     const res = await api.post(BASE, data);
     return contactSchema.parse(res.data?.data ?? res.data);
   },
 
+  // TODO: Full implementation when CRUD UI is built
   async update(id: string, data: UpdateContactInput): Promise<Contact> {
     const res = await api.put(`${BASE}/${id}`, data);
     return contactSchema.parse(res.data?.data ?? res.data);
@@ -63,59 +68,52 @@ export const contactsApi = {
     await api.delete(`${BASE}/${id}`);
   },
 
+  // TODO: Replace with dedicated sub-resource endpoints when CRUD UI is built
   async addPhone(id: string, phone: { phone: string; label: string }): Promise<Contact> {
-    const detail = await contactsApi.getById(id);
-    return contactsApi.update(id, {
-      phoneNumbers: [...detail.phoneNumbers, phone],
-    });
-  },
-
-  async removePhone(id: string, phoneIndex: number): Promise<Contact> {
-    const detail = await contactsApi.getById(id);
-    return contactsApi.update(id, {
-      phoneNumbers: detail.phoneNumbers.filter((_, i) => i !== phoneIndex),
-    });
-  },
-
-  async addEmail(id: string, email: { email: string; label: string }): Promise<Contact> {
-    const detail = await contactsApi.getById(id);
-    return contactsApi.update(id, {
-      emails: [...detail.emails, email],
-    });
-  },
-
-  async removeEmail(id: string, emailIndex: number): Promise<Contact> {
-    const detail = await contactsApi.getById(id);
-    return contactsApi.update(id, {
-      emails: detail.emails.filter((_, i) => i !== emailIndex),
-    });
-  },
-
-  async linkEntity(
-    id: string,
-    entity: { vendorId?: string | null; generalContractorId?: string | null },
-  ): Promise<Contact> {
-    return contactsApi.update(id, entity);
-  },
-
-  async unlinkEntity(
-    id: string,
-    entityType: 'vendor' | 'generalContractor',
-  ): Promise<Contact> {
-    return contactsApi.update(id, {
-      [entityType === 'vendor' ? 'vendorId' : 'generalContractorId']: null,
-    });
-  },
-
-  // TODO: Backend API yet to implement — PATCH /contacts/:id/deactivate
-  async deactivate(id: string): Promise<Contact> {
-    const res = await api.patch(`${BASE}/${id}/deactivate`);
+    const res = await api.post(`${BASE}/${id}/phones`, phone);
     return contactSchema.parse(res.data?.data ?? res.data);
   },
 
-  // TODO: Backend API yet to implement — PATCH /contacts/:id/activate
-  async activate(id: string): Promise<Contact> {
-    const res = await api.patch(`${BASE}/${id}/activate`);
+  async removePhone(id: string): Promise<Contact> {
+    const res = await api.delete(`${BASE}/${id}/phones`);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async addEmail(id: string, email: { email: string; label: string }): Promise<Contact> {
+    const res = await api.post(`${BASE}/${id}/emails`, email);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeEmail(id: string): Promise<Contact> {
+    const res = await api.delete(`${BASE}/${id}/emails`);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  // --- Vendor link sub-resource ---
+  async addVendorLink(
+    contactId: string,
+    data: { vendorId: string; isPrimary?: boolean },
+  ): Promise<Contact> {
+    const res = await api.post(`${BASE}/${contactId}/vendor-links`, data);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeVendorLink(contactId: string, linkId: string): Promise<Contact> {
+    const res = await api.delete(`${BASE}/${contactId}/vendor-links/${linkId}`);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  // --- GC link sub-resource ---
+  async addGCLink(
+    contactId: string,
+    data: { generalContractorId: string; isPrimary?: boolean },
+  ): Promise<Contact> {
+    const res = await api.post(`${BASE}/${contactId}/gc-links`, data);
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeGCLink(contactId: string, linkId: string): Promise<Contact> {
+    const res = await api.delete(`${BASE}/${contactId}/gc-links/${linkId}`);
     return contactSchema.parse(res.data?.data ?? res.data);
   },
 
@@ -124,9 +122,8 @@ export const contactsApi = {
     return directoryKpisSchema.parse(res.data?.data ?? res.data);
   },
 
-  async getProfessionalRoles(): Promise<string[]> {
-    const allContacts = await contactsApi.list({ size: 1000 });
-    const roles = new Set(allContacts.data.map((c) => c.jobTitle).filter(Boolean));
-    return Array.from(roles).sort();
+  async getProfessionalRoles(): Promise<ProfessionalRole[]> {
+    const res = await api.get(`${BASE}/professional-roles`);
+    return z.array(professionalRoleSchema).parse(res.data?.data ?? res.data ?? []);
   },
 };

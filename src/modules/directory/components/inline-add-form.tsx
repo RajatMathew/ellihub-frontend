@@ -25,6 +25,7 @@ interface InlineAddFormProps {
   labelOptions: LabelOption[];
   onSubmit: () => void;
   isPending?: boolean;
+  error?: string;
 }
 
 export function InlineAddForm({
@@ -37,38 +38,43 @@ export function InlineAddForm({
   labelOptions,
   onSubmit,
   isPending = false,
+  error,
 }: InlineAddFormProps) {
   return (
-    <div className="flex items-center gap-2">
-      <Input
-        placeholder={placeholder}
-        type={inputType}
-        value={value}
-        onChange={(e) => onValueChange(e.target.value)}
-        className="h-8 flex-1 text-sm"
-      />
-      <Select value={labelValue} onValueChange={onLabelChange}>
-        <SelectTrigger className="h-8 w-28 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {labelOptions.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        variant="outline"
-        size="sm"
-        mode="icon"
-        className="size-8"
-        onClick={onSubmit}
-        disabled={!value.trim() || isPending}
-      >
-        <Check className="size-4" />
-      </Button>
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder={placeholder}
+          type={inputType}
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          className="h-8 flex-1 text-sm"
+          aria-invalid={!!error}
+        />
+        <Select value={labelValue} onValueChange={onLabelChange}>
+          <SelectTrigger className="h-8 w-28 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {labelOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          mode="icon"
+          className="size-8"
+          onClick={onSubmit}
+          disabled={!value.trim() || isPending}
+        >
+          <Check className="size-4" />
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

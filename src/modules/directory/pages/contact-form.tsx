@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { Building2, Check, CircleUserRound, Mail, Phone, Shield, Tag } from 'lucide-react';
+import { Building2, Check, CircleUserRound, Mail, Phone, X } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   Toolbar,
@@ -15,6 +16,8 @@ import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
+import { SearchableSelect } from '@app/components/ui/searchable-select';
+import { TagInput } from '@app/components/ui/tag-input';
 import {
   Select,
   SelectContent,
@@ -22,21 +25,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@app/components/ui/select';
-import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 import { cn } from '@app/lib/utils';
 
 import {
+  useAddVendorLinkMutation,
   useContactDetailQuery,
   useContactForm,
   useCreateContactMutation,
   useProfessionalRolesQuery,
+  useRemoveVendorLinkMutation,
   useUpdateContactMutation,
+  useVendorsQuery,
 } from '../hooks';
-import { useGCsQuery } from '../hooks/gc.hooks';
-import { useVendorsQuery } from '../hooks/vendors.hooks';
-import type { Contact, CreateContactInput } from '../schemas/contact.schema';
+import type { Contact, ContactVendorLink, CreateContactInput } from '../schemas/contact.schema';
+
+/* ---- Helpers ---- */
+
+function computeVendorLinkDiff(
+  original: ContactVendorLink[],
+  current: { vendorId: string; isPrimary: boolean }[],
+) {
+  const originalByVendor = new Map(original.map((l) => [l.vendorId, l]));
+  const currentByVendor = new Map(current.map((l) => [l.vendorId, l]));
+
+  const toRemove = original.filter((l) => !currentByVendor.has(l.vendorId));
+  const toAdd = current.filter((l) => !originalByVendor.has(l.vendorId));
+  const toUpdate = current.filter((l) => {
+    const orig = originalByVendor.get(l.vendorId);
+    return orig && orig.isPrimary !== l.isPrimary;
+  });
+
+  return { toRemove, toAdd, toUpdate };
+}
 
 /* ---- Sidebar nav items ---- */
 
@@ -54,32 +76,27 @@ export function ContactFormPage() {
 
   const { data: contact, isLoading: isLoadingContact } = useContactDetailQuery(id ?? '');
   const { data: roles = [] } = useProfessionalRolesQuery();
-  const { data: vendorsData } = useVendorsQuery({ limit: 100 });
-  const { data: gcsData } = useGCsQuery({ limit: 100 });
+  const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
   const createMutation = useCreateContactMutation();
   const updateMutation = useUpdateContactMutation();
+  const addVendorLinkMutation = useAddVendorLinkMutation();
+  const removeVendorLinkMutation = useRemoveVendorLinkMutation();
 
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
     value: v.id,
     label: v.name,
   }));
-  const gcOptions = (gcsData?.data ?? []).map((gc) => ({
-    value: gc.id,
-    label: gc.name,
-  }));
 
-  const { control, handleSubmit, reset, setValue } = useContactForm(
+  const { control, handleSubmit, reset, formState } = useContactForm(
     isEdit && contact
       ? contact
       : {
-          name: '',
-          jobTitle: '',
-          emails: [],
-          phoneNumbers: [],
+          fullName: '',
+          professionalRoleId: undefined,
+          email: undefined,
+          phoneNumber: undefined,
           tags: [],
-          vendorId: null,
-          generalContractorId: null,
-        }
+        },
   );
 
   // Reset form when contact data loads in edit mode
@@ -90,23 +107,87 @@ export function ContactFormPage() {
   }, [isEdit, contact, reset]);
 
   const [activeSection, setActiveSection] = useState<string>('contact-info');
-  const [entityType, setEntityType] = useState<'vendor' | 'gc'>(() =>
-    contact?.generalContractorId && !contact?.vendorId ? 'gc' : 'vendor'
+  // Lazy initializer — safe because we return early while loading in edit mode,
+  // so `contact` is already available by the time this renders.
+  const [vendorLinks, setVendorLinks] = useState<{ vendorId: string; isPrimary: boolean }[]>(
+    () =>
+      isEdit && contact
+        ? (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary }))
+        : [],
   );
-  const [isPrimary, setIsPrimary] = useState(false);
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const [isSaving, setIsSaving] = useState(false);
+  const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  const onSubmit = (formData: CreateContactInput | Contact) => {
+  const onSubmit = async (formData: CreateContactInput | Contact) => {
+    const payload: CreateContactInput = {
+      fullName: formData.fullName,
+      professionalRoleId: formData.professionalRoleId ?? undefined,
+      email: formData.email?.email ? formData.email : undefined,
+      phoneNumber: formData.phoneNumber?.phone ? formData.phoneNumber : undefined,
+      tags: formData.tags,
+      vendorLinks: vendorLinks.length > 0 ? vendorLinks : [],
+    };
+
     if (isEdit && id) {
-      const { name, jobTitle, emails, phoneNumbers, tags, vendorId, generalContractorId } =
-        formData;
-      updateMutation.mutate(
-        { id, data: { name, jobTitle, emails, phoneNumbers, tags, vendorId, generalContractorId } },
-        { onSuccess: () => navigate('..', { relative: 'path' }) }
-      );
+      setIsSaving(true);
+      try {
+        // 1. PUT basic contact fields
+        await updateMutation.mutateAsync({
+          id,
+          data: {
+            fullName: payload.fullName,
+            professionalRoleId: payload.professionalRoleId ?? null,
+            email: payload.email ?? null,
+            phoneNumber: payload.phoneNumber ?? null,
+            tags: payload.tags,
+          },
+        });
+
+        // 2. Persist vendor link changes via sub-resource APIs
+        const originalLinks = contact?.vendorLinks ?? [];
+        const { toRemove, toAdd, toUpdate } = computeVendorLinkDiff(originalLinks, vendorLinks);
+
+        const linkOps: Promise<unknown>[] = [
+          ...toRemove.map((link) =>
+            removeVendorLinkMutation.mutateAsync({ contactId: id, linkId: link.id }),
+          ),
+          ...toAdd.map((link) =>
+            addVendorLinkMutation.mutateAsync({
+              contactId: id,
+              data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
+            }),
+          ),
+          ...toUpdate.map((link) => {
+            const orig = originalLinks.find((o) => o.vendorId === link.vendorId)!;
+            return removeVendorLinkMutation
+              .mutateAsync({ contactId: id, linkId: orig.id })
+              .then(() =>
+                addVendorLinkMutation.mutateAsync({
+                  contactId: id,
+                  data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
+                }),
+              );
+          }),
+        ];
+
+        if (linkOps.length > 0) {
+          const results = await Promise.allSettled(linkOps);
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            toast.error(`${failures.length} vendor link operation(s) failed.`);
+            return;
+          }
+        }
+
+        navigate('..', { relative: 'path' });
+      } catch {
+        // updateMutation.mutateAsync error — toast already shown by mutation onError
+      } finally {
+        setIsSaving(false);
+      }
     } else {
-      createMutation.mutate(formData as CreateContactInput, {
+      createMutation.mutate(payload, {
         onSuccess: () => navigate('..', { relative: 'path' }),
       });
     }
@@ -142,7 +223,7 @@ export function ContactFormPage() {
             <span className="text-sm text-muted-foreground">
               {isEdit
                 ? 'Update the contact information below.'
-                : 'Register a new individual and associate them with a vendor or general contractor.'}
+                : 'Register a new individual and associate them with a vendor.'}
             </span>
           </ToolbarHeading>
           <ToolbarActions>
@@ -180,7 +261,7 @@ export function ContactFormPage() {
                     'w-full text-left text-sm px-4 py-2 rounded-md border-l-2 transition-colors',
                     activeSection === section.id
                       ? 'border-primary text-primary font-semibold bg-transparent'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {section.label}
@@ -207,7 +288,7 @@ export function ContactFormPage() {
               {/* Row 1: Name + Role */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="name"
+                  name="fullName"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
@@ -229,14 +310,17 @@ export function ContactFormPage() {
                 />
 
                 <Controller
-                  name="jobTitle"
+                  name="professionalRoleId"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Professional Role
                       </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={(v) => field.onChange(v || undefined)}
+                      >
                         <SelectTrigger aria-invalid={fieldState.invalid}>
                           <div className="flex items-center gap-2">
                             <Building2 className="size-4 text-muted-foreground" />
@@ -244,25 +328,11 @@ export function ContactFormPage() {
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {roles.length > 0 ? (
-                            roles.map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {role}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="Project Manager">Project Manager</SelectItem>
-                              <SelectItem value="Superintendent">Superintendent</SelectItem>
-                              <SelectItem value="Estimator">Estimator</SelectItem>
-                              <SelectItem value="Engineer">Engineer</SelectItem>
-                              <SelectItem value="Architect">Architect</SelectItem>
-                              <SelectItem value="Accounting">Accounting</SelectItem>
-                              <SelectItem value="Safety Officer">Safety Officer</SelectItem>
-                              <SelectItem value="Foreman">Foreman</SelectItem>
-                              <SelectItem value="Contracts Manager">Contracts Manager</SelectItem>
-                            </>
-                          )}
+                          {roles.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -274,12 +344,12 @@ export function ContactFormPage() {
               {/* Row 2: Email + Phone */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="emails"
+                  name="email"
                   control={control}
                   render={({ field, fieldState }) => {
-                    const firstEmail = field.value?.[0]?.email ?? '';
+                    const emailValue = field.value?.email ?? '';
                     return (
-                      <Field data-invalid={fieldState.invalid}>
+                      <Field data-invalid={fieldState.invalid || !!formState.errors.email}>
                         <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                           Email Address
                         </FieldLabel>
@@ -287,27 +357,32 @@ export function ContactFormPage() {
                           <Mail className="size-4" />
                           <Input
                             type="email"
-                            value={firstEmail}
+                            value={emailValue}
                             onChange={(e) => {
                               const val = e.target.value;
-                              field.onChange(val ? [{ email: val, label: 'Work' }] : []);
+                              field.onChange(
+                                val ? { email: val, label: 'Work' } : undefined,
+                              );
                             }}
                             placeholder="m.chen@company.com"
-                            aria-invalid={fieldState.invalid}
+                            aria-invalid={fieldState.invalid || !!formState.errors.email}
                             autoComplete="off"
                           />
                         </InputWrapper>
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                        {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                        {!fieldState.error && formState.errors.email && (
+                          <FieldError errors={[formState.errors.email]} />
+                        )}
                       </Field>
                     );
                   }}
                 />
 
                 <Controller
-                  name="phoneNumbers"
+                  name="phoneNumber"
                   control={control}
                   render={({ field, fieldState }) => {
-                    const firstPhone = field.value?.[0]?.phone ?? '';
+                    const phoneValue = field.value?.phone ?? '';
                     return (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
@@ -317,10 +392,12 @@ export function ContactFormPage() {
                           <Phone className="size-4" />
                           <Input
                             type="tel"
-                            value={firstPhone}
+                            value={phoneValue}
                             onChange={(e) => {
                               const val = e.target.value;
-                              field.onChange(val ? [{ phone: val, label: 'Office' }] : []);
+                              field.onChange(
+                                val ? { phone: val, label: 'Office' } : undefined,
+                              );
                             }}
                             placeholder="(555) 000-0000"
                             aria-invalid={fieldState.invalid}
@@ -338,57 +415,22 @@ export function ContactFormPage() {
               <Controller
                 name="tags"
                 control={control}
-                render={({ field }) => {
-                  const tagsStr = (field.value ?? []).join(', ');
-                  return (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Tags
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Tag className="size-4" />
-                        <Input
-                          value={tagsStr}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(
-                              val
-                                ? val
-                                    .split(',')
-                                    .map((t) => t.trim())
-                                    .filter(Boolean)
-                                : []
-                            );
-                          }}
-                          placeholder="e.g. Decision Maker, Finance, Urgent Only (comma separated)"
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      <p className="text-xs text-muted-foreground">
-                        Use commas to separate multiple tags.
-                      </p>
-                    </Field>
-                  );
-                }}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Tags
+                    </FieldLabel>
+                    <TagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      placeholder="e.g. Decision Maker, Finance..."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Press Enter or comma to add a tag.
+                    </p>
+                  </Field>
+                )}
               />
-
-              <Separator />
-
-              {/* Primary Focal Point */}
-              <div className="flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
-                <div className="flex size-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900">
-                  <Shield className="size-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold tracking-wide text-foreground uppercase">
-                    Primary Focal Point
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Mark this contact as the lead representative for the organization.
-                  </div>
-                </div>
-                <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
-              </div>
             </CardContent>
           </Card>
 
@@ -398,93 +440,82 @@ export function ContactFormPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">External Association</h2>
                 <p className="text-sm text-muted-foreground">
-                  Link this contact to a vendor or general contractor.
+                  Link this contact to one or more vendors.
                 </p>
               </div>
 
               <Separator />
 
-              {/* Entity Type Toggle */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Entity Type
-                </span>
-                <div className="flex rounded-md border border-border">
-                  <button
-                    type="button"
-                    className={cn(
-                      'px-4 py-1.5 text-sm font-semibold transition-colors rounded-l-md',
-                      entityType === 'vendor'
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    onClick={() => {
-                      setEntityType('vendor');
-                      setValue('generalContractorId', null);
-                    }}
-                  >
-                    Vendor
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      'px-4 py-1.5 text-sm font-semibold transition-colors rounded-r-md border-l border-border',
-                      entityType === 'gc'
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    onClick={() => {
-                      setEntityType('gc');
-                      setValue('vendorId', null);
-                    }}
-                  >
-                    Gen. Contractor
-                  </button>
+              {/* Linked vendors list */}
+              {vendorLinks.length > 0 && (
+                <div className="space-y-2">
+                  {vendorLinks.map((link, index) => {
+                    const vendorName =
+                      vendorOptions.find((v) => v.value === link.vendorId)?.label ??
+                      link.vendorId;
+                    return (
+                      <div
+                        key={link.vendorId}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
+                      >
+                        <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 text-sm font-medium text-foreground">
+                          {vendorName}
+                        </span>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          Primary
+                          <Switch
+                            checked={link.isPrimary}
+                            onCheckedChange={(checked) =>
+                              setVendorLinks((prev) =>
+                                prev.map((l, i) =>
+                                  i === index ? { ...l, isPrimary: checked } : l,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          mode="icon"
+                          className="size-7 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            setVendorLinks((prev) => prev.filter((_, i) => i !== index))
+                          }
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-
-              {/* Conditional Link Field */}
-              {entityType === 'vendor' ? (
-                <Controller
-                  name="vendorId"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Link to Vendor
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={vendorOptions}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder="Search Vendors..."
-                        searchPlaceholder="Search vendors..."
-                        emptyMessage="No vendors found."
-                      />
-                    </Field>
-                  )}
-                />
-              ) : (
-                <Controller
-                  name="generalContractorId"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Link to General Contractor
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={gcOptions}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder="Search Contractors..."
-                        searchPlaceholder="Search contractors..."
-                        emptyMessage="No contractors found."
-                      />
-                    </Field>
-                  )}
-                />
               )}
+
+              {/* Add vendor select */}
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Add Vendor
+                </FieldLabel>
+                <SearchableSelect
+                  options={vendorOptions.filter(
+                    (v) => !vendorLinks.some((l) => l.vendorId === v.value),
+                  )}
+                  value={null}
+                  onValueChange={(vendorId) => {
+                    if (vendorId) {
+                      setVendorLinks((prev) => [
+                        ...prev,
+                        { vendorId, isPrimary: false },
+                      ]);
+                    }
+                  }}
+                  placeholder="Search Vendors..."
+                  searchPlaceholder="Search vendors..."
+                  emptyMessage="No vendors found."
+                />
+              </Field>
             </CardContent>
           </Card>
         </div>

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { cn } from '@app/lib/utils';
+
 import { Card, CardContent } from '@app/components/ui/card';
 
 interface StatsCardProps {
@@ -8,11 +10,19 @@ interface StatsCardProps {
   label: string;
   value: number | string;
   description?: string;
+  active?: boolean;
+  onClick?: () => void;
 }
 
-export function StatsCard({ icon, bgClass, label, value, description }: StatsCardProps) {
+export function StatsCard({ icon, bgClass, label, value, description, active, onClick }: StatsCardProps) {
   return (
-    <Card>
+    <Card
+      className={cn(
+        onClick && 'cursor-pointer transition-colors hover:border-success/50',
+        active && 'border-success bg-success/10 ring-2 ring-success/40',
+      )}
+      onClick={onClick}
+    >
       <CardContent className="flex items-center gap-4 py-4">
         <div
           className={`flex items-center justify-center size-12 rounded-lg ${bgClass}`}

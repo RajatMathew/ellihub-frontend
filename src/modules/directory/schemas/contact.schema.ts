@@ -14,41 +14,69 @@ export const contactPhoneSchema = z.object({
   label: z.string(),
 });
 
+/** Input-only phone validation (not used for API response parsing). */
+export const contactPhoneInputSchema = z.object({
+  phone: z
+    .string()
+    .refine((val) => /^[+\d\s\-().]+$/.test(val), 'Phone number contains invalid characters')
+    .refine((val) => val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number'),
+  label: z.string(),
+});
+
 export type ContactPhone = z.infer<typeof contactPhoneSchema>;
 
-// --- Entity references (resolved in detail) ---
+// --- Relation types ---
 
-const entityRefSchema = z.object({
+export const professionalRoleSchema = z.object({
   id: z.string(),
   name: z.string(),
+  deletedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
+
+export type ProfessionalRole = z.infer<typeof professionalRoleSchema>;
+
+export const contactVendorLinkSchema = z.object({
+  id: z.string(),
+  contactId: z.string(),
+  vendorId: z.string(),
+  isPrimary: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type ContactVendorLink = z.infer<typeof contactVendorLinkSchema>;
+
+export const contactGCLinkSchema = z.object({
+  id: z.string(),
+  contactId: z.string(),
+  generalContractorId: z.string(),
+  isPrimary: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type ContactGCLink = z.infer<typeof contactGCLinkSchema>;
 
 // --- Main model ---
 
 export const contactSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Name is required'),
-  emails: z.array(contactEmailSchema),
-  phoneNumbers: z.array(contactPhoneSchema),
-  jobTitle: z.string().min(1, 'Job title is required'),
-  vendorId: z.string().nullable(),
-  generalContractorId: z.string().nullable(),
+  fullName: z.string().min(1, 'Name is required'),
+  professionalRoleId: z.string().nullable(),
+  professionalRole: professionalRoleSchema.nullable(),
+  email: contactEmailSchema.nullable(),
+  phoneNumber: contactPhoneSchema.nullable(),
   tags: z.array(z.string()),
+  vendorLinks: z.array(contactVendorLinkSchema),
+  gcLinks: z.array(contactGCLinkSchema),
   deletedAt: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });
 
 export type Contact = z.infer<typeof contactSchema>;
-
-// --- Detail (includes resolved vendor/GC names) ---
-
-export const contactDetailSchema = contactSchema.extend({
-  vendor: entityRefSchema.nullable(),
-  generalContractor: entityRefSchema.nullable(),
-});
-
-export type ContactDetail = z.infer<typeof contactDetailSchema>;
 
 // --- List ---
 
@@ -70,26 +98,35 @@ export type ContactPaginatedResponse = z.infer<typeof contactPaginatedResponseSc
 
 // --- Inputs ---
 
-export const createContactInputSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  jobTitle: z.string().min(1, 'Job title is required'),
-  emails: z.array(contactEmailSchema),
-  phoneNumbers: z.array(contactPhoneSchema),
-  tags: z.array(z.string()).optional(),
-  vendorId: z.string().nullable().optional(),
-  generalContractorId: z.string().nullable().optional(),
-});
+export const createContactInputSchema = z
+  .object({
+    fullName: z.string().min(1, 'Name is required'),
+    professionalRoleId: z.string().optional(),
+    email: contactEmailSchema.nullable().optional(),
+    phoneNumber: contactPhoneSchema.nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    vendorLinks: z
+      .array(z.object({ vendorId: z.string(), isPrimary: z.boolean().optional() }))
+      .optional(),
+    gcLinks: z
+      .array(
+        z.object({ generalContractorId: z.string(), isPrimary: z.boolean().optional() }),
+      )
+      .optional(),
+  })
+  .refine((data) => data.email || data.phoneNumber, {
+    message: 'At least one email or phone number is required',
+    path: ['email'],
+  });
 
 export type CreateContactInput = z.infer<typeof createContactInputSchema>;
 
 export const updateContactInputSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  jobTitle: z.string().min(1, 'Job title is required').optional(),
-  emails: z.array(contactEmailSchema).optional(),
-  phoneNumbers: z.array(contactPhoneSchema).optional(),
+  fullName: z.string().min(1).optional(),
+  professionalRoleId: z.string().nullable().optional(),
+  email: contactEmailSchema.nullable().optional(),
+  phoneNumber: contactPhoneSchema.nullable().optional(),
   tags: z.array(z.string()).optional(),
-  vendorId: z.string().nullable().optional(),
-  generalContractorId: z.string().nullable().optional(),
 });
 
 export type UpdateContactInput = z.infer<typeof updateContactInputSchema>;
@@ -98,12 +135,12 @@ export type UpdateContactInput = z.infer<typeof updateContactInputSchema>;
 
 export const listContactsParamsSchema = z.object({
   search: z.string().optional(),
-  jobTitle: z.string().optional(),
+  professionalRoleId: z.string().optional(),
   vendorId: z.string().optional(),
   generalContractorId: z.string().optional(),
   page: z.number().min(1).optional(),
   size: z.number().min(1).optional(),
-  sortBy: z.enum(['name', 'jobTitle', 'createdAt']).optional(),
+  sortBy: z.enum(['fullName', 'createdAt', 'updatedAt']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
@@ -113,8 +150,9 @@ export type ListContactsParams = z.infer<typeof listContactsParamsSchema>;
 
 export const directoryKpisSchema = z.object({
   totalContacts: z.number(),
-  withVendor: z.number(),
-  withGC: z.number(),
+  primaryContacts: z.number(),
+  gcLinks: z.number(),
+  vendorLinks: z.number(),
 });
 
 export type DirectoryKpis = z.infer<typeof directoryKpisSchema>;
