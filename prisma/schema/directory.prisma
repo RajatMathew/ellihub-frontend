@@ -96,14 +96,6 @@ enum GCStatus {
   BLACKLISTED
 }
 
-enum PaymentTerms {
-  NET_15
-  NET_30
-  NET_45
-  NET_60
-  NET_90
-  DUE_ON_RECEIPT
-}
 
 model ProfessionalRole {
   id   String @id
