@@ -19,6 +19,24 @@ async function lookupRole(name: string) {
 
 const DUMMY_VENDOR_ID = '01JMSEEDVENDOR00000001';
 const DUMMY_GC_ID = '01JMSEEDGCONT000000001';
+let DUMMY_GC_TYPE_ID = '';
+
+async function ensureDummyGCType() {
+    const existing = await prisma.gCType.findFirst({ where: { code: 'PRIVATE' } });
+    if (existing) {
+        DUMMY_GC_TYPE_ID = existing.id;
+        return;
+    }
+    const created = await prisma.gCType.create({
+        data: {
+            id: '01JMSEEDGCTYPE00000001',
+            name: 'Private',
+            code: 'PRIVATE',
+        },
+    });
+    DUMMY_GC_TYPE_ID = created.id;
+    console.log('  Created dummy GC type: Private');
+}
 
 async function ensureDummyVendor() {
     const existing = await prisma.vendor.findUnique({ where: { id: DUMMY_VENDOR_ID } });
@@ -40,13 +58,14 @@ async function ensureDummyVendor() {
 }
 
 async function ensureDummyGC() {
+    await ensureDummyGCType();
     const existing = await prisma.generalContractor.findUnique({ where: { id: DUMMY_GC_ID } });
     if (!existing) {
         await prisma.generalContractor.create({
             data: {
                 id: DUMMY_GC_ID,
                 name: 'BuildCorp General Contractors',
-                type: 'PRIVATE',
+                gcTypeId: DUMMY_GC_TYPE_ID,
                 status: 'ACTIVE',
                 email: 'info@buildcorp.com',
                 phone: '+1-555-0002',

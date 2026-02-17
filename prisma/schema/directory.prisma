@@ -32,14 +32,33 @@ enum VendorStatus {
   PROSPECT
 }
 
+model GCType {
+  id          String @id
+  name        String @unique
+  code        String @unique
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  generalContractors GeneralContractor[]
+
+  @@index([name])
+  @@index([code])
+}
+
 model GeneralContractor {
-  id      String   @id
-  name    String
-  type    GCType
-  status  GCStatus
-  address String?
-  email   String?
-  phone   String?
+  id               String       @id
+  name             String
+  gcTypeId         String
+  gcType           GCType       @relation(fields: [gcTypeId], references: [id])
+  status           GCStatus     @default(ACTIVE)
+  address          String?
+  email            String?
+  phone            String?
+  website          String?
+  paymentTerms     PaymentTerms @default(NET_30)
+  retainagePercent Float        @default(10.0)
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -47,19 +66,27 @@ model GeneralContractor {
 
   projects     Project[]
   contactLinks ContactGC[]
-}
 
-enum GCType {
-  PUBLIC
-  PRIVATE
-  INSTITUTIONAL
-  CIVIL
+  @@index([name])
+  @@index([status])
+  @@index([gcTypeId])
+  @@index([deletedAt])
 }
 
 enum GCStatus {
-  PROSPECT
   ACTIVE
+  PROSPECTING
   INACTIVE
+  BLACKLISTED
+}
+
+enum PaymentTerms {
+  NET_15
+  NET_30
+  NET_45
+  NET_60
+  NET_90
+  DUE_ON_RECEIPT
 }
 
 model ProfessionalRole {
