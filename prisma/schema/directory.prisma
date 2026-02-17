@@ -1,22 +1,38 @@
 model Vendor {
-  id      String       @id
-  name    String
-  type    VendorType
-  taxId   String
-  status  VendorStatus
-  address String?
-  email   String?
-  phone   String?
+  id           String       @id
+  name         String
+  type         VendorType
+  categoryTags String[]
+  taxId        String?
+  status       VendorStatus
+  address      String?
+  email        String?
+  phone        String?
+  website      String?
+  paymentTerms PaymentTerms @default(NET_30)
+  notes        String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  rfqs RFQ[]
-
+  rfqs           RFQ[]
   quotations     VendorQuotation[]
   purchaseOrders PurchaseOrder[]
   contactLinks   ContactVendor[]
+
+  @@index([name])
+  @@index([status])
+  @@index([type])
+}
+
+enum PaymentTerms {
+  NET_15
+  NET_30
+  NET_45
+  NET_60
+  NET_90
+  DUE_ON_RECEIPT
 }
 
 enum VendorType {
