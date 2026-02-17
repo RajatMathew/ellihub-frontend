@@ -29,13 +29,13 @@ export const findOneProject = async ({ id }: { id: string }): Promise<Project> =
     return project;
 };
 
-export const createProject = async (): Promise<Project> => {
-    const data = {
-        name: 'New Project',
-        description: 'This is a new project',
-    };
+export const createProject = async (gcId: string, leadPMId: string): Promise<Project> => {
     const project = await prisma.project.create({
-        data: data as any,
+        data: {
+            id: 'example-id',
+            gcId,
+            leadPMId,
+        },
     });
     return project;
 };
@@ -43,8 +43,8 @@ export const createProject = async (): Promise<Project> => {
 export const updateProject = async (
     id: string,
     data: {
-        name?: string;
-        description?: string;
+        gcId?: string;
+        leadPMId?: string;
     }
 ): Promise<Project> => {
     const project = await prisma.project.update({

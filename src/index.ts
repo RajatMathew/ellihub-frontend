@@ -10,9 +10,11 @@ import { NotFoundError } from '@utils';
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
 // Initialize Hono app
 const app = new Hono();
 app.use('*', performanceMiddleware);
+app.use('*', logger());
 app.use('*', cors(cors_config));
 
 // Serve OpenAPI JSON

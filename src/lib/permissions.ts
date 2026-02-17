@@ -11,6 +11,9 @@ export const statement = {
     costCode: ['create', 'update', 'delete', 'read'],
     contact: ['create', 'update', 'delete', 'read'],
     professionalRole: ['create', 'update', 'delete', 'read'],
+    generalContractor: ['create', 'update', 'delete', 'read'],
+    gcType: ['create', 'update', 'delete', 'read'],
+    vendor: ['create', 'update', 'delete', 'read'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -25,6 +28,9 @@ export const owner = ac.newRole({
     costCode: ['create', 'update', 'delete', 'read'],
     contact: ['create', 'update', 'delete', 'read'],
     professionalRole: ['create', 'update', 'delete', 'read'],
+    generalContractor: ['create', 'update', 'delete', 'read'],
+    gcType: ['create', 'update', 'delete', 'read'],
+    vendor: ['create', 'update', 'delete', 'read'],
 });
 
 // Export the type
