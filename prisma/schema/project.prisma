@@ -1,41 +1,77 @@
 model Project {
-  id       String            @id
-  gc       GeneralContractor @relation(fields: [gcId], references: [id])
-  gcId     String
-  leadPM   User              @relation(fields: [leadPMId], references: [id])
-  leadPMId String
-
+  id                     String                  @id
+  name                   String
+  description            String
+  gc                     GeneralContractor       @relation(fields: [gcId], references: [id])
+  gcId                   String
+  leadPM                 Employee                @relation(fields: [leadPMId], references: [id])
+  leadPMId               String
+  stage                  ProjectStage
+  division               ProjectDivision
+  contractValue          Decimal
+  budgetPercentage       Decimal
+  startDate              DateTime                @db.Date
+  endDate                DateTime                @db.Date
   primeContract          PrimeContract?
   projectScheduleEntries ProjectScheduleEntry[]
   primeChangeOrders      PrimeChangeOrder[]
+  rfqs                   RFQ[]
+  purchaseOrders         PurchaseOrder[]
+  primePayments          PrimePayments[]
+  teamMembers            ProjectTeamAssignment[]
+  deletedAt              DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+}
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+enum ProjectStage {
+  INSTALLATION
+  FABRICATION
+  SUBMITTALS
+  BUYOUT
+  CLOSEOUT
+  PUNCHLIST
+}
 
-  rfqs RFQ[]
+// enum ADDED BY ME
+enum ProjectDivision {
+  SCA
+  DDC
+  CIVIL
+  INSTITUTIONAL
+}
 
-  purchaseOrders PurchaseOrder[]
+model PrimePayments {
+  id                String    @id @default(uuid())
+  date              DateTime
+  transactionDetail String
+  amount            Decimal
+  project           Project   @relation(fields: [projectId], references: [id])
+  projectId         String
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model PrimeContract {
-  id        String  @id
-  project   Project @relation(fields: [projectId], references: [id])
-  projectId String  @unique
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id
+  project       Project   @relation(fields: [projectId], references: [id])
+  projectId     String    @unique
+  contractValue Decimal
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model ProjectTeamAssignment {
   projectId  String
   employeeId String
   role       String
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  project    Project   @relation(fields: [projectId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@id([projectId, employeeId])
 }

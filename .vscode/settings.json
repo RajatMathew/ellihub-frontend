@@ -5,7 +5,7 @@
     "eslint.validate": ["typescript"],
     "prettier.requireConfig": true,
     "[prisma]": {
-        "editor.defaultFormatter": "Prisma.prisma-insider"
+        "editor.defaultFormatter": "Prisma.prisma"
     },
     "editor.codeActionsOnSave": {
         "source.organizeImports": "always"

@@ -2,7 +2,7 @@ import { statement } from '@lib/permissions';
 import z from 'zod';
 
 export const UserCreateSchema = z.object({
-    email: z.string().email('Please enter a valid email'),
+    email: z.email('Please enter a valid email'),
     name: z.string().min(1, 'Name is required'),
     role: z.enum(['admin', 'user']),
     password: z.string().min(8, 'Password must be at least 8 characters'),

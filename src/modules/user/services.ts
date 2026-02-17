@@ -1,6 +1,11 @@
+import { TransactionClient } from '@db/internal/prismaNamespace';
 import { auth } from '@lib/auth';
+import { prisma as prismaClient } from '@lib/prisma';
+import { InternalServerError, NotFoundError } from '@utils';
+import { User } from 'better-auth';
+import { ulid } from 'ulid';
 
-import { RoleCreateRequest } from './models';
+import { RoleCreateRequest, UserCreateRequest } from './models';
 
 export const UserService = {
     getUser: async (id: string) => {
@@ -22,11 +27,49 @@ export const UserService = {
         return users;
     },
 
-    createUser: async () => {
-        // const user = auth.api.createUser({
-        //     body: {
-        //     }
-        // })
+    createUser: async (
+        request: UserCreateRequest,
+        tx?: TransactionClient,
+        employeeId?: string,
+        roleId?: string
+    ): Promise<User> => {
+        const prisma = tx || prismaClient;
+
+        const user = await prisma.user.create({
+            data: {
+                id: employeeId || ulid(),
+                email: request.email,
+                name: request.name,
+                role: request.role,
+                profile: employeeId,
+            },
+        });
+
+        if (employeeId && roleId) {
+            const org = await prisma.organization.findFirst({
+                where: {
+                    slug: 'default',
+                },
+            });
+
+            if (!org) throw new InternalServerError('No default org set.');
+
+            const role = await prisma.organizationRole.findUnique({ where: { id: roleId } });
+
+            if (!role) throw new NotFoundError('No role found with id: ' + roleId);
+
+            await prisma.member.create({
+                data: {
+                    id: ulid(),
+                    userId: user.id,
+                    role: role.role,
+                    organizationId: org.id,
+                    createdAt: new Date(),
+                },
+            });
+        }
+
+        return user;
     },
 
     createOrgRole: async (request: RoleCreateRequest, headers: Headers) => {

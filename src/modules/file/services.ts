@@ -1,15 +1,29 @@
 import { File } from '@db/client';
-import { prisma } from '@lib/prisma';
+import { TransactionClient } from '@db/internal/prismaNamespace';
+import { prisma as prismaClient } from '@lib/prisma';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
 import { FileUploadRequest, FolderCreateRequest } from './models';
 
 export const FileService = {
-    createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
-        if (request.name === 'root') throw new BadRequestError("Cannot name folder 'root'");
+    protectedFolderNames: [
+        'root',
+        'projects',
+        'project',
+        'rfq',
+        'purchase order',
+        'purchase order co',
+        'prime co',
+        'prime contract',
+        'invoice',
+    ],
 
-        const f = await prisma.$transaction(async (tx) => {
+    createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
+        if (FileService.protectedFolderNames.includes(request.name.toLowerCase()))
+            throw new BadRequestError(`Cannot name folder '${request.name}'`);
+
+        const f = await prismaClient.$transaction(async (tx) => {
             const file = await tx.file.create({
                 data: {
                     id: ulid(),
@@ -49,7 +63,7 @@ export const FileService = {
     },
 
     uploadFile: async (request: FileUploadRequest, objectId: string, userId: string) => {
-        await prisma.file.create({
+        await prismaClient.file.create({
             data: {
                 ...request,
                 id: objectId,
@@ -61,7 +75,7 @@ export const FileService = {
     },
 
     delete: async (id: string, userId: string) => {
-        const access = await prisma.fileAccess.findUnique({
+        const access = await prismaClient.fileAccess.findUnique({
             where: {
                 fileId_userId: {
                     fileId: id,
@@ -73,7 +87,7 @@ export const FileService = {
         if (!access || !access.permissions.includes('DELETE'))
             throw new BadRequestError('You are not permitted to delete this file.');
 
-        const f = await prisma.file.findUnique({
+        const f = await prismaClient.file.findUnique({
             where: { id },
             include: { children: true },
         });
@@ -86,7 +100,7 @@ export const FileService = {
 
             if (!f.isDeletable) throw new BadRequestError('Cannot delete this file / folder.');
 
-            await prisma.file.update({
+            await prismaClient.file.update({
                 where: {
                     id,
                 },
@@ -96,5 +110,83 @@ export const FileService = {
                 },
             });
         }
+    },
+
+    createProjectFolders: async (
+        tx: TransactionClient,
+        projectId: string,
+        userId: string
+    ): Promise<void> => {
+        const projectsRootFolder = await FileService.getRootFolder('projects', tx);
+
+        const subFolders = [
+            'invoice',
+            'rfq',
+            'purchase order',
+            'purchase order co',
+            'prime co',
+            'prime contract',
+        ];
+
+        const projectFolder = await tx.file.create({
+            data: {
+                id: ulid(),
+                name: projectId,
+                type: 'FOLDER',
+                createdBy: userId,
+                isDeletable: false,
+                parentId: projectsRootFolder.id,
+            },
+        });
+
+        for (const sf of subFolders) {
+            await tx.file.create({
+                data: {
+                    id: ulid(),
+                    name: sf,
+                    type: 'FOLDER',
+                    createdBy: userId,
+                    isDeletable: false,
+                    parentId: projectFolder.id,
+                },
+            });
+        }
+    },
+
+    getRootFolder: async (
+        folder: 'root' | 'projects' | 'employees' | 'gc',
+        tx?: TransactionClient
+    ): Promise<File> => {
+        const prisma = tx || prismaClient;
+
+        const rootFolder = await prisma.file.findFirst({
+            where: {
+                name: {
+                    equals: 'root',
+                    mode: 'insensitive',
+                },
+
+                parentId: null,
+            },
+        });
+
+        if (!rootFolder) throw new NotFoundError('Root folder not found.');
+
+        if (folder === 'root') return rootFolder;
+
+        const subFolder = await prisma.file.findFirst({
+            where: {
+                name: {
+                    equals: folder,
+                    mode: 'insensitive',
+                },
+
+                parentId: rootFolder.id,
+            },
+        });
+
+        if (!subFolder) throw new NotFoundError(`${folder} folder not found.`);
+
+        return subFolder;
     },
 };

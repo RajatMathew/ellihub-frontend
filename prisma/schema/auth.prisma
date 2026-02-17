@@ -1,4 +1,3 @@
-
 model User {
   id            String       @id
   name          String
@@ -11,12 +10,11 @@ model User {
   accounts      Account[]
   members       Member[]
   invitations   Invitation[]
-
-  projectsLeading Project[]
-  role       String?
-  banned     Boolean?  @default(false)
-  banReason  String?
-  banExpires DateTime?
+  role          String?
+  banned        Boolean?     @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  profile       String?
 
   @@unique([email])
   @@map("user")

@@ -2,6 +2,7 @@ import { auth } from '@lib/auth';
 import { contactRoutes } from '@modules/contact';
 import { costCodeRoutes } from '@modules/cost-code';
 import { fileRoutes } from '@modules/file';
+import { employeeRoutes } from '@modules/hr/employee';
 import { generalContractorRoutes } from '@modules/general-contractor';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
@@ -22,5 +23,6 @@ app.route('/general-contractors', generalContractorRoutes);
 app.route('/vendors', vendorRoutes);
 app.route('/users', userRoutes);
 app.route('/file', fileRoutes);
+app.route('/hr/employee', employeeRoutes);
 
 export default app;
