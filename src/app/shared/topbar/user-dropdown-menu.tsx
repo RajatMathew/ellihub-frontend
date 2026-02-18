@@ -17,6 +17,7 @@ import {
 import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { useSession } from '@app/api';
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
@@ -51,6 +52,8 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
     setTheme(checked ? 'dark' : 'light');
   };
 
+  const { data } = useSession();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
@@ -65,13 +68,13 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             />
             <div className="flex flex-col">
               <Link to="#" className="text-sm text-mono hover:text-primary font-semibold">
-                Peter
+                {data?.user?.name}
               </Link>
               <a
-                href={`mailto:peter@elle.com`}
+                href={`mailto:${data?.user?.email}`}
                 className="text-xs text-muted-foreground hover:text-primary"
               >
-                peter@elle.com
+                {data?.user?.email}
               </a>
             </div>
           </div>

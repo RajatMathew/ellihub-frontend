@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 
+import { useSession } from '@app/api/auth-client';
 import type { MenuConfig } from '@app/config/types';
 import { useLayout } from '@app/hooks/use-layout';
 import { UserDropdownMenu } from '@app/shared/topbar/user-dropdown-menu';
@@ -17,6 +18,7 @@ interface HeaderProps {
 
 export function Header({ breadcrumbs = true, toolbar, menuConfig }: HeaderProps) {
   const { isMobile } = useLayout();
+  const { data } = useSession();
 
   return (
     <>
@@ -29,7 +31,13 @@ export function Header({ breadcrumbs = true, toolbar, menuConfig }: HeaderProps)
             <UserDropdownMenu
               trigger={
                 <div className="size-10 rounded-full shrink-0 cursor-pointer bg-muted flex items-center justify-center shadow border-2">
-                  <div className="text-xs text-primary font-extrabold">PE</div>
+                  <div className="text-xs text-primary font-extrabold">
+                    {data?.user?.name
+                      ?.split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase() || '?'}
+                  </div>
                 </div>
               }
             />
