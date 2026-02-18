@@ -1,26 +1,18 @@
 import { useRef, useMemo, useState } from 'react';
 
 import {
-  type ColumnDef,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import {
   Briefcase,
   Building2,
   ExternalLink,
-  FileText,
+  FolderOpen,
   Mail,
   MoreHorizontal,
-  PanelRightClose,
   PanelRightOpen,
   Pencil,
   Phone,
   Plus,
-  Search,
+  Tag,
   Trash2,
-  UserMinus,
   X,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -35,31 +27,19 @@ import {
 } from '@app/components/toolbar/toolbar';
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTable,
-  CardTitle,
-  CardToolbar,
-} from '@app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
 import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
-import { DataGrid } from '@app/components/ui/data-grid';
-import { DataGridPagination } from '@app/components/ui/data-grid-pagination';
-import { DataGridTable } from '@app/components/ui/data-grid-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-import { Input, InputWrapper } from '@app/components/ui/input';
 import { Separator } from '@app/components/ui/separator';
 import { StatsCard } from '@app/components/ui/stats-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@app/components/ui/tabs';
 
-import { ContactInfoItem, InlineAddForm } from '../components';
+import { ComingSoonPlaceholder, ContactInfoItem, DetailSidebar, InlineAddForm } from '../components';
 import {
   useAddEmailMutation,
   useAddPhoneMutation,
@@ -72,48 +52,7 @@ import {
 } from '../hooks';
 import { contactEmailSchema, contactPhoneInputSchema } from '../schemas/contact.schema';
 
-/* ---- Types for sections without APIs ---- */
-
-interface ProjectAssignment {
-  id: string;
-  jobNumber: string;
-  projectName: string;
-  role: string;
-  status: string;
-  value: string;
-}
-
-interface ActivityEvent {
-  id: string;
-  personName: string;
-  action: string;
-  referenceCode: string;
-  date: string;
-  time: string;
-}
-
-/* ---- Seed data (sections without backend APIs) ---- */
-
-const SEED_PROJECTS: ProjectAssignment[] = [
-  { id: 'p1', jobNumber: '14120', projectName: 'P.S. 397B', role: 'Primary / Project Manager', status: 'Submittals', value: '$301,868' },
-  { id: 'p2', jobNumber: '14121', projectName: 'P.S. 158Q', role: 'Primary / Project Manager', status: 'Fabrication', value: '$290,964' },
-  { id: 'p3', jobNumber: '14122', projectName: 'P.S. 142Q', role: 'Primary / Project Manager', status: 'Punchlist', value: '$706,450' },
-  { id: 'p4', jobNumber: '14123', projectName: 'P.S. 121K', role: 'Primary / Project Manager', status: 'Closeout', value: '$531,644' },
-  { id: 'p5', jobNumber: '2025-01', projectName: 'BCC-2025-01', role: 'Primary / Project Manager', status: 'Installation', value: '$1,185,000' },
-  { id: 'p6', jobNumber: '14124', projectName: 'P.S. 220X', role: 'Primary / Project Manager', status: 'Submittals', value: '$412,000' },
-  { id: 'p7', jobNumber: '14125', projectName: 'P.S. 305M', role: 'Primary / Project Manager', status: 'Fabrication', value: '$198,750' },
-  { id: 'p8', jobNumber: '2025-02', projectName: 'BCC-2025-02', role: 'Primary / Project Manager', status: 'Installation', value: '$875,000' },
-];
-
-const SEED_ACTIVITY: ActivityEvent[] = [
-  { id: 'a1', personName: 'Michael Chen', action: 'Updated Project Documents', referenceCode: 'P.S. 397B', date: 'Oct 24, 2024', time: '10:30 AM' },
-  { id: 'a2', personName: 'Michael Chen', action: 'Responded to RFQ #2024-08', referenceCode: 'BCC-2024-08', date: 'Oct 22, 2024', time: '02:15 PM' },
-  { id: 'a3', personName: 'Michael Chen', action: 'Modified Banking Information', referenceCode: 'System Global', date: 'Oct 15, 2024', time: '09:45 AM' },
-  { id: 'a4', personName: 'Michael Chen', action: 'Approved Payment Application #4', referenceCode: 'JFK-T4-EATALY', date: 'Oct 10, 2024', time: '11:20 AM' },
-  { id: 'a5', personName: 'Michael Chen', action: 'Added New Team Member', referenceCode: 'Corporate', date: 'Oct 05, 2024', time: '04:50 PM' },
-];
-
-const SEED_STATS = { activeProjects: 8, totalDocs: 24 };
+/* ---- Constants ---- */
 
 const PHONE_LABEL_OPTIONS = [
   { value: 'Primary', label: 'Primary' },
@@ -128,14 +67,6 @@ const EMAIL_LABEL_OPTIONS = [
   { value: 'Personal', label: 'Personal' },
   { value: 'Other', label: 'Other' },
 ];
-
-/* ---- Helpers ---- */
-
-function getActivityIcon(index: number) {
-  const icons = [FileText, Briefcase, Building2, FileText, UserMinus];
-  const Icon = icons[index % icons.length];
-  return <Icon className="size-4 text-muted-foreground" />;
-}
 
 /* ---- Page ---- */
 
@@ -293,60 +224,6 @@ export function ContactDetailPage() {
     );
   };
 
-  /* ---- Projects table ---- */
-
-  const projectColumns = useMemo<ColumnDef<ProjectAssignment>[]>(
-    () => [
-      {
-        accessorKey: 'jobNumber',
-        header: 'Job #',
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{row.original.jobNumber}</span>
-        ),
-      },
-      {
-        accessorKey: 'projectName',
-        header: 'Project Name',
-        cell: ({ row }) => (
-          <span className="text-sm font-medium text-foreground">{row.original.projectName}</span>
-        ),
-      },
-      {
-        accessorKey: 'role',
-        header: 'Role',
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{row.original.role}</span>
-        ),
-      },
-      {
-        accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => (
-          <Badge variant="outline" size="sm">
-            {row.original.status.toUpperCase()}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'value',
-        header: 'Value',
-        cell: ({ row }) => (
-          <span className="text-sm font-semibold text-foreground">{row.original.value}</span>
-        ),
-        meta: { cellClassName: 'text-right' },
-      },
-    ],
-    [],
-  );
-
-  const projectsTable = useReactTable({
-    data: SEED_PROJECTS,
-    columns: projectColumns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 5 } },
-  });
-
   if (isLoading) {
     return (
       <div className="container-fluid py-7.5">
@@ -427,21 +304,35 @@ export function ContactDetailPage() {
       <div className="flex gap-6 pt-5">
         {/* Left column */}
         <div className="flex-1 min-w-0 space-y-5">
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-5">
+          {/* Stats — from real API data */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             <StatsCard
-              icon={<Briefcase className="size-5 text-success" />}
-              bgClass="bg-success/10"
-              label="Active Projects"
-              value={SEED_STATS.activeProjects}
-              description="Current assignments"
+              icon={<Briefcase className="size-5 text-primary" />}
+              bgClass="bg-primary/10"
+              label="Role"
+              value={roleName ?? '—'}
+              description="Professional role"
             />
             <StatsCard
-              icon={<FileText className="size-5 text-warning" />}
+              icon={<Building2 className="size-5 text-success" />}
+              bgClass="bg-success/10"
+              label="Companies"
+              value={resolvedVendorLinks.length}
+              description="Linked entities"
+            />
+            <StatsCard
+              icon={<Tag className="size-5 text-info" />}
+              bgClass="bg-info/10"
+              label="Tags"
+              value={contact.tags.length}
+              description="Classifications"
+            />
+            <StatsCard
+              icon={<FolderOpen className="size-5 text-warning" />}
               bgClass="bg-warning/10"
-              label="Total Docs"
-              value={SEED_STATS.totalDocs}
-              description="Processed items"
+              label="Projects"
+              value="—"
+              description="Coming soon"
             />
           </div>
 
@@ -678,150 +569,59 @@ export function ContactDetailPage() {
               </div>
             </TabsContent>
 
-            {/* ---- Projects tab ---- */}
+            {/* ---- Projects tab (no API endpoint yet) ---- */}
             <TabsContent value="projects">
               <Card>
-                <CardHeader className="bg-foreground text-background rounded-t-lg">
-                  <CardTitle className="text-sm font-semibold tracking-wide uppercase text-background">
-                    Project Assignments
-                  </CardTitle>
-                  <CardToolbar>
-                    <InputWrapper variant="sm" className="bg-foreground/80 border-foreground/60">
-                      <Search className="size-3.5 !text-background/60" />
-                      <Input
-                        placeholder="Search projects..."
-                        className="!text-background placeholder:!text-background/50"
-                      />
-                    </InputWrapper>
-                    <Button size="sm" variant="secondary" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="size-3.5" />
-                      Add Project
-                    </Button>
-                  </CardToolbar>
-                </CardHeader>
-                <DataGrid
-                  table={projectsTable}
-                  recordCount={SEED_PROJECTS.length}
-                  isLoading={false}
-                >
-                  <CardTable>
-                    <DataGridTable />
-                  </CardTable>
-                  <CardFooter>
-                    <DataGridPagination />
-                  </CardFooter>
-                </DataGrid>
+                <CardContent>
+                  <ComingSoonPlaceholder icon={FolderOpen} title="Project Assignments" />
+                </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
 
         {/* ---- Right sidebar ---- */}
-        {sidebarOpen && (
-        <div className="hidden w-80 shrink-0 lg:block">
-          <Tabs defaultValue="details">
-            <div className="flex items-center justify-between">
-              <TabsList variant="line">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="activity">
-                  Activity
-                  <Badge variant="secondary" size="xs" shape="circle" className="ml-1.5">
-                    {SEED_ACTIVITY.length}
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
-              <Button
-                variant="ghost"
-                size="sm"
-                mode="icon"
-                className="size-7"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <PanelRightClose className="size-3.5" />
-              </Button>
+        <DetailSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+          <div className="space-y-4 pt-2">
+            <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              Entity Association
             </div>
-
-            {/* Details tab */}
-            <TabsContent value="details">
-              <div className="space-y-4 pt-2">
-                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Entity Association
-                </div>
-                {resolvedVendorLinks.length > 0 ? (
-                  <div className="space-y-3">
-                    {resolvedVendorLinks.map((link) => (
-                      <Card key={link.id}>
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="text-sm font-bold text-foreground uppercase">
-                                {link.name}
-                              </div>
-                              {link.isPrimary && (
-                                <Badge variant="secondary" appearance="light" size="sm" className="mt-1">
-                                  Primary
-                                </Badge>
-                              )}
-                            </div>
-                            <Button variant="ghost" size="sm" mode="icon" className="size-6">
-                              <ExternalLink className="size-3.5" />
-                            </Button>
+            {resolvedVendorLinks.length > 0 ? (
+              <div className="space-y-3">
+                {resolvedVendorLinks.map((link) => (
+                  <Card key={link.id}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm font-bold text-foreground uppercase">
+                            {link.name}
                           </div>
-                          <Separator />
-                          <div className="flex items-center gap-2">
-                            <Building2 className="size-4 text-muted-foreground" />
-                            <span className="text-xs font-semibold text-foreground uppercase">
-                              {roleName ?? '—'}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground py-4">No entity linked</div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Activity tab */}
-            <TabsContent value="activity">
-              <div className="space-y-0 pt-2">
-                {SEED_ACTIVITY.map((event, i) => (
-                  <div key={event.id} className="flex gap-3">
-                    {/* Timeline */}
-                    <div className="flex flex-col items-center">
-                      <div className="flex size-8 items-center justify-center rounded-full border border-border bg-accent">
-                        {getActivityIcon(i)}
+                          {link.isPrimary && (
+                            <Badge variant="secondary" appearance="light" size="sm" className="mt-1">
+                              Primary
+                            </Badge>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="sm" mode="icon" className="size-6">
+                          <ExternalLink className="size-3.5" />
+                        </Button>
                       </div>
-                      {i < SEED_ACTIVITY.length - 1 && (
-                        <div className="w-px flex-1 bg-border" />
-                      )}
-                    </div>
-                    {/* Content */}
-                    <div className="pb-5 pt-1">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-xs font-semibold text-foreground">
-                          {event.personName.toUpperCase()}
-                        </span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {event.date}
+                      <Separator />
+                      <div className="flex items-center gap-2">
+                        <Building2 className="size-4 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-foreground uppercase">
+                          {roleName ?? '—'}
                         </span>
                       </div>
-                      <div className="text-xs font-semibold text-foreground uppercase">
-                        {event.action}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {event.referenceCode} &middot; {event.time}
-                      </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-        )}
+            ) : (
+              <div className="text-sm text-muted-foreground py-4">No entity linked</div>
+            )}
+          </div>
+        </DetailSidebar>
       </div>
 
       {/* ---- Confirmation dialogs ---- */}

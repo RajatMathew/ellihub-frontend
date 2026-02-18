@@ -19,6 +19,8 @@ const isDev = import.meta.env.DEV;
 // Main (top-level) layout & pages
 const Costcodes = lazy(() => import('@modules/catalog/routes/costcodes.route'));
 const DirectoryContacts = lazy(() => import('@modules/directory/routes/contacts.route'));
+const DirectoryGC = lazy(() => import('@modules/directory/routes/gc.route'));
+const DirectoryVendors = lazy(() => import('@modules/directory/routes/vendors.route'));
 
 // Project layout & pages
 const ProjectLayout = lazy(() => import('@modules/project'));
@@ -63,13 +65,13 @@ export const routeTree: RouteDef[] = [
         title: 'Contacts',
       },
       {
-        path: 'directory/general-contracts',
-        component: FutureFeature,
-        title: 'General Contracts',
+        path: 'directory/general-contractors/*',
+        component: DirectoryGC,
+        title: 'General Contractors',
       },
       {
-        path: 'directory/vendors',
-        component: FutureFeature,
+        path: 'directory/vendors/*',
+        component: DirectoryVendors,
         title: 'Vendors',
       },
       { path: 'hr', component: FutureFeature, title: 'HR' },

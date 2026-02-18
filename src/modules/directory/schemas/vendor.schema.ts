@@ -28,47 +28,101 @@ export const paymentTermsSchema = z.enum([
 ]);
 export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 
-// --- Vendor Contact ---
+// --- Contact link (detail endpoint shape) ---
 
-export const vendorContactSchema = z.object({
-  id: z.string(),
-  vendorId: z.string(),
-  fullName: z.string(),
-  role: z.string().nullable(),
-  email: z.string().nullable(),
-  phone: z.string().nullable(),
-  isPrimary: z.boolean(),
-  createdAt: z.string(),
-});
+const contactEmailSchema = z
+  .object({ email: z.string(), label: z.string() })
+  .nullable()
+  .optional();
 
-export type VendorContact = z.infer<typeof vendorContactSchema>;
+const contactPhoneSchema = z
+  .object({ phone: z.string(), label: z.string() })
+  .nullable()
+  .optional();
+
+export const vendorContactLinkContactSchema = z
+  .object({
+    id: z.string(),
+    fullName: z.string(),
+    professionalRoleId: z.string().nullable().optional(),
+    email: contactEmailSchema,
+    phoneNumber: contactPhoneSchema,
+    tags: z.array(z.string()).optional().default([]),
+    deletedAt: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export type VendorContactLinkContact = z.infer<typeof vendorContactLinkContactSchema>;
+
+export const vendorContactLinkSchema = z
+  .object({
+    id: z.string(),
+    contactId: z.string(),
+    vendorId: z.string(),
+    isPrimary: z.boolean(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    contact: vendorContactLinkContactSchema,
+  })
+  .passthrough();
+
+export type VendorContactLink = z.infer<typeof vendorContactLinkSchema>;
 
 // --- Main model (list view) ---
 
-export const vendorSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Vendor name is required'),
-  type: vendorTypeSchema,
-  categoryTags: z.array(z.string()),
-  phone: z.string().nullable(),
-  email: z.string().nullable(),
-  taxId: z.string().nullable(),
-  website: z.string().nullable(),
-  paymentTerms: paymentTermsSchema,
-  notes: z.string().nullable(),
-  status: vendorStatusSchema,
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  _count: z.object({ contacts: z.number() }),
-});
+export const vendorSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().min(1, 'Vendor name is required'),
+    type: vendorTypeSchema,
+    categoryTags: z.array(z.string()).optional().default([]),
+    phone: z.string().nullable().optional().default(null),
+    email: z.string().nullable().optional().default(null),
+    taxId: z.string().nullable().optional().default(null),
+    website: z.string().nullable().optional().default(null),
+    address: z.string().nullable().optional().default(null),
+    paymentTerms: paymentTermsSchema.optional().default('NET_30'),
+    notes: z.string().nullable().optional().default(null),
+    status: vendorStatusSchema,
+    deletedAt: z.string().nullable().optional().default(null),
+    createdAt: z.string().optional().default(''),
+    updatedAt: z.string().optional().default(''),
+    _count: z
+      .object({
+        contactLinks: z.number().default(0),
+      })
+      .passthrough()
+      .optional()
+      .default({ contactLinks: 0 }),
+  })
+  .passthrough();
 
 export type Vendor = z.infer<typeof vendorSchema>;
 
-// --- Detail (includes nested contacts) ---
+// --- Detail (includes contactLinks with nested contact) ---
 
-export const vendorDetailSchema = vendorSchema.omit({ _count: true }).extend({
-  contacts: z.array(vendorContactSchema),
-});
+export const vendorDetailSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    type: vendorTypeSchema,
+    categoryTags: z.array(z.string()).optional().default([]),
+    phone: z.string().nullable().optional().default(null),
+    email: z.string().nullable().optional().default(null),
+    taxId: z.string().nullable().optional().default(null),
+    website: z.string().nullable().optional().default(null),
+    address: z.string().nullable().optional().default(null),
+    paymentTerms: paymentTermsSchema.optional().default('NET_30'),
+    notes: z.string().nullable().optional().default(null),
+    status: vendorStatusSchema,
+    deletedAt: z.string().nullable().optional().default(null),
+    createdAt: z.string().optional().default(''),
+    updatedAt: z.string().optional().default(''),
+    contactLinks: z.array(vendorContactLinkSchema).optional().default([]),
+  })
+  .passthrough();
 
 export type VendorDetail = z.infer<typeof vendorDetailSchema>;
 

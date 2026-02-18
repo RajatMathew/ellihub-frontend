@@ -110,3 +110,22 @@ export function formatDateTime(input: Date | string | number): string {
     hour12: true,
   });
 }
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+export function parsePageParam(v: string | null): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+export function parseSizeParam(v: string | null, defaultSize = 10): number {
+  const n = Number(v);
+  return [5, 10, 25, 50, 100].includes(n) ? n : defaultSize;
+}

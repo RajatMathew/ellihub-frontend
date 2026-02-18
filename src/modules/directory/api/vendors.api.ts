@@ -1,5 +1,6 @@
 import api from '@app/api';
 import {
+  vendorContactLinkSchema,
   vendorDetailSchema,
   vendorPaginatedResponseSchema,
   type CreateVendorContactInput,
@@ -7,7 +8,7 @@ import {
   type ListVendorsParams,
   type UpdateVendorContactInput,
   type UpdateVendorInput,
-  type VendorContact,
+  type VendorContactLink,
   type VendorDetail,
   type VendorPaginatedResponse,
 } from '@modules/directory/schemas/vendor.schema';
@@ -16,7 +17,7 @@ const BASE = '/vendors';
 
 export const vendorsApi = {
   async list(params?: ListVendorsParams): Promise<VendorPaginatedResponse> {
-    const query: Record<string, unknown> = {};
+    const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
     if (params?.limit != null) query.limit = params.limit;
     if (params?.sortBy) query.sortBy = params.sortBy;
@@ -27,7 +28,7 @@ export const vendorsApi = {
     if (params?.categoryTag) query.categoryTag = params.categoryTag;
 
     const res = await api.get(BASE, { params: query });
-    return vendorPaginatedResponseSchema.parse({
+    const raw = {
       data: res.data?.data ?? res.data ?? [],
       pagination: res.data?.pagination ?? {
         currentPage: params?.page ?? 1,
@@ -37,40 +38,66 @@ export const vendorsApi = {
         totalItems: Array.isArray(res.data?.data) ? res.data.data.length : 0,
         itemsPerPage: params?.limit ?? 25,
       },
-    });
+    };
+    const result = vendorPaginatedResponseSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[vendorsApi.list] Zod parse error:', result.error.issues);
+      console.error('[vendorsApi.list] Raw response:', JSON.stringify(raw, null, 2));
+      throw result.error;
+    }
+    return result.data;
   },
 
   async getById(id: string): Promise<VendorDetail> {
     const res = await api.get(`${BASE}/${id}`);
-    return vendorDetailSchema.parse(res.data?.data ?? res.data);
+    const raw = res.data?.data ?? res.data;
+    const result = vendorDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[vendorsApi.getById] Zod parse error:', result.error.issues);
+      console.error('[vendorsApi.getById] Raw response:', JSON.stringify(raw, null, 2));
+      throw result.error;
+    }
+    return result.data;
   },
 
   async create(data: CreateVendorInput): Promise<VendorDetail> {
     const res = await api.post(BASE, data);
-    return vendorDetailSchema.parse(res.data?.data ?? res.data);
+    const raw = res.data?.data ?? res.data;
+    const result = vendorDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[vendorsApi.create] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
   },
 
   async update(id: string, data: UpdateVendorInput): Promise<VendorDetail> {
     const res = await api.put(`${BASE}/${id}`, data);
-    return vendorDetailSchema.parse(res.data?.data ?? res.data);
+    const raw = res.data?.data ?? res.data;
+    const result = vendorDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[vendorsApi.update] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
   },
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
   },
 
-  async addContact(id: string, data: CreateVendorContactInput): Promise<VendorContact> {
+  async addContact(id: string, data: CreateVendorContactInput): Promise<VendorContactLink> {
     const res = await api.post(`${BASE}/${id}/contacts`, data);
-    return res.data?.data ?? res.data;
+    return vendorContactLinkSchema.parse(res.data?.data ?? res.data);
   },
 
   async updateContact(
     id: string,
     contactId: string,
     data: UpdateVendorContactInput,
-  ): Promise<VendorContact> {
+  ): Promise<VendorContactLink> {
     const res = await api.put(`${BASE}/${id}/contacts/${contactId}`, data);
-    return res.data?.data ?? res.data;
+    return vendorContactLinkSchema.parse(res.data?.data ?? res.data);
   },
 
   async removeContact(id: string, contactId: string): Promise<void> {

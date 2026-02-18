@@ -19,7 +19,7 @@ const BASE = '/contacts';
 
 export const contactsApi = {
   async list(params?: ListContactsParams): Promise<ContactPaginatedResponse> {
-    const query: Record<string, unknown> = {};
+    const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
     if (params?.size != null) query.size = params.size;
     if (params?.sortBy) query.sortBy = params.sortBy;

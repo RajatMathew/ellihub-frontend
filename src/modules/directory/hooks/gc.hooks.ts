@@ -4,10 +4,9 @@ import { toast } from 'sonner';
 import { gcApi } from '@modules/directory/api/gc.api';
 import { gcKeys } from '@modules/directory/constants/gc.keys';
 import type {
-  CreateGCContactInput,
+  AddGCContactLinkInput,
   CreateGCInput,
   ListGCsParams,
-  UpdateGCContactInput,
   UpdateGCInput,
 } from '@modules/directory/schemas/gc.schema';
 
@@ -30,6 +29,12 @@ export const useGCStatsQuery = () =>
   useQuery({
     queryKey: gcKeys.stats(),
     queryFn: () => gcApi.getStats(),
+  });
+
+export const useGCTypesQuery = () =>
+  useQuery({
+    queryKey: gcKeys.types(),
+    queryFn: () => gcApi.getTypes(),
   });
 
 /* ---- mutations ---- */
@@ -69,50 +74,30 @@ export const useDeleteGCMutation = () => {
   });
 };
 
-/* ---- GC contact mutations ---- */
+/* ---- contact link mutations ---- */
 
-export const useAddGCContactMutation = () => {
+export const useAddGCContactLinkMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateGCContactInput }) =>
-      gcApi.addContact(id, data),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({ gcId, data }: { gcId: string; data: AddGCContactLinkInput }) =>
+      gcApi.addContactLink(gcId, data),
+    onSuccess: (_, { gcId }) => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
-      qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: () => toast.error('Failed to add GC contact.'),
+    onError: () => toast.error('Failed to add contact link.'),
   });
 };
 
-export const useUpdateGCContactMutation = () => {
+export const useRemoveGCContactLinkMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      contactId,
-      data,
-    }: {
-      id: string;
-      contactId: string;
-      data: UpdateGCContactInput;
-    }) => gcApi.updateContact(id, contactId, data),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({ gcId, linkId }: { gcId: string; linkId: string }) =>
+      gcApi.removeContactLink(gcId, linkId),
+    onSuccess: (_, { gcId }) => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
-      qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: () => toast.error('Failed to update GC contact.'),
-  });
-};
-
-export const useDeleteGCContactMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, contactId }: { id: string; contactId: string }) =>
-      gcApi.removeContact(id, contactId),
-    onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: gcKeys.all });
-      qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
-    },
-    onError: () => toast.error('Failed to remove GC contact.'),
+    onError: () => toast.error('Failed to remove contact link.'),
   });
 };

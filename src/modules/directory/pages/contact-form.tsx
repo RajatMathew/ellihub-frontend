@@ -27,8 +27,8 @@ import {
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
-import { cn } from '@app/lib/utils';
 
+import { FormSectionNav } from '../components';
 import {
   useAddVendorLinkMutation,
   useContactDetailQuery,
@@ -148,7 +148,7 @@ export function ContactFormPage() {
         const originalLinks = contact?.vendorLinks ?? [];
         const { toRemove, toAdd, toUpdate } = computeVendorLinkDiff(originalLinks, vendorLinks);
 
-        const linkOps: Promise<unknown>[] = [
+        const linkOps: Promise<Contact>[] = [
           ...toRemove.map((link) =>
             removeVendorLinkMutation.mutateAsync({ contactId: id, linkId: link.id }),
           ),
@@ -245,31 +245,11 @@ export function ContactFormPage() {
       {/* Main layout: sidebar nav + content */}
       <div className="flex gap-8 pt-8">
         {/* Left sidebar nav */}
-        <nav className="hidden w-44 shrink-0 lg:block">
-          <ul className="space-y-1">
-            {SECTIONS.map((section) => (
-              <li key={section.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveSection(section.id);
-                    document
-                      .getElementById(section.id)
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className={cn(
-                    'w-full text-left text-sm px-4 py-2 rounded-md border-l-2 transition-colors',
-                    activeSection === section.id
-                      ? 'border-primary text-primary font-semibold bg-transparent'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {section.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <FormSectionNav
+          sections={SECTIONS}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
 
         {/* Right content */}
         <div className="flex-1 min-w-0 space-y-6">

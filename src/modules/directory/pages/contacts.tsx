@@ -62,7 +62,7 @@ import {
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
 import { Skeleton } from '@app/components/ui/skeleton';
-import { getInitials } from '@app/lib/helpers';
+import { getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import {
   useContactsQuery,
@@ -92,16 +92,6 @@ const FALLBACK_KPIS: DirectoryKpis = {
 
 function isSortByField(v: string | null): v is SortByField {
   return SORT_BY_OPTIONS.includes(v as SortByField);
-}
-
-function parsePageParam(v: string | null): number {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
-}
-
-function parseSizeParam(v: string | null): number {
-  const n = Number(v);
-  return [5, 10, 25, 50, 100].includes(n) ? n : DEFAULT_PAGE_SIZE;
 }
 
 /* ---- Page ---- */
