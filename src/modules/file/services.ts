@@ -2,6 +2,7 @@ import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
 import { checkDeletedAt } from '@modules/common/utils';
+import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
@@ -217,6 +218,29 @@ export const FileService = {
             where: { id: request.id },
             data: {
                 name: request.name,
+            },
+        });
+    },
+
+    deleteFolder: async (id: string, userId: string): Promise<void> => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id, type: 'FOLDER' },
+        });
+
+        if (!folder) throw new NotFoundError('No folder found with id: ' + id);
+
+        checkDeletedAt(folder);
+
+        if (!folder.isDeletable) throw new BadRequestError('Cannot delete this folder.');
+
+        if (!UserService.getUser(userId))
+            throw new NotFoundError('No user found with id: ' + userId);
+
+        await prismaClient.file.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+                deletedBy: userId,
             },
         });
     },

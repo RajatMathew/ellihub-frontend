@@ -57,4 +57,11 @@ app.get('/folder/:id', async (c) => {
     return success(c, folder);
 });
 
+app.delete('/folder/:id', async (c) => {
+    const id = c.req.param('id');
+    const folder = await FileService.deleteFolder(id, c.get('user')!.id);
+
+    return success(c, folder);
+});
+
 export default app;
