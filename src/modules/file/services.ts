@@ -1,10 +1,11 @@
 import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
+import { checkDeletedAt } from '@modules/common/utils';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { FileUploadRequest, FolderCreateRequest } from './models';
+import { FileUploadRequest, FolderCreateRequest, FolderRenameRequest } from './models';
 
 export const FileService = {
     protectedFolderNames: [
@@ -190,10 +191,33 @@ export const FileService = {
         return subFolder;
     },
 
-    getFolderDetails: async (id: string) => {
+    getFolderDetails: async (id: string): Promise<File> => {
         const folder = await prismaClient.file.findUnique({
-            where: { id },
+            where: { id, type: 'FOLDER' },
             include: { children: true },
+        });
+
+        if (!folder) throw new NotFoundError('No folder found with id: ' + id);
+
+        return folder;
+    },
+
+    renameFolder: async (request: FolderRenameRequest): Promise<File> => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id: request.id, type: 'FOLDER' },
+        });
+
+        if (!folder) throw new NotFoundError('No folder found with id: ' + request.id);
+
+        checkDeletedAt(folder);
+
+        if (!folder.isDeletable) throw new BadRequestError('Cannot rename this folder.');
+
+        return await prismaClient.file.update({
+            where: { id: request.id },
+            data: {
+                name: request.name,
+            },
         });
     },
 };

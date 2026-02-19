@@ -2,7 +2,7 @@ import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { s3Upload } from 'src/middleware/s3-upload';
 
-import { FolderCreateSchema } from './models';
+import { FolderCreateSchema, FolderRenameSchema } from './models';
 import { s3Service } from './s3';
 import { FileService } from './services';
 
@@ -38,5 +38,23 @@ app.post(
         return success(c, folder, 201);
     }
 );
+
+app.put(
+    '/folder/rename',
+    // requirePermission({ file: ['create'] }),
+    zValidator('json', FolderRenameSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const folder = await FileService.renameFolder(data);
+        return success(c, folder, 201);
+    }
+);
+
+app.get('/folder/:id', async (c) => {
+    const id = c.req.param('id');
+    const folder = await FileService.getFolderDetails(id);
+
+    return success(c, folder);
+});
 
 export default app;
