@@ -189,4 +189,11 @@ export const FileService = {
 
         return subFolder;
     },
+
+    getFolderDetails: async (id: string) => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id },
+            include: { children: true },
+        });
+    },
 };
