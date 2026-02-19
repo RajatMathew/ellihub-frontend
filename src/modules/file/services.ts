@@ -6,7 +6,7 @@ import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { FileUploadRequest, FolderCreateRequest, FolderRenameRequest } from './models';
+import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';
 
 export const FileService = {
     protectedFolderNames: [
@@ -203,16 +203,16 @@ export const FileService = {
         return folder;
     },
 
-    renameFolder: async (request: FolderRenameRequest): Promise<File> => {
-        const folder = await prismaClient.file.findUnique({
-            where: { id: request.id, type: 'FOLDER' },
+    rename: async (request: FileFolderRenameRequest): Promise<File> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id: request.id },
         });
 
-        if (!folder) throw new NotFoundError('No folder found with id: ' + request.id);
+        if (!file) throw new NotFoundError('No file or folder found with id: ' + request.id);
 
-        checkDeletedAt(folder);
+        checkDeletedAt(file);
 
-        if (!folder.isDeletable) throw new BadRequestError('Cannot rename this folder.');
+        if (!file.isDeletable) throw new BadRequestError('Cannot rename this file / folder.');
 
         return await prismaClient.file.update({
             where: { id: request.id },
@@ -225,6 +225,7 @@ export const FileService = {
     deleteFolder: async (id: string, userId: string): Promise<void> => {
         const folder = await prismaClient.file.findUnique({
             where: { id, type: 'FOLDER' },
+            include: { children: true },
         });
 
         if (!folder) throw new NotFoundError('No folder found with id: ' + id);
@@ -232,6 +233,32 @@ export const FileService = {
         checkDeletedAt(folder);
 
         if (!folder.isDeletable) throw new BadRequestError('Cannot delete this folder.');
+
+        if (folder.children.length > 0)
+            throw new BadRequestError('Cannot delete folder with children.');
+
+        if (!UserService.getUser(userId))
+            throw new NotFoundError('No user found with id: ' + userId);
+
+        await prismaClient.file.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+                deletedBy: userId,
+            },
+        });
+    },
+
+    deleteFile: async (id: string, userId: string): Promise<void> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+
+        if (!file) throw new NotFoundError('No file found with id: ' + id);
+
+        checkDeletedAt(file);
+
+        if (!file.isDeletable) throw new BadRequestError('Cannot delete this file.');
 
         if (!UserService.getUser(userId))
             throw new NotFoundError('No user found with id: ' + userId);

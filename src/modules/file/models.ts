@@ -7,12 +7,12 @@ export const FolderCreateSchema = z.object({
 
 export type FolderCreateRequest = z.infer<typeof FolderCreateSchema>;
 
-export const FolderRenameSchema = z.object({
+export const FileFolderRenameSchema = z.object({
     id: z.ulid(),
     name: z.string().min(1),
 });
 
-export type FolderRenameRequest = z.infer<typeof FolderRenameSchema>;
+export type FileFolderRenameRequest = z.infer<typeof FileFolderRenameSchema>;
 
 export const FileUploadSchema = z.object({
     name: z.string().min(1),
