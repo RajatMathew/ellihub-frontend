@@ -373,7 +373,7 @@ export function ContactFormPage() {
                             type="tel"
                             value={phoneValue}
                             onChange={(e) => {
-                              const val = e.target.value;
+                              const val = e.target.value.replace(/[^+\d\s\-().]/g, '');
                               field.onChange(
                                 val ? { phone: val, label: 'Office' } : undefined,
                               );

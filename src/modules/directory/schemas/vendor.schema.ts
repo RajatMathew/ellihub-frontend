@@ -201,8 +201,18 @@ export const vendorFormSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
   type: z.string().min(1, 'Vendor type is required'),
   status: z.string(),
-  taxId: z.string(),
-  website: z.string(),
+  taxId: z
+    .string()
+    .refine(
+      (val) => !val || /^\d{2}-?\d{7}$/.test(val),
+      'Enter a valid EIN (e.g. 12-3456789)',
+    ),
+  website: z
+    .string()
+    .refine(
+      (val) => !val || /^https?:\/\/.+/.test(val),
+      'Enter a valid URL starting with http:// or https://',
+    ),
   paymentTerms: z.string(),
 });
 

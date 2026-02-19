@@ -23,6 +23,21 @@ export const contactPhoneInputSchema = z.object({
   label: z.string(),
 });
 
+/** Form-level phone validation — errors surface on the object (for Controller fieldState). */
+export const contactPhoneFormSchema = z
+  .object({
+    phone: z.string(),
+    label: z.string(),
+  })
+  .refine(
+    (data) => /^[+\d\s\-().]+$/.test(data.phone),
+    'Phone number contains invalid characters',
+  )
+  .refine(
+    (data) => data.phone.replace(/\D/g, '').length >= 7,
+    'Enter a valid phone number',
+  );
+
 export type ContactPhone = z.infer<typeof contactPhoneSchema>;
 
 // --- Relation types ---
@@ -103,7 +118,7 @@ export const createContactInputSchema = z
     fullName: z.string().min(1, 'Name is required'),
     professionalRoleId: z.string().optional(),
     email: contactEmailSchema.nullable().optional(),
-    phoneNumber: contactPhoneSchema.nullable().optional(),
+    phoneNumber: contactPhoneFormSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
     vendorLinks: z
       .array(z.object({ vendorId: z.string(), isPrimary: z.boolean().optional() }))
@@ -137,13 +152,32 @@ export const quickCreateContactSchema = z
   .object({
     fullName: z.string().min(1, 'Name is required'),
     professionalRoleId: z.string().optional(),
-    email: z.string().optional(),
-    phone: z.string().optional(),
+    email: z
+      .string()
+      .refine(
+        (val) => !val || z.string().email().safeParse(val).success,
+        'Invalid email address',
+      )
+      .optional(),
+    phone: z
+      .string()
+      .refine(
+        (val) => !val || /^[+\d\s\-().]+$/.test(val),
+        'Phone number contains invalid characters',
+      )
+      .refine(
+        (val) => !val || val.replace(/\D/g, '').length >= 7,
+        'Enter a valid phone number',
+      )
+      .optional(),
   })
-  .refine((data) => data.email || data.phone, {
-    message: 'At least one email or phone number is required',
-    path: ['email'],
-  });
+  .refine(
+    (data) => (data.email && data.email.trim()) || (data.phone && data.phone.trim()),
+    {
+      message: 'At least one email or phone number is required',
+      path: ['email'],
+    },
+  );
 
 export type QuickCreateContactValues = z.infer<typeof quickCreateContactSchema>;
 

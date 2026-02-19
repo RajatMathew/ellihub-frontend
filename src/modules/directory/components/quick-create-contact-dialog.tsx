@@ -163,6 +163,9 @@ export function QuickCreateContactDialog({
                 </FieldLabel>
                 <Input
                   {...field}
+                  onChange={(e) =>
+                    field.onChange(e.target.value.replace(/[^+\d\s\-().]/g, ''))
+                  }
                   type="tel"
                   placeholder="(555) 000-0000"
                   autoComplete="off"

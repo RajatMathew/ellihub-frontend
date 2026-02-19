@@ -391,8 +391,8 @@ export function VendorFormPage() {
                 <Controller
                   name="taxId"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Tax ID / EIN{' '}
                         <span className="text-muted-foreground font-normal">(Optional)</span>
@@ -400,10 +400,16 @@ export function VendorFormPage() {
                       <InputWrapper>
                         <Input
                           {...field}
-                          placeholder="XX-XXXXXXX"
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/[^\d-]/g, ''))
+                          }
+                          placeholder="12-3456789"
+                          aria-invalid={fieldState.invalid}
                           autoComplete="off"
+                          maxLength={10}
                         />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
@@ -414,15 +420,21 @@ export function VendorFormPage() {
                 <Controller
                   name="website"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Website
                       </FieldLabel>
                       <InputWrapper>
                         <Globe className="size-4" />
-                        <Input {...field} placeholder="https://..." autoComplete="off" />
+                        <Input
+                          {...field}
+                          placeholder="https://..."
+                          aria-invalid={fieldState.invalid}
+                          autoComplete="off"
+                        />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

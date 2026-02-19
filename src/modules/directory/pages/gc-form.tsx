@@ -372,7 +372,7 @@ export function GCFormPage() {
                       </FieldLabel>
                       <InputWrapper>
                         <Globe className="size-4" />
-                        <Input {...field} placeholder="https://..." autoComplete="off" />
+                        <Input {...field} placeholder="https://..." aria-invalid={fieldState.invalid} autoComplete="off" />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -420,6 +420,7 @@ export function GCFormPage() {
                           {...field}
                           type="email"
                           placeholder="info@company.com"
+                          aria-invalid={fieldState.invalid}
                           autoComplete="off"
                         />
                       </InputWrapper>
@@ -431,8 +432,8 @@ export function GCFormPage() {
                 <Controller
                   name="phone"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Company Phone
                       </FieldLabel>
@@ -440,11 +441,16 @@ export function GCFormPage() {
                         <Phone className="size-4" />
                         <Input
                           {...field}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/[^+\d\s\-().]/g, ''))
+                          }
                           type="tel"
                           placeholder="(555) 000-0000"
+                          aria-invalid={fieldState.invalid}
                           autoComplete="off"
                         />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

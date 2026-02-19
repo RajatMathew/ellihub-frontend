@@ -208,10 +208,29 @@ export type AddGCContactLinkInput = z.infer<typeof addGCContactLinkInputSchema>;
 export const gcFormSchema = z.object({
   name: z.string().min(1, 'GC name is required'),
   gcTypeId: z.string().min(1, 'GC type is required'),
-  website: z.string(),
+  website: z
+    .string()
+    .refine(
+      (val) => !val || /^https?:\/\/.+/.test(val),
+      'Enter a valid URL starting with http:// or https://',
+    ),
   status: z.string(),
-  email: z.string(),
-  phone: z.string(),
+  email: z
+    .string()
+    .refine(
+      (val) => !val || z.string().email().safeParse(val).success,
+      'Invalid email address',
+    ),
+  phone: z
+    .string()
+    .refine(
+      (val) => !val || /^[+\d\s\-().]+$/.test(val),
+      'Phone number contains invalid characters',
+    )
+    .refine(
+      (val) => !val || val.replace(/\D/g, '').length >= 7,
+      'Enter a valid phone number',
+    ),
   address: z.string(),
   paymentTerms: z.string(),
   retainagePercent: z.number().min(0).max(100),
