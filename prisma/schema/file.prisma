@@ -34,12 +34,12 @@ model FileAccess {
   fileId String
   userId String
 
-  permissions FilePermssion[]
+  permissions FilePermission[]
 
   @@id([fileId, userId])
 }
 
-enum FilePermssion {
+enum FilePermission {
   DELETE
   READ
   DOWNLOAD
