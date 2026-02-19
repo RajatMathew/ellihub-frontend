@@ -203,6 +203,22 @@ export const addGCContactLinkInputSchema = z.object({
 
 export type AddGCContactLinkInput = z.infer<typeof addGCContactLinkInputSchema>;
 
+// --- Form schema (used by gc-form page) ---
+
+export const gcFormSchema = z.object({
+  name: z.string().min(1, 'GC name is required'),
+  gcTypeId: z.string().min(1, 'GC type is required'),
+  website: z.string(),
+  status: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  address: z.string(),
+  paymentTerms: z.string(),
+  retainagePercent: z.number().min(0).max(100),
+});
+
+export type GCFormValues = z.infer<typeof gcFormSchema>;
+
 // --- Params ---
 
 export const listGCsParamsSchema = z.object({

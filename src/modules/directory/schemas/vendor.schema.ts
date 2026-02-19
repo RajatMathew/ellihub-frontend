@@ -195,6 +195,29 @@ export const updateVendorContactInputSchema = z.object({
 
 export type UpdateVendorContactInput = z.infer<typeof updateVendorContactInputSchema>;
 
+// --- Form schema (used by vendor-form page) ---
+
+export const vendorFormSchema = z.object({
+  name: z.string().min(1, 'Vendor name is required'),
+  type: z.string().min(1, 'Vendor type is required'),
+  status: z.string(),
+  taxId: z.string(),
+  website: z.string(),
+  paymentTerms: z.string(),
+});
+
+export type VendorFormValues = z.infer<typeof vendorFormSchema>;
+
+// --- Quick-create schema (used by QuickCreateVendorDialog) ---
+
+export const quickCreateVendorSchema = z.object({
+  name: z.string().min(1, 'Vendor name is required'),
+  type: vendorTypeSchema,
+  status: vendorStatusSchema,
+});
+
+export type QuickCreateVendorValues = z.infer<typeof quickCreateVendorSchema>;
+
 // --- Params ---
 
 export const listVendorsParamsSchema = z.object({

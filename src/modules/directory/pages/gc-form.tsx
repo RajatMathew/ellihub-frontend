@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Check, FileText, Globe, Mail, Phone, Plus, Trash2 } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Building2, Check, CircleUserRound, FileText, Globe, Mail, Phone, Plus, X } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 import {
   Toolbar,
@@ -14,11 +13,11 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
+import { SearchableSelect } from '@app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -27,56 +26,40 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
+import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav } from '../components';
+import { FormSectionNav, QuickCreateContactDialog } from '../components';
+import { GC_FORM_SECTIONS, GC_STATUS_OPTIONS } from '../constants/gc.constants';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
 import {
+  useAddGCContactLinkMutation,
+  useContactsQuery,
   useCreateGCMutation,
   useGCDetailQuery,
   useGCTypesQuery,
-  useProfessionalRolesQuery,
   useRemoveGCContactLinkMutation,
   useUpdateGCMutation,
 } from '../hooks';
-import type { GCContactLink, GCStatus, PaymentTerms } from '../schemas/gc.schema';
+import {
+  gcFormSchema,
+  type GCContactLink,
+  type GCFormValues,
+  type GCStatus,
+  type PaymentTerms,
+} from '../schemas/gc.schema';
 
-/* ---- Form schema ---- */
+/* ---- Helpers ---- */
 
-const gcFormSchema = z.object({
-  name: z.string().min(1, 'GC name is required'),
-  gcTypeId: z.string().min(1, 'GC type is required'),
-  website: z.string(),
-  status: z.string(),
-  email: z.string(),
-  phone: z.string(),
-  address: z.string(),
-  paymentTerms: z.string(),
-  retainagePercent: z.number().min(0).max(100),
-  contacts: z.array(
-    z.object({
-      fullName: z.string().min(1, 'Name is required'),
-      professionalRoleId: z.string(),
-      email: z.string(),
-      phone: z.string(),
-    })
-  ),
-});
-
-type GCFormValues = z.infer<typeof gcFormSchema>;
-
-/* ---- Sidebar sections ---- */
-
-const SECTIONS = [
-  { id: 'info', label: 'Info' },
-  { id: 'contacts', label: 'Contacts' },
-  { id: 'compliance-docs', label: 'Compliance Docs' },
-] as const;
-
-const GC_STATUS_OPTIONS: { value: GCStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'PROSPECTING', label: 'Prospect' },
-  { value: 'INACTIVE', label: 'Inactive' },
-];
+function getContactName(
+  contactId: string,
+  originalLinks: GCContactLink[],
+  contactsData: { id: string; fullName: string }[],
+): string {
+  const fromLink = originalLinks.find((l) => l.contactId === contactId);
+  if (fromLink) return fromLink.contact.fullName;
+  const fromQuery = contactsData.find((c) => c.id === contactId);
+  return fromQuery?.fullName ?? contactId;
+}
 
 /* ---- Page ---- */
 
@@ -88,12 +71,19 @@ export function GCFormPage() {
   // Queries
   const { data: gcDetail, isLoading: isLoadingGC } = useGCDetailQuery(id ?? '');
   const { data: gcTypes = [] } = useGCTypesQuery();
-  const { data: roles = [] } = useProfessionalRolesQuery();
+  const { data: contactsData } = useContactsQuery({ size: 1000 });
 
   // Mutations
   const createMutation = useCreateGCMutation();
   const updateMutation = useUpdateGCMutation();
+  const addContactLinkMutation = useAddGCContactLinkMutation();
   const removeContactLinkMutation = useRemoveGCContactLinkMutation();
+
+  // Contact options for SearchableSelect
+  const contactOptions = (contactsData?.data ?? []).map((c) => ({
+    value: c.id,
+    label: c.fullName,
+  }));
 
   // Form setup
   const { control, handleSubmit, reset } = useForm<GCFormValues>({
@@ -108,21 +98,16 @@ export function GCFormPage() {
       address: '',
       paymentTerms: 'NET_30',
       retainagePercent: 10,
-      contacts: [],
     },
   });
 
-  const {
-    fields: contactFields,
-    append: appendContact,
-    remove: removeContact,
-  } = useFieldArray({
-    control,
-    name: 'contacts',
-  });
-
-  // Existing contact links state (edit mode)
-  const [existingLinks, setExistingLinks] = useState<GCContactLink[]>([]);
+  // Contact links state — unified source of truth
+  const [contactLinks, setContactLinks] = useState<
+    { contactId: string; isPrimary: boolean }[]
+  >([]);
+  // Server snapshot for diffing on save (edit mode)
+  const [originalLinks, setOriginalLinks] = useState<GCContactLink[]>([]);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   // Reset form when GC data loads in edit mode
   useEffect(() => {
@@ -137,9 +122,14 @@ export function GCFormPage() {
         address: gcDetail.address ?? '',
         paymentTerms: gcDetail.paymentTerms,
         retainagePercent: gcDetail.retainagePercent,
-        contacts: [],
       });
-      setExistingLinks((gcDetail.contactLinks ?? []).filter((l) => !l.contact.deletedAt));
+      const activeLinks = (gcDetail.contactLinks ?? []).filter(
+        (l) => !l.contact.deletedAt,
+      );
+      setOriginalLinks(activeLinks);
+      setContactLinks(
+        activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })),
+      );
     }
   }, [isEdit, gcDetail, reset]);
 
@@ -147,26 +137,11 @@ export function GCFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  const handleRemoveExistingLink = useCallback(
-    (linkId: string) => {
-      if (!id) return;
-      removeContactLinkMutation.mutate(
-        { gcId: id, linkId },
-        {
-          onSuccess: () => {
-            setExistingLinks((prev) => prev.filter((l) => l.id !== linkId));
-            toast.success('Contact removed.');
-          },
-        }
-      );
-    },
-    [id, removeContactLinkMutation]
-  );
+  const handleContactCreated = (contact: { id: string; fullName: string }) => {
+    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+  };
 
   const onSubmit = async (formData: GCFormValues) => {
-    // Clean up empty contacts
-    const validContacts = formData.contacts.filter((c) => c.fullName.trim());
-
     const payload = {
       name: formData.name,
       gcTypeId: formData.gcTypeId,
@@ -182,7 +157,45 @@ export function GCFormPage() {
     if (isEdit && id) {
       setIsSaving(true);
       try {
+        // 1. Update GC fields
         await updateMutation.mutateAsync({ id, data: payload });
+
+        // 2. Compute contact link diff
+        const originalByContact = new Map(
+          originalLinks.map((l) => [l.contactId, l]),
+        );
+        const currentByContact = new Map(
+          contactLinks.map((l) => [l.contactId, l]),
+        );
+
+        const toRemove = originalLinks.filter(
+          (l) => !currentByContact.has(l.contactId),
+        );
+        const toAdd = contactLinks.filter(
+          (l) => !originalByContact.has(l.contactId),
+        );
+
+        const linkOps: Promise<unknown>[] = [
+          ...toRemove.map((link) =>
+            removeContactLinkMutation.mutateAsync({ gcId: id, linkId: link.id }),
+          ),
+          ...toAdd.map((link) =>
+            addContactLinkMutation.mutateAsync({
+              gcId: id,
+              data: { contactId: link.contactId, isPrimary: link.isPrimary },
+            }),
+          ),
+        ];
+
+        if (linkOps.length > 0) {
+          const results = await Promise.allSettled(linkOps);
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            toast.error(`${failures.length} contact link operation(s) failed.`);
+            return;
+          }
+        }
+
         toast.success('General contractor updated.');
         navigate('..', { relative: 'path' });
       } catch {
@@ -193,16 +206,22 @@ export function GCFormPage() {
     } else {
       setIsSaving(true);
       try {
+        // 1. Create GC
         const created = await createMutation.mutateAsync(payload);
 
-        // Add contact links for new contacts (create contact first, then link)
-        // Since the API auto-creates contacts when using /contacts endpoint,
-        // we'll skip inline contact creation for now — contacts should be
-        // linked via the existing contacts directory after GC is created.
-        if (validContacts.length > 0) {
-          console.info(
-            '[GC Form] Inline contacts provided but contacts should be linked from directory. Skipping auto-creation.'
+        // 2. Link selected contacts via GC-side API
+        if (contactLinks.length > 0) {
+          const linkOps = contactLinks.map((link) =>
+            addContactLinkMutation.mutateAsync({
+              gcId: created.id,
+              data: { contactId: link.contactId, isPrimary: link.isPrimary },
+            }),
           );
+          const results = await Promise.allSettled(linkOps);
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            toast.error(`${failures.length} contact link(s) failed to save.`);
+          }
         }
 
         toast.success('General contractor created.');
@@ -271,7 +290,7 @@ export function GCFormPage() {
       <div className="flex gap-8 pt-8">
         {/* Left sidebar nav */}
         <FormSectionNav
-          sections={SECTIONS}
+          sections={GC_FORM_SECTIONS}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
@@ -508,256 +527,107 @@ export function GCFormPage() {
           {/* ---- Section: GC Team Directory ---- */}
           <Card id="contacts">
             <CardContent className="space-y-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
-                    GC Team Directory
-                  </h2>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">
-                    Define key points of contact within the GC organization.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    appendContact({
-                      fullName: '',
-                      professionalRoleId: '',
-                      email: '',
-                      phone: '',
-                    })
-                  }
-                >
-                  <Plus className="size-4" />
-                  Add Contact
-                </Button>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
+                  GC Team Directory
+                </h2>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider">
+                  Define key points of contact within the GC organization.
+                </p>
               </div>
 
               <Separator />
 
-              {/* Existing contact links (edit mode) */}
-              {existingLinks.length > 0 && (
-                <div className="space-y-4">
-                  {existingLinks.map((link, index) => (
-                    <div key={link.id} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center size-10 rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <span className="text-sm font-semibold text-foreground">
-                              Contact #{index + 1}
-                            </span>
-                            {link.isPrimary && (
-                              <Badge
-                                variant="success"
-                                appearance="light"
-                                size="sm"
-                                className="ml-2"
-                              >
-                                Primary Contact
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+              {/* Linked contacts list */}
+              {contactLinks.length > 0 && (
+                <div className="space-y-2">
+                  {contactLinks.map((link, index) => {
+                    const name = getContactName(
+                      link.contactId,
+                      originalLinks,
+                      contactsData?.data ?? [],
+                    );
+                    return (
+                      <div
+                        key={link.contactId}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
+                      >
+                        <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 text-sm font-medium text-foreground">
+                          {name}
+                        </span>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          Primary
+                          <Switch
+                            checked={link.isPrimary}
+                            onCheckedChange={(checked) =>
+                              setContactLinks((prev) =>
+                                prev.map((l, i) =>
+                                  i === index ? { ...l, isPrimary: checked } : l,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           mode="icon"
-                          className="size-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveExistingLink(link.id)}
+                          className="size-7 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            setContactLinks((prev) => prev.filter((_, i) => i !== index))
+                          }
                         >
-                          <Trash2 className="size-4" />
+                          <X className="size-3.5" />
                         </Button>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Full Name
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Input value={link.contact.fullName} disabled className="bg-muted" />
-                          </InputWrapper>
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Organization Role
-                          </FieldLabel>
-                          <Input
-                            value={
-                              roles.find((r) => r.id === link.contact.professionalRoleId)?.name ??
-                              '—'
-                            }
-                            disabled
-                            className="bg-muted"
-                          />
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Email Address
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Mail className="size-4" />
-                            <Input
-                              value={link.contact.email?.email ?? ''}
-                              disabled
-                              className="bg-muted"
-                            />
-                          </InputWrapper>
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Phone Connection
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Phone className="size-4" />
-                            <Input
-                              value={link.contact.phoneNumber?.phone ?? ''}
-                              disabled
-                              className="bg-muted"
-                            />
-                          </InputWrapper>
-                        </Field>
-                      </div>
-
-                      {index < existingLinks.length - 1 && <Separator />}
-                    </div>
-                  ))}
-                  {contactFields.length > 0 && <Separator />}
+                    );
+                  })}
                 </div>
               )}
 
-              {/* New contacts (field array) */}
-              {contactFields.map((field, index) => {
-                const contactNumber = existingLinks.length + index + 1;
-                return (
-                  <div key={field.id} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center size-10 rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
-                          {contactNumber}
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-foreground">
-                            Contact #{contactNumber}
-                          </span>
-                          {contactNumber === 1 && (
-                            <Badge variant="success" appearance="light" size="sm" className="ml-2">
-                              Primary Contact
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        className="size-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeContact(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                      <Controller
-                        name={`contacts.${index}.fullName`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Full Name
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input {...f} placeholder="Full Name" autoComplete="off" />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.professionalRoleId`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Organization Role
-                            </FieldLabel>
-                            <Select value={f.value} onValueChange={f.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select role..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {roles.map((role) => (
-                                  <SelectItem key={role.id} value={role.id}>
-                                    {role.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.email`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Email Address
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Mail className="size-4" />
-                              <Input
-                                {...f}
-                                type="email"
-                                placeholder="email@gc.com"
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.phone`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Phone Connection
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Phone className="size-4" />
-                              <Input
-                                {...f}
-                                type="tel"
-                                placeholder="(xxx) xxx-xxxx"
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                          </Field>
-                        )}
-                      />
-                    </div>
-
-                    {index < contactFields.length - 1 && <Separator />}
+              {/* Add contact select */}
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Add Contact
+                </FieldLabel>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={contactOptions.filter(
+                        (c) => !contactLinks.some((l) => l.contactId === c.value),
+                      )}
+                      value={null}
+                      onValueChange={(contactId) => {
+                        if (contactId) {
+                          setContactLinks((prev) => [
+                            ...prev,
+                            { contactId, isPrimary: false },
+                          ]);
+                        }
+                      }}
+                      placeholder="Search Contacts..."
+                      searchPlaceholder="Search contacts..."
+                      emptyMessage="No contacts found."
+                    />
                   </div>
-                );
-              })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setContactDialogOpen(true)}
+                  >
+                    <Plus className="size-4" />
+                    Create Contact
+                  </Button>
+                </div>
+              </Field>
 
-              {existingLinks.length === 0 && contactFields.length === 0 && (
+              {contactLinks.length === 0 && (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No contacts added yet. Click &quot;+ Add Contact&quot; above to add one.
+                    No contacts linked yet. Search above or create a new contact.
                   </p>
                 </div>
               )}
@@ -788,6 +658,12 @@ export function GCFormPage() {
           </Card>
         </div>
       </div>
+
+      <QuickCreateContactDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        onCreated={handleContactCreated}
+      />
     </form>
   );
 }

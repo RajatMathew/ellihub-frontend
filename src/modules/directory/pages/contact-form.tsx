@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Building2, Check, CircleUserRound, Mail, Phone, X } from 'lucide-react';
+import { Building2, Check, CircleUserRound, Mail, Phone, Plus, X } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -28,7 +28,8 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav } from '../components';
+import { FormSectionNav, QuickCreateVendorDialog } from '../components';
+import { CONTACT_FORM_SECTIONS } from '../constants/contacts.constants';
 import {
   useAddVendorLinkMutation,
   useContactDetailQuery,
@@ -59,13 +60,6 @@ function computeVendorLinkDiff(
 
   return { toRemove, toAdd, toUpdate };
 }
-
-/* ---- Sidebar nav items ---- */
-
-const SECTIONS = [
-  { id: 'contact-info', label: 'Contact Info' },
-  { id: 'association', label: 'Association' },
-] as const;
 
 /* ---- Page ---- */
 
@@ -117,7 +111,12 @@ export function ContactFormPage() {
   );
 
   const [isSaving, setIsSaving] = useState(false);
+  const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
+
+  const handleVendorCreated = (vendor: { id: string; name: string }) => {
+    setVendorLinks((prev) => [...prev, { vendorId: vendor.id, isPrimary: false }]);
+  };
 
   const onSubmit = async (formData: CreateContactInput | Contact) => {
     const payload: CreateContactInput = {
@@ -246,7 +245,7 @@ export function ContactFormPage() {
       <div className="flex gap-8 pt-8">
         {/* Left sidebar nav */}
         <FormSectionNav
-          sections={SECTIONS}
+          sections={CONTACT_FORM_SECTIONS}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
@@ -478,28 +477,47 @@ export function ContactFormPage() {
                 <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                   Add Vendor
                 </FieldLabel>
-                <SearchableSelect
-                  options={vendorOptions.filter(
-                    (v) => !vendorLinks.some((l) => l.vendorId === v.value),
-                  )}
-                  value={null}
-                  onValueChange={(vendorId) => {
-                    if (vendorId) {
-                      setVendorLinks((prev) => [
-                        ...prev,
-                        { vendorId, isPrimary: false },
-                      ]);
-                    }
-                  }}
-                  placeholder="Search Vendors..."
-                  searchPlaceholder="Search vendors..."
-                  emptyMessage="No vendors found."
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={vendorOptions.filter(
+                        (v) => !vendorLinks.some((l) => l.vendorId === v.value),
+                      )}
+                      value={null}
+                      onValueChange={(vendorId) => {
+                        if (vendorId) {
+                          setVendorLinks((prev) => [
+                            ...prev,
+                            { vendorId, isPrimary: false },
+                          ]);
+                        }
+                      }}
+                      placeholder="Search Vendors..."
+                      searchPlaceholder="Search vendors..."
+                      emptyMessage="No vendors found."
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setVendorDialogOpen(true)}
+                  >
+                    <Plus className="size-4" />
+                    Create Vendor
+                  </Button>
+                </div>
               </Field>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <QuickCreateVendorDialog
+        open={vendorDialogOpen}
+        onOpenChange={setVendorDialogOpen}
+        onCreated={handleVendorCreated}
+      />
     </form>
   );
 }

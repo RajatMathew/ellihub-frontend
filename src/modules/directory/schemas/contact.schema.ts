@@ -131,6 +131,22 @@ export const updateContactInputSchema = z.object({
 
 export type UpdateContactInput = z.infer<typeof updateContactInputSchema>;
 
+// --- Quick-create schema (used by QuickCreateContactDialog) ---
+
+export const quickCreateContactSchema = z
+  .object({
+    fullName: z.string().min(1, 'Name is required'),
+    professionalRoleId: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+  })
+  .refine((data) => data.email || data.phone, {
+    message: 'At least one email or phone number is required',
+    path: ['email'],
+  });
+
+export type QuickCreateContactValues = z.infer<typeof quickCreateContactSchema>;
+
 // --- Filters / Params ---
 
 export const listContactsParamsSchema = z.object({

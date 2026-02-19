@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, FileText, Globe, Mail, Phone, Plus, Trash2, User } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Check, CircleUserRound, FileText, Globe, Plus, X } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 import {
   Toolbar,
@@ -14,11 +13,11 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
+import { SearchableSelect } from '@app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -27,74 +26,44 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
+import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav } from '../components';
+import { FormSectionNav, QuickCreateContactDialog } from '../components';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
 import {
+  VENDOR_FORM_SECTIONS,
+  VENDOR_STATUS_OPTIONS,
+  VENDOR_TYPE_OPTIONS,
+} from '../constants/vendors.constants';
+import {
+  useAddVendorLinkMutation,
+  useContactsQuery,
   useCreateVendorMutation,
   useDeleteVendorContactMutation,
   useUpdateVendorMutation,
   useVendorDetailQuery,
 } from '../hooks';
-import type {
-  PaymentTerms,
-  VendorContactLink,
-  VendorStatus,
-  VendorType,
+import {
+  vendorFormSchema,
+  type PaymentTerms,
+  type VendorContactLink,
+  type VendorFormValues,
+  type VendorStatus,
+  type VendorType,
 } from '../schemas/vendor.schema';
 
-/* ---- Form schema ---- */
+/* ---- Helpers ---- */
 
-const vendorFormSchema = z.object({
-  name: z.string().min(1, 'Vendor name is required'),
-  type: z.string().min(1, 'Vendor type is required'),
-  status: z.string(),
-  taxId: z.string(),
-  website: z.string(),
-  paymentTerms: z.string(),
-  contacts: z.array(
-    z.object({
-      fullName: z.string().min(1, 'Name is required'),
-      role: z.string(),
-      email: z.string(),
-      phone: z.string(),
-      isPrimary: z.boolean(),
-    })
-  ),
-});
-
-type VendorFormValues = z.infer<typeof vendorFormSchema>;
-
-/* ---- Sidebar sections ---- */
-
-const SECTIONS = [
-  { id: 'info', label: 'Info' },
-  { id: 'contacts', label: 'Contacts' },
-  { id: 'compliance-docs', label: 'Compliance Docs' },
-] as const;
-
-const VENDOR_TYPE_OPTIONS: { value: VendorType; label: string }[] = [
-  { value: 'MATERIAL', label: 'Material Vendor' },
-  { value: 'FABRICATION', label: 'Fabrication' },
-  { value: 'INSTALLATION', label: 'Installation' },
-  { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
-];
-
-const VENDOR_STATUS_OPTIONS: { value: VendorStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'PROSPECT', label: 'Prospect' },
-  { value: 'BLACKLISTED', label: 'Blacklisted' },
-  { value: 'INACTIVE', label: 'Inactive' },
-];
-
-const CONTACT_ROLE_OPTIONS = [
-  'Primary Contact',
-  'Accounts Payable',
-  'Estimator',
-  'Project Manager',
-  'Sales Rep',
-  'Operations',
-];
+function getContactName(
+  contactId: string,
+  originalLinks: VendorContactLink[],
+  contactsData: { id: string; fullName: string }[],
+): string {
+  const fromLink = originalLinks.find((l) => l.contactId === contactId);
+  if (fromLink) return fromLink.contact.fullName;
+  const fromQuery = contactsData.find((c) => c.id === contactId);
+  return fromQuery?.fullName ?? contactId;
+}
 
 /* ---- Page ---- */
 
@@ -105,11 +74,19 @@ export function VendorFormPage() {
 
   // Queries
   const { data: vendorDetail, isLoading: isLoadingVendor } = useVendorDetailQuery(id ?? '');
+  const { data: contactsData } = useContactsQuery({ size: 1000 });
 
   // Mutations
   const createMutation = useCreateVendorMutation();
   const updateMutation = useUpdateVendorMutation();
   const removeContactMutation = useDeleteVendorContactMutation();
+  const addVendorLinkMutation = useAddVendorLinkMutation();
+
+  // Contact options for SearchableSelect
+  const contactOptions = (contactsData?.data ?? []).map((c) => ({
+    value: c.id,
+    label: c.fullName,
+  }));
 
   // Form setup
   const { control, handleSubmit, reset } = useForm<VendorFormValues>({
@@ -121,21 +98,16 @@ export function VendorFormPage() {
       taxId: '',
       website: '',
       paymentTerms: 'NET_30',
-      contacts: [],
     },
   });
 
-  const {
-    fields: contactFields,
-    append: appendContact,
-    remove: removeContact,
-  } = useFieldArray({
-    control,
-    name: 'contacts',
-  });
-
-  // Existing contact links state (edit mode)
-  const [existingLinks, setExistingLinks] = useState<VendorContactLink[]>([]);
+  // Contact links state — unified source of truth
+  const [contactLinks, setContactLinks] = useState<
+    { contactId: string; isPrimary: boolean }[]
+  >([]);
+  // Server snapshot for diffing on save (edit mode)
+  const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
   // Reset form when vendor data loads in edit mode
   useEffect(() => {
@@ -147,10 +119,13 @@ export function VendorFormPage() {
         taxId: vendorDetail.taxId ?? '',
         website: vendorDetail.website ?? '',
         paymentTerms: vendorDetail.paymentTerms,
-        contacts: [],
       });
-      setExistingLinks(
-        (vendorDetail.contactLinks ?? []).filter((l) => !l.contact?.deletedAt)
+      const activeLinks = (vendorDetail.contactLinks ?? []).filter(
+        (l) => !l.contact?.deletedAt,
+      );
+      setOriginalLinks(activeLinks);
+      setContactLinks(
+        activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })),
       );
     }
   }, [isEdit, vendorDetail, reset]);
@@ -159,28 +134,15 @@ export function VendorFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  const handleRemoveExistingLink = useCallback(
-    (contactId: string) => {
-      if (!id) return;
-      removeContactMutation.mutate(
-        { id, contactId },
-        {
-          onSuccess: () => {
-            setExistingLinks((prev) => prev.filter((l) => l.id !== contactId));
-            toast.success('Contact removed.');
-          },
-        }
-      );
-    },
-    [id, removeContactMutation]
-  );
+  const handleContactCreated = (contact: { id: string; fullName: string }) => {
+    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+  };
 
   const onSubmit = async (formData: VendorFormValues) => {
-    const validContacts = formData.contacts.filter((c) => c.fullName.trim());
-
     if (isEdit && id) {
       setIsSaving(true);
       try {
+        // 1. Update vendor fields
         await updateMutation.mutateAsync({
           id,
           data: {
@@ -192,6 +154,43 @@ export function VendorFormPage() {
             paymentTerms: formData.paymentTerms as PaymentTerms,
           },
         });
+
+        // 2. Compute contact link diff
+        const originalByContact = new Map(
+          originalLinks.map((l) => [l.contactId, l]),
+        );
+        const currentByContact = new Map(
+          contactLinks.map((l) => [l.contactId, l]),
+        );
+
+        const toRemove = originalLinks.filter(
+          (l) => !currentByContact.has(l.contactId),
+        );
+        const toAdd = contactLinks.filter(
+          (l) => !originalByContact.has(l.contactId),
+        );
+
+        const linkOps: Promise<unknown>[] = [
+          ...toRemove.map((link) =>
+            removeContactMutation.mutateAsync({ id, contactId: link.id }),
+          ),
+          ...toAdd.map((link) =>
+            addVendorLinkMutation.mutateAsync({
+              contactId: link.contactId,
+              data: { vendorId: id, isPrimary: link.isPrimary },
+            }),
+          ),
+        ];
+
+        if (linkOps.length > 0) {
+          const results = await Promise.allSettled(linkOps);
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            toast.error(`${failures.length} contact link operation(s) failed.`);
+            return;
+          }
+        }
+
         toast.success('Vendor updated.');
         navigate('..', { relative: 'path' });
       } catch {
@@ -202,6 +201,7 @@ export function VendorFormPage() {
     } else {
       setIsSaving(true);
       try {
+        // 1. Create vendor
         const created = await createMutation.mutateAsync({
           name: formData.name,
           type: formData.type as VendorType,
@@ -209,14 +209,22 @@ export function VendorFormPage() {
           taxId: formData.taxId || undefined,
           website: formData.website || undefined,
           paymentTerms: formData.paymentTerms as PaymentTerms,
-          contacts: validContacts.map((c, i) => ({
-            fullName: c.fullName,
-            role: c.role || undefined,
-            email: c.email || undefined,
-            phone: c.phone || undefined,
-            isPrimary: c.isPrimary || i === 0,
-          })),
         });
+
+        // 2. Link selected contacts via contact-side API
+        if (contactLinks.length > 0) {
+          const linkOps = contactLinks.map((link) =>
+            addVendorLinkMutation.mutateAsync({
+              contactId: link.contactId,
+              data: { vendorId: created.id, isPrimary: link.isPrimary },
+            }),
+          );
+          const results = await Promise.allSettled(linkOps);
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            toast.error(`${failures.length} contact link(s) failed to save.`);
+          }
+        }
 
         toast.success('Vendor created.');
         navigate(`../${created.id}`, { relative: 'path' });
@@ -284,7 +292,7 @@ export function VendorFormPage() {
       <div className="flex gap-8 pt-8">
         {/* Left sidebar nav */}
         <FormSectionNav
-          sections={SECTIONS}
+          sections={VENDOR_FORM_SECTIONS}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
@@ -449,257 +457,107 @@ export function VendorFormPage() {
           {/* ---- Section: Contacts ---- */}
           <Card id="contacts">
             <CardContent className="space-y-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
-                    Contacts
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Manage multiple points of contact for this vendor.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    appendContact({
-                      fullName: '',
-                      role: '',
-                      email: '',
-                      phone: '',
-                      isPrimary: existingLinks.length === 0 && contactFields.length === 0,
-                    })
-                  }
-                >
-                  <Plus className="size-4" />
-                  Add Contact
-                </Button>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
+                  Contacts
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage multiple points of contact for this vendor.
+                </p>
               </div>
 
               <Separator />
 
-              {/* Existing contact links (edit mode) */}
-              {existingLinks.length > 0 && (
-                <div className="space-y-4">
-                  {existingLinks.map((link, index) => (
-                    <div key={link.id} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center size-10 rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <span className="text-sm font-semibold text-foreground">
-                              Contact #{index + 1}
-                            </span>
-                            {link.isPrimary && (
-                              <Badge
-                                variant="success"
-                                appearance="light"
-                                size="sm"
-                                className="ml-2"
-                              >
-                                Primary Contact
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+              {/* Linked contacts list */}
+              {contactLinks.length > 0 && (
+                <div className="space-y-2">
+                  {contactLinks.map((link, index) => {
+                    const name = getContactName(
+                      link.contactId,
+                      originalLinks,
+                      contactsData?.data ?? [],
+                    );
+                    return (
+                      <div
+                        key={link.contactId}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
+                      >
+                        <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 text-sm font-medium text-foreground">
+                          {name}
+                        </span>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          Primary
+                          <Switch
+                            checked={link.isPrimary}
+                            onCheckedChange={(checked) =>
+                              setContactLinks((prev) =>
+                                prev.map((l, i) =>
+                                  i === index ? { ...l, isPrimary: checked } : l,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           mode="icon"
-                          className="size-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveExistingLink(link.id)}
+                          className="size-7 text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            setContactLinks((prev) => prev.filter((_, i) => i !== index))
+                          }
                         >
-                          <Trash2 className="size-4" />
+                          <X className="size-3.5" />
                         </Button>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Full Name
-                          </FieldLabel>
-                          <InputWrapper>
-                            <User className="size-4" />
-                            <Input value={link.contact.fullName} disabled className="bg-muted" />
-                          </InputWrapper>
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Role / Title
-                          </FieldLabel>
-                          <Input
-                            value={link.isPrimary ? 'Primary Contact' : '—'}
-                            disabled
-                            className="bg-muted"
-                          />
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Email Address
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Mail className="size-4" />
-                            <Input
-                              value={link.contact.email?.email ?? ''}
-                              disabled
-                              className="bg-muted"
-                            />
-                          </InputWrapper>
-                        </Field>
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Phone Number
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Phone className="size-4" />
-                            <Input
-                              value={link.contact.phoneNumber?.phone ?? ''}
-                              disabled
-                              className="bg-muted"
-                            />
-                          </InputWrapper>
-                        </Field>
-                      </div>
-
-                      {index < existingLinks.length - 1 && <Separator />}
-                    </div>
-                  ))}
-                  {contactFields.length > 0 && <Separator />}
+                    );
+                  })}
                 </div>
               )}
 
-              {/* New contacts (field array) */}
-              {contactFields.map((field, index) => {
-                const contactNumber = existingLinks.length + index + 1;
-                const isFirstContact = existingLinks.length === 0 && index === 0;
-                return (
-                  <div key={field.id} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center size-10 rounded-lg bg-muted text-sm font-semibold text-muted-foreground">
-                          {contactNumber}
-                        </div>
-                        <div>
-                          <span className="text-sm font-semibold text-foreground">
-                            Contact #{contactNumber}
-                          </span>
-                          {isFirstContact && (
-                            <Badge variant="success" appearance="light" size="sm" className="ml-2">
-                              Primary Contact
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        className="size-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeContact(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                      <Controller
-                        name={`contacts.${index}.fullName`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Full Name
-                            </FieldLabel>
-                            <InputWrapper>
-                              <User className="size-4" />
-                              <Input {...f} placeholder="John Doe" autoComplete="off" />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.role`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Role / Title
-                            </FieldLabel>
-                            <Select value={f.value} onValueChange={f.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select role..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {CONTACT_ROLE_OPTIONS.map((role) => (
-                                  <SelectItem key={role} value={role}>
-                                    {role}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.email`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Email Address
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Mail className="size-4" />
-                              <Input
-                                {...f}
-                                type="email"
-                                placeholder="email@company.com"
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`contacts.${index}.phone`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Phone Number
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Phone className="size-4" />
-                              <Input
-                                {...f}
-                                type="tel"
-                                placeholder="(XXX) xxx-xxxx"
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                          </Field>
-                        )}
-                      />
-                    </div>
-
-                    {index < contactFields.length - 1 && <Separator />}
+              {/* Add contact select */}
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Add Contact
+                </FieldLabel>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={contactOptions.filter(
+                        (c) => !contactLinks.some((l) => l.contactId === c.value),
+                      )}
+                      value={null}
+                      onValueChange={(contactId) => {
+                        if (contactId) {
+                          setContactLinks((prev) => [
+                            ...prev,
+                            { contactId, isPrimary: false },
+                          ]);
+                        }
+                      }}
+                      placeholder="Search Contacts..."
+                      searchPlaceholder="Search contacts..."
+                      emptyMessage="No contacts found."
+                    />
                   </div>
-                );
-              })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setContactDialogOpen(true)}
+                  >
+                    <Plus className="size-4" />
+                    Create Contact
+                  </Button>
+                </div>
+              </Field>
 
-              {existingLinks.length === 0 && contactFields.length === 0 && (
+              {contactLinks.length === 0 && (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No contacts added yet. Click &quot;+ Add Contact&quot; above to add one.
+                    No contacts linked yet. Search above or create a new contact.
                   </p>
                 </div>
               )}
@@ -730,6 +588,12 @@ export function VendorFormPage() {
           </Card>
         </div>
       </div>
+
+      <QuickCreateContactDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        onCreated={handleContactCreated}
+      />
     </form>
   );
 }
