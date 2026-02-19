@@ -1,7 +1,8 @@
-import { success } from '@utils';
+import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { s3Upload } from 'src/middleware/s3-upload';
 
+import { FolderCreateSchema } from './models';
 import { s3Service } from './s3';
 import { FileService } from './services';
 
@@ -20,5 +21,22 @@ app.get('/download/:id', async (c) => {
 
     return success(c, link);
 });
+
+app.get('/root', async (c) => {
+    const rootFolderId = await FileService.getRootFolder('root');
+
+    return success(c, rootFolderId);
+});
+
+app.post(
+    '/folder',
+    // requirePermission({ file: ['create'] }),
+    zValidator('json', FolderCreateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const folder = await FileService.createFolder(data, c.get('user')!.id);
+        return success(c, folder, 201);
+    }
+);
 
 export default app;
