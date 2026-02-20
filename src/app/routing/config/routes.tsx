@@ -74,6 +74,7 @@ export const routeTree: RouteDef[] = [
         component: DirectoryVendors,
         title: 'Vendors',
       },
+      { path: 'rfqs', component: ProjectRfqs, title: 'RFQ' },
       { path: 'hr', component: FutureFeature, title: 'HR' },
       { path: 'files', component: FutureFeature, title: 'Files' },
       // Project routes (nested under /project/:projectId/*)
@@ -95,7 +96,7 @@ export const routeTree: RouteDef[] = [
             component: ProjectChangeOrders,
             title: 'Prime Change Orders',
           },
-          { path: 'rfqs', component: ProjectRfqs, title: 'RFQs' },
+          { path: 'rfqs', component: ProjectRfqs, title: 'RFQ' },
           {
             path: 'vendors/purchase-orders',
             component: ProjectPOs,

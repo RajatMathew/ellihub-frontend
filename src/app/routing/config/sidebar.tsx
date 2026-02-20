@@ -18,6 +18,11 @@ export const mainSidebarMenu: MenuConfig = [
   },
   { type: 'separator' },
   {
+    type: 'menu',
+    children: [{ title: 'RFQ', path: '/app/rfqs' }],
+  },
+  { type: 'separator' },
+  {
     type: 'group-collapsed',
     title: 'Directory',
     children: [
@@ -70,7 +75,7 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'Vendor',
     children: [
-      { title: 'RFQs', path: '../rfqs' },
+      { title: 'RFQ', path: '../rfqs' },
       { title: 'Purchase Orders', path: '../vendors/purchase-orders' },
       { title: 'Change Orders', path: '../vendors/change-orders' },
       { title: 'Invoices', path: '../vendors/invoices' },
