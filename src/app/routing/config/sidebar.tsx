@@ -22,7 +22,7 @@ export const mainSidebarMenu: MenuConfig = [
     title: 'Directory',
     children: [
       { title: 'Contacts', path: '../directory/contacts' },
-      { title: 'General Contracts', path: '../directory/general-contracts' },
+      { title: 'General Contractors', path: '../directory/general-contractors' },
       { title: 'Vendors', path: '../directory/vendors' },
     ],
   },

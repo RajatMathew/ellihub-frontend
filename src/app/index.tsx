@@ -11,7 +11,9 @@ import { AppLoadingScreen } from './components/loader/app';
 import DelayForDemo from './lib/delay';
 import { QueryProvider } from './providers/query';
 
-const AppRouting = lazy(() => DelayForDemo(import('./routing'), 5000));
+const isDev = import.meta.env.DEV;
+
+const AppRouting = lazy(() => DelayForDemo(import('./routing'), isDev ? 0 : 2000));
 
 export function App() {
   return (
@@ -22,7 +24,7 @@ export function App() {
             <AppRouting />
           </AppLayout>
         </Suspense>
-        <Toaster />
+        <Toaster position="top-center" />
       </LoadingBarContainer>
     </QueryProvider>
   );
