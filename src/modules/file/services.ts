@@ -194,11 +194,14 @@ export const FileService = {
 
     getFolderDetails: async (id: string): Promise<File> => {
         const folder = await prismaClient.file.findUnique({
-            where: { id, type: 'FOLDER' },
+            where: { id },
             include: { children: true },
         });
 
-        if (!folder) throw new NotFoundError('No folder found with id: ' + id);
+        checkDeletedAt(folder);
+
+        if (!folder || folder.type !== 'FOLDER')
+            throw new NotFoundError('No folder found with id: ' + id);
 
         return folder;
     },
@@ -212,7 +215,10 @@ export const FileService = {
 
         checkDeletedAt(file);
 
-        if (!file.isDeletable) throw new BadRequestError('Cannot rename this file / folder.');
+        if (!file.isDeletable)
+            throw new BadRequestError(
+                'Cannot rename this file / folder because it is protected or non-deletable.'
+            );
 
         return await prismaClient.file.update({
             where: { id: request.id },
@@ -224,21 +230,25 @@ export const FileService = {
 
     deleteFolder: async (id: string, userId: string): Promise<void> => {
         const folder = await prismaClient.file.findUnique({
-            where: { id, type: 'FOLDER' },
+            where: { id },
             include: { children: true },
         });
 
-        if (!folder) throw new NotFoundError('No folder found with id: ' + id);
+        if (!folder || folder.type !== 'FOLDER')
+            throw new NotFoundError('No folder found with id: ' + id);
 
         checkDeletedAt(folder);
 
         if (!folder.isDeletable) throw new BadRequestError('Cannot delete this folder.');
 
         if (folder.children.length > 0)
-            throw new BadRequestError('Cannot delete folder with children.');
+            throw new BadRequestError('Cannot delete a folder with items in it.');
 
-        if (!UserService.getUser(userId))
-            throw new NotFoundError('No user found with id: ' + userId);
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) throw new NotFoundError('No user found with id: ' + userId);
 
         await prismaClient.file.update({
             where: { id },

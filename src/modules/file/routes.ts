@@ -46,7 +46,7 @@ app.put(
     async (c) => {
         const data = c.req.valid('json');
         const folder = await FileService.rename(data);
-        return success(c, folder, 201);
+        return success(c, folder);
     }
 );
 
