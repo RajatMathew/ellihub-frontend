@@ -27,7 +27,7 @@ const ProjectLayout = lazy(() => import('@modules/project'));
 const ProjectOverview = lazy(() => import('@modules/project/pages/overview'));
 const ProjectContracts = lazy(() => import('@modules/project/pages/contracts'));
 const ProjectChangeOrders = lazy(() => import('@modules/project/pages/change-orders'));
-const ProjectRfqs = lazy(() => import('@modules/project/pages/rfqs'));
+const RfqRoutes = lazy(() => import('@modules/rfq/routes/rfq.route'));
 const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
 const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change-orders'));
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
@@ -74,7 +74,7 @@ export const routeTree: RouteDef[] = [
         component: DirectoryVendors,
         title: 'Vendors',
       },
-      { path: 'rfqs', component: ProjectRfqs, title: 'RFQ' },
+      { path: 'rfqs/*', component: RfqRoutes, title: 'RFQ' },
       { path: 'hr', component: FutureFeature, title: 'HR' },
       { path: 'files', component: FutureFeature, title: 'Files' },
       // Project routes (nested under /project/:projectId/*)
@@ -96,7 +96,7 @@ export const routeTree: RouteDef[] = [
             component: ProjectChangeOrders,
             title: 'Prime Change Orders',
           },
-          { path: 'rfqs', component: ProjectRfqs, title: 'RFQ' },
+          { path: 'rfqs/*', component: RfqRoutes, title: 'RFQ' },
           {
             path: 'vendors/purchase-orders',
             component: ProjectPOs,

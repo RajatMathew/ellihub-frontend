@@ -28,7 +28,7 @@ import {
   type QuotationCreateRequest,
   type QuotationUpdateRequest,
   type RFQListParams,
-} from './api';
+} from '../api/rfq.api';
 import type {
   BidComparison,
   RFQ,
@@ -37,7 +37,7 @@ import type {
   RFQListItem,
   RFQUpdateRequest,
   VendorQuotation,
-} from './types';
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Query keys

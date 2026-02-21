@@ -195,7 +195,7 @@ function isValidStatus(v: string | null): v is string {
 // Page
 // ---------------------------------------------------------------------------
 
-export default function ProjectRfqs() {
+export default function RfqsPage() {
   useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -353,8 +353,10 @@ export default function ProjectRfqs() {
                 {row.original.title}
               </span>
               {item.awardedVendorName ? (
-                <span className="text-2sm text-success font-medium">
-                  Awarded: {item.awardedVendorName}
+                <span className="text-2sm font-medium flex items-center gap-1 text-success">
+                  <CheckCircle2 className="size-3 shrink-0 text-success" />
+                  Awarded:{' '}
+                  <span className="font-semibold">{item.awardedVendorName}</span>
                 </span>
               ) : (
                 <span className="text-2sm text-muted-foreground">

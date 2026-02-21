@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { QuotationStatus, RFQStatus, TradeCategory } from './types';
+import { QuotationStatus, RFQStatus, TradeCategory } from '../types';
 
 // ---------------------------------------------------------------------------
 // Shared sub-schemas

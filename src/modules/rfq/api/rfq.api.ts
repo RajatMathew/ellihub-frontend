@@ -8,7 +8,7 @@ import type {
   RFQListItem,
   RFQUpdateRequest,
   VendorQuotation,
-} from './types';
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Shared types
