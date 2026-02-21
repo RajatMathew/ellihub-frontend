@@ -1,10 +1,12 @@
 import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
+import { checkDeletedAt } from '@modules/common/utils';
+import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { FileUploadRequest, FolderCreateRequest } from './models';
+import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';
 
 export const FileService = {
     protectedFolderNames: [
@@ -188,5 +190,95 @@ export const FileService = {
         if (!subFolder) throw new NotFoundError(`${folder} folder not found.`);
 
         return subFolder;
+    },
+
+    getFolderDetails: async (id: string): Promise<File> => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id },
+            include: { children: true },
+        });
+
+        checkDeletedAt(folder);
+
+        if (!folder || folder.type !== 'FOLDER')
+            throw new NotFoundError('No folder found with id: ' + id);
+
+        return folder;
+    },
+
+    rename: async (request: FileFolderRenameRequest): Promise<File> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id: request.id },
+        });
+
+        if (!file) throw new NotFoundError('No file or folder found with id: ' + request.id);
+
+        checkDeletedAt(file);
+
+        if (!file.isDeletable)
+            throw new BadRequestError(
+                'Cannot rename this file / folder because it is protected or non-deletable.'
+            );
+
+        return await prismaClient.file.update({
+            where: { id: request.id },
+            data: {
+                name: request.name,
+            },
+        });
+    },
+
+    deleteFolder: async (id: string, userId: string): Promise<void> => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id },
+            include: { children: true },
+        });
+
+        if (!folder || folder.type !== 'FOLDER')
+            throw new NotFoundError('No folder found with id: ' + id);
+
+        checkDeletedAt(folder);
+
+        if (!folder.isDeletable) throw new BadRequestError('Cannot delete this folder.');
+
+        if (folder.children.length > 0)
+            throw new BadRequestError('Cannot delete a folder with items in it.');
+
+        const user = await prismaClient.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) throw new NotFoundError('No user found with id: ' + userId);
+
+        await prismaClient.file.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+                deletedBy: userId,
+            },
+        });
+    },
+
+    deleteFile: async (id: string, userId: string): Promise<void> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+
+        if (!file) throw new NotFoundError('No file found with id: ' + id);
+
+        checkDeletedAt(file);
+
+        if (!file.isDeletable) throw new BadRequestError('Cannot delete this file.');
+
+        if (!UserService.getUser(userId))
+            throw new NotFoundError('No user found with id: ' + userId);
+
+        await prismaClient.file.update({
+            where: { id },
+            data: {
+                deletedAt: new Date(),
+                deletedBy: userId,
+            },
+        });
     },
 };
