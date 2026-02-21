@@ -196,7 +196,7 @@
                     }
                 },
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "File or folder renamed successfully",
                         "content": {
                             "application/json": {
