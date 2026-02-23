@@ -121,13 +121,22 @@ export const FileService = {
     ): Promise<void> => {
         const projectsRootFolder = await FileService.getRootFolder('projects', tx);
 
-        const subFolders = [
-            'invoice',
-            'rfq',
-            'purchase order',
-            'purchase order co',
-            'prime co',
-            'prime contract',
+        const subFolders: {
+            name: string;
+            protectedFolderType:
+                | 'INVOICE'
+                | 'RFQ'
+                | 'PURCHASE_ORDER'
+                | 'PURCHASE_ORDER_CO'
+                | 'PRIME_CO'
+                | 'PRIME_CONTRACT';
+        }[] = [
+            { name: 'invoice', protectedFolderType: 'INVOICE' },
+            { name: 'rfq', protectedFolderType: 'RFQ' },
+            { name: 'purchase order', protectedFolderType: 'PURCHASE_ORDER' },
+            { name: 'purchase order co', protectedFolderType: 'PURCHASE_ORDER_CO' },
+            { name: 'prime co', protectedFolderType: 'PRIME_CO' },
+            { name: 'prime contract', protectedFolderType: 'PRIME_CONTRACT' },
         ];
 
         const projectFolder = await tx.file.create({
@@ -138,6 +147,7 @@ export const FileService = {
                 createdBy: userId,
                 isDeletable: false,
                 parentId: projectsRootFolder.id,
+                protectedFolderType: 'PROJECT_ROOT',
             },
         });
 
@@ -145,14 +155,63 @@ export const FileService = {
             await tx.file.create({
                 data: {
                     id: ulid(),
-                    name: sf,
+                    name: sf.name,
                     type: 'FOLDER',
                     createdBy: userId,
                     isDeletable: false,
                     parentId: projectFolder.id,
+                    protectedFolderType: sf.protectedFolderType,
                 },
             });
         }
+    },
+
+    getProjectFolderId: async (projectId: string, tx?: TransactionClient): Promise<string> => {
+        const prisma = tx || prismaClient;
+
+        const projectFolder = await prisma.file.findFirst({
+            where: {
+                name: projectId,
+                protectedFolderType: 'PROJECT_ROOT',
+            },
+            select: { id: true },
+        });
+
+        if (!projectFolder)
+            throw new NotFoundError(`Project folder not found for project: ${projectId}`);
+
+        return projectFolder.id;
+    },
+
+    getProjectSubFolderId: async (
+        projectId: string,
+        type:
+            | 'INVOICE'
+            | 'RFQ'
+            | 'PURCHASE_ORDER'
+            | 'PURCHASE_ORDER_CO'
+            | 'PRIME_CO'
+            | 'PRIME_CONTRACT',
+        tx?: TransactionClient
+    ): Promise<string> => {
+        const prisma = tx || prismaClient;
+
+        const projectFolderId = await FileService.getProjectFolderId(projectId, tx);
+
+        const subFolder = await prisma.file.findFirst({
+            where: {
+                parentId: projectFolderId,
+                protectedFolderType: type,
+            },
+            select: { id: true },
+        });
+
+        if (!subFolder)
+            throw new NotFoundError(
+                `Project sub-folder '${type}' not found for project: ${projectId}`
+            );
+
+        return subFolder.id;
     },
 
     getRootFolder: async (

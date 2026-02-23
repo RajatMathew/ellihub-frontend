@@ -64,11 +64,26 @@ app.delete('/folder/:id', async (c) => {
     return success(c, folder);
 });
 
-app.delete('/file/:id', async (c) => {
+app.delete('/:id', async (c) => {
     const id = c.req.param('id');
     const file = await FileService.deleteFile(id, c.get('user')!.id);
 
     return success(c, file);
+});
+
+app.get('/project/:projectId/folder', async (c) => {
+    const folderId = await FileService.getProjectFolderId(c.req.param('projectId'));
+
+    return success(c, folderId);
+});
+
+app.get('/project/:projectId/folder/:type', async (c) => {
+    const folderId = await FileService.getProjectSubFolderId(
+        c.req.param('projectId'),
+        c.req.param('type') as Parameters<typeof FileService.getProjectSubFolderId>[1]
+    );
+
+    return success(c, folderId);
 });
 
 export default app;

@@ -335,7 +335,121 @@
                 }
             }
         },
-        "/file/file/{id}": {
+        "/file/project/{projectId}/folder": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get project root folder ID",
+                "operationId": "getProjectFolderId",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project root folder ID",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "string", "description": "Project root folder ID" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/project/{projectId}/folder/{type}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get project sub-folder ID by type",
+                "operationId": "getProjectSubFolderId",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ID"
+                    },
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": ["INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                        },
+                        "description": "Protected folder type"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project sub-folder ID",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "string", "description": "Sub-folder ID" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project or sub-folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/{id}": {
             "delete": {
                 "tags": ["File"],
                 "summary": "Delete a file",

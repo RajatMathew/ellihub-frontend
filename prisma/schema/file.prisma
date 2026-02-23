@@ -11,7 +11,8 @@ model File {
 
   children File[] @relation(name: "parent")
 
-  type FileType
+  type                FileType
+  protectedFolderType ProtectedFolderType?
 
   isDeletable Boolean @default(true)
 
@@ -28,6 +29,16 @@ model File {
 enum FileType {
   FILE
   FOLDER
+}
+
+enum ProtectedFolderType {
+  PROJECT_ROOT
+  INVOICE
+  RFQ
+  PURCHASE_ORDER
+  PURCHASE_ORDER_CO
+  PRIME_CO
+  PRIME_CONTRACT
 }
 
 model FileAccess {
