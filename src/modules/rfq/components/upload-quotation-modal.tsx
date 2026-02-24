@@ -1,15 +1,12 @@
-// ---------------------------------------------------------------------------
-// Upload Quotation Modal
-// ---------------------------------------------------------------------------
-
 import { useEffect, useRef, useState } from 'react';
 
 import { CloudUpload, FileText, X } from 'lucide-react';
 
 import { cn } from '@app/lib/utils';
 
-import { VendorInitial } from './shared';
-import type { VendorRow } from './types';
+import type { VendorRow } from '@modules/rfq/types';
+
+import { VendorInitial } from './vendor-initial';
 
 export function UploadQuotationModal({
   vendor,
