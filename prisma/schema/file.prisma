@@ -20,6 +20,10 @@ model File {
   createdBy String
   deletedBy String?
 
+  primeContracts  PrimeContract[]
+  scheduleEntries ProjectScheduleEntry[]
+  pcoAttachments  PCOAttachment[]
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

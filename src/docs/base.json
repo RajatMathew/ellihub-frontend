@@ -65,12 +65,17 @@
         }
     },
     "tags": [
-        { "name": "Cost Code Categories", "description": "Manage cost code categories" },
-        { "name": "Cost Codes", "description": "Manage cost codes" },
-        { "name": "Users", "description": "User management" },
         { "name": "Auth", "description": "Authentication (Better-Auth)" },
+        { "name": "Users", "description": "User management" },
         { "name": "Contacts", "description": "Contact management" },
         { "name": "Professional Roles", "description": "Manage professional roles for contacts" },
-        { "name": "Contact Entity Types", "description": "Manage contact entity types (Vendor, GC, Architect, etc.)" }
+        { "name": "Vendors", "description": "Vendor management" },
+        { "name": "Vendor Contacts", "description": "Manage vendor-contact links" },
+        { "name": "General Contractors", "description": "General contractor management" },
+        { "name": "GC Types", "description": "Manage general contractor types" },
+        { "name": "Cost Code Categories", "description": "Manage cost code categories" },
+        { "name": "Cost Codes", "description": "Manage cost codes" },
+        { "name": "File", "description": "File and folder management (S3)" },
+        { "name": "Prime Change Orders", "description": "Prime Change Order (PCO) management and status transitions" }
     ]
 }

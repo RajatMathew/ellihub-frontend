@@ -1,36 +1,57 @@
 model Project {
-  id                     String                  @id
-  name                   String
-  description            String
+  id             String  @id
+  name           String
+  description    String
+  jobNumber      String? @unique
+  contractNumber String?
+
+  stage    ProjectStage    @relation(fields: [stageId], references: [id])
+  stageId  String
+  division ProjectDivision
+  statusId String
+  status   ProjectStatus   @relation(fields: [statusId], references: [id])
+
+  streetAddress String?
+  city          String?
+  state         String?
+  zipCode       String?
+
+  effectiveStartDate DateTime?
+  effectiveEndDate   DateTime?
+
   gc                     GeneralContractor       @relation(fields: [gcId], references: [id])
   gcId                   String
   leadPM                 Employee                @relation(fields: [leadPMId], references: [id])
   leadPMId               String
-  stage                  ProjectStage
-  division               ProjectDivision
-  contractValue          Decimal
-  budgetPercentage       Decimal
-  startDate              DateTime                @db.Date
-  endDate                DateTime                @db.Date
   primeContract          PrimeContract?
   projectScheduleEntries ProjectScheduleEntry[]
   primeChangeOrders      PrimeChangeOrder[]
   rfqs                   RFQ[]
   purchaseOrders         PurchaseOrder[]
-  primePayments          PrimePayments[]
   teamMembers            ProjectTeamAssignment[]
-  deletedAt              DateTime?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([stageId])
+  @@index([statusId])
+  @@index([division])
+  @@index([gcId])
+  @@index([leadPMId])
+  @@index([effectiveStartDate])
+  @@index([effectiveEndDate])
 }
 
-enum ProjectStage {
-  INSTALLATION
-  FABRICATION
-  SUBMITTALS
-  BUYOUT
-  CLOSEOUT
-  PUNCHLIST
+model ProjectStage {
+  id          String    @id
+  name        String    @unique
+  code        String    @unique
+  description String?
+  color       String
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // enum ADDED BY ME
@@ -41,26 +62,38 @@ enum ProjectDivision {
   INSTITUTIONAL
 }
 
-model PrimePayments {
-  id                String    @id @default(uuid())
-  date              DateTime
-  transactionDetail String
-  amount            Decimal
-  project           Project   @relation(fields: [projectId], references: [id])
-  projectId         String
-  deletedAt         DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+model ProjectStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  isDefault Boolean   @default(false)
+  projects  Project[]
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model PrimeContract {
-  id            String    @id
-  project       Project   @relation(fields: [projectId], references: [id])
-  projectId     String    @unique
-  contractValue Decimal
-  deletedAt     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                      String        @id
+  project                 Project       @relation(fields: [projectId], references: [id])
+  projectId               String        @unique
+  contractValue           Decimal
+  contractType            String?
+  totalContractValue      Decimal?
+  retainagePercent        Decimal?      @db.Decimal(5, 2)
+  targetBudgetPercent     Decimal?      @db.Decimal(5, 2)
+  paymentTerms            PaymentTerms?
+  estimatedStartDate      DateTime?
+  estimatedCompletionDate DateTime?
+  actualStartDate         DateTime?
+  actualCompletionDate    DateTime?
+  executedContractDoc     File?         @relation(fields: [executedContractDocId], references: [id])
+  executedContractDocId   String?
+  deletedAt               DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 }
 
 model ProjectTeamAssignment {
@@ -77,43 +110,144 @@ model ProjectTeamAssignment {
 }
 
 model ProjectScheduleEntry {
-  id          String   @id
-  project     Project  @relation(fields: [projectId], references: [id])
-  projectId   String   @unique
-  date        DateTime
-  description String
+  id                 String            @id
+  project            Project           @relation(fields: [projectId], references: [id])
+  projectId          String
+  date               DateTime
+  description        String
+  adjustedStartDate  DateTime?
+  adjustedFinishDate DateTime?
+  notes              String?
+  file               File?             @relation(fields: [fileId], references: [id])
+  fileId             String?
+  changeOrder        PrimeChangeOrder? @relation(fields: [changeOrderId], references: [id])
+  changeOrderId      String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+enum ChangeOrderStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  VOID
+}
+
+enum ChangeOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model PCOChangeType {
+  id                String             @id
+  name              String             @unique
+  code              String             @unique
+  description       String?
+  color             String
+  order             Int                @unique
+  primeChangeOrders PrimeChangeOrder[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model PrimeChangeOrder {
-  id          String    @id
-  project     Project   @relation(fields: [projectId], references: [id])
-  projectId   String    @unique
-  date        DateTime
-  title       String
-  description String
-  amount      Float
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String            @id
+  project        Project           @relation(fields: [projectId], references: [id])
+  projectId      String
+  pcoNumber      String            @unique
+  date           DateTime
+  title          String
+  description    String
+  amount         Float
+  status         ChangeOrderStatus @default(DRAFT)
+  revisionNumber Int               @default(1)
 
-  lineItems PrimeCOLineItem[]
+  creator   User   @relation(fields: [createdBy], references: [id])
+  createdBy String
+
+  markupAmount       Float?
+  scheduleImpactDays Int?
+  requestedBy        String?
+
+  estimatedCost          Float?
+  estimatedMargin        Float?
+  estimatedMarginPercent Float?
+
+  changeType      PCOChangeType?      @relation(fields: [changeTypeId], references: [id])
+  changeTypeId    String?
+  priority        ChangeOrderPriority @default(MEDIUM)
+  impactsSchedule Boolean             @default(false)
+  costCode        CostCode?           @relation(fields: [costCodeId], references: [id])
+  costCodeId      String?
+  contact         Contact?            @relation(fields: [contactId], references: [id])
+  contactId       String?
+
+  supersededByOrder PrimeChangeOrder?  @relation("PCOSupersedes", fields: [supersededBy], references: [id])
+  supersededBy      String?
+  supersededOrders  PrimeChangeOrder[] @relation("PCOSupersedes")
+
+  lineItems       PrimeCOLineItem[]
+  scheduleEntries ProjectScheduleEntry[]
+  attachments     PCOAttachment[]
+  statusHistory   PCOStatusHistory[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([projectId, status, date])
+  @@index([pcoNumber])
+}
+
+model PCOStatusHistory {
+  id         String             @id
+  pco        PrimeChangeOrder   @relation(fields: [pcoId], references: [id])
+  pcoId      String
+  fromStatus ChangeOrderStatus?
+  toStatus   ChangeOrderStatus
+  changedBy  String
+  onBehalfOf String?
+  reason     String?
+  createdAt  DateTime           @default(now())
+
+  @@index([pcoId])
+}
+
+model PCOAttachment {
+  id         String           @id
+  pco        PrimeChangeOrder @relation(fields: [pcoId], references: [id])
+  pcoId      String
+  document   File             @relation(fields: [documentId], references: [id])
+  documentId String
+  createdAt  DateTime         @default(now())
+
+  @@index([pcoId])
 }
 
 model PrimeCOLineItem {
-  id          String           @id
-  primeCo     PrimeChangeOrder @relation(fields: [primeCoId], references: [id])
-  primeCoId   String           @map("primeCoid")
-  title       String
-  description String
-  amount      Float
-  costCodeId  String
-  deletedAt   DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id             String           @id
+  primeCo        PrimeChangeOrder @relation(fields: [primeCoId], references: [id])
+  primeCoId      String           @map("primeCoid")
+  sequenceNumber Int
+  title          String
+  description    String
+  qty            Float
+  unit           String
+  unitPrice      Float
+  amount         Float
+  costCodeId     String?
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([primeCoId, sequenceNumber])
+  @@index([primeCoId])
 }
 
 model RFQ {
