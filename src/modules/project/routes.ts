@@ -4,6 +4,7 @@ import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
+    PrimeContractUpsertSchema,
     ProjectCreateSchema,
     ProjectUpdateSchema,
     ScheduleEntryCreateSchema,
@@ -73,6 +74,25 @@ app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
     await ProjectService.deleteProject(id);
     return success(c, null, 200, 'Project deleted');
 });
+
+// Prime Contract sub-resource
+app.get('/:id/contract', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projectId = c.req.param('id');
+    const contract = await ProjectService.getPrimeContract(projectId);
+    return success(c, contract);
+});
+
+app.put(
+    '/:id/contract',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', PrimeContractUpsertSchema),
+    async (c) => {
+        const projectId = c.req.param('id');
+        const data = c.req.valid('json');
+        const contract = await ProjectService.upsertPrimeContract(projectId, data);
+        return success(c, contract);
+    }
+);
 
 // Schedule entries sub-resource
 app.get(

@@ -7,6 +7,7 @@ import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
 import {
+    PrimeContractUpsertRequest,
     ProjectCreateRequest,
     ProjectUpdateRequest,
     ScheduleEntryCreateRequest,
@@ -71,21 +72,24 @@ export const ProjectService = {
             ...(stageId && { stageId }),
             ...(gcId && { gcId }),
             ...(leadPMId && { leadPMId }),
-            ...(search && {
+        };
+
+        const andConditions: unknown[] = [];
+
+        if (search) {
+            andConditions.push({
                 OR: [
                     { name: { contains: search, mode: 'insensitive' as const } },
                     { jobNumber: { contains: search, mode: 'insensitive' as const } },
                     { contractNumber: { contains: search, mode: 'insensitive' as const } },
                 ],
-            }),
-        };
+            });
+        }
 
         if (year) {
             const y = Number(year);
             if (!isNaN(y)) {
-                whereClause.OR = [...(Array.isArray(whereClause.OR) ? whereClause.OR : [])];
-                // Projects that overlap with the given year
-                whereClause.AND = [
+                andConditions.push(
                     {
                         OR: [
                             { effectiveStartDate: null },
@@ -97,10 +101,12 @@ export const ProjectService = {
                             { effectiveEndDate: null },
                             { effectiveEndDate: { gte: new Date(y, 0, 1) } },
                         ],
-                    },
-                ];
+                    }
+                );
             }
         }
+
+        if (andConditions.length > 0) whereClause.AND = andConditions;
 
         const [count, data] = await prisma.$transaction([
             prisma.project.count({ where: whereClause }),
@@ -237,27 +243,38 @@ export const ProjectService = {
         if (!project) throw new NotFoundError('Project not found');
         checkDeletedAt(project);
 
+        const validations: Promise<void>[] = [];
         if (data.gcId) {
-            const gc = await prisma.generalContractor.findUnique({ where: { id: data.gcId } });
-            if (!gc) throw new NotFoundError('General Contractor not found');
-            checkDeletedAt(gc);
+            validations.push(
+                prisma.generalContractor.findUnique({ where: { id: data.gcId } }).then((gc) => {
+                    if (!gc) throw new NotFoundError('General Contractor not found');
+                    checkDeletedAt(gc);
+                })
+            );
         }
-
         if (data.leadPMId) {
-            const employee = await prisma.employee.findUnique({ where: { id: data.leadPMId } });
-            if (!employee) throw new NotFoundError('Employee not found');
-            checkDeletedAt(employee);
+            validations.push(
+                prisma.employee.findUnique({ where: { id: data.leadPMId } }).then((emp) => {
+                    if (!emp) throw new NotFoundError('Employee not found');
+                    checkDeletedAt(emp);
+                })
+            );
         }
-
         if (data.stageId) {
-            const stage = await prisma.projectStage.findUnique({ where: { id: data.stageId } });
-            if (!stage) throw new NotFoundError('Project stage not found');
+            validations.push(
+                prisma.projectStage.findUnique({ where: { id: data.stageId } }).then((stage) => {
+                    if (!stage) throw new NotFoundError('Project stage not found');
+                })
+            );
         }
-
         if (data.statusId) {
-            const status = await prisma.projectStatus.findUnique({ where: { id: data.statusId } });
-            if (!status) throw new NotFoundError('Project status not found');
+            validations.push(
+                prisma.projectStatus.findUnique({ where: { id: data.statusId } }).then((status) => {
+                    if (!status) throw new NotFoundError('Project status not found');
+                })
+            );
         }
+        if (validations.length > 0) await Promise.all(validations);
 
         return await prisma.project.update({
             where: { id },
@@ -271,10 +288,25 @@ export const ProjectService = {
         if (!project) throw new NotFoundError('Project not found');
         checkDeletedAt(project);
 
-        await prisma.project.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
+        const now = new Date();
+        await prisma.$transaction([
+            prisma.projectTeamAssignment.updateMany({
+                where: { projectId: id, deletedAt: null },
+                data: { deletedAt: now },
+            }),
+            prisma.projectScheduleEntry.updateMany({
+                where: { projectId: id, deletedAt: null },
+                data: { deletedAt: now },
+            }),
+            prisma.primeContract.updateMany({
+                where: { projectId: id, deletedAt: null },
+                data: { deletedAt: now },
+            }),
+            prisma.project.update({
+                where: { id },
+                data: { deletedAt: now },
+            }),
+        ]);
     },
 
     getTeam: async (projectId: string) => {
@@ -331,7 +363,7 @@ export const ProjectService = {
             data: {
                 projectId,
                 employeeId: data.employeeId,
-                role: data.role ?? '',
+                role: data.role || 'Member',
             },
             include: { employee: { select: { id: true, name: true, email: true } } },
         });
@@ -352,9 +384,10 @@ export const ProjectService = {
         const oldLeadPMId = project.leadPMId;
 
         return await prisma.$transaction(async (tx) => {
-            // Remove the promoted member's team assignment (they become lead PM)
-            await tx.projectTeamAssignment.delete({
+            // Soft-delete the promoted member's team assignment (they become lead PM)
+            await tx.projectTeamAssignment.update({
                 where: { projectId_employeeId: { projectId, employeeId } },
+                data: { deletedAt: new Date() },
             });
 
             // Update project lead PM
@@ -409,6 +442,98 @@ export const ProjectService = {
         });
     },
 
+    // --- Prime Contract ---
+
+    getPrimeContract: async (projectId: string) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const contract = await prisma.primeContract.findUnique({
+            where: { projectId },
+        });
+        if (!contract || contract.deletedAt) throw new NotFoundError('Prime contract not found');
+        return contract;
+    },
+
+    upsertPrimeContract: async (projectId: string, data: PrimeContractUpsertRequest) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        // Validate executedContractDocId if provided
+        if (data.executedContractDocId) {
+            const file = await prisma.file.findUnique({
+                where: { id: data.executedContractDocId },
+            });
+            if (!file) throw new NotFoundError('Executed contract document not found');
+            checkDeletedAt(file);
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const contract = await tx.primeContract.upsert({
+                where: { projectId },
+                create: {
+                    id: ulid(),
+                    projectId,
+                    ...data,
+                },
+                update: {
+                    ...data,
+                    deletedAt: null,
+                },
+            });
+
+            // Soft-delete old baseline entries before creating new ones
+            if (
+                data.estimatedStartDate !== undefined ||
+                data.estimatedCompletionDate !== undefined
+            ) {
+                await tx.projectScheduleEntry.updateMany({
+                    where: { projectId, changeOrderId: null, deletedAt: null },
+                    data: { deletedAt: new Date() },
+                });
+            }
+
+            // Create baseline schedule entries for dates if provided
+            if (data.estimatedStartDate !== undefined) {
+                await tx.projectScheduleEntry.create({
+                    data: {
+                        id: ulid(),
+                        projectId,
+                        date: new Date(),
+                        description: 'Prime Contract: estimated start',
+                        adjustedStartDate: data.estimatedStartDate,
+                        changeOrderId: null,
+                    },
+                });
+            }
+
+            if (data.estimatedCompletionDate !== undefined) {
+                await tx.projectScheduleEntry.create({
+                    data: {
+                        id: ulid(),
+                        projectId,
+                        date: new Date(),
+                        description: 'Prime Contract: estimated completion',
+                        adjustedFinishDate: data.estimatedCompletionDate,
+                        changeOrderId: null,
+                    },
+                });
+            }
+
+            // Recalc if any dates were provided
+            if (
+                data.estimatedStartDate !== undefined ||
+                data.estimatedCompletionDate !== undefined
+            ) {
+                await recalcProjectDates(projectId, tx);
+            }
+
+            return contract;
+        });
+    },
+
     // --- Schedule Entries ---
 
     listScheduleEntries: async (
@@ -447,22 +572,23 @@ export const ProjectService = {
             checkDeletedAt(file);
         }
 
-        const entry = await prisma.projectScheduleEntry.create({
-            data: {
-                id: ulid(),
-                projectId,
-                date: data.date,
-                description: data.description,
-                adjustedStartDate: data.adjustedStartDate,
-                adjustedFinishDate: data.adjustedFinishDate,
-                notes: data.notes,
-                fileId: data.fileId,
-            },
-            include: { file: { select: { id: true, name: true } } },
+        return await prisma.$transaction(async (tx) => {
+            const entry = await tx.projectScheduleEntry.create({
+                data: {
+                    id: ulid(),
+                    projectId,
+                    date: data.date,
+                    description: data.description,
+                    adjustedStartDate: data.adjustedStartDate,
+                    adjustedFinishDate: data.adjustedFinishDate,
+                    notes: data.notes,
+                    fileId: data.fileId,
+                },
+                include: { file: { select: { id: true, name: true } } },
+            });
+            await recalcProjectDates(projectId, tx);
+            return entry;
         });
-
-        await recalcProjectDates(projectId);
-        return entry;
     },
 
     updateScheduleEntry: async (
@@ -485,14 +611,15 @@ export const ProjectService = {
             checkDeletedAt(file);
         }
 
-        const updated = await prisma.projectScheduleEntry.update({
-            where: { id: entryId },
-            data,
-            include: { file: { select: { id: true, name: true } } },
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.projectScheduleEntry.update({
+                where: { id: entryId },
+                data,
+                include: { file: { select: { id: true, name: true } } },
+            });
+            await recalcProjectDates(projectId, tx);
+            return updated;
         });
-
-        await recalcProjectDates(projectId);
-        return updated;
     },
 
     deleteScheduleEntry: async (projectId: string, entryId: string) => {
@@ -505,36 +632,70 @@ export const ProjectService = {
         });
         if (!entry) throw new NotFoundError('Schedule entry not found');
 
-        await prisma.projectScheduleEntry.update({
-            where: { id: entryId },
-            data: { deletedAt: new Date() },
+        await prisma.$transaction(async (tx) => {
+            await tx.projectScheduleEntry.update({
+                where: { id: entryId },
+                data: { deletedAt: new Date() },
+            });
+            await recalcProjectDates(projectId, tx);
         });
-
-        await recalcProjectDates(projectId);
     },
 };
 
 export async function recalcProjectDates(projectId: string, tx?: TransactionClient) {
     const db = tx || prisma;
 
-    const [latestStart, latestFinish] = await Promise.all([
+    // 1. Find latest baseline dates (entries NOT linked to a change order)
+    const [latestBaselineStart, latestBaselineFinish] = await Promise.all([
         db.projectScheduleEntry.findFirst({
-            where: { projectId, deletedAt: null, adjustedStartDate: { not: null } },
+            where: {
+                projectId,
+                deletedAt: null,
+                changeOrderId: null,
+                adjustedStartDate: { not: null },
+            },
             orderBy: { createdAt: 'desc' },
             select: { adjustedStartDate: true },
         }),
         db.projectScheduleEntry.findFirst({
-            where: { projectId, deletedAt: null, adjustedFinishDate: { not: null } },
+            where: {
+                projectId,
+                deletedAt: null,
+                changeOrderId: null,
+                adjustedFinishDate: { not: null },
+            },
             orderBy: { createdAt: 'desc' },
             select: { adjustedFinishDate: true },
         }),
     ]);
 
+    // 2. Sum schedule impact days from all EXECUTED (non-voided) PCOs
+    const pcoAgg = await db.primeChangeOrder.aggregate({
+        where: {
+            projectId,
+            status: { name: 'EXECUTED' },
+            deletedAt: null,
+            impactsSchedule: true,
+            scheduleImpactDays: { not: null },
+        },
+        _sum: { scheduleImpactDays: true },
+    });
+    const totalImpactDays = pcoAgg._sum.scheduleImpactDays || 0;
+
+    // 3. Compute effective dates
+    let effectiveEndDate: Date | null = null;
+    if (latestBaselineFinish?.adjustedFinishDate) {
+        effectiveEndDate = new Date(latestBaselineFinish.adjustedFinishDate);
+        if (totalImpactDays > 0) {
+            effectiveEndDate.setDate(effectiveEndDate.getDate() + totalImpactDays);
+        }
+    }
+
+    const effectiveStartDate: Date | null = latestBaselineStart?.adjustedStartDate ?? null;
+
+    // 4. Update project
     await db.project.update({
         where: { id: projectId },
-        data: {
-            effectiveStartDate: latestStart?.adjustedStartDate ?? null,
-            effectiveEndDate: latestFinish?.adjustedFinishDate ?? null,
-        },
+        data: { effectiveStartDate, effectiveEndDate },
     });
 }

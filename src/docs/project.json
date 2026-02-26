@@ -17,10 +17,10 @@
                                         "name": "P.S. 234K Auditorium Renovation",
                                         "description": "Complete auditorium renovation including new millwork, acoustic panels, stage flooring, and ADA-compliant seating.",
                                         "contractNumber": "SCA-2026-0891",
-                                        "stageId": "01KJ7HTCRZGY4074AFREY1FSHB",
+                                        "stageId": "01KJCQWS4NRWHXXCBZ8ZEX5FPV",
                                         "division": "SCA",
                                         "gcId": "01JMSEEDGCONT000000001",
-                                        "leadPMId": "REPLACE_WITH_EMPLOYEE_ID",
+                                        "leadPMId": "01KJCQWRWR60SRX359CE6JVKV1",
                                         "streetAddress": "525 West 44th Street",
                                         "city": "New York",
                                         "state": "NY",
@@ -38,11 +38,11 @@
                                         "name": "Brooklyn Central Library HVAC Upgrade",
                                         "description": "Full HVAC system replacement across 3 floors. Includes ductwork fabrication, rooftop unit installation, controls integration, and TAB.",
                                         "contractNumber": "DDC-2026-1204",
-                                        "stageId": "01KJ7HTCRS4RPDS9SR862ZXA3D",
+                                        "stageId": "01KJCQWS4YRMKB4W5T85PG05DN",
                                         "division": "DDC",
-                                        "statusId": "01KJ7HTCM9R8CMP5JKVH6R4QAQ",
-                                        "gcId": "01KJ7HT1VQZXV2TSFDAN3449AY",
-                                        "leadPMId": "REPLACE_WITH_EMPLOYEE_ID",
+                                        "statusId": "01KJCQWS168ADHGPJHDTZN4085",
+                                        "gcId": "01KJCQWEFQV1SQJW4GKJJ721GH",
+                                        "leadPMId": "01KJCQWRWR60SRX359CE6JVKV1",
                                         "streetAddress": "10 Grand Army Plaza",
                                         "city": "Brooklyn",
                                         "state": "NY",
@@ -59,10 +59,10 @@
                                     "value": {
                                         "name": "Success Academy Charter School Fit-Out",
                                         "description": "Interior fit-out for new charter school location. Classrooms, cafeteria, gymnasium.",
-                                        "stageId": "01KJ7HTCS29G3GV9S69K5V5HJB",
+                                        "stageId": "01KJCQWS5244GN72BFXKR2DN4F",
                                         "division": "INSTITUTIONAL",
-                                        "gcId": "01KJ7HT1W2H9HK7J75NNVJY58Y",
-                                        "leadPMId": "REPLACE_WITH_EMPLOYEE_ID",
+                                        "gcId": "01KJCQWEG4055PDS218PSXVBE3",
+                                        "leadPMId": "01KJCQWRWR60SRX359CE6JVKV1",
                                         "streetAddress": "1180 Reverend James A. Polite Avenue",
                                         "city": "Bronx",
                                         "state": "NY",
@@ -74,10 +74,10 @@
                                     "value": {
                                         "name": "Queens DSNY Garage Renovation",
                                         "description": "Garage door replacements and concrete slab repair for DSNY facility.",
-                                        "stageId": "01KJ7HTCS29G3GV9S69K5V5HJB",
+                                        "stageId": "01KJCQWS557SM3S122ZJHJTN2C",
                                         "division": "DDC",
                                         "gcId": "01JMSEEDGCONT000000001",
-                                        "leadPMId": "REPLACE_WITH_EMPLOYEE_ID"
+                                        "leadPMId": "01KJCQWRWR60SRX359CE6JVKV1"
                                     }
                                 }
                             }
@@ -109,10 +109,10 @@
                 "operationId": "listProjects",
                 "parameters": [
                     { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by name, jobNumber, contractNumber (case-insensitive)", "example": "JFK" },
-                    { "name": "statusId", "in": "query", "schema": { "type": "string" }, "description": "Filter by status — BIDDING: 01KJ7HTCKH00D2NFYP0VW6VTNF, ACTIVE: 01KJ7HTCM9R8CMP5JKVH6R4QAQ, AWARDED: 01KJ7HTCM5YDXVVCGCHP309B45, ON_HOLD: 01KJ7HTCMC00REQQBVHCN7KFW5, COMPLETED: 01KJ7HTCMJWPBDE6EDTM12V0G3, CANCELLED: 01KJ7HTCMM35MCK2X806ATQ1PN" },
+                    { "name": "statusId", "in": "query", "schema": { "type": "string" }, "description": "Filter by status — BIDDING: 01KJCQWS0KZ1SE0ZPKC55MZVXM, ACTIVE: 01KJCQWS168ADHGPJHDTZN4085, AWARDED: 01KJCQWS104VJ1VCNW0DFVQ6ZC, ON_HOLD: 01KJCQWS1AH52ZW3PBQ15XXJ26, COMPLETED: 01KJCQWS1C2RM8V05A57DCPP9R, CANCELLED: 01KJCQWS1EH4907EX6HY8W3KBQ" },
                     { "name": "division", "in": "query", "schema": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] }, "description": "Filter by division" },
-                    { "name": "stageId", "in": "query", "schema": { "type": "string" }, "description": "Filter by stage — INSTALLATION: 01KJ7HTCRGPCCDBZVDYJVXX3PZ, FABRICATION: 01KJ7HTCRS4RPDS9SR862ZXA3D, SUBMITTALS: 01KJ7HTCRZGY4074AFREY1FSHB, BUYOUT: 01KJ7HTCS29G3GV9S69K5V5HJB, CLOSEOUT: 01KJ7HTCS58Y7DAM3M1A0YNRJJ, PUNCHLIST: 01KJ7HTCS9JTCVM40B0JHJ9XWR" },
-                    { "name": "gcId", "in": "query", "schema": { "type": "string" }, "description": "Filter by GC — BuildCorp: 01JMSEEDGCONT000000001, Turner: 01KJ7HT1V6377DKRT52XS87CE3, Skanska: 01KJ7HT1VQZXV2TSFDAN3449AY, SCA District 1: 01KJ7HT1VXHC3Q47JX7ARDRX80, Hensel Phelps: 01KJ7HT1W2H9HK7J75NNVJY58Y, Granite: 01KJ7HT1W6DZ5BHF8FVXHNNNBQ" },
+                    { "name": "stageId", "in": "query", "schema": { "type": "string" }, "description": "Filter by stage — INSTALLATION: 01KJCQWS4NRWHXXCBZ8ZEX5FPV, FABRICATION: 01KJCQWS4YRMKB4W5T85PG05DN, SUBMITTALS: 01KJCQWS5244GN72BFXKR2DN4F, BUYOUT: 01KJCQWS557SM3S122ZJHJTN2C, CLOSEOUT: 01KJCQWS58PCJRK9YFT377SB9N, PUNCHLIST: 01KJCQWS5GG1AZKD58SR9ESN6K" },
+                    { "name": "gcId", "in": "query", "schema": { "type": "string" }, "description": "Filter by GC — BuildCorp: 01JMSEEDGCONT000000001, Turner: 01KJCQWEFD15J5CP950YHHX76J, Skanska: 01KJCQWEFQV1SQJW4GKJJ721GH, SCA District 1: 01KJCQWEFX4WEM6B3P3WYD6VT0, Hensel Phelps: 01KJCQWEG4055PDS218PSXVBE3, Granite: 01KJCQWEG942XHQTJM71GKEYYP" },
                     { "name": "leadPMId", "in": "query", "schema": { "type": "string" }, "description": "Filter by Lead PM (create employees first via /employees endpoint)" },
                     { "name": "year", "in": "query", "schema": { "type": "integer" }, "description": "Filter by year (projects overlapping this year)", "example": 2026 },
                     { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
@@ -176,13 +176,13 @@
                                 "change-status-to-active": {
                                     "summary": "Move project to Active status",
                                     "value": {
-                                        "statusId": "01KJ7HTCM9R8CMP5JKVH6R4QAQ"
+                                        "statusId": "01KJCQWS168ADHGPJHDTZN4085"
                                     }
                                 },
                                 "advance-stage": {
                                     "summary": "Advance to Fabrication stage",
                                     "value": {
-                                        "stageId": "01KJ7HTCRS4RPDS9SR862ZXA3D"
+                                        "stageId": "01KJCQWS4YRMKB4W5T85PG05DN"
                                     }
                                 },
                                 "update-address": {
@@ -197,7 +197,7 @@
                                 "put-on-hold": {
                                     "summary": "Put project on hold",
                                     "value": {
-                                        "statusId": "01KJ7HTCMC00REQQBVHCN7KFW5"
+                                        "statusId": "01KJCQWS1AH52ZW3PBQ15XXJ26"
                                     }
                                 }
                             }
@@ -219,6 +219,91 @@
                 "responses": {
                     "200": { "description": "Soft deleted (sets deletedAt, excluded from list)", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "null" } } }] } } } },
                     "404": { "description": "Not found or already deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/projects/{id}/contract": {
+            "get": {
+                "tags": ["Projects — Contract"],
+                "summary": "Get prime contract",
+                "operationId": "getPrimeContract",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prime contract details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project or contract not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "put": {
+                "tags": ["Projects — Contract"],
+                "summary": "Create or update prime contract",
+                "description": "Upserts the prime contract for a project. If estimatedStartDate or estimatedCompletionDate are provided, creates baseline schedule entries and recalculates project effective dates (baseline + active PCO deltas).",
+                "operationId": "upsertPrimeContract",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PrimeContractUpsertRequest" },
+                            "examples": {
+                                "minimal": {
+                                    "summary": "Add contract — value only",
+                                    "value": { "contractValue": 1500000 }
+                                },
+                                "full": {
+                                    "summary": "Full contract with dates (auto-creates schedule baselines)",
+                                    "value": {
+                                        "contractValue": 2340000,
+                                        "totalContractValue": 2500000,
+                                        "contractType": "Lump Sum",
+                                        "retainagePercent": 10,
+                                        "targetBudgetPercent": 85,
+                                        "paymentTerms": "NET_30",
+                                        "estimatedStartDate": "2026-04-01",
+                                        "estimatedCompletionDate": "2027-03-31"
+                                    }
+                                },
+                                "update-dates": {
+                                    "summary": "Update completion date (recalculates with active PCO deltas)",
+                                    "value": {
+                                        "contractValue": 2340000,
+                                        "estimatedCompletionDate": "2027-06-30"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contract created or updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
@@ -304,7 +389,7 @@
                                         "description": "Initial project schedule uploaded",
                                         "adjustedStartDate": "2026-04-01",
                                         "adjustedFinishDate": "2026-11-15",
-                                        "fileId": "REPLACE_WITH_FILE_ID"
+                                        "fileId": "USE_A_FILE_ID_FROM_GET_/file"
                                     }
                                 }
                             }
@@ -426,14 +511,14 @@
                                 "accountant": {
                                     "summary": "Add project accountant",
                                     "value": {
-                                        "employeeId": "REPLACE_WITH_EMPLOYEE_ID",
+                                        "employeeId": "01KJCQWRX5Y4V4Y0650TDJQRX9",
                                         "role": "Accountant"
                                     }
                                 },
                                 "no-role": {
                                     "summary": "Add member without specific role",
                                     "value": {
-                                        "employeeId": "REPLACE_WITH_EMPLOYEE_ID"
+                                        "employeeId": "01KJCQWRX5Y4V4Y0650TDJQRX9"
                                     }
                                 }
                             }
@@ -555,6 +640,23 @@
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
+            "PrimeContractUpsertRequest": {
+                "type": "object",
+                "required": ["contractValue"],
+                "properties": {
+                    "contractValue": { "type": "number", "exclusiveMinimum": 0 },
+                    "contractType": { "type": "string", "maxLength": 100, "description": "e.g. Lump Sum, GMP, T&M, Cost Plus" },
+                    "totalContractValue": { "type": "number", "exclusiveMinimum": 0 },
+                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+                    "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
+                    "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true, "description": "Creates a baseline schedule entry when provided" },
+                    "estimatedCompletionDate": { "type": "string", "format": "date-time", "nullable": true, "description": "Creates a baseline schedule entry when provided" },
+                    "actualStartDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "actualCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "executedContractDocId": { "type": "string", "nullable": true, "description": "File ID of the executed contract document" }
+                }
+            },
             "ProjectListItem": {
                 "type": "object",
                 "properties": {
@@ -617,10 +719,10 @@
                     "description": { "type": "string", "minLength": 1 },
                     "jobNumber": { "type": "string", "description": "Auto-generated YYYY-### if not provided" },
                     "contractNumber": { "type": "string", "maxLength": 100 },
-                    "stageId": { "type": "string", "description": "INSTALLATION=01KJ7HTCRGPCCDBZVDYJVXX3PZ, FABRICATION=01KJ7HTCRS4RPDS9SR862ZXA3D, SUBMITTALS=01KJ7HTCRZGY4074AFREY1FSHB, BUYOUT=01KJ7HTCS29G3GV9S69K5V5HJB, CLOSEOUT=01KJ7HTCS58Y7DAM3M1A0YNRJJ, PUNCHLIST=01KJ7HTCS9JTCVM40B0JHJ9XWR" },
+                    "stageId": { "type": "string", "description": "INSTALLATION=01KJCQWS4NRWHXXCBZ8ZEX5FPV, FABRICATION=01KJCQWS4YRMKB4W5T85PG05DN, SUBMITTALS=01KJCQWS5244GN72BFXKR2DN4F, BUYOUT=01KJCQWS557SM3S122ZJHJTN2C, CLOSEOUT=01KJCQWS58PCJRK9YFT377SB9N, PUNCHLIST=01KJCQWS5GG1AZKD58SR9ESN6K" },
                     "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
-                    "statusId": { "type": "string", "description": "Defaults to BIDDING if omitted. BIDDING=01KJ7HTCKH00D2NFYP0VW6VTNF, ACTIVE=01KJ7HTCM9R8CMP5JKVH6R4QAQ, AWARDED=01KJ7HTCM5YDXVVCGCHP309B45" },
-                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJ7HT1V6377DKRT52XS87CE3, Skanska=01KJ7HT1VQZXV2TSFDAN3449AY, SCA District 1=01KJ7HT1VXHC3Q47JX7ARDRX80, Hensel Phelps=01KJ7HT1W2H9HK7J75NNVJY58Y, Granite=01KJ7HT1W6DZ5BHF8FVXHNNNBQ" },
+                    "statusId": { "type": "string", "description": "Defaults to BIDDING if omitted. BIDDING=01KJCQWS0KZ1SE0ZPKC55MZVXM, ACTIVE=01KJCQWS168ADHGPJHDTZN4085, AWARDED=01KJCQWS104VJ1VCNW0DFVQ6ZC" },
+                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJCQWEFD15J5CP950YHHX76J, Skanska=01KJCQWEFQV1SQJW4GKJJ721GH, SCA District 1=01KJCQWEFX4WEM6B3P3WYD6VT0, Hensel Phelps=01KJCQWEG4055PDS218PSXVBE3, Granite=01KJCQWEG942XHQTJM71GKEYYP" },
                     "leadPMId": { "type": "string", "description": "Employee ID — create employees via /employees endpoint first" },
                     "streetAddress": { "type": "string" },
                     "city": { "type": "string" },
@@ -645,10 +747,10 @@
                     "name": { "type": "string", "minLength": 1, "maxLength": 255 },
                     "description": { "type": "string", "minLength": 1 },
                     "contractNumber": { "type": "string", "maxLength": 100 },
-                    "stageId": { "type": "string", "description": "INSTALLATION=01KJ7HTCRGPCCDBZVDYJVXX3PZ, FABRICATION=01KJ7HTCRS4RPDS9SR862ZXA3D, SUBMITTALS=01KJ7HTCRZGY4074AFREY1FSHB, BUYOUT=01KJ7HTCS29G3GV9S69K5V5HJB, CLOSEOUT=01KJ7HTCS58Y7DAM3M1A0YNRJJ, PUNCHLIST=01KJ7HTCS9JTCVM40B0JHJ9XWR" },
+                    "stageId": { "type": "string", "description": "INSTALLATION=01KJCQWS4NRWHXXCBZ8ZEX5FPV, FABRICATION=01KJCQWS4YRMKB4W5T85PG05DN, SUBMITTALS=01KJCQWS5244GN72BFXKR2DN4F, BUYOUT=01KJCQWS557SM3S122ZJHJTN2C, CLOSEOUT=01KJCQWS58PCJRK9YFT377SB9N, PUNCHLIST=01KJCQWS5GG1AZKD58SR9ESN6K" },
                     "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
-                    "statusId": { "type": "string", "description": "BIDDING=01KJ7HTCKH00D2NFYP0VW6VTNF, NEGOTIATION=01KJ7HTCM06WK9NBHSBMKZ7ZW3, AWARDED=01KJ7HTCM5YDXVVCGCHP309B45, ACTIVE=01KJ7HTCM9R8CMP5JKVH6R4QAQ, ON_HOLD=01KJ7HTCMC00REQQBVHCN7KFW5, COMPLETED=01KJ7HTCMJWPBDE6EDTM12V0G3, CANCELLED=01KJ7HTCMM35MCK2X806ATQ1PN" },
-                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJ7HT1V6377DKRT52XS87CE3, Skanska=01KJ7HT1VQZXV2TSFDAN3449AY" },
+                    "statusId": { "type": "string", "description": "BIDDING=01KJCQWS0KZ1SE0ZPKC55MZVXM, NEGOTIATION=01KJCQWS0VFSCYTGZ0B6Y075AW, AWARDED=01KJCQWS104VJ1VCNW0DFVQ6ZC, ACTIVE=01KJCQWS168ADHGPJHDTZN4085, ON_HOLD=01KJCQWS1AH52ZW3PBQ15XXJ26, COMPLETED=01KJCQWS1C2RM8V05A57DCPP9R, CANCELLED=01KJCQWS1EH4907EX6HY8W3KBQ" },
+                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJCQWEFD15J5CP950YHHX76J, Skanska=01KJCQWEFQV1SQJW4GKJJ721GH" },
                     "leadPMId": { "type": "string", "description": "Employee ID" },
                     "streetAddress": { "type": "string" },
                     "city": { "type": "string" },

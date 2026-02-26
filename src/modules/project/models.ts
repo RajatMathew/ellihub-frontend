@@ -77,3 +77,21 @@ export const ScheduleEntryUpdateSchema = z
     });
 
 export type ScheduleEntryUpdateRequest = z.infer<typeof ScheduleEntryUpdateSchema>;
+
+export const PrimeContractUpsertSchema = z.object({
+    contractValue: z.number().positive(),
+    contractType: z.string().max(100).optional(),
+    totalContractValue: z.number().positive().optional(),
+    retainagePercent: z.number().min(0).max(100).optional(),
+    targetBudgetPercent: z.number().min(0).max(100).optional(),
+    paymentTerms: z
+        .enum(['NET_15', 'NET_30', 'NET_45', 'NET_60', 'NET_90', 'DUE_ON_RECEIPT'])
+        .optional(),
+    estimatedStartDate: z.coerce.date().nullable().optional(),
+    estimatedCompletionDate: z.coerce.date().nullable().optional(),
+    actualStartDate: z.coerce.date().nullable().optional(),
+    actualCompletionDate: z.coerce.date().nullable().optional(),
+    executedContractDocId: z.string().min(1).nullable().optional(),
+});
+
+export type PrimeContractUpsertRequest = z.infer<typeof PrimeContractUpsertSchema>;

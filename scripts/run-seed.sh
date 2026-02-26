@@ -16,8 +16,11 @@ bun run scripts/seed-contacts.ts
 bun run scripts/seed-vendors.ts
 bun run scripts/seed-root-folder.ts
 
+bun run scripts/seed-employees.ts
+
 bun run scripts/seed-project-statuses.ts
 bun run scripts/seed-project-stages.ts
 bun run scripts/seed-pco-change-types.ts
+bun run scripts/seed-pco-statuses.ts
 
 # echo "All seed scripts completed."

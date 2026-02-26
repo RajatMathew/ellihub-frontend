@@ -16,7 +16,7 @@
                     {
                         "name": "status",
                         "in": "query",
-                        "schema": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] }
+                        "schema": { "type": "string", "enum": ["DRAFT", "PENDING_REVIEW", "REVERTED", "APPROVED", "SENT_TO_GC", "PENCILED", "EXECUTED", "REJECTED", "VOID"] }
                     },
                     {
                         "name": "changeTypeId",
@@ -108,15 +108,15 @@
                                 "scope-addition": {
                                     "summary": "Scope addition with schedule impact",
                                     "value": {
-                                        "projectId": "01KJ7JDGN65DQ7X4HHX8QMSVPT",
-                                        "date": "2026-02-24",
+                                        "projectId": "PROJECT_ID",
+                                        "date": "2026-02-25",
                                         "title": "Additional steel reinforcement",
                                         "description": "Extra rebar needed due to soil conditions",
                                         "amount": 15000,
                                         "estimatedCost": 12000,
                                         "impactsSchedule": true,
                                         "scheduleImpactDays": 5,
-                                        "changeTypeId": "01KJ7T4GRRTHJJ1PNDKVTYG7RB",
+                                        "changeTypeId": "01KJCQWS8V86DPGZMRE3VXWANP",
                                         "priority": "HIGH",
                                         "lineItems": [
                                             {
@@ -139,8 +139,8 @@
                                 "simple": {
                                     "summary": "Simple PCO without schedule impact",
                                     "value": {
-                                        "projectId": "01KJ7JDGN65DQ7X4HHX8QMSVPT",
-                                        "date": "2026-02-24",
+                                        "projectId": "PROJECT_ID",
+                                        "date": "2026-02-25",
                                         "title": "Electrical panel upgrade",
                                         "description": "Main panel needs 200A upgrade",
                                         "amount": 8500,
@@ -307,7 +307,7 @@
                 "tags": ["Prime Change Orders"],
                 "summary": "Transition PCO status",
                 "operationId": "transitionPCOStatus",
-                "description": "Valid transitions: DRAFT→APPROVED, DRAFT→REJECTED, APPROVED→VOID. On APPROVED: if impactsSchedule, a schedule entry is auto-created and project dates recalculated. On VOID: linked schedule entries are soft-deleted and project dates recalculated. Reason is required for REJECTED and VOID.",
+                "description": "Transitions are fully open — any non-terminal status can move to any other status. Terminal statuses: REJECTED and VOID (no transitions out). EXECUTED can only transition to VOID. On EXECUTED: if impactsSchedule, a schedule entry is auto-created and project dates recalculated. On VOID: linked schedule entries are soft-deleted and project dates recalculated. Reason is required for REVERTED, REJECTED, and VOID.",
                 "parameters": [
                     {
                         "name": "id",
@@ -322,21 +322,59 @@
                         "application/json": {
                             "schema": { "$ref": "#/components/schemas/PCOStatusTransitionRequest" },
                             "examples": {
+                                "submit": {
+                                    "summary": "Submit DRAFT for review",
+                                    "value": {
+                                        "status": "PENDING_REVIEW"
+                                    }
+                                },
+                                "revert": {
+                                    "summary": "CEO reverts (reason required)",
+                                    "value": {
+                                        "status": "REVERTED",
+                                        "reason": "Need better cost breakdown and schedule justification"
+                                    }
+                                },
                                 "approve": {
-                                    "summary": "Approve a DRAFT PCO",
+                                    "summary": "CEO approves internally",
                                     "value": {
                                         "status": "APPROVED"
                                     }
                                 },
+                                "send-to-gc": {
+                                    "summary": "Send to GC for review",
+                                    "value": {
+                                        "status": "SENT_TO_GC"
+                                    }
+                                },
+                                "penciled": {
+                                    "summary": "GC returned with markups",
+                                    "value": {
+                                        "status": "PENCILED",
+                                        "reason": "GC penciled: reduced sprinkler qty from 100 to 50, adjusted pricing"
+                                    }
+                                },
+                                "back-to-draft": {
+                                    "summary": "Acknowledge revert/pencil and edit",
+                                    "value": {
+                                        "status": "DRAFT"
+                                    }
+                                },
+                                "executed": {
+                                    "summary": "GC approved — executed (triggers schedule impact)",
+                                    "value": {
+                                        "status": "EXECUTED"
+                                    }
+                                },
                                 "reject": {
-                                    "summary": "Reject a DRAFT PCO (reason required)",
+                                    "summary": "Reject (reason required)",
                                     "value": {
                                         "status": "REJECTED",
                                         "reason": "Scope not justified per owner review"
                                     }
                                 },
                                 "void": {
-                                    "summary": "Void an APPROVED PCO (reason required)",
+                                    "summary": "Void an executed PCO (reason required)",
                                     "value": {
                                         "status": "VOID",
                                         "reason": "Owner decided to reduce scope"
@@ -376,6 +414,16 @@
     },
     "components": {
         "schemas": {
+            "ChangeOrderStatusObject": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string", "enum": ["DRAFT", "PENDING_REVIEW", "REVERTED", "APPROVED", "SENT_TO_GC", "PENCILED", "EXECUTED", "REJECTED", "VOID"] },
+                    "label": { "type": "string" },
+                    "color": { "type": "string" },
+                    "order": { "type": "integer" }
+                }
+            },
             "PCOListItem": {
                 "type": "object",
                 "properties": {
@@ -384,7 +432,7 @@
                     "date": { "type": "string", "format": "date-time" },
                     "title": { "type": "string" },
                     "amount": { "type": "number" },
-                    "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] },
+                    "status": { "$ref": "#/components/schemas/ChangeOrderStatusObject" },
                     "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
                     "impactsSchedule": { "type": "boolean" },
                     "changeType": {
@@ -431,7 +479,7 @@
                     "title": { "type": "string" },
                     "description": { "type": "string" },
                     "amount": { "type": "number" },
-                    "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] },
+                    "status": { "$ref": "#/components/schemas/ChangeOrderStatusObject" },
                     "revisionNumber": { "type": "integer" },
                     "createdBy": { "type": "string" },
                     "markupAmount": { "type": "number", "nullable": true },
@@ -552,8 +600,10 @@
                 "properties": {
                     "id": { "type": "string" },
                     "pcoId": { "type": "string" },
-                    "fromStatus": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"], "nullable": true },
-                    "toStatus": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] },
+                    "fromStatusId": { "type": "string", "nullable": true },
+                    "fromStatus": { "$ref": "#/components/schemas/ChangeOrderStatusObject" },
+                    "toStatusId": { "type": "string" },
+                    "toStatus": { "$ref": "#/components/schemas/ChangeOrderStatusObject" },
                     "changedBy": { "type": "string" },
                     "onBehalfOf": { "type": "string", "nullable": true },
                     "reason": { "type": "string", "nullable": true },
@@ -575,7 +625,7 @@
                     "contactId": { "type": "string", "description": "GC contact this CO was sent to (Contact ID)" },
                     "changeTypeId": { "type": "string", "description": "PCOChangeType ID" },
                     "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
-                    "impactsSchedule": { "type": "boolean", "description": "When true and status transitions to APPROVED, a schedule entry is auto-created" },
+                    "impactsSchedule": { "type": "boolean", "description": "When true and status transitions to EXECUTED, a schedule entry is auto-created and project dates recalculated" },
                     "estimatedCost": { "type": "number", "description": "Used to auto-compute estimatedMargin and estimatedMarginPercent" },
                     "costCodeId": { "type": "string", "description": "CostCode ID" },
                     "lineItems": {
@@ -621,13 +671,13 @@
                 "properties": {
                     "status": {
                         "type": "string",
-                        "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"],
-                        "description": "Target status. Valid: DRAFT→APPROVED, DRAFT→REJECTED, APPROVED→VOID"
+                        "enum": ["DRAFT", "PENDING_REVIEW", "REVERTED", "APPROVED", "SENT_TO_GC", "PENCILED", "EXECUTED", "REJECTED", "VOID"],
+                        "description": "Target status name. See endpoint description for valid transitions."
                     },
                     "reason": {
                         "type": "string",
                         "maxLength": 2000,
-                        "description": "Required for REJECTED and VOID transitions"
+                        "description": "Required for REVERTED, REJECTED, and VOID transitions"
                     },
                     "onBehalfOf": {
                         "type": "string",

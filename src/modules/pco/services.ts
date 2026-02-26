@@ -7,15 +7,21 @@ import { ulid } from 'ulid';
 
 import { PCOCreateRequest, PCOStatusTransitionRequest, PCOUpdateRequest } from './models';
 
+const statusSelect = { select: { id: true, name: true, label: true, color: true, order: true } };
+
 const pcoDetailInclude = {
     project: { select: { id: true, name: true, jobNumber: true } },
+    status: statusSelect,
     creator: { select: { id: true, name: true, email: true } },
     contact: { select: { id: true, fullName: true } },
     changeType: { select: { id: true, name: true, code: true, color: true } },
     costCode: { select: { id: true, name: true, code: true } },
     lineItems: { where: { deletedAt: null }, orderBy: { sequenceNumber: 'asc' as const } },
     attachments: { include: { document: { select: { id: true, name: true } } } },
-    statusHistory: { orderBy: { createdAt: 'desc' as const } },
+    statusHistory: {
+        orderBy: { createdAt: 'desc' as const },
+        include: { fromStatus: statusSelect, toStatus: statusSelect },
+    },
     supersededByOrder: { select: { id: true, pcoNumber: true } },
 } as const;
 
@@ -25,7 +31,7 @@ const pcoListSelect = {
     date: true,
     title: true,
     amount: true,
-    status: true,
+    status: statusSelect,
     priority: true,
     impactsSchedule: true,
     changeType: { select: { id: true, name: true, code: true, color: true } },
@@ -34,6 +40,33 @@ const pcoListSelect = {
     _count: { select: { lineItems: { where: { deletedAt: null } } } },
     createdAt: true,
 } as const;
+
+const ALL_STATUSES = [
+    'DRAFT',
+    'PENDING_REVIEW',
+    'REVERTED',
+    'APPROVED',
+    'SENT_TO_GC',
+    'PENCILED',
+    'EXECUTED',
+    'REJECTED',
+    'VOID',
+];
+const allExcept = (...exclude: string[]) => ALL_STATUSES.filter((s) => !exclude.includes(s));
+
+const validTransitions: Record<string, string[]> = {
+    DRAFT: allExcept('DRAFT'),
+    PENDING_REVIEW: allExcept('PENDING_REVIEW'),
+    REVERTED: allExcept('REVERTED'),
+    APPROVED: allExcept('APPROVED'),
+    SENT_TO_GC: allExcept('SENT_TO_GC'),
+    PENCILED: allExcept('PENCILED'),
+    EXECUTED: ['VOID'],
+    REJECTED: [],
+    VOID: [],
+};
+
+const REASON_REQUIRED_STATUSES = ['REVERTED', 'REJECTED', 'VOID'];
 
 function computeMargin(amount: number, estimatedCost: number | null | undefined) {
     if (estimatedCost != null && amount !== 0) {
@@ -67,7 +100,7 @@ export const PCOService = {
             deletedAt: null,
             projectId,
             ...restFilter,
-            ...(status && { status }),
+            ...(status && { status: { name: status } }),
             ...(changeTypeId && { changeTypeId }),
             ...(priority && { priority }),
             ...(search && {
@@ -128,6 +161,12 @@ export const PCOService = {
             checkDeletedAt(costCode);
         }
 
+        // Look up DRAFT status
+        const draftStatus = await prisma.changeOrderStatus.findFirst({
+            where: { name: 'DRAFT' },
+        });
+        if (!draftStatus) throw new BadRequestError('DRAFT status not configured');
+
         return await prisma.$transaction(async (tx) => {
             // Auto-generate pcoNumber
             const proj = await tx.project.findUniqueOrThrow({
@@ -155,6 +194,7 @@ export const PCOService = {
                 data: {
                     id: pcoId,
                     projectId: pcoData.projectId,
+                    statusId: draftStatus.id,
                     pcoNumber,
                     date: pcoData.date,
                     title: pcoData.title,
@@ -209,11 +249,14 @@ export const PCOService = {
     },
 
     updatePCO: async (id: string, data: PCOUpdateRequest) => {
-        const pco = await prisma.primeChangeOrder.findUnique({ where: { id } });
+        const pco = await prisma.primeChangeOrder.findUnique({
+            where: { id },
+            include: { status: { select: { name: true } } },
+        });
         if (!pco) throw new NotFoundError('Prime Change Order not found');
         checkDeletedAt(pco);
 
-        if (pco.status !== 'DRAFT') {
+        if (pco.status.name !== 'DRAFT') {
             throw new BadRequestError('Only DRAFT change orders can be updated');
         }
 
@@ -235,14 +278,17 @@ export const PCOService = {
             checkDeletedAt(costCode);
         }
 
-        // Recompute margin if amount or estimatedCost changed
         const updateData: Record<string, unknown> = { ...data };
-        const newAmount = data.amount ?? pco.amount;
-        const newEstimatedCost =
-            data.estimatedCost !== undefined ? data.estimatedCost : pco.estimatedCost;
-        const margin = computeMargin(newAmount, newEstimatedCost);
-        updateData.estimatedMargin = margin.estimatedMargin;
-        updateData.estimatedMarginPercent = margin.estimatedMarginPercent;
+
+        // Recompute margin only if amount or estimatedCost changed
+        if (data.amount !== undefined || data.estimatedCost !== undefined) {
+            const newAmount = data.amount ?? pco.amount;
+            const newEstimatedCost =
+                data.estimatedCost !== undefined ? data.estimatedCost : pco.estimatedCost;
+            const margin = computeMargin(newAmount, newEstimatedCost);
+            updateData.estimatedMargin = margin.estimatedMargin;
+            updateData.estimatedMarginPercent = margin.estimatedMarginPercent;
+        }
 
         return await prisma.primeChangeOrder.update({
             where: { id },
@@ -252,11 +298,14 @@ export const PCOService = {
     },
 
     deletePCO: async (id: string) => {
-        const pco = await prisma.primeChangeOrder.findUnique({ where: { id } });
+        const pco = await prisma.primeChangeOrder.findUnique({
+            where: { id },
+            include: { status: { select: { name: true } } },
+        });
         if (!pco) throw new NotFoundError('Prime Change Order not found');
         checkDeletedAt(pco);
 
-        if (pco.status !== 'DRAFT') {
+        if (pco.status.name !== 'DRAFT') {
             throw new BadRequestError('Only DRAFT change orders can be deleted');
         }
 
@@ -274,35 +323,43 @@ export const PCOService = {
     },
 
     transitionStatus: async (id: string, data: PCOStatusTransitionRequest, userId: string) => {
-        const pco = await prisma.primeChangeOrder.findUnique({ where: { id } });
+        const pco = await prisma.primeChangeOrder.findUnique({
+            where: { id },
+            include: { status: { select: { id: true, name: true } } },
+        });
         if (!pco) throw new NotFoundError('Prime Change Order not found');
         checkDeletedAt(pco);
 
-        const { status: targetStatus, reason, onBehalfOf } = data;
-        const currentStatus = pco.status;
+        const { status: targetStatusName, reason, onBehalfOf } = data;
+        const fromName = pco.status.name;
 
-        // Validate transitions
-        const validTransitions: Record<string, string[]> = {
-            DRAFT: ['APPROVED', 'REJECTED'],
-            APPROVED: ['VOID'],
-        };
-
-        if (!validTransitions[currentStatus]?.includes(targetStatus)) {
+        // Validate transition
+        if (!validTransitions[fromName]?.includes(targetStatusName)) {
             throw new BadRequestError(
-                `Invalid status transition from ${currentStatus} to ${targetStatus}`
+                `Invalid status transition from ${fromName} to ${targetStatusName}`
             );
         }
 
-        // Reason required for REJECTED and VOID
-        if ((targetStatus === 'REJECTED' || targetStatus === 'VOID') && !reason) {
-            throw new BadRequestError(`Reason is required when transitioning to ${targetStatus}`);
+        // Reason required for REVERTED, REJECTED, VOID
+        if (REASON_REQUIRED_STATUSES.includes(targetStatusName) && !reason) {
+            throw new BadRequestError(
+                `Reason is required when transitioning to ${targetStatusName}`
+            );
+        }
+
+        // Look up target status
+        const targetStatus = await prisma.changeOrderStatus.findFirst({
+            where: { name: targetStatusName },
+        });
+        if (!targetStatus) {
+            throw new BadRequestError(`Status '${targetStatusName}' not found`);
         }
 
         return await prisma.$transaction(async (tx) => {
             // Update PCO status
             await tx.primeChangeOrder.update({
                 where: { id },
-                data: { status: targetStatus },
+                data: { statusId: targetStatus.id },
             });
 
             // Log status history
@@ -310,49 +367,31 @@ export const PCOService = {
                 data: {
                     id: ulid(),
                     pcoId: id,
-                    fromStatus: currentStatus,
-                    toStatus: targetStatus,
+                    fromStatusId: pco.status.id,
+                    toStatusId: targetStatus.id,
                     changedBy: userId,
                     onBehalfOf,
                     reason,
                 },
             });
 
-            // DRAFT → APPROVED: create schedule entry if impacts schedule
-            if (currentStatus === 'DRAFT' && targetStatus === 'APPROVED') {
+            // → EXECUTED: create audit schedule entry if impacts schedule
+            if (targetStatusName === 'EXECUTED') {
                 if (pco.impactsSchedule && pco.scheduleImpactDays) {
-                    // Find latest adjustedFinishDate for this project
-                    const latestFinish = await tx.projectScheduleEntry.findFirst({
-                        where: {
-                            projectId: pco.projectId,
-                            deletedAt: null,
-                            adjustedFinishDate: { not: null },
-                        },
-                        orderBy: { date: 'desc' },
-                        select: { adjustedFinishDate: true },
-                    });
-
-                    let newFinishDate: Date | undefined;
-                    if (latestFinish?.adjustedFinishDate) {
-                        newFinishDate = new Date(latestFinish.adjustedFinishDate);
-                        newFinishDate.setDate(newFinishDate.getDate() + pco.scheduleImpactDays);
-                    }
-
                     await tx.projectScheduleEntry.create({
                         data: {
                             id: ulid(),
                             projectId: pco.projectId,
                             date: new Date(),
                             description: `CO #${pco.pcoNumber}: ${pco.title}`,
-                            adjustedFinishDate: newFinishDate,
                             changeOrderId: id,
                         },
                     });
                 }
             }
 
-            // APPROVED → VOID: soft-delete linked schedule entries
-            if (currentStatus === 'APPROVED' && targetStatus === 'VOID') {
+            // → VOID: soft-delete linked schedule entries
+            if (targetStatusName === 'VOID') {
                 await tx.projectScheduleEntry.updateMany({
                     where: { changeOrderId: id, deletedAt: null },
                     data: { deletedAt: new Date() },
@@ -361,11 +400,10 @@ export const PCOService = {
 
             // Recalc project dates if schedule was affected
             if (
-                (currentStatus === 'DRAFT' &&
-                    targetStatus === 'APPROVED' &&
+                (targetStatusName === 'EXECUTED' &&
                     pco.impactsSchedule &&
                     pco.scheduleImpactDays) ||
-                (currentStatus === 'APPROVED' && targetStatus === 'VOID')
+                targetStatusName === 'VOID'
             ) {
                 await recalcProjectDates(pco.projectId, tx);
             }

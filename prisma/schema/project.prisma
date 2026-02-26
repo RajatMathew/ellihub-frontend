@@ -130,11 +130,19 @@ model ProjectScheduleEntry {
   @@index([projectId])
 }
 
-enum ChangeOrderStatus {
-  DRAFT
-  APPROVED
-  REJECTED
-  VOID
+model ChangeOrderStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  primeChangeOrders   PrimeChangeOrder[]
+  fromStatusHistories PCOStatusHistory[] @relation("FromStatus")
+  toStatusHistories   PCOStatusHistory[] @relation("ToStatus")
 }
 
 enum ChangeOrderPriority {
@@ -165,7 +173,8 @@ model PrimeChangeOrder {
   title          String
   description    String
   amount         Float
-  status         ChangeOrderStatus @default(DRAFT)
+  status         ChangeOrderStatus @relation(fields: [statusId], references: [id])
+  statusId       String
   revisionNumber Int               @default(1)
 
   creator   User   @relation(fields: [createdBy], references: [id])
@@ -201,20 +210,22 @@ model PrimeChangeOrder {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  @@index([projectId, status, date])
+  @@index([projectId, statusId, date])
   @@index([pcoNumber])
 }
 
 model PCOStatusHistory {
-  id         String             @id
-  pco        PrimeChangeOrder   @relation(fields: [pcoId], references: [id])
-  pcoId      String
-  fromStatus ChangeOrderStatus?
-  toStatus   ChangeOrderStatus
-  changedBy  String
-  onBehalfOf String?
-  reason     String?
-  createdAt  DateTime           @default(now())
+  id           String              @id
+  pco          PrimeChangeOrder    @relation(fields: [pcoId], references: [id])
+  pcoId        String
+  fromStatusId String?
+  fromStatus   ChangeOrderStatus?  @relation("FromStatus", fields: [fromStatusId], references: [id])
+  toStatusId   String
+  toStatus     ChangeOrderStatus   @relation("ToStatus", fields: [toStatusId], references: [id])
+  changedBy    String
+  onBehalfOf   String?
+  reason       String?
+  createdAt    DateTime            @default(now())
 
   @@index([pcoId])
 }

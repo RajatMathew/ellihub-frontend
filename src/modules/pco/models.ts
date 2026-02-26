@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const ChangeOrderStatusEnum = z.enum(['DRAFT', 'APPROVED', 'REJECTED', 'VOID']);
+const ChangeOrderStatusName = z.string().min(1);
 const ChangeOrderPriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
 
 const LineItemCreateSchema = z.object({
@@ -53,7 +53,7 @@ export const PCOUpdateSchema = z
 export type PCOUpdateRequest = z.infer<typeof PCOUpdateSchema>;
 
 export const PCOStatusTransitionSchema = z.object({
-    status: ChangeOrderStatusEnum,
+    status: ChangeOrderStatusName,
     reason: z.string().max(2000).optional(),
     onBehalfOf: z.string().min(1).optional(),
 });
