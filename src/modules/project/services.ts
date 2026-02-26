@@ -130,10 +130,14 @@ export const ProjectService = {
         if (!gc) throw new NotFoundError('General Contractor not found');
         checkDeletedAt(gc);
 
-        // Validate Employee (leadPM)
-        const employee = await prisma.employee.findUnique({ where: { id: projectData.leadPMId } });
-        if (!employee) throw new NotFoundError('Employee not found');
-        checkDeletedAt(employee);
+        // Validate Employee (leadPM) if provided
+        if (projectData.leadPMId) {
+            const employee = await prisma.employee.findUnique({
+                where: { id: projectData.leadPMId },
+            });
+            if (!employee) throw new NotFoundError('Employee not found');
+            checkDeletedAt(employee);
+        }
 
         // Validate Stage
         const stage = await prisma.projectStage.findUnique({ where: { id: projectData.stageId } });
@@ -210,13 +214,15 @@ export const ProjectService = {
                 });
             }
 
-            await tx.projectTeamAssignment.create({
-                data: {
-                    role: 'Lead',
-                    employeeId: projectData.leadPMId,
-                    projectId,
-                },
-            });
+            if (projectData.leadPMId) {
+                await tx.projectTeamAssignment.create({
+                    data: {
+                        role: 'Lead',
+                        employeeId: projectData.leadPMId,
+                        projectId,
+                    },
+                });
+            }
 
             await FileService.createProjectFolders(tx, projectId, userId);
 
@@ -397,7 +403,7 @@ export const ProjectService = {
             });
 
             // Optionally demote old lead PM to team member
-            if (keepOldPM && oldLeadPMId !== employeeId) {
+            if (keepOldPM && oldLeadPMId && oldLeadPMId !== employeeId) {
                 const existingOldPM = await tx.projectTeamAssignment.findUnique({
                     where: { projectId_employeeId: { projectId, employeeId: oldLeadPMId } },
                 });

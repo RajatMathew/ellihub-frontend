@@ -23,4 +23,11 @@ bun run scripts/seed-project-stages.ts
 bun run scripts/seed-pco-change-types.ts
 bun run scripts/seed-pco-statuses.ts
 
+bun run scripts/seed-po-statuses.ts
+bun run scripts/seed-rfq-statuses.ts
+bun run scripts/seed-quote-statuses.ts
+bun run scripts/seed-invoice-statuses.ts
+bun run scripts/seed-sco-change-types.ts
+bun run scripts/seed-addendum-change-types.ts
+
 # echo "All seed scripts completed."

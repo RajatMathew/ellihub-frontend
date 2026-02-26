@@ -5,7 +5,15 @@ import { recalcProjectDates } from '@modules/project/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { PCOCreateRequest, PCOStatusTransitionRequest, PCOUpdateRequest } from './models';
+import {
+    PCOCreateRequest,
+    PCOLineItemCreateRequest,
+    PCOLineItemUpdateRequest,
+    PCORejectRequest,
+    PCOStatusTransitionRequest,
+    PCOUpdateRequest,
+    PCOVoidRequest,
+} from './models';
 
 const statusSelect = { select: { id: true, name: true, label: true, color: true, order: true } };
 
@@ -75,6 +83,22 @@ function computeMargin(amount: number, estimatedCost: number | null | undefined)
         return { estimatedMargin, estimatedMarginPercent };
     }
     return { estimatedMargin: null, estimatedMarginPercent: null };
+}
+
+async function getPCOOrThrow(id: string) {
+    const pco = await prisma.primeChangeOrder.findUnique({
+        where: { id },
+        include: { status: { select: { id: true, name: true } } },
+    });
+    if (!pco) throw new NotFoundError('Prime Change Order not found');
+    checkDeletedAt(pco);
+    return pco;
+}
+
+async function getStatusByName(name: string) {
+    const status = await prisma.changeOrderStatus.findFirst({ where: { name } });
+    if (!status) throw new BadRequestError(`Status '${name}' not configured`);
+    return status;
 }
 
 export const PCOService = {
@@ -413,5 +437,425 @@ export const PCOService = {
                 include: pcoDetailInclude,
             });
         });
+    },
+
+    // --- Line Items (BE-PCO-03) ---
+
+    addLineItem: async (pcoId: string, data: PCOLineItemCreateRequest) => {
+        const pco = await getPCOOrThrow(pcoId);
+        if (pco.status.name !== 'DRAFT') {
+            throw new BadRequestError('Can only add line items to DRAFT PCOs');
+        }
+
+        if (data.costCodeId) {
+            const cc = await prisma.costCode.findUnique({ where: { id: data.costCodeId } });
+            if (!cc) throw new NotFoundError('Cost code not found');
+            checkDeletedAt(cc);
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const maxSeq = await tx.primeCOLineItem.aggregate({
+                where: { primeCoId: pcoId, deletedAt: null },
+                _max: { sequenceNumber: true },
+            });
+
+            const lineItem = await tx.primeCOLineItem.create({
+                data: {
+                    id: ulid(),
+                    primeCoId: pcoId,
+                    sequenceNumber: (maxSeq._max.sequenceNumber || 0) + 1,
+                    title: data.title,
+                    description: data.description,
+                    qty: data.qty,
+                    unit: data.unit,
+                    unitPrice: data.unitPrice,
+                    amount: data.qty * data.unitPrice,
+                    costCodeId: data.costCodeId,
+                },
+            });
+
+            // Warn if line items sum doesn't match PCO amount
+            const allItems = await tx.primeCOLineItem.findMany({
+                where: { primeCoId: pcoId, deletedAt: null },
+            });
+            const lineItemsSum = allItems.reduce((sum, li) => sum + Number(li.amount || 0), 0);
+            const amountMismatch =
+                Math.abs(Number(pco.amount) - lineItemsSum) > 0.01
+                    ? `Line items total (${lineItemsSum.toFixed(2)}) differs from PCO amount (${Number(pco.amount).toFixed(2)})`
+                    : null;
+
+            return { lineItem, amountMismatch };
+        });
+    },
+
+    updateLineItem: async (pcoId: string, lineItemId: string, data: PCOLineItemUpdateRequest) => {
+        const pco = await getPCOOrThrow(pcoId);
+        if (pco.status.name !== 'DRAFT') {
+            throw new BadRequestError('Can only update line items on DRAFT PCOs');
+        }
+
+        const lineItem = await prisma.primeCOLineItem.findFirst({
+            where: { id: lineItemId, primeCoId: pcoId, deletedAt: null },
+        });
+        if (!lineItem) throw new NotFoundError('Line item not found');
+
+        if (data.costCodeId) {
+            const cc = await prisma.costCode.findUnique({ where: { id: data.costCodeId } });
+            if (!cc) throw new NotFoundError('Cost code not found');
+            checkDeletedAt(cc);
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const qty = data.qty ?? Number(lineItem.qty);
+            const price = data.unitPrice ?? Number(lineItem.unitPrice);
+            const amount = qty * price;
+
+            const updated = await tx.primeCOLineItem.update({
+                where: { id: lineItemId },
+                data: {
+                    ...(data.title !== undefined && { title: data.title }),
+                    ...(data.description !== undefined && { description: data.description }),
+                    ...(data.qty !== undefined && { qty: data.qty }),
+                    ...(data.unit !== undefined && { unit: data.unit }),
+                    ...(data.unitPrice !== undefined && { unitPrice: data.unitPrice }),
+                    ...(data.costCodeId !== undefined && { costCodeId: data.costCodeId }),
+                    amount,
+                },
+            });
+
+            // Warn if line items sum doesn't match PCO amount
+            const allItems = await tx.primeCOLineItem.findMany({
+                where: { primeCoId: pcoId, deletedAt: null },
+            });
+            const lineItemsSum = allItems.reduce((sum, li) => sum + Number(li.amount || 0), 0);
+            const amountMismatch =
+                Math.abs(Number(pco.amount) - lineItemsSum) > 0.01
+                    ? `Line items total (${lineItemsSum.toFixed(2)}) differs from PCO amount (${Number(pco.amount).toFixed(2)})`
+                    : null;
+
+            return { lineItem: updated, amountMismatch };
+        });
+    },
+
+    removeLineItem: async (pcoId: string, lineItemId: string) => {
+        const pco = await getPCOOrThrow(pcoId);
+        if (pco.status.name !== 'DRAFT') {
+            throw new BadRequestError('Can only remove line items from DRAFT PCOs');
+        }
+
+        const lineItem = await prisma.primeCOLineItem.findFirst({
+            where: { id: lineItemId, primeCoId: pcoId, deletedAt: null },
+        });
+        if (!lineItem) throw new NotFoundError('Line item not found');
+
+        const count = await prisma.primeCOLineItem.count({
+            where: { primeCoId: pcoId, deletedAt: null },
+        });
+        if (count <= 1) {
+            throw new BadRequestError('PCO must have at least one line item');
+        }
+
+        await prisma.primeCOLineItem.delete({ where: { id: lineItemId } });
+    },
+
+    // --- Dedicated Workflow (BE-PCO-04) ---
+
+    approvePCO: async (id: string, userId: string) => {
+        const pco = await getPCOOrThrow(id);
+
+        if (pco.status.name !== 'DRAFT') {
+            throw new BadRequestError('Only DRAFT PCOs can be approved');
+        }
+
+        // Segregation of duties
+        if (userId === pco.createdBy) {
+            throw new BadRequestError('Creator cannot approve their own PCO');
+        }
+
+        const approvedStatus = await getStatusByName('APPROVED');
+
+        return await prisma.$transaction(async (tx) => {
+            await tx.primeChangeOrder.update({
+                where: { id },
+                data: {
+                    statusId: approvedStatus.id,
+                    approvedBy: userId,
+                    approvedAt: new Date(),
+                },
+            });
+
+            // Log status history
+            await tx.pCOStatusHistory.create({
+                data: {
+                    id: ulid(),
+                    pcoId: id,
+                    fromStatusId: pco.status.id,
+                    toStatusId: approvedStatus.id,
+                    changedBy: userId,
+                },
+            });
+
+            // Schedule entry if impact
+            if (pco.impactsSchedule && pco.scheduleImpactDays) {
+                await tx.projectScheduleEntry.create({
+                    data: {
+                        id: ulid(),
+                        projectId: pco.projectId,
+                        date: new Date(),
+                        description: `CO #${pco.pcoNumber}: ${pco.title}`,
+                        changeOrderId: id,
+                    },
+                });
+                await recalcProjectDates(pco.projectId, tx);
+            }
+
+            const updatedPCO = await tx.primeChangeOrder.findUniqueOrThrow({
+                where: { id },
+                include: pcoDetailInclude,
+            });
+
+            // Compute financial impact
+            const contract = await tx.primeContract.findUnique({
+                where: { projectId: pco.projectId },
+            });
+            const originalContractValue = Number(contract?.contractValue || 0);
+
+            const approvedAgg = await tx.primeChangeOrder.aggregate({
+                where: {
+                    projectId: pco.projectId,
+                    statusId: approvedStatus.id,
+                    deletedAt: null,
+                },
+                _sum: { amount: true },
+            });
+            const approvedPCOTotal = Number(approvedAgg._sum.amount || 0);
+            const revisedContractValue = originalContractValue + approvedPCOTotal;
+            const budgetPercent = Number(contract?.targetBudgetPercent || 100);
+            const budgetLimit = revisedContractValue * (budgetPercent / 100);
+
+            return {
+                pco: updatedPCO,
+                financialImpact: {
+                    originalContractValue,
+                    approvedPCOTotal,
+                    thisAmount: Number(pco.amount),
+                    revisedContractValue,
+                    budgetLimit,
+                },
+            };
+        });
+    },
+
+    rejectPCO: async (id: string, data: PCORejectRequest, userId: string) => {
+        const pco = await getPCOOrThrow(id);
+
+        if (pco.status.name !== 'DRAFT') {
+            throw new BadRequestError('Only DRAFT PCOs can be rejected');
+        }
+
+        const rejectedStatus = await getStatusByName('REJECTED');
+
+        await prisma.$transaction(async (tx) => {
+            await tx.primeChangeOrder.update({
+                where: { id },
+                data: {
+                    statusId: rejectedStatus.id,
+                    rejectedBy: userId,
+                    rejectedAt: new Date(),
+                    rejectionReason: data.reason,
+                },
+            });
+
+            await tx.pCOStatusHistory.create({
+                data: {
+                    id: ulid(),
+                    pcoId: id,
+                    fromStatusId: pco.status.id,
+                    toStatusId: rejectedStatus.id,
+                    changedBy: userId,
+                    reason: data.reason,
+                },
+            });
+        });
+
+        return await prisma.primeChangeOrder.findUniqueOrThrow({
+            where: { id },
+            include: pcoDetailInclude,
+        });
+    },
+
+    voidPCO: async (id: string, data: PCOVoidRequest, userId: string) => {
+        const pco = await getPCOOrThrow(id);
+
+        if (pco.status.name === 'VOID' || pco.status.name === 'REJECTED') {
+            throw new BadRequestError(`Cannot void a ${pco.status.name} PCO`);
+        }
+
+        const wasExecuted = pco.status.name === 'EXECUTED';
+
+        // If voiding an executed PCO, check for invoices
+        if (wasExecuted) {
+            const invoiceCount = await prisma.invoice.count({
+                where: {
+                    projectId: pco.projectId,
+                    deletedAt: null,
+                    createdAt: { gte: pco.approvedAt || pco.createdAt },
+                },
+            });
+            if (invoiceCount > 0) {
+                throw new BadRequestError(
+                    'Cannot void an executed PCO with related invoices. Create a reversal PCO instead.'
+                );
+            }
+        }
+
+        const voidStatus = await getStatusByName('VOID');
+
+        return await prisma.$transaction(async (tx) => {
+            await tx.primeChangeOrder.update({
+                where: { id },
+                data: {
+                    statusId: voidStatus.id,
+                    voidedBy: userId,
+                    voidedAt: new Date(),
+                    voidReason: data.reason,
+                },
+            });
+
+            await tx.pCOStatusHistory.create({
+                data: {
+                    id: ulid(),
+                    pcoId: id,
+                    fromStatusId: pco.status.id,
+                    toStatusId: voidStatus.id,
+                    changedBy: userId,
+                    reason: data.reason,
+                },
+            });
+
+            // Soft-delete linked schedule entries
+            await tx.projectScheduleEntry.updateMany({
+                where: { changeOrderId: id, deletedAt: null },
+                data: { deletedAt: new Date() },
+            });
+
+            // Recalc project dates if this PCO had schedule impact
+            if (pco.impactsSchedule && pco.scheduleImpactDays) {
+                await recalcProjectDates(pco.projectId, tx);
+            }
+
+            return await tx.primeChangeOrder.findUniqueOrThrow({
+                where: { id },
+                include: pcoDetailInclude,
+            });
+        });
+    },
+
+    // --- Pipeline & Financial Impact (BE-PCO-05) ---
+
+    getPipeline: async (projectId: string) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const allPCOs = await prisma.primeChangeOrder.findMany({
+            where: { projectId, deletedAt: null },
+            select: { amount: true, status: { select: { name: true } } },
+        });
+
+        const byStatus: Record<string, { count: number; totalAmount: number }> = {
+            draft: { count: 0, totalAmount: 0 },
+            pending_review: { count: 0, totalAmount: 0 },
+            approved: { count: 0, totalAmount: 0 },
+            sent_to_gc: { count: 0, totalAmount: 0 },
+            penciled: { count: 0, totalAmount: 0 },
+            executed: { count: 0, totalAmount: 0 },
+            rejected: { count: 0, totalAmount: 0 },
+            void: { count: 0, totalAmount: 0 },
+        };
+
+        for (const pco of allPCOs) {
+            const key = pco.status.name.toLowerCase();
+            if (byStatus[key]) {
+                byStatus[key].count++;
+                byStatus[key].totalAmount += Number(pco.amount);
+            }
+        }
+
+        return byStatus;
+    },
+
+    getFinancialImpact: async (id: string) => {
+        const pco = await prisma.primeChangeOrder.findUnique({
+            where: { id },
+            include: { status: { select: { name: true } } },
+        });
+        if (!pco) throw new NotFoundError('Prime Change Order not found');
+        checkDeletedAt(pco);
+
+        const contract = await prisma.primeContract.findUnique({
+            where: { projectId: pco.projectId },
+        });
+        const originalContractValue = Number(contract?.contractValue || 0);
+        const budgetPercent = Number(contract?.targetBudgetPercent || 100);
+
+        // Get all executed/approved PCOs for this project
+        const executedStatus = await prisma.changeOrderStatus.findFirst({
+            where: { name: 'EXECUTED' },
+        });
+        const approvedStatus = await prisma.changeOrderStatus.findFirst({
+            where: { name: 'APPROVED' },
+        });
+        const statusIds = [executedStatus?.id, approvedStatus?.id].filter(Boolean) as string[];
+
+        const approvedAgg = await prisma.primeChangeOrder.aggregate({
+            where: {
+                projectId: pco.projectId,
+                statusId: { in: statusIds },
+                deletedAt: null,
+                id: { not: pco.id },
+            },
+            _sum: { amount: true },
+        });
+        const existingApprovedTotal = Number(approvedAgg._sum.amount || 0);
+
+        // Include this PCO if already approved/executed
+        const isApprovedOrExecuted = ['APPROVED', 'EXECUTED'].includes(pco.status.name);
+        const currentApprovedTotal = isApprovedOrExecuted
+            ? existingApprovedTotal + Number(pco.amount)
+            : existingApprovedTotal;
+
+        const currentRevisedValue = originalContractValue + currentApprovedTotal;
+        const currentBudgetLimit = currentRevisedValue * (budgetPercent / 100);
+
+        const afterApprovalTotal = existingApprovedTotal + Number(pco.amount);
+        const afterRevisedValue = originalContractValue + afterApprovalTotal;
+        const afterBudgetLimit = afterRevisedValue * (budgetPercent / 100);
+        const percentChange =
+            originalContractValue !== 0
+                ? ((afterRevisedValue - originalContractValue) / originalContractValue) * 100
+                : 0;
+
+        return {
+            current: {
+                originalContractValue,
+                approvedPCOTotal: currentApprovedTotal,
+                revisedContractValue: currentRevisedValue,
+                budgetLimit: currentBudgetLimit,
+            },
+            afterApproval: {
+                approvedPCOTotal: afterApprovalTotal,
+                revisedContractValue: afterRevisedValue,
+                budgetLimit: afterBudgetLimit,
+                percentChangeFromOriginal: percentChange,
+            },
+            thisPCO: {
+                amount: Number(pco.amount),
+                percentOfOriginalContract:
+                    originalContractValue !== 0
+                        ? (Math.abs(Number(pco.amount)) / originalContractValue) * 100
+                        : 0,
+            },
+        };
     },
 };

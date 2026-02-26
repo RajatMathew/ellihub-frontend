@@ -1,4 +1,5 @@
 import { paginationMiddleware } from '@middleware';
+import { InvoiceService } from '@modules/invoice/services';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
@@ -171,6 +172,21 @@ app.delete('/:id/team/:employeeId', requirePermission({ project: ['update'] }), 
     const employeeId = c.req.param('employeeId');
     await ProjectService.removeTeamMember(projectId, employeeId);
     return success(c, null, 200, 'Team member removed');
+});
+
+// Invoice sub-resources (delegated to invoice module)
+app.get('/:id/invoice-aging', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projectId = c.req.param('id');
+    const asOfDate = c.req.query('asOfDate') ? new Date(c.req.query('asOfDate')!) : undefined;
+    const vendorId = c.req.query('vendorId');
+    const result = await InvoiceService.getProjectAgingReport(projectId, asOfDate, vendorId);
+    return success(c, result);
+});
+
+app.get('/:id/invoice-summary', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projectId = c.req.param('id');
+    const result = await InvoiceService.getProjectInvoiceSummary(projectId);
+    return success(c, result);
 });
 
 export default app;

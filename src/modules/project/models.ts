@@ -9,7 +9,7 @@ export const ProjectCreateSchema = z.object({
     division: z.enum(['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL']),
     statusId: z.string().min(1).optional(),
     gcId: z.string().min(1),
-    leadPMId: z.string().min(1),
+    leadPMId: z.string().min(1).optional(),
     streetAddress: z.string().optional(),
     city: z.string().optional(),
     state: z.string().max(2).optional(),

@@ -69,8 +69,8 @@
                                         "zipCode": "10459"
                                     }
                                 },
-                                "minimal": {
-                                    "summary": "Minimal required fields only",
+                                "minimal-with-lead": {
+                                    "summary": "Minimal fields with lead PM",
                                     "value": {
                                         "name": "Queens DSNY Garage Renovation",
                                         "description": "Garage door replacements and concrete slab repair for DSNY facility.",
@@ -78,6 +78,16 @@
                                         "division": "DDC",
                                         "gcId": "01JMSEEDGCONT000000001",
                                         "leadPMId": "01KJCQWRWR60SRX359CE6JVKV1"
+                                    }
+                                },
+                                "minimal-without-employee": {
+                                    "summary": "Minimal fields — no lead PM assigned",
+                                    "value": {
+                                        "name": "Bronx Community Center Roof Replacement",
+                                        "description": "Full roof tear-off and replacement with TPO membrane system.",
+                                        "stageId": "01KJCQWS557SM3S122ZJHJTN2C",
+                                        "division": "DDC",
+                                        "gcId": "01JMSEEDGCONT000000001"
                                     }
                                 }
                             }
@@ -713,7 +723,7 @@
             },
             "ProjectCreateRequest": {
                 "type": "object",
-                "required": ["name", "description", "stageId", "division", "gcId", "leadPMId"],
+                "required": ["name", "description", "stageId", "division", "gcId"],
                 "properties": {
                     "name": { "type": "string", "minLength": 1, "maxLength": 255 },
                     "description": { "type": "string", "minLength": 1 },

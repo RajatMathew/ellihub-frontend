@@ -58,3 +58,35 @@ export const PCOStatusTransitionSchema = z.object({
     onBehalfOf: z.string().min(1).optional(),
 });
 export type PCOStatusTransitionRequest = z.infer<typeof PCOStatusTransitionSchema>;
+
+// --- Line Item Update ---
+
+export { LineItemCreateSchema as PCOLineItemCreateSchema };
+export type PCOLineItemCreateRequest = z.infer<typeof LineItemCreateSchema>;
+
+export const PCOLineItemUpdateSchema = z
+    .object({
+        title: z.string().min(1).max(255),
+        description: z.string().min(1),
+        qty: z.number().positive(),
+        unit: z.string().min(1),
+        unitPrice: z.number(),
+        costCodeId: z.string().min(1).optional().nullable(),
+    })
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+        message: 'At least one field is required',
+    });
+export type PCOLineItemUpdateRequest = z.infer<typeof PCOLineItemUpdateSchema>;
+
+// --- Workflow ---
+
+export const PCORejectSchema = z.object({
+    reason: z.string().min(20),
+});
+export type PCORejectRequest = z.infer<typeof PCORejectSchema>;
+
+export const PCOVoidSchema = z.object({
+    reason: z.string().min(1),
+});
+export type PCOVoidRequest = z.infer<typeof PCOVoidSchema>;

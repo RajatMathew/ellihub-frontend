@@ -20,9 +20,16 @@ model File {
   createdBy String
   deletedBy String?
 
-  primeContracts  PrimeContract[]
-  scheduleEntries ProjectScheduleEntry[]
-  pcoAttachments  PCOAttachment[]
+  primeContracts              PrimeContract[]
+  primeContractAttachments    PrimeContractAttachment[]
+  scheduleEntries    ProjectScheduleEntry[]
+  pcoAttachments     PCOAttachment[]
+  poAttachments      POAttachment[]
+  scoAttachments     SCOAttachment[]
+  rfqAttachments     RFQAttachment[]
+  quoteAttachments   QuoteAttachment[]
+  invoiceAttachments InvoiceAttachment[]
+  invoiceDocuments   Invoice[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())

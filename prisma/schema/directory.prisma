@@ -16,10 +16,13 @@ model Vendor {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  rfqs           RFQ[]
-  quotations     VendorQuotation[]
-  purchaseOrders PurchaseOrder[]
-  contactLinks   ContactVendor[]
+  rfqs             RFQ[]
+  quotes           VendorQuote[]
+  vendorInvites    RFQVendorInvite[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseOrderCOs PurchaseOrderCO[]
+  invoices         Invoice[]
+  contactLinks     ContactVendor[]
 
   @@index([name])
   @@index([status])
@@ -123,6 +126,7 @@ model Contact {
   vendorLinks       ContactVendor[]
   gcLinks           ContactGC[]
   primeChangeOrders PrimeChangeOrder[]
+  purchaseOrders    PurchaseOrder[]
 
   @@index([fullName])
   @@index([deletedAt])
@@ -181,6 +185,8 @@ model CostCode {
   costCodeCategoryId String
 
   primeChangeOrders PrimeChangeOrder[]
+  purchaseOrderCOs  PurchaseOrderCO[]
+  rfqs              RFQ[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
