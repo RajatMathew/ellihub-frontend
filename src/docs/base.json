@@ -83,6 +83,7 @@
         { "name": "Sub Change Orders", "description": "Subcontractor Change Order management, approval workflow, and margin comparison" },
         { "name": "Prime Change Orders", "description": "Prime Change Order (PCO) management and status transitions" },
         { "name": "Invoices", "description": "Invoice management, approval workflow, disputes, and aging reports" },
+        { "name": "Employees", "description": "Employee management and project assignments" },
         { "name": "Change Order Statuses", "description": "Manage change order status lookup values (shared by PCO and SCO)" },
         { "name": "PCO Change Types", "description": "Manage PCO change type categories" },
         { "name": "SCO Change Types", "description": "Manage SCO change type categories" },
