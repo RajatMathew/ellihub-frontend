@@ -1,5 +1,217 @@
 {
     "paths": {
+        "/projects/statuses": {
+            "get": {
+                "tags": ["Project Statuses"],
+                "summary": "List all project statuses",
+                "operationId": "listProjectStatuses",
+                "responses": {
+                    "200": {
+                        "description": "List of project statuses",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectStatus" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "post": {
+                "tags": ["Project Statuses"],
+                "summary": "Create a project status",
+                "operationId": "createProjectStatus",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectStatusCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Status created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStatus" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "409": { "description": "Name or order already exists" }
+                }
+            }
+        },
+        "/projects/statuses/{id}": {
+            "put": {
+                "tags": ["Project Statuses"],
+                "summary": "Update a project status",
+                "operationId": "updateProjectStatus",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectStatusUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStatus" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Status not found" },
+                    "409": { "description": "Name or order already exists" }
+                }
+            },
+            "delete": {
+                "tags": ["Project Statuses"],
+                "summary": "Soft-delete a project status",
+                "operationId": "deleteProjectStatus",
+                "description": "Cannot delete default status or one referenced by projects.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "Status deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Status not found" },
+                    "409": { "description": "Cannot delete: is default or has projects" }
+                }
+            }
+        },
+        "/projects/stages": {
+            "get": {
+                "tags": ["Project Stages"],
+                "summary": "List all project stages",
+                "operationId": "listProjectStages",
+                "responses": {
+                    "200": {
+                        "description": "List of project stages",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectStage" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            },
+            "post": {
+                "tags": ["Project Stages"],
+                "summary": "Create a project stage",
+                "operationId": "createProjectStage",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectStageCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Stage created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStage" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "409": { "description": "Name or code already exists" }
+                }
+            }
+        },
+        "/projects/stages/{id}": {
+            "put": {
+                "tags": ["Project Stages"],
+                "summary": "Update a project stage",
+                "operationId": "updateProjectStage",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectStageUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Stage updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStage" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Stage not found" },
+                    "409": { "description": "Name or code already exists" }
+                }
+            },
+            "delete": {
+                "tags": ["Project Stages"],
+                "summary": "Delete a project stage",
+                "operationId": "deleteProjectStage",
+                "description": "Cannot delete a stage referenced by projects.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "Stage deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Stage not found" },
+                    "409": { "description": "Cannot delete: has projects" }
+                }
+            }
+        },
         "/projects": {
             "post": {
                 "tags": ["Projects"],
@@ -835,6 +1047,48 @@
                     "adjustedFinishDate": { "type": "string", "format": "date-time", "nullable": true },
                     "notes": { "type": "string", "maxLength": 2000, "nullable": true },
                     "fileId": { "type": "string", "nullable": true }
+                }
+            },
+            "ProjectStatusCreateRequest": {
+                "type": "object",
+                "required": ["name", "label", "color", "order"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+                    "color": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "order": { "type": "integer", "minimum": 1 },
+                    "isDefault": { "type": "boolean" }
+                }
+            },
+            "ProjectStatusUpdateRequest": {
+                "type": "object",
+                "description": "All fields optional (partial update).",
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+                    "color": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "order": { "type": "integer", "minimum": 1 },
+                    "isDefault": { "type": "boolean" }
+                }
+            },
+            "ProjectStageCreateRequest": {
+                "type": "object",
+                "required": ["name", "code", "color"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                    "code": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "description": { "type": "string" },
+                    "color": { "type": "string", "minLength": 1, "maxLength": 50 }
+                }
+            },
+            "ProjectStageUpdateRequest": {
+                "type": "object",
+                "description": "All fields optional (partial update).",
+                "properties": {
+                    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+                    "code": { "type": "string", "minLength": 1, "maxLength": 50 },
+                    "description": { "type": "string", "nullable": true },
+                    "color": { "type": "string", "minLength": 1, "maxLength": 50 }
                 }
             }
         }

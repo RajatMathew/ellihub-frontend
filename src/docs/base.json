@@ -76,6 +76,8 @@
         { "name": "Cost Code Categories", "description": "Manage cost code categories" },
         { "name": "Cost Codes", "description": "Manage cost codes" },
         { "name": "File", "description": "File and folder management (S3)" },
+        { "name": "Project Statuses", "description": "Manage project status lookup values" },
+        { "name": "Project Stages", "description": "Manage project stage lookup values" },
         { "name": "Purchase Orders", "description": "Purchase order lifecycle, line items, payments, and delivery tracking" },
         { "name": "RFQs", "description": "Request for Quotation management, vendor invitations, quotes, and bid comparison" },
         { "name": "Sub Change Orders", "description": "Subcontractor Change Order management, approval workflow, and margin comparison" },

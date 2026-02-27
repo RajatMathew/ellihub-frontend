@@ -12,9 +12,15 @@ import {
     ScheduleEntryUpdateSchema,
     TeamMemberSchema,
 } from './models';
+import projectStageRoutes from './project-stage.routes';
+import projectStatusRoutes from './project-status.routes';
 import { ProjectService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/statuses', projectStatusRoutes);
+app.route('/stages', projectStageRoutes);
 
 app.get(
     '/',
