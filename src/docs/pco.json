@@ -302,6 +302,327 @@
                 }
             }
         },
+        "/pcos/pipeline": {
+            "get": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Get PCO pipeline KPIs for a project",
+                "operationId": "getPCOPipeline",
+                "description": "Returns counts and totals by status for all PCOs in a project.",
+                "parameters": [
+                    { "name": "projectId", "in": "query", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pipeline KPIs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "type": "object", "properties": { "pipeline": { "type": "object", "description": "Counts and sums grouped by status" } } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Missing projectId" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/pcos/{id}/approve": {
+            "post": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Approve a PCO",
+                "operationId": "approvePCO",
+                "description": "Approves a PENDING_REVIEW PCO. Creator cannot approve their own PCO (segregation of duties). Records approval tracking fields and returns financial impact with contract values.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PCO approved with financial impact",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/PCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Only PENDING_REVIEW PCOs can be approved, or creator cannot approve own PCO" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO not found" }
+                }
+            }
+        },
+        "/pcos/{id}/reject": {
+            "post": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Reject a PCO",
+                "operationId": "rejectPCO",
+                "description": "Rejects a PCO. Requires a reason (minimum 20 characters).",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PCORejectRequest" },
+                            "examples": {
+                                "reject": {
+                                    "summary": "Reject with reason",
+                                    "value": {
+                                        "reason": "Scope not justified per owner review and budget constraints"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PCO rejected",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/PCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Invalid status for rejection or reason too short" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO not found" }
+                }
+            }
+        },
+        "/pcos/{id}/void": {
+            "post": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Void a PCO",
+                "operationId": "voidPCO",
+                "description": "Voids a PCO. Blocks if executed PCO has invoices. Reverses schedule entries if applicable.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PCOVoidRequest" },
+                            "examples": {
+                                "void": {
+                                    "summary": "Void with reason",
+                                    "value": {
+                                        "reason": "Owner decided to reduce scope"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PCO voided",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/PCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Cannot void PCO with invoices or already voided" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO not found" }
+                }
+            }
+        },
+        "/pcos/{id}/line-items": {
+            "post": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Add a line item to a PCO",
+                "operationId": "addPCOLineItem",
+                "description": "Adds a line item to a DRAFT PCO. Amount auto-computed as qty x unitPrice. Returns amountMismatch warning if line items total differs from PCO amount.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PCOLineItemCreateRequest" },
+                            "examples": {
+                                "line-item": {
+                                    "summary": "Add a line item",
+                                    "value": {
+                                        "title": "Rebar #5",
+                                        "description": "Grade 60 rebar",
+                                        "qty": 100,
+                                        "unit": "LF",
+                                        "unitPrice": 85,
+                                        "costCodeId": "COST_CODE_ID"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Line item added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "lineItem": { "$ref": "#/components/schemas/PCOLineItem" },
+                                                        "amountMismatch": { "type": "string", "nullable": true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Only DRAFT PCOs can have line items added" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO or cost code not found" }
+                }
+            }
+        },
+        "/pcos/{id}/line-items/{lineItemId}": {
+            "put": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Update a PCO line item",
+                "operationId": "updatePCOLineItem",
+                "description": "Partial update of a line item on a DRAFT PCO. Amount auto-recalculated.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "lineItemId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/PCOLineItemUpdateRequest" },
+                            "examples": {
+                                "update": {
+                                    "summary": "Update qty and price",
+                                    "value": { "qty": 120, "unitPrice": 80 }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Line item updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "lineItem": { "$ref": "#/components/schemas/PCOLineItem" },
+                                                        "amountMismatch": { "type": "string", "nullable": true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Only DRAFT PCOs can have line items updated" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO or line item not found" }
+                }
+            },
+            "delete": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Remove a PCO line item",
+                "operationId": "removePCOLineItem",
+                "description": "Removes a line item from a DRAFT PCO. Must have at least 1 line item remaining.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "lineItemId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Line item removed",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } }
+                    },
+                    "400": { "description": "Only DRAFT PCOs, or cannot remove last line item" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO or line item not found" }
+                }
+            }
+        },
+        "/pcos/{id}/financial-impact": {
+            "get": {
+                "tags": ["Prime Change Orders"],
+                "summary": "Get financial impact of a PCO",
+                "operationId": "getPCOFinancialImpact",
+                "description": "Returns before/after comparison with original contract value, approved PCO total, revised value, and budget limit.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Financial impact analysis",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "originalContractValue": { "type": "number" },
+                                                        "approvedPCOTotal": { "type": "number" },
+                                                        "revisedContractValue": { "type": "number" },
+                                                        "thisPCOAmount": { "type": "number" },
+                                                        "percentChangeFromOriginal": { "type": "number" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "PCO not found" }
+                }
+            }
+        },
         "/pcos/{id}/status": {
             "put": {
                 "tags": ["Prime Change Orders"],
@@ -683,6 +1004,42 @@
                         "type": "string",
                         "description": "User ID if acting on behalf of someone else"
                     }
+                }
+            },
+            "PCORejectRequest": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 20,
+                        "maxLength": 2000,
+                        "description": "Reason for rejection (minimum 20 characters)"
+                    }
+                }
+            },
+            "PCOVoidRequest": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000,
+                        "description": "Reason for voiding the PCO"
+                    }
+                }
+            },
+            "PCOLineItemUpdateRequest": {
+                "type": "object",
+                "description": "All fields optional (partial update). At least one field required.",
+                "properties": {
+                    "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+                    "description": { "type": "string", "minLength": 1 },
+                    "qty": { "type": "number", "exclusiveMinimum": 0 },
+                    "unit": { "type": "string", "minLength": 1 },
+                    "unitPrice": { "type": "number" },
+                    "costCodeId": { "type": "string", "nullable": true }
                 }
             }
         }
