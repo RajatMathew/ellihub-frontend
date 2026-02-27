@@ -10,8 +10,6 @@ export const TradeCategoryEnum = z.enum([
     'EQUIPMENT',
 ]);
 
-export const PaymentMethodEnum = z.enum(['CHECK', 'ACH', 'WIRE', 'CREDIT_CARD', 'OTHER']);
-
 export const PaymentTermsEnum = z.enum([
     'NET_15',
     'NET_30',
@@ -105,7 +103,6 @@ export type IssueRequest = z.infer<typeof IssueSchema>;
 export const CancelSchema = z.object({
     reason: z.string().min(20),
     notifyVendor: z.boolean().optional(),
-    confirmPayments: z.boolean().optional(),
     confirmInvoices: z.boolean().optional(),
     confirmSCOs: z.boolean().optional(),
 });
@@ -118,19 +115,6 @@ export const RecordDeliverySchema = z.object({
 });
 
 export type RecordDeliveryRequest = z.infer<typeof RecordDeliverySchema>;
-
-// --- Payments ---
-
-export const PaymentCreateSchema = z.object({
-    date: z.coerce.date(),
-    reference: z.string().max(100).optional(),
-    description: z.string().min(1),
-    amount: z.number().positive(),
-    paymentMethod: PaymentMethodEnum.optional(),
-    invoiceId: z.string().optional(),
-});
-
-export type PaymentCreateRequest = z.infer<typeof PaymentCreateSchema>;
 
 // --- RFQ-to-PO Generation ---
 

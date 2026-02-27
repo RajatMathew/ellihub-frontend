@@ -9,7 +9,6 @@ import {
     IssueSchema,
     LineItemCreateSchema,
     LineItemUpdateSchema,
-    PaymentCreateSchema,
     POCreateSchema,
     POUpdateSchema,
     RecordDeliverySchema,
@@ -170,34 +169,6 @@ app.delete('/:id/line-items/:lineItemId', requirePermission({ project: ['update'
     const lineItemId = c.req.param('lineItemId');
     await POService.removeLineItem(id, lineItemId);
     return success(c, null, 200, 'Line item removed');
-});
-
-// --- Payments ---
-
-app.post(
-    '/:id/payments',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', PaymentCreateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const result = await POService.createPayment(id, data, userId);
-        return success(c, result, 201);
-    }
-);
-
-app.get('/:id/payments', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const result = await POService.listPayments(id);
-    return success(c, result);
-});
-
-app.delete('/:id/payments/:paymentId', requirePermission({ project: ['delete'] }), async (c) => {
-    const id = c.req.param('id');
-    const paymentId = c.req.param('paymentId');
-    await POService.deletePayment(id, paymentId);
-    return success(c, null, 200, 'Payment deleted');
 });
 
 // --- Invoices sub-resource ---

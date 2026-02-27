@@ -671,7 +671,6 @@ model PurchaseOrder {
   lineItems        PurchaseOrderLineItem[]
   purchaseOrderCOs PurchaseOrderCO[]
   invoices         Invoice[]
-  payments         POPayment[]
   attachments      POAttachment[]
   statusHistory    POStatusHistory[]
 
@@ -736,26 +735,6 @@ model POAttachment {
 
   attachmentType POAttachmentType?
   createdAt      DateTime          @default(now())
-
-  @@index([purchaseOrderId])
-}
-
-model POPayment {
-  id              String        @id
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  purchaseOrderId String
-
-  date          DateTime
-  reference     String?
-  description   String
-  amount        Decimal       @db.Decimal(15, 2)
-  paymentMethod PaymentMethod?
-  invoiceId     String?
-  recordedBy    String
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 
   @@index([purchaseOrderId])
 }

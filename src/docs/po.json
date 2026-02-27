@@ -168,7 +168,7 @@
                 "tags": ["Purchase Orders"],
                 "summary": "Cancel a purchase order",
                 "operationId": "cancelPO",
-                "description": "Cancels the PO. Requires confirmation flags if PO has payments, invoices, or SCOs.",
+                "description": "Cancels the PO. Requires confirmation flags if PO has invoices or SCOs.",
                 "parameters": [
                     { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
@@ -324,85 +324,6 @@
                 }
             }
         },
-        "/pos/{id}/payments": {
-            "post": {
-                "tags": ["Purchase Orders"],
-                "summary": "Record a payment against a PO",
-                "operationId": "createPOPayment",
-                "description": "Creates a payment record. Auto-transitions PO status (ISSUED→PARTIALLY_PAID→PAID) based on balance.",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POPaymentCreateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Payment recorded",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "$ref": "#/components/schemas/POPayment" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error or PO not issued" },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "PO not found" }
-                }
-            },
-            "get": {
-                "tags": ["Purchase Orders"],
-                "summary": "List payments for a PO",
-                "operationId": "listPOPayments",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of payments",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/POPayment" } } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "PO not found" }
-                }
-            }
-        },
-        "/pos/{id}/payments/{paymentId}": {
-            "delete": {
-                "tags": ["Purchase Orders"],
-                "summary": "Delete a payment record",
-                "operationId": "deletePOPayment",
-                "description": "Soft-deletes a payment and recalculates PO status.",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-                    { "name": "paymentId", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "responses": {
-                    "200": { "description": "Payment deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "PO or payment not found" }
-                }
-            }
-        },
         "/pos/{id}/invoices": {
             "get": {
                 "tags": ["Purchase Orders"],
@@ -435,7 +356,7 @@
                 "tags": ["Purchase Orders"],
                 "summary": "Get a purchase order by ID",
                 "operationId": "getPO",
-                "description": "Full PO detail including line items, payments, attachments, linked SCOs, and invoices.",
+                "description": "Full PO detail including line items, attachments, linked SCOs, and invoices.",
                 "parameters": [
                     { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
@@ -563,13 +484,10 @@
                     "cancelledAt": { "type": "string", "format": "date-time", "nullable": true },
                     "cancellationReason": { "type": "string", "nullable": true },
                     "createdBy": { "type": "string" },
-                    "paidToDate": { "type": "number", "description": "Computed: sum of payments" },
-                    "balance": { "type": "number", "description": "Computed: totalCommitment - paidToDate" },
                     "isOverdue": { "type": "boolean" },
                     "project": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "jobNumber": { "type": "string" } } },
                     "vendor": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
                     "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/POLineItem" } },
-                    "payments": { "type": "array", "items": { "$ref": "#/components/schemas/POPayment" } },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -591,28 +509,11 @@
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
-            "POPayment": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "purchaseOrderId": { "type": "string" },
-                    "date": { "type": "string", "format": "date-time" },
-                    "reference": { "type": "string", "nullable": true },
-                    "description": { "type": "string" },
-                    "amount": { "type": "number" },
-                    "paymentMethod": { "type": "string", "enum": ["CHECK", "ACH", "WIRE", "CREDIT_CARD", "OTHER"], "nullable": true },
-                    "invoiceId": { "type": "string", "nullable": true },
-                    "recordedBy": { "type": "string" },
-                    "createdAt": { "type": "string", "format": "date-time" }
-                }
-            },
             "POSummary": {
                 "type": "object",
                 "properties": {
                     "totalCount": { "type": "integer" },
                     "totalCommitted": { "type": "number" },
-                    "totalPaid": { "type": "number" },
-                    "totalBalance": { "type": "number" },
                     "byStatus": { "type": "object" },
                     "byTradeCategory": { "type": "object" },
                     "overdueCount": { "type": "integer" }
@@ -672,7 +573,6 @@
                 "properties": {
                     "reason": { "type": "string", "minLength": 20 },
                     "notifyVendor": { "type": "boolean" },
-                    "confirmPayments": { "type": "boolean" },
                     "confirmInvoices": { "type": "boolean" },
                     "confirmSCOs": { "type": "boolean" }
                 }
@@ -707,18 +607,6 @@
                     "unitPrice": { "type": "number", "minimum": 0 },
                     "costCodeId": { "type": "string", "nullable": true },
                     "notes": { "type": "string", "nullable": true }
-                }
-            },
-            "POPaymentCreateRequest": {
-                "type": "object",
-                "required": ["date", "description", "amount"],
-                "properties": {
-                    "date": { "type": "string", "format": "date" },
-                    "reference": { "type": "string", "maxLength": 100 },
-                    "description": { "type": "string", "minLength": 1 },
-                    "amount": { "type": "number", "exclusiveMinimum": 0 },
-                    "paymentMethod": { "type": "string", "enum": ["CHECK", "ACH", "WIRE", "CREDIT_CARD", "OTHER"] },
-                    "invoiceId": { "type": "string" }
                 }
             }
         }

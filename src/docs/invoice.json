@@ -459,7 +459,7 @@
                 "tags": ["Invoices"],
                 "summary": "Mark an approved invoice as paid",
                 "operationId": "markInvoicePaid",
-                "description": "Records payment on an APPROVED invoice. Creates a POPayment record and recalculates PO payment status (may transition PO from ISSUED to PARTIALLY_PAID or PAID). Disputed invoices must be resolved before payment.",
+                "description": "Records payment on an APPROVED invoice. Disputed invoices must be resolved before payment.",
                 "parameters": [
                     { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
@@ -504,8 +504,7 @@
                                                 "data": {
                                                     "type": "object",
                                                     "properties": {
-                                                        "invoice": { "$ref": "#/components/schemas/InvoiceDetail" },
-                                                        "poImpact": { "$ref": "#/components/schemas/POPaymentImpact" }
+                                                        "invoice": { "$ref": "#/components/schemas/InvoiceDetail" }
                                                     }
                                                 }
                                             }
@@ -1087,21 +1086,7 @@
                 "type": "object",
                 "properties": {
                     "poTotal": { "type": "number" },
-                    "poTotalCommitment": { "type": "number", "description": "PO total + approved SCOs" },
-                    "poPaidToDate": { "type": "number" },
-                    "poBalance": { "type": "number", "description": "totalCommitment - paidToDate" },
-                    "poBalanceAfterThisInvoice": { "type": "number" }
-                }
-            },
-            "POPaymentImpact": {
-                "type": "object",
-                "properties": {
-                    "previousPaidToDate": { "type": "number" },
-                    "paymentAmount": { "type": "number" },
-                    "newPaidToDate": { "type": "number" },
-                    "newBalance": { "type": "number" },
-                    "poStatusChanged": { "type": "boolean" },
-                    "newPOStatus": { "type": "string" }
+                    "poTotalCommitment": { "type": "number", "description": "PO total + approved SCOs" }
                 }
             },
             "PaymentProgress": {

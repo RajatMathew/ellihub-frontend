@@ -11,7 +11,6 @@ import {
     IssueRequest,
     LineItemCreateRequest,
     LineItemUpdateRequest,
-    PaymentCreateRequest,
     POCreateRequest,
     POUpdateRequest,
     RecordDeliveryRequest,
@@ -42,10 +41,6 @@ const poDetailInclude = {
     lineItems: {
         where: { deletedAt: null },
         orderBy: { lineNumber: 'asc' as const },
-    },
-    payments: {
-        where: { deletedAt: null },
-        orderBy: { date: 'desc' as const },
     },
     attachments: {
         include: { document: { select: { id: true, name: true } } },
@@ -86,48 +81,6 @@ function calculatePOFinancials(
     const total = subtotal + taxAmount;
     const totalCommitment = total; // + approved SCOs (future)
     return { subtotal, taxAmount, total, totalCommitment };
-}
-
-/**
- * Recalculate PO payment status based on live payment data.
- * Called after payment create/delete and when SCOs modify totalCommitment.
- */
-export async function recalculatePOPaymentStatus(poId: string, tx?: TransactionClient) {
-    const db = tx || prisma;
-
-    const po = await db.purchaseOrder.findUniqueOrThrow({
-        where: { id: poId },
-        include: { status: { select: { name: true } } },
-    });
-
-    const paymentAgg = await db.pOPayment.aggregate({
-        where: { purchaseOrderId: poId, deletedAt: null },
-        _sum: { amount: true },
-    });
-
-    const paidToDate = Number(paymentAgg._sum.amount || 0);
-    const balance = Number(po.totalCommitment) - paidToDate;
-
-    let newStatusName: string | null = null;
-    if (balance <= 0 && paidToDate > 0) {
-        newStatusName = 'PAID';
-    } else if (paidToDate > 0 && balance > 0) {
-        newStatusName = 'PARTIALLY_PAID';
-    } else if (paidToDate === 0 && po.status.name === 'PARTIALLY_PAID') {
-        newStatusName = 'ISSUED';
-    }
-
-    if (newStatusName && newStatusName !== po.status.name) {
-        const newStatus = await db.pOStatus.findFirst({ where: { name: newStatusName } });
-        if (newStatus) {
-            await db.purchaseOrder.update({
-                where: { id: poId },
-                data: { statusId: newStatus.id },
-            });
-        }
-    }
-
-    return { paidToDate, balance };
 }
 
 export const POService = {
@@ -333,16 +286,13 @@ export const POService = {
         if (!po) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(po);
 
-        // Compute paidToDate, balance, isOverdue
-        const paidToDate = po.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-        const balance = Number(po.totalCommitment) - paidToDate;
         const isOverdue =
             po.status.name === 'ISSUED' &&
             po.expectedDate != null &&
             po.expectedDate < new Date() &&
             po.deliveryDate == null;
 
-        return { ...po, paidToDate, balance, isOverdue };
+        return { ...po, isOverdue };
     },
 
     updatePO: async (id: string, data: POUpdateRequest) => {
@@ -591,13 +541,6 @@ export const POService = {
         }
 
         // Check downstream impacts
-        const paymentCount = await prisma.pOPayment.count({
-            where: { purchaseOrderId: id, deletedAt: null },
-        });
-        if (paymentCount > 0 && !data.confirmPayments) {
-            throw new BadRequestError('PO has payments. Set confirmPayments=true to proceed');
-        }
-
         const invoiceCount = await prisma.invoice.count({
             where: { purchaseOrderId: id, deletedAt: null },
         });
@@ -651,104 +594,6 @@ export const POService = {
             where: { id },
             data: { deliveryDate: data.deliveryDate },
             include: poDetailInclude,
-        });
-    },
-
-    // --- Payments (BE-PO-05) ---
-
-    createPayment: async (poId: string, data: PaymentCreateRequest, userId: string) => {
-        const po = await getPOOrThrow(poId);
-
-        if (po.status.name !== 'ISSUED' && po.status.name !== 'PARTIALLY_PAID') {
-            throw new BadRequestError(
-                `Cannot record payment on a PO with status ${po.status.name}`
-            );
-        }
-
-        // Validate invoiceId if provided
-        if (data.invoiceId) {
-            const invoice = await prisma.invoice.findFirst({
-                where: { id: data.invoiceId, purchaseOrderId: poId, deletedAt: null },
-            });
-            if (!invoice) throw new NotFoundError('Invoice not found for this PO');
-        }
-
-        return await prisma.$transaction(async (tx) => {
-            const payment = await tx.pOPayment.create({
-                data: {
-                    id: ulid(),
-                    purchaseOrderId: poId,
-                    date: data.date,
-                    reference: data.reference,
-                    description: data.description,
-                    amount: data.amount,
-                    paymentMethod: data.paymentMethod,
-                    invoiceId: data.invoiceId,
-                    recordedBy: userId,
-                },
-            });
-
-            const { paidToDate, balance } = await recalculatePOPaymentStatus(poId, tx);
-
-            // Check for overpayment warning
-            let overpaymentWarning = null;
-            if (balance < 0) {
-                overpaymentWarning = {
-                    totalCommitment: Number(po.totalCommitment),
-                    paidToDate,
-                    overpayment: Math.abs(balance),
-                };
-            }
-
-            const updatedPO = await tx.purchaseOrder.findUniqueOrThrow({
-                where: { id: poId },
-                include: poDetailInclude,
-            });
-
-            return {
-                payment,
-                po: { ...updatedPO, paidToDate, balance },
-                overpaymentWarning,
-            };
-        });
-    },
-
-    listPayments: async (poId: string) => {
-        const po = await getPOOrThrow(poId);
-
-        const payments = await prisma.pOPayment.findMany({
-            where: { purchaseOrderId: poId, deletedAt: null },
-            orderBy: { date: 'desc' },
-        });
-
-        const paidToDate = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-        const balance = Number(po.totalCommitment) - paidToDate;
-
-        return {
-            payments,
-            summary: {
-                paidToDate,
-                balance,
-                totalCommitment: Number(po.totalCommitment),
-            },
-        };
-    },
-
-    deletePayment: async (poId: string, paymentId: string) => {
-        const po = await getPOOrThrow(poId);
-
-        const payment = await prisma.pOPayment.findFirst({
-            where: { id: paymentId, purchaseOrderId: poId, deletedAt: null },
-        });
-        if (!payment) throw new NotFoundError('Payment not found');
-
-        await prisma.$transaction(async (tx) => {
-            await tx.pOPayment.update({
-                where: { id: paymentId },
-                data: { deletedAt: new Date() },
-            });
-
-            await recalculatePOPaymentStatus(poId, tx);
         });
     },
 
@@ -941,7 +786,6 @@ export const POService = {
             where: { projectId, deletedAt: null },
             include: {
                 status: { select: { name: true } },
-                payments: { where: { deletedAt: null }, select: { amount: true } },
             },
         });
 
@@ -978,7 +822,6 @@ export const POService = {
         };
 
         let totalCommitted = 0;
-        let totalPaid = 0;
         let overdueCount = 0;
 
         for (const po of allPOs) {
@@ -998,9 +841,6 @@ export const POService = {
                 totalCommitted += Number(po.totalCommitment);
             }
 
-            const poPaid = po.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-            totalPaid += poPaid;
-
             if (
                 po.status.name === 'ISSUED' &&
                 po.expectedDate != null &&
@@ -1014,8 +854,6 @@ export const POService = {
         return {
             totalCount: allPOs.length,
             totalCommitted,
-            totalPaid,
-            totalBalance: totalCommitted - totalPaid,
             byStatus: statusBreakdown,
             byTradeCategory: tradeCategoryBreakdown,
             overdueCount,
@@ -1044,40 +882,21 @@ export const POService = {
                 skip,
                 take,
                 orderBy: { [sortBy]: sortOrder },
-                select: {
-                    ...poListSelect,
-                    payments: {
-                        where: { deletedAt: null },
-                        select: { amount: true },
-                    },
-                },
+                select: poListSelect,
             }),
         ]);
 
-        // Compute paidToDate and balance per PO
-        const enriched = data.map((po) => {
-            const paidToDate = po.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-            const balance = Number(po.totalCommitment) - paidToDate;
-            const { payments: _, ...rest } = po;
-            return { ...rest, paidToDate, balance };
-        });
-
-        // Summary header
         let totalCommitted = 0;
-        let totalPaid = 0;
-        for (const po of enriched) {
+        for (const po of data) {
             totalCommitted += Number(po.totalCommitment);
-            totalPaid += po.paidToDate;
         }
 
         return {
-            data: enriched,
+            data,
             count,
             summary: {
                 totalPOs: count,
                 totalCommitted,
-                totalPaid,
-                totalOutstanding: totalCommitted - totalPaid,
             },
         };
     },

@@ -2,7 +2,6 @@ import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { checkDeletedAt } from '@modules/common/utils';
-import { recalculatePOPaymentStatus } from '@modules/po/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
@@ -383,17 +382,8 @@ export const SCOService = {
         const currentCommitment = Number(sco.purchaseOrder.totalCommitment);
         const scoAmount = Number(sco.amount);
 
-        // Get current PO payment data
-        const paymentAgg = await prisma.pOPayment.aggregate({
-            where: { purchaseOrderId: sco.purchaseOrderId, deletedAt: null },
-            _sum: { amount: true },
-        });
-        const paidToDate = Number(paymentAgg._sum.amount || 0);
-        const currentBalance = currentCommitment - paidToDate;
-
         const isApproved = sco.status.name === 'APPROVED';
         const afterApproval = isApproved ? currentCommitment : currentCommitment + scoAmount;
-        const newBalance = afterApproval - paidToDate;
 
         const percentOfPO = poTotal !== 0 ? (Math.abs(scoAmount) / Math.abs(poTotal)) * 100 : 0;
 
@@ -402,8 +392,6 @@ export const SCOService = {
             poFinancialImpact: {
                 currentCommitment,
                 afterApproval,
-                currentBalance,
-                newBalance,
             },
             percentOfPO,
         };
@@ -636,7 +624,6 @@ export const SCOService = {
 
         const approvedStatus = await getStatusByName('APPROVED');
         const previousCommitment = Number(po.totalCommitment);
-        const previousPOStatus = po.status.name;
 
         return await prisma.$transaction(async (tx) => {
             // Update SCO status
@@ -663,9 +650,6 @@ export const SCOService = {
             // Recalculate PO commitment
             const commitmentResult = await recalcPOCommitment(sco.purchaseOrderId, tx);
 
-            // Recalculate PO payment status
-            const paymentResult = await recalculatePOPaymentStatus(sco.purchaseOrderId, tx);
-
             // Schedule entry if impact
             if (sco.scheduleImpactDays && sco.scheduleImpactDays > 0) {
                 await tx.projectScheduleEntry.create({
@@ -683,11 +667,6 @@ export const SCOService = {
                 include: scoDetailInclude,
             });
 
-            const updatedPO = await tx.purchaseOrder.findUniqueOrThrow({
-                where: { id: sco.purchaseOrderId },
-                include: { status: { select: { name: true } } },
-            });
-
             return {
                 sco: updatedSCO,
                 poImpact: {
@@ -695,10 +674,6 @@ export const SCOService = {
                     scoAmount,
                     newCommitment:
                         commitmentResult?.newCommitment ?? previousCommitment + scoAmount,
-                    paidToDate: paymentResult.paidToDate,
-                    newBalance: paymentResult.balance,
-                    poStatusChanged: updatedPO.status.name !== previousPOStatus,
-                    newPOStatus: updatedPO.status.name,
                 },
             };
         });
@@ -794,7 +769,6 @@ export const SCOService = {
             // If voiding an approved SCO, reverse financial impact
             if (wasApproved) {
                 await recalcPOCommitment(sco.purchaseOrderId, tx);
-                await recalculatePOPaymentStatus(sco.purchaseOrderId, tx);
             }
 
             return await tx.purchaseOrderCO.findUniqueOrThrow({

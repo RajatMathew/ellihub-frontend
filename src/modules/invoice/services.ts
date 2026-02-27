@@ -1,8 +1,6 @@
-import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { checkDeletedAt } from '@modules/common/utils';
-import { recalculatePOPaymentStatus } from '@modules/po/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
@@ -272,23 +270,12 @@ export const InvoiceService = {
         const retainagePercent = invoiceData.retainagePercent ?? Number(po.retainagePercent || 0);
         const { retainageAmount } = calculateRetainage(invoiceData.totalAmount, retainagePercent);
 
-        // Invoice-PO validation
-        const paymentAgg = await prisma.pOPayment.aggregate({
-            where: { purchaseOrderId: poId, deletedAt: null },
-            _sum: { amount: true },
-        });
-        const paidToDate = Number(paymentAgg._sum.amount || 0);
-        const poBalance = Number(po.totalCommitment) - paidToDate;
+        const poTotal = Number(po.totalCommitment);
 
         let overageWarning: string | null = null;
-        if (invoiceData.totalAmount > poBalance) {
-            const overageAmount = invoiceData.totalAmount - poBalance;
-            overageWarning = `Invoice exceeds PO balance by $${overageAmount.toFixed(2)}`;
-        }
-
-        let finalInvoiceWarning: string | null = null;
-        if (invoiceData.invoiceType === 'FINAL' && poBalance - invoiceData.totalAmount > 100) {
-            finalInvoiceWarning = 'PO will have remaining balance after this final invoice';
+        if (invoiceData.totalAmount > poTotal) {
+            const overageAmount = invoiceData.totalAmount - poTotal;
+            overageWarning = `Invoice exceeds PO total by $${overageAmount.toFixed(2)}`;
         }
 
         // Get PENDING status
@@ -348,7 +335,6 @@ export const InvoiceService = {
             return {
                 ...enrichWithAging(created as any),
                 overageWarning,
-                finalInvoiceWarning,
             };
         });
     },
@@ -361,24 +347,14 @@ export const InvoiceService = {
         if (!invoice) throw new NotFoundError('Invoice not found');
         checkDeletedAt(invoice);
 
-        // PO balance context
-        const paymentAgg = await prisma.pOPayment.aggregate({
-            where: { purchaseOrderId: invoice.purchaseOrderId, deletedAt: null },
-            _sum: { amount: true },
-        });
-        const poPaidToDate = Number(paymentAgg._sum.amount || 0);
         const poTotal = Number(invoice.purchaseOrder.total);
         const poTotalCommitment = Number(invoice.purchaseOrder.totalCommitment);
-        const poBalance = poTotalCommitment - poPaidToDate;
 
         return {
             ...enrichWithAging(invoice as any),
             poContext: {
                 poTotal,
                 poTotalCommitment,
-                poPaidToDate,
-                poBalance,
-                poBalanceAfterThisInvoice: poBalance - Number(invoice.totalAmount),
             },
         };
     },
@@ -595,20 +571,7 @@ export const InvoiceService = {
             throw new BadRequestError('Cannot pay a disputed invoice. Resolve dispute first.');
         }
 
-        // Get previous PO state
-        const po = await prisma.purchaseOrder.findUniqueOrThrow({
-            where: { id: invoice.purchaseOrderId },
-            include: { status: { select: { name: true } } },
-        });
-        const previousPaymentAgg = await prisma.pOPayment.aggregate({
-            where: { purchaseOrderId: invoice.purchaseOrderId, deletedAt: null },
-            _sum: { amount: true },
-        });
-        const previousPaidToDate = Number(previousPaymentAgg._sum.amount || 0);
-        const previousPOStatus = po.status.name;
-
         return await prisma.$transaction(async (tx) => {
-            // Update invoice
             await tx.invoice.update({
                 where: { id },
                 data: {
@@ -621,44 +584,13 @@ export const InvoiceService = {
                 },
             });
 
-            // Create POPayment
-            await tx.pOPayment.create({
-                data: {
-                    id: ulid(),
-                    purchaseOrderId: invoice.purchaseOrderId,
-                    date: data.paidDate,
-                    reference: data.paymentReference,
-                    description: `Invoice #${invoice.invoiceNumber} payment`,
-                    amount: data.paidAmount,
-                    paymentMethod: data.paymentMethod,
-                    invoiceId: id,
-                    recordedBy: userId,
-                },
-            });
-
-            // Recalculate PO payment status
-            const paymentResult = await recalculatePOPaymentStatus(invoice.purchaseOrderId, tx);
-
             const updatedInvoice = await tx.invoice.findUniqueOrThrow({
                 where: { id },
                 include: invoiceDetailInclude,
             });
 
-            const updatedPO = await tx.purchaseOrder.findUniqueOrThrow({
-                where: { id: invoice.purchaseOrderId },
-                include: { status: { select: { name: true } } },
-            });
-
             return {
                 invoice: enrichWithAging(updatedInvoice as any),
-                poImpact: {
-                    previousPaidToDate,
-                    paymentAmount: data.paidAmount,
-                    newPaidToDate: paymentResult.paidToDate,
-                    newBalance: paymentResult.balance,
-                    poStatusChanged: updatedPO.status.name !== previousPOStatus,
-                    newPOStatus: updatedPO.status.name,
-                },
             };
         });
     },

@@ -1,3 +1,4 @@
+import { Project } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
@@ -114,7 +115,7 @@ export const ProjectService = {
                 where: whereClause,
                 skip,
                 take,
-                orderBy: { [sortBy]: sortOrder },
+                orderBy: { [sortBy as keyof Project]: sortOrder },
                 select: projectListSelect,
             }),
         ]);
@@ -559,7 +560,7 @@ export const ProjectService = {
                 where,
                 skip,
                 take,
-                orderBy: { [sortBy]: sortOrder },
+                orderBy: { [sortBy as keyof Project]: sortOrder },
                 include: { file: { select: { id: true, name: true } } },
             }),
         ]);
