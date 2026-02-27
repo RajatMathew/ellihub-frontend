@@ -11,9 +11,13 @@ import {
     SCOUpdateSchema,
     VoidSchema,
 } from './models';
+import scoChangeTypeRoutes from './sco-change-type.routes';
 import { SCOService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/change-types', scoChangeTypeRoutes);
 
 // --- SCO Create (with purchaseOrderId in body) ---
 

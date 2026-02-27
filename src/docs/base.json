@@ -82,6 +82,14 @@
         { "name": "RFQs", "description": "Request for Quotation management, vendor invitations, quotes, and bid comparison" },
         { "name": "Sub Change Orders", "description": "Subcontractor Change Order management, approval workflow, and margin comparison" },
         { "name": "Prime Change Orders", "description": "Prime Change Order (PCO) management and status transitions" },
-        { "name": "Invoices", "description": "Invoice management, approval workflow, disputes, and aging reports" }
+        { "name": "Invoices", "description": "Invoice management, approval workflow, disputes, and aging reports" },
+        { "name": "Change Order Statuses", "description": "Manage change order status lookup values (shared by PCO and SCO)" },
+        { "name": "PCO Change Types", "description": "Manage PCO change type categories" },
+        { "name": "SCO Change Types", "description": "Manage SCO change type categories" },
+        { "name": "RFQ Statuses", "description": "Manage RFQ status lookup values" },
+        { "name": "Quote Statuses", "description": "Manage quote status lookup values" },
+        { "name": "PO Statuses", "description": "Manage purchase order status lookup values" },
+        { "name": "Invoice Statuses", "description": "Manage invoice status lookup values" },
+        { "name": "Addendum Change Types", "description": "Manage RFQ addendum change type categories" }
     ]
 }

@@ -6,6 +6,7 @@ import { requirePermission } from 'src/middleware/auth';
 import { GeneratePOFromRFQSchema } from '../po/models';
 import { POService } from '../po/services';
 
+import addendumChangeTypeRoutes from './addendum-change-type.routes';
 import {
     AddendumCreateSchema,
     AwardSchema,
@@ -21,9 +22,16 @@ import {
     VendorInviteSchema,
     VoidAwardSchema,
 } from './models';
+import quoteStatusRoutes from './quote-status.routes';
+import rfqStatusRoutes from './rfq-status.routes';
 import { RFQService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/statuses', rfqStatusRoutes);
+app.route('/quote-statuses', quoteStatusRoutes);
+app.route('/addendum-change-types', addendumChangeTypeRoutes);
 
 // --- RFQ CRUD ---
 

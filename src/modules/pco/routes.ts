@@ -3,6 +3,7 @@ import { BadRequestError, success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
+import changeOrderStatusRoutes from './change-order-status.routes';
 import {
     PCOCreateSchema,
     PCOLineItemCreateSchema,
@@ -12,9 +13,14 @@ import {
     PCOUpdateSchema,
     PCOVoidSchema,
 } from './models';
+import pcoChangeTypeRoutes from './pco-change-type.routes';
 import { PCOService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/statuses', changeOrderStatusRoutes);
+app.route('/change-types', pcoChangeTypeRoutes);
 
 // --- List PCOs ---
 

@@ -14,9 +14,13 @@ import {
     POUpdateSchema,
     RecordDeliverySchema,
 } from './models';
+import poStatusRoutes from './po-status.routes';
 import { POService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/statuses', poStatusRoutes);
 
 // --- PO CRUD ---
 

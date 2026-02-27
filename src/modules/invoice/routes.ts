@@ -3,6 +3,7 @@ import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
+import invoiceStatusRoutes from './invoice-status.routes';
 import {
     DisputeSchema,
     InvoiceCreateSchema,
@@ -16,6 +17,9 @@ import {
 import { InvoiceService } from './services';
 
 const app = new Hono();
+
+// Mount lookup table sub-routes
+app.route('/statuses', invoiceStatusRoutes);
 
 // --- List Invoices ---
 
