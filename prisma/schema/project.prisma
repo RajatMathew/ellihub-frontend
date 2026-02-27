@@ -92,7 +92,7 @@ model PrimeContract {
   actualStartDate         DateTime?
   actualCompletionDate    DateTime?
   executedContractDoc     File?         @relation(fields: [executedContractDocId], references: [id])
-  executedContractDocId   String?
+  executedContractDocId   String?       @unique
 
   attachments PrimeContractAttachment[]
 
@@ -106,7 +106,7 @@ model PrimeContractAttachment {
   primeContract   PrimeContract @relation(fields: [primeContractId], references: [id])
   primeContractId String
   document        File          @relation(fields: [documentId], references: [id])
-  documentId      String
+  documentId      String        @unique
   createdAt       DateTime      @default(now())
 
   @@index([primeContractId])
@@ -135,7 +135,7 @@ model ProjectScheduleEntry {
   adjustedFinishDate DateTime?
   notes              String?
   file               File?             @relation(fields: [fileId], references: [id])
-  fileId             String?
+  fileId             String?           @unique
   changeOrder        PrimeChangeOrder? @relation(fields: [changeOrderId], references: [id])
   changeOrderId      String?
 
@@ -264,7 +264,7 @@ model PCOAttachment {
   pco        PrimeChangeOrder @relation(fields: [pcoId], references: [id])
   pcoId      String
   document   File             @relation(fields: [documentId], references: [id])
-  documentId String
+  documentId String           @unique
   createdAt  DateTime         @default(now())
 
   @@index([pcoId])
@@ -522,7 +522,7 @@ model RFQAttachment {
   rfq        RFQ      @relation(fields: [rfqId], references: [id])
   rfqId      String
   document   File     @relation(fields: [documentId], references: [id])
-  documentId String
+  documentId String   @unique
   createdAt  DateTime @default(now())
 
   @@index([rfqId])
@@ -533,7 +533,7 @@ model QuoteAttachment {
   quote      VendorQuote @relation(fields: [quoteId], references: [id])
   quoteId    String
   document   File        @relation(fields: [documentId], references: [id])
-  documentId String
+  documentId String      @unique
   createdAt  DateTime    @default(now())
 
   @@index([quoteId])
@@ -732,7 +732,7 @@ model POAttachment {
   purchaseOrder   PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id])
   purchaseOrderId String
   document        File             @relation(fields: [documentId], references: [id])
-  documentId      String
+  documentId      String           @unique
 
   attachmentType POAttachmentType?
   createdAt      DateTime          @default(now())
@@ -903,7 +903,7 @@ model SCOAttachment {
   sco        PurchaseOrderCO @relation(fields: [scoId], references: [id])
   scoId      String
   document   File            @relation(fields: [documentId], references: [id])
-  documentId String
+  documentId String          @unique
   createdAt  DateTime        @default(now())
 
   @@index([scoId])
@@ -973,7 +973,7 @@ model Invoice {
   notes       String?         @db.Text
 
   invoiceDocument   File   @relation(fields: [invoiceDocumentId], references: [id])
-  invoiceDocumentId String
+  invoiceDocumentId String @unique
 
   createdBy String
 
@@ -1049,7 +1049,7 @@ model InvoiceAttachment {
   invoice    Invoice @relation(fields: [invoiceId], references: [id])
   invoiceId  String
   document   File    @relation(fields: [documentId], references: [id])
-  documentId String
+  documentId String  @unique
 
   attachmentType InvoiceAttachmentType?
   createdAt      DateTime               @default(now())

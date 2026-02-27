@@ -37,7 +37,7 @@ export const EmployeeService = {
                 where: whereClause,
                 skip,
                 take,
-                orderBy: { [sortBy]: sortOrder },
+                orderBy: { [sortBy as string]: sortOrder },
             }),
         ]);
 
@@ -54,13 +54,13 @@ export const EmployeeService = {
     create: async (request: EmployeeCreateRequest): Promise<Employee> => {
         const existing = await prisma.employee.findFirst({
             where: {
-                OR: [{ name: request.name }, { phoneNumber: request.phoneNumber }],
+                email: request.email,
                 deletedAt: null,
             },
         });
 
         if (existing) {
-            throw new ConflictError('An employee with this name or phone number already exists');
+            throw new ConflictError('An employee with this email already exists');
         }
 
         const id = ulid();
@@ -97,22 +97,17 @@ export const EmployeeService = {
         if (!employee) throw new NotFoundError('Employee not found');
         checkDeletedAt(employee);
 
-        if (data.name || data.phoneNumber) {
+        if (data.email) {
             const existing = await prisma.employee.findFirst({
                 where: {
-                    OR: [
-                        ...(data.name ? [{ name: data.name }] : []),
-                        ...(data.phoneNumber ? [{ phoneNumber: data.phoneNumber }] : []),
-                    ],
+                    email: data.email,
                     NOT: { id },
                     deletedAt: null,
                 },
             });
 
             if (existing) {
-                throw new ConflictError(
-                    'An employee with this name or phone number already exists'
-                );
+                throw new ConflictError('An employee with this email already exists');
             }
         }
 
