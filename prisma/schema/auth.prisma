@@ -10,7 +10,6 @@ model User {
   accounts                 Account[]
   members                  Member[]
   invitations              Invitation[]
-  createdPrimeChangeOrders PrimeChangeOrder[]
   role                     String?
   banned                   Boolean?           @default(false)
   banReason                String?

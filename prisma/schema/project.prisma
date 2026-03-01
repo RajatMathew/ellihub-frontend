@@ -196,7 +196,6 @@ model PrimeChangeOrder {
   statusId       String
   revisionNumber Int               @default(1)
 
-  creator   User   @relation(fields: [createdBy], references: [id])
   createdBy String
 
   markupAmount       Float?

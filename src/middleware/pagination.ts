@@ -5,8 +5,8 @@ export type PaginationParams = {
     size: number;
     skip: number;
     take: number;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
     fields?: string[];
     search?: string;
     filter?: Record<string, any>;

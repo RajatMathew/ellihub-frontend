@@ -20,7 +20,6 @@ const statusSelect = { select: { id: true, name: true, label: true, color: true,
 const pcoDetailInclude = {
     project: { select: { id: true, name: true, jobNumber: true } },
     status: statusSelect,
-    creator: { select: { id: true, name: true, email: true } },
     contact: { select: { id: true, fullName: true } },
     changeType: { select: { id: true, name: true, code: true, color: true } },
     costCode: { select: { id: true, name: true, code: true } },
@@ -44,7 +43,7 @@ const pcoListSelect = {
     impactsSchedule: true,
     changeType: { select: { id: true, name: true, code: true, color: true } },
     project: { select: { id: true, name: true, jobNumber: true } },
-    creator: { select: { id: true, name: true } },
+    createdBy: true,
     _count: { select: { lineItems: { where: { deletedAt: null } } } },
     createdAt: true,
 } as const;
@@ -154,7 +153,19 @@ export const PCOService = {
             }),
         ]);
 
-        return { data, count };
+        // Batch-fetch creator info
+        const creatorIds = [...new Set(data.map((p) => p.createdBy))];
+        const creators = await prisma.user.findMany({
+            where: { id: { in: creatorIds } },
+            select: { id: true, name: true },
+        });
+        const creatorMap = new Map(creators.map((c) => [c.id, c]));
+        const enriched = data.map((p) => ({
+            ...p,
+            creator: creatorMap.get(p.createdBy) ?? null,
+        }));
+
+        return { data: enriched, count };
     },
 
     createPCO: async (data: PCOCreateRequest, userId: string) => {
@@ -269,7 +280,13 @@ export const PCOService = {
         });
         if (!pco) throw new NotFoundError('Prime Change Order not found');
         checkDeletedAt(pco);
-        return pco;
+
+        const creator = await prisma.user.findUnique({
+            where: { id: pco.createdBy },
+            select: { id: true, name: true, email: true },
+        });
+
+        return { ...pco, creator };
     },
 
     updatePCO: async (id: string, data: PCOUpdateRequest) => {
