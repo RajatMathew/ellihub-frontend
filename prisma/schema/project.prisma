@@ -83,7 +83,6 @@ model PrimeContract {
   projectId               String        @unique
   contractValue           Decimal
   contractType            String?
-  totalContractValue      Decimal?
   retainagePercent        Decimal?      @db.Decimal(5, 2)
   targetBudgetPercent     Decimal?      @db.Decimal(5, 2)
   paymentTerms            PaymentTerms?
@@ -930,9 +929,9 @@ enum InvoiceAttachmentType {
 }
 
 model Invoice {
-  id              String        @id
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  purchaseOrderId String
+  id              String         @id
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String?
 
   invoiceNumber String
 
@@ -950,8 +949,8 @@ model Invoice {
   category    InvoiceCategory?
   notes       String?         @db.Text
 
-  invoiceDocument   File   @relation(fields: [invoiceDocumentId], references: [id])
-  invoiceDocumentId String @unique
+  invoiceDocument   File?   @relation(fields: [invoiceDocumentId], references: [id])
+  invoiceDocumentId String? @unique
 
   createdBy String
 

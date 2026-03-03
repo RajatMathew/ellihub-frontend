@@ -44,22 +44,28 @@ export type InvoiceLineItemUpdateRequest = z.infer<typeof InvoiceLineItemUpdateS
 
 // --- Invoice CRUD ---
 
-export const InvoiceCreateSchema = z.object({
-    poId: z.string().min(1),
-    invoiceNumber: z.string().min(1).max(100),
-    invoiceDate: z.coerce.date(),
-    dueDate: z.coerce.date().optional(),
-    totalAmount: z.number().positive(),
-    invoiceType: InvoiceTypeEnum.optional(),
-    category: InvoiceCategoryEnum.optional(),
-    notes: z.string().optional(),
-    invoiceDocumentId: z.string().min(1),
-    retainagePercent: z.number().min(0).max(100).optional(),
-    taxAmount: z.number().min(0).optional(),
-    taxRate: z.number().min(0).max(100).optional(),
-    relatedSCOIds: z.array(z.string().min(1)).optional(),
-    lineItems: z.array(InvoiceLineItemCreateSchema).optional(),
-});
+export const InvoiceCreateSchema = z
+    .object({
+        poId: z.string().min(1).optional(),
+        projectId: z.string().min(1).optional(),
+        vendorId: z.string().min(1).optional(),
+        invoiceNumber: z.string().min(1).max(100),
+        invoiceDate: z.coerce.date(),
+        dueDate: z.coerce.date().optional(),
+        totalAmount: z.number().positive(),
+        invoiceType: InvoiceTypeEnum.optional(),
+        category: InvoiceCategoryEnum.optional(),
+        notes: z.string().optional(),
+        invoiceDocumentId: z.string().min(1).optional(),
+        retainagePercent: z.number().min(0).max(100).optional(),
+        taxAmount: z.number().min(0).optional(),
+        taxRate: z.number().min(0).max(100).optional(),
+        relatedSCOIds: z.array(z.string().min(1)).optional(),
+        lineItems: z.array(InvoiceLineItemCreateSchema).optional(),
+    })
+    .refine((data) => data.poId || (data.projectId && data.vendorId), {
+        message: 'Either poId or both projectId and vendorId are required',
+    });
 
 export type InvoiceCreateRequest = z.infer<typeof InvoiceCreateSchema>;
 

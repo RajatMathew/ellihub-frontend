@@ -5,6 +5,7 @@ import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
+    ContractAttachmentCreateSchema,
     PrimeContractUpsertSchema,
     ProjectCreateSchema,
     ProjectUpdateSchema,
@@ -98,6 +99,36 @@ app.put(
         const data = c.req.valid('json');
         const contract = await ProjectService.upsertPrimeContract(projectId, data);
         return success(c, contract);
+    }
+);
+
+// Contract attachments sub-resource
+app.get('/:id/contract/attachments', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projectId = c.req.param('id');
+    const attachments = await ProjectService.listContractAttachments(projectId);
+    return success(c, attachments);
+});
+
+app.post(
+    '/:id/contract/attachments',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', ContractAttachmentCreateSchema),
+    async (c) => {
+        const projectId = c.req.param('id');
+        const { fileId } = c.req.valid('json');
+        const attachment = await ProjectService.addContractAttachment(projectId, fileId);
+        return success(c, attachment, 201);
+    }
+);
+
+app.delete(
+    '/:id/contract/attachments/:attachmentId',
+    requirePermission({ project: ['update'] }),
+    async (c) => {
+        const projectId = c.req.param('id');
+        const attachmentId = c.req.param('attachmentId');
+        await ProjectService.removeContractAttachment(projectId, attachmentId);
+        return success(c, null, 200, 'Attachment removed');
     }
 );
 

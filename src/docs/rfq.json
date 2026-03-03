@@ -41,7 +41,37 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQCreateRequest" },
+                            "examples": {
+                                "steel-rfq": {
+                                    "summary": "Steel supply RFQ with deliverables",
+                                    "value": {
+                                        "projectId": "01KJQCN709MS8Y0SP9WKV9ZVEZ",
+                                        "title": "Structural Steel Supply",
+                                        "description": "Supply and delivery of structural steel for PS 101 roof replacement project",
+                                        "estimatedBudget": 75000,
+                                        "bidDeadline": "2026-04-15",
+                                        "biddingType": "OPEN",
+                                        "minimumVendors": 1,
+                                        "deliverables": [
+                                            { "description": "W12x26 beams, Grade A992", "specifications": "ASTM A992, 25ft lengths", "quantity": 50, "unit": "EA", "estimatedUnitPrice": 450 },
+                                            { "description": "3/4 inch A36 steel plates", "specifications": "4x8 sheets", "quantity": 200, "unit": "SF", "estimatedUnitPrice": 35 }
+                                        ]
+                                    }
+                                },
+                                "minimal": {
+                                    "summary": "Minimal RFQ",
+                                    "value": {
+                                        "projectId": "01KJQCN709MS8Y0SP9WKV9ZVEZ",
+                                        "title": "Electrical conduit supply",
+                                        "description": "EMT conduit and fittings for distribution panels",
+                                        "bidDeadline": "2026-04-20",
+                                        "deliverables": [
+                                            { "description": "3/4in EMT conduit", "quantity": 500, "unit": "LF" }
+                                        ]
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -77,7 +107,16 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQPublishRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQPublishRequest" },
+                            "examples": {
+                                "publish-to-vendors": {
+                                    "summary": "Publish and invite 2 vendors",
+                                    "value": {
+                                        "vendorIds": ["01KJF5VJ06JH8YXW1E4CN2HYVV", "01JMSEEDVENDOR00000001"],
+                                        "sendInviteEmails": false
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -113,7 +152,15 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQCancelRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQCancelRequest" },
+                            "examples": {
+                                "cancel": {
+                                    "summary": "Cancel with reason",
+                                    "value": {
+                                        "cancellationReason": "Project scope has changed, steel not needed"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -150,7 +197,29 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQAwardRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQAwardRequest" },
+                            "examples": {
+                                "award-with-auto-po": {
+                                    "summary": "Award and auto-generate PO",
+                                    "value": {
+                                        "awardedQuoteId": "QUOTE_ID",
+                                        "awardedVendorId": "01KJF5VJ06JH8YXW1E4CN2HYVV",
+                                        "awardedAmount": 29500,
+                                        "autoGeneratePO": true,
+                                        "sendAwardEmail": false,
+                                        "sendRegretEmails": false
+                                    }
+                                },
+                                "award-manual": {
+                                    "summary": "Award without auto PO",
+                                    "value": {
+                                        "awardedQuoteId": "QUOTE_ID",
+                                        "awardedVendorId": "01KJF5VJ06JH8YXW1E4CN2HYVV",
+                                        "awardedAmount": 29500,
+                                        "autoGeneratePO": false
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -186,7 +255,15 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQVoidAwardRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQVoidAwardRequest" },
+                            "examples": {
+                                "void": {
+                                    "summary": "Void award with reason",
+                                    "value": {
+                                        "voidReason": "Vendor failed to meet insurance requirements"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -222,7 +299,19 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQGeneratePORequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQGeneratePORequest" },
+                            "examples": {
+                                "generate-po": {
+                                    "summary": "Generate PO from awarded vendor",
+                                    "value": {
+                                        "vendorInviteId": "VENDOR_INVITE_ID",
+                                        "taxPercent": 8.875,
+                                        "paymentTerms": "NET_30",
+                                        "shipToAddress": "123 Construction Ave, Brooklyn NY 11201",
+                                        "notes": "Deliver to loading dock B"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -286,7 +375,16 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQVendorInviteRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQVendorInviteRequest" },
+                            "examples": {
+                                "invite-two": {
+                                    "summary": "Invite 2 vendors",
+                                    "value": {
+                                        "vendorIds": ["01KJF5VJ06JH8YXW1E4CN2HYVV", "01JMSEEDVENDOR00000001"],
+                                        "sendInviteEmails": false
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -350,7 +448,15 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQDeclineRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQDeclineRequest" },
+                            "examples": {
+                                "decline": {
+                                    "summary": "Decline with reason",
+                                    "value": {
+                                        "declineReason": "Vendor does not carry specified steel grade"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -386,7 +492,36 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQQuoteCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQQuoteCreateRequest" },
+                            "examples": {
+                                "vendor-quote": {
+                                    "summary": "Quote from Elite Steel Works",
+                                    "value": {
+                                        "vendorId": "01KJF5VJ06JH8YXW1E4CN2HYVV",
+                                        "lineItems": [
+                                            { "deliverableId": "DELIVERABLE_ID_1", "unitPrice": 420, "quantity": 50, "unit": "EA", "notes": "Can deliver in 2 batches" },
+                                            { "deliverableId": "DELIVERABLE_ID_2", "unitPrice": 32, "quantity": 200, "unit": "SF" }
+                                        ],
+                                        "leadTimeDays": 14,
+                                        "paymentTerms": "Net 30",
+                                        "warrantyPeriod": "1 year",
+                                        "quoteValidDays": 30,
+                                        "submittedBy": "John Smith",
+                                        "submittedByEmail": "john@elitesteel.com"
+                                    }
+                                },
+                                "alternate-quote": {
+                                    "summary": "Quote with alternate material proposed",
+                                    "value": {
+                                        "vendorId": "01JMSEEDVENDOR00000001",
+                                        "lineItems": [
+                                            { "deliverableId": "DELIVERABLE_ID_1", "unitPrice": 395, "quantity": 50, "unit": "EA", "alternateProposed": true, "alternateDescription": "W12x22 beams (lighter gauge, same load rating)" }
+                                        ],
+                                        "leadTimeDays": 21,
+                                        "notes": "Alternate material offers 10% weight savings"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -423,7 +558,18 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQQuoteUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQQuoteUpdateRequest" },
+                            "examples": {
+                                "update-pricing": {
+                                    "summary": "Update quote pricing",
+                                    "value": {
+                                        "lineItems": [
+                                            { "deliverableId": "DELIVERABLE_ID_1", "unitPrice": 400, "quantity": 50, "unit": "EA" }
+                                        ],
+                                        "notes": "Revised pricing per phone conversation 3/1"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -473,7 +619,19 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQDeliverableCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQDeliverableCreateRequest" },
+                            "examples": {
+                                "add-deliverable": {
+                                    "summary": "Add anchor bolts deliverable",
+                                    "value": {
+                                        "description": "1/2in anchor bolts with nuts",
+                                        "specifications": "Grade 5, hot-dip galvanized",
+                                        "quantity": 300,
+                                        "unit": "EA",
+                                        "estimatedUnitPrice": 4.50
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -510,7 +668,16 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQDeliverableUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQDeliverableUpdateRequest" },
+                            "examples": {
+                                "update-quantity": {
+                                    "summary": "Update quantity and spec",
+                                    "value": {
+                                        "quantity": 350,
+                                        "specifications": "Grade 5, hot-dip galvanized, 6in length"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -560,7 +727,32 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQAddendumCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQAddendumCreateRequest" },
+                            "examples": {
+                                "deadline-extension": {
+                                    "summary": "Extend bid deadline",
+                                    "value": {
+                                        "title": "Addendum #1 — Deadline Extension",
+                                        "description": "Extending bid deadline by 1 week to allow additional vendors to submit",
+                                        "changeTypeId": "01KJF5VYC5HA0EYMCRFQJ88195",
+                                        "changesDescription": "Bid deadline moved from Apr 15 to Apr 22",
+                                        "impactsDeadline": true,
+                                        "newBidDeadline": "2026-04-22",
+                                        "requiresAcknowledgment": true
+                                    }
+                                },
+                                "spec-update": {
+                                    "summary": "Specification update",
+                                    "value": {
+                                        "title": "Addendum #2 — Steel Grade Change",
+                                        "description": "Updated steel grade requirement per structural engineer review",
+                                        "changeTypeId": "01KJF5VYD97WBXWGGBM4GZMZFZ",
+                                        "changesDescription": "Changed from A36 to A992 for all W-beams",
+                                        "impactsScope": true,
+                                        "impactsPricing": true
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -647,7 +839,17 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RFQUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/RFQUpdateRequest" },
+                            "examples": {
+                                "update-rfq": {
+                                    "summary": "Update title and budget",
+                                    "value": {
+                                        "title": "Structural Steel Supply — Revised",
+                                        "estimatedBudget": 85000,
+                                        "bidDeadline": "2026-04-22"
+                                    }
+                                }
+                            }
                         }
                     }
                 },

@@ -81,7 +81,7 @@ export type ScheduleEntryUpdateRequest = z.infer<typeof ScheduleEntryUpdateSchem
 export const PrimeContractUpsertSchema = z.object({
     contractValue: z.number().positive(),
     contractType: z.string().max(100).optional(),
-    totalContractValue: z.number().positive().optional(),
+
     retainagePercent: z.number().min(0).max(100).optional(),
     targetBudgetPercent: z.number().min(0).max(100).optional(),
     paymentTerms: z
@@ -95,3 +95,9 @@ export const PrimeContractUpsertSchema = z.object({
 });
 
 export type PrimeContractUpsertRequest = z.infer<typeof PrimeContractUpsertSchema>;
+
+export const ContractAttachmentCreateSchema = z.object({
+    fileId: z.string().min(1),
+});
+
+export type ContractAttachmentCreateRequest = z.infer<typeof ContractAttachmentCreateSchema>;

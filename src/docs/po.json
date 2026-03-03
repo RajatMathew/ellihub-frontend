@@ -43,7 +43,44 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/POCreateRequest" },
+                            "examples": {
+                                "steel-po": {
+                                    "summary": "Steel supply PO with line items",
+                                    "value": {
+                                        "projectId": "01KJQCN709MS8Y0SP9WKV9ZVEZ",
+                                        "vendorId": "01KJF5VJ06JH8YXW1E4CN2HYVV",
+                                        "tradeCategory": "MATERIAL",
+                                        "description": "Structural steel supply for roof replacement",
+                                        "issueDate": "2026-03-01",
+                                        "expectedDate": "2026-03-21",
+                                        "paymentTerms": "NET_30",
+                                        "retainagePercent": 10,
+                                        "taxPercent": 8.875,
+                                        "contactName": "John Smith",
+                                        "contactEmail": "john@elitesteel.com",
+                                        "shipToAddress": "123 Construction Ave, Brooklyn NY 11201",
+                                        "lineItems": [
+                                            { "description": "W12x26 beams", "quantity": 50, "unit": "EA", "unitPrice": 450 },
+                                            { "description": "3/4in A36 plates", "quantity": 200, "unit": "SF", "unitPrice": 35 }
+                                        ]
+                                    }
+                                },
+                                "minimal": {
+                                    "summary": "Minimal PO",
+                                    "value": {
+                                        "projectId": "01KJQCN709MS8Y0SP9WKV9ZVEZ",
+                                        "vendorId": "01JMSEEDVENDOR00000001",
+                                        "tradeCategory": "MATERIAL",
+                                        "description": "General materials supply",
+                                        "issueDate": "2026-03-01",
+                                        "paymentTerms": "NET_30",
+                                        "lineItems": [
+                                            { "description": "Concrete mix bags", "quantity": 100, "unit": "BAG", "unitPrice": 12 }
+                                        ]
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -139,7 +176,13 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POIssueRequest" }
+                            "schema": { "$ref": "#/components/schemas/POIssueRequest" },
+                            "examples": {
+                                "issue": {
+                                    "summary": "Issue PO (no email)",
+                                    "value": { "emailVendor": false }
+                                }
+                            }
                         }
                     }
                 },
@@ -176,7 +219,18 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POCancelRequest" }
+                            "schema": { "$ref": "#/components/schemas/POCancelRequest" },
+                            "examples": {
+                                "cancel": {
+                                    "summary": "Cancel with confirmations",
+                                    "value": {
+                                        "reason": "Vendor failed to deliver on time, switching to alternate supplier",
+                                        "notifyVendor": false,
+                                        "confirmInvoices": true,
+                                        "confirmSCOs": true
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -212,7 +266,16 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/PORecordDeliveryRequest" }
+                            "schema": { "$ref": "#/components/schemas/PORecordDeliveryRequest" },
+                            "examples": {
+                                "delivery": {
+                                    "summary": "Record delivery date",
+                                    "value": {
+                                        "deliveryDate": "2026-03-18",
+                                        "notes": "Delivered to loading dock B, signed by Mike Johnson"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -248,7 +311,19 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POLineItemCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/POLineItemCreateRequest" },
+                            "examples": {
+                                "add-line-item": {
+                                    "summary": "Add welding rods line item",
+                                    "value": {
+                                        "description": "E7018 welding rods 1/8in",
+                                        "quantity": 50,
+                                        "unit": "LB",
+                                        "unitPrice": 8.50,
+                                        "notes": "For on-site welding"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -286,7 +361,16 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POLineItemUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/POLineItemUpdateRequest" },
+                            "examples": {
+                                "update-qty": {
+                                    "summary": "Update quantity and price",
+                                    "value": {
+                                        "quantity": 60,
+                                        "unitPrice": 425
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -390,7 +474,18 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/POUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/POUpdateRequest" },
+                            "examples": {
+                                "update-po": {
+                                    "summary": "Update shipping and terms",
+                                    "value": {
+                                        "shipToAddress": "456 Job Site Rd, Queens NY 11101",
+                                        "paymentTerms": "NET_45",
+                                        "expectedDate": "2026-04-01",
+                                        "notes": "Revised delivery location per site change"
+                                    }
+                                }
+                            }
                         }
                     }
                 },

@@ -541,6 +541,61 @@ export const ProjectService = {
         });
     },
 
+    // --- Contract Attachments ---
+
+    listContractAttachments: async (projectId: string) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const contract = await prisma.primeContract.findUnique({ where: { projectId } });
+        if (!contract || contract.deletedAt) throw new NotFoundError('Prime contract not found');
+
+        return await prisma.primeContractAttachment.findMany({
+            where: { primeContractId: contract.id },
+            include: { document: { select: { id: true, name: true } } },
+            orderBy: { createdAt: 'desc' },
+        });
+    },
+
+    addContractAttachment: async (projectId: string, fileId: string) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const contract = await prisma.primeContract.findUnique({ where: { projectId } });
+        if (!contract || contract.deletedAt) throw new NotFoundError('Prime contract not found');
+
+        const file = await prisma.file.findUnique({ where: { id: fileId } });
+        if (!file) throw new NotFoundError('File not found');
+        checkDeletedAt(file);
+
+        return await prisma.primeContractAttachment.create({
+            data: {
+                id: ulid(),
+                primeContractId: contract.id,
+                documentId: fileId,
+            },
+            include: { document: { select: { id: true, name: true } } },
+        });
+    },
+
+    removeContractAttachment: async (projectId: string, attachmentId: string) => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const contract = await prisma.primeContract.findUnique({ where: { projectId } });
+        if (!contract || contract.deletedAt) throw new NotFoundError('Prime contract not found');
+
+        const attachment = await prisma.primeContractAttachment.findFirst({
+            where: { id: attachmentId, primeContractId: contract.id },
+        });
+        if (!attachment) throw new NotFoundError('Attachment not found');
+
+        await prisma.primeContractAttachment.delete({ where: { id: attachmentId } });
+    },
+
     // --- Schedule Entries ---
 
     listScheduleEntries: async (

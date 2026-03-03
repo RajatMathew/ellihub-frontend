@@ -122,9 +122,9 @@
             },
             "post": {
                 "tags": ["Invoices"],
-                "summary": "Create an invoice against a purchase order",
+                "summary": "Create an invoice",
                 "operationId": "createInvoice",
-                "description": "Creates a new invoice in PENDING status. Due date auto-calculated from PO payment terms if not provided. Retainage auto-inherited from PO settings. Validates PO is in ISSUED or PARTIALLY_PAID status. Checks for duplicate invoice numbers per vendor.",
+                "description": "Creates a new invoice in PENDING status. Can be linked to a PO (poId) or standalone (provide projectId + vendorId). When linked to a PO: due date auto-calculated from payment terms, retainage inherited from PO. Document upload is optional.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -132,57 +132,68 @@
                             "schema": { "$ref": "#/components/schemas/InvoiceCreateRequest" },
                             "examples": {
                                 "with-line-items": {
-                                    "summary": "Invoice with line items",
+                                    "summary": "Invoice with line items (linked to PO)",
                                     "value": {
-                                        "poId": "PO_ID",
+                                        "poId": "01KJSQ8WNP3KFPJDY7XY7CXKN2",
                                         "invoiceNumber": "INV-2026-001",
-                                        "invoiceDate": "2026-02-25",
+                                        "invoiceDate": "2026-03-01",
                                         "totalAmount": 15000,
                                         "invoiceType": "PRELIMINARY",
                                         "category": "MATERIALS",
-                                        "invoiceDocumentId": "FILE_ID",
+                                        "invoiceDocumentId": "01KJQGHVGK162794NXNJS2DXZE",
                                         "notes": "First draw for steel materials",
                                         "lineItems": [
                                             {
-                                                "description": "Rebar #5 Grade 60",
-                                                "qty": 100,
+                                                "description": "W12x26 beams",
+                                                "qty": 50,
                                                 "unit": "LF",
-                                                "unitPrice": 85,
-                                                "costCodeId": "COST_CODE_ID",
-                                                "poLineItemId": "PO_LINE_ITEM_ID"
+                                                "unitPrice": 170,
+                                                "costCodeId": "01KJF5VHAWYPNEXKRAH2CKHTPR",
+                                                "poLineItemId": "01KJSQ8WP9XXMTX8Q7C0CTREZF"
                                             },
                                             {
                                                 "description": "Delivery charges",
                                                 "qty": 1,
-                                                "unit": "EA",
+                                                "unit": "LS",
                                                 "unitPrice": 6500
                                             }
                                         ]
                                     }
                                 },
                                 "minimal": {
-                                    "summary": "Minimal invoice (no line items)",
+                                    "summary": "Minimal invoice (PO, no line items)",
                                     "value": {
-                                        "poId": "PO_ID",
+                                        "poId": "01KJSQ8WNP3KFPJDY7XY7CXKN2",
                                         "invoiceNumber": "INV-2026-002",
-                                        "invoiceDate": "2026-02-25",
-                                        "totalAmount": 8500,
-                                        "invoiceDocumentId": "FILE_ID"
+                                        "invoiceDate": "2026-03-01",
+                                        "totalAmount": 8500
+                                    }
+                                },
+                                "standalone": {
+                                    "summary": "Standalone invoice (no PO)",
+                                    "value": {
+                                        "projectId": "01KJQCN709MS8Y0SP9WKV9ZVEZ",
+                                        "vendorId": "01JMSEEDVENDOR00000001",
+                                        "invoiceNumber": "INV-2026-003",
+                                        "invoiceDate": "2026-03-01",
+                                        "totalAmount": 5000,
+                                        "invoiceType": "PRELIMINARY",
+                                        "category": "PROFESSIONAL_SERVICES",
+                                        "notes": "Engineering consultation fee"
                                     }
                                 },
                                 "final-with-retainage": {
-                                    "summary": "Final invoice with custom retainage",
+                                    "summary": "Final invoice with retainage and tax",
                                     "value": {
-                                        "poId": "PO_ID",
+                                        "poId": "01KJSQ8WNP3KFPJDY7XY7CXKN2",
                                         "invoiceNumber": "INV-2026-FINAL",
-                                        "invoiceDate": "2026-02-25",
+                                        "invoiceDate": "2026-03-01",
                                         "totalAmount": 25000,
                                         "invoiceType": "FINAL",
-                                        "invoiceDocumentId": "FILE_ID",
+                                        "invoiceDocumentId": "01KJQE0ERDSWRM291J56A4AA4Q",
                                         "retainagePercent": 10,
                                         "taxAmount": 2250,
-                                        "taxRate": 9,
-                                        "relatedSCOIds": ["SCO_ID_1", "SCO_ID_2"]
+                                        "taxRate": 9
                                     }
                                 }
                             }
@@ -628,21 +639,21 @@
                                 "with-po-link": {
                                     "summary": "Line item linked to PO line item",
                                     "value": {
-                                        "poLineItemId": "PO_LINE_ITEM_ID",
-                                        "description": "Rebar #5 Grade 60",
-                                        "qty": 100,
+                                        "poLineItemId": "01KJSQ8WP9XXMTX8Q7C0CTREZF",
+                                        "description": "W12x26 beams",
+                                        "qty": 50,
                                         "unit": "LF",
-                                        "unitPrice": 85,
-                                        "costCodeId": "COST_CODE_ID"
+                                        "unitPrice": 170,
+                                        "costCodeId": "01KJF5VHAWYPNEXKRAH2CKHTPR"
                                     }
                                 },
                                 "simple": {
-                                    "summary": "Simple line item",
+                                    "summary": "Simple line item (no PO link)",
                                     "value": {
-                                        "description": "Delivery charges",
+                                        "description": "Delivery and handling charges",
                                         "qty": 1,
-                                        "unit": "EA",
-                                        "unitPrice": 250
+                                        "unit": "LS",
+                                        "unitPrice": 2500
                                     }
                                 }
                             }
@@ -1180,17 +1191,20 @@
             },
             "InvoiceCreateRequest": {
                 "type": "object",
-                "required": ["poId", "invoiceNumber", "invoiceDate", "totalAmount", "invoiceDocumentId"],
+                "required": ["invoiceNumber", "invoiceDate", "totalAmount"],
+                "description": "Provide either poId (PO-linked) or both projectId + vendorId (standalone). Document upload is optional.",
                 "properties": {
-                    "poId": { "type": "string", "description": "Purchase Order ID" },
+                    "poId": { "type": "string", "description": "Purchase Order ID (optional — if omitted, provide projectId + vendorId)" },
+                    "projectId": { "type": "string", "description": "Project ID (required when no poId)" },
+                    "vendorId": { "type": "string", "description": "Vendor ID (required when no poId)" },
                     "invoiceNumber": { "type": "string", "maxLength": 100 },
                     "invoiceDate": { "type": "string", "format": "date" },
-                    "dueDate": { "type": "string", "format": "date", "description": "Auto-calculated from PO payment terms if not provided" },
+                    "dueDate": { "type": "string", "format": "date", "description": "Auto-calculated from PO payment terms if not provided (defaults to 30 days)" },
                     "totalAmount": { "type": "number", "exclusiveMinimum": 0 },
                     "invoiceType": { "type": "string", "enum": ["PRELIMINARY", "FINAL", "REVISION"], "default": "PRELIMINARY" },
                     "category": { "type": "string", "enum": ["MATERIALS", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "PROFESSIONAL_SERVICES", "OTHER"] },
                     "notes": { "type": "string" },
-                    "invoiceDocumentId": { "type": "string", "description": "File ID of the uploaded invoice document" },
+                    "invoiceDocumentId": { "type": "string", "description": "File ID of the uploaded invoice document (optional)" },
                     "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "description": "Auto-inherited from PO if not provided" },
                     "taxAmount": { "type": "number", "minimum": 0 },
                     "taxRate": { "type": "number", "minimum": 0, "maximum": 100 },

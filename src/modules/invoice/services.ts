@@ -212,32 +212,74 @@ export const InvoiceService = {
     },
 
     createInvoice: async (data: InvoiceCreateRequest, userId: string) => {
-        const { lineItems, poId, ...invoiceData } = data;
+        const {
+            lineItems,
+            poId,
+            projectId: directProjectId,
+            vendorId: directVendorId,
+            ...invoiceData
+        } = data;
 
-        // Validate PO
-        const po = await prisma.purchaseOrder.findUnique({
-            where: { id: poId },
-            include: { status: { select: { name: true } } },
-        });
-        if (!po) throw new NotFoundError('Purchase order not found');
-        checkDeletedAt(po);
+        let projectId: string;
+        let vendorId: string;
+        let poPaymentTerms: string | null = null;
+        let poRetainagePercent = 0;
+        let overageWarning: string | null = null;
 
-        if (!['ISSUED', 'PARTIALLY_PAID'].includes(po.status.name)) {
-            throw new BadRequestError(
-                `Cannot create invoice on a PO with status ${po.status.name}`
-            );
+        if (poId) {
+            // PO-linked invoice: validate PO and extract defaults
+            const po = await prisma.purchaseOrder.findUnique({
+                where: { id: poId },
+                include: { status: { select: { name: true } } },
+            });
+            if (!po) throw new NotFoundError('Purchase order not found');
+            checkDeletedAt(po);
+
+            if (!['ISSUED', 'PARTIALLY_PAID'].includes(po.status.name)) {
+                throw new BadRequestError(
+                    `Cannot create invoice on a PO with status ${po.status.name}`
+                );
+            }
+
+            projectId = po.projectId;
+            vendorId = po.vendorId;
+            poPaymentTerms = po.paymentTerms;
+            poRetainagePercent = Number(po.retainagePercent || 0);
+
+            // Overage warning
+            const poTotal = Number(po.totalCommitment);
+            if (invoiceData.totalAmount > poTotal) {
+                const overageAmount = invoiceData.totalAmount - poTotal;
+                overageWarning = `Invoice exceeds PO total by $${overageAmount.toFixed(2)}`;
+            }
+        } else {
+            // Standalone invoice: validate project and vendor directly
+            projectId = directProjectId!;
+            vendorId = directVendorId!;
+
+            const project = await prisma.project.findUnique({ where: { id: projectId } });
+            if (!project) throw new NotFoundError('Project not found');
+            checkDeletedAt(project);
+
+            const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+            if (!vendor) throw new NotFoundError('Vendor not found');
+            checkDeletedAt(vendor);
         }
 
-        // Validate invoice document
-        const doc = await prisma.file.findUnique({ where: { id: invoiceData.invoiceDocumentId } });
-        if (!doc) throw new NotFoundError('Invoice document not found');
-        checkDeletedAt(doc);
+        // Validate invoice document (if provided)
+        if (invoiceData.invoiceDocumentId) {
+            const doc = await prisma.file.findUnique({
+                where: { id: invoiceData.invoiceDocumentId },
+            });
+            if (!doc) throw new NotFoundError('Invoice document not found');
+            checkDeletedAt(doc);
+        }
 
         // Duplicate check
         const existing = await prisma.invoice.findFirst({
             where: {
                 invoiceNumber: invoiceData.invoiceNumber,
-                vendorId: po.vendorId,
+                vendorId,
                 deletedAt: null,
             },
         });
@@ -254,6 +296,8 @@ export const InvoiceService = {
                     checkDeletedAt(cc);
                 }
                 if (li.poLineItemId) {
+                    if (!poId)
+                        throw new BadRequestError('Cannot reference PO line items without a poId');
                     const poli = await prisma.purchaseOrderLineItem.findFirst({
                         where: { id: li.poLineItemId, purchaseOrderId: poId, deletedAt: null },
                     });
@@ -264,19 +308,11 @@ export const InvoiceService = {
 
         // Auto-calculate dueDate
         const dueDate =
-            invoiceData.dueDate || calculateDueDate(invoiceData.invoiceDate, po.paymentTerms);
+            invoiceData.dueDate || calculateDueDate(invoiceData.invoiceDate, poPaymentTerms);
 
         // Auto-set retainage from PO if not provided
-        const retainagePercent = invoiceData.retainagePercent ?? Number(po.retainagePercent || 0);
+        const retainagePercent = invoiceData.retainagePercent ?? poRetainagePercent;
         const { retainageAmount } = calculateRetainage(invoiceData.totalAmount, retainagePercent);
-
-        const poTotal = Number(po.totalCommitment);
-
-        let overageWarning: string | null = null;
-        if (invoiceData.totalAmount > poTotal) {
-            const overageAmount = invoiceData.totalAmount - poTotal;
-            overageWarning = `Invoice exceeds PO total by $${overageAmount.toFixed(2)}`;
-        }
 
         // Get PENDING status
         const pendingStatus = await getStatusByName('PENDING');
@@ -288,8 +324,8 @@ export const InvoiceService = {
                 data: {
                     id: invoiceId,
                     purchaseOrderId: poId,
-                    projectId: po.projectId,
-                    vendorId: po.vendorId,
+                    projectId,
+                    vendorId,
                     invoiceNumber: invoiceData.invoiceNumber,
                     invoiceDate: invoiceData.invoiceDate,
                     dueDate,
@@ -347,15 +383,14 @@ export const InvoiceService = {
         if (!invoice) throw new NotFoundError('Invoice not found');
         checkDeletedAt(invoice);
 
-        const poTotal = Number(invoice.purchaseOrder.total);
-        const poTotalCommitment = Number(invoice.purchaseOrder.totalCommitment);
-
         return {
             ...enrichWithAging(invoice as any),
-            poContext: {
-                poTotal,
-                poTotalCommitment,
-            },
+            poContext: invoice.purchaseOrder
+                ? {
+                      poTotal: Number(invoice.purchaseOrder.total),
+                      poTotalCommitment: Number(invoice.purchaseOrder.totalCommitment),
+                  }
+                : null,
         };
     },
 
@@ -411,6 +446,10 @@ export const InvoiceService = {
         }
 
         if (data.poLineItemId) {
+            if (!invoice.purchaseOrderId)
+                throw new BadRequestError(
+                    'Cannot reference PO line items on an invoice without a PO'
+                );
             const poli = await prisma.purchaseOrderLineItem.findFirst({
                 where: {
                     id: data.poLineItemId,

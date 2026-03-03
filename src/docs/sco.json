@@ -10,7 +10,39 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCOCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCOCreateRequest" },
+                            "examples": {
+                                "design-change-sco": {
+                                    "summary": "Design change SCO with line items",
+                                    "value": {
+                                        "purchaseOrderId": "PO_ID",
+                                        "title": "Revised beam connection details per RFI-012",
+                                        "reasonForChange": "Structural engineer revised connection details after field survey",
+                                        "amount": 8500,
+                                        "changeType": "DESIGN_CHANGE",
+                                        "initiatedBy": "FIRM",
+                                        "priority": "HIGH",
+                                        "scheduleImpactDays": 3,
+                                        "lineItems": [
+                                            { "description": "Additional W10x22 beams", "qty": 6, "unit": "EA", "unitPrice": 950, "costCategory": "MATERIALS" },
+                                            { "description": "Modified connection labor", "qty": 16, "unit": "HR", "unitPrice": 185, "costCategory": "LABOR" }
+                                        ]
+                                    }
+                                },
+                                "credit-sco": {
+                                    "summary": "Credit SCO (negative amount)",
+                                    "value": {
+                                        "purchaseOrderId": "PO_ID",
+                                        "title": "Credit for unused material return",
+                                        "amount": -2400,
+                                        "changeType": "CREDIT",
+                                        "initiatedBy": "VENDOR",
+                                        "lineItems": [
+                                            { "description": "Returned 3/4in A36 plates", "qty": -40, "unit": "SF", "unitPrice": 35, "costCategory": "MATERIALS", "notes": "Unused material returned to vendor warehouse" }
+                                        ]
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -167,7 +199,15 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCORejectRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCORejectRequest" },
+                            "examples": {
+                                "reject": {
+                                    "summary": "Reject with detailed reason",
+                                    "value": {
+                                        "reason": "Cost increase not justified. Vendor should provide detailed breakdown of material and labor costs."
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -204,7 +244,15 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCOVoidRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCOVoidRequest" },
+                            "examples": {
+                                "void": {
+                                    "summary": "Void SCO",
+                                    "value": {
+                                        "reason": "Duplicate SCO — work already covered under SCO-001"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -240,7 +288,20 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCOLineItemCreateRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCOLineItemCreateRequest" },
+                            "examples": {
+                                "add-line-item": {
+                                    "summary": "Add labor line item",
+                                    "value": {
+                                        "description": "Overtime welding labor for connection revision",
+                                        "qty": 8,
+                                        "unit": "HR",
+                                        "unitPrice": 195,
+                                        "costCategory": "LABOR",
+                                        "notes": "Weekend overtime rate"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -277,7 +338,17 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCOLineItemUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCOLineItemUpdateRequest" },
+                            "examples": {
+                                "update-line-item": {
+                                    "summary": "Update quantity and price",
+                                    "value": {
+                                        "qty": 12,
+                                        "unitPrice": 185,
+                                        "notes": "Revised to include travel time"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -381,7 +452,18 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/SCOUpdateRequest" }
+                            "schema": { "$ref": "#/components/schemas/SCOUpdateRequest" },
+                            "examples": {
+                                "update-sco": {
+                                    "summary": "Update title and schedule impact",
+                                    "value": {
+                                        "title": "Revised beam connections per RFI-012 v2",
+                                        "amount": 9200,
+                                        "scheduleImpactDays": 5,
+                                        "priority": "URGENT"
+                                    }
+                                }
+                            }
                         }
                     }
                 },
