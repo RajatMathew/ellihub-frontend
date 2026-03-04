@@ -32,6 +32,7 @@ const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
 const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change-orders'));
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
 const ProjectFiles = lazy(() => import('@modules/project/pages/files'));
+const ProjectRoutes = lazy(() => import('@modules/project/routes/projects.route'));
 
 const UIKit = lazy(() => DelayForDemo(import('@core/ui/pages/page'), 5000));
 
@@ -41,7 +42,7 @@ export const routeTree: RouteDef[] = [
     children: [
       isDev ? { path: 'ui', component: UIKit, title: 'UI Kit' } : null,
 
-      { path: 'projects', component: FutureFeature, title: 'Projects' },
+      { path: 'projects/*', component: ProjectRoutes, title: 'Projects' },
 
       {
         path: 'catalog/*',

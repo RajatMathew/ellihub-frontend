@@ -28,7 +28,8 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav, QuickCreateContactDialog } from '../components';
+import { FormSectionNav } from '@app/components/form-section-nav';
+import { QuickCreateContactDialog } from '../components';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
 import {
   VENDOR_FORM_SECTIONS,

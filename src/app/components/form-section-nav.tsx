@@ -10,7 +10,7 @@ export function FormSectionNav({
   onSectionChange: (id: string) => void;
 }) {
   return (
-    <nav className="hidden w-44 shrink-0 lg:block">
+    <nav className="hidden w-44 shrink-0 lg:block sticky top-24 self-start">
       <ul className="space-y-1">
         {sections.map((section) => (
           <li key={section.id}>

@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 
 import type { MenuConfig } from '@app/config/types';
+import { ProjectSidebarSwitcher } from '@modules/project/components/project-sidebar-switcher';
 import { ProjectSwitcher } from '@modules/project/project-switcher';
 
 const isDev = import.meta.env.DEV;
@@ -80,5 +81,23 @@ export const projectSidebarMenu: MenuConfig = [
   {
     type: 'menu',
     children: [{ title: 'Files', path: '../files' }],
+  },
+];
+
+export const projectsDetailSidebarMenu: MenuConfig = [
+  {
+    type: 'menu',
+    children: [{ title: 'Back to Dashboard', path: '../../projects', icon: ArrowLeft }],
+  },
+  { type: 'separator' },
+  { type: 'custom', render: () => <ProjectSidebarSwitcher /> },
+  { type: 'separator' },
+  {
+    type: 'menu',
+    children: [
+      { title: 'Overview', path: '../overview' },
+      { title: 'Prime Contracts', path: '../prime-contracts' },
+      { title: 'Prime Change Orders', path: '../prime-change-orders' },
+    ],
   },
 ];
