@@ -99,7 +99,7 @@ export const routeTree: RouteDef[] = [
           },
           { path: 'rfqs', component: ProjectRfqs, title: 'RFQs' },
           {
-            path: 'vendors/purchase-orders',
+            path: 'purchase-orders',
             component: ProjectPOs,
             title: 'Purchase Orders',
           },
