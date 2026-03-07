@@ -28,11 +28,12 @@ const ProjectOverview = lazy(() => import('@modules/project/pages/overview'));
 const ProjectContracts = lazy(() => import('@modules/project/pages/contracts'));
 const ProjectChangeOrders = lazy(() => import('@modules/project/pages/change-orders'));
 const FilesRoutes = lazy(() => import('@modules/files/routes/files.route'));
-const RfqRoutes = lazy(() => import('@modules/rfq/routes/rfq.route'));
+const ProjectRfqs = lazy(() => import('@modules/project/pages/rfqs'));
 const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
 const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change-orders'));
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
 const ProjectFiles = lazy(() => import('@modules/project/pages/files'));
+const ProjectRoutes = lazy(() => import('@modules/project/routes/projects.route'));
 
 const UIKit = lazy(() => DelayForDemo(import('@core/ui/pages/page'), 5000));
 
@@ -42,7 +43,7 @@ export const routeTree: RouteDef[] = [
     children: [
       isDev ? { path: 'ui', component: UIKit, title: 'UI Kit' } : null,
 
-      { path: 'projects', component: FutureFeature, title: 'Projects' },
+      { path: 'projects/*', component: ProjectRoutes, title: 'Projects' },
 
       {
         path: 'catalog/*',
@@ -75,7 +76,6 @@ export const routeTree: RouteDef[] = [
         component: DirectoryVendors,
         title: 'Vendors',
       },
-      { path: 'rfqs/*', component: RfqRoutes, title: 'RFQ' },
       { path: 'hr', component: FutureFeature, title: 'HR' },
       { path: 'files/*', component: FilesRoutes, title: 'Files' },
       // Project routes (nested under /project/:projectId/*)
@@ -97,7 +97,7 @@ export const routeTree: RouteDef[] = [
             component: ProjectChangeOrders,
             title: 'Prime Change Orders',
           },
-          { path: 'rfqs/*', component: RfqRoutes, title: 'RFQ' },
+          { path: 'rfqs', component: ProjectRfqs, title: 'RFQs' },
           {
             path: 'vendors/purchase-orders',
             component: ProjectPOs,

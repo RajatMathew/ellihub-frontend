@@ -28,7 +28,8 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav, QuickCreateVendorDialog } from '../components';
+import { FormSectionNav } from '@app/components/form-section-nav';
+import { QuickCreateVendorDialog } from '../components';
 import { CONTACT_FORM_SECTIONS } from '../constants/contacts.constants';
 import {
   useAddVendorLinkMutation,

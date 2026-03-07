@@ -40,7 +40,9 @@ export function getSidebarResolutionBase(pathname: string): {
   if (segments[0] !== 'app') {
     return { base: pathname, stripLeadingDotDotSlash: false };
   }
-  const projectIndex = segments.indexOf('project');
+  // Handle both /app/project/:id/* and /app/projects/:id/* patterns
+  let projectIndex = segments.indexOf('project');
+  if (projectIndex === -1) projectIndex = segments.indexOf('projects');
   const isProjectRoute = projectIndex !== -1 && segments[projectIndex + 1];
   if (isProjectRoute) {
     const projectRoot = '/' + segments.slice(0, projectIndex + 2).join('/');
