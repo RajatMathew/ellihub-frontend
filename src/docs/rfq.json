@@ -287,6 +287,86 @@
                 }
             }
         },
+        "/rfqs/{id}/unaward": {
+            "post": {
+                "tags": ["RFQs"],
+                "summary": "Remove award and return RFQ to evaluation",
+                "operationId": "unawardRFQ",
+                "description": "Removes the award from an AWARDED RFQ and moves it back to EVALUATION status. All quotes are reset to SUBMITTED. If a PO was generated, it must still be in DRAFT status.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Award removed, RFQ back to EVALUATION",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/RFQDetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "RFQ not awarded, or generated PO is no longer DRAFT" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "RFQ not found" }
+                }
+            }
+        },
+        "/rfqs/{id}/status": {
+            "put": {
+                "tags": ["RFQs"],
+                "summary": "Manually change RFQ status",
+                "operationId": "changeRFQStatus",
+                "description": "Directly set an RFQ's status by providing the target statusId. Use for manual overrides outside the normal workflow transitions.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["statusId"],
+                                "properties": {
+                                    "statusId": { "type": "string", "description": "Target RFQ status ID" }
+                                }
+                            },
+                            "examples": {
+                                "to-evaluation": {
+                                    "summary": "Move to EVALUATION",
+                                    "value": {
+                                        "statusId": "STATUS_ID"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "RFQ status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/RFQDetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Invalid status transition" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "RFQ or status not found" }
+                }
+            }
+        },
         "/rfqs/{id}/generate-po": {
             "post": {
                 "tags": ["RFQs"],

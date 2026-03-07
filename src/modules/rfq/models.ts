@@ -9,8 +9,8 @@ export const BiddingTypeEnum = z.enum(['ANONYMOUS', 'OPEN']);
 export const DeliverableCreateSchema = z.object({
     description: z.string().min(1),
     specifications: z.string().optional(),
-    quantity: z.number().positive(),
-    unit: z.string().min(1),
+    quantity: z.number().min(0).optional().default(0),
+    unit: z.string().optional().default(''),
     costCodeId: z.string().optional(),
     estimatedUnitPrice: z.number().positive().optional(),
 });
@@ -21,8 +21,8 @@ export const DeliverableUpdateSchema = z
     .object({
         description: z.string().min(1),
         specifications: z.string().nullable(),
-        quantity: z.number().positive(),
-        unit: z.string().min(1),
+        quantity: z.number().min(0),
+        unit: z.string(),
         costCodeId: z.string().nullable(),
         estimatedUnitPrice: z.number().positive().nullable(),
     })
@@ -40,7 +40,7 @@ export const RFQCreateSchema = z.object({
     title: z.string().min(1).max(255),
     description: z.string().optional(),
     costCodeId: z.string().optional(),
-    estimatedBudget: z.number().positive().optional(),
+    estimatedBudget: z.number().min(0).optional(),
     bidDeadline: z.coerce.date(),
     biddingType: BiddingTypeEnum.optional(),
     minimumVendors: z.number().int().min(1).optional(),
@@ -54,7 +54,7 @@ export const RFQUpdateSchema = z
         title: z.string().min(1).max(255),
         description: z.string().nullable(),
         costCodeId: z.string().nullable(),
-        estimatedBudget: z.number().positive().nullable(),
+        estimatedBudget: z.number().min(0).nullable(),
         bidDeadline: z.coerce.date(),
         biddingType: BiddingTypeEnum,
         minimumVendors: z.number().int().min(1),
@@ -160,6 +160,14 @@ export const VoidAwardSchema = z.object({
 });
 
 export type VoidAwardRequest = z.infer<typeof VoidAwardSchema>;
+
+// --- Manual status change ---
+
+export const ChangeStatusSchema = z.object({
+    statusId: z.string().min(1),
+});
+
+export type ChangeStatusRequest = z.infer<typeof ChangeStatusSchema>;
 
 // --- Addendums ---
 

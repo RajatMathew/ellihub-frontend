@@ -366,6 +366,59 @@
                 }
             }
         },
+        "/projects/{id}/overview": {
+            "get": {
+                "tags": ["Projects"],
+                "summary": "Get project overview (dashboard KPIs)",
+                "operationId": "getProjectOverview",
+                "description": "Returns a lightweight summary for the project overview page: contract value/type, team count, PM name, schedule entries count, division, stage, status, and all contract dates.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project overview data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": { "type": "string" },
+                                                        "name": { "type": "string" },
+                                                        "jobNumber": { "type": "string", "nullable": true },
+                                                        "contractValue": { "type": "number", "nullable": true, "description": "Prime contract value" },
+                                                        "contractType": { "type": "string", "nullable": true, "description": "e.g. Lump Sum" },
+                                                        "teamMembersCount": { "type": "integer" },
+                                                        "pmName": { "type": "string", "nullable": true, "description": "Lead PM name" },
+                                                        "scheduleEntriesCount": { "type": "integer" },
+                                                        "effectiveStartDate": { "type": "string", "format": "date-time", "nullable": true },
+                                                        "effectiveEndDate": { "type": "string", "format": "date-time", "nullable": true },
+                                                        "division": { "type": "string", "description": "e.g. SCA, DDC, CIVIL" },
+                                                        "stage": { "type": "string", "nullable": true, "description": "e.g. Installation" },
+                                                        "status": { "type": "object", "properties": { "name": { "type": "string" }, "label": { "type": "string" }, "color": { "type": "string" } } },
+                                                        "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true },
+                                                        "estimatedCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
+                                                        "actualStartDate": { "type": "string", "format": "date-time", "nullable": true },
+                                                        "actualCompletionDate": { "type": "string", "format": "date-time", "nullable": true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Project not found" }
+                }
+            }
+        },
         "/projects/{id}": {
             "get": {
                 "tags": ["Projects"],

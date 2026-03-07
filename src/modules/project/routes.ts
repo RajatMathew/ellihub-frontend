@@ -83,6 +83,13 @@ app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
     return success(c, null, 200, 'Project deleted');
 });
 
+// Project overview
+app.get('/:id/overview', requirePermission({ project: ['view-all'] }), async (c) => {
+    const id = c.req.param('id');
+    const overview = await ProjectService.getProjectOverview(id);
+    return success(c, overview);
+});
+
 // Prime Contract sub-resource
 app.get('/:id/contract', requirePermission({ project: ['view-all'] }), async (c) => {
     const projectId = c.req.param('id');

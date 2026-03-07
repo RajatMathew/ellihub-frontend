@@ -11,6 +11,7 @@ import {
     AddendumCreateSchema,
     AwardSchema,
     CancelSchema,
+    ChangeStatusSchema,
     DeclineSchema,
     DeliverableCreateSchema,
     DeliverableUpdateSchema,
@@ -123,6 +124,26 @@ app.post(
         const id = c.req.param('id');
         const data = c.req.valid('json');
         const rfq = await RFQService.voidAward(id, data);
+        return success(c, rfq);
+    }
+);
+
+app.post('/:id/unaward', requirePermission({ project: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RFQService.unawardRFQ(id);
+    return success(c, rfq);
+});
+
+// --- Manual status change ---
+
+app.put(
+    '/:id/status',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', ChangeStatusSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const data = c.req.valid('json');
+        const rfq = await RFQService.changeRFQStatus(id, data);
         return success(c, rfq);
     }
 );

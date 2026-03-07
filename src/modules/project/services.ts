@@ -245,6 +245,55 @@ export const ProjectService = {
         return project;
     },
 
+    getProjectOverview: async (id: string) => {
+        const project = await prisma.project.findUnique({
+            where: { id },
+            include: {
+                stage: { select: { name: true } },
+                status: { select: { name: true, label: true, color: true } },
+                leadPM: { select: { id: true, name: true } },
+                primeContract: {
+                    select: {
+                        contractValue: true,
+                        contractType: true,
+                        estimatedStartDate: true,
+                        estimatedCompletionDate: true,
+                        actualStartDate: true,
+                        actualCompletionDate: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        teamMembers: { where: { deletedAt: null } },
+                        projectScheduleEntries: { where: { deletedAt: null } },
+                    },
+                },
+            },
+        });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        return {
+            id: project.id,
+            name: project.name,
+            jobNumber: project.jobNumber,
+            contractValue: project.primeContract?.contractValue ?? null,
+            contractType: project.primeContract?.contractType ?? null,
+            teamMembersCount: project._count.teamMembers,
+            pmName: project.leadPM?.name ?? null,
+            scheduleEntriesCount: project._count.projectScheduleEntries,
+            effectiveStartDate: project.effectiveStartDate,
+            effectiveEndDate: project.effectiveEndDate,
+            division: project.division,
+            stage: project.stage?.name ?? null,
+            status: project.status,
+            estimatedStartDate: project.primeContract?.estimatedStartDate ?? null,
+            estimatedCompletionDate: project.primeContract?.estimatedCompletionDate ?? null,
+            actualStartDate: project.primeContract?.actualStartDate ?? null,
+            actualCompletionDate: project.primeContract?.actualCompletionDate ?? null,
+        };
+    },
+
     updateProject: async (id: string, data: ProjectUpdateRequest) => {
         const project = await prisma.project.findUnique({ where: { id } });
         if (!project) throw new NotFoundError('Project not found');

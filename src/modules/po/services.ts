@@ -614,16 +614,6 @@ export const POService = {
             throw new BadRequestError('Can only generate PO from an awarded RFQ');
         }
 
-        // Check for duplicate generation
-        if (rfq.generatedPOId) {
-            const existingPO = await prisma.purchaseOrder.findUnique({
-                where: { id: rfq.generatedPOId },
-            });
-            if (existingPO && !existingPO.deletedAt) {
-                throw new BadRequestError('PO already generated from this RFQ');
-            }
-        }
-
         // Verify vendor invite
         const invite = await prisma.rFQVendorInvite.findUnique({
             where: { id: data.vendorInviteId },

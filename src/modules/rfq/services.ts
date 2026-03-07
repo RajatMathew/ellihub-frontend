@@ -8,6 +8,7 @@ import {
     AddendumCreateRequest,
     AwardRequest,
     CancelRequest,
+    ChangeStatusRequest,
     DeclineRequest,
     DeliverableCreateRequest,
     DeliverableUpdateRequest,
@@ -67,6 +68,10 @@ const rfqDetailInclude = {
         include: { changeType: { select: { id: true, name: true, code: true, color: true } } },
     },
     generatedPO: { select: { id: true, poNumber: true } },
+    purchaseOrders: {
+        where: { deletedAt: null },
+        select: { id: true, poNumber: true, vendorId: true, awardedQuoteId: true },
+    },
 };
 
 async function getRFQStatusByName(name: string) {
@@ -249,8 +254,9 @@ export const RFQService = {
 
     updateRFQ: async (id: string, data: RFQUpdateRequest) => {
         const rfq = await getRFQOrThrow(id);
-        if (rfq.status.name !== 'DRAFT') {
-            throw new BadRequestError('Cannot edit published RFQ. Create addendum instead.');
+        const terminal = ['CANCELLED', 'VOID'];
+        if (terminal.includes(rfq.status.name)) {
+            throw new BadRequestError('Cannot edit a cancelled or voided RFQ.');
         }
 
         // Validate costCode if provided
@@ -262,6 +268,19 @@ export const RFQService = {
         return await prisma.rFQ.update({
             where: { id },
             data,
+            include: rfqDetailInclude,
+        });
+    },
+
+    changeRFQStatus: async (id: string, data: ChangeStatusRequest) => {
+        await getRFQOrThrow(id);
+
+        const status = await prisma.rFQStatus.findUnique({ where: { id: data.statusId } });
+        if (!status) throw new NotFoundError('Status not found');
+
+        return await prisma.rFQ.update({
+            where: { id },
+            data: { statusId: data.statusId },
             include: rfqDetailInclude,
         });
     },
@@ -282,8 +301,8 @@ export const RFQService = {
 
     addDeliverable: async (rfqId: string, data: DeliverableCreateRequest) => {
         const rfq = await getRFQOrThrow(rfqId);
-        if (rfq.status.name !== 'DRAFT') {
-            throw new BadRequestError('Cannot modify deliverables on a non-DRAFT RFQ');
+        if (['CANCELLED', 'VOID'].includes(rfq.status.name)) {
+            throw new BadRequestError('Cannot modify deliverables on a cancelled or voided RFQ');
         }
 
         if (data.costCodeId) {
@@ -321,8 +340,8 @@ export const RFQService = {
         data: DeliverableUpdateRequest
     ) => {
         const rfq = await getRFQOrThrow(rfqId);
-        if (rfq.status.name !== 'DRAFT') {
-            throw new BadRequestError('Cannot modify deliverables on a non-DRAFT RFQ');
+        if (['CANCELLED', 'VOID'].includes(rfq.status.name)) {
+            throw new BadRequestError('Cannot modify deliverables on a cancelled or voided RFQ');
         }
 
         const deliverable = await prisma.rFQDeliverable.findFirst({
@@ -354,8 +373,8 @@ export const RFQService = {
 
     removeDeliverable: async (rfqId: string, deliverableId: string) => {
         const rfq = await getRFQOrThrow(rfqId);
-        if (rfq.status.name !== 'DRAFT') {
-            throw new BadRequestError('Cannot modify deliverables on a non-DRAFT RFQ');
+        if (['CANCELLED', 'VOID'].includes(rfq.status.name)) {
+            throw new BadRequestError('Cannot modify deliverables on a cancelled or voided RFQ');
         }
 
         const deliverable = await prisma.rFQDeliverable.findFirst({
@@ -768,18 +787,19 @@ export const RFQService = {
     awardRFQ: async (rfqId: string, data: AwardRequest, userId: string) => {
         const rfq = await getRFQOrThrow(rfqId);
 
-        if (rfq.status.name !== 'PUBLISHED' && rfq.status.name !== 'EVALUATION') {
-            throw new BadRequestError('RFQ must be PUBLISHED or in EVALUATION to award');
+        const allowedStatuses = ['PUBLISHED', 'EVALUATION', 'AWARDED'];
+        if (!allowedStatuses.includes(rfq.status.name)) {
+            throw new BadRequestError('RFQ must be PUBLISHED, EVALUATION, or AWARDED to award');
         }
 
         // Verify quote
         const quote = await prisma.vendorQuote.findFirst({
             where: { id: data.awardedQuoteId, rfqId, deletedAt: null },
-            include: { status: { select: { name: true } }, lineItems: true },
+            include: { status: { select: { name: true } } },
         });
         if (!quote) throw new NotFoundError('Quote not found');
-        if (quote.status.name !== 'SUBMITTED' && quote.status.name !== 'DRAFT') {
-            throw new BadRequestError('Can only award to a SUBMITTED or DRAFT quote');
+        if (quote.isAwarded) {
+            throw new BadRequestError('This quote is already awarded');
         }
         if (quote.vendorId !== data.awardedVendorId) {
             throw new BadRequestError('awardedVendorId does not match the quote vendor');
@@ -790,7 +810,7 @@ export const RFQService = {
         const notAwardedQuoteStatus = await getQuoteStatusByName('NOT_AWARDED');
 
         return await prisma.$transaction(async (tx) => {
-            // Update RFQ
+            // Update RFQ status + set latest awarded vendor
             await tx.rFQ.update({
                 where: { id: rfqId },
                 data: {
@@ -802,91 +822,17 @@ export const RFQService = {
                 },
             });
 
-            // Mark winning quote
+            // Mark winning quote as AWARDED
             await tx.vendorQuote.update({
                 where: { id: data.awardedQuoteId },
                 data: { isAwarded: true, statusId: awardedQuoteStatus.id },
             });
 
-            // Mark all other quotes as NOT_AWARDED
+            // Mark remaining non-awarded quotes as NOT_AWARDED
             await tx.vendorQuote.updateMany({
-                where: { rfqId, id: { not: data.awardedQuoteId }, deletedAt: null },
+                where: { rfqId, isAwarded: false, deletedAt: null },
                 data: { statusId: notAwardedQuoteStatus.id },
             });
-
-            // Auto-generate PO if requested
-            let generatedPOId: string | null = null;
-            if (data.autoGeneratePO !== false) {
-                const poStatus = await tx.pOStatus.findFirst({ where: { name: 'DRAFT' } });
-                if (!poStatus) throw new BadRequestError("PO status 'DRAFT' not configured");
-
-                generatedPOId = ulid();
-
-                // Generate PO number
-                const latestPO = await tx.purchaseOrder.findFirst({
-                    where: { projectId: rfq.projectId },
-                    orderBy: { poNumber: 'desc' },
-                    select: { poNumber: true },
-                });
-                let poSeq = 1;
-                if (latestPO?.poNumber) {
-                    const parts = latestPO.poNumber.split('-');
-                    poSeq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
-                }
-
-                const project = await tx.project.findUniqueOrThrow({
-                    where: { id: rfq.projectId },
-                    select: { jobNumber: true },
-                });
-                const poNumber = `PO-${project.jobNumber || 'UNKNOWN'}-${String(poSeq).padStart(3, '0')}`;
-
-                await tx.purchaseOrder.create({
-                    data: {
-                        id: generatedPOId,
-                        projectId: rfq.projectId,
-                        vendorId: data.awardedVendorId,
-                        rfqId,
-                        poNumber,
-                        tradeCategory: 'MATERIAL',
-                        description: 'Auto-generated from RFQ award',
-                        statusId: poStatus.id,
-                        subtotal: quote.totalAmount,
-                        taxAmount: quote.taxAmount,
-                        total: quote.grandTotal,
-                        totalCommitment: quote.grandTotal,
-                        paymentTerms: 'NET_30',
-                        createdBy: userId,
-                        awardedQuoteId: data.awardedQuoteId,
-                    },
-                });
-
-                // Create PO line items from quote line items
-                for (let i = 0; i < quote.lineItems.length; i++) {
-                    const qli = quote.lineItems[i];
-                    await tx.purchaseOrderLineItem.create({
-                        data: {
-                            id: ulid(),
-                            purchaseOrderId: generatedPOId,
-                            lineNumber: i + 1,
-                            description: 'From RFQ deliverable',
-                            quantity: qli.quantity,
-                            unit: qli.unit,
-                            unitPrice: qli.unitPrice,
-                            amount: qli.lineTotal,
-                            rfqDeliverableId: qli.deliverableId,
-                        },
-                    });
-                }
-
-                // Link PO to RFQ
-                await tx.rFQ.update({
-                    where: { id: rfqId },
-                    data: { generatedPOId },
-                });
-            }
-
-            console.log(`Send award email to vendor ${data.awardedVendorId}`);
-            console.log('Send regret emails to non-awarded vendors');
 
             return await tx.rFQ.findUniqueOrThrow({
                 where: { id: rfqId },
@@ -900,7 +846,6 @@ export const RFQService = {
             where: { id: rfqId },
             include: {
                 status: { select: { name: true } },
-                generatedPO: { select: { id: true, status: { select: { name: true } } } },
             },
         });
         if (!rfq) throw new NotFoundError('RFQ not found');
@@ -908,11 +853,6 @@ export const RFQService = {
 
         if (rfq.status.name !== 'AWARDED') {
             throw new BadRequestError('Only AWARDED RFQs can be voided');
-        }
-
-        // If PO exists, check it's still DRAFT
-        if (rfq.generatedPO && rfq.generatedPO.status.name !== 'DRAFT') {
-            throw new BadRequestError('Cannot void award — PO is no longer in DRAFT status');
         }
 
         const voidStatus = await getRFQStatusByName('VOID');
@@ -931,6 +871,47 @@ export const RFQService = {
             });
 
             // Revert all quotes back to SUBMITTED
+            await tx.vendorQuote.updateMany({
+                where: { rfqId, deletedAt: null },
+                data: { isAwarded: false, statusId: submittedQuoteStatus.id },
+            });
+
+            return await tx.rFQ.findUniqueOrThrow({
+                where: { id: rfqId },
+                include: rfqDetailInclude,
+            });
+        });
+    },
+
+    unawardRFQ: async (rfqId: string) => {
+        const rfq = await prisma.rFQ.findUnique({
+            where: { id: rfqId },
+            include: {
+                status: { select: { name: true } },
+            },
+        });
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+
+        if (rfq.status.name === 'CANCELLED' || rfq.status.name === 'VOID') {
+            throw new BadRequestError('Cannot unaward a cancelled or voided RFQ');
+        }
+
+        const evaluationStatus = await getRFQStatusByName('EVALUATION');
+        const submittedQuoteStatus = await getQuoteStatusByName('SUBMITTED');
+
+        return await prisma.$transaction(async (tx) => {
+            await tx.rFQ.update({
+                where: { id: rfqId },
+                data: {
+                    statusId: evaluationStatus.id,
+                    awardedVendorId: null,
+                    awardedAmount: null,
+                    awardedBy: null,
+                    awardedAt: null,
+                },
+            });
+
             await tx.vendorQuote.updateMany({
                 where: { rfqId, deletedAt: null },
                 data: { isAwarded: false, statusId: submittedQuoteStatus.id },
