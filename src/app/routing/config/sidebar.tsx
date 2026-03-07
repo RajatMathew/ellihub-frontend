@@ -98,6 +98,7 @@ export const projectsDetailSidebarMenu: MenuConfig = [
       { title: 'Overview', path: '../overview' },
       { title: 'Prime Contracts', path: '../prime-contracts' },
       { title: 'Prime Change Orders', path: '../prime-change-orders' },
+      { title: 'RFQs', path: '../rfqs' },
     ],
   },
 ];
