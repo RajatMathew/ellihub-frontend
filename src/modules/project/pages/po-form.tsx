@@ -5,6 +5,7 @@ import { Check, Mail, Phone, Plus, Trash2, User } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { FormContent, FormLayout } from '@app/components/form-layout';
 import { FormSectionNav } from '@app/components/form-section-nav';
 import {
   Toolbar,
@@ -131,14 +132,14 @@ export function POFormPage() {
       <Separator />
 
       {/* Main layout: sidebar nav + content */}
-      <div className="flex gap-8 pt-8">
+      <FormLayout>
         <FormSectionNav
           sections={PO_FORM_SECTIONS}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
         />
 
-        <div className="flex-1 space-y-6 max-w-[calc(100vw-0rem)] lg:max-w-[calc(100vw-var(--sidebar-width)-16rem)] in-data-[sidebar-open=false]:lg:max-w-[calc(100vw-var(--sidebar-collapsed-width)-16rem)]">
+        <FormContent>
           {/* ---- Section 1: PO Details ---- */}
           <Card id="po-details">
             <CardContent className="space-y-6">
@@ -509,6 +510,31 @@ export function POFormPage() {
                         )}
                       />
                     </div>
+                    {/* TO TEST OVERFLOW */}
+
+                    {/* {Array.from({ length: 5 }).map((_, i) => (
+                      <div className="w-[200px] shrink-0">
+                        <Controller
+                          name={`lineItems.${index}.costCodeId`}
+                          control={control}
+                          render={({ field: f }) => (
+                            <Field>
+                              <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                                Cost Code
+                              </FieldLabel>
+                              <SearchableSelect
+                                options={costCodeOptions}
+                                value={f.value ?? null}
+                                onValueChange={(v) => f.onChange(v ?? undefined)}
+                                placeholder="Select cost code..."
+                                searchPlaceholder="Search cost codes..."
+                                emptyMessage="No cost codes found."
+                              />
+                            </Field>
+                          )}
+                        />
+                      </div>
+                    ))} */}
 
                     <div className="w-[200px] shrink-0">
                       <Controller
@@ -631,8 +657,8 @@ export function POFormPage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </FormContent>
+      </FormLayout>
     </form>
   );
 }
