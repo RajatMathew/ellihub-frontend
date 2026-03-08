@@ -5,6 +5,7 @@ import { Check, Mail, Phone, Plus, Trash2, User } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import { MockDataButton } from '@app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@app/components/form-layout';
 import { FormSectionNav } from '@app/components/form-section-nav';
 import {
@@ -35,6 +36,7 @@ import {
   PO_FORM_SECTIONS,
   TRADE_CATEGORY_OPTIONS,
 } from '@modules/purchase-orders/constants/po.constants';
+import poMockData from '@modules/purchase-orders/mock/po-create.mock.json';
 import { useCreatePOMutation } from '@modules/purchase-orders/hooks/po.hooks';
 import {
   createPOInputSchema,
@@ -61,7 +63,7 @@ export function POFormPage() {
     label: `${cc.code} - ${cc.name}`,
   }));
 
-  const { control, handleSubmit, formState } = useForm<CreatePOInput>({
+  const { control, handleSubmit, formState, reset } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
     defaultValues: {
       projectId,
@@ -116,6 +118,22 @@ export function POFormPage() {
             </span>
           </ToolbarHeading>
           <ToolbarActions>
+            <MockDataButton
+              data={poMockData}
+              onLoad={(entries) => {
+                const d = entries[Math.floor(Math.random() * entries.length)];
+                const randomVendor = vendorOptions[Math.floor(Math.random() * vendorOptions.length)]?.value ?? '';
+                reset({
+                  ...d,
+                  projectId,
+                  vendorId: randomVendor,
+                  lineItems: d.lineItems.map((item) => ({
+                    ...item,
+                    costCodeId: costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ?? undefined,
+                  })),
+                });
+              }}
+            />
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
