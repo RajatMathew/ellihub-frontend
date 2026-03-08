@@ -27,8 +27,10 @@ const ProjectLayout = lazy(() => import('@modules/project'));
 const ProjectOverview = lazy(() => import('@modules/project/pages/overview'));
 const ProjectContracts = lazy(() => import('@modules/project/pages/contracts'));
 const ProjectChangeOrders = lazy(() => import('@modules/project/pages/change-orders'));
+const RFQListPage = lazy(() => import('@modules/project/pages/rfq-list'));
+const RFQFormPage = lazy(() => import('@modules/project/pages/rfq-form'));
+const RFQDetailPage = lazy(() => import('@modules/project/pages/rfq-detail'));
 const FilesRoutes = lazy(() => import('@modules/files/routes/files.route'));
-const ProjectRfqs = lazy(() => import('@modules/project/pages/rfqs'));
 const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
 const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change-orders'));
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
@@ -97,7 +99,16 @@ export const routeTree: RouteDef[] = [
             component: ProjectChangeOrders,
             title: 'Prime Change Orders',
           },
-          { path: 'rfqs', component: ProjectRfqs, title: 'RFQs' },
+          {
+            path: 'rfqs',
+            title: 'RFQs',
+            children: [
+              { path: '', component: RFQListPage, index: true },
+              { path: 'create', component: RFQFormPage, title: 'New RFQ' },
+              { path: ':rfqId', component: RFQDetailPage, title: 'RFQ Detail' },
+              { path: ':rfqId/edit', component: RFQFormPage, title: 'Edit RFQ' },
+            ],
+          },
           {
             path: 'purchase-orders',
             component: ProjectPOs,

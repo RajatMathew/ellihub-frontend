@@ -7,6 +7,7 @@ import ProjectContractOverview from '@modules/project/pages/project-contract-ove
 import ProjectPOs from '@modules/project/pages/purchase-orders';
 import { POFormPage } from '@modules/project/pages/po-form';
 import PCORoutes from '@modules/project/routes/pco.route';
+import RFQRoutes from '@modules/project/routes/rfq.route';
 
 const ProjectRoutes = () => {
   return (
@@ -16,6 +17,7 @@ const ProjectRoutes = () => {
       <Route path=":projectId/overview" element={<ProjectContractOverview />} />
       <Route path=":projectId/prime-contracts" element={<PrimeContracts />} />
       <Route path=":projectId/prime-change-orders/*" element={<PCORoutes />} />
+      <Route path=":projectId/rfqs/*" element={<RFQRoutes />} />
       <Route path=":projectId/purchase-orders" element={<ProjectPOs />} />
       <Route path=":projectId/purchase-orders/create" element={<POFormPage />} />
     </Routes>
