@@ -72,7 +72,7 @@ export const projectSidebarMenu: MenuConfig = [
     title: 'Vendor',
     children: [
       { title: 'RFQs', path: '../rfqs' },
-      { title: 'Purchase Orders', path: '../vendors/purchase-orders' },
+      { title: 'Purchase Orders', path: '../purchase-orders' },
       { title: 'Change Orders', path: '../vendors/change-orders' },
       { title: 'Invoices', path: '../vendors/invoices' },
     ],
@@ -99,6 +99,7 @@ export const projectsDetailSidebarMenu: MenuConfig = [
       { title: 'Prime Contracts', path: '../prime-contracts' },
       { title: 'Prime Change Orders', path: '../prime-change-orders' },
       { title: 'RFQs', path: '../rfqs' },
+      { title: 'Purchase Orders', path: '../purchase-orders' },
     ],
   },
 ];
