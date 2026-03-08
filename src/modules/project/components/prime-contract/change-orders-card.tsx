@@ -17,24 +17,13 @@ import {
 } from '@app/components/ui/table';
 import { formatCurrency } from '@app/lib/helpers';
 
+import { getStatusBadgeVariant } from '@modules/project/constants/pco.constants';
 import type { PCOListItem } from '@modules/project/schemas/pco.schema';
 
 interface ChangeOrdersCardProps {
   pcos: PCOListItem[];
   originalContractValue: number;
   isLoading: boolean;
-}
-
-function getStatusBadgeVariant(
-  statusName: string | undefined,
-): 'success' | 'warning' | 'info' | 'destructive' | 'secondary' {
-  if (!statusName) return 'secondary';
-  const lower = statusName.toLowerCase();
-  if (lower.includes('approved') || lower.includes('executed')) return 'success';
-  if (lower.includes('pending') || lower.includes('draft')) return 'warning';
-  if (lower.includes('sent') || lower.includes('penciled')) return 'info';
-  if (lower.includes('rejected') || lower.includes('void')) return 'destructive';
-  return 'secondary';
 }
 
 export function ChangeOrdersCard({

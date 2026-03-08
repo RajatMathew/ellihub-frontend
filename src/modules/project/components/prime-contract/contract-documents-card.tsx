@@ -9,8 +9,9 @@ import {
   CardTitle,
   CardToolbar,
 } from '@app/components/ui/card';
-import { Input } from '@app/components/ui/input';
 
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
 import type { ContractAttachment } from '@modules/project/schemas/contract-attachment.schema';
 
 interface ContractDocumentsCardProps {
@@ -20,6 +21,7 @@ interface ContractDocumentsCardProps {
   onRemove?: (attachmentId: string) => void;
   isAdding?: boolean;
   isRemoving?: boolean;
+  parentFolderId?: string;
 }
 
 export function ContractDocumentsCard({
@@ -29,15 +31,16 @@ export function ContractDocumentsCard({
   onRemove,
   isAdding,
   isRemoving,
+  parentFolderId,
 }: ContractDocumentsCardProps) {
-  const [showAddInput, setShowAddInput] = useState(false);
-  const [fileId, setFileId] = useState('');
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const uploadMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
 
-  const handleAdd = () => {
-    if (!fileId.trim() || !onAdd) return;
-    onAdd(fileId.trim());
-    setFileId('');
-    setShowAddInput(false);
+  const handleUploadSubmit = async (payload: { file: File; data: { name: string; parentId: string; mimeType?: string; size: number } }) => {
+    const fileItem = await uploadMutation.mutateAsync(payload);
+    onAdd?.(fileItem.id);
+    setUploadOpen(false);
   };
 
   return (
@@ -50,44 +53,14 @@ export function ContractDocumentsCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={!onAdd}
-            onClick={() => setShowAddInput(true)}
+            disabled={!onAdd || !parentFolderId}
+            onClick={() => setUploadOpen(true)}
           >
             + Add
           </Button>
         </CardToolbar>
       </CardHeader>
       <CardContent className="p-5">
-        {showAddInput && (
-          <div className="flex items-center gap-2 mb-4">
-            <Input
-              value={fileId}
-              onChange={(e) => setFileId(e.target.value)}
-              placeholder="Enter File ID"
-              className="flex-1"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAdd();
-                }
-              }}
-            />
-            <Button size="sm" variant="primary" onClick={handleAdd} disabled={isAdding || !fileId.trim()}>
-              {isAdding ? 'Adding...' : 'Save'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setShowAddInput(false);
-                setFileId('');
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
@@ -107,9 +80,19 @@ export function ContractDocumentsCard({
               >
                 <FileText className="size-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {att.document?.name ?? 'Untitled Document'}
-                  </p>
+                  {att.document?.id ? (
+                    <button
+                      type="button"
+                      className="text-sm font-medium truncate text-primary hover:underline block max-w-full text-left"
+                      onClick={() => downloadFile.mutate(att.document!.id)}
+                    >
+                      {att.document.name ?? 'Untitled Document'}
+                    </button>
+                  ) : (
+                    <p className="text-sm font-medium truncate">
+                      {att.document?.name ?? 'Untitled Document'}
+                    </p>
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">Document</span>
                 {onRemove && (
@@ -128,6 +111,16 @@ export function ContractDocumentsCard({
           </div>
         )}
       </CardContent>
+
+      {parentFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={parentFolderId}
+          onSubmit={handleUploadSubmit}
+          isSubmitting={uploadMutation.isPending || !!isAdding}
+        />
+      )}
     </Card>
   );
 }

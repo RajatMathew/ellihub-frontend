@@ -66,7 +66,7 @@ import {
   usePCOPipelineQuery,
   usePCOStatusesQuery,
 } from '../hooks';
-import { getPriorityVariant, PCO_PRIORITY_OPTIONS } from '../constants/pco.constants';
+import { getPriorityVariant, getStatusBadgeVariant, PCO_PRIORITY_OPTIONS } from '../constants/pco.constants';
 import type { ListPCOParams, PCOListItem } from '../schemas/pco.schema';
 
 /* ---- Constants ---- */
@@ -229,7 +229,7 @@ export function PCOListPage() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
         cell: ({ row }) =>
           row.original.status ? (
-            <Badge variant="primary" appearance="light" size="sm">
+            <Badge variant={getStatusBadgeVariant(row.original.status.name)} appearance="light" size="sm">
               {row.original.status.label}
             </Badge>
           ) : (

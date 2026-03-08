@@ -28,6 +28,7 @@ import {
   useContractAttachmentsQuery,
   useProjectContractQuery,
   useProjectDetailQuery,
+  useProjectFolderQuery,
   useProjectScheduleQuery,
   useRemoveContractAttachmentMutation,
   useUpsertProjectContractMutation,
@@ -43,6 +44,8 @@ export default function PrimeContracts() {
   const contractQuery = useProjectContractQuery(projectId);
   const attachmentsQuery = useContractAttachmentsQuery(projectId);
   const scheduleQuery = useProjectScheduleQuery(projectId);
+  const primeContractFolderQuery = useProjectFolderQuery(projectId, 'prime contract');
+  const projectRootFolderQuery = useProjectFolderQuery(projectId);
 
   // Mutations
   const upsertContractMutation = useUpsertProjectContractMutation();
@@ -215,6 +218,7 @@ export default function PrimeContracts() {
             onRemove={handleRemoveAttachment}
             isAdding={addAttachmentMutation.isPending}
             isRemoving={removeAttachmentMutation.isPending}
+            parentFolderId={primeContractFolderQuery.data}
           />
         </div>
 
@@ -224,6 +228,7 @@ export default function PrimeContracts() {
           contract={contractQuery.data}
           entries={scheduleQuery.data?.data ?? []}
           isLoading={scheduleQuery.isLoading}
+          parentFolderId={projectRootFolderQuery.data}
         />
       </div>
 

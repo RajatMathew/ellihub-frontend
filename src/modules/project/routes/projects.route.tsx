@@ -8,6 +8,7 @@ import ProjectPOs from '@modules/project/pages/purchase-orders';
 import { POFormPage } from '@modules/project/pages/po-form';
 import PCORoutes from '@modules/project/routes/pco.route';
 import RFQRoutes from '@modules/project/routes/rfq.route';
+import InvoiceRoutes from '@modules/project/routes/invoice.route';
 
 const ProjectRoutes = () => {
   return (
@@ -18,6 +19,7 @@ const ProjectRoutes = () => {
       <Route path=":projectId/prime-contracts" element={<PrimeContracts />} />
       <Route path=":projectId/prime-change-orders/*" element={<PCORoutes />} />
       <Route path=":projectId/rfqs/*" element={<RFQRoutes />} />
+      <Route path=":projectId/invoices/*" element={<InvoiceRoutes />} />
       <Route path=":projectId/purchase-orders" element={<ProjectPOs />} />
       <Route path=":projectId/purchase-orders/create" element={<POFormPage />} />
     </Routes>

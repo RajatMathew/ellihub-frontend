@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Paperclip, Trash2 } from 'lucide-react';
 
 import { Button } from '@app/components/ui/button';
 import {
@@ -21,6 +21,8 @@ import {
 } from '@app/components/ui/table';
 import { formatDate } from '@app/lib/helpers';
 
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
 import {
   useCreateScheduleEntryMutation,
   useUpdateScheduleEntryMutation,
@@ -34,6 +36,7 @@ interface ScheduleTrackerCardProps {
   contract: PrimeContract | undefined;
   entries: ProjectScheduleEntry[];
   isLoading: boolean;
+  parentFolderId?: string;
 }
 
 interface EditingState {
@@ -43,6 +46,8 @@ interface EditingState {
   adjustedStartDate: string;
   adjustedFinishDate: string;
   notes: string;
+  fileId: string;
+  fileName: string;
 }
 
 export function ScheduleTrackerCard({
@@ -50,6 +55,7 @@ export function ScheduleTrackerCard({
   contract,
   entries,
   isLoading,
+  parentFolderId,
 }: ScheduleTrackerCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newEntry, setNewEntry] = useState({
@@ -58,12 +64,19 @@ export function ScheduleTrackerCard({
     adjustedStartDate: '',
     adjustedFinishDate: '',
     notes: '',
+    fileId: '',
+    fileName: '',
   });
   const [editingEntry, setEditingEntry] = useState<EditingState | null>(null);
+
+  // Upload dialog state: 'add' for new entry, 'edit' for editing entry
+  const [uploadTarget, setUploadTarget] = useState<'add' | 'edit' | null>(null);
 
   const createMutation = useCreateScheduleEntryMutation();
   const updateMutation = useUpdateScheduleEntryMutation();
   const deleteMutation = useDeleteScheduleEntryMutation();
+  const uploadMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
 
   const handleAddEntry = async () => {
     if (!newEntry.date || !newEntry.description) return;
@@ -75,9 +88,10 @@ export function ScheduleTrackerCard({
         adjustedStartDate: newEntry.adjustedStartDate || undefined,
         adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
         notes: newEntry.notes || undefined,
+        fileId: newEntry.fileId || undefined,
       },
     });
-    setNewEntry({ date: '', description: '', adjustedStartDate: '', adjustedFinishDate: '', notes: '' });
+    setNewEntry({ date: '', description: '', adjustedStartDate: '', adjustedFinishDate: '', notes: '', fileId: '', fileName: '' });
     setIsAdding(false);
   };
 
@@ -89,6 +103,8 @@ export function ScheduleTrackerCard({
       adjustedStartDate: entry.adjustedStartDate ?? '',
       adjustedFinishDate: entry.adjustedFinishDate ?? '',
       notes: entry.notes ?? '',
+      fileId: entry.fileId ?? '',
+      fileName: entry.file?.name ?? '',
     });
   };
 
@@ -103,6 +119,7 @@ export function ScheduleTrackerCard({
         adjustedStartDate: editingEntry.adjustedStartDate || null,
         adjustedFinishDate: editingEntry.adjustedFinishDate || null,
         notes: editingEntry.notes || null,
+        fileId: editingEntry.fileId || null,
       },
     });
     setEditingEntry(null);
@@ -110,6 +127,16 @@ export function ScheduleTrackerCard({
 
   const handleDeleteEntry = async (entryId: string) => {
     await deleteMutation.mutateAsync({ projectId, entryId });
+  };
+
+  const handleUploadSubmit = async (payload: { file: File; data: { name: string; parentId: string; mimeType?: string; size: number } }) => {
+    const fileItem = await uploadMutation.mutateAsync(payload);
+    if (uploadTarget === 'add') {
+      setNewEntry((prev) => ({ ...prev, fileId: fileItem.id, fileName: fileItem.name }));
+    } else if (uploadTarget === 'edit' && editingEntry) {
+      setEditingEntry((prev) => prev ? { ...prev, fileId: fileItem.id, fileName: fileItem.name } : prev);
+    }
+    setUploadTarget(null);
   };
 
   return (
@@ -176,6 +203,7 @@ export function ScheduleTrackerCard({
                 <TableHead>Description</TableHead>
                 <TableHead>Adj. Start</TableHead>
                 <TableHead>Adj. Finish</TableHead>
+                <TableHead>File</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -233,6 +261,26 @@ export function ScheduleTrackerCard({
                       />
                     </TableCell>
                     <TableCell>
+                      {editingEntry.fileName ? (
+                        <span className="text-xs truncate max-w-[120px] inline-block">{editingEntry.fileName}</span>
+                      ) : parentFolderId ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadTarget('edit');
+                          }}
+                        >
+                          <Paperclip className="size-3.5" />
+                          Attach
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Input
                         variant="sm"
                         value={editingEntry.notes}
@@ -278,6 +326,23 @@ export function ScheduleTrackerCard({
                       {entry.adjustedFinishDate
                         ? formatDate(entry.adjustedFinishDate)
                         : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {entry.file?.name ? (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline truncate max-w-[120px] inline-block"
+                          title={entry.file.name}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (entry.fileId) downloadFile.mutate(entry.fileId);
+                          }}
+                        >
+                          {entry.file.name}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {entry.notes || '—'}
@@ -349,6 +414,26 @@ export function ScheduleTrackerCard({
                     />
                   </TableCell>
                   <TableCell>
+                    {newEntry.fileName ? (
+                      <span className="text-xs truncate max-w-[120px] inline-block">{newEntry.fileName}</span>
+                    ) : parentFolderId ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadTarget('add');
+                        }}
+                      >
+                        <Paperclip className="size-3.5" />
+                        Attach
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Input
                       variant="sm"
                       placeholder="Notes"
@@ -383,6 +468,8 @@ export function ScheduleTrackerCard({
                             adjustedStartDate: '',
                             adjustedFinishDate: '',
                             notes: '',
+                            fileId: '',
+                            fileName: '',
                           });
                         }}
                       >
@@ -395,7 +482,7 @@ export function ScheduleTrackerCard({
 
               {entries.length === 0 && !isAdding && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                     No schedule entries. Click &quot;+ Add Entry&quot; to create one.
                   </TableCell>
                 </TableRow>
@@ -404,6 +491,16 @@ export function ScheduleTrackerCard({
           </Table>
         )}
       </CardTable>
+
+      {parentFolderId && (
+        <UploadFileDialog
+          open={uploadTarget !== null}
+          onOpenChange={(open) => { if (!open) setUploadTarget(null); }}
+          parentId={parentFolderId}
+          onSubmit={handleUploadSubmit}
+          isSubmitting={uploadMutation.isPending}
+        />
+      )}
     </Card>
   );
 }

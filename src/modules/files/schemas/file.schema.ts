@@ -24,7 +24,7 @@ export const fileSchema = z
     createdAt: z.string(),
     updatedAt: z.string(),
   })
-  .loose();
+  .passthrough();
 
 export type FileItem = z.infer<typeof fileSchema>;
 

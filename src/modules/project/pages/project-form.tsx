@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check } from 'lucide-react';
+import { Check, FileText, X } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import {
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
+import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
 import {
@@ -31,6 +32,8 @@ import { Textarea } from '@app/components/ui/textarea';
 import { FormSectionNav } from '@app/components/form-section-nav';
 import { useEmployeesQuery } from '@app/hooks/use-employees';
 import { useGCsQuery } from '@modules/directory/hooks';
+import { filesApi } from '@modules/files/api/files.api';
+import { contractAttachmentApi } from '@modules/project/api/contract-attachment.api';
 import {
   DIVISION_OPTIONS,
   PROJECT_FORM_SECTIONS,
@@ -86,6 +89,25 @@ export default function ProjectForm() {
     },
   });
 
+  /* ---- Contract documents (pre-upload selection) ---- */
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
+
+  const handleFileSelected = useCallback(
+    (file: File | null) => {
+      if (file) {
+        setSelectedFiles((prev) => [...prev, file]);
+      }
+      setCurrentFile(null);
+    },
+    [],
+  );
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   /* ---- Mutations ---- */
 
   const createMutation = useCreateProjectMutation();
@@ -130,6 +152,49 @@ export default function ProjectForm() {
         } catch {
           // Project was created; schedule entry failed — non-blocking
           console.warn('Schedule entry creation failed');
+        }
+      }
+
+      // Upload contract documents if any were selected
+      if (selectedFiles.length > 0) {
+        try {
+          // Discover the project's "prime contract" folder
+          const root = await filesApi.getRootFolder();
+          const rootDetail = await filesApi.getFolderDetails(root.id);
+          const projectsFolder = rootDetail.children.find(
+            (c) => c.type === 'FOLDER' && c.name.toLowerCase() === 'projects',
+          );
+          if (projectsFolder) {
+            const projectsFolderDetail = await filesApi.getFolderDetails(projectsFolder.id);
+            const projectFolder = projectsFolderDetail.children.find(
+              (c) => c.type === 'FOLDER' && c.name === project.id,
+            );
+            if (projectFolder) {
+              const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
+              const primeContractFolder = projectFolderDetail.children.find(
+                (c) => c.type === 'FOLDER' && c.name.toLowerCase() === 'prime contract',
+              );
+              if (primeContractFolder) {
+                for (const file of selectedFiles) {
+                  try {
+                    const dotIdx = file.name.lastIndexOf('.');
+                    const name = dotIdx > 0 ? file.name.slice(0, dotIdx) : file.name;
+                    const uploaded = await filesApi.uploadFile(file, {
+                      name,
+                      parentId: primeContractFolder.id,
+                      mimeType: file.type || undefined,
+                      size: file.size,
+                    });
+                    await contractAttachmentApi.add(project.id, { fileId: uploaded.id });
+                  } catch {
+                    console.warn(`Failed to upload contract document: ${file.name}`);
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          console.warn('Contract document upload failed');
         }
       }
 
@@ -503,6 +568,49 @@ export default function ProjectForm() {
                   </Field>
                 )}
               />
+
+              <Separator />
+
+              {/* ── Contract Documents sub-section ── */}
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-4">
+                  Contract Documents
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Select files to attach as contract documents. They will be uploaded after the project is created.
+                </p>
+
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {selectedFiles.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="flex items-center gap-3 p-2.5 rounded-lg border"
+                      >
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          mode="icon"
+                          size="sm"
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                        >
+                          <X className="size-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <FileDropZone
+                  value={currentFile}
+                  onChange={handleFileSelected}
+                  disabled={isSubmitting}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>

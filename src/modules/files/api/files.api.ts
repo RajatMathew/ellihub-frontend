@@ -45,7 +45,7 @@ export const filesApi = {
     return result.data;
   },
 
-  async uploadFile(file: File, data: FileUploadInput): Promise<void> {
+  async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('data', JSON.stringify(data));
@@ -53,6 +53,17 @@ export const filesApi = {
     await api.post(`${BASE}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+
+    // Backend returns empty string — find the uploaded file by querying the parent folder
+    const folder = await this.getFolderDetails(data.parentId);
+    const match = folder.children
+      .filter((c) => c.name === data.name && c.type === 'FILE')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    if (!match) {
+      throw new Error('Upload succeeded but file not found in folder');
+    }
+    return match;
   },
 
   async getDownloadLink(id: string): Promise<string> {
