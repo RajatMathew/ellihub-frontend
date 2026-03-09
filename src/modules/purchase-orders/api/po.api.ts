@@ -12,6 +12,61 @@ import {
 const BASE = '/pos';
 
 export const poApi = {
+  async get(id: string): Promise<PODetail> {
+    const res = await api.get(`${BASE}/${id}`);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.get] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async issue(id: string, data?: { emailVendor?: boolean }): Promise<PODetail> {
+    const res = await api.post(`${BASE}/${id}/issue`, data ?? {});
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.issue] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async cancel(
+    id: string,
+    data: {
+      reason: string;
+      notifyVendor?: boolean;
+      confirmInvoices?: boolean;
+      confirmSCOs?: boolean;
+    },
+  ): Promise<PODetail> {
+    const res = await api.post(`${BASE}/${id}/cancel`, data);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.cancel] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async recordDelivery(
+    id: string,
+    data: { deliveryDate: string; notes?: string },
+  ): Promise<PODetail> {
+    const res = await api.post(`${BASE}/${id}/record-delivery`, data);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.recordDelivery] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
   async list(params?: ListPOsParams): Promise<POPaginatedResponse> {
     const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
