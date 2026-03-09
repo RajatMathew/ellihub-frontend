@@ -6,6 +6,7 @@ import PrimeContracts from '@modules/project/pages/prime-contracts';
 import ProjectContractOverview from '@modules/project/pages/project-contract-overview';
 import ProjectPOs from '@modules/project/pages/purchase-orders';
 import { POFormPage } from '@modules/project/pages/po-form';
+import { PODetailPage } from '@modules/purchase-orders/pages/po-detail';
 import PCORoutes from '@modules/project/routes/pco.route';
 import RFQRoutes from '@modules/project/routes/rfq.route';
 import InvoiceRoutes from '@modules/project/routes/invoice.route';
@@ -22,6 +23,7 @@ const ProjectRoutes = () => {
       <Route path=":projectId/invoices/*" element={<InvoiceRoutes />} />
       <Route path=":projectId/purchase-orders" element={<ProjectPOs />} />
       <Route path=":projectId/purchase-orders/create" element={<POFormPage />} />
+      <Route path=":projectId/purchase-orders/:poId" element={<PODetailPage />} />
     </Routes>
   );
 };
