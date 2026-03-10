@@ -273,14 +273,13 @@ export function InvoiceFormPage() {
       <Separator />
 
       {/* Main layout: sidebar nav + content */}
-      <div className="flex gap-8 pt-8">
-        <FormSectionNav
-          sections={INVOICE_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
+      <FormSectionNav
+        sections={INVOICE_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="pt-6 space-y-6">
           {/* ---- Section 1: Invoice Details ---- */}
           <Card id="invoice-details">
             <CardContent className="space-y-6">
@@ -573,7 +572,6 @@ export function InvoiceFormPage() {
             rootError={formState.errors.lineItems?.root}
             subtitle="Add line items for this invoice."
           />
-        </div>
       </div>
     </form>
   );

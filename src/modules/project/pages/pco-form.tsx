@@ -293,14 +293,13 @@ export function PCOFormPage() {
       <Separator />
 
       {/* Main layout: sidebar nav + content */}
-      <div className="flex gap-8 pt-8">
-        <FormSectionNav
-          sections={PCO_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
+      <FormSectionNav
+        sections={PCO_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="pt-6 space-y-6">
           {/* ---- Section 1: Change Order Details ---- */}
           <Card id="pco-details">
             <CardContent className="space-y-6">
@@ -606,7 +605,6 @@ export function PCOFormPage() {
             defaultItem={{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
             rootError={formState.errors.lineItems?.root}
           />
-        </div>
       </div>
     </form>
   );

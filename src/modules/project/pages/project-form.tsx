@@ -234,14 +234,13 @@ export default function ProjectForm() {
       <Separator />
 
       {/* ── Main layout ── */}
-      <div className="flex gap-8 pt-8">
-        <FormSectionNav
-          sections={PROJECT_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
+      <FormSectionNav
+        sections={PROJECT_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="pt-6 space-y-6">
           {/* ════════════════════════════════════════════
               Section 1: Project Info
              ════════════════════════════════════════════ */}
@@ -613,7 +612,6 @@ export default function ProjectForm() {
               </div>
             </CardContent>
           </Card>
-        </div>
       </div>
     </form>
   );
