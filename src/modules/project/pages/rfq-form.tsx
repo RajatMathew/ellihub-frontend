@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Plus, Search, Trash2 } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -28,6 +28,8 @@ import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 
 import { FormSectionNav } from '@app/components/form-section-nav';
+import { LineItems } from '@app/components/line-items';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { useVendorsQuery } from '@modules/directory/hooks/vendors.hooks';
 import { BIDDING_TYPE_OPTIONS, RFQ_FORM_SECTIONS } from '../constants/rfq.constants';
 import {
@@ -63,7 +65,9 @@ function computeDeliverableDiff(
       orig.description !== curr.description ||
       (orig.specifications ?? '') !== (curr.specifications ?? '') ||
       orig.quantity !== curr.quantity ||
-      orig.unit !== curr.unit
+      orig.unit !== curr.unit ||
+      (orig.costCodeId ?? undefined) !== curr.costCodeId ||
+      (orig.estimatedUnitPrice ?? undefined) !== curr.estimatedUnitPrice
     ) {
       toUpdate.push({ deliverableId: orig.id, data: curr });
     }
@@ -80,6 +84,12 @@ export default function RFQFormPage() {
   const isEdit = !!rfqId;
 
   const { data: rfqDetail, isLoading: isLoadingDetail } = useRFQDetailQuery(rfqId ?? '');
+  const { data: costCodesData } = useCostCodesQuery();
+
+  const costCodeOptions = (costCodesData?.data ?? []).map((cc) => ({
+    value: cc.id,
+    label: `${cc.code} - ${cc.name}`,
+  }));
 
   const createMutation = useCreateRFQMutation();
   const updateMutation = useUpdateRFQMutation();
@@ -103,7 +113,7 @@ export default function RFQFormPage() {
     biddingType: 'ANONYMOUS',
     minimumVendors: 3,
     deliverables: [
-      { description: '', specifications: '', quantity: 0, unit: '' },
+      { description: '', quantity: 0, unit: '' },
     ],
   };
 
@@ -132,6 +142,8 @@ export default function RFQFormPage() {
                 specifications: d.specifications ?? '',
                 quantity: d.quantity,
                 unit: d.unit,
+                costCodeId: d.costCodeId ?? undefined,
+                estimatedUnitPrice: d.estimatedUnitPrice ?? undefined,
               }))
             : [{ description: '', specifications: '', quantity: 0, unit: '' }],
       });
@@ -437,147 +449,21 @@ export default function RFQFormPage() {
           </Card>
 
           {/* ---- Section 2: Deliverables ---- */}
-          <Card id="deliverables">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Deliverables</h2>
-                <p className="text-sm text-muted-foreground">
-                  At least one deliverable is required.
-                </p>
-              </div>
-
-              <Separator />
-
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-start gap-3 rounded-lg border border-border bg-accent/50 p-4"
-                >
-                  <div className="flex-1 space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <Controller
-                        name={`deliverables.${index}.description`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Description
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="Item description"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`deliverables.${index}.specifications`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Specifications
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="Optional specs"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <Controller
-                        name={`deliverables.${index}.quantity`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Qty
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...f}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                                aria-invalid={fieldState.invalid}
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`deliverables.${index}.unit`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Unit
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="e.g. EA, LF, SF"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    mode="icon"
-                    className="size-8 mt-6 text-muted-foreground hover:text-destructive"
-                    disabled={fields.length <= 1}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-
-              {formState.errors.deliverables?.root && (
-                <p className="text-sm text-destructive">
-                  {formState.errors.deliverables.root.message}
-                </p>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({
-                    description: '',
-                    specifications: '',
-                    quantity: 0,
-                    unit: '',
-                  })
-                }
-              >
-                <Plus className="size-4" />
-                Add Deliverable
-              </Button>
-            </CardContent>
-          </Card>
+          <LineItems
+            id="deliverables"
+            control={control}
+            fieldPrefix="deliverables"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={costCodeOptions}
+            fieldNames={{ unitPrice: 'estimatedUnitPrice' }}
+            defaultItem={{ description: '', quantity: 0, unit: '' }}
+            rootError={formState.errors.deliverables?.root}
+            title="Deliverables"
+            subtitle="At least one deliverable is required."
+            addLabel="Add Deliverable"
+          />
 
           {/* ---- Section 3: Vendors ---- */}
           <Card id="vendors">

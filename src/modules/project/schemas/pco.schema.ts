@@ -213,7 +213,7 @@ export type ListPCOParams = z.infer<typeof listPCOParamsSchema>;
 /* ---- Input schemas ---- */
 
 export const pcoLineItemInputSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
+  title: z.string().default(''),
   description: z.string().min(1, 'Description is required'),
   qty: z.number().min(0, 'Quantity must be >= 0'),
   unit: z.string().min(1, 'Unit is required'),

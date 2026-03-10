@@ -219,6 +219,8 @@ export const rfqDeliverableInputSchema = z.object({
   specifications: z.string().optional(),
   quantity: z.number().min(0).optional(),
   unit: z.string().optional(),
+  costCodeId: z.string().optional(),
+  estimatedUnitPrice: z.number().min(0).optional(),
 });
 
 export type RFQDeliverableInput = z.infer<typeof rfqDeliverableInputSchema>;

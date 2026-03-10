@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -29,6 +29,8 @@ import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 
 import { FormSectionNav } from '@app/components/form-section-nav';
+import { LineItems } from '@app/components/line-items';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { useVendorsQuery } from '@modules/directory/hooks';
 import {
   INVOICE_FORM_SECTIONS,
@@ -86,6 +88,7 @@ export function InvoiceFormPage() {
 
   const { data: invoiceDetail, isLoading: isLoadingDetail } = useInvoiceDetailQuery(invoiceId ?? '');
   const { data: vendorsData } = useVendorsQuery({ page: 1, size: 1000 });
+  const { data: costCodesData } = useCostCodesQuery();
 
   const createMutation = useCreateInvoiceMutation();
   const updateMutation = useUpdateInvoiceMutation();
@@ -96,6 +99,10 @@ export function InvoiceFormPage() {
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
     value: v.id,
     label: v.name,
+  }));
+  const costCodeOptions = (costCodesData?.data ?? []).map((cc) => ({
+    value: cc.id,
+    label: `${cc.code} - ${cc.name}`,
   }));
 
   const defaultValues: CreateInvoiceInput = {
@@ -554,139 +561,18 @@ export function InvoiceFormPage() {
           </Card>
 
           {/* ---- Section 3: Line Items ---- */}
-          <Card id="line-items">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Line Items</h2>
-                <p className="text-sm text-muted-foreground">
-                  Add line items for this invoice.
-                </p>
-              </div>
-
-              <Separator />
-
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-start gap-3 rounded-lg border border-border bg-accent/50 p-4"
-                >
-                  <div className="flex-1 space-y-4">
-                    <Controller
-                      name={`lineItems.${index}.description`}
-                      control={control}
-                      render={({ field: f, fieldState }) => (
-                        <Field data-invalid={fieldState.invalid}>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Description
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Input
-                              {...f}
-                              placeholder="Item description"
-                              aria-invalid={fieldState.invalid}
-                              autoComplete="off"
-                            />
-                          </InputWrapper>
-                          {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                        </Field>
-                      )}
-                    />
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <Controller
-                        name={`lineItems.${index}.qty`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Qty
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...f}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                                aria-invalid={fieldState.invalid}
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`lineItems.${index}.unit`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Unit
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="e.g. EA, LF, SF"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`lineItems.${index}.unitPrice`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Unit Price
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...f}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                                aria-invalid={fieldState.invalid}
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    mode="icon"
-                    className="size-8 mt-6 text-muted-foreground hover:text-destructive"
-                    disabled={fields.length <= 1}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-
-              {formState.errors.lineItems?.root && (
-                <p className="text-sm text-destructive">
-                  {formState.errors.lineItems.root.message}
-                </p>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ description: '', qty: 1, unit: 'EA', unitPrice: 0 })}
-              >
-                <Plus className="size-4" />
-                Add Line Item
-              </Button>
-            </CardContent>
-          </Card>
+          <LineItems
+            control={control}
+            fieldPrefix="lineItems"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={costCodeOptions}
+            fieldNames={{ quantity: 'qty' }}
+            defaultItem={{ description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
+            rootError={formState.errors.lineItems?.root}
+            subtitle="Add line items for this invoice."
+          />
         </div>
       </div>
     </form>

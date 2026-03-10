@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ import { Switch } from '@app/components/ui/switch';
 import { Textarea } from '@app/components/ui/textarea';
 
 import { FormSectionNav } from '@app/components/form-section-nav';
+import { LineItems } from '@app/components/line-items';
 import { useContactsQuery } from '@modules/directory/hooks';
 import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { PCO_FORM_SECTIONS, PCO_PRIORITY_OPTIONS } from '../constants/pco.constants';
@@ -170,6 +171,12 @@ export function PCOFormPage() {
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = async (formData: CreatePCOInput) => {
+    // Auto-set line item title from description (title is required by backend)
+    formData.lineItems = formData.lineItems.map((li) => ({
+      ...li,
+      title: li.title || li.description,
+    }));
+
     if (isEdit && pcoId && pcoDetail) {
       setIsSaving(true);
       try {
@@ -435,49 +442,27 @@ export function PCOFormPage() {
                 />
               </div>
 
-              {/* Requested By + Cost Code */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="requestedBy"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Requested By
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          placeholder="e.g. John Doe"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="costCodeId"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Cost Code
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={costCodeOptions}
-                        value={field.value ?? null}
-                        onValueChange={(v) => field.onChange(v ?? undefined)}
-                        placeholder="Select cost code..."
-                        searchPlaceholder="Search cost codes..."
-                        emptyMessage="No cost codes found."
+              {/* Requested By */}
+              <Controller
+                name="requestedBy"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Requested By
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="e.g. John Doe"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
                       />
-                    </Field>
-                  )}
-                />
-              </div>
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
               {/* Impacts Schedule + Schedule Impact Days */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -610,161 +595,17 @@ export function PCOFormPage() {
           </Card>
 
           {/* ---- Section 3: Line Items ---- */}
-          <Card id="line-items">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Line Items</h2>
-                <p className="text-sm text-muted-foreground">
-                  At least one line item is required.
-                </p>
-              </div>
-
-              <Separator />
-
-              {fields.map((field, index) => (
-                <div
-                  key={field.id}
-                  className="flex items-start gap-3 rounded-lg border border-border bg-accent/50 p-4"
-                >
-                  <div className="flex-1 space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <Controller
-                        name={`lineItems.${index}.title`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Title
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="Item title"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`lineItems.${index}.description`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Description
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="Item description"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <Controller
-                        name={`lineItems.${index}.qty`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Qty
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...f}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                                aria-invalid={fieldState.invalid}
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`lineItems.${index}.unit`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Unit
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="e.g. EA, LF, SF"
-                                aria-invalid={fieldState.invalid}
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                      <Controller
-                        name={`lineItems.${index}.unitPrice`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Unit Price
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...f}
-                                onChange={(e) => f.onChange(Number(e.target.value))}
-                                aria-invalid={fieldState.invalid}
-                              />
-                            </InputWrapper>
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    mode="icon"
-                    className="size-8 mt-6 text-muted-foreground hover:text-destructive"
-                    disabled={fields.length <= 1}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-
-              {formState.errors.lineItems?.root && (
-                <p className="text-sm text-destructive">
-                  {formState.errors.lineItems.root.message}
-                </p>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 })}
-              >
-                <Plus className="size-4" />
-                Add Line Item
-              </Button>
-            </CardContent>
-          </Card>
+          <LineItems
+            control={control}
+            fieldPrefix="lineItems"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={costCodeOptions}
+            fieldNames={{ quantity: 'qty' }}
+            defaultItem={{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
+            rootError={formState.errors.lineItems?.root}
+          />
         </div>
       </div>
     </form>
