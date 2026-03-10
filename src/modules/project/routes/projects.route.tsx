@@ -1,15 +1,17 @@
 import { Route, Routes } from 'react-router-dom';
 
-import ProjectForm from '@modules/project/pages/project-form';
-import ProjectList from '@modules/project/pages/project-list';
+import { POFormPage } from '@modules/project/pages/po-form';
 import PrimeContracts from '@modules/project/pages/prime-contracts';
 import ProjectContractOverview from '@modules/project/pages/project-contract-overview';
+import ProjectForm from '@modules/project/pages/project-form';
+import ProjectList from '@modules/project/pages/project-list';
 import ProjectPOs from '@modules/project/pages/purchase-orders';
-import { POFormPage } from '@modules/project/pages/po-form';
-import { PODetailPage } from '@modules/purchase-orders/pages/po-detail';
+import InvoiceRoutes from '@modules/project/routes/invoice.route';
 import PCORoutes from '@modules/project/routes/pco.route';
 import RFQRoutes from '@modules/project/routes/rfq.route';
-import InvoiceRoutes from '@modules/project/routes/invoice.route';
+import { PODetailPage } from '@modules/purchase-orders/pages/po-detail';
+
+import ProjectEditForm from '../pages/project-edit-form';
 
 const ProjectRoutes = () => {
   return (
@@ -17,6 +19,7 @@ const ProjectRoutes = () => {
       <Route index element={<ProjectList />} />
       <Route path="new" element={<ProjectForm />} />
       <Route path=":projectId/overview" element={<ProjectContractOverview />} />
+      <Route path=":projectId/edit" element={<ProjectEditForm />} />
       <Route path=":projectId/prime-contracts" element={<PrimeContracts />} />
       <Route path=":projectId/prime-change-orders/*" element={<PCORoutes />} />
       <Route path=":projectId/rfqs/*" element={<RFQRoutes />} />

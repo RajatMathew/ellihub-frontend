@@ -12,7 +12,7 @@ export const FILE_TYPE_LABELS = {
 export const DEFAULT_PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
 
-export const SORT_OPTIONS = ['createdAt', 'name', 'size', 'type'] as const;
+export const SORT_OPTIONS = ['createdAt', 'name', 'size', 'updatedAt'] as const;
 export type SortField = (typeof SORT_OPTIONS)[number];
 
 export function isSortField(v: string | null): v is SortField {

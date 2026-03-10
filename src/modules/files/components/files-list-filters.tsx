@@ -167,7 +167,7 @@ export function FilesListFilters({
               <SelectItem value="createdAt">Newest</SelectItem>
               <SelectItem value="name">Name</SelectItem>
               <SelectItem value="size">Size</SelectItem>
-              <SelectItem value="type">Type</SelectItem>
+              <SelectItem value="updatedAt">Last Updated</SelectItem>
             </SelectContent>
           </Select>
           <ToggleGroup

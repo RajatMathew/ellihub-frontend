@@ -7,6 +7,7 @@ import {
   type ListProjectsParams,
   type ProjectDetail,
   type ProjectPaginatedResponse,
+  type UpdateProjectInput,
 } from '@modules/project/schemas/project.schema';
 
 const BASE = '/projects';
@@ -65,6 +66,17 @@ export const projectApi = {
     const result = projectDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[projectApi.create] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async update(id: string, data: UpdateProjectInput): Promise<ProjectDetail> {
+    const res = await api.put(`${BASE}/${id}`, data);
+    const raw = res.data?.data ?? res.data;
+    const result = projectDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[projectApi.update] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

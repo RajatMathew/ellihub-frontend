@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   type SortingState,
+  flexRender,
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { toast } from 'sonner';
-import { AlertCircle, Download, FolderOpen, FolderPlus, Home, RefreshCcw, Search, Upload } from 'lucide-react';
+import { AlertCircle, Download, FolderOpen, FolderPlus, Home, Lock, RefreshCcw, Search, Share2, Upload } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -27,7 +28,17 @@ import {
 } from '@app/components/ui/card';
 import { DataGrid } from '@app/components/ui/data-grid';
 import { DataGridPagination } from '@app/components/ui/data-grid-pagination';
-import { DataGridTable } from '@app/components/ui/data-grid-table';
+import {
+  DataGridTable,
+  DataGridTableBase,
+  DataGridTableBody,
+  DataGridTableBodyRow,
+  DataGridTableBodyRowCell,
+  DataGridTableEmpty,
+  DataGridTableHead,
+  DataGridTableHeadRow,
+  DataGridTableHeadRowCell,
+} from '@app/components/ui/data-grid-table';
 import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import {
@@ -44,7 +55,6 @@ import { FilePreviewDialog } from '../components/file-preview-dialog';
 import { useFilesColumns } from '../components/files-columns';
 import { FilesGridView } from '../components/files-grid-view';
 import { FilesListFilters } from '../components/files-list-filters';
-import { FilesListStats } from '../components/files-list-stats';
 import { RenameDialog } from '../components/rename-dialog';
 import { UploadFileDialog } from '../components/upload-file-dialog';
 import {
@@ -95,7 +105,7 @@ export default function FilesListPage() {
   const searchQuery = searchParams.get('search') ?? '';
   const sortBy: SortField = isSortField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortField)
-    : 'createdAt';
+    : 'updatedAt';
   const sortOrder: 'asc' | 'desc' =
     searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
   const viewMode: 'list' | 'grid' =
@@ -230,21 +240,19 @@ export default function FilesListPage() {
   const handleExport = useCallback(() => {
     const rows = allChildren.map((item) => ({
       name: item.name,
-      type: item.type,
       size: item.size ?? '',
       createdBy: item.createdBy,
-      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     }));
-    const header = ['Name', 'Type', 'Size', 'Created By', 'Created At'];
+    const header = ['Name', 'Size', 'Created By', 'Updated At'];
     const csv = [
       header.join(','),
       ...rows.map((r) =>
         [
           `"${r.name.replace(/"/g, '""')}"`,
-          r.type,
           r.size,
           `"${r.createdBy.replace(/"/g, '""')}"`,
-          r.createdAt,
+          r.updatedAt,
         ].join(','),
       ),
     ].join('\n');
@@ -290,12 +298,12 @@ export default function FilesListPage() {
         case 'size':
           cmp = (a.size ?? 0) - (b.size ?? 0);
           break;
-        case 'type':
-          cmp = a.type.localeCompare(b.type);
-          break;
         case 'createdAt':
-        default:
           cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          break;
+        case 'updatedAt':
+        default:
+          cmp = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
           break;
       }
       return sortOrder === 'asc' ? cmp : -cmp;
@@ -308,6 +316,13 @@ export default function FilesListPage() {
   const totalCount = filteredData.length;
   const hasActiveFilters = !!searchQuery || !!dateFrom || !!dateTo;
 
+  // ── Group data: protected first, shared second ──────────────────
+  const sectionedData = useMemo(() => {
+    const protectedItems = listData.filter((f) => !f.isDeletable);
+    const sharedItems = listData.filter((f) => f.isDeletable);
+    return { protectedItems, sharedItems, data: [...protectedItems, ...sharedItems] };
+  }, [listData]);
+
   // ── TanStack Table ─────────────────────────────────────────────────
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
   const columns = useFilesColumns({
@@ -319,7 +334,7 @@ export default function FilesListPage() {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: listData,
+    data: sectionedData.data,
     columns,
     pageCount,
     state: {
@@ -350,10 +365,10 @@ export default function FilesListPage() {
       if (!col) {
         updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
       } else {
-        const newSortBy = isSortField(col.id) ? col.id : 'createdAt';
+        const newSortBy = isSortField(col.id) ? col.id : 'updatedAt';
         const newSortOrder = col.desc ? 'desc' : 'asc';
         updateParams({
-          sortBy: newSortBy === 'createdAt' ? undefined : newSortBy,
+          sortBy: newSortBy === 'updatedAt' ? undefined : newSortBy,
           sortOrder: newSortOrder === 'desc' ? undefined : newSortOrder,
           page: undefined,
         });
@@ -438,9 +453,6 @@ export default function FilesListPage() {
         </Breadcrumb>
       )}
 
-      {/* Stats */}
-      <FilesListStats data={allChildren} />
-
       {/* Table card */}
       <Card>
         <FilesListFilters
@@ -451,7 +463,7 @@ export default function FilesListPage() {
           dateTo={dateTo}
           totalCount={totalCount}
           onSortChange={(value) =>
-            updateParams({ sortBy: value === 'createdAt' ? undefined : value, page: undefined })
+            updateParams({ sortBy: value === 'updatedAt' ? undefined : value, page: undefined })
           }
           onViewChange={(view) =>
             updateParams({ view: view === 'list' ? undefined : view })
@@ -501,10 +513,105 @@ export default function FilesListPage() {
           >
             {viewMode === 'list' ? (
               <CardTable>
-                <DataGridTable />
+                {isLoading ? (
+                  <DataGridTable />
+                ) : (
+                  <DataGridTableBase>
+                    <DataGridTableHead>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <DataGridTableHeadRow headerGroup={headerGroup} key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <DataGridTableHeadRowCell header={header} key={header.id}>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(header.column.columnDef.header, header.getContext())}
+                            </DataGridTableHeadRowCell>
+                          ))}
+                        </DataGridTableHeadRow>
+                      ))}
+                    </DataGridTableHead>
+                    <DataGridTableBody>
+                      {table.getRowModel().rows.length ? (
+                        table.getRowModel().rows.map((row, index) => (
+                          <Fragment key={row.id}>
+                            {index === 0 && sectionedData.protectedItems.length > 0 && (
+                              <tr className="bg-muted/50">
+                                <td colSpan={columns.length} className="px-4 py-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <Lock className="size-3.5 text-muted-foreground" />
+                                    <span className="text-2sm font-semibold text-foreground">Protected</span>
+                                    <span className="text-2sm text-muted-foreground">{sectionedData.protectedItems.length}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            {index === sectionedData.protectedItems.length && sectionedData.sharedItems.length > 0 && (
+                              <tr className="bg-muted/50">
+                                <td colSpan={columns.length} className="px-4 py-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <Share2 className="size-3.5 text-muted-foreground" />
+                                    <span className="text-2sm font-semibold text-foreground">Shared</span>
+                                    <span className="text-2sm text-muted-foreground">{sectionedData.sharedItems.length}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            <DataGridTableBodyRow row={row}>
+                              {row.getVisibleCells().map((cell) => (
+                                <DataGridTableBodyRowCell cell={cell} key={cell.id}>
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </DataGridTableBodyRowCell>
+                              ))}
+                            </DataGridTableBodyRow>
+                          </Fragment>
+                        ))
+                      ) : (
+                        <DataGridTableEmpty />
+                      )}
+                    </DataGridTableBody>
+                  </DataGridTableBase>
+                )}
               </CardTable>
             ) : (
-              <FilesGridView data={listData} onFolderClick={handleFolderClick} onFilePreview={(item) => setPreviewItem(item)} />
+              <div>
+                {isLoading ? (
+                  <CardTable>
+                    <DataGridTable />
+                  </CardTable>
+                ) : (
+                  <>
+                    {sectionedData.protectedItems.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 px-5 py-2.5 bg-muted/50 border-y border-border">
+                          <Lock className="size-3.5 text-muted-foreground" />
+                          <span className="text-2sm font-semibold text-foreground">Protected</span>
+                          <span className="text-2sm text-muted-foreground">{sectionedData.protectedItems.length}</span>
+                        </div>
+                        <FilesGridView data={sectionedData.protectedItems} onFolderClick={handleFolderClick} onFilePreview={(item) => setPreviewItem(item)} />
+                      </>
+                    )}
+                    {sectionedData.sharedItems.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 px-5 py-2.5 bg-muted/50 border-y border-border">
+                          <Share2 className="size-3.5 text-muted-foreground" />
+                          <span className="text-2sm font-semibold text-foreground">Shared</span>
+                          <span className="text-2sm text-muted-foreground">{sectionedData.sharedItems.length}</span>
+                        </div>
+                        <FilesGridView data={sectionedData.sharedItems} onFolderClick={handleFolderClick} onFilePreview={(item) => setPreviewItem(item)} />
+                      </>
+                    )}
+                    {sectionedData.data.length === 0 && (
+                      <div className="flex flex-col items-center gap-2 py-8">
+                        <FolderOpen className="size-10 text-muted-foreground/50" />
+                        <p className="text-sm font-medium">No files yet</p>
+                        <p className="text-xs text-muted-foreground">
+                          Upload a file or create a folder to get started.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
             <CardFooter>
               <DataGridPagination />

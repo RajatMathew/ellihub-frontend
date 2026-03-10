@@ -6,6 +6,7 @@ import { projectKeys } from '@modules/project/constants/project.keys';
 import type {
   CreateProjectInput,
   ListProjectsParams,
+  UpdateProjectInput,
 } from '@modules/project/schemas/project.schema';
 
 /* ---- QUERY HOOKS ---- */
@@ -50,6 +51,19 @@ export const useCreateProjectMutation = () => {
       qc.invalidateQueries({ queryKey: projectKeys.all });
     },
     onError: () => toast.error('Failed to create project.'),
+  });
+};
+
+export const useUpdateProjectMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
+      projectApi.update(id, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: projectKeys.all });
+      qc.invalidateQueries({ queryKey: projectKeys.detail(variables.id) });
+    },
+    onError: () => toast.error('Failed to update project.'),
   });
 };
 

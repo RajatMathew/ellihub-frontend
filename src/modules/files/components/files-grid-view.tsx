@@ -1,8 +1,9 @@
 import { Download } from 'lucide-react';
 
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
+
+import { formatDateTime } from '@app/lib/helpers';
 
 import type { FileItem } from '@modules/files/schemas/file.schema';
 
@@ -45,28 +46,22 @@ export function FilesGridView({ data, onFolderClick, onFilePreview }: FilesGridV
               <span className="text-sm font-medium text-foreground text-center line-clamp-2 w-full">
                 {item.name}
               </span>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={isFolder ? 'warning' : 'info'}
-                  appearance="light"
+              <span className="text-xs text-muted-foreground">
+                {formatDateTime(item.updatedAt)}
+              </span>
+              {!isFolder && (
+                <Button
+                  variant="ghost"
                   size="sm"
+                  className="size-7 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadFile.mutate(item.id);
+                  }}
                 >
-                  {isFolder ? 'Folder' : 'File'}
-                </Badge>
-                {!isFolder && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-7 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      downloadFile.mutate(item.id);
-                    }}
-                  >
-                    <Download className="size-3.5" />
-                  </Button>
-                )}
-              </div>
+                  <Download className="size-3.5" />
+                </Button>
+              )}
             </CardContent>
           </Card>
         );

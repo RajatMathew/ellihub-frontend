@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Download, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { DataGridColumnHeader } from '@app/components/ui/data-grid-column-header';
 import {
@@ -14,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { Skeleton } from '@app/components/ui/skeleton';
-import { timeAgo, formatDateTime } from '@app/lib/helpers';
+import { formatDateTime } from '@app/lib/helpers';
 
 import type { FileItem } from '@modules/files/schemas/file.schema';
 
@@ -33,29 +32,6 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
 
   return useMemo<ColumnDef<FileItem>[]>(
     () => [
-      {
-        accessorKey: 'createdAt',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Timestamp" />,
-        cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-primary">
-              {timeAgo(row.original.createdAt)}
-            </span>
-            <span className="text-2sm text-muted-foreground">
-              {formatDateTime(row.original.createdAt)}
-            </span>
-          </div>
-        ),
-        meta: {
-          headerClassName: 'min-w-[160px]',
-          skeleton: (
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-3.5 w-20" />
-              <Skeleton className="h-3 w-28" />
-            </div>
-          ),
-        },
-      },
       {
         accessorKey: 'name',
         header: ({ column }) => <DataGridColumnHeader column={column} title="File Name" />,
@@ -78,27 +54,6 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         },
       },
       {
-        accessorKey: 'type',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
-        cell: ({ row }) => {
-          const isFolder = row.original.type === 'FOLDER';
-          return (
-            <Badge
-              variant={isFolder ? 'warning' : 'info'}
-              appearance="light"
-              size="sm"
-            >
-              {isFolder ? 'Folder' : 'File'}
-            </Badge>
-          );
-        },
-        meta: {
-          headerClassName: 'min-w-[100px]',
-          skeleton: <Skeleton className="h-5 w-16 rounded-sm" />,
-        },
-        enableSorting: false,
-      },
-      {
         accessorKey: 'size',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Size" />,
         cell: ({ row }) => (
@@ -115,13 +70,26 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         accessorKey: 'createdBy',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Uploaded By" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground">{row.original.createdBy}</span>
+          <span className="text-sm text-foreground truncate block max-w-[150px]">{row.original.createdBy}</span>
         ),
         meta: {
-          headerClassName: 'min-w-[150px]',
+          headerClassName: 'min-w-[120px]',
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,
+      },
+      {
+        accessorKey: 'updatedAt',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Updated" />,
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatDateTime(row.original.updatedAt)}
+          </span>
+        ),
+        meta: {
+          headerClassName: 'min-w-[160px]',
+          skeleton: <Skeleton className="h-3.5 w-28" />,
+        },
       },
       {
         id: 'actions',
@@ -150,43 +118,41 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                   </Button>
                 </>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="size-8 p-0">
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isFile && (
-                    <DropdownMenuItem onClick={() => onPreview(row.original)}>
-                      <Eye className="size-3.5" />
-                      Preview
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => onRename(row.original)}>
-                    <Pencil className="size-3.5" />
-                    Rename
-                  </DropdownMenuItem>
-                  {isFile && (
-                    <DropdownMenuItem onClick={() => downloadFile.mutate(row.original.id)}>
-                      <Download className="size-3.5" />
-                      Download
-                    </DropdownMenuItem>
-                  )}
-                  {row.original.isDeletable && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => onDelete(row.original)}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Delete
+              {row.original.isDeletable && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="size-8 p-0">
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {isFile && (
+                      <DropdownMenuItem onClick={() => onPreview(row.original)}>
+                        <Eye className="size-3.5" />
+                        Preview
                       </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    )}
+                    <DropdownMenuItem onClick={() => onRename(row.original)}>
+                      <Pencil className="size-3.5" />
+                      Rename
+                    </DropdownMenuItem>
+                    {isFile && (
+                      <DropdownMenuItem onClick={() => downloadFile.mutate(row.original.id)}>
+                        <Download className="size-3.5" />
+                        Download
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onDelete(row.original)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           );
         },

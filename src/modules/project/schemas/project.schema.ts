@@ -169,3 +169,22 @@ export const projectFormSchema = z.object({
 });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
+
+/* ---- Update schema (all fields optional, partial update) ---- */
+
+export const updateProjectInputSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().min(1).optional(),
+  contractNumber: z.string().max(100).optional(),
+  stageId: z.string().min(1).optional(),
+  division: divisionSchema.optional(),
+  statusId: z.string().min(1).optional(),
+  gcId: z.string().min(1).optional(),
+  leadPMId: z.string().min(1).optional(),
+  streetAddress: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().max(2).optional(),
+  zipCode: z.string().optional(),
+});
+
+export type UpdateProjectInput = z.infer<typeof updateProjectInputSchema>;
