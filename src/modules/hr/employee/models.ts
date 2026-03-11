@@ -9,3 +9,13 @@ export const EmployeeCreateSchema = z.object({
 });
 
 export type EmployeeCreateRequest = z.infer<typeof EmployeeCreateSchema>;
+
+export const EmployeeUpdateSchema = z
+    .object({
+        name: z.string().min(2),
+        email: z.string().email(),
+        phoneNumber: z.string().min(7),
+    })
+    .partial();
+
+export type EmployeeUpdateRequest = z.infer<typeof EmployeeUpdateSchema>;

@@ -76,7 +76,7 @@
                                             "type": "object",
                                             "properties": {
                                                 "data": { "type": "array", "items": { "$ref": "#/components/schemas/GeneralContractorListItem" } },
-                                                "pagination": { "$ref": "#/components/schemas/Pagination" }
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
                                             }
                                         }
                                     ]

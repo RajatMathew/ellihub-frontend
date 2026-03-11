@@ -1,20 +1,20 @@
 model User {
-  id            String       @id
-  name          String
-  email         String
-  emailVerified Boolean      @default(false)
-  image         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  members       Member[]
-  invitations   Invitation[]
-  role          String?
-  banned        Boolean?     @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  profile       String?
+  id                       String             @id
+  name                     String
+  email                    String
+  emailVerified            Boolean            @default(false)
+  image                    String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  sessions                 Session[]
+  accounts                 Account[]
+  members                  Member[]
+  invitations              Invitation[]
+  role                     String?
+  banned                   Boolean?           @default(false)
+  banReason                String?
+  banExpires               DateTime?
+  profile                  String?
 
   @@unique([email])
   @@map("user")

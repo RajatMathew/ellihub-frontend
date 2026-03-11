@@ -1,8 +1,8 @@
 model Employee {
   id              String                  @id
-  name            String                  @unique
-  email           String
-  phoneNumber     String                  @unique
+  name            String
+  email           String                  @unique
+  phoneNumber     String
   userId          String?
   projectsLeading Project[]
   projects        ProjectTeamAssignment[]

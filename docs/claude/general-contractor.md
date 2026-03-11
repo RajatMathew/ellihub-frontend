@@ -1,5 +1,9 @@
 # General Contractor Module
 
+## Overview
+
+General contractor management for construction projects. GCs are categorized by GC types and can be linked to contacts. Supports creation with nested contacts (wizard pattern), stats/KPIs, and paginated listing.
+
 ## Location
 `src/modules/general-contractor/`
 
@@ -55,19 +59,19 @@ All under `/api/v1/general-contractors/`:
 ### General Contractors
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| GET | `/stats` | gc:read | KPI metrics (totalGCs, activeProjects, totalCommitted) |
-| POST | `/` | gc:create | Create GC (supports nested contacts for wizard) |
-| GET | `/` | gc:read | List paginated (search, filter status/gcTypeId) |
-| GET | `/:id` | gc:read | Get single with relations |
-| PUT | `/:id` | gc:update | Update basic info |
-| DELETE | `/:id` | gc:delete | Set status to INACTIVE (not hard delete) |
+| GET | `/stats` | generalContractor:read | KPI metrics (totalGCs, activeProjects, totalCommitted) |
+| POST | `/` | generalContractor:create | Create GC (supports nested contacts for wizard) |
+| GET | `/` | generalContractor:read | List paginated (search, filter status/gcTypeId) |
+| GET | `/:id` | generalContractor:read | Get single with relations |
+| PUT | `/:id` | generalContractor:update | Update basic info |
+| DELETE | `/:id` | generalContractor:delete | Set status to INACTIVE (not hard delete) |
 
 ### GC Contacts (`/:id/contacts`)
 | Method | Path | Permission | Description |
 |--------|------|------------|-------------|
-| POST | `/:id/contacts` | gc:update | Add contact link |
-| PUT | `/:id/contacts/:contactId` | gc:update | Update isPrimary |
-| DELETE | `/:id/contacts/:contactId` | gc:update | Remove contact link |
+| POST | `/:id/contacts` | generalContractor:update | Add contact link |
+| PUT | `/:id/contacts/:contactId` | generalContractor:update | Update isPrimary |
+| DELETE | `/:id/contacts/:contactId` | generalContractor:update | Remove contact link |
 
 ## Query Params (List endpoint)
 - `search` — case-insensitive search across name, email, phone
@@ -85,7 +89,63 @@ All under `/api/v1/general-contractors/`:
 - `activeProjects` — count of projects linked to non-deleted GCs
 - `totalCommitted` — sum of PrimeChangeOrder amounts
 
+## Zod Validation Schemas
+
+### GCCreateSchema
+| Field | Type | Constraints |
+|-------|------|------------|
+| `name` | string | min 1 |
+| `gcTypeId` | string | min 1 |
+| `status` | enum | ACTIVE, PROSPECTING, INACTIVE, BLACKLISTED; optional |
+| `address` | string | optional |
+| `email` | string | email format, optional |
+| `phone` | string | optional |
+| `website` | string | URL format, optional |
+| `paymentTerms` | enum | NET_15..DUE_ON_RECEIPT; optional |
+| `retainagePercent` | number | 0-100, optional |
+| `contacts` | array | `[{contactId, isPrimary?}]`, default [] |
+
+### GCUpdateSchema
+All fields from create (except contacts) are partial with nullable strings.
+
+### GCTypeCreateSchema
+| Field | Type | Constraints |
+|-------|------|------------|
+| `name` | string | min 1 |
+| `code` | string | min 1 |
+| `description` | string | optional |
+
+### GCTypeUpdateSchema
+All fields partial with nullable description.
+
+### GCContactAddSchema / GCContactUpdateSchema
+- Add: `{contactId, isPrimary?}`
+- Update: `{isPrimary}` (required boolean)
+
+## Single GC Response Includes
+
+- `gcType` — related GCType object
+- `contactLinks` with nested `contact` objects
+- `projects` — related Project objects
+
+## Business Rules & Constraints
+
+- **Delete = INACTIVE**: Delete sets `status` to `'INACTIVE'` rather than using soft delete
+- **GCType deletion**: Hard deletes, but blocks if any GCs reference it (ConflictError)
+- **GCType uniqueness**: Name and code must be unique (checked before create/update)
+- **Contact validation**: Contacts must exist and not be soft-deleted before linking
+- **Duplicate link prevention**: P2002 unique constraint caught as ConflictError
+- **Create with contacts**: Uses transaction to create GC + contact links atomically
+- **GCType validation**: Must exist before creating/updating GC
+
 ## Permissions
+
 Defined in `src/lib/permissions.ts`:
 - `generalContractor: ['create', 'update', 'delete', 'read']`
 - `gcType: ['create', 'update', 'delete', 'read']`
+
+## Related Modules
+
+- **contact** — ContactGC junction table, contact validation
+- **project** — GC referenced by Project (`gcId` FK)
+- **file** — GC root folder in file hierarchy

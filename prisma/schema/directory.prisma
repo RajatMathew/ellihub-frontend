@@ -16,10 +16,13 @@ model Vendor {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  rfqs           RFQ[]
-  quotations     VendorQuotation[]
-  purchaseOrders PurchaseOrder[]
-  contactLinks   ContactVendor[]
+  rfqs             RFQ[]
+  quotes           VendorQuote[]
+  vendorInvites    RFQVendorInvite[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseOrderCOs PurchaseOrderCO[]
+  invoices         Invoice[]
+  contactLinks     ContactVendor[]
 
   @@index([name])
   @@index([status])
@@ -49,9 +52,9 @@ enum VendorStatus {
 }
 
 model GCType {
-  id          String @id
-  name        String @unique
-  code        String @unique
+  id          String  @id
+  name        String  @unique
+  code        String  @unique
   description String?
 
   createdAt DateTime @default(now())
@@ -96,7 +99,6 @@ enum GCStatus {
   BLACKLISTED
 }
 
-
 model ProfessionalRole {
   id   String @id
   name String @unique
@@ -121,8 +123,10 @@ model Contact {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  vendorLinks ContactVendor[]
-  gcLinks     ContactGC[]
+  vendorLinks       ContactVendor[]
+  gcLinks           ContactGC[]
+  primeChangeOrders PrimeChangeOrder[]
+  purchaseOrders    PurchaseOrder[]
 
   @@index([fullName])
   @@index([deletedAt])
@@ -179,6 +183,10 @@ model CostCode {
   description        String           @default("")
   costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
   costCodeCategoryId String
+
+  primeChangeOrders PrimeChangeOrder[]
+  purchaseOrderCOs  PurchaseOrderCO[]
+  rfqs              RFQ[]
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())

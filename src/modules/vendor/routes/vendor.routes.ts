@@ -1,4 +1,5 @@
 import { paginationMiddleware } from '@middleware';
+import { InvoiceService } from '@modules/invoice/services';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
@@ -49,6 +50,35 @@ app.get(
 
         const { data, count } = await VendorService.getVendors(pagination);
         return success(c, data, 200, 'OK', count);
+    }
+);
+
+// Vendor invoices
+app.get(
+    '/:id/invoices',
+    requirePermission({ project: ['view-all'] }),
+    paginationMiddleware({
+        defaultSize: 25,
+        defaultSortBy: 'invoiceDate',
+        defaultSortOrder: 'desc',
+    }),
+    async (c: Context) => {
+        const vendorId = c.req.param('id');
+        const pagination = c.get('pagination');
+        const query = c.req.query();
+
+        const { projectId, status, isPaid, startDate, endDate } = query;
+        pagination.filter = {
+            ...pagination.filter,
+            ...(projectId && { projectId }),
+            ...(status && { status }),
+            ...(isPaid && { isPaid }),
+            ...(startDate && { startDate }),
+            ...(endDate && { endDate }),
+        };
+
+        const result = await InvoiceService.listVendorInvoices(vendorId, pagination);
+        return success(c, result.data, 200, 'OK', result.count);
     }
 );
 
@@ -107,15 +137,11 @@ app.put(
 );
 
 // Remove contact from vendor
-app.delete(
-    '/:id/contacts/:contactId',
-    requirePermission({ vendor: ['update'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        const contactId = c.req.param('contactId');
-        await VendorService.removeContact(id, contactId);
-        return success(c, null);
-    }
-);
+app.delete('/:id/contacts/:contactId', requirePermission({ vendor: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const contactId = c.req.param('contactId');
+    await VendorService.removeContact(id, contactId);
+    return success(c, null);
+});
 
 export default app;
