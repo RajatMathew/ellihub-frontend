@@ -63,7 +63,11 @@
                     {
                         "name": "sortBy",
                         "in": "query",
-                        "schema": { "type": "string", "enum": ["name", "size", "createdAt", "updatedAt", "type", "mimeType"], "default": "createdAt" },
+                        "schema": {
+                            "type": "string",
+                            "enum": ["name", "size", "createdAt", "updatedAt", "type", "mimeType"],
+                            "default": "createdAt"
+                        },
                         "description": "Field to sort by"
                     },
                     {
@@ -145,7 +149,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "string", "description": "Success message" }
+                                                "data": { "type": "string" }
                                             }
                                         }
                                     ]
@@ -227,11 +231,11 @@
         "/file/root": {
             "get": {
                 "tags": ["File"],
-                "summary": "Get root folder ID",
+                "summary": "Get root folder",
                 "operationId": "getRootFolder",
                 "responses": {
                     "200": {
-                        "description": "Root folder ID",
+                        "description": "Root folder",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -240,7 +244,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "string", "description": "Root folder ULID" }
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
                                             }
                                         }
                                     ]
@@ -250,6 +254,14 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Root folder not found",
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -292,7 +304,7 @@
                         }
                     },
                     "400": {
-                        "description": "Bad request - protected folder name or invalid parent",
+                        "description": "Bad request - protected folder name",
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -516,6 +528,56 @@
                 }
             }
         },
+        "/file/{id}": {
+            "delete": {
+                "tags": ["File"],
+                "summary": "Delete a file (soft delete)",
+                "operationId": "deleteFile",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "File ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - non-deletable file",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/file/project/{projectId}/folder": {
             "get": {
                 "tags": ["File"],
@@ -629,88 +691,30 @@
                     }
                 }
             }
-        },
-        "/file/{id}": {
-            "delete": {
-                "tags": ["File"],
-                "summary": "Delete a file (soft delete)",
-                "operationId": "deleteFile",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "File ID (ULID)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "File deleted successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - non-deletable file",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "File not found",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/file/read": {
-            "get": {
-                "tags": ["File"],
-                "summary": "Read a file (public - no auth required)",
-                "operationId": "readFile",
-                "security": [],
-                "responses": {
-                    "200": {
-                        "description": "File content"
-                    }
-                }
-            }
         }
     },
     "components": {
         "schemas": {
             "FileItem": {
                 "type": "object",
-                "description": "Represents a file or folder in the hierarchical file system",
+                "description": "Represents a file or folder",
                 "properties": {
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
                     "parentId": { "type": "string", "nullable": true, "description": "Parent folder ULID (null for root)" },
-                    "objectId": { "type": "string", "nullable": true, "description": "S3 object key (for files)" },
-                    "mimeType": { "type": "string", "nullable": true, "description": "MIME type (for files)" },
+                    "objectId": { "type": "string", "nullable": true, "description": "S3 object key (files only)" },
+                    "mimeType": { "type": "string", "nullable": true, "description": "MIME type (files only)" },
                     "size": { "type": "integer", "nullable": true, "description": "File size in bytes" },
-                    "isDeletable": { "type": "boolean", "description": "Whether this item can be deleted" },
+                    "protectedFolderType": {
+                        "type": "string",
+                        "nullable": true,
+                        "enum": ["PROJECT_ROOT", "INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                    },
+                    "isDeletable": { "type": "boolean" },
                     "private": { "type": "boolean" },
-                    "createdBy": { "type": "string", "description": "User ID who created this item" },
-                    "deletedBy": { "type": "string", "nullable": true, "description": "User ID who deleted this item" },
+                    "createdBy": { "type": "string" },
+                    "deletedBy": { "type": "string", "nullable": true },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
@@ -724,12 +728,18 @@
                         "properties": {
                             "children": {
                                 "type": "array",
-                                "items": { "$ref": "#/components/schemas/FileItem" },
-                                "description": "Child files and folders"
+                                "items": { "$ref": "#/components/schemas/FileItem" }
                             }
                         }
                     }
                 ]
+            },
+            "Breadcrumb": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "Folder ULID" },
+                    "name": { "type": "string", "description": "Folder name" }
+                }
             },
             "FolderCreateRequest": {
                 "type": "object",
@@ -738,13 +748,11 @@
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "Folder name (cannot use protected names: root, projects, rfq, etc.)",
-                        "example": "Documents"
+                        "description": "Folder name (cannot use protected names: root, projects, rfq, etc.)"
                     },
                     "parentId": {
                         "type": "string",
-                        "description": "Parent folder ULID",
-                        "example": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                        "description": "Parent folder ULID"
                     }
                 }
             },
@@ -754,51 +762,21 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "File or folder ULID",
-                        "example": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                        "description": "File or folder ULID"
                     },
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "New name",
-                        "example": "Updated Name"
+                        "description": "New name"
                     }
                 }
             },
-            "FileItem": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "description": "File/folder ULID" },
-                    "name": { "type": "string" },
-                    "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
-                    "mimeType": { "type": "string", "nullable": true },
-                    "size": { "type": "integer", "nullable": true },
-                    "parentId": { "type": "string", "nullable": true },
-                    "createdBy": { "type": "string" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "Breadcrumb": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "description": "Folder ULID"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "Folder name"
-                    }
-                }
-            },
-            "Folder": {
             "FileUploadData": {
                 "type": "object",
                 "required": ["name", "parentId", "size"],
                 "description": "Metadata sent as JSON string in the 'data' form field",
                 "properties": {
-                    "name": { "type": "string", "minLength": 1, "description": "File name" },
+                    "name": { "type": "string", "minLength": 1 },
                     "parentId": { "type": "string", "description": "Parent folder ULID" },
                     "size": { "type": "integer", "description": "File size in bytes" },
                     "mimeType": { "type": "string", "description": "MIME type (optional)" }
