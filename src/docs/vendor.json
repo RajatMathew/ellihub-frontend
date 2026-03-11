@@ -80,7 +80,7 @@
                                                     "type": "array",
                                                     "items": { "$ref": "#/components/schemas/VendorListItem" }
                                                 },
-                                                "pagination": { "$ref": "#/components/schemas/Pagination" }
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
                                             }
                                         }
                                     ]

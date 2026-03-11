@@ -118,11 +118,16 @@
                         "multipart/form-data": {
                             "schema": {
                                 "type": "object",
+                                "required": ["file", "data"],
                                 "properties": {
                                     "file": {
                                         "type": "string",
                                         "format": "binary",
                                         "description": "File to upload"
+                                    },
+                                    "data": {
+                                        "type": "string",
+                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID\", \"size\": 1024, \"mimeType\": \"application/pdf\"}"
                                     }
                                 }
                             }
@@ -140,11 +145,19 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "string" }
+                                                "data": { "type": "string", "description": "Success message" }
                                             }
                                         }
                                     ]
                                 }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid file or metadata",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
                     },
@@ -170,7 +183,7 @@
                         "in": "path",
                         "required": true,
                         "schema": { "type": "string" },
-                        "description": "File ID"
+                        "description": "File ID (ULID)"
                     }
                 ],
                 "responses": {
@@ -270,11 +283,19 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "$ref": "#/components/schemas/Folder" }
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
                                             }
                                         }
                                     ]
                                 }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - protected folder name or invalid parent",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
                     },
@@ -313,11 +334,19 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "object" }
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
                                             }
                                         }
                                     ]
                                 }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - protected or non-deletable item",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
                     },
@@ -390,7 +419,7 @@
         "/file/folder/{id}": {
             "get": {
                 "tags": ["File"],
-                "summary": "Get folder details",
+                "summary": "Get folder details with children",
                 "operationId": "getFolderDetails",
                 "parameters": [
                     {
@@ -403,7 +432,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Folder details",
+                        "description": "Folder details with children",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -412,7 +441,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "$ref": "#/components/schemas/Folder" }
+                                                "data": { "$ref": "#/components/schemas/FolderWithChildren" }
                                             }
                                         }
                                     ]
@@ -440,7 +469,7 @@
             },
             "delete": {
                 "tags": ["File"],
-                "summary": "Delete a folder",
+                "summary": "Delete a folder (soft delete)",
                 "operationId": "deleteFolder",
                 "parameters": [
                     {
@@ -456,17 +485,15 @@
                         "description": "Folder deleted successfully",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "type": "object" }
-                                            }
-                                        }
-                                    ]
-                                }
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - folder not empty or non-deletable",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
                     },
@@ -606,7 +633,7 @@
         "/file/{id}": {
             "delete": {
                 "tags": ["File"],
-                "summary": "Delete a file",
+                "summary": "Delete a file (soft delete)",
                 "operationId": "deleteFile",
                 "parameters": [
                     {
@@ -622,17 +649,15 @@
                         "description": "File deleted successfully",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "type": "object" }
-                                            }
-                                        }
-                                    ]
-                                }
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - non-deletable file",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
                     },
@@ -654,10 +679,58 @@
                     }
                 }
             }
+        },
+        "/file/read": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Read a file (public - no auth required)",
+                "operationId": "readFile",
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "File content"
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
+            "FileItem": {
+                "type": "object",
+                "description": "Represents a file or folder in the hierarchical file system",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "name": { "type": "string" },
+                    "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
+                    "parentId": { "type": "string", "nullable": true, "description": "Parent folder ULID (null for root)" },
+                    "objectId": { "type": "string", "nullable": true, "description": "S3 object key (for files)" },
+                    "mimeType": { "type": "string", "nullable": true, "description": "MIME type (for files)" },
+                    "size": { "type": "integer", "nullable": true, "description": "File size in bytes" },
+                    "isDeletable": { "type": "boolean", "description": "Whether this item can be deleted" },
+                    "private": { "type": "boolean" },
+                    "createdBy": { "type": "string", "description": "User ID who created this item" },
+                    "deletedBy": { "type": "string", "nullable": true, "description": "User ID who deleted this item" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "FolderWithChildren": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/FileItem" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "children": {
+                                "type": "array",
+                                "items": { "$ref": "#/components/schemas/FileItem" },
+                                "description": "Child files and folders"
+                            }
+                        }
+                    }
+                ]
+            },
             "FolderCreateRequest": {
                 "type": "object",
                 "required": ["name", "parentId"],
@@ -665,7 +738,7 @@
                     "name": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "Folder name",
+                        "description": "Folder name (cannot use protected names: root, projects, rfq, etc.)",
                         "example": "Documents"
                     },
                     "parentId": {
@@ -720,29 +793,15 @@
                 }
             },
             "Folder": {
+            "FileUploadData": {
                 "type": "object",
+                "required": ["name", "parentId", "size"],
+                "description": "Metadata sent as JSON string in the 'data' form field",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "description": "Folder ULID"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "Folder name"
-                    },
-                    "parentId": {
-                        "type": "string",
-                        "description": "Parent folder ULID",
-                        "nullable": true
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "updatedAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    }
+                    "name": { "type": "string", "minLength": 1, "description": "File name" },
+                    "parentId": { "type": "string", "description": "Parent folder ULID" },
+                    "size": { "type": "integer", "description": "File size in bytes" },
+                    "mimeType": { "type": "string", "description": "MIME type (optional)" }
                 }
             }
         }

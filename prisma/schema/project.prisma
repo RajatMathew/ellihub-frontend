@@ -1,36 +1,59 @@
 model Project {
-  id                     String                  @id
-  name                   String
-  description            String
+  id             String  @id
+  name           String
+  description    String
+  jobNumber      String? @unique
+  contractNumber String?
+
+  stage    ProjectStage    @relation(fields: [stageId], references: [id])
+  stageId  String
+  division ProjectDivision
+  statusId String
+  status   ProjectStatus   @relation(fields: [statusId], references: [id])
+
+  streetAddress String?
+  city          String?
+  state         String?
+  zipCode       String?
+
+  effectiveStartDate DateTime?
+  effectiveEndDate   DateTime?
+
   gc                     GeneralContractor       @relation(fields: [gcId], references: [id])
   gcId                   String
-  leadPM                 Employee                @relation(fields: [leadPMId], references: [id])
-  leadPMId               String
-  stage                  ProjectStage
-  division               ProjectDivision
-  contractValue          Decimal
-  budgetPercentage       Decimal
-  startDate              DateTime                @db.Date
-  endDate                DateTime                @db.Date
+  leadPM                 Employee?               @relation(fields: [leadPMId], references: [id])
+  leadPMId               String?
   primeContract          PrimeContract?
   projectScheduleEntries ProjectScheduleEntry[]
   primeChangeOrders      PrimeChangeOrder[]
   rfqs                   RFQ[]
   purchaseOrders         PurchaseOrder[]
-  primePayments          PrimePayments[]
+  purchaseOrderCOs       PurchaseOrderCO[]
+  invoices               Invoice[]
   teamMembers            ProjectTeamAssignment[]
-  deletedAt              DateTime?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([stageId])
+  @@index([statusId])
+  @@index([division])
+  @@index([gcId])
+  @@index([leadPMId])
+  @@index([effectiveStartDate])
+  @@index([effectiveEndDate])
 }
 
-enum ProjectStage {
-  INSTALLATION
-  FABRICATION
-  SUBMITTALS
-  BUYOUT
-  CLOSEOUT
-  PUNCHLIST
+model ProjectStage {
+  id          String    @id
+  name        String    @unique
+  code        String    @unique
+  description String?
+  color       String
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // enum ADDED BY ME
@@ -41,26 +64,51 @@ enum ProjectDivision {
   INSTITUTIONAL
 }
 
-model PrimePayments {
-  id                String    @id @default(uuid())
-  date              DateTime
-  transactionDetail String
-  amount            Decimal
-  project           Project   @relation(fields: [projectId], references: [id])
-  projectId         String
-  deletedAt         DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+model ProjectStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  isDefault Boolean   @default(false)
+  projects  Project[]
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model PrimeContract {
-  id            String    @id
-  project       Project   @relation(fields: [projectId], references: [id])
-  projectId     String    @unique
-  contractValue Decimal
-  deletedAt     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                      String        @id
+  project                 Project       @relation(fields: [projectId], references: [id])
+  projectId               String        @unique
+  contractValue           Decimal
+  contractType            String?
+  retainagePercent        Decimal?      @db.Decimal(5, 2)
+  targetBudgetPercent     Decimal?      @db.Decimal(5, 2)
+  paymentTerms            PaymentTerms?
+  estimatedStartDate      DateTime?
+  estimatedCompletionDate DateTime?
+  actualStartDate         DateTime?
+  actualCompletionDate    DateTime?
+  executedContractDoc     File?         @relation(fields: [executedContractDocId], references: [id])
+  executedContractDocId   String?       @unique
+
+  attachments PrimeContractAttachment[]
+
+  deletedAt               DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+}
+
+model PrimeContractAttachment {
+  id              String        @id
+  primeContract   PrimeContract @relation(fields: [primeContractId], references: [id])
+  primeContractId String
+  document        File          @relation(fields: [documentId], references: [id])
+  documentId      String        @unique
+  createdAt       DateTime      @default(now())
+
+  @@index([primeContractId])
 }
 
 model ProjectTeamAssignment {
@@ -77,203 +125,911 @@ model ProjectTeamAssignment {
 }
 
 model ProjectScheduleEntry {
-  id          String   @id
-  project     Project  @relation(fields: [projectId], references: [id])
-  projectId   String   @unique
-  date        DateTime
-  description String
+  id                 String            @id
+  project            Project           @relation(fields: [projectId], references: [id])
+  projectId          String
+  date               DateTime
+  description        String
+  adjustedStartDate  DateTime?
+  adjustedFinishDate DateTime?
+  notes              String?
+  file               File?             @relation(fields: [fileId], references: [id])
+  fileId             String?           @unique
+  changeOrder        PrimeChangeOrder? @relation(fields: [changeOrderId], references: [id])
+  changeOrderId      String?
 
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+model ChangeOrderStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  primeChangeOrders      PrimeChangeOrder[]
+  purchaseOrderCOs       PurchaseOrderCO[]
+  fromStatusHistories    PCOStatusHistory[]  @relation("FromStatus")
+  toStatusHistories      PCOStatusHistory[]  @relation("ToStatus")
+  scoFromStatusHistories SCOStatusHistory[] @relation("SCOFromStatus")
+  scoToStatusHistories   SCOStatusHistory[] @relation("SCOToStatus")
+}
+
+enum ChangeOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model PCOChangeType {
+  id                String             @id
+  name              String             @unique
+  code              String             @unique
+  description       String?
+  color             String
+  order             Int                @unique
+  primeChangeOrders PrimeChangeOrder[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model PrimeChangeOrder {
+  id             String            @id
+  project        Project           @relation(fields: [projectId], references: [id])
+  projectId      String
+  pcoNumber      String            @unique
+  date           DateTime
+  title          String
+  description    String
+  amount         Float
+  status         ChangeOrderStatus @relation(fields: [statusId], references: [id])
+  statusId       String
+  revisionNumber Int               @default(1)
+
+  createdBy String
+
+  markupAmount       Float?
+  scheduleImpactDays Int?
+  requestedBy        String?
+
+  estimatedCost          Float?
+  estimatedMargin        Float?
+  estimatedMarginPercent Float?
+
+  changeType      PCOChangeType?      @relation(fields: [changeTypeId], references: [id])
+  changeTypeId    String?
+  priority        ChangeOrderPriority @default(MEDIUM)
+  impactsSchedule Boolean             @default(false)
+  costCode        CostCode?           @relation(fields: [costCodeId], references: [id])
+  costCodeId      String?
+  contact         Contact?            @relation(fields: [contactId], references: [id])
+  contactId       String?
+
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  voidedBy        String?
+  voidedAt        DateTime?
+  voidReason      String?
+
+  supersededByOrder PrimeChangeOrder?  @relation("PCOSupersedes", fields: [supersededBy], references: [id])
+  supersededBy      String?
+  supersededOrders  PrimeChangeOrder[] @relation("PCOSupersedes")
+
+  lineItems       PrimeCOLineItem[]
+  scheduleEntries ProjectScheduleEntry[]
+  attachments     PCOAttachment[]
+  statusHistory   PCOStatusHistory[]
+  linkedSCOs      PurchaseOrderCO[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([projectId, statusId, date])
+  @@index([pcoNumber])
+}
+
+model PCOStatusHistory {
+  id           String              @id
+  pco          PrimeChangeOrder    @relation(fields: [pcoId], references: [id])
+  pcoId        String
+  fromStatusId String?
+  fromStatus   ChangeOrderStatus?  @relation("FromStatus", fields: [fromStatusId], references: [id])
+  toStatusId   String
+  toStatus     ChangeOrderStatus   @relation("ToStatus", fields: [toStatusId], references: [id])
+  changedBy    String
+  onBehalfOf   String?
+  reason       String?
+  createdAt    DateTime            @default(now())
+
+  @@index([pcoId])
+}
+
+model PCOAttachment {
+  id         String           @id
+  pco        PrimeChangeOrder @relation(fields: [pcoId], references: [id])
+  pcoId      String
+  document   File             @relation(fields: [documentId], references: [id])
+  documentId String           @unique
+  createdAt  DateTime         @default(now())
+
+  @@index([pcoId])
+}
+
+model PrimeCOLineItem {
+  id             String           @id
+  primeCo        PrimeChangeOrder @relation(fields: [primeCoId], references: [id])
+  primeCoId      String           @map("primeCoid")
+  sequenceNumber Int
+  title          String
+  description    String
+  qty            Float
+  unit           String
+  unitPrice      Float
+  amount         Float
+  costCodeId     String?
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([primeCoId, sequenceNumber])
+  @@index([primeCoId])
+}
+
+// ──────────────────────────────────────────────────────
+// RFQ (Request for Quote)
+// ──────────────────────────────────────────────────────
+
+model RFQStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  isDefault Boolean   @default(false)
+  rfqs      RFQ[]
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
-model PrimeChangeOrder {
-  id          String    @id
-  project     Project   @relation(fields: [projectId], references: [id])
-  projectId   String    @unique
-  date        DateTime
-  title       String
-  description String
-  amount      Float
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  lineItems PrimeCOLineItem[]
+enum BiddingType {
+  ANONYMOUS
+  OPEN
 }
 
-model PrimeCOLineItem {
-  id          String           @id
-  primeCo     PrimeChangeOrder @relation(fields: [primeCoId], references: [id])
-  primeCoId   String           @map("primeCoid")
-  title       String
-  description String
-  amount      Float
-  costCodeId  String
-  deletedAt   DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+model AddendumChangeType {
+  id          String        @id
+  name        String        @unique
+  code        String        @unique
+  description String?
+  color       String
+  order       Int           @unique
+  addendums   RFQAddendum[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
 model RFQ {
   id        String  @id
   project   Project @relation(fields: [projectId], references: [id])
-  projectId String  @unique
+  projectId String
 
-  title String
+  rfqNumber   String     @unique
+  title       String
+  description String?    @db.Text
+  costCode    CostCode?  @relation(fields: [costCodeId], references: [id])
+  costCodeId  String?
+  status      RFQStatus  @relation(fields: [statusId], references: [id])
+  statusId    String
 
-  awardedVendor   Vendor?  @relation(fields: [awardedVendorid], references: [id])
-  awardedVendorid String?
+  bidDeadline     DateTime
+  estimatedBudget Decimal? @db.Decimal(15, 2)
+
+  biddingType    BiddingType @default(ANONYMOUS)
+  minimumVendors Int         @default(3)
+
+  awardedVendor   Vendor?  @relation(fields: [awardedVendorId], references: [id])
+  awardedVendorId String?
   awardedAmount   Decimal? @db.Decimal(15, 2)
 
-  costCodeId String
-  deadline   DateTime
+  generatedPO   PurchaseOrder? @relation("RFQGeneratedPO", fields: [generatedPOId], references: [id])
+  generatedPOId String?        @unique
 
-  status RFQStatus
+  publishedBy        String?
+  publishedAt        DateTime?
+  awardedBy          String?
+  awardedAt          DateTime?
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?
 
   createdBy String
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  rfqdeliverables RFQDeliverable[]
+  deliverables     RFQDeliverable[]
+  quotes           VendorQuote[]
+  purchaseOrders   PurchaseOrder[]  @relation("RFQPurchaseOrders")
+  invites          RFQVendorInvite[]
+  attachments      RFQAttachment[]
+  addendums        RFQAddendum[]
+  purchaseOrderCOs PurchaseOrderCO[]
 
-  vendorQuotations VendorQuotation[]
-  purchaseOrders   PurchaseOrder[]
-}
-
-enum RFQStatus {
-  OPEN
-  CLOSE
+  @@index([projectId])
+  @@index([statusId])
+  @@index([bidDeadline])
 }
 
 model RFQDeliverable {
-  id         String    @id
-  rfq        RFQ       @relation(fields: [rfqId], references: [id])
-  rfqId      String
-  title      String
-  unit       String
-  quantity   Int
-  costCodeId String
-  deletedAt  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-}
+  id    String @id
+  rfq   RFQ    @relation(fields: [rfqId], references: [id])
+  rfqId String
 
-model VendorQuotation {
-  id        String          @id
-  rfq       RFQ             @relation(fields: [rfqId], references: [id])
-  rfqId     String
-  vendor    Vendor          @relation(fields: [vendorId], references: [id])
-  vendorId  String
-  amount    Decimal
-  leadTime  String
-  status    QuotationStatus
+  sequenceNumber     Int
+  description        String
+  unit               String
+  quantity           Decimal     @db.Decimal(10, 2)
+  costCodeId         String?
+  specifications     String?     @db.Text
+  estimatedUnitPrice Decimal?    @db.Decimal(15, 2)
+  estimatedTotal     Decimal?    @db.Decimal(15, 2)
+
   deletedAt DateTime?
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  quoteLineItems QuoteLineItem[]
+  poLineItems    PurchaseOrderLineItem[]
+
+  @@unique([rfqId, sequenceNumber])
+  @@index([rfqId])
 }
 
-enum QuotationStatus {
-  WAITING
-  ACCEPTED
-  REJECTED
+model RFQVendorInvite {
+  id       String @id
+  rfq      RFQ    @relation(fields: [rfqId], references: [id])
+  rfqId    String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  vendorId String
+
+  invitedBy           String
+  invitedAt           DateTime @default(now())
+  inviteEmailSentAt   DateTime?
+  inviteEmailStatus   String?
+  reminderEmailSentAt DateTime?
+
+  hasSubmittedQuote Boolean   @default(false)
+  submittedAt       DateTime?
+  declinedToQuote   Boolean   @default(false)
+  declinedAt        DateTime?
+  declineReason     String?
+  notes             String?   @db.Text
+
+  updatedAt DateTime @updatedAt
+
+  awardedPurchaseOrders PurchaseOrder[]
+
+  @@unique([rfqId, vendorId])
+  @@index([rfqId])
+  @@index([vendorId])
+}
+
+model QuoteStatus {
+  id           String        @id
+  name         String        @unique
+  label        String
+  color        String
+  order        Int           @unique
+  isDefault    Boolean       @default(false)
+  vendorQuotes VendorQuote[]
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model VendorQuote {
+  id       String @id
+  rfq      RFQ    @relation(fields: [rfqId], references: [id])
+  rfqId    String
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  vendorId String
+
+  enteredBy        String
+  submittedBy      String?
+  submittedByEmail String?
+  submittedByPhone String?
+  submittedAt      DateTime?
+
+  totalAmount Decimal  @db.Decimal(15, 2)
+  taxAmount   Decimal? @db.Decimal(15, 2)
+  grandTotal  Decimal  @db.Decimal(15, 2)
+
+  leadTime        String?
+  leadTimeDays    Int?
+  deliveryDate    DateTime?
+  paymentTerms    String?
+  warrantyPeriod  String?
+  quoteValidDays  Int?
+  quoteValidUntil DateTime?
+
+  notes          String? @db.Text
+  qualifications String? @db.Text
+
+  isResponsive Boolean @default(true)
+  isAwarded    Boolean @default(false)
+
+  status   QuoteStatus @relation(fields: [statusId], references: [id])
+  statusId String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems             QuoteLineItem[]
+  attachments           QuoteAttachment[]
+  awardedPurchaseOrders PurchaseOrder[]
+
+  @@unique([rfqId, vendorId])
+  @@index([rfqId])
+  @@index([vendorId])
+  @@index([statusId])
+
+  @@map("VendorQuotation")
+}
+
+model QuoteLineItem {
+  id            String         @id
+  quote         VendorQuote    @relation(fields: [quoteId], references: [id])
+  quoteId       String
+  deliverable   RFQDeliverable @relation(fields: [deliverableId], references: [id])
+  deliverableId String
+
+  unitPrice    Decimal @db.Decimal(15, 2)
+  quantity     Decimal @db.Decimal(10, 2)
+  unit         String
+  lineTotal    Decimal @db.Decimal(15, 2)
+
+  notes                String?  @db.Text
+  alternateProposed    Boolean  @default(false)
+  alternateDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([quoteId, deliverableId])
+  @@index([quoteId])
+  @@index([deliverableId])
+}
+
+model RFQAttachment {
+  id         String   @id
+  rfq        RFQ      @relation(fields: [rfqId], references: [id])
+  rfqId      String
+  document   File     @relation(fields: [documentId], references: [id])
+  documentId String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([rfqId])
+}
+
+model QuoteAttachment {
+  id         String      @id
+  quote      VendorQuote @relation(fields: [quoteId], references: [id])
+  quoteId    String
+  document   File        @relation(fields: [documentId], references: [id])
+  documentId String      @unique
+  createdAt  DateTime    @default(now())
+
+  @@index([quoteId])
+}
+
+model RFQAddendum {
+  id    String @id
+  rfq   RFQ    @relation(fields: [rfqId], references: [id])
+  rfqId String
+
+  addendumNumber         Int
+  title                  String
+  description            String             @db.Text
+  changeType             AddendumChangeType @relation(fields: [changeTypeId], references: [id])
+  changeTypeId           String
+  changesDescription     String             @db.Text
+  impactsDeadline        Boolean            @default(false)
+  newBidDeadline         DateTime?
+  impactsScope           Boolean            @default(false)
+  impactsPricing         Boolean            @default(false)
+  issuedBy               String
+  issuedAt               DateTime           @default(now())
+  requiresAcknowledgment Boolean            @default(false)
+
+  @@unique([rfqId, addendumNumber])
+  @@index([rfqId])
+}
+
+// ──────────────────────────────────────────────────────
+// Purchase Order (PO)
+// ──────────────────────────────────────────────────────
+
+model POStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  isDefault Boolean   @default(false)
+
+  purchaseOrders      PurchaseOrder[]
+  fromStatusHistories POStatusHistory[] @relation("POFromStatus")
+  toStatusHistories   POStatusHistory[] @relation("POToStatus")
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum TradeCategory {
+  MATERIAL
+  FABRICATION
+  INSTALLATION
+  LABOR
+  EQUIPMENT
+}
+
+enum PaymentMethod {
+  CHECK
+  ACH
+  WIRE
+  CREDIT_CARD
+  OTHER
+}
+
+enum POAttachmentType {
+  QUOTE
+  CONTRACT
+  INSURANCE
+  DRAWING
+  SPECIFICATION
+  OTHER
 }
 
 model PurchaseOrder {
   id        String  @id
-  rfq       RFQ?    @relation(fields: [rfqId], references: [id])
-  rfqId     String?
-  vendor    Vendor  @relation(fields: [vendorId], references: [id])
-  vendorId  String
   project   Project @relation(fields: [projectId], references: [id])
   projectId String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+  vendorId  String
+  rfq       RFQ?    @relation("RFQPurchaseOrders", fields: [rfqId], references: [id])
+  rfqId     String?
 
-  amount   Decimal
-  leadTime String
-  status   PurchaseOrderStatus
+  poNumber      String        @unique
+  tradeCategory TradeCategory
+  description   String        @db.Text
+  status        POStatus      @relation(fields: [statusId], references: [id])
+  statusId      String
+  leadTime      String?
 
-  issueDate    DateTime
-  expectedDate DateTime
-  deliveryDate DateTime
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  contactId String?
 
-  address String
+  shipToAddress String? @db.Text
+  address       String?
+  issueDate     DateTime?
+  expectedDate  DateTime?
+  deliveryDate  DateTime?
+
+  subtotal         Decimal  @db.Decimal(15, 2)
+  taxPercent       Decimal?
+  taxAmount        Decimal? @db.Decimal(15, 2)
+  total            Decimal  @db.Decimal(15, 2)
+  totalCommitment  Decimal  @db.Decimal(15, 2)
+  retainagePercent Decimal? @default(0)
+  retainageHeld    Decimal? @db.Decimal(15, 2) @default(0)
+
+  paymentTerms   PaymentTerms
+  notes          String?      @db.Text
+  vendorNotes    String?      @db.Text
+  revisionNumber Int          @default(1)
+
+  awardedRFQVendorInvite   RFQVendorInvite? @relation(fields: [awardedRFQVendorInviteId], references: [id])
+  awardedRFQVendorInviteId String?
+  awardedQuote             VendorQuote?     @relation(fields: [awardedQuoteId], references: [id])
+  awardedQuoteId           String?
+  generatedFromRFQ         RFQ?             @relation("RFQGeneratedPO")
+
+  issuedBy           String?
+  issuedAt           DateTime?
+  approvedBy         String?
+  approvedAt         DateTime?
+  rejectedBy         String?
+  rejectedAt         DateTime?
+  rejectionReason    String?
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?
 
   createdBy String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems        PurchaseOrderLineItem[]
+  purchaseOrderCOs PurchaseOrderCO[]
+  invoices         Invoice[]
+  attachments      POAttachment[]
+  statusHistory    POStatusHistory[]
+
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([statusId])
+  @@index([issueDate])
+  @@index([rfqId])
+}
+
+model POStatusHistory {
+  id              String        @id
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String
+  fromStatusId    String?
+  fromStatus      POStatus?     @relation("POFromStatus", fields: [fromStatusId], references: [id])
+  toStatusId      String
+  toStatus        POStatus      @relation("POToStatus", fields: [toStatusId], references: [id])
+  changedBy       String
+  onBehalfOf      String?
+  reason          String?
+  createdAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
+}
+
+model PurchaseOrderLineItem {
+  id              String        @id
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String
+
+  lineNumber       Int
+  description      String
+  unit             String
+  quantity         Decimal?      @db.Decimal(10, 2)
+  unitPrice        Decimal?
+  amount           Decimal?
+  costCodeId       String?
+  notes            String?       @db.Text
+
+  rfqDeliverable   RFQDeliverable? @relation(fields: [rfqDeliverableId], references: [id])
+  rfqDeliverableId String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  lineItems PurchaseOrderLineItem[]
+  scoLineItems     PurchaseOrderCOLineItem[]
+  invoiceLineItems InvoiceLineItem[]
 
-  purchaseOrderCOs PurchaseOrderCO[]
-
-  invoices Invoice[]
+  @@unique([purchaseOrderId, lineNumber])
+  @@index([purchaseOrderId])
+  @@index([costCodeId])
 }
 
-enum PurchaseOrderStatus {
-  DELIVERED
-}
-
-model PurchaseOrderLineItem {
-  id              String        @id
-  title           String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+model POAttachment {
+  id              String           @id
+  purchaseOrder   PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id])
   purchaseOrderId String
-  unit            String
-  quantity        Int
-  costCodeId      String
-  price           Decimal
-  amount          Decimal
-  deletedAt       DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  document        File             @relation(fields: [documentId], references: [id])
+  documentId      String           @unique
+
+  attachmentType POAttachmentType?
+  createdAt      DateTime          @default(now())
+
+  @@index([purchaseOrderId])
+}
+
+// ──────────────────────────────────────────────────────
+// SCO (Subcontractor Change Order) — PurchaseOrderCO
+// ──────────────────────────────────────────────────────
+
+model SCOChangeType {
+  id               String            @id
+  name             String            @unique
+  code             String            @unique
+  description      String?
+  color            String
+  order            Int               @unique
+  purchaseOrderCOs PurchaseOrderCO[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+enum SCOInitiatedBy {
+  VENDOR
+  FIRM
+}
+
+enum CostCategory {
+  MATERIALS
+  LABOR
+  EQUIPMENT
+  SUBCONTRACTOR
+  OTHER
 }
 
 model PurchaseOrderCO {
-  id                       String                    @id
-  title                    String
-  reason                   String
-  purchaseOrder            PurchaseOrder             @relation(fields: [purchaseOrderId], references: [id])
-  purchaseOrderId          String
-  total                    Decimal
-  deletedAt                DateTime?
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  purchaseOrderCOLineItems PurchaseOrderCOLineItem[]
+  id              String        @id
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String
+
+  scoNumber String   @unique
+  title     String
+  date      DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+  vendorId  String
+
+  status   ChangeOrderStatus @relation(fields: [statusId], references: [id])
+  statusId String
+
+  amount             Decimal  @db.Decimal(15, 2)
+  reasonForChange    String?  @db.Text
+  detailedScope      String?  @db.Text
+  scheduleImpactDays Int?
+
+  createdBy String
+
+  vendorContactName     String?
+  vendorContactEmail    String?
+  vendorReferenceNumber String?
+
+  changeType   SCOChangeType?      @relation(fields: [changeTypeId], references: [id])
+  changeTypeId String?
+  initiatedBy  SCOInitiatedBy
+  priority     ChangeOrderPriority @default(MEDIUM)
+  costCode     CostCode?           @relation(fields: [costCodeId], references: [id])
+  costCodeId   String?
+
+  linkedPCO   PrimeChangeOrder? @relation(fields: [linkedPCOId], references: [id])
+  linkedPCOId String?
+  rfq         RFQ?              @relation(fields: [rfqId], references: [id])
+  rfqId       String?
+
+  closeoutJustification String? @db.Text
+
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  voidedBy        String?
+  voidedAt        DateTime?
+  voidReason      String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems     PurchaseOrderCOLineItem[]
+  attachments   SCOAttachment[]
+  statusHistory SCOStatusHistory[]
+
+  @@index([purchaseOrderId])
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([statusId])
+  @@index([date])
+}
+
+model SCOStatusHistory {
+  id           String              @id
+  sco          PurchaseOrderCO     @relation(fields: [scoId], references: [id])
+  scoId        String
+  fromStatusId String?
+  fromStatus   ChangeOrderStatus?  @relation("SCOFromStatus", fields: [fromStatusId], references: [id])
+  toStatusId   String
+  toStatus     ChangeOrderStatus   @relation("SCOToStatus", fields: [toStatusId], references: [id])
+  changedBy    String
+  onBehalfOf   String?
+  reason       String?
+  createdAt    DateTime            @default(now())
+
+  @@index([scoId])
 }
 
 model PurchaseOrderCOLineItem {
+  id    String          @id
+  pco   PurchaseOrderCO @relation(fields: [pcoId], references: [id])
+  pcoId String
+
+  lineNumber   Int
+  description  String
+  unit         String
+  quantity     Decimal?     @db.Decimal(10, 2)
+  unitPrice    Decimal?
+  amount       Decimal?
+  costCodeId   String?
+  costCategory CostCategory?
+  notes        String?      @db.Text
+
+  poLineItem   PurchaseOrderLineItem? @relation(fields: [poLineItemId], references: [id])
+  poLineItemId String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([pcoId, lineNumber])
+  @@index([pcoId])
+  @@index([poLineItemId])
+}
+
+model SCOAttachment {
   id         String          @id
-  pco        PurchaseOrderCO @relation(fields: [pcoId], references: [id])
-  pcoId      String
-  unit       String
-  quantity   Int
-  costCodeId String
-  price      Decimal
-  amount     Decimal
-  deletedAt  DateTime?
+  sco        PurchaseOrderCO @relation(fields: [scoId], references: [id])
+  scoId      String
+  document   File            @relation(fields: [documentId], references: [id])
+  documentId String          @unique
   createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+
+  @@index([scoId])
+}
+
+// ──────────────────────────────────────────────────────
+// Invoice
+// ──────────────────────────────────────────────────────
+
+model InvoiceStatus {
+  id        String    @id
+  name      String    @unique
+  label     String
+  color     String
+  order     Int       @unique
+  isDefault Boolean   @default(false)
+
+  invoices  Invoice[]
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum InvoiceType {
+  PRELIMINARY
+  FINAL
+  REVISION
+}
+
+enum InvoiceCategory {
+  MATERIALS
+  LABOR
+  EQUIPMENT
+  SUBCONTRACTOR
+  PROFESSIONAL_SERVICES
+  OTHER
+}
+
+enum InvoiceAttachmentType {
+  INVOICE_PDF
+  DELIVERY_TICKET
+  RECEIPT
+  LIEN_WAIVER
+  BACKUP_DOCUMENTATION
+  OTHER
 }
 
 model Invoice {
-  id              String        @id
-  title           String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  purchaseOrderId String
-  status          InvoiceStatus
-  amount          Decimal
-  deletedAt       DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id              String         @id
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String?
+
+  invoiceNumber String
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id])
+  vendorId  String
+
+  status      InvoiceStatus   @relation(fields: [statusId], references: [id])
+  statusId    String
+  totalAmount Decimal         @db.Decimal(15, 2)
+  invoiceDate DateTime
+  dueDate     DateTime
+  invoiceType InvoiceType     @default(PRELIMINARY)
+  category    InvoiceCategory?
+  notes       String?         @db.Text
+
+  invoiceDocument   File?   @relation(fields: [invoiceDocumentId], references: [id])
+  invoiceDocumentId String? @unique
+
+  createdBy String
+
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  retainagePercent      Decimal?  @default(0)
+  retainageAmount       Decimal?  @db.Decimal(15, 2)
+  retainageReleased     Boolean   @default(false)
+  retainageReleasedDate DateTime?
+
+  taxAmount Decimal? @db.Decimal(15, 2)
+  taxRate   Decimal?
+
+  paidAmount       Decimal?       @db.Decimal(15, 2)
+  paidDate         DateTime?
+  paymentReference String?
+  paymentMethod    PaymentMethod?
+  paymentNotes     String?
+  isPaid           Boolean        @default(false)
+
+  isDisputed          Boolean   @default(false)
+  disputeReason       String?   @db.Text
+  disputeDate         DateTime?
+  disputeResolvedDate DateTime?
+  disputeResolution   String?   @db.Text
+
+  relatedSCOIds String[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  lineItems   InvoiceLineItem[]
+  attachments InvoiceAttachment[]
+
+  @@unique([invoiceNumber, vendorId])
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([purchaseOrderId])
+  @@index([statusId])
+  @@index([dueDate])
+  @@index([invoiceDate])
 }
 
-enum InvoiceStatus {
-  PAID
-  PARTIALLY_PAID
-  UNPAID
-  REJECTED
+model InvoiceLineItem {
+  id        String  @id
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  invoiceId String
+
+  poLineItem   PurchaseOrderLineItem? @relation(fields: [poLineItemId], references: [id])
+  poLineItemId String?
+
+  description String
+  qty         Decimal @db.Decimal(10, 2)
+  unit        String
+  unitPrice   Decimal @db.Decimal(15, 2)
+  amount      Decimal @db.Decimal(15, 2)
+  costCodeId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([poLineItemId])
+}
+
+model InvoiceAttachment {
+  id         String  @id
+  invoice    Invoice @relation(fields: [invoiceId], references: [id])
+  invoiceId  String
+  document   File    @relation(fields: [documentId], references: [id])
+  documentId String  @unique
+
+  attachmentType InvoiceAttachmentType?
+  createdAt      DateTime               @default(now())
+
+  @@index([invoiceId])
 }

@@ -212,7 +212,12 @@
                     "id": { "type": "string" },
                     "name": { "type": "string" },
                     "email": { "type": "string", "format": "email" },
+                    "emailVerified": { "type": "boolean" },
+                    "image": { "type": "string", "nullable": true },
                     "role": { "type": "string", "enum": ["admin", "user"] },
+                    "banned": { "type": "boolean" },
+                    "banReason": { "type": "string", "nullable": true },
+                    "banExpires": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -227,10 +232,15 @@
             },
             "PermissionStatement": {
                 "type": "object",
+                "description": "Permission statements for organization roles. All fields are optional arrays.",
                 "properties": {
                     "user": {
                         "type": "array",
                         "items": { "type": "string", "enum": ["manage-permissions"] }
+                    },
+                    "role": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["list", "create", "update", "delete"] }
                     },
                     "project": {
                         "type": "array",
@@ -245,6 +255,26 @@
                         "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
                     },
                     "costCode": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    },
+                    "contact": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    },
+                    "professionalRole": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    },
+                    "generalContractor": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    },
+                    "gcType": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    },
+                    "vendor": {
                         "type": "array",
                         "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
                     }

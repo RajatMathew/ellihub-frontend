@@ -21,6 +21,17 @@ model File {
   createdBy String
   deletedBy String?
 
+  primeContract              PrimeContract?
+  primeContractAttachment    PrimeContractAttachment?
+  scheduleEntry              ProjectScheduleEntry?
+  pcoAttachment              PCOAttachment?
+  poAttachment               POAttachment?
+  scoAttachment              SCOAttachment?
+  rfqAttachment              RFQAttachment?
+  quoteAttachment            QuoteAttachment?
+  invoiceAttachment          InvoiceAttachment?
+  invoice                    Invoice?
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

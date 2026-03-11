@@ -1,0 +1,685 @@
+{
+    "paths": {
+        "/scos": {
+            "post": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Create a subcontractor change order",
+                "operationId": "createSCO",
+                "description": "Creates an SCO linked to a purchase order. Auto-generates scoNumber.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCOCreateRequest" },
+                            "examples": {
+                                "design-change-sco": {
+                                    "summary": "Design change SCO with line items",
+                                    "value": {
+                                        "purchaseOrderId": "PO_ID",
+                                        "title": "Revised beam connection details per RFI-012",
+                                        "reasonForChange": "Structural engineer revised connection details after field survey",
+                                        "amount": 8500,
+                                        "changeType": "DESIGN_CHANGE",
+                                        "initiatedBy": "FIRM",
+                                        "priority": "HIGH",
+                                        "scheduleImpactDays": 3,
+                                        "lineItems": [
+                                            { "description": "Additional W10x22 beams", "qty": 6, "unit": "EA", "unitPrice": 950, "costCategory": "MATERIALS" },
+                                            { "description": "Modified connection labor", "qty": 16, "unit": "HR", "unitPrice": 185, "costCategory": "LABOR" }
+                                        ]
+                                    }
+                                },
+                                "credit-sco": {
+                                    "summary": "Credit SCO (negative amount)",
+                                    "value": {
+                                        "purchaseOrderId": "PO_ID",
+                                        "title": "Credit for unused material return",
+                                        "amount": -2400,
+                                        "changeType": "CREDIT",
+                                        "initiatedBy": "VENDOR",
+                                        "lineItems": [
+                                            { "description": "Returned 3/4in A36 plates", "qty": -40, "unit": "SF", "unitPrice": 35, "costCategory": "MATERIALS", "notes": "Unused material returned to vendor warehouse" }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "SCO created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "Purchase order not found" }
+                }
+            },
+            "get": {
+                "tags": ["Sub Change Orders"],
+                "summary": "List SCOs by project or PO",
+                "operationId": "listSCOs",
+                "description": "Either projectId or poId query parameter is required.",
+                "parameters": [
+                    { "name": "projectId", "in": "query", "schema": { "type": "string" }, "description": "Filter by project (required if poId not provided)" },
+                    { "name": "poId", "in": "query", "schema": { "type": "string" }, "description": "Filter by purchase order (required if projectId not provided)" },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["DRAFT", "PENDING", "APPROVED", "REJECTED", "VOID"] } },
+                    { "name": "vendorId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "initiatedBy", "in": "query", "schema": { "type": "string", "enum": ["VENDOR", "FIRM"] } },
+                    { "name": "changeType", "in": "query", "schema": { "type": "string", "enum": ["UNFORESEEN_CONDITIONS", "DESIGN_CHANGE", "QUANTITY_ADJUSTMENT", "MATERIAL_SUBSTITUTION", "LABOR_ADJUSTMENT", "EQUIPMENT_RENTAL", "CREDIT", "BACKCHARGE", "SCHEDULE_ACCELERATION", "OTHER"] } },
+                    { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+                    { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "date" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of SCOs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SCOListItem" } }, "pagination": { "$ref": "#/components/schemas/PaginationInfo" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Either projectId or poId is required" },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/scos/pending": {
+            "get": {
+                "tags": ["Sub Change Orders"],
+                "summary": "List pending SCOs across all projects",
+                "operationId": "listPendingSCOs",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "date" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of pending SCOs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SCOListItem" } }, "pagination": { "$ref": "#/components/schemas/PaginationInfo" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/scos/summary/project/{projectId}": {
+            "get": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Get SCO summary for a project",
+                "operationId": "getProjectSCOSummary",
+                "parameters": [
+                    { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SCO summary",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCOSummary" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" }
+                }
+            }
+        },
+        "/scos/{id}/approve": {
+            "post": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Approve an SCO",
+                "operationId": "approveSCO",
+                "description": "Approves the SCO and recalculates the parent PO's totalCommitment.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SCO approved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "SCO not in PENDING status" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        },
+        "/scos/{id}/reject": {
+            "post": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Reject an SCO",
+                "operationId": "rejectSCO",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCORejectRequest" },
+                            "examples": {
+                                "reject": {
+                                    "summary": "Reject with detailed reason",
+                                    "value": {
+                                        "reason": "Cost increase not justified. Vendor should provide detailed breakdown of material and labor costs."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "SCO rejected",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "SCO not in PENDING status" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        },
+        "/scos/{id}/void": {
+            "post": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Void an SCO",
+                "operationId": "voidSCO",
+                "description": "Voids the SCO and recalculates PO commitment if previously approved.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCOVoidRequest" },
+                            "examples": {
+                                "void": {
+                                    "summary": "Void SCO",
+                                    "value": {
+                                        "reason": "Duplicate SCO — work already covered under SCO-001"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "SCO voided",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Cannot void this SCO" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        },
+        "/scos/{id}/line-items": {
+            "post": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Add a line item to an SCO",
+                "operationId": "addSCOLineItem",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCOLineItemCreateRequest" },
+                            "examples": {
+                                "add-line-item": {
+                                    "summary": "Add labor line item",
+                                    "value": {
+                                        "description": "Overtime welding labor for connection revision",
+                                        "qty": 8,
+                                        "unit": "HR",
+                                        "unitPrice": 195,
+                                        "costCategory": "LABOR",
+                                        "notes": "Weekend overtime rate"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Line item added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCOLineItem" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error or SCO not in DRAFT" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        },
+        "/scos/{id}/line-items/{lineItemId}": {
+            "put": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Update an SCO line item",
+                "operationId": "updateSCOLineItem",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "lineItemId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCOLineItemUpdateRequest" },
+                            "examples": {
+                                "update-line-item": {
+                                    "summary": "Update quantity and price",
+                                    "value": {
+                                        "qty": 12,
+                                        "unitPrice": 185,
+                                        "notes": "Revised to include travel time"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Line item updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCOLineItem" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO or line item not found" }
+                }
+            },
+            "delete": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Remove an SCO line item",
+                "operationId": "removeSCOLineItem",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+                    { "name": "lineItemId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "Line item removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO or line item not found" }
+                }
+            }
+        },
+        "/scos/{id}/margin-comparison": {
+            "get": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Get margin comparison for an SCO",
+                "operationId": "getSCOMarginComparison",
+                "description": "Shows the financial impact of this SCO on the PO and project margins.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Margin comparison data",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCOMarginComparison" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        },
+        "/scos/{id}": {
+            "get": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Get an SCO by ID",
+                "operationId": "getSCO",
+                "description": "Full SCO detail including line items, linked PO, and status history.",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SCO detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            },
+            "put": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Update an SCO (DRAFT only)",
+                "operationId": "updateSCO",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SCOUpdateRequest" },
+                            "examples": {
+                                "update-sco": {
+                                    "summary": "Update title and schedule impact",
+                                    "value": {
+                                        "title": "Revised beam connections per RFI-012 v2",
+                                        "amount": 9200,
+                                        "scheduleImpactDays": 5,
+                                        "priority": "URGENT"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "SCO updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "properties": { "data": { "$ref": "#/components/schemas/SCODetail" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Only DRAFT SCOs can be updated" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            },
+            "delete": {
+                "tags": ["Sub Change Orders"],
+                "summary": "Delete an SCO (DRAFT only)",
+                "operationId": "deleteSCO",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "SCO deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Only DRAFT SCOs can be deleted" },
+                    "401": { "description": "Unauthorized" },
+                    "404": { "description": "SCO not found" }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "SCOListItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "scoNumber": { "type": "string", "example": "SCO-PO-2026-001-001-001" },
+                    "title": { "type": "string" },
+                    "amount": { "type": "number" },
+                    "status": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "label": { "type": "string" }, "color": { "type": "string" } } },
+                    "changeType": { "type": "string", "enum": ["UNFORESEEN_CONDITIONS", "DESIGN_CHANGE", "QUANTITY_ADJUSTMENT", "MATERIAL_SUBSTITUTION", "LABOR_ADJUSTMENT", "EQUIPMENT_RENTAL", "CREDIT", "BACKCHARGE", "SCHEDULE_ACCELERATION", "OTHER"], "nullable": true },
+                    "initiatedBy": { "type": "string", "enum": ["VENDOR", "FIRM"] },
+                    "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"], "nullable": true },
+                    "date": { "type": "string", "format": "date-time" },
+                    "purchaseOrder": { "type": "object", "properties": { "id": { "type": "string" }, "poNumber": { "type": "string" } } },
+                    "vendor": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "SCODetail": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "purchaseOrderId": { "type": "string" },
+                    "scoNumber": { "type": "string" },
+                    "title": { "type": "string" },
+                    "reasonForChange": { "type": "string", "nullable": true },
+                    "detailedScope": { "type": "string", "nullable": true },
+                    "amount": { "type": "number" },
+                    "status": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "label": { "type": "string" }, "color": { "type": "string" } } },
+                    "date": { "type": "string", "format": "date-time" },
+                    "changeType": { "type": "string", "nullable": true },
+                    "initiatedBy": { "type": "string", "enum": ["VENDOR", "FIRM"] },
+                    "priority": { "type": "string", "nullable": true },
+                    "scheduleImpactDays": { "type": "integer", "nullable": true },
+                    "vendorContactName": { "type": "string", "nullable": true },
+                    "vendorContactEmail": { "type": "string", "nullable": true },
+                    "vendorReferenceNumber": { "type": "string", "nullable": true },
+                    "linkedPCOId": { "type": "string", "nullable": true },
+                    "rfqId": { "type": "string", "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "approvedBy": { "type": "string", "nullable": true },
+                    "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectedBy": { "type": "string", "nullable": true },
+                    "rejectedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectionReason": { "type": "string", "nullable": true },
+                    "voidedBy": { "type": "string", "nullable": true },
+                    "voidedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "voidReason": { "type": "string", "nullable": true },
+                    "createdBy": { "type": "string" },
+                    "purchaseOrder": { "type": "object", "properties": { "id": { "type": "string" }, "poNumber": { "type": "string" }, "vendorId": { "type": "string" } } },
+                    "vendor": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/SCOLineItem" } },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "SCOLineItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "scoId": { "type": "string" },
+                    "lineNumber": { "type": "integer" },
+                    "description": { "type": "string" },
+                    "qty": { "type": "number" },
+                    "unit": { "type": "string" },
+                    "unitPrice": { "type": "number" },
+                    "amount": { "type": "number", "description": "Auto-computed: qty x unitPrice" },
+                    "poLineItemId": { "type": "string", "nullable": true },
+                    "costCategory": { "type": "string", "enum": ["MATERIALS", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"], "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "SCOSummary": {
+                "type": "object",
+                "properties": {
+                    "totalCount": { "type": "integer" },
+                    "totalApprovedAmount": { "type": "number" },
+                    "totalPendingAmount": { "type": "number" },
+                    "byStatus": { "type": "object" },
+                    "byChangeType": { "type": "object" }
+                }
+            },
+            "SCOMarginComparison": {
+                "type": "object",
+                "properties": {
+                    "sco": { "type": "object", "properties": { "id": { "type": "string" }, "scoNumber": { "type": "string" }, "amount": { "type": "number" } } },
+                    "po": { "type": "object", "properties": { "id": { "type": "string" }, "poNumber": { "type": "string" }, "total": { "type": "number" }, "totalCommitment": { "type": "number" } } },
+                    "impact": { "type": "object", "properties": { "beforeCommitment": { "type": "number" }, "afterCommitment": { "type": "number" }, "changeAmount": { "type": "number" }, "changePercent": { "type": "number" } } }
+                }
+            },
+            "SCOCreateRequest": {
+                "type": "object",
+                "required": ["purchaseOrderId", "title", "amount", "initiatedBy", "lineItems"],
+                "properties": {
+                    "purchaseOrderId": { "type": "string" },
+                    "date": { "type": "string", "format": "date" },
+                    "title": { "type": "string", "maxLength": 255 },
+                    "reasonForChange": { "type": "string" },
+                    "detailedScope": { "type": "string" },
+                    "amount": { "type": "number" },
+                    "scheduleImpactDays": { "type": "integer" },
+                    "changeType": { "type": "string", "enum": ["UNFORESEEN_CONDITIONS", "DESIGN_CHANGE", "QUANTITY_ADJUSTMENT", "MATERIAL_SUBSTITUTION", "LABOR_ADJUSTMENT", "EQUIPMENT_RENTAL", "CREDIT", "BACKCHARGE", "SCHEDULE_ACCELERATION", "OTHER"] },
+                    "initiatedBy": { "type": "string", "enum": ["VENDOR", "FIRM"] },
+                    "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+                    "vendorContactName": { "type": "string", "maxLength": 255 },
+                    "vendorContactEmail": { "type": "string", "format": "email" },
+                    "vendorReferenceNumber": { "type": "string", "maxLength": 100 },
+                    "linkedPCOId": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "costCodeId": { "type": "string" },
+                    "lineItems": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/SCOLineItemCreateRequest" } }
+                }
+            },
+            "SCOUpdateRequest": {
+                "type": "object",
+                "description": "All fields optional (partial update).",
+                "properties": {
+                    "title": { "type": "string", "maxLength": 255 },
+                    "reasonForChange": { "type": "string", "nullable": true },
+                    "detailedScope": { "type": "string", "nullable": true },
+                    "amount": { "type": "number" },
+                    "scheduleImpactDays": { "type": "integer", "nullable": true },
+                    "changeType": { "type": "string", "enum": ["UNFORESEEN_CONDITIONS", "DESIGN_CHANGE", "QUANTITY_ADJUSTMENT", "MATERIAL_SUBSTITUTION", "LABOR_ADJUSTMENT", "EQUIPMENT_RENTAL", "CREDIT", "BACKCHARGE", "SCHEDULE_ACCELERATION", "OTHER"], "nullable": true },
+                    "initiatedBy": { "type": "string", "enum": ["VENDOR", "FIRM"] },
+                    "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"] },
+                    "vendorContactName": { "type": "string", "maxLength": 255, "nullable": true },
+                    "vendorContactEmail": { "type": "string", "format": "email", "nullable": true },
+                    "vendorReferenceNumber": { "type": "string", "maxLength": 100, "nullable": true },
+                    "linkedPCOId": { "type": "string", "nullable": true },
+                    "rfqId": { "type": "string", "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true }
+                }
+            },
+            "SCORejectRequest": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                    "reason": { "type": "string", "minLength": 20, "description": "Rejection reason (minimum 20 characters)" }
+                }
+            },
+            "SCOVoidRequest": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                    "reason": { "type": "string", "minLength": 1, "description": "Reason for voiding" }
+                }
+            },
+            "SCOLineItemCreateRequest": {
+                "type": "object",
+                "required": ["description", "qty", "unit", "unitPrice"],
+                "properties": {
+                    "description": { "type": "string", "minLength": 1 },
+                    "qty": { "type": "number" },
+                    "unit": { "type": "string", "minLength": 1 },
+                    "unitPrice": { "type": "number" },
+                    "poLineItemId": { "type": "string" },
+                    "costCategory": { "type": "string", "enum": ["MATERIALS", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"] },
+                    "costCodeId": { "type": "string" },
+                    "notes": { "type": "string" }
+                }
+            },
+            "SCOLineItemUpdateRequest": {
+                "type": "object",
+                "description": "All fields optional. At least one required.",
+                "properties": {
+                    "description": { "type": "string", "minLength": 1 },
+                    "qty": { "type": "number" },
+                    "unit": { "type": "string", "minLength": 1 },
+                    "unitPrice": { "type": "number" },
+                    "poLineItemId": { "type": "string", "nullable": true },
+                    "costCategory": { "type": "string", "enum": ["MATERIALS", "LABOR", "EQUIPMENT", "SUBCONTRACTOR", "OTHER"], "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true }
+                }
+            }
+        }
+    }
+}

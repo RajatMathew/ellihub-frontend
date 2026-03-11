@@ -1,14 +1,27 @@
+import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
+import { requirePermission } from 'src/middleware/auth';
 
-import { EmployeeCreateSchema } from './models';
+import { EmployeeCreateSchema, EmployeeUpdateSchema } from './models';
 import { EmployeeService } from './service';
 
 const app = new Hono();
 
+app.get(
+    '/',
+    requirePermission({ project: ['view-all'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'name', defaultSortOrder: 'asc' }),
+    async (c: Context) => {
+        const pagination = c.get('pagination');
+        const { data, count } = await EmployeeService.list(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
+
 app.post(
     '/',
-    // requirePermission({ employee: ['create'] }),
+    requirePermission({ project: ['update'] }),
     zValidator('json', EmployeeCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
@@ -16,5 +29,35 @@ app.post(
         return success(c, employee, 201);
     }
 );
+
+app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
+    const id = c.req.param('id');
+    const employee = await EmployeeService.get(id);
+    return success(c, employee);
+});
+
+app.put(
+    '/:id',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', EmployeeUpdateSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const data = c.req.valid('json');
+        const employee = await EmployeeService.update(id, data);
+        return success(c, employee);
+    }
+);
+
+app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await EmployeeService.delete(id);
+    return success(c, null, 200, 'Employee deleted');
+});
+
+app.get('/:id/projects', requirePermission({ project: ['view-all'] }), async (c) => {
+    const id = c.req.param('id');
+    const projects = await EmployeeService.getProjects(id);
+    return success(c, projects);
+});
 
 export default app;
