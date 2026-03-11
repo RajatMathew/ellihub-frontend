@@ -211,7 +211,7 @@ export default function ProjectForm() {
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <ToolbarPageTitle>New Project</ToolbarPageTitle>
@@ -230,8 +230,6 @@ export default function ProjectForm() {
           </ToolbarActions>
         </ToolbarWrapper>
       </Toolbar>
-
-      <Separator />
 
       {/* ── Main layout ── */}
       <FormSectionNav

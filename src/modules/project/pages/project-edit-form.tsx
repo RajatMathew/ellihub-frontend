@@ -159,7 +159,7 @@ function ProjectEditFormInner({
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <ToolbarPageTitle>Edit Project</ToolbarPageTitle>
@@ -175,8 +175,6 @@ function ProjectEditFormInner({
           </ToolbarActions>
         </ToolbarWrapper>
       </Toolbar>
-
-      <Separator />
 
       {/* ── Main layout ── */}
       <FormSectionNav

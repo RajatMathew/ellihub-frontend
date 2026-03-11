@@ -1,8 +1,15 @@
 import { type ReactNode } from 'react';
 
-function Toolbar({ children }: { children?: ReactNode }) {
+import { cn } from '@app/lib/utils';
+
+function Toolbar({ children, sticky = true }: { children?: ReactNode; sticky?: boolean }) {
   return (
-    <div className="flex flex-col grow gap-5 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 -mt-7.5 pt-7.5 pb-6 mb-6 bg-background">
+    <div
+      className={cn(
+        'flex flex-col grow gap-5 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 -mt-7.5 pt-7.5 pb-6 mb-6 bg-background border-b border-border',
+        sticky && 'sticky top-0 z-20',
+      )}
+    >
       {children}
     </div>
   );

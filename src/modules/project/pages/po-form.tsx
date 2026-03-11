@@ -105,7 +105,7 @@ export function POFormPage() {
     >
       {/* Toolbar */}
 
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
@@ -148,9 +148,7 @@ export function POFormPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <Separator />
-
-      {/* Main layout: sidebar nav + content */}
+      {/* Main layout: top nav + content */}
       <FormLayout>
         <FormSectionNav
           sections={PO_FORM_SECTIONS}

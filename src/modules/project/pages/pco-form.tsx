@@ -259,7 +259,7 @@ export function PCOFormPage() {
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
@@ -290,9 +290,7 @@ export function PCOFormPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <Separator />
-
-      {/* Main layout: sidebar nav + content */}
+      {/* Main layout: top nav + content */}
       <FormSectionNav
         sections={PCO_FORM_SECTIONS}
         activeSection={activeSection}

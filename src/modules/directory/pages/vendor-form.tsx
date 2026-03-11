@@ -251,7 +251,7 @@ export function VendorFormPage() {
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
@@ -286,8 +286,6 @@ export function VendorFormPage() {
           </ToolbarActions>
         </ToolbarWrapper>
       </Toolbar>
-
-      <Separator />
 
       {/* Main layout: top nav + content */}
       <FormSectionNav

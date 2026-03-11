@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+
 import { Link, useLocation, useParams } from 'react-router-dom';
 
 import {
@@ -10,11 +12,6 @@ import {
 } from '@app/components/ui/breadcrumb';
 
 import { useProjectDetailQuery } from '@modules/project/hooks';
-
-/** Check if a path segment looks like a ULID / CUID (all-uppercase alphanumeric, 20+ chars) */
-function isIdSegment(segment: string) {
-  return /^[A-Z0-9]{20,}$/i.test(segment);
-}
 
 export function HeaderBreadcrumbs() {
   const location = useLocation();
@@ -53,8 +50,9 @@ export function HeaderBreadcrumbs() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {breadcrumbs.map((crumb) => (
-          <div key={crumb.path} className="flex items-center">
+        {breadcrumbs.map((crumb, index) => (
+          <Fragment key={crumb.path}>
+            {index > 0 && <BreadcrumbSeparator />}
             <BreadcrumbItem>
               {crumb.isLast ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
@@ -64,11 +62,7 @@ export function HeaderBreadcrumbs() {
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>
-
-            {!crumb.isLast && (
-              <BreadcrumbSeparator className="text-xs text-muted-foreground">/</BreadcrumbSeparator>
-            )}
-          </div>
+          </Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>
