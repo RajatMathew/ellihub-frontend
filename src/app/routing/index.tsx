@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useLoadingBar } from 'react-top-loading-bar';
 
+import { ErrorBoundary } from '@app/components/error/error-boundary';
+
 import { AppRoutingSetup, HeaderRoutingSetup } from './setup';
 
 export function AppRouting() {
@@ -41,11 +43,13 @@ export function AppRouting() {
   return (
     <div className="bg-background lg:border-e lg:border-b lg:border-border grow lg:overflow-y-auto lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
       <main
-        className="grow lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto"
+        className="grow lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto bg-zinc-50"
         role="content"
       >
         <HeaderRoutingSetup />
-        <AppRoutingSetup />
+        <ErrorBoundary>
+          <AppRoutingSetup />
+        </ErrorBoundary>
       </main>
     </div>
   );

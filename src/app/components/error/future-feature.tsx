@@ -1,32 +1,32 @@
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+import { Button } from '@app/components/ui/button';
+
 export default function FutureFeature() {
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950">
-      <div className="w-full max-w-xl rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm px-10 py-14 text-center">
-        {/* Badge */}
-        <div className="mb-6">
-          <span className="inline-flex items-center px-3 py-1 text-xs font-medium tracking-wide uppercase rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-            Upcoming Feature
-          </span>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-4">
-          Coming Soon
-        </h1>
-
-        {/* Description */}
-        <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-10">
-          This feature is currently under development and will be introduced in a future release to
-          enhance operational efficiency.
-        </p>
-
-        {/* Footer */}
-        <div className="flex items-center justify-center gap-6">
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            Access will be enabled automatically
-          </div>
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+      <div className="flex items-center justify-center size-16 rounded-full bg-primary/10 mb-6">
+        <Sparkles className="size-7 text-primary" />
       </div>
+
+      <span className="inline-flex items-center px-2.5 py-0.5 text-[11px] font-semibold tracking-widest uppercase rounded-full bg-primary/10 text-primary mb-4">
+        Coming Soon
+      </span>
+      <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">
+        Feature in development
+      </h1>
+      <p className="text-sm text-muted-foreground max-w-md mb-8">
+        This feature is currently under development and will be available in a future release.
+        Access will be enabled automatically.
+      </p>
+
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+        <ArrowLeft className="size-4" />
+        Go back
+      </Button>
     </div>
   );
 }

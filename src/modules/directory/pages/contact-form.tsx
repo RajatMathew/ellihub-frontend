@@ -28,7 +28,8 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav, QuickCreateVendorDialog } from '../components';
+import { FormSectionNav } from '@app/components/form-section-nav';
+import { QuickCreateVendorDialog } from '../components';
 import { CONTACT_FORM_SECTIONS } from '../constants/contacts.constants';
 import {
   useAddVendorLinkMutation,
@@ -206,7 +207,7 @@ export function ContactFormPage() {
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}
-      <Toolbar>
+      <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
             <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
@@ -239,19 +240,14 @@ export function ContactFormPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <Separator />
+      {/* Main layout: top nav + content */}
+      <FormSectionNav
+        sections={CONTACT_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-      {/* Main layout: sidebar nav + content */}
-      <div className="flex gap-8 pt-8">
-        {/* Left sidebar nav */}
-        <FormSectionNav
-          sections={CONTACT_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
-        {/* Right content */}
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="pt-6 space-y-6">
           {/* ---- Section: Contact Info ---- */}
           <Card id="contact-info">
             <CardContent className="space-y-6">
@@ -510,7 +506,6 @@ export function ContactFormPage() {
               </Field>
             </CardContent>
           </Card>
-        </div>
       </div>
 
       <QuickCreateVendorDialog

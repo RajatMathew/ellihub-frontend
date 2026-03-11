@@ -1,3 +1,6 @@
+
+
+
 import path from 'path';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -37,7 +40,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
       manifest: {
         name: 'Elle Hub',
@@ -58,6 +61,14 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@app': path.resolve(__dirname, 'src/app'),

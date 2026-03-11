@@ -69,7 +69,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn('space-y-4 pt-5 pb-6', className)}>
+    <div className={cn('space-y-4 pt-5 pb-6 mb-6 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 bg-background', className)}>
       {/* Main Header Row */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         {/* Left Section: Title + Metadata */}
