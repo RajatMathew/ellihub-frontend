@@ -233,6 +233,53 @@
                 }
             }
         },
+        "/file/folder/{id}/breadcrumbs": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get folder breadcrumbs from root",
+                "operationId": "getFolderBreadcrumbs",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Folder ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Breadcrumbs from root to the given folder",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/Breadcrumb" }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/file/folder/{id}": {
             "get": {
                 "tags": ["File"],
@@ -535,6 +582,19 @@
                         "minLength": 1,
                         "description": "New name",
                         "example": "Updated Name"
+                    }
+                }
+            },
+            "Breadcrumb": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Folder ULID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Folder name"
                     }
                 }
             },

@@ -318,6 +318,26 @@ export const FileService = {
         });
     },
 
+    getBreadcrumbs: async (folderId: string): Promise<{ id: string; name: string }[]> => {
+        const breadcrumbs: { id: string; name: string }[] = [];
+        let currentId: string | null = folderId;
+
+        while (currentId) {
+            const folder: { id: string; name: string; parentId: string | null } | null =
+                await prismaClient.file.findUnique({
+                    where: { id: currentId! },
+                    select: { id: true, name: true, parentId: true },
+                });
+
+            if (!folder) break;
+
+            breadcrumbs.unshift({ id: folder.id, name: folder.name });
+            currentId = folder.parentId;
+        }
+
+        return breadcrumbs;
+    },
+
     deleteFile: async (id: string, userId: string): Promise<void> => {
         const file = await prismaClient.file.findUnique({
             where: { id },

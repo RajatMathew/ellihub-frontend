@@ -50,6 +50,12 @@ app.put(
     }
 );
 
+app.get('/folder/:id/breadcrumbs', async (c) => {
+    const breadcrumbs = await FileService.getBreadcrumbs(c.req.param('id'));
+
+    return success(c, breadcrumbs);
+});
+
 app.get('/folder/:id', async (c) => {
     const id = c.req.param('id');
     const folder = await FileService.getFolderDetails(id);
