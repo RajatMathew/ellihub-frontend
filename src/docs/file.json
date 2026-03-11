@@ -1,5 +1,112 @@
 {
     "paths": {
+        "/file/search": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Search and filter files and folders",
+                "operationId": "searchFiles",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by file/folder name"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["FILE", "FOLDER"] },
+                        "description": "Filter by type"
+                    },
+                    {
+                        "name": "mimeType",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by MIME type (partial match)"
+                    },
+                    {
+                        "name": "parentId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by parent folder ID"
+                    },
+                    {
+                        "name": "createdBy",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by creator user ID"
+                    },
+                    {
+                        "name": "createdFrom",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Filter by creation date (from)"
+                    },
+                    {
+                        "name": "createdTo",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Filter by creation date (to)"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["name", "size", "createdAt", "updatedAt", "type", "mimeType"], "default": "createdAt" },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+                        "description": "Sort direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of files and folders",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/FileItem" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/file/upload": {
             "post": {
                 "tags": ["File"],
@@ -583,6 +690,20 @@
                         "description": "New name",
                         "example": "Updated Name"
                     }
+                }
+            },
+            "FileItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "File/folder ULID" },
+                    "name": { "type": "string" },
+                    "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
+                    "mimeType": { "type": "string", "nullable": true },
+                    "size": { "type": "integer", "nullable": true },
+                    "parentId": { "type": "string", "nullable": true },
+                    "createdBy": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
             "Breadcrumb": {

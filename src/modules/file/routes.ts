@@ -1,5 +1,6 @@
+import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { s3Upload } from 'src/middleware/s3-upload';
 
 import { FileFolderRenameSchema, FolderCreateSchema } from './models';
@@ -7,6 +8,34 @@ import { s3Service } from './s3';
 import { FileService } from './services';
 
 export const app = new Hono();
+
+app.get(
+    '/search',
+    paginationMiddleware({
+        defaultSize: 25,
+        defaultSortBy: 'createdAt',
+        defaultSortOrder: 'desc',
+        allowedSortFields: ['name', 'size', 'createdAt', 'updatedAt', 'type', 'mimeType'],
+    }),
+    async (c: Context) => {
+        const pagination = c.get('pagination');
+        const query = c.req.query();
+
+        const { type, mimeType, parentId, createdBy, createdFrom, createdTo } = query;
+        pagination.filter = {
+            ...pagination.filter,
+            ...(type && { type }),
+            ...(mimeType && { mimeType }),
+            ...(parentId && { parentId }),
+            ...(createdBy && { createdBy }),
+            ...(createdFrom && { createdFrom }),
+            ...(createdTo && { createdTo }),
+        };
+
+        const { data, count } = await FileService.searchFiles(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
 
 app.post('/upload', s3Upload, async (c) => {
     console.log(c.get('fileId'));

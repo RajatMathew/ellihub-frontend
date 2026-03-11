@@ -1,6 +1,7 @@
 import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { checkDeletedAt } from '@modules/common/utils';
 import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
@@ -336,6 +337,51 @@ export const FileService = {
         }
 
         return breadcrumbs;
+    },
+
+    searchFiles: async (params: PaginationParams): Promise<{ data: File[]; count: number }> => {
+        const { filter, skip, take, sortBy, sortOrder, search: querySearch } = params;
+        const {
+            search: filterSearch,
+            type,
+            mimeType,
+            parentId,
+            createdBy,
+            createdFrom,
+            createdTo,
+            ...restFilter
+        } = filter || {};
+        const search = querySearch || filterSearch;
+
+        const whereClause: Record<string, unknown> = {
+            deletedAt: null,
+            ...restFilter,
+            ...(type && { type }),
+            ...(mimeType && { mimeType: { contains: mimeType, mode: 'insensitive' as const } }),
+            ...(parentId && { parentId }),
+            ...(createdBy && { createdBy }),
+            ...(search && {
+                name: { contains: search, mode: 'insensitive' as const },
+            }),
+            ...((createdFrom || createdTo) && {
+                createdAt: {
+                    ...(createdFrom && { gte: new Date(createdFrom) }),
+                    ...(createdTo && { lte: new Date(createdTo) }),
+                },
+            }),
+        };
+
+        const [count, data] = await prismaClient.$transaction([
+            prismaClient.file.count({ where: whereClause }),
+            prismaClient.file.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: { [sortBy as keyof File]: sortOrder },
+            }),
+        ]);
+
+        return { data, count };
     },
 
     deleteFile: async (id: string, userId: string): Promise<void> => {
