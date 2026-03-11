@@ -1,6 +1,7 @@
 import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { checkDeletedAt } from '@modules/common/utils';
 import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
@@ -121,13 +122,22 @@ export const FileService = {
     ): Promise<void> => {
         const projectsRootFolder = await FileService.getRootFolder('projects', tx);
 
-        const subFolders = [
-            'invoice',
-            'rfq',
-            'purchase order',
-            'purchase order co',
-            'prime co',
-            'prime contract',
+        const subFolders: {
+            name: string;
+            protectedFolderType:
+                | 'INVOICE'
+                | 'RFQ'
+                | 'PURCHASE_ORDER'
+                | 'PURCHASE_ORDER_CO'
+                | 'PRIME_CO'
+                | 'PRIME_CONTRACT';
+        }[] = [
+            { name: 'invoice', protectedFolderType: 'INVOICE' },
+            { name: 'rfq', protectedFolderType: 'RFQ' },
+            { name: 'purchase order', protectedFolderType: 'PURCHASE_ORDER' },
+            { name: 'purchase order co', protectedFolderType: 'PURCHASE_ORDER_CO' },
+            { name: 'prime co', protectedFolderType: 'PRIME_CO' },
+            { name: 'prime contract', protectedFolderType: 'PRIME_CONTRACT' },
         ];
 
         const projectFolder = await tx.file.create({
@@ -138,6 +148,7 @@ export const FileService = {
                 createdBy: userId,
                 isDeletable: false,
                 parentId: projectsRootFolder.id,
+                protectedFolderType: 'PROJECT_ROOT',
             },
         });
 
@@ -145,14 +156,63 @@ export const FileService = {
             await tx.file.create({
                 data: {
                     id: ulid(),
-                    name: sf,
+                    name: sf.name,
                     type: 'FOLDER',
                     createdBy: userId,
                     isDeletable: false,
                     parentId: projectFolder.id,
+                    protectedFolderType: sf.protectedFolderType,
                 },
             });
         }
+    },
+
+    getProjectFolderId: async (projectId: string, tx?: TransactionClient): Promise<string> => {
+        const prisma = tx || prismaClient;
+
+        const projectFolder = await prisma.file.findFirst({
+            where: {
+                name: projectId,
+                protectedFolderType: 'PROJECT_ROOT',
+            },
+            select: { id: true },
+        });
+
+        if (!projectFolder)
+            throw new NotFoundError(`Project folder not found for project: ${projectId}`);
+
+        return projectFolder.id;
+    },
+
+    getProjectSubFolderId: async (
+        projectId: string,
+        type:
+            | 'INVOICE'
+            | 'RFQ'
+            | 'PURCHASE_ORDER'
+            | 'PURCHASE_ORDER_CO'
+            | 'PRIME_CO'
+            | 'PRIME_CONTRACT',
+        tx?: TransactionClient
+    ): Promise<string> => {
+        const prisma = tx || prismaClient;
+
+        const projectFolderId = await FileService.getProjectFolderId(projectId, tx);
+
+        const subFolder = await prisma.file.findFirst({
+            where: {
+                parentId: projectFolderId,
+                protectedFolderType: type,
+            },
+            select: { id: true },
+        });
+
+        if (!subFolder)
+            throw new NotFoundError(
+                `Project sub-folder '${type}' not found for project: ${projectId}`
+            );
+
+        return subFolder.id;
     },
 
     getRootFolder: async (
@@ -257,6 +317,71 @@ export const FileService = {
                 deletedBy: userId,
             },
         });
+    },
+
+    getBreadcrumbs: async (folderId: string): Promise<{ id: string; name: string }[]> => {
+        const breadcrumbs: { id: string; name: string }[] = [];
+        let currentId: string | null = folderId;
+
+        while (currentId) {
+            const folder: { id: string; name: string; parentId: string | null } | null =
+                await prismaClient.file.findUnique({
+                    where: { id: currentId! },
+                    select: { id: true, name: true, parentId: true },
+                });
+
+            if (!folder) break;
+
+            breadcrumbs.unshift({ id: folder.id, name: folder.name });
+            currentId = folder.parentId;
+        }
+
+        return breadcrumbs;
+    },
+
+    searchFiles: async (params: PaginationParams): Promise<{ data: File[]; count: number }> => {
+        const { filter, skip, take, sortBy, sortOrder, search: querySearch } = params;
+        const {
+            search: filterSearch,
+            type,
+            mimeType,
+            parentId,
+            createdBy,
+            createdFrom,
+            createdTo,
+            ...restFilter
+        } = filter || {};
+        const search = querySearch || filterSearch;
+
+        const whereClause: Record<string, unknown> = {
+            deletedAt: null,
+            ...restFilter,
+            ...(type && { type }),
+            ...(mimeType && { mimeType: { contains: mimeType, mode: 'insensitive' as const } }),
+            ...(parentId && { parentId }),
+            ...(createdBy && { createdBy }),
+            ...(search && {
+                name: { contains: search, mode: 'insensitive' as const },
+            }),
+            ...((createdFrom || createdTo) && {
+                createdAt: {
+                    ...(createdFrom && { gte: new Date(createdFrom) }),
+                    ...(createdTo && { lte: new Date(createdTo) }),
+                },
+            }),
+        };
+
+        const [count, data] = await prismaClient.$transaction([
+            prismaClient.file.count({ where: whereClause }),
+            prismaClient.file.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: { [sortBy as keyof File]: sortOrder },
+            }),
+        ]);
+
+        return { data, count };
     },
 
     deleteFile: async (id: string, userId: string): Promise<void> => {
