@@ -685,12 +685,12 @@ export default function RFQDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">#</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Product / Description</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Est. Unit Price</th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Est. Total</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
+                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -698,16 +698,18 @@ export default function RFQDetailPage() {
                         const estTotal = d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * d.quantity;
                         return (
                           <tr key={d.id} className="border-b last:border-0">
-                            <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
-                            <td className="py-2.5 pr-4">
+                            <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
+                            <td className="py-2.5 pr-3">
                               <div className="font-medium">{d.description}</div>
                               {d.specifications && (
-                                <div className="text-xs text-muted-foreground">{d.specifications}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {d.specifications}
+                                </div>
                               )}
                             </td>
-                            <td className="py-2.5 pr-4">{d.unit}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">{d.quantity}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                            <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
+                            <td className="py-2.5 pr-3">{d.unit}</td>
+                            <td className="py-2.5 pr-3 text-right tabular-nums">
                               {d.estimatedUnitPrice != null ? formatCurrency(d.estimatedUnitPrice) : '—'}
                             </td>
                             <td className="py-2.5 text-right font-medium tabular-nums">

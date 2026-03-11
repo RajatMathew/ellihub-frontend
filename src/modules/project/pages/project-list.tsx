@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
+
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { Button } from '@app/components/ui/button';
-import { Skeleton } from '@app/components/ui/skeleton';
 import {
   Toolbar,
   ToolbarActions,
@@ -10,7 +9,8 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-
+import { Button } from '@app/components/ui/button';
+import { Skeleton } from '@app/components/ui/skeleton';
 import { ProjectDivisionBoard } from '@modules/project/components/project-division-board';
 import { ProjectStatusSummary } from '@modules/project/components/project-status-summary';
 import { ProjectYearTabs } from '@modules/project/components/project-year-tabs';
@@ -38,7 +38,7 @@ export default function ProjectList() {
         return next;
       });
     },
-    [setSearchParams],
+    [setSearchParams]
   );
 
   const handleStatusClick = useCallback(
@@ -53,7 +53,7 @@ export default function ProjectList() {
         return next;
       });
     },
-    [setSearchParams],
+    [setSearchParams]
   );
 
   return (
@@ -62,7 +62,10 @@ export default function ProjectList() {
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
-            <ToolbarPageTitle>Portfolio Overview / Active Projects</ToolbarPageTitle>
+            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+              Portfolio Overview
+            </div>
+            <ToolbarPageTitle>Active Projects</ToolbarPageTitle>
           </ToolbarHeading>
           <ToolbarActions>
             <Button variant="primary" asChild>
@@ -70,14 +73,10 @@ export default function ProjectList() {
             </Button>
           </ToolbarActions>
         </ToolbarWrapper>
-      </Toolbar>
 
-      {/* Year tabs */}
-      <ProjectYearTabs
-        activeYear={year}
-        totalCount={totalCount}
-        onYearChange={handleYearChange}
-      />
+        {/* Year tabs */}
+        <ProjectYearTabs activeYear={year} totalCount={totalCount} onYearChange={handleYearChange} />
+      </Toolbar>
 
       {/* Loading state */}
       {isLoading && (

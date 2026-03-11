@@ -94,7 +94,7 @@ export function FormSectionNav({
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-10 -mx-4 px-4 py-3 bg-background/80 backdrop-blur-md"
+      className="sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-zinc-50/95 backdrop-blur-md"
     >
       <div className="flex items-center w-full gap-2">
         {sections.map((section, i) => {
@@ -122,7 +122,7 @@ export function FormSectionNav({
                     ? 'bg-primary/10 text-primary'
                     : isPast
                       ? 'bg-primary/10 text-primary'
-                      : 'bg-muted text-muted-foreground group-hover:bg-accent-foreground/10',
+                      : 'bg-background text-muted-foreground group-hover:bg-accent-foreground/10',
                 )}
               >
                 {i + 1}

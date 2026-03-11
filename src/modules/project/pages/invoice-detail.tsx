@@ -313,22 +313,24 @@ export function InvoiceDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">#</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
                         <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoice.lineItems.map((li, idx) => (
                         <tr key={li.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-2.5 pr-4 font-medium">{li.description}</td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{li.qty}</td>
-                          <td className="py-2.5 pr-4">{li.unit}</td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{formatCurrency(li.unitPrice)}</td>
+                          <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
+                          <td className="py-2.5 pr-3">
+                            <div className="font-medium">{li.description}</div>
+                          </td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums">{li.qty}</td>
+                          <td className="py-2.5 pr-3">{li.unit}</td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums">{formatCurrency(li.unitPrice)}</td>
                           <td className="py-2.5 text-right font-medium tabular-nums">{formatCurrency(li.amount)}</td>
                         </tr>
                       ))}

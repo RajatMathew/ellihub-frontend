@@ -1,7 +1,11 @@
 import { type ReactNode } from 'react';
 
 function Toolbar({ children }: { children?: ReactNode }) {
-  return <div className="flex flex-col grow gap-5 mb-4 lg:mb-6">{children}</div>;
+  return (
+    <div className="flex flex-col grow gap-5 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 -mt-7.5 pt-7.5 pb-6 mb-6 bg-background">
+      {children}
+    </div>
+  );
 }
 
 function ToolbarActions({ children }: { children?: ReactNode }) {

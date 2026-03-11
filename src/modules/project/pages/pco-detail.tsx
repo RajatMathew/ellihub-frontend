@@ -404,22 +404,19 @@ export function PCODetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">
                           #
                         </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                          Title
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           Description
                         </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
                           Qty
                         </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           Unit
                         </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
                           Unit Price
                         </th>
                         <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
@@ -430,12 +427,18 @@ export function PCODetailPage() {
                     <tbody>
                       {pco.lineItems.map((li, idx) => (
                         <tr key={li.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-2.5 pr-4 font-medium">{li.title}</td>
-                          <td className="py-2.5 pr-4 text-muted-foreground">{li.description}</td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{li.qty}</td>
-                          <td className="py-2.5 pr-4">{li.unit}</td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
+                          <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
+                          <td className="py-2.5 pr-3">
+                            <div className="font-medium">{li.description}</div>
+                            {li.title && li.title !== li.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {li.title}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums">{li.qty}</td>
+                          <td className="py-2.5 pr-3">{li.unit}</td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums">
                             {formatCurrency(li.unitPrice)}
                           </td>
                           <td className="py-2.5 text-right font-medium tabular-nums">
@@ -446,7 +449,7 @@ export function PCODetailPage() {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={6} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        <td colSpan={5} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           Total
                         </td>
                         <td className="pt-3 text-right font-semibold tabular-nums">
