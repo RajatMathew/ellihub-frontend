@@ -24,7 +24,7 @@ const DirectoryVendors = lazy(() => import('@modules/directory/routes/vendors.ro
 
 // Project layout & pages
 const ProjectLayout = lazy(() => import('@modules/project'));
-const ProjectOverview = lazy(() => import('@modules/project/pages/overview'));
+const ProjectOverview = lazy(() => import('@modules/project/pages/project-contract-overview'));
 const ProjectContracts = lazy(() => import('@modules/project/pages/contracts'));
 const ProjectChangeOrders = lazy(() => import('@modules/project/pages/change-orders'));
 const RFQListPage = lazy(() => import('@modules/project/pages/rfq-list'));
@@ -32,7 +32,7 @@ const RFQFormPage = lazy(() => import('@modules/project/pages/rfq-form'));
 const RFQDetailPage = lazy(() => import('@modules/project/pages/rfq-detail'));
 const FilesRoutes = lazy(() => import('@modules/files/routes/files.route'));
 const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
-const ProjectVendorCOs = lazy(() => import('@modules/project/pages/vendor-change-orders'));
+const ProjectSCOList = lazy(() => import('@modules/project/pages/subcontractor-change-orders'));
 const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
 const ProjectFiles = lazy(() => import('@modules/project/pages/files'));
 const ProjectRoutes = lazy(() => import('@modules/project/routes/projects.route'));
@@ -116,7 +116,7 @@ export const routeTree: RouteDef[] = [
           },
           {
             path: 'vendors/change-orders',
-            component: ProjectVendorCOs,
+            component: ProjectSCOList,
             title: 'Change Orders',
           },
           {

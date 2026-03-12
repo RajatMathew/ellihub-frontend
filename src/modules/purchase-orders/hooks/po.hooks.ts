@@ -33,6 +33,19 @@ export const useCreatePOMutation = () => {
   });
 };
 
+export const useUpdatePOMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreatePOInput> }) =>
+      poApi.update(id, data),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: poKeys.list() });
+      qc.invalidateQueries({ queryKey: poKeys.detail(updated.id) });
+    },
+    onError: () => toast.error('Failed to update purchase order.'),
+  });
+};
+
 export const useDeletePOMutation = () => {
   const qc = useQueryClient();
   return useMutation({

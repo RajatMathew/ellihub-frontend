@@ -6,6 +6,7 @@ import { projectKeys } from '@modules/project/constants/project.keys';
 import type {
   CreateProjectInput,
   ListProjectsParams,
+  ProjectDetail,
   UpdateProjectInput,
 } from '@modules/project/schemas/project.schema';
 
@@ -59,9 +60,9 @@ export const useUpdateProjectMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
       projectApi.update(id, data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (updated: ProjectDetail) => {
       qc.invalidateQueries({ queryKey: projectKeys.all });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(variables.id) });
+      qc.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
     },
     onError: () => toast.error('Failed to update project.'),
   });

@@ -114,6 +114,28 @@ export const poApi = {
     return result.data;
   },
 
+  async getById(id: string): Promise<PODetail> {
+    const res = await api.get(`${BASE}/${id}`);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.getById] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async update(id: string, data: Partial<CreatePOInput>): Promise<PODetail> {
+    const res = await api.put(`${BASE}/${id}`, data);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.update] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
   },

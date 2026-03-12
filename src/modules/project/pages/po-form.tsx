@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, Mail, Phone, User } from 'lucide-react';
@@ -31,14 +31,14 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { useCostCodesQuery } from '@modules/catalog/hooks';
-import { useVendorsQuery } from '@modules/directory/hooks';
+import { useContactsQuery, useVendorsQuery } from '@modules/directory/hooks';
 import {
   PAYMENT_TERMS_OPTIONS,
   PO_FORM_SECTIONS,
   TRADE_CATEGORY_OPTIONS,
 } from '@modules/purchase-orders/constants/po.constants';
 import poMockData from '@modules/purchase-orders/mock/po-create.mock.json';
-import { useCreatePOMutation } from '@modules/purchase-orders/hooks/po.hooks';
+import { useCreatePOMutation, usePODetailQuery, useUpdatePOMutation } from '@modules/purchase-orders/hooks/po.hooks';
 import {
   createPOInputSchema,
   type CreatePOInput,
@@ -47,24 +47,35 @@ import {
 /* ---- Page ---- */
 
 export function POFormPage() {
-  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { projectId = '', poId } = useParams<{ projectId: string; poId: string }>();
+  const isEditMode = !!poId;
   const navigate = useNavigate();
 
+  const { data: existingPO, isLoading: isLoadingPO } = usePODetailQuery(poId ?? '');
   const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
+  const { data: contactsData } = useContactsQuery({ size: 1000 });
   const { data: costCodesData } = useCostCodesQuery();
 
   const createMutation = useCreatePOMutation();
+  const updateMutation = useUpdatePOMutation();
 
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
     value: v.id,
     label: v.name,
   }));
+  const contacts = contactsData?.data ?? [];
+  const contactOptions = contacts.map((c) => ({
+    value: c.id,
+    label: c.fullName,
+  }));
+  const contactsById = new Map(contacts.map((c) => [c.id, c]));
+
   const costCodeOptions = (costCodesData?.data ?? []).map((cc) => ({
     value: cc.id,
     label: `${cc.code} - ${cc.name}`,
   }));
 
-  const { control, handleSubmit, formState, reset } = useForm<CreatePOInput>({
+  const { control, handleSubmit, formState, reset, setValue } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
     defaultValues: {
       projectId,
@@ -87,16 +98,65 @@ export function POFormPage() {
     },
   });
 
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (isEditMode && existingPO) {
+      reset({
+        projectId: existingPO.projectId,
+        vendorId: existingPO.vendorId,
+        tradeCategory: existingPO.tradeCategory,
+        description: existingPO.description,
+        contactName: existingPO.contactName ?? '',
+        contactEmail: existingPO.contactEmail ?? '',
+        contactPhone: existingPO.contactPhone ?? '',
+        leadTime: existingPO.leadTime ?? '',
+        issueDate: existingPO.issueDate?.split('T')[0] ?? '',
+        expectedDate: existingPO.expectedDate?.split('T')[0] ?? '',
+        shipToAddress: existingPO.shipToAddress ?? '',
+        taxPercent: Number(existingPO.taxPercent) || 0,
+        paymentTerms: existingPO.paymentTerms,
+        retainagePercent: Number(existingPO.retainagePercent) || 10,
+        notes: existingPO.notes ?? '',
+        vendorNotes: existingPO.vendorNotes ?? '',
+        lineItems: existingPO.lineItems.length > 0
+          ? existingPO.lineItems.map((li) => ({
+              description: li.description,
+              quantity: Number(li.quantity),
+              unit: li.unit,
+              unitPrice: Number(li.unitPrice),
+              costCodeId: li.costCodeId ?? undefined,
+              notes: li.notes ?? undefined,
+            }))
+          : [{ description: '', quantity: 1, unit: 'EA', unitPrice: 0 }],
+      });
+    }
+  }, [isEditMode, existingPO, reset]);
+
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
 
   const [activeSection, setActiveSection] = useState<string>('po-details');
-  const isSubmitting = createMutation.isPending;
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const onSubmit = (formData: CreatePOInput) => {
-    createMutation.mutate(formData, {
-      onSuccess: () => navigate('..', { relative: 'path' }),
-    });
+    if (isEditMode && poId) {
+      updateMutation.mutate(
+        { id: poId, data: formData },
+        { onSuccess: () => navigate('..', { relative: 'path' }) },
+      );
+    } else {
+      createMutation.mutate(formData, {
+        onSuccess: () => navigate('..', { relative: 'path' }),
+      });
+    }
   };
+
+  if (isEditMode && isLoadingPO) {
+    return (
+      <div className="container-fluid py-7.5">
+        <div className="text-sm text-muted-foreground">Loading purchase order...</div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -113,28 +173,32 @@ export function POFormPage() {
                 Purchase Orders
               </Link>
             </div>
-            <ToolbarPageTitle>New Purchase Order</ToolbarPageTitle>
+            <ToolbarPageTitle>{isEditMode ? 'Edit Purchase Order' : 'New Purchase Order'}</ToolbarPageTitle>
             <span className="text-sm text-muted-foreground">
-              Create a new purchase order with line items.
+              {isEditMode
+                ? `Editing ${existingPO?.poNumber ?? 'PO'}`
+                : 'Create a new purchase order with line items.'}
             </span>
           </ToolbarHeading>
           <ToolbarActions>
-            <MockDataButton
-              data={poMockData}
-              onLoad={(entries) => {
-                const d = entries[Math.floor(Math.random() * entries.length)];
-                const randomVendor = vendorOptions[Math.floor(Math.random() * vendorOptions.length)]?.value ?? '';
-                reset({
-                  ...d,
-                  projectId,
-                  vendorId: randomVendor,
-                  lineItems: d.lineItems.map((item) => ({
-                    ...item,
-                    costCodeId: costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ?? undefined,
-                  })),
-                });
-              }}
-            />
+            {!isEditMode && (
+              <MockDataButton
+                data={poMockData}
+                onLoad={(entries) => {
+                  const d = entries[Math.floor(Math.random() * entries.length)];
+                  const randomVendor = vendorOptions[Math.floor(Math.random() * vendorOptions.length)]?.value ?? '';
+                  reset({
+                    ...d,
+                    projectId,
+                    vendorId: randomVendor,
+                    lineItems: d.lineItems.map((item) => ({
+                      ...item,
+                      costCodeId: costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ?? undefined,
+                    })),
+                  });
+                }}
+              />
+            )}
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
@@ -142,7 +206,7 @@ export function POFormPage() {
             </Button>
             <Button size="sm" type="submit" disabled={isSubmitting}>
               <Check className="size-4" />
-              Create PO
+              {isEditMode ? 'Save Changes' : 'Create PO'}
             </Button>
           </ToolbarActions>
         </ToolbarWrapper>
@@ -272,7 +336,31 @@ export function POFormPage() {
                 />
               </div>
 
-              {/* Contact Name + Email + Phone */}
+              {/* Contact — pick from directory */}
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Contact
+                </FieldLabel>
+                <SearchableSelect
+                  options={contactOptions}
+                  value={null}
+                  onValueChange={(contactId) => {
+                    if (!contactId) return;
+                    const contact = contactsById.get(contactId);
+                    if (!contact) return;
+                    setValue('contactName', contact.fullName, { shouldDirty: true });
+                    setValue('contactEmail', contact.email?.email ?? '', { shouldDirty: true });
+                    setValue('contactPhone', contact.phoneNumber?.phone ?? '', { shouldDirty: true });
+                  }}
+                  placeholder="Search contacts..."
+                  searchPlaceholder="Search by name..."
+                  emptyMessage="No contacts found."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select a contact to auto-fill the fields below, or enter manually.
+                </p>
+              </Field>
+
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <Controller
                   name="contactName"
