@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, Shuffle } from 'lucide-react';
+import { Check, FileText, Shuffle, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import {
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
 import { Button } from '@app/components/ui/button';
-import { Card, CardContent } from '@app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
@@ -29,12 +29,16 @@ import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency } from '@app/lib/helpers';
 
+import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import { FormSectionNav } from '@app/components/form-section-nav';
-import { LineItems } from '@app/components/line-items';
+import { CostEstimationSections } from '@modules/project/components/cost-estimation-sections';
 import { useContactsQuery } from '@modules/directory/hooks';
 import { useCostCodesQuery, useCreateCostCodeMutation } from '@modules/catalog/hooks';
 import { CostCodeFormDialog } from '@modules/catalog/components/costcode-form-dialog';
+import { filesApi } from '@modules/files/api/files.api';
 import { PCO_FORM_SECTIONS, PCO_PRIORITY_OPTIONS } from '../constants/pco.constants';
+import { useAddPCOAttachmentMutation } from '../hooks/pco-attachment.hooks';
+import { useProjectFolderQuery } from '../hooks/use-project-folder';
 import {
   useAddPCOLineItemMutation,
   useCreatePCOMutation,
@@ -112,6 +116,7 @@ function generateRandomPCO(
       qty: randBetween(item.qtyRange[0], item.qtyRange[1]),
       unit: item.unit,
       unitPrice: randBetween(item.priceRange[0], item.priceRange[1], 2),
+      category: pick(['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'OTHER'] as const),
       costCodeId: costCodeOptions.length > 0 ? pick(costCodeOptions).value : undefined,
     };
   });
@@ -141,24 +146,37 @@ function computeLineItemDiff(
   original: PCOLineItem[],
   current: PCOLineItemInput[],
 ) {
-  const toRemove = original.slice(current.length);
-  const toAdd = current.slice(original.length);
+  const originalById = new Map(original.map((o) => [o.id, o]));
+  const matchedIds = new Set<string>();
+
+  const toAdd: PCOLineItemInput[] = [];
   const toUpdate: { lineItemId: string; data: PCOLineItemInput }[] = [];
 
-  for (let i = 0; i < Math.min(original.length, current.length); i++) {
-    const orig = original[i];
-    const curr = current[i];
-    if (
-      orig.title !== curr.title ||
-      orig.description !== curr.description ||
-      orig.qty !== curr.qty ||
-      orig.unit !== curr.unit ||
-      orig.unitPrice !== curr.unitPrice ||
-      (orig.costCodeId ?? undefined) !== curr.costCodeId
-    ) {
-      toUpdate.push({ lineItemId: orig.id, data: curr });
+  for (const curr of current) {
+    const origId = curr._originalId;
+    if (origId && originalById.has(origId)) {
+      matchedIds.add(origId);
+      const orig = originalById.get(origId)!;
+      // Check if anything changed
+      if (
+        orig.title !== curr.title ||
+        orig.description !== curr.description ||
+        orig.qty !== curr.qty ||
+        orig.unit !== curr.unit ||
+        orig.unitPrice !== curr.unitPrice ||
+        (orig.category ?? 'MATERIALS') !== (curr.category ?? 'MATERIALS') ||
+        (orig.costCodeId ?? undefined) !== curr.costCodeId
+      ) {
+        toUpdate.push({ lineItemId: origId, data: curr });
+      }
+    } else {
+      // New item (no _originalId or ID not found in original)
+      toAdd.push(curr);
     }
   }
+
+  // Original items not matched → removed
+  const toRemove = original.filter((o) => !matchedIds.has(o.id));
 
   return { toRemove, toAdd, toUpdate };
 }
@@ -175,14 +193,18 @@ export function PCOFormPage() {
   const { data: contactsData } = useContactsQuery({ page: 1, size: 1000 });
   const { data: costCodesData } = useCostCodesQuery();
 
+  const { data: pcoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
+
   const createMutation = useCreatePCOMutation();
   const updateMutation = useUpdatePCOMutation();
   const addLineItemMutation = useAddPCOLineItemMutation();
   const updateLineItemMutation = useUpdatePCOLineItemMutation();
   const removeLineItemMutation = useRemovePCOLineItemMutation();
   const createCostCodeMutation = useCreateCostCodeMutation();
+  const addAttachmentMutation = useAddPCOAttachmentMutation();
 
   const [costCodeDialogOpen, setCostCodeDialogOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const changeTypeOptions = changeTypes.map((ct) => ({ value: ct.id, label: ct.name }));
   const contactOptions = (contactsData?.data ?? []).map((c) => ({
@@ -206,16 +228,16 @@ export function PCOFormPage() {
     changeTypeId: undefined,
     priority: 'MEDIUM',
     costCodeId: undefined,
-    lineItems: [{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }],
+    lineItems: [{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0, category: 'MATERIALS' }],
   };
 
-  const { control, handleSubmit, reset, watch, formState } = useForm<CreatePCOInput>({
+  const { control, handleSubmit, reset, watch, getValues, formState } = useForm<CreatePCOInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(createPCOInputSchema) as any,
     defaultValues,
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
+  const fieldArray = useFieldArray({ control, name: 'lineItems' });
 
   const watchedLineItems = watch('lineItems');
   const subtotal = (watchedLineItems ?? []).reduce(
@@ -243,14 +265,16 @@ export function PCOFormPage() {
         costCodeId: pcoDetail.costCodeId ?? undefined,
         lineItems: pcoDetail.lineItems.length > 0
           ? pcoDetail.lineItems.map((li) => ({
+              _originalId: li.id,
               title: li.title,
               description: li.description ?? '',
               qty: li.qty,
               unit: li.unit ?? '',
               unitPrice: li.unitPrice,
+              category: li.category ?? 'MATERIALS',
               costCodeId: li.costCodeId ?? undefined,
             }))
-          : [{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }],
+          : [{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0, category: 'MATERIALS' as const }],
       });
     }
   }, [isEdit, pcoDetail, reset, projectId]);
@@ -265,10 +289,13 @@ export function PCOFormPage() {
   }, [reset, projectId, changeTypeOptions, contactOptions, costCodeOptions]);
 
   const onSubmit = async (formData: CreatePCOInput) => {
-    // Auto-set line item title from description (title is required by backend)
-    formData.lineItems = formData.lineItems.map((li) => ({
+    // Restore category and _originalId from raw form state (Zod resolver may default them)
+    const rawLineItems = getValues('lineItems') ?? [];
+    formData.lineItems = formData.lineItems.map((li, i) => ({
       ...li,
       title: li.title || li.description,
+      category: rawLineItems[i]?.category ?? li.category ?? 'MATERIALS',
+      _originalId: rawLineItems[i]?._originalId ?? li._originalId,
     }));
 
     // Auto-compute amount from line items
@@ -298,36 +325,40 @@ export function PCOFormPage() {
           },
         });
 
-        // 2. Persist line item changes via sub-resource APIs
+        // 2. Sync line items using ID-based diff
         const originalItems = pcoDetail.lineItems ?? [];
+
+        // Strip _originalId before sending to backend
+        const stripInternal = (li: PCOLineItemInput) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { _originalId, ...rest } = li;
+          return rest;
+        };
+
         const { toRemove, toAdd, toUpdate } = computeLineItemDiff(
           originalItems,
           formData.lineItems,
         );
 
-        const ops: Promise<unknown>[] = [
-          ...toRemove.map((item) =>
-            removeLineItemMutation.mutateAsync({ pcoId, lineItemId: item.id }),
-          ),
-          ...toUpdate.map((item) =>
-            updateLineItemMutation.mutateAsync({
-              pcoId,
-              lineItemId: item.lineItemId,
-              data: item.data,
-            }),
-          ),
-          ...toAdd.map((item) =>
-            addLineItemMutation.mutateAsync({ pcoId, data: item }),
-          ),
-        ];
+        // Sequential: updates first, then add new items, then remove deleted
+        // (add before remove to avoid "must have at least 1" constraint)
+        for (const item of toUpdate) {
+          await updateLineItemMutation.mutateAsync({
+            pcoId,
+            lineItemId: item.lineItemId,
+            data: stripInternal(item.data),
+          });
+        }
+        for (const item of toAdd) {
+          await addLineItemMutation.mutateAsync({ pcoId, data: stripInternal(item) });
+        }
+        for (const item of toRemove) {
+          await removeLineItemMutation.mutateAsync({ pcoId, lineItemId: item.id });
+        }
 
-        if (ops.length > 0) {
-          const results = await Promise.allSettled(ops);
-          const failures = results.filter((r) => r.status === 'rejected');
-          if (failures.length > 0) {
-            toast.error(`${failures.length} line item operation(s) failed.`);
-            return;
-          }
+        // 3. Upload new files
+        if (selectedFiles.length > 0 && pcoFolderId) {
+          await uploadFilesAndAttach(pcoId, pcoFolderId, selectedFiles);
         }
 
         navigate('..', { relative: 'path' });
@@ -337,11 +368,38 @@ export function PCOFormPage() {
         setIsSaving(false);
       }
     } else {
+      // Strip internal fields before sending to backend
+      formData.lineItems = formData.lineItems.map(({ _originalId, ...rest }) => rest);
       createMutation.mutate(formData, {
-        onSuccess: () => navigate('..', { relative: 'path' }),
+        onSuccess: async (created) => {
+          // Upload files after PCO creation
+          if (selectedFiles.length > 0 && pcoFolderId) {
+            await uploadFilesAndAttach(created.id, pcoFolderId, selectedFiles);
+          }
+          navigate('..', { relative: 'path' });
+        },
       });
     }
   };
+
+  async function uploadFilesAndAttach(targetPcoId: string, folderId: string, files: File[]) {
+    for (const file of files) {
+      try {
+        const uploaded = await filesApi.uploadFile(file, {
+          name: file.name,
+          parentId: folderId,
+          mimeType: file.type || undefined,
+          size: file.size,
+        });
+        await addAttachmentMutation.mutateAsync({
+          pcoId: targetPcoId,
+          data: { fileId: uploaded.id },
+        });
+      } catch {
+        console.warn(`Failed to upload/attach file: ${file.name}`);
+      }
+    }
+  }
 
   if (isEdit && isLoadingDetail) {
     return (
@@ -569,30 +627,35 @@ export function PCOFormPage() {
             </CardContent>
           </Card>
 
-          {/* ---- Section 2: Line Items ---- */}
-          <LineItems
-            control={control}
-            fieldPrefix="lineItems"
-            fields={fields}
-            append={append}
-            remove={remove}
-            costCodeOptions={costCodeOptions}
-            fieldNames={{ quantity: 'qty' }}
-            defaultItem={{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
-            rootError={formState.errors.lineItems?.root}
-            showLineTotal
-            onAddCostCode={() => setCostCodeDialogOpen(true)}
-          >
-            {/* Receipt-style totals */}
-            <Separator className="mt-4" />
-            <div className="flex justify-end pt-4">
-              <div className="w-full max-w-sm space-y-3">
+          {/* ---- Section 2: Cost Estimation ---- */}
+          <div id="line-items" className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Cost Estimation</h2>
+              <p className="text-sm text-muted-foreground">
+                Add line items by category.
+              </p>
+            </div>
+
+            <CostEstimationSections
+              control={control}
+              fieldArray={fieldArray}
+              costCodeOptions={costCodeOptions}
+              onAddCostCode={() => setCostCodeDialogOpen(true)}
+            />
+
+            {formState.errors.lineItems?.root && (
+              <p className="text-sm text-destructive">{formState.errors.lineItems.root.message}</p>
+            )}
+
+            {/* Grand totals */}
+            <div className="flex justify-end">
+              <div className="w-full max-w-sm space-y-3 pt-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Subtotal</span>
                   <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Markup</span>
+                  <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Markup</span>
                   <Controller
                     name="markupAmount"
                     control={control}
@@ -612,12 +675,77 @@ export function PCOFormPage() {
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between text-sm font-semibold">
-                  <span>Total</span>
+                  <span className="text-xs font-semibold tracking-widest uppercase">Total</span>
                   <span className="tabular-nums">{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>
-          </LineItems>
+          </div>
+
+          {/* ---- Section 3: Documents ---- */}
+          <Card id="documents">
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FileDropZone
+                value={null}
+                onChange={(file) => {
+                  if (file) setSelectedFiles((prev) => [...prev, file]);
+                }}
+                disabled={false}
+              />
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {selectedFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-between rounded-lg border p-2.5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium truncate block">{file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        mode="icon"
+                        size="sm"
+                        type="button"
+                        onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isEdit && pcoDetail && pcoDetail.attachments?.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-2">
+                    Existing Documents
+                  </div>
+                  {pcoDetail.attachments.map((att: { id: string; document?: { id: string; name: string } }) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-3 rounded-lg border p-2.5"
+                    >
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {att.document?.name ?? 'Document'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
       </div>
 
       <CostCodeFormDialog

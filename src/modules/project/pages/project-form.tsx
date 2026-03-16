@@ -234,6 +234,28 @@ export default function ProjectForm() {
         const project = await createMutation.mutateAsync(createPayload);
         resultProjectId = project.id;
 
+        // Upsert contract with full details (retainage, target budget, dates, etc.)
+        if (data.contractValue) {
+          try {
+            await upsertContractMutation.mutateAsync({
+              projectId: resultProjectId,
+              data: {
+                contractValue: data.contractValue,
+                contractType: data.contractType || undefined,
+                retainagePercent: data.retainagePercent || undefined,
+                targetBudgetPercent: data.targetBudgetPercent || undefined,
+                paymentTerms: (data.paymentTerms as 'NET_15' | 'NET_30' | 'NET_45' | 'NET_60' | 'NET_90' | 'DUE_ON_RECEIPT') || undefined,
+                estimatedStartDate: data.estimatedStartDate || null,
+                estimatedCompletionDate: data.estimatedCompletionDate || null,
+                actualStartDate: data.actualStartDate || null,
+                actualCompletionDate: data.actualCompletionDate || null,
+              },
+            });
+          } catch {
+            console.warn('Contract upsert failed after project creation');
+          }
+        }
+
         // Create schedule entry if start date provided
         if (data.effectiveStartDate) {
           try {

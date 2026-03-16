@@ -4,12 +4,15 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
+  Download,
   FileText,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
+  Plus,
   ShieldAlert,
   Trash2,
+  Upload,
   XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -43,6 +46,8 @@ import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useUploadFileMutation, useDownloadFile } from '@modules/files/hooks/files.hooks';
 import { InfoRow } from '@modules/project/components/info-row';
 import { getPriorityVariant, getStatusBadgeVariant } from '@modules/project/constants/pco.constants';
 import { DetailSidebar } from '@modules/directory/components';
@@ -55,6 +60,9 @@ import {
   useTransitionPCOStatusMutation,
   useVoidPCOMutation,
 } from '../hooks';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
+import { useAddPCOAttachmentMutation, useRemovePCOAttachmentMutation } from '../hooks/pco-attachment.hooks';
+import { useProjectFolderQuery } from '../hooks/use-project-folder';
 
 /* ---- Workflow transition definitions ---- */
 
@@ -135,20 +143,35 @@ const WORKFLOW_ACTIONS: Record<string, WorkflowAction[]> = {
 /* ---- Page ---- */
 
 export function PCODetailPage() {
-  const { pcoId = '' } = useParams<{ projectId: string; pcoId: string }>();
+  const { projectId = '', pcoId = '' } = useParams<{ projectId: string; pcoId: string }>();
   const navigate = useNavigate();
 
   const { data: pco, isLoading } = usePCODetailQuery(pcoId);
   const { data: financialImpact } = usePCOFinancialImpactQuery(pcoId);
+  const { data: pcoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
+  const { data: costCodesData } = useCostCodesQuery();
+
+  // Use attachments from PCO detail response (avoids separate endpoint that may 404)
+  const attachments = (pco?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
+
+  // Cost code lookup for line items
+  const costCodeMap = new Map(
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+  );
 
   const transitionMutation = useTransitionPCOStatusMutation();
   const approveMutation = useApprovePCOMutation();
   const rejectMutation = useRejectPCOMutation();
   const voidMutation = useVoidPCOMutation();
   const deleteMutation = useDeletePCOMutation();
+  const addAttachmentMutation = useAddPCOAttachmentMutation();
+  const removeAttachmentMutation = useRemovePCOAttachmentMutation();
+  const uploadFileMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Generic workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
@@ -358,9 +381,6 @@ export function PCODetailPage() {
                 </InfoRow>
               )}
               <InfoRow label="Contact">{pco.contact?.fullName ?? '—'}</InfoRow>
-              <InfoRow label="Cost Code">
-                {pco.costCode ? `${pco.costCode.code} - ${pco.costCode.name}` : '—'}
-              </InfoRow>
             </CardContent>
           </Card>
 
@@ -378,96 +398,164 @@ export function PCODetailPage() {
             </Card>
           )}
 
-          {/* Line Items */}
+          {/* Cost Estimation — grouped by category */}
+          {pco.lineItems.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              {(['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'OTHER'] as const).map((cat) => {
+                const items = pco.lineItems.filter((li) => (li.category ?? 'MATERIALS') === cat);
+                if (items.length === 0) return null;
+                const sectionTotal = items.reduce((s, li) => s + li.amount, 0);
+                const catLabel: Record<string, string> = {
+                  MATERIALS: 'Materials',
+                  LABOR: 'Labor',
+                  EQUIPMENT: 'Equipment',
+                  SUBCONTRACTOR: 'Subcontractor',
+                  OTHER: 'Other',
+                };
+                return (
+                  <div key={cat} className="border-b last:border-b-0">
+                    {/* Section header */}
+                    <div className="bg-muted/50 px-3 py-2.5">
+                      <h3 className="text-sm font-semibold">{catLabel[cat]}</h3>
+                    </div>
+                    {/* Table */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="px-3 py-2 text-left text-xs font-semibold tracking-widest text-muted-foreground uppercase w-10">#</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[160px]">Cost Code</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold tracking-widest text-muted-foreground uppercase">Item Name</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[80px]">Qty</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[100px]">Unit</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[120px]">Unit Cost</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[120px]">Item Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((li, idx) => (
+                          <tr key={li.id} className="border-b last:border-0">
+                            <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
+                            <td className="px-3 py-2.5 text-xs text-muted-foreground">{li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}</td>
+                            <td className="px-3 py-2.5">
+                              <div className="font-medium">{li.description}</div>
+                              {li.title && li.title !== li.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5">{li.title}</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right tabular-nums">{li.qty}</td>
+                            <td className="px-3 py-2.5">{li.unit}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(li.unitPrice)}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatCurrency(li.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {/* Section subtotal */}
+                    <div className="flex items-center justify-end gap-3 px-3 py-2 border-t">
+                      <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">{catLabel[cat]}</span>
+                      <span className="text-sm font-semibold tabular-nums">{formatCurrency(sectionTotal)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Grand totals */}
+              <div className="bg-muted/30 px-3 py-3 space-y-1">
+                <div className="flex items-center justify-end gap-3">
+                  <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Subtotal</span>
+                  <span className="text-sm font-medium tabular-nums min-w-[100px] text-right">{formatCurrency(pco.amount)}</span>
+                </div>
+                {(pco.markupAmount ?? 0) !== 0 && (
+                  <div className="flex items-center justify-end gap-3">
+                    <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Markup</span>
+                    <span className="text-sm font-medium tabular-nums min-w-[100px] text-right">{formatCurrency(pco.markupAmount ?? 0)}</span>
+                  </div>
+                )}
+                <Separator className="my-1" />
+                <div className="flex items-center justify-end gap-3">
+                  <span className="text-xs font-semibold tracking-widest uppercase">Total</span>
+                  <span className="text-sm font-semibold tabular-nums min-w-[100px] text-right">{formatCurrency(pco.amount + (pco.markupAmount ?? 0))}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Card>
+              <CardContent>
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <FileText className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No line items.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Documents / Attachments */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Line Items ({pco.lineItems.length})
+                Documents ({attachments.length})
               </CardTitle>
+              {!isTerminal && pcoFolderId && (
+                <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                  <Upload className="size-4" />
+                  Upload
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              {pco.lineItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">
-                          #
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                          Description
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
-                          Qty
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                          Unit
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
-                          Unit Price
-                        </th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
-                          Amount
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pco.lineItems.map((li, idx) => (
-                        <tr key={li.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-2.5 pr-3">
-                            <div className="font-medium">{li.description}</div>
-                            {li.title && li.title !== li.description && (
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                {li.title}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 pr-3 text-right tabular-nums">{li.qty}</td>
-                          <td className="py-2.5 pr-3">{li.unit}</td>
-                          <td className="py-2.5 pr-3 text-right tabular-nums">
-                            {formatCurrency(li.unitPrice)}
-                          </td>
-                          <td className="py-2.5 text-right font-medium tabular-nums">
-                            {formatCurrency(li.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={5} className="pt-3 text-right text-sm text-muted-foreground">
-                          Subtotal
-                        </td>
-                        <td className="pt-3 text-right font-medium tabular-nums">
-                          {formatCurrency(pco.amount)}
-                        </td>
-                      </tr>
-                      {(pco.markupAmount ?? 0) !== 0 && (
-                        <tr>
-                          <td colSpan={5} className="pt-1 text-right text-sm text-muted-foreground">
-                            Markup
-                          </td>
-                          <td className="pt-1 text-right font-medium tabular-nums">
-                            {formatCurrency(pco.markupAmount ?? 0)}
-                          </td>
-                        </tr>
-                      )}
-                      <tr className="border-t">
-                        <td colSpan={5} className="pt-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                          Total
-                        </td>
-                        <td className="pt-2 text-right font-semibold tabular-nums">
-                          {formatCurrency(pco.amount + (pco.markupAmount ?? 0))}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+              {attachments.length > 0 ? (
+                <div className="space-y-2">
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between rounded-lg border p-2.5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">
+                          {att.document?.name ?? 'Document'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {att.document?.id && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() => downloadFile.mutate(att.document!.id)}
+                          >
+                            <Download className="size-3.5" />
+                          </Button>
+                        )}
+                        {!isTerminal && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() =>
+                              removeAttachmentMutation.mutate({
+                                pcoId,
+                                attachmentId: att.id,
+                              })
+                            }
+                          >
+                            <Trash2 className="size-3.5 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <FileText className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No line items.</p>
+                  <p className="text-sm text-muted-foreground">No documents attached.</p>
+                  {!isTerminal && pcoFolderId && (
+                    <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                      <Plus className="size-4" />
+                      Add Document
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -663,6 +751,29 @@ export function PCODetailPage() {
         variant="destructive"
         isPending={deleteMutation.isPending}
       />
+
+      {/* ---- Upload file dialog ---- */}
+      {pcoFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={pcoFolderId}
+          onSubmit={({ file, data }) => {
+            uploadFileMutation.mutate(
+              { file, data },
+              {
+                onSuccess: (uploaded) => {
+                  addAttachmentMutation.mutate(
+                    { pcoId, data: { fileId: uploaded.id } },
+                    { onSuccess: () => setUploadOpen(false) },
+                  );
+                },
+              },
+            );
+          }}
+          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+        />
+      )}
     </div>
   );
 }

@@ -231,20 +231,19 @@ export default function ProjectContractOverview() {
         </div>
 
         {/* ──────────────────────────────────────────────
-            Project Details + Budget Summary
+            Contract Details + Financial Summary + Budget
            ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Project Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Contract Details */}
           <Card>
             <CardHeader>
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Project Details
+                Contract Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               <InfoRow label="Project Name">{project.name}</InfoRow>
               <InfoRow label="Job Number">{project.jobNumber ?? '—'}</InfoRow>
-              <InfoRow label="Contract Number">{project.contractNumber ?? '—'}</InfoRow>
               <InfoRow label="Division">
                 {DIVISION_LABELS[project.division] ?? project.division}
               </InfoRow>
@@ -257,47 +256,72 @@ export default function ProjectContractOverview() {
                   '—'
                 )}
               </InfoRow>
-              <InfoRow label="Status">
-                {project.status ? (
-                  <Badge style={{ backgroundColor: project.status.color, color: '#fff' }} size="sm">
-                    {project.status.label}
-                  </Badge>
-                ) : (
-                  '—'
-                )}
-              </InfoRow>
               <Separator className="my-2" />
               <InfoRow label="General Contractor">{project.gc?.name ?? '—'}</InfoRow>
               <InfoRow label="Lead PM">{project.leadPM?.name ?? '—'}</InfoRow>
-              {fullAddress && <InfoRow label="Address">{fullAddress}</InfoRow>}
-              {project.description && (
-                <>
-                  <Separator className="my-2" />
-                  <p className="text-sm text-foreground whitespace-pre-wrap line-clamp-4">
-                    {project.description}
-                  </p>
-                </>
-              )}
             </CardContent>
           </Card>
 
-          {/* Budget Summary */}
+          {/* Financial Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Budget Summary
+                Financial Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <InfoRow label="Original Contract" valueClassName="font-semibold">
+                {formatCurrency(computations.original)}
+              </InfoRow>
+              <InfoRow label="Approved COs" valueClassName="text-info">
+                +{formatCurrency(computations.approvedCOs)}
+              </InfoRow>
+              <Separator className="my-2" />
+              <InfoRow label="Contract Sum" valueClassName="font-semibold">
+                {formatCurrency(computations.contractSum)}
+              </InfoRow>
+              <InfoRow label="Paid to Date">
+                {formatCurrency(computations.paidToDate)}
+              </InfoRow>
+              <Separator className="my-2" />
+              <InfoRow label="Balance Due" valueClassName="font-semibold">
+                {formatCurrency(computations.balanceDue)}
+              </InfoRow>
+              <Separator className="my-2" />
+              <InfoRow label="Retainage %">
+                {computations.retainagePercent}%
+              </InfoRow>
+              <InfoRow label="Retainage Amount">
+                {formatCurrency(computations.retainageAmount)}
+              </InfoRow>
+            </CardContent>
+          </Card>
+
+          {/* Budget */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Budget
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Committed Utilization Progress (POs as proxy since payments are deferred) */}
+              <div>
+                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  Total Spent
+                </div>
+                <div className="text-2xl font-bold tabular-nums">
+                  {formatCurrency(totalPOCommitted)}
+                </div>
+              </div>
+
               {(() => {
                 const committedUtilization = computations.budgetLimit > 0
                   ? (totalPOCommitted / computations.budgetLimit) * 100
                   : 0;
                 return (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">Committed vs Budget</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Spent Utilization</span>
                       <span className="text-sm font-semibold">
                         {Math.round(committedUtilization)}%
                       </span>
@@ -317,106 +341,106 @@ export default function ProjectContractOverview() {
                 );
               })()}
 
-              <Separator />
-
-              <div className="space-y-1">
-                <InfoRow label="Contract Sum">
-                  {formatCurrency(computations.contractSum)}
-                </InfoRow>
-                <InfoRow label="Target Budget %">
-                  {computations.targetBudgetPercent}%
-                </InfoRow>
-                <InfoRow label="Budget Limit">
-                  {formatCurrency(computations.budgetLimit)}
-                </InfoRow>
-                <Separator className="my-1" />
-                <InfoRow label="Committed (POs)" valueClassName="text-warning font-semibold">
-                  {formatCurrency(totalPOCommitted)}
-                </InfoRow>
-                <InfoRow label="Remaining Budget" valueClassName="text-success font-semibold">
+              <div>
+                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  Remaining
+                </div>
+                <div className="text-xl font-bold tabular-nums">
                   {formatCurrency(computations.budgetLimit - totalPOCommitted)}
-                </InfoRow>
-                <InfoRow label="Balance Due" valueClassName="text-destructive font-semibold">
-                  {formatCurrency(computations.balanceDue)}
-                </InfoRow>
+                </div>
               </div>
 
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Limit</div>
+                  <div className="text-sm font-semibold tabular-nums">{formatCurrency(computations.budgetLimit)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Budget %</div>
+                  <div className="text-sm font-semibold tabular-nums">{computations.targetBudgetPercent}% TCV</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* ──────────────────────────────────────────────
-            Recent Activity + Documents
+            Contract Documents + Payments + Recent Activity
            ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Recent Activity: POs + PCOs + SCOs */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Contract Documents */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Contract Documents ({docs.length})
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
+                <Link to={`/app/project/${projectId}/contracts`}>
+                  Manage <ArrowRight className="size-3 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {docs.length > 0 ? (
+                <div className="space-y-2">
+                  {docs.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-3 rounded-lg border p-2.5"
+                    >
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {att.document?.name ?? 'Document'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <FileText className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No documents attached.</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/app/project/${projectId}/contracts`}>
+                      Add Documents
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Payments — Coming Soon */}
           <Card>
             <CardHeader>
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Recent Activity
+                Payments
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Purchase Orders */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium">Purchase Orders</h4>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
-                    <Link to={`/app/project/${projectId}/purchase-orders`}>
-                      View All <ArrowRight className="size-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-                {recentPOs.length > 0 ? (
-                  <div className="space-y-2">
-                    {recentPOs.map((po) => (
-                      <Link
-                        key={po.id}
-                        to={`/app/project/${projectId}/purchase-orders/${po.id}`}
-                        className="flex items-center justify-between rounded-lg border p-2.5 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {po.poNumber ?? '—'}
-                            </span>
-                            <Badge
-                              style={{ backgroundColor: po.status.color, color: '#fff' }}
-                              size="xs"
-                            >
-                              {po.status.label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {po.vendor?.name}
-                            </span>
-                          </div>
-                          <div className="text-sm font-medium truncate">{po.description}</div>
-                        </div>
-                        <span className="text-sm font-semibold tabular-nums ml-3">
-                          {formatCurrency(parseFloat(po.totalCommitment) || 0)}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-3 text-center">
-                    No purchase orders yet.
-                  </p>
-                )}
+            <CardContent>
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <DollarSign className="size-8 text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">Coming Soon</p>
+                <p className="text-xs text-muted-foreground">
+                  Payment tracking will be available here.
+                </p>
               </div>
+            </CardContent>
+          </Card>
 
-              <Separator />
-
-              {/* Prime Change Orders */}
+          {/* Prime Change Orders */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Prime Change Orders
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
+                <Link to={`/app/project/${projectId}/change-orders`}>
+                  View All <ArrowRight className="size-3 ml-1" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium">Prime Change Orders</h4>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
-                    <Link to={`/app/project/${projectId}/change-orders`}>
-                      View All <ArrowRight className="size-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
                 {recentPCOs.length > 0 ? (
                   <div className="space-y-2">
                     {recentPCOs.map((pco) => (
@@ -453,92 +477,6 @@ export default function ProjectContractOverview() {
                 )}
               </div>
 
-              <Separator />
-
-              {/* Sub Change Orders */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium">Sub Change Orders</h4>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
-                    <Link to={`/app/project/${projectId}/vendors/change-orders`}>
-                      View All <ArrowRight className="size-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-                {recentSCOs.length > 0 ? (
-                  <div className="space-y-2">
-                    {recentSCOs.map((sco) => (
-                      <div
-                        key={sco.id}
-                        className="flex items-center justify-between rounded-lg border p-2.5"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {sco.scoNumber}
-                            </span>
-                            <Badge
-                              style={{ backgroundColor: sco.status.color, color: '#fff' }}
-                              size="xs"
-                            >
-                              {sco.status.label}
-                            </Badge>
-                          </div>
-                          <div className="text-sm font-medium truncate">{sco.title}</div>
-                        </div>
-                        <span className="text-sm font-semibold tabular-nums ml-3">
-                          {formatCurrency(sco.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-3 text-center">
-                    No sub change orders yet.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Documents Summary (read-only) */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Contract Documents
-              </CardTitle>
-              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
-                <Link to={`/app/project/${projectId}/contracts`}>
-                  Manage <ArrowRight className="size-3 ml-1" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {docs.length > 0 ? (
-                <div className="space-y-2">
-                  {docs.map((att) => (
-                    <div
-                      key={att.id}
-                      className="flex items-center gap-3 rounded-lg border p-2.5"
-                    >
-                      <FileText className="size-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium truncate">
-                        {att.document?.name ?? 'Document'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <FileText className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No documents attached.</p>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/app/project/${projectId}/contracts`}>
-                      Add Documents
-                    </Link>
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
