@@ -330,6 +330,56 @@ export const useUnawardRFQMutation = () => {
   });
 };
 
+/* ---- attachment mutations ---- */
+
+export const useAddRFQAttachmentMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rfqId, data }: { rfqId: string; data: { fileId: string } }) =>
+      rfqApi.addAttachment(rfqId, data),
+    onSuccess: (_, { rfqId }) => {
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+      toast.success('Attachment added.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to add attachment.'),
+  });
+};
+
+export const useRemoveRFQAttachmentMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rfqId, attachmentId }: { rfqId: string; attachmentId: string }) =>
+      rfqApi.removeAttachment(rfqId, attachmentId),
+    onSuccess: (_, { rfqId }) => {
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+      toast.success('Attachment removed.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to remove attachment.'),
+  });
+};
+
+/* ---- quote attachment mutations ---- */
+
+export const useAddQuoteAttachmentMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      rfqId,
+      quoteId,
+      data,
+    }: {
+      rfqId: string;
+      quoteId: string;
+      data: { fileId: string };
+    }) => rfqApi.addQuoteAttachment(rfqId, quoteId, data),
+    onSuccess: (_, { rfqId }) => {
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+      toast.success('Quote document uploaded.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to upload quote document.'),
+  });
+};
+
 export const useGeneratePOMutation = () => {
   const qc = useQueryClient();
   return useMutation({

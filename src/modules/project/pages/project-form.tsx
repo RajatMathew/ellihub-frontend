@@ -97,7 +97,6 @@ export default function ProjectForm() {
       effectiveEndDate: '',
       contractValue: 0,
       contractType: '',
-      totalContractValue: 0,
       retainagePercent: 0,
       targetBudgetPercent: 0,
       paymentTerms: '',
@@ -129,7 +128,6 @@ export default function ProjectForm() {
         effectiveEndDate: existingProject.effectiveEndDate?.split('T')[0] ?? '',
         contractValue: contract?.contractValue ?? 0,
         contractType: contract?.contractType ?? '',
-        totalContractValue: contract?.totalContractValue ?? 0,
         retainagePercent: contract?.retainagePercent ?? 0,
         targetBudgetPercent: contract?.targetBudgetPercent ?? 0,
         paymentTerms: contract?.paymentTerms ?? '',
@@ -202,7 +200,6 @@ export default function ProjectForm() {
               data: {
                 contractValue: data.contractValue,
                 contractType: data.contractType || undefined,
-                totalContractValue: data.totalContractValue || undefined,
                 retainagePercent: data.retainagePercent || undefined,
                 targetBudgetPercent: data.targetBudgetPercent || undefined,
                 paymentTerms: (data.paymentTerms as 'NET_15' | 'NET_30' | 'NET_45' | 'NET_60' | 'NET_90' | 'DUE_ON_RECEIPT') || undefined,
@@ -676,7 +673,7 @@ export default function ProjectForm() {
                 />
               </div>
 
-              {/* Row: Contract Value + Total Contract Value */}
+              {/* Row: Contract Value + Retainage % */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
                   name="contractValue"
@@ -707,37 +704,6 @@ export default function ProjectForm() {
                 />
 
                 <Controller
-                  name="totalContractValue"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Total Contract Value
-                      </FieldLabel>
-                      <InputWrapper>
-                        <span className="text-muted-foreground text-sm">$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          placeholder="0.00"
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Retainage % + Target Budget % */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
                   name="retainagePercent"
                   control={control}
                   render={({ field, fieldState }) => (
@@ -765,7 +731,10 @@ export default function ProjectForm() {
                     </Field>
                   )}
                 />
+              </div>
 
+              {/* Row: Target Budget % */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
                   name="targetBudgetPercent"
                   control={control}

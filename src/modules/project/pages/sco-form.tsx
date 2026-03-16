@@ -575,6 +575,8 @@ export function SCOFormPage() {
                   reset({
                     ...d,
                     purchaseOrderId: randomPO,
+                    title: d.title ?? 'Mock SCO',
+                    initiatedBy: (d.initiatedBy ?? 'FIRM') as CreateSCOInput['initiatedBy'],
                     amount: Math.round((liTotal + markup) * 100) / 100,
                     markupAmount: markup,
                     impactsSchedule: false,

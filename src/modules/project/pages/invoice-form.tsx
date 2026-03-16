@@ -87,7 +87,7 @@ export function InvoiceFormPage() {
   const isEdit = !!invoiceId;
 
   const { data: invoiceDetail, isLoading: isLoadingDetail } = useInvoiceDetailQuery(invoiceId ?? '');
-  const { data: vendorsData } = useVendorsQuery({ page: 1, size: 1000 });
+  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const { data: costCodesData } = useCostCodesQuery();
 
   const createMutation = useCreateInvoiceMutation();

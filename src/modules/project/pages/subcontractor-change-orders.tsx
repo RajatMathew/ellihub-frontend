@@ -302,7 +302,7 @@ export default function ProjectSCOs() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Date" />,
         cell: ({ row }) => (
           <span className="text-sm text-foreground">
-            {formatDate(row.original.date)}
+            {row.original.date ? formatDate(row.original.date) : '—'}
           </span>
         ),
         meta: {

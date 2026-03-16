@@ -1,8 +1,3 @@
-export default function ProjectContracts() {
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Prime Contracts</h1>
-      <p>Prime contracts content.</p>
-    </div>
-  );
-}
+// Re-export the actual Prime Contracts page
+// The config route system uses this file path
+export { default } from './prime-contracts';

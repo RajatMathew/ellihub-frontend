@@ -101,7 +101,7 @@ export default function RFQFormPage() {
   // Vendor selection (not part of Zod schema — sent via invite-vendors after create)
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
   const [vendorSearch, setVendorSearch] = useState('');
-  const { data: vendorsData } = useVendorsQuery({ page: 1, size: 1000 });
+  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const vendors = vendorsData?.data ?? [];
 
   const defaultValues: CreateRFQInput = {

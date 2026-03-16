@@ -191,6 +191,8 @@ export function POFormPage() {
                     ...d,
                     projectId,
                     vendorId: randomVendor,
+                    paymentTerms: (d.paymentTerms ?? 'NET_30') as CreatePOInput['paymentTerms'],
+                    tradeCategory: (d.tradeCategory ?? 'MATERIAL') as CreatePOInput['tradeCategory'],
                     lineItems: d.lineItems.map((item) => ({
                       ...item,
                       costCodeId: costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ?? undefined,

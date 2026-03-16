@@ -144,9 +144,12 @@ export default function ProjectContractOverview() {
   const recentPOs = poList?.data ?? [];
   const docs = attachments ?? [];
 
-  // Total committed from POs
-  const totalPOCommitted = (allPOs?.data ?? []).reduce(
-    (sum, po) => sum + (parseFloat(po.totalCommitment) || 0),
+  // Total committed from POs (exclude cancelled)
+  const activePOs = (allPOs?.data ?? []).filter(
+    (po) => po.status?.name !== 'CANCELLED',
+  );
+  const totalPOCommitted = activePOs.reduce(
+    (sum, po) => sum + (parseFloat(po.totalCommitment || po.total) || 0),
     0,
   );
 
@@ -223,7 +226,7 @@ export default function ProjectContractOverview() {
             bgClass="bg-warning/10"
             label="Committed (POs)"
             value={formatCurrency(totalPOCommitted)}
-            description={`${(allPOs?.data ?? []).length} purchase orders`}
+            description={`${activePOs.length} active purchase orders`}
           />
         </div>
 
@@ -304,10 +307,10 @@ export default function ProjectContractOverview() {
                       className="h-2.5"
                       indicatorClassName={
                         committedUtilization > 90
-                          ? 'bg-destructive'
+                          ? 'bg-red-500'
                           : committedUtilization > 70
-                            ? 'bg-warning'
-                            : 'bg-success'
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
                       }
                     />
                   </div>
@@ -343,75 +346,72 @@ export default function ProjectContractOverview() {
         </div>
 
         {/* ──────────────────────────────────────────────
-            Purchase Orders + Change Orders + Documents
+            Recent Activity + Documents
            ────────────────────────────────────────────── */}
-
-        {/* Recent Purchase Orders (full width) */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Recent Purchase Orders
-            </CardTitle>
-            <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-              <Link to={`/app/project/${projectId}/purchase-orders`}>
-                View All <ArrowRight className="size-3 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {recentPOs.length > 0 ? (
-              <div className="space-y-2">
-                {recentPOs.map((po) => (
-                  <Link
-                    key={po.id}
-                    to={`/app/project/${projectId}/purchase-orders/${po.id}`}
-                    className="flex items-center justify-between rounded-lg border p-2.5 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {po.poNumber ?? '—'}
-                        </span>
-                        <Badge
-                          style={{ backgroundColor: po.status.color, color: '#fff' }}
-                          size="xs"
-                        >
-                          {po.status.label}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {po.vendor?.name}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium truncate">{po.description}</div>
-                    </div>
-                    <span className="text-sm font-semibold tabular-nums ml-3">
-                      {formatCurrency(parseFloat(po.totalCommitment) || 0)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-3 text-center">
-                No purchase orders yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Change Orders Summary */}
+          {/* Recent Activity: POs + PCOs + SCOs */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Recent Change Orders
+                Recent Activity
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Prime COs */}
+              {/* Purchase Orders */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">Purchase Orders</h4>
+                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
+                    <Link to={`/app/project/${projectId}/purchase-orders`}>
+                      View All <ArrowRight className="size-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+                {recentPOs.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentPOs.map((po) => (
+                      <Link
+                        key={po.id}
+                        to={`/app/project/${projectId}/purchase-orders/${po.id}`}
+                        className="flex items-center justify-between rounded-lg border p-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-muted-foreground">
+                              {po.poNumber ?? '—'}
+                            </span>
+                            <Badge
+                              style={{ backgroundColor: po.status.color, color: '#fff' }}
+                              size="xs"
+                            >
+                              {po.status.label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {po.vendor?.name}
+                            </span>
+                          </div>
+                          <div className="text-sm font-medium truncate">{po.description}</div>
+                        </div>
+                        <span className="text-sm font-semibold tabular-nums ml-3">
+                          {formatCurrency(parseFloat(po.totalCommitment) || 0)}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-3 text-center">
+                    No purchase orders yet.
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Prime Change Orders */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">Prime Change Orders</h4>
-                  <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
                     <Link to={`/app/project/${projectId}/change-orders`}>
                       View All <ArrowRight className="size-3 ml-1" />
                     </Link>
@@ -455,11 +455,11 @@ export default function ProjectContractOverview() {
 
               <Separator />
 
-              {/* Vendor COs (SCOs) */}
+              {/* Sub Change Orders */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium">Sub Change Orders</h4>
-                  <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
                     <Link to={`/app/project/${projectId}/vendors/change-orders`}>
                       View All <ArrowRight className="size-3 ml-1" />
                     </Link>
@@ -507,7 +507,7 @@ export default function ProjectContractOverview() {
               <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                 Contract Documents
               </CardTitle>
-              <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
                 <Link to={`/app/project/${projectId}/contracts`}>
                   Manage <ArrowRight className="size-3 ml-1" />
                 </Link>

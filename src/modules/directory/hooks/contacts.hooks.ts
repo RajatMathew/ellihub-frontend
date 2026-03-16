@@ -206,12 +206,14 @@ export const useRemoveGCLinkMutation = () => {
 
 /* ---- form hooks ---- */
 
-export const useContactForm = (defaults?: Partial<Contact> | Partial<CreateContactInput>) =>
-  useForm<CreateContactInput | Contact>({
-    resolver: zodResolver(
-      defaults && 'id' in defaults && defaults.id != null
-        ? contactSchema
-        : createContactInputSchema,
-    ),
-    defaultValues: defaults as Partial<CreateContactInput & Contact>,
+export const useContactForm = (defaults?: Partial<Contact> | Partial<CreateContactInput>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schema: any =
+    defaults && 'id' in defaults && defaults.id != null
+      ? contactSchema
+      : createContactInputSchema;
+  return useForm({
+    resolver: zodResolver(schema),
+    defaultValues: defaults as any,
   });
+};

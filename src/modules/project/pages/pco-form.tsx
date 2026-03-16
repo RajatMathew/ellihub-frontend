@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check } from 'lucide-react';
+import { Check, Shuffle } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -26,13 +26,14 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
-import { Switch } from '@app/components/ui/switch';
 import { Textarea } from '@app/components/ui/textarea';
+import { formatCurrency } from '@app/lib/helpers';
 
 import { FormSectionNav } from '@app/components/form-section-nav';
 import { LineItems } from '@app/components/line-items';
 import { useContactsQuery } from '@modules/directory/hooks';
-import { useCostCodesQuery } from '@modules/catalog/hooks';
+import { useCostCodesQuery, useCreateCostCodeMutation } from '@modules/catalog/hooks';
+import { CostCodeFormDialog } from '@modules/catalog/components/costcode-form-dialog';
 import { PCO_FORM_SECTIONS, PCO_PRIORITY_OPTIONS } from '../constants/pco.constants';
 import {
   useAddPCOLineItemMutation,
@@ -46,10 +47,93 @@ import {
 import {
   createPCOInputSchema,
   type CreatePCOInput,
-  type PCODetail,
   type PCOLineItem,
   type PCOLineItemInput,
 } from '../schemas/pco.schema';
+
+/* ---- Random data for dev ---- */
+
+const RANDOM_PCO_TITLES = [
+  'Additional structural steel for mezzanine',
+  'Revised HVAC ductwork layout — 3rd floor',
+  'Window upgrade to triple-pane glazing',
+  'Foundation underpinning — east wall',
+  'Added fire suppression to parking garage',
+  'Electrical panel upgrade — 200A to 400A',
+  'Roof drain relocation per architect RFI',
+  'Concrete mix upgrade to 5000 PSI',
+  'Added ADA ramp at main entrance',
+  'Waterproofing membrane — basement level',
+  'Demolition of existing CMU partition walls',
+  'Install temporary shoring for beam replacement',
+];
+
+const RANDOM_LINE_ITEMS = [
+  { description: 'W12x26 steel beams', unit: 'LF', qtyRange: [10, 200], priceRange: [45, 120] },
+  { description: 'Concrete 5000 PSI', unit: 'CY', qtyRange: [5, 80], priceRange: [180, 350] },
+  { description: '4" PVC conduit', unit: 'LF', qtyRange: [50, 500], priceRange: [8, 25] },
+  { description: 'Drywall installation', unit: 'SF', qtyRange: [100, 2000], priceRange: [3, 8] },
+  { description: 'Excavation & backfill', unit: 'CY', qtyRange: [10, 150], priceRange: [35, 85] },
+  { description: 'Rebar #5 Grade 60', unit: 'TON', qtyRange: [1, 10], priceRange: [1200, 2200] },
+  { description: 'Copper piping 3/4"', unit: 'LF', qtyRange: [20, 300], priceRange: [12, 35] },
+  { description: 'Demolition labor', unit: 'HR', qtyRange: [8, 80], priceRange: [55, 95] },
+  { description: 'Waterproofing membrane', unit: 'SF', qtyRange: [200, 3000], priceRange: [4, 12] },
+  { description: 'Temporary shoring', unit: 'DAY', qtyRange: [5, 30], priceRange: [250, 600] },
+  { description: 'Fire damper installation', unit: 'EA', qtyRange: [2, 20], priceRange: [180, 450] },
+  { description: 'Insulation R-30 batts', unit: 'SF', qtyRange: [100, 1500], priceRange: [2, 6] },
+  { description: 'Structural bolts A325', unit: 'EA', qtyRange: [50, 500], priceRange: [3, 12] },
+  { description: 'Mobilization / setup', unit: 'LS', qtyRange: [1, 1], priceRange: [1500, 8000] },
+];
+
+function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randBetween(min: number, max: number, decimals = 0): number {
+  const val = Math.random() * (max - min) + min;
+  return Number(val.toFixed(decimals));
+}
+
+function generateRandomPCO(
+  changeTypeOptions: { value: string }[],
+  contactOptions: { value: string }[],
+  costCodeOptions: { value: string }[],
+) {
+  const numLineItems = randBetween(1, 5);
+  const usedItems = new Set<number>();
+  const lineItems = Array.from({ length: numLineItems }, () => {
+    let idx: number;
+    do { idx = Math.floor(Math.random() * RANDOM_LINE_ITEMS.length); } while (usedItems.has(idx) && usedItems.size < RANDOM_LINE_ITEMS.length);
+    usedItems.add(idx);
+    const item = RANDOM_LINE_ITEMS[idx];
+    return {
+      title: '',
+      description: item.description,
+      qty: randBetween(item.qtyRange[0], item.qtyRange[1]),
+      unit: item.unit,
+      unitPrice: randBetween(item.priceRange[0], item.priceRange[1], 2),
+      costCodeId: costCodeOptions.length > 0 ? pick(costCodeOptions).value : undefined,
+    };
+  });
+
+  const subtotal = lineItems.reduce((s, li) => s + li.qty * li.unitPrice, 0);
+  const markupPercent = pick([0, 0, 5, 10, 15, -5]);
+  const markupAmount = Number((subtotal * markupPercent / 100).toFixed(2));
+
+  return {
+    date: new Date().toISOString().slice(0, 10),
+    title: pick(RANDOM_PCO_TITLES),
+    description: '',
+    amount: 0,
+    markupAmount,
+    scheduleImpactDays: pick([0, 0, 3, 5, 7, 14, 21]),
+    contactId: contactOptions.length > 0 ? pick(contactOptions).value : undefined,
+    changeTypeId: changeTypeOptions.length > 0 ? pick(changeTypeOptions).value : undefined,
+    priority: pick(['LOW', 'MEDIUM', 'MEDIUM', 'HIGH', 'URGENT']),
+    costCodeId: undefined,
+    lineItems,
+  };
+}
 
 /* ---- Helpers ---- */
 
@@ -96,6 +180,9 @@ export function PCOFormPage() {
   const addLineItemMutation = useAddPCOLineItemMutation();
   const updateLineItemMutation = useUpdatePCOLineItemMutation();
   const removeLineItemMutation = useRemovePCOLineItemMutation();
+  const createCostCodeMutation = useCreateCostCodeMutation();
+
+  const [costCodeDialogOpen, setCostCodeDialogOpen] = useState(false);
 
   const changeTypeOptions = changeTypes.map((ct) => ({ value: ct.id, label: ct.name }));
   const contactOptions = (contactsData?.data ?? []).map((c) => ({
@@ -115,24 +202,29 @@ export function PCOFormPage() {
     amount: 0,
     markupAmount: 0,
     scheduleImpactDays: 0,
-    requestedBy: '',
     contactId: undefined,
     changeTypeId: undefined,
     priority: 'MEDIUM',
-    impactsSchedule: false,
-    estimatedCost: 0,
     costCodeId: undefined,
     lineItems: [{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }],
   };
 
   const { control, handleSubmit, reset, watch, formState } = useForm<CreatePCOInput>({
-    resolver: zodResolver(createPCOInputSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(createPCOInputSchema) as any,
     defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
 
-  const impactsSchedule = watch('impactsSchedule');
+  const watchedLineItems = watch('lineItems');
+  const subtotal = (watchedLineItems ?? []).reduce(
+    (sum: number, li: { qty?: number; unitPrice?: number }) =>
+      sum + (li.qty ?? 0) * (li.unitPrice ?? 0),
+    0,
+  );
+  const watchedMarkup = watch('markupAmount') ?? 0;
+  const total = subtotal + watchedMarkup;
 
   // Reset form when detail loads in edit mode
   useEffect(() => {
@@ -145,12 +237,9 @@ export function PCOFormPage() {
         amount: pcoDetail.amount,
         markupAmount: pcoDetail.markupAmount ?? 0,
         scheduleImpactDays: pcoDetail.scheduleImpactDays ?? 0,
-        requestedBy: pcoDetail.requestedBy ?? '',
         contactId: pcoDetail.contactId ?? undefined,
         changeTypeId: pcoDetail.changeTypeId ?? undefined,
         priority: pcoDetail.priority ?? 'MEDIUM',
-        impactsSchedule: pcoDetail.impactsSchedule ?? false,
-        estimatedCost: pcoDetail.estimatedCost ?? 0,
         costCodeId: pcoDetail.costCodeId ?? undefined,
         lineItems: pcoDetail.lineItems.length > 0
           ? pcoDetail.lineItems.map((li) => ({
@@ -170,12 +259,24 @@ export function PCOFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
+  const fillRandom = useCallback(() => {
+    const data = generateRandomPCO(changeTypeOptions, contactOptions, costCodeOptions);
+    reset({ projectId, ...data });
+  }, [reset, projectId, changeTypeOptions, contactOptions, costCodeOptions]);
+
   const onSubmit = async (formData: CreatePCOInput) => {
     // Auto-set line item title from description (title is required by backend)
     formData.lineItems = formData.lineItems.map((li) => ({
       ...li,
       title: li.title || li.description,
     }));
+
+    // Auto-compute amount from line items
+    const computedAmount = formData.lineItems.reduce(
+      (sum, li) => sum + (li.qty ?? 0) * (li.unitPrice ?? 0),
+      0,
+    );
+    formData.amount = computedAmount;
 
     if (isEdit && pcoId && pcoDetail) {
       setIsSaving(true);
@@ -190,12 +291,9 @@ export function PCOFormPage() {
             amount: formData.amount,
             markupAmount: formData.markupAmount,
             scheduleImpactDays: formData.scheduleImpactDays,
-            requestedBy: formData.requestedBy,
             contactId: formData.contactId ?? null,
             changeTypeId: formData.changeTypeId ?? null,
             priority: formData.priority,
-            impactsSchedule: formData.impactsSchedule,
-            estimatedCost: formData.estimatedCost,
             costCodeId: formData.costCodeId ?? null,
           },
         });
@@ -255,7 +353,7 @@ export function PCOFormPage() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+      onSubmit={handleSubmit(onSubmit as any, (errors) => console.warn('Validation errors:', errors))}
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}
@@ -277,6 +375,12 @@ export function PCOFormPage() {
             </span>
           </ToolbarHeading>
           <ToolbarActions>
+            {!isEdit && (
+              <Button variant="ghost" size="sm" type="button" onClick={fillRandom}>
+                <Shuffle className="size-4" />
+                Fill Random
+              </Button>
+            )}
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
@@ -439,99 +543,19 @@ export function PCOFormPage() {
                 />
               </div>
 
-              {/* Requested By */}
-              <Controller
-                name="requestedBy"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Requested By
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="e.g. John Doe"
-                        aria-invalid={fieldState.invalid}
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              {/* Impacts Schedule + Schedule Impact Days */}
+              {/* Schedule Impact Days */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="impactsSchedule"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Impacts Schedule
-                      </FieldLabel>
-                      <div className="flex items-center gap-2 pt-1">
-                        <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
-                        <span className="text-sm text-muted-foreground">
-                          {field.value ? 'Yes' : 'No'}
-                        </span>
-                      </div>
-                    </Field>
-                  )}
-                />
-
-                {impactsSchedule && (
-                  <Controller
-                    name="scheduleImpactDays"
-                    control={control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Schedule Impact (Days)
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                            aria-invalid={fieldState.invalid}
-                          />
-                        </InputWrapper>
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
-                    )}
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ---- Section 2: Financial Info ---- */}
-          <Card id="financial">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Financial Info</h2>
-                <p className="text-sm text-muted-foreground">
-                  Cost and markup details for this change order.
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="amount"
+                  name="scheduleImpactDays"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Amount
+                        Schedule Impact (Days)
                       </FieldLabel>
                       <InputWrapper>
                         <Input
                           type="number"
-                          step="0.01"
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                           aria-invalid={fieldState.invalid}
@@ -541,57 +565,11 @@ export function PCOFormPage() {
                     </Field>
                   )}
                 />
-
-                <Controller
-                  name="markupAmount"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Markup Amount
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...field}
-                          value={field.value ?? 0}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
               </div>
-
-              <Controller
-                name="estimatedCost"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Estimated Cost
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        value={field.value ?? 0}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        aria-invalid={fieldState.invalid}
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
             </CardContent>
           </Card>
 
-          {/* ---- Section 3: Line Items ---- */}
+          {/* ---- Section 2: Line Items ---- */}
           <LineItems
             control={control}
             fieldPrefix="lineItems"
@@ -602,8 +580,56 @@ export function PCOFormPage() {
             fieldNames={{ quantity: 'qty' }}
             defaultItem={{ title: '', description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
             rootError={formState.errors.lineItems?.root}
-          />
+            showLineTotal
+            onAddCostCode={() => setCostCodeDialogOpen(true)}
+          >
+            {/* Receipt-style totals */}
+            <Separator className="mt-4" />
+            <div className="flex justify-end pt-4">
+              <div className="w-full max-w-sm space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Markup</span>
+                  <Controller
+                    name="markupAmount"
+                    control={control}
+                    render={({ field }) => (
+                      <InputWrapper className="w-32">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          className="text-right"
+                        />
+                      </InputWrapper>
+                    )}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatCurrency(total)}</span>
+                </div>
+              </div>
+            </div>
+          </LineItems>
       </div>
+
+      <CostCodeFormDialog
+        open={costCodeDialogOpen}
+        onOpenChange={setCostCodeDialogOpen}
+        onSubmit={(data) => {
+          createCostCodeMutation.mutate(data as Parameters<typeof createCostCodeMutation.mutate>[0], {
+            onSuccess: () => setCostCodeDialogOpen(false),
+          });
+        }}
+        isSubmitting={createCostCodeMutation.isPending}
+      />
     </form>
   );
 }

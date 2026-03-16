@@ -168,7 +168,6 @@ export const projectFormSchema = z.object({
   effectiveEndDate: z.string(),
   contractValue: z.number().min(0),
   contractType: z.string(),
-  totalContractValue: z.number().min(0),
   retainagePercent: z.number().min(0).max(100),
   targetBudgetPercent: z.number().min(0).max(100),
   paymentTerms: z.string(),

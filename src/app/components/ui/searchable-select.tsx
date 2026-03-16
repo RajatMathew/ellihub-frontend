@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 
 import { cn } from '@app/lib/utils';
 
@@ -31,6 +31,10 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   disabled?: boolean;
   className?: string;
+  /** Callback to create a new item — renders a "+ Add" button at the bottom */
+  onAdd?: () => void;
+  /** Label for the add button (default: "Add New") */
+  addLabel?: string;
 }
 
 function SearchableSelect({
@@ -42,6 +46,8 @@ function SearchableSelect({
   emptyMessage = 'No results found.',
   disabled = false,
   className,
+  onAdd,
+  addLabel = 'Add New',
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -106,6 +112,21 @@ function SearchableSelect({
               ))}
             </CommandGroup>
           </CommandList>
+          {onAdd && (
+            <div className="border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onAdd();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent cursor-pointer"
+              >
+                <Plus className="size-4" />
+                {addLabel}
+              </button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

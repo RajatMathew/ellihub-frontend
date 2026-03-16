@@ -44,7 +44,7 @@ import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
 import { InfoRow } from '@modules/project/components/info-row';
-import { getPriorityVariant, PCO_STATUS_COLORS } from '@modules/project/constants/pco.constants';
+import { getPriorityVariant, getStatusBadgeVariant } from '@modules/project/constants/pco.constants';
 import { DetailSidebar } from '@modules/directory/components';
 import {
   useApprovePCOMutation,
@@ -159,8 +159,6 @@ export function PCODetailPage() {
   const isTerminal = statusName === 'REJECTED' || statusName === 'VOID';
 
   const workflowActions = WORKFLOW_ACTIONS[statusName] ?? [];
-  const primaryAction = workflowActions.find((a) => a.primary);
-  const dropdownActions = workflowActions.filter((a) => !a.primary);
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -228,12 +226,41 @@ export function PCODetailPage() {
               <ToolbarPageTitle>
                 {pco.pcoNumber ? `PCO ${pco.pcoNumber}` : pco.title}
               </ToolbarPageTitle>
-              {pco.status && (
-                <div className="flex items-center gap-1.5">
-                  <span className={`size-2 rounded-full ${PCO_STATUS_COLORS[pco.status.name] ?? 'bg-muted-foreground'}`} />
-                  <span className="text-sm text-muted-foreground">{pco.status.label}</span>
-                </div>
-              )}
+              {pco.status && !isTerminal && workflowActions.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1.5 rounded-md px-2 py-0.5 hover:bg-accent transition-colors cursor-pointer">
+                      <Badge variant={getStatusBadgeVariant(pco.status.name)} appearance="light" size="sm">
+                        {pco.status.label}
+                      </Badge>
+                      <ChevronDown className="size-3 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    {workflowActions.map((action, i) => {
+                      const showSeparator = action.destructive && i > 0 && !workflowActions[i - 1]?.destructive;
+                      return (
+                        <div key={action.targetStatus}>
+                          {showSeparator && <DropdownMenuSeparator />}
+                          <DropdownMenuItem
+                            variant={action.destructive ? 'destructive' : undefined}
+                            onClick={() => handleActionClick(action)}
+                          >
+                            {action.label}
+                            {action.needsReason && (
+                              <span className="ml-auto text-xs text-muted-foreground">(reason)</span>
+                            )}
+                          </DropdownMenuItem>
+                        </div>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : pco.status ? (
+                <Badge variant={getStatusBadgeVariant(pco.status.name)} appearance="light" size="sm">
+                  {pco.status.label}
+                </Badge>
+              ) : null}
               {pco.priority && (
                 <Badge variant={getPriorityVariant(pco.priority)} appearance="outline" size="sm">
                   {pco.priority}
@@ -242,45 +269,6 @@ export function PCODetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {/* Primary workflow action */}
-            {primaryAction && (
-              <Button size="sm" onClick={() => handleActionClick(primaryAction)}>
-                {primaryAction.label}
-              </Button>
-            )}
-
-            {/* Workflow dropdown (secondary actions) */}
-            {dropdownActions.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Workflow
-                    <ChevronDown className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {dropdownActions.map((action, i) => {
-                    const showSeparator = action.destructive && i > 0 && !dropdownActions[i - 1]?.destructive;
-                    return (
-                      <div key={action.targetStatus}>
-                        {showSeparator && <DropdownMenuSeparator />}
-                        <DropdownMenuItem
-                          variant={action.destructive ? 'destructive' : undefined}
-                          onClick={() => handleActionClick(action)}
-                        >
-                          {action.label}
-                          {action.needsReason && (
-                            <span className="ml-auto text-xs text-muted-foreground">(reason)</span>
-                          )}
-                        </DropdownMenuItem>
-                      </div>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Edit + more menu */}
             {!isTerminal && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
@@ -369,7 +357,6 @@ export function PCODetailPage() {
                   {pco.scheduleImpactDays} day{pco.scheduleImpactDays !== 1 ? 's' : ''}
                 </InfoRow>
               )}
-              <InfoRow label="Requested By">{pco.requestedBy ?? '—'}</InfoRow>
               <InfoRow label="Contact">{pco.contact?.fullName ?? '—'}</InfoRow>
               <InfoRow label="Cost Code">
                 {pco.costCode ? `${pco.costCode.code} - ${pco.costCode.name}` : '—'}
@@ -449,11 +436,29 @@ export function PCODetailPage() {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={5} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                        <td colSpan={5} className="pt-3 text-right text-sm text-muted-foreground">
+                          Subtotal
+                        </td>
+                        <td className="pt-3 text-right font-medium tabular-nums">
+                          {formatCurrency(pco.amount)}
+                        </td>
+                      </tr>
+                      {(pco.markupAmount ?? 0) !== 0 && (
+                        <tr>
+                          <td colSpan={5} className="pt-1 text-right text-sm text-muted-foreground">
+                            Markup
+                          </td>
+                          <td className="pt-1 text-right font-medium tabular-nums">
+                            {formatCurrency(pco.markupAmount ?? 0)}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="border-t">
+                        <td colSpan={5} className="pt-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           Total
                         </td>
-                        <td className="pt-3 text-right font-semibold tabular-nums">
-                          {formatCurrency(pco.amount)}
+                        <td className="pt-2 text-right font-semibold tabular-nums">
+                          {formatCurrency(pco.amount + (pco.markupAmount ?? 0))}
                         </td>
                       </tr>
                     </tfoot>
@@ -479,12 +484,12 @@ export function PCODetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Amount">{formatCurrency(pco.amount)}</InfoRow>
+                  <InfoRow label="Subtotal">{formatCurrency(pco.amount)}</InfoRow>
                   <InfoRow label="Markup">{formatCurrency(pco.markupAmount ?? 0)}</InfoRow>
-                  <InfoRow label="Estimated Cost">{formatCurrency(pco.estimatedCost ?? 0)}</InfoRow>
-                  {pco.estimatedMarginPercent != null && (
-                    <InfoRow label="Est. Margin">{pco.estimatedMarginPercent.toFixed(1)}%</InfoRow>
-                  )}
+                  <Separator className="my-2" />
+                  <InfoRow label="Total">
+                    <span className="font-semibold">{formatCurrency(pco.amount + (pco.markupAmount ?? 0))}</span>
+                  </InfoRow>
                 </CardContent>
               </Card>
             </div>
@@ -626,7 +631,7 @@ export function PCODetailPage() {
                 Cancel
               </Button>
               <Button
-                variant={activeAction.destructive ? 'destructive' : 'default'}
+                variant={activeAction.destructive ? 'destructive' : 'primary'}
                 disabled={actionReason.length < (activeAction.minReasonLength ?? 1) || isActionPending}
                 onClick={() => executeAction(activeAction, actionReason)}
               >

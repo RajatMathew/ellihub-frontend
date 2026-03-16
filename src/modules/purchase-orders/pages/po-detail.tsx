@@ -56,7 +56,6 @@ import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
 
 import {
-  PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_COLORS,
   TRADE_CATEGORY_BADGE_VARIANTS,
   TRADE_CATEGORY_LABELS,

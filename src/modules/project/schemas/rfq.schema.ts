@@ -142,11 +142,16 @@ export type RFQQuote = z.infer<typeof rfqQuoteSchema>;
 export const rfqAttachmentSchema = z
   .object({
     id: z.string(),
-    fileName: z.string().nullable().optional(),
-    name: z.string().nullable().optional(),
-    fileSize: z.number().nullable().optional(),
-    fileUrl: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
+    documentId: z.string().nullable().optional(),
+    document: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    createdAt: z.string().optional(),
   })
   .passthrough();
 

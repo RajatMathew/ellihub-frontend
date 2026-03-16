@@ -3,6 +3,7 @@ import { z } from 'zod';
 import api from '@app/api';
 
 import {
+  rfqAttachmentSchema,
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatusSchema,
@@ -302,5 +303,27 @@ export const rfqApi = {
   ): Promise<unknown> {
     const res = await api.post(`${BASE}/${rfqId}/generate-po`, data);
     return res.data?.data ?? res.data;
+  },
+
+  /* ---- Attachments ---- */
+
+  async addAttachment(rfqId: string, data: { fileId: string }) {
+    const res = await api.post(`${BASE}/${rfqId}/attachments`, data);
+    return rfqAttachmentSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeAttachment(rfqId: string, attachmentId: string): Promise<void> {
+    await api.delete(`${BASE}/${rfqId}/attachments/${attachmentId}`);
+  },
+
+  /* ---- Quote Attachments ---- */
+
+  async addQuoteAttachment(rfqId: string, quoteId: string, data: { fileId: string }) {
+    const res = await api.post(`${BASE}/${rfqId}/quotes/${quoteId}/attachments`, data);
+    return res.data?.data ?? res.data;
+  },
+
+  async removeQuoteAttachment(rfqId: string, quoteId: string, attachmentId: string): Promise<void> {
+    await api.delete(`${BASE}/${rfqId}/quotes/${quoteId}/attachments/${attachmentId}`);
   },
 };

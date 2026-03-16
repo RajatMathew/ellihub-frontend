@@ -39,7 +39,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
@@ -585,7 +584,7 @@ export function SCODetailPage() {
                 Cancel
               </Button>
               <Button
-                variant={activeAction.destructive ? 'destructive' : 'default'}
+                variant={activeAction.destructive ? 'destructive' : 'primary'}
                 disabled={
                   actionReason.length < (activeAction.minReasonLength ?? 1) || isActionPending
                 }

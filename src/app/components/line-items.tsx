@@ -1,12 +1,45 @@
-import { Plus, Trash2 } from 'lucide-react';
-import { Controller, type Control, type FieldArrayWithId, type FieldErrors } from 'react-hook-form';
+import React, { type ReactNode } from 'react';
+
+import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { Controller, useWatch, type Control, type FieldArrayWithId, type FieldErrors } from 'react-hook-form';
 
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input, InputWrapper } from '@app/components/ui/input';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@app/components/ui/command';
+import { FieldError as FieldErr } from '@app/components/ui/field';
+import { Input } from '@app/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import { formatCurrency } from '@app/lib/helpers';
+import { cn } from '@app/lib/utils';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
+
+/* ---- Unit options ---- */
+
+const UNIT_OPTIONS = [
+  { value: 'EA', label: 'EA — Each' },
+  { value: 'LF', label: 'LF — Linear Foot' },
+  { value: 'SF', label: 'SF — Square Foot' },
+  { value: 'SY', label: 'SY — Square Yard' },
+  { value: 'CF', label: 'CF — Cubic Foot' },
+  { value: 'CY', label: 'CY — Cubic Yard' },
+  { value: 'TON', label: 'TON — Ton' },
+  { value: 'LB', label: 'LB — Pound' },
+  { value: 'GAL', label: 'GAL — Gallon' },
+  { value: 'HR', label: 'HR — Hour' },
+  { value: 'DAY', label: 'DAY — Day' },
+  { value: 'WK', label: 'WK — Week' },
+  { value: 'MO', label: 'MO — Month' },
+  { value: 'LS', label: 'LS — Lump Sum' },
+  { value: 'LOT', label: 'LOT — Lot' },
+] as const;
 
 /* ---- Types ---- */
 
@@ -50,6 +83,12 @@ export interface LineItemsProps {
   defaultItem?: Record<string, any>;
   /** Card id for section nav */
   id?: string;
+  /** Show computed line total (qty × unitPrice) for each row */
+  showLineTotal?: boolean;
+  /** Footer content rendered inside the card (e.g. receipt-style totals) */
+  children?: ReactNode;
+  /** Callback to add a new cost code — shows "+ Add" in cost code dropdown */
+  onAddCostCode?: () => void;
 }
 
 const DEFAULT_FIELD_NAMES: LineItemFieldNames = {
@@ -61,6 +100,112 @@ const DEFAULT_FIELD_NAMES: LineItemFieldNames = {
 };
 
 const DEFAULT_ITEM = { description: '', quantity: 1, unit: 'EA', unitPrice: 0 };
+
+/* ---- Unit Combobox ---- */
+
+function UnitCombobox({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  invalid?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+
+  const filtered = UNIT_OPTIONS.filter(
+    (u) =>
+      u.value.toLowerCase().includes(search.toLowerCase()) ||
+      u.label.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-invalid={invalid}
+          className={cn(
+            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] shadow-xs shadow-black/5 transition-shadow outline-none',
+            'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
+            !value && 'text-muted-foreground',
+          )}
+        >
+          <span className="truncate">{value || 'Unit'}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-60 -me-0.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[180px] p-0" align="start" sideOffset={4}>
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search or type..."
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {search ? (
+                <button
+                  type="button"
+                  className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded cursor-pointer"
+                  onClick={() => {
+                    onChange(search.toUpperCase());
+                    setSearch('');
+                    setOpen(false);
+                  }}
+                >
+                  Use &quot;{search.toUpperCase()}&quot;
+                </button>
+              ) : (
+                'Type a custom unit'
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {filtered.map((u) => (
+                <CommandItem
+                  key={u.value}
+                  value={u.value}
+                  onSelect={() => {
+                    onChange(u.value);
+                    setSearch('');
+                    setOpen(false);
+                  }}
+                >
+                  {u.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* ---- Line Total Cell ---- */
+
+function LineTotalCell({
+  control,
+  fieldPrefix,
+  index,
+  quantityField,
+  unitPriceField,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: Control<any>;
+  fieldPrefix: string;
+  index: number;
+  quantityField: string;
+  unitPriceField: string;
+}) {
+  const qty = useWatch({ control, name: `${fieldPrefix}.${index}.${quantityField}` }) ?? 0;
+  const price = useWatch({ control, name: `${fieldPrefix}.${index}.${unitPriceField}` }) ?? 0;
+  return (
+    <span className="text-sm font-medium tabular-nums">{formatCurrency(qty * price)}</span>
+  );
+}
 
 /* ---- Component ---- */
 
@@ -78,9 +223,14 @@ export function LineItems({
   addLabel = 'Add Line Item',
   defaultItem,
   id = 'line-items',
+  showLineTotal = false,
+  children,
+  onAddCostCode,
 }: LineItemsProps) {
   const fn = { ...DEFAULT_FIELD_NAMES, ...fieldNamesProp };
   const newItem = defaultItem ?? DEFAULT_ITEM;
+
+  const thClass = 'pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-left';
 
   return (
     <Card id={id}>
@@ -92,147 +242,155 @@ export function LineItems({
 
         <Separator />
 
-        <div className="overflow-x-scroll space-y-2">
-          {fields.map((field, index) => (
-            <div
-              key={field.id}
-              className="inline-flex items-end gap-3 rounded-lg bg-foreground/5 border border-border p-4 w-fit"
-            >
-              {/* Description */}
-              <div className="w-[200px] shrink-0">
-                <Controller
-                  name={`${fieldPrefix}.${index}.${fn.description}`}
-                  control={control}
-                  render={({ field: f, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Description
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...f}
-                          placeholder="e.g. W12x26 beams"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b">
+                <th className={`${thClass} w-8`}>#</th>
+                <th className={thClass}>Item</th>
+                <th className={`${thClass} w-[180px]`}>Cost Code</th>
+                <th className={`${thClass} w-[90px] text-right`}>Qty</th>
+                <th className={`${thClass} w-[90px]`}>Unit</th>
+                <th className={`${thClass} w-[110px] text-right`}>Unit Price</th>
+                {showLineTotal && <th className={`${thClass} w-[110px] text-right`}>Amount</th>}
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((field, index) => (
+                <tr key={field.id} className="border-b last:border-0 align-top">
+                  <td className="py-2.5 pr-3 text-sm text-muted-foreground pt-3.5">{index + 1}</td>
 
-              {/* Cost Code */}
-              <div className="w-[200px] shrink-0">
-                <Controller
-                  name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Cost Code
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={costCodeOptions}
-                        value={f.value ?? null}
-                        onValueChange={(v) => f.onChange(v ?? undefined)}
-                        placeholder="Select cost code..."
-                        searchPlaceholder="Search cost codes..."
-                        emptyMessage="No cost codes found."
+                  {/* Description */}
+                  <td className="py-2.5 pr-3">
+                    <Controller
+                      name={`${fieldPrefix}.${index}.${fn.description}`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <div>
+                          <Input
+                            {...f}
+                            placeholder="e.g. W12x26 beams"
+                            aria-invalid={fieldState.invalid}
+                            autoComplete="off"
+                          />
+                          {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                        </div>
+                      )}
+                    />
+                  </td>
+
+                  {/* Cost Code */}
+                  <td className="py-2.5 pr-3">
+                    <Controller
+                      name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
+                      control={control}
+                      render={({ field: f }) => (
+                        <SearchableSelect
+                          options={costCodeOptions}
+                          value={f.value ?? null}
+                          onValueChange={(v) => f.onChange(v ?? undefined)}
+                          placeholder="Select..."
+                          searchPlaceholder="Search..."
+                          emptyMessage="None found."
+                          onAdd={onAddCostCode}
+                          addLabel="Add Cost Code"
+                        />
+                      )}
+                    />
+                  </td>
+
+                  {/* Quantity */}
+                  <td className="py-2.5 pr-3">
+                    <Controller
+                      name={`${fieldPrefix}.${index}.${fn.quantity}`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...f}
+                            onChange={(e) => f.onChange(Number(e.target.value))}
+                            aria-invalid={fieldState.invalid}
+                            className="text-right"
+                          />
+                          {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                        </div>
+                      )}
+                    />
+                  </td>
+
+                  {/* Unit */}
+                  <td className="py-2.5 pr-3">
+                    <Controller
+                      name={`${fieldPrefix}.${index}.${fn.unit}`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <div>
+                          <UnitCombobox
+                            value={f.value ?? ''}
+                            onChange={f.onChange}
+                            invalid={fieldState.invalid}
+                          />
+                          {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                        </div>
+                      )}
+                    />
+                  </td>
+
+                  {/* Unit Price */}
+                  <td className="py-2.5 pr-3">
+                    <Controller
+                      name={`${fieldPrefix}.${index}.${fn.unitPrice}`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...f}
+                            onChange={(e) => f.onChange(Number(e.target.value))}
+                            aria-invalid={fieldState.invalid}
+                            className="text-right"
+                          />
+                          {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                        </div>
+                      )}
+                    />
+                  </td>
+
+                  {/* Line Total */}
+                  {showLineTotal && (
+                    <td className="py-2.5 text-right pt-3.5">
+                      <LineTotalCell
+                        control={control}
+                        fieldPrefix={fieldPrefix}
+                        index={index}
+                        quantityField={fn.quantity}
+                        unitPriceField={fn.unitPrice}
                       />
-                    </Field>
+                    </td>
                   )}
-                />
-              </div>
 
-              {/* Quantity */}
-              <div className="w-[100px] shrink-0">
-                <Controller
-                  name={`${fieldPrefix}.${index}.${fn.quantity}`}
-                  control={control}
-                  render={({ field: f, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Quantity
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...f}
-                          onChange={(e) => f.onChange(Number(e.target.value))}
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Unit */}
-              <div className="w-[100px] shrink-0">
-                <Controller
-                  name={`${fieldPrefix}.${index}.${fn.unit}`}
-                  control={control}
-                  render={({ field: f, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Unit
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...f}
-                          placeholder="e.g. EA, LF, SF"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Unit Price */}
-              <div className="w-[120px] shrink-0">
-                <Controller
-                  name={`${fieldPrefix}.${index}.${fn.unitPrice}`}
-                  control={control}
-                  render={({ field: f, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Unit Price
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...f}
-                          onChange={(e) => f.onChange(Number(e.target.value))}
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Delete */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                mode="icon"
-                className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                disabled={fields.length <= 1}
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          ))}
+                  {/* Delete */}
+                  <td className="py-2.5 pl-1 pt-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      disabled={fields.length <= 1}
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {rootError && 'message' in rootError && (
@@ -245,6 +403,8 @@ export function LineItems({
           <Plus className="size-4" />
           {addLabel}
         </Button>
+
+        {children}
       </CardContent>
     </Card>
   );
