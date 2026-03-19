@@ -41,9 +41,10 @@ const UIKit = lazy(() => DelayForDemo(import('@core/ui/pages/page'), 5000));
 
 export const routeTree: RouteDef[] = [
   {
+    path: '/',
     component: Outlet,
     children: [
-      isDev ? { path: 'ui', component: UIKit, title: 'UI Kit' } : null,
+      ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit' }] : []),
 
       { path: 'projects/*', component: ProjectRoutes, title: 'Projects' },
 
