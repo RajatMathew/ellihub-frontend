@@ -2,6 +2,7 @@ export const INVOICE_FORM_SECTIONS = [
   { id: 'invoice-details', label: 'Invoice Details' },
   { id: 'financial', label: 'Financial Info' },
   { id: 'line-items', label: 'Line Items' },
+  { id: 'documents', label: 'Documents' },
 ] as const;
 
 export const INVOICE_TYPE_OPTIONS = [

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type AxiosError } from 'axios';
-import { toast } from 'sonner';
 
+import { toastApiError } from '@app/lib/toast-api-error';
 import { pcoApi } from '@modules/project/api/pco.api';
 import { pcoKeys } from '@modules/project/constants/pco.keys';
 import type {
@@ -12,31 +11,6 @@ import type {
   PCOVoidInput,
   PCOLineItemInput,
 } from '@modules/project/schemas/pco.schema';
-
-/* ---- error helper ---- */
-
-function getApiErrorMessage(error: unknown, fallback: string): string {
-  const axiosErr = error as AxiosError<{
-    message?: string;
-    details?: { details?: { path?: string[]; message?: string }[] };
-  }>;
-  const data = axiosErr?.response?.data;
-  if (data?.details?.details?.length) {
-    const msgs = data.details.details
-      .map((d) => {
-        const field = d.path?.join('.') ?? '';
-        return field ? `${field}: ${d.message}` : d.message;
-      })
-      .filter(Boolean);
-    if (msgs.length) return msgs.join('\n');
-  }
-  if (data?.message) return data.message;
-  return fallback;
-}
-
-function toastApiError(error: unknown, fallback: string) {
-  toast.error(getApiErrorMessage(error, fallback));
-}
 
 /* ---- queries ---- */
 

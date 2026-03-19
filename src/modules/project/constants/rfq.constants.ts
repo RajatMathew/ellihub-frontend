@@ -25,10 +25,22 @@ export const BIDDING_TYPE_OPTIONS = [
   { value: 'OPEN', label: 'Open' },
 ] as const;
 
+export const RFQ_TRACK_OPTIONS = [
+  { value: 'MATERIAL', label: 'Material' },
+  { value: 'FABRICATION', label: 'Fabrication' },
+  { value: 'INSTALLATION', label: 'Installation' },
+] as const;
+
+export const RFQ_TRACK_LABELS: Record<string, string> = {
+  MATERIAL: 'Material',
+  FABRICATION: 'Fabrication',
+  INSTALLATION: 'Installation',
+};
+
 export const RFQ_FORM_SECTIONS = [
   { id: 'rfq-details', label: 'RFQ Details' },
   { id: 'deliverables', label: 'Deliverables' },
-  { id: 'vendors', label: 'Vendors' },
+  { id: 'documents', label: 'Documents' },
 ] as const;
 
 export const RFQ_STATUS_COLORS: Record<string, string> = {

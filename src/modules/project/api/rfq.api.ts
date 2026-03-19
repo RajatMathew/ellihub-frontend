@@ -3,6 +3,7 @@ import { z } from 'zod';
 import api from '@app/api';
 
 import {
+  rfqAttachmentSchema,
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatusSchema,
@@ -30,6 +31,11 @@ export type BidComparisonQuote = {
   leadTimeDays: number | null;
   warrantyPeriod: string | null;
   isResponsive: boolean | null;
+  attachments?: {
+    id: string;
+    documentId: string;
+    document: { id: string; name: string; mimeType?: string };
+  }[];
   lineItems: {
     deliverableId: string;
     sequenceNumber: number | null;
@@ -195,7 +201,9 @@ export const rfqApi = {
 
   async getBidComparison(rfqId: string): Promise<BidComparison> {
     const res = await api.get(`${BASE}/${rfqId}/bid-comparison`);
-    return res.data?.data ?? res.data;
+    const raw = res.data?.data ?? res.data;
+    if (raw?.quotes?.[0]) console.log('[BidComparison] quote[0] keys:', Object.keys(raw.quotes[0]), 'attachments:', JSON.stringify(raw.quotes[0].attachments));
+    return raw;
   },
 
   /* ---- Quotes ---- */
@@ -302,5 +310,27 @@ export const rfqApi = {
   ): Promise<unknown> {
     const res = await api.post(`${BASE}/${rfqId}/generate-po`, data);
     return res.data?.data ?? res.data;
+  },
+
+  /* ---- Attachments ---- */
+
+  async addAttachment(rfqId: string, data: { fileId: string }) {
+    const res = await api.post(`${BASE}/${rfqId}/attachments`, data);
+    return rfqAttachmentSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeAttachment(rfqId: string, attachmentId: string): Promise<void> {
+    await api.delete(`${BASE}/${rfqId}/attachments/${attachmentId}`);
+  },
+
+  /* ---- Quote Attachments ---- */
+
+  async addQuoteAttachment(rfqId: string, quoteId: string, data: { fileId: string }) {
+    const res = await api.post(`${BASE}/${rfqId}/quotes/${quoteId}/attachments`, data);
+    return res.data?.data ?? res.data;
+  },
+
+  async removeQuoteAttachment(rfqId: string, quoteId: string, attachmentId: string): Promise<void> {
+    await api.delete(`${BASE}/${rfqId}/quotes/${quoteId}/attachments/${attachmentId}`);
   },
 };

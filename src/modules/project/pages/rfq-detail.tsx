@@ -62,11 +62,18 @@ import { StatsCard } from '@app/components/ui/stats-card';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
+import { useQuery } from '@tanstack/react-query';
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { filesApi } from '@modules/files/api/files.api';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
 import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
 import { useVendorsQuery } from '@modules/directory/hooks/vendors.hooks';
 import { BIDDING_TYPE_LABELS, getRfqStatusVariant } from '../constants/rfq.constants';
+import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import {
+  useAddQuoteAttachmentMutation,
+  useAddRFQAttachmentMutation,
   useAwardRFQMutation,
   useBidComparisonQuery,
   useCancelRFQMutation,
@@ -79,15 +86,71 @@ import {
   usePublishRFQMutation,
   useRFQDetailQuery,
   useRFQStatusesQuery,
+  useRemoveRFQAttachmentMutation,
   useUnawardRFQMutation,
   useUpdateQuoteMutation,
   useVoidAwardMutation,
 } from '../hooks';
+import { useProjectFolderQuery } from '../hooks/use-project-folder';
+
+/* ---- Quote Document Preview ---- */
+
+function QuoteDocPreview({ documentId, name, mimeType }: { documentId: string; name: string; mimeType?: string }) {
+  const { data: url, isLoading } = useQuery({
+    queryKey: ['file-preview', documentId],
+    queryFn: () => filesApi.getDownloadLink(documentId),
+    enabled: !!documentId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-xs text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!url) {
+    return (
+      <div className="flex items-center justify-center h-full text-center p-4">
+        <FileText className="size-12 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  const isImage = mimeType?.startsWith('image/');
+  const isPdf = mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf');
+
+  if (isImage) {
+    return <img src={url} alt={name} className="w-full h-full object-contain p-2" />;
+  }
+
+  if (isPdf) {
+    return <iframe src={url} title={name} className="w-full h-full border-0" />;
+  }
+
+  // Generic file — show icon + name + download
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
+      <FileText className="size-10 text-muted-foreground/40" />
+      <p className="text-xs font-medium truncate max-w-full">{name}</p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-primary hover:underline"
+      >
+        View / Download
+      </a>
+    </div>
+  );
+}
 
 /* ---- Page ---- */
 
 export default function RFQDetailPage() {
-  const { rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
+  const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
   const { data: rfq, isLoading } = useRFQDetailQuery(rfqId);
@@ -104,6 +167,13 @@ export default function RFQDetailPage() {
   const updateQuoteMutation = useUpdateQuoteMutation();
   const changeStatusMutation = useChangeRFQStatusMutation();
   const declineInviteMutation = useDeclineInviteMutation();
+  const addAttachmentMutation = useAddRFQAttachmentMutation();
+  const addQuoteAttachmentMutation = useAddQuoteAttachmentMutation();
+  const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
+  const uploadFileMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
+
+  const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
 
   const { data: rfqStatuses } = useRFQStatusesQuery();
 
@@ -124,6 +194,7 @@ export default function RFQDetailPage() {
   const [quoteAmount, setQuoteAmount] = useState<number | ''>('');
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
+  const [quoteFile, setQuoteFile] = useState<File | null>(null);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -136,6 +207,9 @@ export default function RFQDetailPage() {
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardQuoteIds, setAwardQuoteIds] = useState<string[]>([]);
+
+  // Upload attachment dialog
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Bid comparison dialog
   const [comparisonOpen, setComparisonOpen] = useState(false);
@@ -162,7 +236,9 @@ export default function RFQDetailPage() {
     updateQuoteMutation.isPending ||
     unawardMutation.isPending ||
     generatePOMutation.isPending ||
-    changeStatusMutation.isPending;
+    changeStatusMutation.isPending ||
+    addAttachmentMutation.isPending ||
+    removeAttachmentMutation.isPending;
 
   if (isLoading) {
     return (
@@ -226,6 +302,7 @@ export default function RFQDetailPage() {
     setQuoteAmount('');
     setQuoteLeadTime('');
     setEditingQuoteId(null);
+    setQuoteFile(null);
   }
 
   function handleAwardFromTable(quoteId: string) {
@@ -637,7 +714,8 @@ export default function RFQDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.info('File upload coming soon.')}
+                  disabled={!rfqFolderQuery.data}
+                  onClick={() => setUploadOpen(true)}
                 >
                   <Upload className="size-4" />
                   Add Attachment
@@ -651,15 +729,32 @@ export default function RFQDetailPage() {
                     <div key={att.id} className="flex items-center gap-3 rounded-lg border p-3">
                       <Paperclip className="size-4 text-muted-foreground" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          {att.fileName ?? att.name ?? 'File'}
-                        </div>
-                        {att.fileSize && (
-                          <div className="text-xs text-muted-foreground">
-                            {formatFileSize(att.fileSize)}
+                        {att.document?.id ? (
+                          <button
+                            type="button"
+                            className="text-sm font-medium truncate text-primary hover:underline block max-w-full text-left"
+                            onClick={() => downloadFile.mutate(att.document!.id)}
+                          >
+                            {att.document.name ?? 'Untitled Document'}
+                          </button>
+                        ) : (
+                          <div className="text-sm font-medium truncate">
+                            {att.document?.name ?? 'File'}
                           </div>
                         )}
                       </div>
+                      <span className="text-xs text-muted-foreground shrink-0">Document</span>
+                      {!isTerminal && (
+                        <Button
+                          variant="ghost"
+                          mode="icon"
+                          size="sm"
+                          disabled={removeAttachmentMutation.isPending}
+                          onClick={() => removeAttachmentMutation.mutate({ rfqId, attachmentId: att.id })}
+                        >
+                          <Trash2 className="size-3.5 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -671,6 +766,23 @@ export default function RFQDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {rfqFolderQuery.data && (
+            <UploadFileDialog
+              open={uploadOpen}
+              onOpenChange={setUploadOpen}
+              parentId={rfqFolderQuery.data}
+              onSubmit={async (payload) => {
+                try {
+                  const fileItem = await uploadFileMutation.mutateAsync(payload);
+                  await addAttachmentMutation.mutateAsync({ rfqId, data: { fileId: fileItem.id } });
+                } finally {
+                  setUploadOpen(false);
+                }
+              }}
+              isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+            />
+          )}
 
           {/* Required Deliverables */}
           <Card>
@@ -688,15 +800,11 @@ export default function RFQDetailPage() {
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Amount</th>
+                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {deliverables.map((d, idx) => {
-                        const estTotal = d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * d.quantity;
-                        return (
+                      {deliverables.map((d, idx) => (
                           <tr key={d.id} className="border-b last:border-0">
                             <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
                             <td className="py-2.5 pr-3">
@@ -708,29 +816,10 @@ export default function RFQDetailPage() {
                               )}
                             </td>
                             <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
-                            <td className="py-2.5 pr-3">{d.unit}</td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums">
-                              {d.estimatedUnitPrice != null ? formatCurrency(d.estimatedUnitPrice) : '—'}
-                            </td>
-                            <td className="py-2.5 text-right font-medium tabular-nums">
-                              {estTotal > 0 ? formatCurrency(estTotal) : '—'}
-                            </td>
+                            <td className="py-2.5">{d.unit}</td>
                           </tr>
-                        );
-                      })}
+                      ))}
                     </tbody>
-                    {deliverablesTotal > 0 && (
-                      <tfoot>
-                        <tr>
-                          <td colSpan={5} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                            Total
-                          </td>
-                          <td className="pt-3 text-right font-semibold tabular-nums">
-                            {formatCurrency(deliverablesTotal)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    )}
                   </table>
                 </div>
               ) : (
@@ -790,15 +879,12 @@ export default function RFQDetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Est. Budget">
-                    {rfq.estimatedBudget != null ? formatCurrency(rfq.estimatedBudget) : '—'}
-                  </InfoRow>
                   {deliverablesTotal > 0 && (
                     <InfoRow label="Est. Deliverables">{formatCurrency(deliverablesTotal)}</InfoRow>
                   )}
                   {lowestQuote != null && (
                     <>
-                      <Separator className="my-2" />
+                      {deliverablesTotal > 0 && <Separator className="my-2" />}
                       <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
                     </>
                   )}
@@ -901,7 +987,7 @@ export default function RFQDetailPage() {
             <div>
               <DialogTitle className="text-lg">Bid Comparison</DialogTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Comparing {bidComparison?.quotes.length ?? 0} vendors for RFQ #{rfq.rfqNumber}
+                Comparing {bidComparison?.quotes.length ?? 0} quote{(bidComparison?.quotes.length ?? 0) !== 1 ? 's' : ''} from {invites.length} vendor{invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
               </p>
             </div>
             <div className="flex items-center gap-6 text-sm">
@@ -934,11 +1020,17 @@ export default function RFQDetailPage() {
                       className="w-72 shrink-0 rounded-lg border bg-card flex flex-col"
                     >
                       {/* Quote document area */}
-                      <div className="h-64 border-b bg-muted/30 flex items-center justify-center rounded-t-lg">
-                        {hasQuote ? (
+                      <div className="h-64 border-b bg-muted/30 flex items-center justify-center rounded-t-lg overflow-hidden">
+                        {hasQuote && bcQuote?.attachments?.length ? (
+                          <QuoteDocPreview
+                            documentId={bcQuote.attachments[0].document.id}
+                            name={bcQuote.attachments[0].document.name}
+                            mimeType={bcQuote.attachments[0].document.mimeType}
+                          />
+                        ) : hasQuote ? (
                           <div className="text-center p-4">
                             <FileText className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">Quote Document</p>
+                            <p className="text-xs text-muted-foreground">No document attached</p>
                           </div>
                         ) : declined ? (
                           <div className="text-center">
@@ -1046,13 +1138,17 @@ export default function RFQDetailPage() {
 
             <Field>
               <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                Lead Time
+                Lead Time (Days)
               </FieldLabel>
               <InputWrapper>
                 <Input
-                  placeholder="e.g. 6-8 weeks, 45 days"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="e.g. 30"
                   value={quoteLeadTime}
-                  onChange={(e) => setQuoteLeadTime(e.target.value)}
+                  onChange={(e) => setQuoteLeadTime(e.target.value.replace(/[^0-9]/g, ''))}
+                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }}
                   autoComplete="off"
                 />
               </InputWrapper>
@@ -1062,11 +1158,11 @@ export default function RFQDetailPage() {
               <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                 Quote Document
               </FieldLabel>
-              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
-                <Upload className="size-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
-                <p className="text-xs text-muted-foreground uppercase">PDF, XLSX or DOCX (max. 20MB)</p>
-              </div>
+              <FileDropZone
+                value={quoteFile}
+                onChange={setQuoteFile}
+                accept=".pdf,.xlsx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              />
             </Field>
           </div>
           <DialogFooter>
@@ -1074,22 +1170,47 @@ export default function RFQDetailPage() {
               Cancel
             </Button>
             <Button
-              disabled={!quoteAmount || quoteAmount <= 0 || createQuoteMutation.isPending || updateQuoteMutation.isPending}
-              onClick={() => {
+              disabled={!quoteAmount || quoteAmount <= 0 || createQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending}
+              onClick={async () => {
                 if (!quoteAmount || quoteAmount <= 0 || deliverables.length === 0) return;
 
-                const totalQty = deliverables.reduce((s, d) => s + d.quantity, 0);
+                const totalQty = deliverables.reduce((s, d) => s + (d.quantity || 1), 0);
                 const perUnitPrice = totalQty > 0 ? quoteAmount / totalQty : quoteAmount;
                 const items = deliverables.map((d) => ({
                   deliverableId: d.id,
                   unitPrice: perUnitPrice,
-                  quantity: d.quantity,
-                  unit: d.unit,
+                  quantity: d.quantity || 1,
+                  unit: d.unit || 'EA',
                 }));
 
                 const leadTimeDays = quoteLeadTime
-                  ? parseInt(quoteLeadTime.replace(/\D/g, ''), 10) || undefined
+                  ? parseInt(quoteLeadTime, 10) || undefined
                   : undefined;
+
+                const attachFileToQuote = async (quoteId: string) => {
+                  if (quoteFile && rfqFolderQuery.data) {
+                    try {
+                      const dotIdx = quoteFile.name.lastIndexOf('.');
+                      const docName = dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
+                      const fileItem = await uploadFileMutation.mutateAsync({
+                        file: quoteFile,
+                        data: {
+                          name: docName,
+                          parentId: rfqFolderQuery.data,
+                          mimeType: quoteFile.type || undefined,
+                          size: quoteFile.size,
+                        },
+                      });
+                      addQuoteAttachmentMutation.mutate({
+                        rfqId,
+                        quoteId,
+                        data: { fileId: fileItem.id },
+                      });
+                    } catch {
+                      // Quote was created but file upload failed — user can retry
+                    }
+                  }
+                };
 
                 if (editingQuoteId) {
                   updateQuoteMutation.mutate(
@@ -1102,7 +1223,12 @@ export default function RFQDetailPage() {
                         notes: quoteLeadTime || null,
                       },
                     },
-                    { onSuccess: resetQuoteDialog },
+                    {
+                      onSuccess: () => {
+                        attachFileToQuote(editingQuoteId);
+                        resetQuoteDialog();
+                      },
+                    },
                   );
                 } else {
                   createQuoteMutation.mutate(
@@ -1115,12 +1241,18 @@ export default function RFQDetailPage() {
                         notes: quoteLeadTime || undefined,
                       },
                     },
-                    { onSuccess: resetQuoteDialog },
+                    {
+                      onSuccess: (result: any) => {
+                        const newQuoteId = result?.id;
+                        if (newQuoteId) attachFileToQuote(newQuoteId);
+                        resetQuoteDialog();
+                      },
+                    },
                   );
                 }
               }}
             >
-              {createQuoteMutation.isPending || updateQuoteMutation.isPending
+              {createQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending
                 ? 'Saving...'
                 : editingQuoteId ? 'Update Quote' : 'Submit Quote'}
             </Button>
@@ -1421,10 +1553,3 @@ export default function RFQDetailPage() {
   );
 }
 
-/* ---- Helpers ---- */
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}

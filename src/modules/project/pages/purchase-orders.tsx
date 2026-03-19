@@ -348,6 +348,11 @@ export default function ProjectPOs() {
                   <Link to={`${row.original.id}`}>View</Link>
                 </DropdownMenuItem>
                 {isDraft && (
+                  <DropdownMenuItem asChild>
+                    <Link to={`${row.original.id}/edit`}>Edit</Link>
+                  </DropdownMenuItem>
+                )}
+                {isDraft && (
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={() => del.mutate(row.original.id)}

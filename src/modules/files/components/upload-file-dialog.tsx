@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@app/components/ui/button';
 import {
@@ -36,6 +36,11 @@ export function UploadFileDialog({
     setSelectedFile(null);
     setCustomName('');
   };
+
+  // Reset state whenever the dialog opens or closes
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) reset();

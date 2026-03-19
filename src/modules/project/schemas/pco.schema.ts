@@ -29,6 +29,9 @@ export type PCOChangeType = z.infer<typeof pcoChangeTypeSchema>;
 
 /* ---- Line item (from detail / create response) ---- */
 
+export const PCO_LINE_ITEM_CATEGORIES = ['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'OTHER'] as const;
+export type PCOLineItemCategory = (typeof PCO_LINE_ITEM_CATEGORIES)[number];
+
 export const pcoLineItemSchema = z
   .object({
     id: z.string(),
@@ -40,6 +43,7 @@ export const pcoLineItemSchema = z
     unit: z.string(),
     unitPrice: z.coerce.number(),
     amount: z.coerce.number(),
+    category: z.enum(PCO_LINE_ITEM_CATEGORIES).optional().default('MATERIALS'),
     costCodeId: z.string().nullable().optional(),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -213,11 +217,13 @@ export type ListPCOParams = z.infer<typeof listPCOParamsSchema>;
 /* ---- Input schemas ---- */
 
 export const pcoLineItemInputSchema = z.object({
-  title: z.string().default(''),
-  description: z.string().min(1, 'Description is required'),
-  qty: z.number().min(0, 'Quantity must be >= 0'),
+  _originalId: z.string().optional(),
+  title: z.string().optional().default(''),
+  description: z.string().min(1, 'Item description is required'),
+  qty: z.number().positive('Quantity must be greater than 0'),
   unit: z.string().min(1, 'Unit is required'),
   unitPrice: z.number(),
+  category: z.enum(PCO_LINE_ITEM_CATEGORIES).optional().default('MATERIALS'),
   costCodeId: z.string().optional(),
 });
 
@@ -227,7 +233,7 @@ export const createPCOInputSchema = z.object({
   projectId: z.string().min(1, 'Project is required'),
   date: z.string().min(1, 'Date is required'),
   title: z.string().min(1, 'Title is required'),
-  description: z.string().min(1, 'Description is required'),
+  description: z.string().optional().default(''),
   amount: z.number(),
   markupAmount: z.number().optional(),
   scheduleImpactDays: z.number().optional(),

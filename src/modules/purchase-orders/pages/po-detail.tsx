@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardList,
   DollarSign,
+  Download,
   ExternalLink,
   FileText,
   Link2,
@@ -16,6 +17,7 @@ import {
   ShieldAlert,
   Trash2,
   Truck,
+  Upload,
   TrendingUp,
   XCircle,
 } from 'lucide-react';
@@ -52,11 +54,15 @@ import { Separator } from '@app/components/ui/separator';
 import { StatsCard } from '@app/components/ui/stats-card';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
+import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
+import { useAddPOAttachmentMutation, useRemovePOAttachmentMutation } from '../hooks/po-attachment.hooks';
 
 import {
-  PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_COLORS,
   TRADE_CATEGORY_BADGE_VARIANTS,
   TRADE_CATEGORY_LABELS,
@@ -67,6 +73,7 @@ import {
   useIssuePOMutation,
   usePODetailQuery,
   useRecordDeliveryMutation,
+  useRevertToDraftMutation,
 } from '../hooks/po.hooks';
 import type { POStatusName } from '../schemas/po.schema';
 
@@ -134,15 +141,28 @@ export function PODetailPage() {
   const navigate = useNavigate();
 
   const { data: po, isLoading } = usePODetailQuery(poId);
+  const { data: costCodesData } = useCostCodesQuery();
+  const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
 
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
+  const revertToDraftMutation = useRevertToDraftMutation();
   const deleteMutation = useDeletePOMutation();
+  const addAttachmentMutation = useAddPOAttachmentMutation();
+  const removeAttachmentMutation = useRemovePOAttachmentMutation();
+  const uploadFileMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
+
+  const costCodeMap = new Map(
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+  );
+  const attachments = (po?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -164,6 +184,7 @@ export function PODetailPage() {
   const canEdit = isDraft;
   const canIssue = isDraft;
   const canCancel = isDraft || isIssued;
+  const canRevert = isIssued || isCancelled;
   const canRecordDelivery = (isIssued || isPartiallyPaid) && !po?.deliveryDate;
   const canDelete = isDraft;
 
@@ -173,6 +194,7 @@ export function PODetailPage() {
     issueMutation.isPending ||
     cancelMutation.isPending ||
     recordDeliveryMutation.isPending ||
+    revertToDraftMutation.isPending ||
     deleteMutation.isPending;
 
   if (isLoading) {
@@ -216,6 +238,14 @@ export function PODetailPage() {
               <ToolbarPageTitle>
                 {po.poNumber ?? 'Draft PO'}
               </ToolbarPageTitle>
+              {po.rfqId && (
+                <Link
+                  to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  PER RFQ
+                </Link>
+              )}
               {po.status && (
                 <div className="flex items-center gap-1.5">
                   <span
@@ -246,6 +276,16 @@ export function PODetailPage() {
               <Button size="sm" onClick={() => setIssueOpen(true)}>
                 <CheckCircle2 className="size-4" />
                 Issue PO
+              </Button>
+            )}
+            {canRevert && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => revertToDraftMutation.mutate(poId)}
+              >
+                Revert to Draft
               </Button>
             )}
             {canRecordDelivery && (
@@ -446,6 +486,20 @@ export function PODetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Description */}
+              {po.description && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                      Description
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{po.description}</p>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Additional Details */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -519,6 +573,9 @@ export function PODetailPage() {
                             <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                               Description
                             </th>
+                            <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[160px]">
+                              Cost Code
+                            </th>
                             <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
                               Qty
                             </th>
@@ -547,6 +604,9 @@ export function PODetailPage() {
                                   </div>
                                 )}
                               </td>
+                              <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                                {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}
+                              </td>
                               <td className="py-2.5 pr-3 text-right tabular-nums">
                                 {li.quantity}
                               </td>
@@ -561,37 +621,42 @@ export function PODetailPage() {
                           ))}
                         </tbody>
                         <tfoot>
-                          {taxAmount > 0 && (
-                            <>
-                              <tr>
-                                <td colSpan={5} className="pt-3 text-right text-xs text-muted-foreground">
-                                  Subtotal
-                                </td>
-                                <td className="pt-3 text-right tabular-nums text-sm">
-                                  {formatCurrency(subtotal)}
-                                </td>
-                              </tr>
-                              <tr>
-                                <td
-                                  colSpan={5}
-                                  className="pt-1 text-right text-xs text-muted-foreground"
-                                >
-                                  Tax ({po.taxPercent}%)
-                                </td>
-                                <td className="pt-1 text-right tabular-nums text-sm">
-                                  {formatCurrency(taxAmount)}
-                                </td>
-                              </tr>
-                            </>
-                          )}
                           <tr>
+                            <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
+                              Subtotal
+                            </td>
+                            <td className="pt-3 text-right tabular-nums text-sm">
+                              {formatCurrency(subtotal)}
+                            </td>
+                          </tr>
+                          {Number(po.markupAmount ?? 0) !== 0 && (
+                            <tr>
+                              <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                                Markup
+                              </td>
+                              <td className="pt-1 text-right tabular-nums text-sm">
+                                {formatCurrency(Number(po.markupAmount))}
+                              </td>
+                            </tr>
+                          )}
+                          {taxAmount > 0 && (
+                            <tr>
+                              <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                                Tax ({po.taxPercent}%)
+                              </td>
+                              <td className="pt-1 text-right tabular-nums text-sm">
+                                {formatCurrency(taxAmount)}
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="border-t">
                             <td
-                              colSpan={5}
-                              className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+                              colSpan={6}
+                              className="pt-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                             >
                               Total
                             </td>
-                            <td className="pt-3 text-right font-semibold tabular-nums">
+                            <td className="pt-2 text-right font-semibold tabular-nums">
                               {formatCurrency(poTotal)}
                             </td>
                           </tr>
@@ -610,6 +675,69 @@ export function PODetailPage() {
 
             {/* Right column: Placeholder sections */}
             <div className="lg:col-span-2 space-y-5">
+              {/* Documents / Attachments */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Documents ({attachments.length})
+                  </CardTitle>
+                  {canEdit && poFolderId && (
+                    <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                      <Upload className="size-4" />
+                      Upload
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="flex items-center justify-between rounded-lg border p-2.5"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="size-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium truncate">
+                              {att.document?.name ?? 'Document'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {att.document?.id && (
+                              <Button
+                                variant="ghost"
+                                mode="icon"
+                                size="sm"
+                                onClick={() => downloadFile.mutate(att.document!.id)}
+                              >
+                                <Download className="size-3.5" />
+                              </Button>
+                            )}
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                mode="icon"
+                                size="sm"
+                                onClick={() =>
+                                  removeAttachmentMutation.mutate({ poId, attachmentId: att.id })
+                                }
+                              >
+                                <Trash2 className="size-3.5 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-6 text-center">
+                      <FileText className="size-8 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">No documents attached.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <PlaceholderTable
                 title="PO Payment History"
                 icon={<DollarSign className="size-8" />}
@@ -640,14 +768,18 @@ export function PODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                  {taxAmount > 0 && (
-                    <>
-                      <InfoRow label={`Tax (${po.taxPercent}%)`}>
-                        {formatCurrency(taxAmount)}
-                      </InfoRow>
-                    </>
+                  {Number(po.markupAmount ?? 0) !== 0 && (
+                    <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
                   )}
-                  <InfoRow label="Total">{formatCurrency(poTotal)}</InfoRow>
+                  {taxAmount > 0 && (
+                    <InfoRow label={`Tax (${po.taxPercent}%)`}>
+                      {formatCurrency(taxAmount)}
+                    </InfoRow>
+                  )}
+                  <Separator className="my-1" />
+                  <InfoRow label="Total">
+                    <span className="font-semibold">{formatCurrency(poTotal)}</span>
+                  </InfoRow>
                   {retainagePercent > 0 && (
                     <InfoRow label={`Retainage (${retainagePercent}%)`}>
                       {formatCurrency(poTotal * (retainagePercent / 100))}
@@ -915,6 +1047,29 @@ export function PODetailPage() {
         }}
         isPending={deleteMutation.isPending}
       />
+
+      {/* ---- Upload file dialog ---- */}
+      {poFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={poFolderId}
+          onSubmit={({ file, data }) => {
+            uploadFileMutation.mutate(
+              { file, data },
+              {
+                onSuccess: (uploaded) => {
+                  addAttachmentMutation.mutate(
+                    { poId, data: { fileId: uploaded.id } },
+                    { onSuccess: () => setUploadOpen(false) },
+                  );
+                },
+              },
+            );
+          }}
+          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+        />
+      )}
     </div>
   );
 }

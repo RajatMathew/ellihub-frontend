@@ -100,6 +100,7 @@ export const projectsDetailSidebarMenu: MenuConfig = [
       { title: 'Prime Change Orders', path: '../prime-change-orders' },
       { title: 'RFQs', path: '../rfqs' },
       { title: 'Purchase Orders', path: '../purchase-orders' },
+      { title: 'Change Orders', path: '../vendors/change-orders' },
       { title: 'Invoices', path: '../invoices' },
     ],
   },

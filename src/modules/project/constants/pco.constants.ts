@@ -1,7 +1,7 @@
 export const PCO_FORM_SECTIONS = [
   { id: 'pco-details', label: 'Change Order Details' },
-  { id: 'financial', label: 'Financial Info' },
   { id: 'line-items', label: 'Line Items' },
+  { id: 'documents', label: 'Documents' },
 ] as const;
 
 export const PCO_PRIORITY_OPTIONS = [

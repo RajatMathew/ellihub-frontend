@@ -1,4 +1,4 @@
-import { ArrowLeft, ServerCrash } from 'lucide-react';
+import { ServerCrash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@app/components/ui/button';

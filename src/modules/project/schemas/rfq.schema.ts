@@ -16,12 +16,16 @@ export type RFQStatus = z.infer<typeof rfqStatusSchema>;
 
 /* ---- List item (from GET /rfqs) ---- */
 
+export const RFQ_TRACKS = ['MATERIAL', 'FABRICATION', 'INSTALLATION', 'LABOR', 'EQUIPMENT'] as const;
+export type RFQTrack = (typeof RFQ_TRACKS)[number];
+
 export const rfqListItemSchema = z
   .object({
     id: z.string(),
     rfqNumber: z.string(),
     title: z.string(),
     status: rfqStatusSchema.nullable().optional(),
+    track: z.enum(RFQ_TRACKS).nullable().optional(),
     bidDeadline: z.string(),
     estimatedBudget: z.coerce.number().nullable().optional(),
     biddingType: z.string(),
@@ -142,11 +146,16 @@ export type RFQQuote = z.infer<typeof rfqQuoteSchema>;
 export const rfqAttachmentSchema = z
   .object({
     id: z.string(),
-    fileName: z.string().nullable().optional(),
-    name: z.string().nullable().optional(),
-    fileSize: z.number().nullable().optional(),
-    fileUrl: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
+    documentId: z.string().nullable().optional(),
+    document: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    createdAt: z.string().optional(),
   })
   .passthrough();
 
@@ -175,6 +184,7 @@ export const rfqDetailSchema = z
       .nullable()
       .optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
+    track: z.enum(RFQ_TRACKS).nullable().optional(),
     bidDeadline: z.string(),
     biddingType: z.string(),
     minimumVendors: z.number().optional(),
@@ -230,6 +240,7 @@ export const createRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
   estimatedBudget: z.number().min(0).optional(),
+  track: z.enum(RFQ_TRACKS).optional().default('MATERIAL'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
   biddingType: z.enum(['ANONYMOUS', 'OPEN']).optional(),
   minimumVendors: z.number().int().min(1).optional(),

@@ -17,7 +17,6 @@ export const primeContractSchema = z
     projectId: z.string(),
     contractValue: z.coerce.number(),
     contractType: z.string().nullable().optional(),
-    totalContractValue: z.coerce.number().nullable().optional(),
     retainagePercent: z.coerce.number().nullable().optional(),
     targetBudgetPercent: z.coerce.number().nullable().optional(),
     paymentTerms: paymentTermsSchema.nullable().optional(),
@@ -37,7 +36,6 @@ export type PrimeContract = z.infer<typeof primeContractSchema>;
 export const upsertPrimeContractInputSchema = z.object({
   contractValue: z.number().positive('Contract value must be positive'),
   contractType: z.string().max(100).optional(),
-  totalContractValue: z.number().positive().optional(),
   retainagePercent: z.number().min(0).max(100).optional(),
   targetBudgetPercent: z.number().min(0).max(100).optional(),
   paymentTerms: paymentTermsSchema.optional(),

@@ -155,6 +155,7 @@ export const projectFormSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(255),
   description: z.string().min(1, 'Description is required'),
   jobNumber: z.string(),
+  contractNumber: z.string(),
   stageId: z.string().min(1, 'Project status is required'),
   division: divisionSchema,
   gcId: z.string().min(1, 'General contractor is required'),
@@ -166,6 +167,14 @@ export const projectFormSchema = z.object({
   effectiveStartDate: z.string(),
   effectiveEndDate: z.string(),
   contractValue: z.number().min(0),
+  contractType: z.string(),
+  retainagePercent: z.number().min(0).max(100),
+  targetBudgetPercent: z.number().min(0).max(100),
+  paymentTerms: z.string(),
+  estimatedStartDate: z.string(),
+  estimatedCompletionDate: z.string(),
+  actualStartDate: z.string(),
+  actualCompletionDate: z.string(),
 });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;

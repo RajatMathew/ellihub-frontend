@@ -97,7 +97,7 @@ export function ContactFormPage() {
   // Reset form when contact data loads in edit mode
   useEffect(() => {
     if (isEdit && contact) {
-      reset(contact);
+      reset(contact as any);
     }
   }, [isEdit, contact, reset]);
 
@@ -119,7 +119,8 @@ export function ContactFormPage() {
     setVendorLinks((prev) => [...prev, { vendorId: vendor.id, isPrimary: false }]);
   };
 
-  const onSubmit = async (formData: CreateContactInput | Contact) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onSubmit = async (formData: any) => {
     const payload: CreateContactInput = {
       fullName: formData.fullName,
       professionalRoleId: formData.professionalRoleId ?? undefined,
