@@ -62,7 +62,9 @@ import { StatsCard } from '@app/components/ui/stats-card';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
+import { useQuery } from '@tanstack/react-query';
 import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { filesApi } from '@modules/files/api/files.api';
 import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
 import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
@@ -90,6 +92,60 @@ import {
   useVoidAwardMutation,
 } from '../hooks';
 import { useProjectFolderQuery } from '../hooks/use-project-folder';
+
+/* ---- Quote Document Preview ---- */
+
+function QuoteDocPreview({ documentId, name, mimeType }: { documentId: string; name: string; mimeType?: string }) {
+  const { data: url, isLoading } = useQuery({
+    queryKey: ['file-preview', documentId],
+    queryFn: () => filesApi.getDownloadLink(documentId),
+    enabled: !!documentId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-xs text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!url) {
+    return (
+      <div className="flex items-center justify-center h-full text-center p-4">
+        <FileText className="size-12 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  const isImage = mimeType?.startsWith('image/');
+  const isPdf = mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf');
+
+  if (isImage) {
+    return <img src={url} alt={name} className="w-full h-full object-contain p-2" />;
+  }
+
+  if (isPdf) {
+    return <iframe src={url} title={name} className="w-full h-full border-0" />;
+  }
+
+  // Generic file — show icon + name + download
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
+      <FileText className="size-10 text-muted-foreground/40" />
+      <p className="text-xs font-medium truncate max-w-full">{name}</p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-primary hover:underline"
+      >
+        View / Download
+      </a>
+    </div>
+  );
+}
 
 /* ---- Page ---- */
 
@@ -744,15 +800,11 @@ export default function RFQDetailPage() {
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Amount</th>
+                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {deliverables.map((d, idx) => {
-                        const estTotal = d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * d.quantity;
-                        return (
+                      {deliverables.map((d, idx) => (
                           <tr key={d.id} className="border-b last:border-0">
                             <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
                             <td className="py-2.5 pr-3">
@@ -764,29 +816,10 @@ export default function RFQDetailPage() {
                               )}
                             </td>
                             <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
-                            <td className="py-2.5 pr-3">{d.unit}</td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums">
-                              {d.estimatedUnitPrice != null ? formatCurrency(d.estimatedUnitPrice) : '—'}
-                            </td>
-                            <td className="py-2.5 text-right font-medium tabular-nums">
-                              {estTotal > 0 ? formatCurrency(estTotal) : '—'}
-                            </td>
+                            <td className="py-2.5">{d.unit}</td>
                           </tr>
-                        );
-                      })}
+                      ))}
                     </tbody>
-                    {deliverablesTotal > 0 && (
-                      <tfoot>
-                        <tr>
-                          <td colSpan={5} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                            Total
-                          </td>
-                          <td className="pt-3 text-right font-semibold tabular-nums">
-                            {formatCurrency(deliverablesTotal)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    )}
                   </table>
                 </div>
               ) : (
@@ -846,15 +879,12 @@ export default function RFQDetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Est. Budget">
-                    {rfq.estimatedBudget != null ? formatCurrency(rfq.estimatedBudget) : '—'}
-                  </InfoRow>
                   {deliverablesTotal > 0 && (
                     <InfoRow label="Est. Deliverables">{formatCurrency(deliverablesTotal)}</InfoRow>
                   )}
                   {lowestQuote != null && (
                     <>
-                      <Separator className="my-2" />
+                      {deliverablesTotal > 0 && <Separator className="my-2" />}
                       <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
                     </>
                   )}
@@ -990,11 +1020,17 @@ export default function RFQDetailPage() {
                       className="w-72 shrink-0 rounded-lg border bg-card flex flex-col"
                     >
                       {/* Quote document area */}
-                      <div className="h-64 border-b bg-muted/30 flex items-center justify-center rounded-t-lg">
-                        {hasQuote ? (
+                      <div className="h-64 border-b bg-muted/30 flex items-center justify-center rounded-t-lg overflow-hidden">
+                        {hasQuote && bcQuote?.attachments?.length ? (
+                          <QuoteDocPreview
+                            documentId={bcQuote.attachments[0].document.id}
+                            name={bcQuote.attachments[0].document.name}
+                            mimeType={bcQuote.attachments[0].document.mimeType}
+                          />
+                        ) : hasQuote ? (
                           <div className="text-center p-4">
                             <FileText className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">Quote Document</p>
+                            <p className="text-xs text-muted-foreground">No document attached</p>
                           </div>
                         ) : declined ? (
                           <div className="text-center">
@@ -1108,9 +1144,11 @@ export default function RFQDetailPage() {
                 <Input
                   type="number"
                   min={1}
+                  step={1}
                   placeholder="e.g. 30"
                   value={quoteLeadTime}
-                  onChange={(e) => setQuoteLeadTime(e.target.value)}
+                  onChange={(e) => setQuoteLeadTime(e.target.value.replace(/[^0-9]/g, ''))}
+                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }}
                   autoComplete="off"
                 />
               </InputWrapper>

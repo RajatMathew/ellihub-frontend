@@ -176,7 +176,9 @@ export const createSCOInputSchema = z.object({
   linkedPCOId: z.string().optional(),
   rfqId: z.string().optional(),
   costCodeId: z.string().optional(),
-  impactsSchedule: z.boolean().optional(),
+  taxPercent: z.number().min(0).max(100).optional(),
+  retainagePercent: z.number().min(0).max(100).optional(),
+  paymentTerms: z.string().optional(),
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
 

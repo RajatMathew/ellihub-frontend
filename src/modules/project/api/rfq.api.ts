@@ -31,6 +31,11 @@ export type BidComparisonQuote = {
   leadTimeDays: number | null;
   warrantyPeriod: string | null;
   isResponsive: boolean | null;
+  attachments?: {
+    id: string;
+    documentId: string;
+    document: { id: string; name: string; mimeType?: string };
+  }[];
   lineItems: {
     deliverableId: string;
     sequenceNumber: number | null;
@@ -196,7 +201,9 @@ export const rfqApi = {
 
   async getBidComparison(rfqId: string): Promise<BidComparison> {
     const res = await api.get(`${BASE}/${rfqId}/bid-comparison`);
-    return res.data?.data ?? res.data;
+    const raw = res.data?.data ?? res.data;
+    if (raw?.quotes?.[0]) console.log('[BidComparison] quote[0] keys:', Object.keys(raw.quotes[0]), 'attachments:', JSON.stringify(raw.quotes[0].attachments));
+    return raw;
   },
 
   /* ---- Quotes ---- */

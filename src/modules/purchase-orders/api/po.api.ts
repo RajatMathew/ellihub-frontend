@@ -139,4 +139,31 @@ export const poApi = {
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
   },
+
+  async revertToDraft(id: string): Promise<PODetail> {
+    const res = await api.post(`${BASE}/${id}/revert-to-draft`);
+    const raw = res.data?.data ?? res.data;
+    const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[poApi.revertToDraft] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  /* ---- line items ---- */
+
+  async addLineItem(poId: string, data: Record<string, unknown>) {
+    const res = await api.post(`${BASE}/${poId}/line-items`, data);
+    return res.data?.data ?? res.data;
+  },
+
+  async updateLineItem(poId: string, lineItemId: string, data: Record<string, unknown>) {
+    const res = await api.put(`${BASE}/${poId}/line-items/${lineItemId}`, data);
+    return res.data?.data ?? res.data;
+  },
+
+  async removeLineItem(poId: string, lineItemId: string): Promise<void> {
+    await api.delete(`${BASE}/${poId}/line-items/${lineItemId}`);
+  },
 };

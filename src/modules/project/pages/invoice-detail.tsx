@@ -4,11 +4,13 @@ import {
   Calendar,
   CheckCircle2,
   DollarSign,
+  Download,
   FileText,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
   Trash2,
+  Upload,
   XCircle,
 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
@@ -53,7 +55,12 @@ import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { InfoRow } from '@modules/project/components/info-row';
+import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
+import { useAddInvoiceAttachmentMutation, useRemoveInvoiceAttachmentMutation } from '../hooks/invoice-attachment.hooks';
 import {
   INVOICE_STATUS_COLORS,
   PAYMENT_METHOD_OPTIONS,
@@ -76,10 +83,12 @@ import {
 /* ---- Page ---- */
 
 export function InvoiceDetailPage() {
-  const { invoiceId = '' } = useParams<{ projectId: string; invoiceId: string }>();
+  const { projectId = '', invoiceId = '' } = useParams<{ projectId: string; invoiceId: string }>();
   const navigate = useNavigate();
 
   const { data: invoice, isLoading } = useInvoiceDetailQuery(invoiceId);
+  const { data: costCodesData } = useCostCodesQuery();
+  const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
 
   const approveMutation = useApproveInvoiceMutation();
   const rejectMutation = useRejectInvoiceMutation();
@@ -87,6 +96,17 @@ export function InvoiceDetailPage() {
   const disputeMutation = useDisputeInvoiceMutation();
   const resolveDisputeMutation = useResolveDisputeInvoiceMutation();
   const deleteMutation = useDeleteInvoiceMutation();
+  const addAttachmentMutation = useAddInvoiceAttachmentMutation();
+  const removeAttachmentMutation = useRemoveInvoiceAttachmentMutation();
+  const uploadFileMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
+
+  const costCodeMap = new Map(
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+  );
+  const attachments = (invoice?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
+
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -315,6 +335,7 @@ export function InvoiceDetailPage() {
                       <tr className="border-b text-left">
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[160px]">Cost Code</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
                         <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
@@ -328,6 +349,9 @@ export function InvoiceDetailPage() {
                           <td className="py-2.5 pr-3">
                             <div className="font-medium">{li.description}</div>
                           </td>
+                          <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}
+                          </td>
                           <td className="py-2.5 pr-3 text-right tabular-nums">{li.qty}</td>
                           <td className="py-2.5 pr-3">{li.unit}</td>
                           <td className="py-2.5 pr-3 text-right tabular-nums">{formatCurrency(li.unitPrice)}</td>
@@ -337,7 +361,7 @@ export function InvoiceDetailPage() {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={5} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">Total</td>
+                        <td colSpan={6} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">Total</td>
                         <td className="pt-3 text-right font-semibold tabular-nums">{formatCurrency(invoice.totalAmount)}</td>
                       </tr>
                     </tfoot>
@@ -391,6 +415,69 @@ export function InvoiceDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Documents / Attachments */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Documents ({attachments.length})
+              </CardTitle>
+              {isPending && invoiceFolderId && (
+                <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                  <Upload className="size-4" />
+                  Upload
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {attachments.length > 0 ? (
+                <div className="space-y-2">
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between rounded-lg border p-2.5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">
+                          {att.document?.name ?? 'Document'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {att.document?.id && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() => downloadFile.mutate(att.document!.id)}
+                          >
+                            <Download className="size-3.5" />
+                          </Button>
+                        )}
+                        {isPending && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() =>
+                              removeAttachmentMutation.mutate({ invoiceId, attachmentId: att.id })
+                            }
+                          >
+                            <Trash2 className="size-3.5 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <FileText className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No documents attached.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* ---- Right sidebar ---- */}
@@ -407,12 +494,6 @@ export function InvoiceDetailPage() {
                   <InfoRow label="Tax Amount">{formatCurrency(invoice.taxAmount ?? 0)}</InfoRow>
                   {invoice.taxRate != null && (
                     <InfoRow label="Tax Rate">{invoice.taxRate}%</InfoRow>
-                  )}
-                  {invoice.retainagePercent != null && invoice.retainagePercent > 0 && (
-                    <>
-                      <InfoRow label="Retainage">{invoice.retainagePercent}%</InfoRow>
-                      <InfoRow label="Retainage Amount">{formatCurrency(invoice.retainageAmount ?? 0)}</InfoRow>
-                    </>
                   )}
                   {invoice.netPaymentAmount != null && (
                     <InfoRow label="Net Payment">{formatCurrency(invoice.netPaymentAmount)}</InfoRow>
@@ -732,6 +813,29 @@ export function InvoiceDetailPage() {
         variant="destructive"
         isPending={deleteMutation.isPending}
       />
+
+      {/* ---- Upload file dialog ---- */}
+      {invoiceFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={invoiceFolderId}
+          onSubmit={({ file, data }) => {
+            uploadFileMutation.mutate(
+              { file, data },
+              {
+                onSuccess: (uploaded) => {
+                  addAttachmentMutation.mutate(
+                    { invoiceId, data: { fileId: uploaded.id } },
+                    { onSuccess: () => setUploadOpen(false) },
+                  );
+                },
+              },
+            );
+          }}
+          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+        />
+      )}
     </div>
   );
 }

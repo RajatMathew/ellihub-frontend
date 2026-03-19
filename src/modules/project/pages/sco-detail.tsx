@@ -4,12 +4,14 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
+  Download,
   FileText,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
   ShieldAlert,
   Trash2,
+  Upload,
   XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -39,13 +41,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
+import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
 
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
+import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
+import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
+import { useAddSCOAttachmentMutation, useRemoveSCOAttachmentMutation } from '@modules/sco/hooks/sco-attachment.hooks';
 import {
   INITIATED_BY_LABELS,
+  PRIORITY_LABELS,
   SCO_STATUS_COLORS,
   getSCOPriorityVariant,
 } from '@modules/sco/constants/sco.constants';
@@ -53,6 +62,7 @@ import {
   useApproveSCOMutation,
   useDeleteSCOMutation,
   useRejectSCOMutation,
+  useRevertSCOToDraftMutation,
   useSCODetailQuery,
   useVoidSCOMutation,
 } from '@modules/sco/hooks/sco.hooks';
@@ -83,18 +93,31 @@ const WORKFLOW_ACTIONS: Record<string, WorkflowAction[]> = {
 /* ---- Page ---- */
 
 export function SCODetailPage() {
-  const { scoId = '' } = useParams<{ projectId: string; scoId: string }>();
+  const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
   const navigate = useNavigate();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
+  const { data: costCodesData } = useCostCodesQuery();
+  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order co');
 
   const approveMutation = useApproveSCOMutation();
   const rejectMutation = useRejectSCOMutation();
   const voidMutation = useVoidSCOMutation();
+  const revertToDraftMutation = useRevertSCOToDraftMutation();
   const deleteMutation = useDeleteSCOMutation();
+  const addAttachmentMutation = useAddSCOAttachmentMutation();
+  const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
+  const uploadFileMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
+
+  const costCodeMap = new Map(
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+  );
+  const attachments = (sco?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
@@ -102,7 +125,15 @@ export function SCODetailPage() {
 
   const statusName = sco?.status?.name ?? '';
   const isDraft = statusName === 'DRAFT';
+  const isApproved = statusName === 'APPROVED';
   const isTerminal = statusName === 'REJECTED' || statusName === 'VOID';
+
+  const canApprove = isDraft;
+  const canReject = isDraft;
+  const canVoid = isDraft || isApproved;
+  const canRevert = isApproved;
+  const canEdit = isDraft;
+  const canDelete = isDraft;
 
   const workflowActions = WORKFLOW_ACTIONS[statusName] ?? [];
   const primaryAction = workflowActions.find((a) => a.primary);
@@ -130,7 +161,7 @@ export function SCODetailPage() {
   }
 
   const isActionPending =
-    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending;
+    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending || revertToDraftMutation.isPending;
 
   if (isLoading) {
     return (
@@ -177,53 +208,50 @@ export function SCODetailPage() {
                   appearance="outline"
                   size="sm"
                 >
-                  {sco.priority}
+                  {PRIORITY_LABELS[sco.priority] ?? sco.priority}
                 </Badge>
               )}
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {/* Primary workflow action */}
-            {primaryAction && (
-              <Button size="sm" onClick={() => handleActionClick(primaryAction)}>
-                {primaryAction.label}
+            {/* Approve — only on DRAFT */}
+            {canApprove && (
+              <Button
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => handleActionClick({ label: 'Approve', endpoint: 'approve', needsReason: false })}
+              >
+                <CheckCircle2 className="size-4" />
+                Approve
               </Button>
             )}
 
-            {/* Workflow dropdown (secondary actions) */}
-            {dropdownActions.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Workflow
-                    <ChevronDown className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {dropdownActions.map((action, i) => {
-                    const showSeparator =
-                      action.destructive && i > 0 && !dropdownActions[i - 1]?.destructive;
-                    return (
-                      <div key={action.endpoint}>
-                        {showSeparator && <DropdownMenuSeparator />}
-                        <DropdownMenuItem
-                          variant={action.destructive ? 'destructive' : undefined}
-                          onClick={() => handleActionClick(action)}
-                        >
-                          {action.label}
-                          {action.needsReason && (
-                            <span className="ml-auto text-xs text-muted-foreground">(reason)</span>
-                          )}
-                        </DropdownMenuItem>
-                      </div>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Revert to Draft — on APPROVED */}
+            {canRevert && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => revertToDraftMutation.mutate(scoId)}
+              >
+                Revert to Draft
+              </Button>
             )}
 
-            {/* Edit + more menu */}
-            {!isTerminal && (
+            {/* Void — on APPROVED */}
+            {canVoid && !isDraft && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => handleActionClick({ label: 'Void', endpoint: 'void', needsReason: true, destructive: true })}
+              >
+                Void
+              </Button>
+            )}
+
+            {/* Edit — only on DRAFT */}
+            {canEdit && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -231,6 +259,8 @@ export function SCODetailPage() {
                 </Link>
               </Button>
             )}
+
+            {/* More menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" mode="icon">
@@ -238,7 +268,7 @@ export function SCODetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                {!isTerminal && (
+                {canEdit && (
                   <DropdownMenuItem asChild>
                     <Link to="edit">
                       <Pencil className="size-4" />
@@ -246,7 +276,22 @@ export function SCODetailPage() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {isDraft && (
+                {canReject && (
+                  <DropdownMenuItem
+                    onClick={() => handleActionClick({ label: 'Reject', endpoint: 'reject', needsReason: true, minReasonLength: 20, destructive: true })}
+                  >
+                    Reject
+                  </DropdownMenuItem>
+                )}
+                {canVoid && isDraft && (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => handleActionClick({ label: 'Void', endpoint: 'void', needsReason: true, destructive: true })}
+                  >
+                    Void
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -301,7 +346,7 @@ export function SCODetailPage() {
                     appearance="light"
                     size="sm"
                   >
-                    {sco.priority}
+                    {PRIORITY_LABELS[sco.priority] ?? sco.priority}
                   </Badge>
                 ) : (
                   '—'
@@ -317,9 +362,6 @@ export function SCODetailPage() {
               <InfoRow label="Vendor Contact">{sco.vendorContactName ?? '—'}</InfoRow>
               <InfoRow label="Vendor Email">{sco.vendorContactEmail ?? '—'}</InfoRow>
               <InfoRow label="Vendor Ref #">{sco.vendorReferenceNumber ?? '—'}</InfoRow>
-              <InfoRow label="Cost Code">
-                {sco.costCode ? `${sco.costCode.code} — ${sco.costCode.name}` : '—'}
-              </InfoRow>
               {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
                 <InfoRow label="Schedule Impact">
                   {sco.scheduleImpactDays} day{sco.scheduleImpactDays !== 1 ? 's' : ''}
@@ -380,6 +422,9 @@ export function SCODetailPage() {
                         <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                           Description
                         </th>
+                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[160px]">
+                          Cost Code
+                        </th>
                         <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
                           Qty
                         </th>
@@ -399,6 +444,9 @@ export function SCODetailPage() {
                         <tr key={li.id} className="border-b last:border-0">
                           <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
                           <td className="py-2.5 pr-4 font-medium">{li.description}</td>
+                          <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}
+                          </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums">{li.quantity}</td>
                           <td className="py-2.5 pr-4">{li.unit}</td>
                           <td className="py-2.5 pr-4 text-right tabular-nums">
@@ -412,14 +460,42 @@ export function SCODetailPage() {
                     </tbody>
                     <tfoot>
                       <tr>
+                        <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
+                          Subtotal
+                        </td>
+                        <td className="pt-3 text-right tabular-nums text-sm">
+                          {formatCurrency(sco.amount)}
+                        </td>
+                      </tr>
+                      {Number((sco as any).markupAmount ?? 0) !== 0 && (
+                        <tr>
+                          <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                            Markup
+                          </td>
+                          <td className="pt-1 text-right tabular-nums text-sm">
+                            {formatCurrency(Number((sco as any).markupAmount))}
+                          </td>
+                        </tr>
+                      )}
+                      {Number((sco as any).taxAmount ?? 0) !== 0 && (
+                        <tr>
+                          <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                            Tax ({(sco as any).taxPercent ?? 0}%)
+                          </td>
+                          <td className="pt-1 text-right tabular-nums text-sm">
+                            {formatCurrency(Number((sco as any).taxAmount))}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="border-t">
                         <td
-                          colSpan={5}
-                          className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase"
+                          colSpan={6}
+                          className="pt-2 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase"
                         >
                           Total
                         </td>
-                        <td className="pt-3 text-right font-semibold tabular-nums">
-                          {formatCurrency(sco.amount)}
+                        <td className="pt-2 text-right font-semibold tabular-nums">
+                          {formatCurrency(sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0))}
                         </td>
                       </tr>
                     </tfoot>
@@ -429,6 +505,67 @@ export function SCODetailPage() {
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <FileText className="size-8 text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">No line items.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Documents / Attachments */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Documents ({attachments.length})
+              </CardTitle>
+              {isDraft && scoFolderId && (
+                <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                  <Upload className="size-4" />
+                  Upload
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {attachments.length > 0 ? (
+                <div className="space-y-2">
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between rounded-lg border p-2.5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">
+                          {att.document?.name ?? 'Document'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {att.document?.id && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() => downloadFile.mutate(att.document!.id)}
+                          >
+                            <Download className="size-3.5" />
+                          </Button>
+                        )}
+                        {isDraft && (
+                          <Button
+                            variant="ghost"
+                            mode="icon"
+                            size="sm"
+                            onClick={() => removeAttachmentMutation.mutate({ scoId, attachmentId: att.id })}
+                          >
+                            <Trash2 className="size-3.5 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <FileText className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No documents attached.</p>
                 </div>
               )}
             </CardContent>
@@ -445,7 +582,32 @@ export function SCODetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Amount">{formatCurrency(sco.amount)}</InfoRow>
+                  <InfoRow label="Subtotal">{formatCurrency(sco.amount)}</InfoRow>
+                  {Number((sco as any).markupAmount ?? 0) !== 0 && (
+                    <InfoRow label="Markup">{formatCurrency(Number((sco as any).markupAmount))}</InfoRow>
+                  )}
+                  {Number((sco as any).taxAmount ?? 0) !== 0 && (
+                    <InfoRow label={`Tax (${(sco as any).taxPercent ?? 0}%)`}>
+                      {formatCurrency(Number((sco as any).taxAmount))}
+                    </InfoRow>
+                  )}
+                  <Separator className="my-2" />
+                  <InfoRow label="Total">
+                    <span className="font-semibold">
+                      {formatCurrency(sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0))}
+                    </span>
+                  </InfoRow>
+                  {Number((sco as any).retainagePercent ?? 0) > 0 && (
+                    <InfoRow label={`Retainage (${(sco as any).retainagePercent}%)`}>
+                      {formatCurrency((sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0)) * Number((sco as any).retainagePercent) / 100)}
+                    </InfoRow>
+                  )}
+                  {(sco as any).paymentTerms && (
+                    <InfoRow label="Payment Terms">
+                      {String((sco as any).paymentTerms).replace(/_/g, ' ')}
+                    </InfoRow>
+                  )}
+                  <Separator className="my-2" />
                   <InfoRow label="Purchase Order">
                     {sco.purchaseOrder?.poNumber ?? '—'}
                   </InfoRow>
@@ -618,6 +780,29 @@ export function SCODetailPage() {
         variant="destructive"
         isPending={deleteMutation.isPending}
       />
+
+      {/* ---- Upload file dialog ---- */}
+      {scoFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={scoFolderId}
+          onSubmit={({ file, data }) => {
+            uploadFileMutation.mutate(
+              { file, data },
+              {
+                onSuccess: (uploaded) => {
+                  addAttachmentMutation.mutate(
+                    { scoId, data: { fileId: uploaded.id } },
+                    { onSuccess: () => setUploadOpen(false) },
+                  );
+                },
+              },
+            );
+          }}
+          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+        />
+      )}
     </div>
   );
 }

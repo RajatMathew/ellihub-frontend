@@ -10,8 +10,6 @@ import {
 import {
   AlertCircle,
   ClipboardList,
-  DollarSign,
-  Filter,
   MoreHorizontal,
   Plus,
   RefreshCcw,
@@ -64,7 +62,7 @@ import {
 import { formatCurrency, formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteRFQMutation, useRFQListQuery, useRFQStatusesQuery } from '../hooks';
-import { BIDDING_TYPE_LABELS, getRfqStatusVariant } from '../constants/rfq.constants';
+import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '../constants/rfq.constants';
 import type { ListRFQParams, RFQListItem } from '../schemas/rfq.schema';
 
 /* ---- Constants ---- */
@@ -95,6 +93,7 @@ export default function RFQListPage() {
   const sortOrder: 'asc' | 'desc' =
     searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
   const statusFilter = searchParams.get('statusId') ?? undefined;
+  const trackFilter = searchParams.get('track') ?? undefined;
 
   // Local search input tracks typing; debounce syncs to URL
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -145,7 +144,7 @@ export default function RFQListPage() {
     statusId: statusFilter,
   };
 
-  const hasActiveFilters = !!searchQuery || !!statusFilter;
+  const hasActiveFilters = !!searchQuery || !!statusFilter || !!trackFilter;
 
   const { data, isLoading, isError, refetch } = useRFQListQuery(filters);
   const { data: statuses } = useRFQStatusesQuery();
@@ -155,8 +154,12 @@ export default function RFQListPage() {
   // Fetch all RFQs for this project (unfiltered) to compute KPIs
   const { data: allData } = useRFQListQuery({ projectId, size: 100 });
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const rawListData = data?.data ?? [];
+  // Client-side track filter
+  const listData = trackFilter
+    ? rawListData.filter((r) => r.track === trackFilter)
+    : rawListData;
+  const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
 
   // Compute KPIs from all project RFQs
   const allRfqs = allData?.data ?? [];
@@ -186,7 +189,7 @@ export default function RFQListPage() {
             {row.original.rfqNumber}
           </Link>
         ),
-        meta: { headerClassName: 'min-w-[140px]' },
+        meta: { headerClassName: 'min-w-[100px]' },
       },
       {
         accessorKey: 'title',
@@ -194,12 +197,23 @@ export default function RFQListPage() {
         cell: ({ row }) => (
           <Link
             to={`${row.original.id}`}
-            className="text-sm font-medium text-foreground hover:text-primary"
+            className="text-sm font-medium text-foreground hover:text-primary truncate block max-w-[300px]"
           >
             {row.original.title}
           </Link>
         ),
-        meta: { headerClassName: 'min-w-[250px]' },
+        meta: { headerClassName: 'min-w-[200px]' },
+      },
+      {
+        id: 'track',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Track" />,
+        cell: ({ row }) => (
+          <span className="text-xs font-semibold tracking-widest uppercase">
+            {row.original.track ? (RFQ_TRACK_LABELS[row.original.track] ?? row.original.track) : '—'}
+          </span>
+        ),
+        meta: { headerClassName: 'min-w-[100px]' },
+        enableSorting: false,
       },
       {
         id: 'status',
@@ -216,56 +230,50 @@ export default function RFQListPage() {
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
           ),
-        meta: { headerClassName: 'min-w-[120px]' },
+        meta: { headerClassName: 'min-w-[100px]' },
         enableSorting: false,
       },
       {
         accessorKey: 'bidDeadline',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Bid Deadline" />,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Due Date" />,
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
             {row.original.bidDeadline ? formatDate(row.original.bidDeadline) : '—'}
           </span>
         ),
-        meta: { headerClassName: 'min-w-[150px]' },
+        meta: { headerClassName: 'min-w-[100px]' },
       },
       {
-        accessorKey: 'estimatedBudget',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Est. Budget" />,
-        cell: ({ row }) =>
-          row.original.estimatedBudget != null ? (
-            <span className="text-sm font-medium tabular-nums">
-              {formatCurrency(row.original.estimatedBudget)}
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground">—</span>
-          ),
-        meta: { headerClassName: 'min-w-[130px]' },
-      },
-      {
-        id: 'biddingType',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Bidding Type" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {BIDDING_TYPE_LABELS[row.original.biddingType] ?? row.original.biddingType}
-          </span>
-        ),
-        meta: { headerClassName: 'min-w-[120px]' },
-        enableSorting: false,
-      },
-      {
-        id: 'responses',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Responses" />,
+        id: 'vendors',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Vendors" />,
         cell: ({ row }) => {
           const invites = row.original._count?.invites ?? 0;
-          const quotes = row.original._count?.quotes ?? 0;
           return (
             <span className="text-sm text-muted-foreground">
-              {invites} invited · {quotes} quoted
+              {invites} vendor{invites !== 1 ? 's' : ''}
             </span>
           );
         },
-        meta: { headerClassName: 'min-w-[150px]' },
+        meta: { headerClassName: 'min-w-[80px]' },
+        enableSorting: false,
+      },
+      {
+        id: 'quotes',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Quotes" />,
+        cell: ({ row }) => {
+          const quotes = row.original._count?.quotes ?? 0;
+          return quotes > 0 ? (
+            <Link
+              to={`${row.original.id}`}
+              className="text-xs font-semibold text-primary"
+            >
+              {quotes} QUOTE{quotes !== 1 ? 'S' : ''}
+            </Link>
+          ) : (
+            <span className="text-xs text-muted-foreground">0 QUOTES</span>
+          );
+        },
+        meta: { headerClassName: 'min-w-[80px]' },
         enableSorting: false,
       },
       {
@@ -406,20 +414,44 @@ export default function RFQListPage() {
           label="Awarded"
           value={kpis.awarded}
         />
-        <StatsCard
-          icon={<DollarSign className="size-6 text-warning" />}
-          bgClass="bg-warning/10"
-          label="Est. Budget"
-          value={formatCurrency(kpis.totalBudget)}
-        />
       </div>
 
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>RFQs</CardTitle>
+          {/* Track tabs + search/filter in one row */}
+          <div className="flex items-center gap-1">
+            {[
+              { value: undefined, label: 'All' },
+              { value: 'MATERIAL', label: 'Material' },
+              { value: 'FABRICATION', label: 'Fabrication' },
+              { value: 'INSTALLATION', label: 'Installation' },
+            ].map((tab) => (
+              <button
+                key={tab.label}
+                type="button"
+                className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                  trackFilter === tab.value
+                    ? 'text-foreground border-b-2 border-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => updateParams({ track: tab.value, page: undefined })}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <CardToolbar>
             <div className="flex items-center gap-2.5">
+              <InputWrapper variant="sm">
+                <Search className="size-4" />
+                <Input
+                  placeholder="Search RFQs..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+              </InputWrapper>
+
               <Select
                 value={statusFilter ?? 'all'}
                 onValueChange={(value) =>
@@ -429,9 +461,8 @@ export default function RFQListPage() {
                   })
                 }
               >
-                <SelectTrigger className="h-8 w-[160px] text-xs">
-                  <Filter className="size-3.5 mr-1.5" />
-                  <SelectValue placeholder="All Statuses" />
+                <SelectTrigger className="h-8 w-[130px] text-xs">
+                  <SelectValue placeholder="All..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -443,15 +474,6 @@ export default function RFQListPage() {
                 </SelectContent>
               </Select>
 
-              <InputWrapper variant="sm">
-                <Search className="size-4" />
-                <Input
-                  placeholder="Search RFQs..."
-                  value={searchInput}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </InputWrapper>
-
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -462,6 +484,7 @@ export default function RFQListPage() {
                     updateParams({
                       search: undefined,
                       statusId: undefined,
+                      track: undefined,
                       page: undefined,
                     });
                   }}

@@ -66,8 +66,9 @@ export const INITIATED_BY_OPTIONS = [
 
 export const SCO_FORM_SECTIONS = [
   { id: 'sco-details', label: 'Change Order Details' },
-  { id: 'financial', label: 'Financial Info' },
+  { id: 'financial', label: 'Financial' },
   { id: 'line-items', label: 'Line Items' },
+  { id: 'documents', label: 'Documents' },
 ] as const;
 
 export const SCO_CHANGE_TYPE_OPTIONS = [

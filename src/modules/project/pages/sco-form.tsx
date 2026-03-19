@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, FileText, Plus, Trash2, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,7 +14,8 @@ import {
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
 import { Button } from '@app/components/ui/button';
-import { Card, CardContent } from '@app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
+import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import {
   Command,
   CommandCheck,
@@ -36,11 +37,11 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
-import { Switch } from '@app/components/ui/switch';
 import { Textarea } from '@app/components/ui/textarea';
 
 import { MockDataButton } from '@app/components/dev/mock-data-button';
 import { FormSectionNav } from '@app/components/form-section-nav';
+import { LineItems } from '@app/components/line-items';
 import { cn } from '@app/lib/utils';
 import { formatCurrency } from '@app/lib/helpers';
 import {
@@ -55,8 +56,13 @@ import {
   useCostCodesQuery,
   useCreateCostCodeMutation,
 } from '@modules/catalog/hooks';
+import { useContactsQuery } from '@modules/directory/hooks';
+import { filesApi } from '@modules/files/api/files.api';
 import { usePOsQuery } from '@modules/purchase-orders/hooks/po.hooks';
+import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
+import { useAddSCOAttachmentMutation } from '@modules/sco/hooks/sco-attachment.hooks';
 import scoMockData from '@modules/sco/mock/sco-create.mock.json';
+import { PAYMENT_TERMS_OPTIONS } from '@modules/purchase-orders/constants/po.constants';
 import {
   SCO_CHANGE_TYPE_OPTIONS,
   SCO_FORM_SECTIONS,
@@ -330,14 +336,31 @@ export function SCOFormPage() {
 
   const { data: scoDetail, isLoading: isLoadingDetail } = useSCODetailQuery(scoId ?? '');
   const { data: posData } = usePOsQuery({ projectId, size: 1000 });
+  const { data: contactsData } = useContactsQuery({ size: 1000 });
+  const { data: costCodesData } = useCostCodesQuery();
+  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order co');
+  const { data: poFolderFallback } = useProjectFolderQuery(projectId || undefined, 'purchase order');
+  const uploadFolderId = scoFolderId ?? poFolderFallback;
+
+  const costCodeOptions = (costCodesData?.data ?? []).map((cc) => ({
+    value: cc.id,
+    label: `${cc.code} - ${cc.name}`,
+  }));
+
+  const contacts = contactsData?.data ?? [];
+  const contactOptions = contacts.map((c) => ({ value: c.id, label: c.fullName }));
+  const contactsById = new Map(contacts.map((c) => [c.id, c]));
 
   const createMutation = useCreateSCOMutation();
   const updateMutation = useUpdateSCOMutation();
   const addLineItemMutation = useAddSCOLineItemMutation();
   const updateLineItemMutation = useUpdateSCOLineItemMutation();
   const removeLineItemMutation = useRemoveSCOLineItemMutation();
+  const addAttachmentMutation = useAddSCOAttachmentMutation();
 
-  // PO dropdown — exclude DRAFT POs (backend rejects SCOs on DRAFT POs)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  // Only show non-DRAFT POs — backend rejects SCOs on DRAFT POs
   const poOptions = (posData?.data ?? [])
     .filter((po) => po.status?.name !== 'DRAFT')
     .map((po) => ({
@@ -361,7 +384,9 @@ export function SCOFormPage() {
     vendorContactEmail: '',
     vendorReferenceNumber: '',
     costCodeId: undefined,
-    impactsSchedule: false,
+    taxPercent: 0,
+    retainagePercent: 0,
+    paymentTerms: 'NET_30',
     lineItems: [{ description: '', qty: 1, unit: 'EA', unitPrice: 0 }],
   };
 
@@ -372,9 +397,9 @@ export function SCOFormPage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
 
-  const impactsSchedule = watch('impactsSchedule');
   const watchedLineItems = watch('lineItems');
   const watchedMarkup = watch('markupAmount') ?? 0;
+  const watchedTaxPercent = watch('taxPercent') ?? 0;
 
   // Auto-calculate amount from line items
   const lineItemsTotal = watchedLineItems.reduce(
@@ -382,7 +407,8 @@ export function SCOFormPage() {
     0,
   );
   const calculatedAmount = Math.round(lineItemsTotal * 100) / 100;
-  const totalAmount = Math.round((calculatedAmount + watchedMarkup) * 100) / 100;
+  const taxAmount = Math.round(calculatedAmount * watchedTaxPercent) / 100;
+  const totalAmount = Math.round((calculatedAmount + watchedMarkup + taxAmount) * 100) / 100;
 
   // Sync calculated amount (line items only, no markup) to form — backend validates amount === line items sum
   useEffect(() => {
@@ -413,7 +439,9 @@ export function SCOFormPage() {
         vendorContactEmail: scoDetail.vendorContactEmail ?? '',
         vendorReferenceNumber: scoDetail.vendorReferenceNumber ?? '',
         costCodeId: scoDetail.costCode?.id ?? undefined,
-        impactsSchedule: (scoDetail.scheduleImpactDays ?? 0) > 0,
+        taxPercent: Number((scoDetail as any).taxPercent ?? 0),
+        retainagePercent: Number((scoDetail as any).retainagePercent ?? 0),
+        paymentTerms: (scoDetail as any).paymentTerms ?? 'NET_30',
         lineItems:
           scoDetail.lineItems.length > 0
             ? scoDetail.lineItems.map((li) => ({
@@ -434,6 +462,26 @@ export function SCOFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
+  async function uploadFilesAndAttach(targetScoId: string, folderId: string, files: File[]) {
+    for (const file of files) {
+      try {
+        const uploaded = await filesApi.uploadFile(file, {
+          name: file.name,
+          parentId: folderId,
+          mimeType: file.type || undefined,
+          size: file.size,
+        });
+        await addAttachmentMutation.mutateAsync({
+          scoId: targetScoId,
+          data: { fileId: uploaded.id },
+        });
+      } catch (err) {
+        console.error(`[SCO Upload] Failed for ${file.name}:`, err);
+        toast.error(`Failed to upload file: ${file.name}`);
+      }
+    }
+  }
+
   const onSubmit = async (formData: CreateSCOInput) => {
     if (isEdit && scoId && scoDetail) {
       setIsSaving(true);
@@ -443,17 +491,21 @@ export function SCOFormPage() {
           data: {
             title: formData.title,
             amount: formData.amount,
+            markupAmount: formData.markupAmount || undefined,
             initiatedBy: formData.initiatedBy,
-            date: formData.date,
-            reasonForChange: formData.reasonForChange,
-            detailedScope: formData.detailedScope,
-            scheduleImpactDays: formData.impactsSchedule ? formData.scheduleImpactDays : undefined,
-            changeType: formData.changeType ?? undefined,
-            priority: formData.priority,
-            vendorContactName: formData.vendorContactName,
+            date: formData.date || undefined,
+            reasonForChange: formData.reasonForChange || undefined,
+            detailedScope: formData.detailedScope || undefined,
+            scheduleImpactDays: formData.scheduleImpactDays || undefined,
+            changeType: formData.changeType || undefined,
+            priority: formData.priority || undefined,
+            taxPercent: formData.taxPercent ?? undefined,
+            retainagePercent: formData.retainagePercent ?? undefined,
+            paymentTerms: formData.paymentTerms || undefined,
+            vendorContactName: formData.vendorContactName || undefined,
             vendorContactEmail: formData.vendorContactEmail || undefined,
-            vendorReferenceNumber: formData.vendorReferenceNumber,
-            costCodeId: formData.costCodeId ?? undefined,
+            vendorReferenceNumber: formData.vendorReferenceNumber || undefined,
+            costCodeId: formData.costCodeId || undefined,
           },
         });
 
@@ -488,6 +540,11 @@ export function SCOFormPage() {
           }
         }
 
+        // Upload files
+        if (selectedFiles.length > 0 && uploadFolderId) {
+          await uploadFilesAndAttach(scoId, uploadFolderId, selectedFiles);
+        }
+
         navigate('..', { relative: 'path' });
       } catch {
         // mutation error toast already shown
@@ -504,7 +561,7 @@ export function SCOFormPage() {
         ...(formData.date ? { date: formData.date } : {}),
         ...(formData.reasonForChange ? { reasonForChange: formData.reasonForChange } : {}),
         ...(formData.detailedScope ? { detailedScope: formData.detailedScope } : {}),
-        ...(formData.impactsSchedule && formData.scheduleImpactDays ? { scheduleImpactDays: formData.scheduleImpactDays } : {}),
+        ...(formData.scheduleImpactDays ? { scheduleImpactDays: formData.scheduleImpactDays } : {}),
         ...(formData.changeType ? { changeType: formData.changeType } : {}),
         ...(formData.priority ? { priority: formData.priority } : {}),
         ...(formData.vendorContactName ? { vendorContactName: formData.vendorContactName } : {}),
@@ -523,7 +580,16 @@ export function SCOFormPage() {
       };
 
       createMutation.mutate(payload as CreateSCOInput, {
-        onSuccess: () => navigate('..', { relative: 'path' }),
+        onSuccess: async (created) => {
+          if (selectedFiles.length > 0) {
+            if (uploadFolderId) {
+              await uploadFilesAndAttach(created.id, uploadFolderId, selectedFiles);
+            } else {
+              toast.error('SCO folder not found — files were not uploaded.');
+            }
+          }
+          navigate(`../${created.id}`, { relative: 'path' });
+        },
       });
     }
   };
@@ -579,7 +645,6 @@ export function SCOFormPage() {
                     initiatedBy: (d.initiatedBy ?? 'FIRM') as CreateSCOInput['initiatedBy'],
                     amount: Math.round((liTotal + markup) * 100) / 100,
                     markupAmount: markup,
-                    impactsSchedule: false,
                     scheduleImpactDays: 0,
                     lineItems: d.lineItems,
                   });
@@ -599,17 +664,14 @@ export function SCOFormPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <Separator />
+      {/* Main layout: top nav + content */}
+      <FormSectionNav
+        sections={SCO_FORM_SECTIONS as unknown as { id: string; label: string }[]}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-      {/* Main layout: sidebar nav + content */}
-      <div className="flex gap-8 pt-8">
-        <FormSectionNav
-          sections={SCO_FORM_SECTIONS as unknown as { id: string; label: string }[]}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="pt-6 space-y-6">
           {/* ---- Section 1: Change Order Details ---- */}
           <Card id="sco-details">
             <CardContent className="space-y-6">
@@ -793,73 +855,65 @@ export function SCOFormPage() {
                 )}
               />
 
-              {/* Impacts Schedule + Schedule Impact Days */}
+              {/* Schedule Impact Days */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="impactsSchedule"
+                  name="scheduleImpactDays"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Impacts Schedule
+                        Schedule Impact (Days)
                       </FieldLabel>
-                      <div className="flex items-center gap-2 pt-1">
-                        <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
-                        <span className="text-sm text-muted-foreground">
-                          {field.value ? 'Yes' : 'No'}
-                        </span>
-                      </div>
+                      <InputWrapper>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          {...field}
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          aria-invalid={fieldState.invalid}
+                        />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
-
-                {impactsSchedule && (
-                  <Controller
-                    name="scheduleImpactDays"
-                    control={control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Schedule Impact (Days)
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                            aria-invalid={fieldState.invalid}
-                          />
-                        </InputWrapper>
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
-                    )}
-                  />
-                )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* ---- Section 2: Financial Info ---- */}
-          <Card id="financial">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Financial Info</h2>
-                <p className="text-sm text-muted-foreground">
-                  Cost details and vendor contact information.
+              {/* Vendor Contact picker */}
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Vendor Contact
+                </FieldLabel>
+                <SearchableSelect
+                  options={contactOptions}
+                  value={null}
+                  onValueChange={(contactId) => {
+                    if (!contactId) return;
+                    const contact = contactsById.get(contactId);
+                    if (!contact) return;
+                    setValue('vendorContactName', contact.fullName, { shouldDirty: true });
+                    setValue('vendorContactEmail', contact.email?.email ?? '', { shouldDirty: true });
+                  }}
+                  placeholder="Search contacts..."
+                  searchPlaceholder="Search by name..."
+                  emptyMessage="No contacts found."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select a contact to auto-fill, or enter manually below.
                 </p>
-              </div>
+              </Field>
 
-              <Separator />
-
-              {/* Vendor Contact Name + Email */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {/* Vendor Contact Name + Email + Reference */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <Controller
                   name="vendorContactName"
                   control={control}
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Vendor Contact Name
+                        Contact Name
                       </FieldLabel>
                       <InputWrapper>
                         <Input
@@ -878,7 +932,7 @@ export function SCOFormPage() {
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Vendor Contact Email
+                        Contact Email
                       </FieldLabel>
                       <InputWrapper>
                         <Input
@@ -893,251 +947,239 @@ export function SCOFormPage() {
                     </Field>
                   )}
                 />
+
+                <Controller
+                  name="vendorReferenceNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Vendor Reference #
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input
+                          {...field}
+                          placeholder="e.g. VCO-2025-001"
+                          autoComplete="off"
+                        />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ---- Section 2: Financial ---- */}
+          <Card id="financial">
+            <CardContent className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Financial</h2>
+                <p className="text-sm text-muted-foreground">
+                  Payment terms, tax, and retainage settings.
+                </p>
               </div>
 
-              {/* Vendor Reference Number */}
-              <Controller
-                name="vendorReferenceNumber"
-                control={control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Vendor Reference #
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="e.g. VCO-2025-001"
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
-                  </Field>
-                )}
-              />
+              <Separator />
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <Controller
+                  name="paymentTerms"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Payment Terms
+                      </FieldLabel>
+                      <Select value={field.value ?? 'NET_30'} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="taxPercent"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Tax %
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          max={100}
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          aria-invalid={fieldState.invalid}
+                        />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="retainagePercent"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Retainage %
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          min={0}
+                          max={100}
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          aria-invalid={fieldState.invalid}
+                        />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 
           {/* ---- Section 3: Line Items ---- */}
-          <Card id="line-items">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Line Items</h2>
-                <p className="text-sm text-muted-foreground">
-                  At least one line item is required.
-                </p>
-              </div>
-
-              <Separator />
-
-              {fields.map((field, index) => {
-                const lineQty = watchedLineItems[index]?.qty ?? 0;
-                const linePrice = watchedLineItems[index]?.unitPrice ?? 0;
-                const lineAmount = Math.round(lineQty * linePrice * 100) / 100;
-
-                return (
-                  <div
-                    key={field.id}
-                    className="flex items-start gap-3 rounded-lg border border-border bg-accent/50 p-4"
-                  >
-                    <div className="flex-1 space-y-4">
-                      {/* Cost Code / Description */}
-                      <Controller
-                        name={`lineItems.${index}.description`}
-                        control={control}
-                        render={({ fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Cost Code *
-                            </FieldLabel>
-                            <CostCodePicker
-                              value={watchedLineItems[index]?.description ?? ''}
-                              costCodeId={watchedLineItems[index]?.costCodeId}
-                              onSelect={(description, costCodeId) => {
-                                setValue(`lineItems.${index}.description`, description);
-                                setValue(`lineItems.${index}.costCodeId`, costCodeId);
-                              }}
-                              invalid={fieldState.invalid}
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      {/* Qty + Unit + Unit Price + Amount */}
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                        <Controller
-                          name={`lineItems.${index}.qty`}
-                          control={control}
-                          render={({ field: f, fieldState }) => (
-                            <Field data-invalid={fieldState.invalid}>
-                              <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                                Qty *
-                              </FieldLabel>
-                              <InputWrapper>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  {...f}
-                                  onChange={(e) => f.onChange(Number(e.target.value))}
-                                  aria-invalid={fieldState.invalid}
-                                />
-                              </InputWrapper>
-                              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                            </Field>
-                          )}
+          <LineItems
+            control={control}
+            fieldPrefix="lineItems"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={costCodeOptions}
+            fieldNames={{ quantity: 'qty' }}
+            defaultItem={{ description: '', qty: 1, unit: 'EA', unitPrice: 0 }}
+            rootError={formState.errors.lineItems?.root}
+            showLineTotal
+          >
+            <Separator className="mt-4" />
+            <div className="flex justify-end pt-4">
+              <div className="w-full max-w-sm space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(calculatedAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Markup</span>
+                  <Controller
+                    name="markupAmount"
+                    control={control}
+                    render={({ field }) => (
+                      <InputWrapper className="w-32">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          className="text-right"
                         />
-                        <Controller
-                          name={`lineItems.${index}.unit`}
-                          control={control}
-                          render={({ field: f, fieldState }) => (
-                            <Field data-invalid={fieldState.invalid}>
-                              <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                                Unit *
-                              </FieldLabel>
-                              <InputWrapper>
-                                <Input
-                                  {...f}
-                                  placeholder="e.g. EA, LF, SF"
-                                  aria-invalid={fieldState.invalid}
-                                  autoComplete="off"
-                                />
-                              </InputWrapper>
-                              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                            </Field>
-                          )}
-                        />
-                        <Controller
-                          name={`lineItems.${index}.unitPrice`}
-                          control={control}
-                          render={({ field: f, fieldState }) => (
-                            <Field data-invalid={fieldState.invalid}>
-                              <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                                Unit Price *
-                              </FieldLabel>
-                              <InputWrapper>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  {...f}
-                                  onChange={(e) => f.onChange(Number(e.target.value))}
-                                  aria-invalid={fieldState.invalid}
-                                />
-                              </InputWrapper>
-                              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                            </Field>
-                          )}
-                        />
-                        <Field>
-                          <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                            Amount
-                          </FieldLabel>
-                          <InputWrapper>
-                            <Input
-                              type="text"
-                              value={formatCurrency(lineAmount)}
-                              readOnly
-                              className="bg-muted"
-                            />
-                          </InputWrapper>
-                        </Field>
-                      </div>
-
-                      {/* Notes */}
-                      <Controller
-                        name={`lineItems.${index}.notes`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              Notes
-                            </FieldLabel>
-                            <InputWrapper>
-                              <Input
-                                {...f}
-                                placeholder="Optional notes"
-                                autoComplete="off"
-                              />
-                            </InputWrapper>
-                          </Field>
-                        )}
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      mode="icon"
-                      className="size-8 mt-6 text-muted-foreground hover:text-destructive"
-                      disabled={fields.length <= 1}
-                      onClick={() => remove(index)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {formState.errors.lineItems?.root && (
-                <p className="text-sm text-destructive">
-                  {formState.errors.lineItems.root.message}
-                </p>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  append({ description: '', qty: 1, unit: 'EA', unitPrice: 0 })
-                }
-              >
-                <Plus className="size-4" />
-                Add Line Item
-              </Button>
-
-              {/* ---- Receipt-style totals ---- */}
-              <Separator />
-
-              <div className="flex justify-end">
-                <div className="w-full max-w-xs space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-medium text-foreground">
-                      {formatCurrency(calculatedAmount)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4 text-sm">
-                    <span className="text-muted-foreground">Markup</span>
-                    <Controller
-                      name="markupAmount"
-                      control={control}
-                      render={({ field }) => (
-                        <InputWrapper className="w-32">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={field.value ?? 0}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                            className="text-right text-sm"
-                          />
-                        </InputWrapper>
-                      )}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between text-sm font-semibold">
-                    <span>Total Amount</span>
-                    <span className="text-base">{formatCurrency(totalAmount)}</span>
-                  </div>
+                      </InputWrapper>
+                    )}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tax ({watchedTaxPercent}%)</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
+            </div>
+          </LineItems>
+
+          {/* ---- Section 4: Documents ---- */}
+          <Card id="documents">
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FileDropZone
+                value={null}
+                onChange={(file) => {
+                  if (file) setSelectedFiles((prev) => [...prev, file]);
+                }}
+                disabled={false}
+              />
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {selectedFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-between rounded-lg border p-2.5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="size-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium truncate block">{file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        mode="icon"
+                        size="sm"
+                        type="button"
+                        onClick={() => setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isEdit && scoDetail && scoDetail.attachments?.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-2">
+                    Existing Documents
+                  </div>
+                  {scoDetail.attachments.map((att: { id: string; document?: { id: string; name: string } }) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-3 rounded-lg border p-2.5"
+                    >
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {att.document?.name ?? 'Document'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
       </div>
     </form>
   );

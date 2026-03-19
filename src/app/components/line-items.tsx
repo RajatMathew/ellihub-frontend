@@ -85,6 +85,10 @@ export interface LineItemsProps {
   id?: string;
   /** Show computed line total (qty × unitPrice) for each row */
   showLineTotal?: boolean;
+  /** Hide the unit price column */
+  hideUnitPrice?: boolean;
+  /** Hide the cost code column */
+  hideCostCode?: boolean;
   /** Footer content rendered inside the card (e.g. receipt-style totals) */
   children?: ReactNode;
   /** Callback to add a new cost code — shows "+ Add" in cost code dropdown */
@@ -224,6 +228,8 @@ export function LineItems({
   defaultItem,
   id = 'line-items',
   showLineTotal = false,
+  hideUnitPrice = false,
+  hideCostCode = false,
   children,
   onAddCostCode,
 }: LineItemsProps) {
@@ -248,10 +254,10 @@ export function LineItems({
               <tr className="border-b">
                 <th className={`${thClass} w-8`}>#</th>
                 <th className={thClass}>Item</th>
-                <th className={`${thClass} w-[180px]`}>Cost Code</th>
+                {!hideCostCode && <th className={`${thClass} w-[180px]`}>Cost Code</th>}
                 <th className={`${thClass} w-[90px] text-right`}>Qty</th>
                 <th className={`${thClass} w-[90px]`}>Unit</th>
-                <th className={`${thClass} w-[110px] text-right`}>Unit Price</th>
+                {!hideUnitPrice && <th className={`${thClass} w-[110px] text-right`}>Unit Price</th>}
                 {showLineTotal && <th className={`${thClass} w-[110px] text-right`}>Amount</th>}
                 <th className="w-8" />
               </tr>
@@ -281,7 +287,7 @@ export function LineItems({
                   </td>
 
                   {/* Cost Code */}
-                  <td className="py-2.5 pr-3">
+                  {!hideCostCode && <td className="py-2.5 pr-3">
                     <Controller
                       name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
                       control={control}
@@ -298,7 +304,7 @@ export function LineItems({
                         />
                       )}
                     />
-                  </td>
+                  </td>}
 
                   {/* Quantity */}
                   <td className="py-2.5 pr-3">
@@ -340,7 +346,7 @@ export function LineItems({
                   </td>
 
                   {/* Unit Price */}
-                  <td className="py-2.5 pr-3">
+                  {!hideUnitPrice && <td className="py-2.5 pr-3">
                     <Controller
                       name={`${fieldPrefix}.${index}.${fn.unitPrice}`}
                       control={control}
@@ -358,7 +364,7 @@ export function LineItems({
                         </div>
                       )}
                     />
-                  </td>
+                  </td>}
 
                   {/* Line Total */}
                   {showLineTotal && (

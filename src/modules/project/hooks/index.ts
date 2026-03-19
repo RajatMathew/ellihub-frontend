@@ -9,4 +9,5 @@ export * from './pco-attachment.hooks';
 export * from './contract-attachment.hooks';
 export * from './rfq.hooks';
 export * from './invoice.hooks';
+export * from './invoice-attachment.hooks';
 export * from './use-project-folder';

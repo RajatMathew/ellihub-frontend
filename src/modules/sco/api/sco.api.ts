@@ -84,8 +84,8 @@ export const scoApi = {
     const raw = res.data?.data ?? res.data;
     const result = scoDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[scoApi.getById] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.getById] Zod parse warning:', result.error.issues);
+      return raw as SCODetail;
     }
     return result.data;
   },
@@ -95,8 +95,8 @@ export const scoApi = {
     const raw = res.data?.data ?? res.data;
     const result = scoDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[scoApi.create] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.create] Zod parse warning:', result.error.issues);
+      return raw as SCODetail;
     }
     return result.data;
   },
@@ -106,8 +106,8 @@ export const scoApi = {
     const raw = res.data?.data ?? res.data;
     const result = scoDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[scoApi.update] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.update] Zod parse warning:', result.error.issues);
+      return raw as SCODetail;
     }
     return result.data;
   },
@@ -135,8 +135,9 @@ export const scoApi = {
     const scoRaw = raw?.sco ?? raw;
     const result = scoDetailSchema.safeParse(scoRaw);
     if (!result.success) {
-      console.error('[scoApi.approve] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.approve] Zod parse warning:', result.error.issues);
+      // Approve succeeded on backend — return raw data to avoid blocking the UI
+      return scoRaw as SCODetail;
     }
     return result.data;
   },
@@ -146,8 +147,8 @@ export const scoApi = {
     const raw = res.data?.data ?? res.data;
     const result = scoDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[scoApi.reject] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.reject] Zod parse warning:', result.error.issues);
+      return raw as SCODetail;
     }
     return result.data;
   },
@@ -157,8 +158,20 @@ export const scoApi = {
     const raw = res.data?.data ?? res.data;
     const result = scoDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[scoApi.voidSCO] Zod parse error:', result.error.issues);
-      throw result.error;
+      console.warn('[scoApi.voidSCO] Zod parse warning:', result.error.issues);
+      return raw as SCODetail;
+    }
+    return result.data;
+  },
+
+  async revertToDraft(id: string): Promise<SCODetail> {
+    const res = await api.post(`${BASE}/${id}/revert-to-draft`);
+    const raw = res.data?.data ?? res.data;
+    const scoRaw = raw?.sco ?? raw;
+    const result = scoDetailSchema.safeParse(scoRaw);
+    if (!result.success) {
+      console.warn('[scoApi.revertToDraft] Zod parse warning:', result.error.issues);
+      return scoRaw as SCODetail;
     }
     return result.data;
   },

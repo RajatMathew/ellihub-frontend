@@ -4,6 +4,7 @@ export const PO_FORM_SECTIONS = [
   { id: 'po-details', label: 'PO Details' },
   { id: 'financial', label: 'Financial' },
   { id: 'line-items', label: 'Line Items' },
+  { id: 'documents', label: 'Documents' },
 ] as const;
 
 export const PAYMENT_TERMS_OPTIONS: { value: PaymentTerms; label: string }[] = [
