@@ -50,9 +50,7 @@ export const filesApi = {
     formData.append('file', file);
     formData.append('data', JSON.stringify(data));
 
-    await api.post(`${BASE}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    await api.post(`${BASE}/upload`, formData);
 
     // Backend returns empty string — find the uploaded file by querying the parent folder
     const folder = await this.getFolderDetails(data.parentId);
