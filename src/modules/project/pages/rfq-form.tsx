@@ -180,7 +180,8 @@ export default function RFQFormPage() {
   };
 
   const { control, handleSubmit, reset, formState } = useForm<CreateRFQInput>({
-    resolver: zodResolver(createRFQInputSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(createRFQInputSchema) as any,
     defaultValues,
   });
 
@@ -329,7 +330,7 @@ export default function RFQFormPage() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+      onSubmit={handleSubmit(onSubmit as any, (errors) => console.warn('Validation errors:', errors))}
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}

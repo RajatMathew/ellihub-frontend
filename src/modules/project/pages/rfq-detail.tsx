@@ -22,7 +22,6 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 import {
   Toolbar,

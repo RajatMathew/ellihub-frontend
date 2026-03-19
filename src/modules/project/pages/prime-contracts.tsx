@@ -400,7 +400,7 @@ export default function PrimeContracts() {
               </span>
             </CardHeader>
             <CardTable>
-              <DataGridTable table={table} />
+              <DataGridTable />
             </CardTable>
             {contractRows.length === 0 && (
               <CardContent>

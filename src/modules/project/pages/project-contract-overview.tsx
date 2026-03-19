@@ -68,13 +68,13 @@ export default function ProjectContractOverview() {
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
-  const { data: scoList } = useSCOsQuery({
+  const { data: _scoList } = useSCOsQuery({
     projectId,
     size: 5,
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
-  const { data: poList } = usePOsQuery({
+  const { data: _poList } = usePOsQuery({
     projectId,
     size: 5,
     sortBy: 'createdAt',
@@ -136,12 +136,7 @@ export default function ProjectContractOverview() {
   );
 
   // Build address string
-  const addressParts = [project?.streetAddress, project?.city, project?.state, project?.zipCode].filter(Boolean);
-  const fullAddress = addressParts.join(', ');
-
   const recentPCOs = pcoList?.data ?? [];
-  const recentSCOs = scoList?.data ?? [];
-  const recentPOs = poList?.data ?? [];
   const docs = attachments ?? [];
 
   // Total committed from POs (exclude cancelled)

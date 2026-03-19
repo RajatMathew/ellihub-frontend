@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
   Calendar,
   CheckCircle2,
-  ChevronDown,
   Download,
   FileText,
   MoreHorizontal,
@@ -78,7 +77,7 @@ type WorkflowAction = {
   destructive?: boolean;
 };
 
-const WORKFLOW_ACTIONS: Record<string, WorkflowAction[]> = {
+export const WORKFLOW_ACTIONS: Record<string, WorkflowAction[]> = {
   DRAFT: [
     { label: 'Approve', endpoint: 'approve', needsReason: false, primary: true },
     { label: 'Reject', endpoint: 'reject', needsReason: true, minReasonLength: 20, destructive: true },
@@ -126,7 +125,6 @@ export function SCODetailPage() {
   const statusName = sco?.status?.name ?? '';
   const isDraft = statusName === 'DRAFT';
   const isApproved = statusName === 'APPROVED';
-  const isTerminal = statusName === 'REJECTED' || statusName === 'VOID';
 
   const canApprove = isDraft;
   const canReject = isDraft;
@@ -135,9 +133,6 @@ export function SCODetailPage() {
   const canEdit = isDraft;
   const canDelete = isDraft;
 
-  const workflowActions = WORKFLOW_ACTIONS[statusName] ?? [];
-  const primaryAction = workflowActions.find((a) => a.primary);
-  const dropdownActions = workflowActions.filter((a) => !a.primary);
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {

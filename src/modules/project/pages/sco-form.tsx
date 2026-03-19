@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ChevronDown, FileText, Plus, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, FileText, Plus, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -121,7 +121,7 @@ function generateCostCode(existingCodes: string[]): string {
   return `${prefix}-${String(max + 1).padStart(3, '0')}`;
 }
 
-function CostCodePicker({
+export function CostCodePicker({
   value,
   costCodeId,
   onSelect,

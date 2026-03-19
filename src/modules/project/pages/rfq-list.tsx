@@ -28,7 +28,6 @@ import {
   CardFooter,
   CardHeader,
   CardTable,
-  CardTitle,
   CardToolbar,
 } from '@app/components/ui/card';
 import { StatsCard } from '@app/components/ui/stats-card';
@@ -59,7 +58,7 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-import { formatCurrency, formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
+import { formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteRFQMutation, useRFQListQuery, useRFQStatusesQuery } from '../hooks';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '../constants/rfq.constants';

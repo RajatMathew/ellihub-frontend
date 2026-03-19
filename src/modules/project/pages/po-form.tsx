@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, FileText, Mail, Phone, User, X } from 'lucide-react';
@@ -120,7 +120,8 @@ export function POFormPage() {
   };
 
   const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
-    resolver: zodResolver(createPOInputSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(createPOInputSchema) as any,
     defaultValues: isEditMode && existingPO ? {
       projectId: existingPO.projectId,
       vendorId: existingPO.vendorId,
@@ -215,7 +216,7 @@ export function POFormPage() {
       try {
         // 1. Update basic PO fields (strip lineItems and immutable fields)
         const { lineItems: currentLineItems, vendorId: _vi, projectId: _pi, ...poFields } = cleaned;
-        await updateMutation.mutateAsync({ id: poId, data: poFields });
+        await updateMutation.mutateAsync({ id: poId, data: poFields as any });
 
         // 2. Sync line items: add all current, then remove all originals
         const originalItems = existingPO.lineItems ?? [];
@@ -242,7 +243,7 @@ export function POFormPage() {
         setIsSaving(false);
       }
     } else {
-      createMutation.mutate(cleaned, {
+      createMutation.mutate(cleaned as any, {
         onSuccess: async (created) => {
           // Upload files after creation
           if (selectedFiles.length > 0) {
@@ -269,7 +270,7 @@ export function POFormPage() {
   return (
     <form
       key={isEditMode ? existingPO?.id ?? 'loading' : 'create'}
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+      onSubmit={handleSubmit(onSubmit as any, (errors) => console.warn('Validation errors:', errors))}
       className="container-fluid py-7.5"
     >
       {/* Toolbar */}

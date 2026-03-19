@@ -316,7 +316,7 @@ export default function ProjectPOs() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Issue Date" />,
         cell: ({ row }) => (
           <span className="text-sm text-foreground">
-            {formatDate(row.original.issueDate)}
+            {row.original.issueDate ? formatDate(row.original.issueDate) : '—'}
           </span>
         ),
         meta: {

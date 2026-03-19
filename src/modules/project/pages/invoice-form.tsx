@@ -143,7 +143,7 @@ export function InvoiceFormPage() {
     isEdit && invoiceDetail
       ? {
           projectId: invoiceDetail.project?.id ?? projectId,
-          poId: invoiceDetail.purchaseOrderId ?? undefined,
+          poId: (invoiceDetail.purchaseOrderId as string) ?? undefined,
           vendorId: invoiceDetail.vendor?.id ?? undefined,
           invoiceNumber: invoiceDetail.invoiceNumber ?? '',
           invoiceDate: invoiceDetail.invoiceDate?.slice(0, 10) ?? '',

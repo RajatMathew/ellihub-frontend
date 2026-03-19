@@ -253,6 +253,7 @@ export const updateRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255).optional(),
   description: z.string().nullable().optional(),
   estimatedBudget: z.number().min(0).nullable().optional(),
+  track: z.enum(RFQ_TRACKS).optional(),
   bidDeadline: z.string().optional(),
   biddingType: z.enum(['ANONYMOUS', 'OPEN']).optional(),
   minimumVendors: z.number().int().min(1).optional(),
