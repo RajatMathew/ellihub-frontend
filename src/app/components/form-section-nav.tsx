@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 
 import { cn } from '@app/lib/utils';
 
@@ -17,17 +17,20 @@ function getScrollParent(el: HTMLElement): HTMLElement {
   return document.documentElement;
 }
 
-export function FormSectionNav({
-  sections,
-  activeSection,
-  onSectionChange,
-}: {
-  sections: readonly { id: string; label: string }[];
-  activeSection: string;
-  onSectionChange: (id: string) => void;
-}) {
+export const FormSectionNav = forwardRef<
+  HTMLElement,
+  {
+    sections: readonly { id: string; label: string }[];
+    activeSection: string;
+    onSectionChange: (id: string) => void;
+    className?: string;
+    scrollOffset?: number;
+    top?: number | string;
+  }
+>(({ sections, activeSection, onSectionChange, className, scrollOffset, top }, ref) => {
   const isClickScrolling = useRef(false);
-  const navRef = useRef<HTMLElement>(null);
+  const internalRef = useRef<HTMLElement>(null);
+  const navRef = (ref as React.RefObject<HTMLElement>) || internalRef;
   const onChangeRef = useRef(onSectionChange);
   onChangeRef.current = onSectionChange;
 
@@ -64,7 +67,7 @@ export function FormSectionNav({
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [sections]);
+  }, [sections, scrollOffset, navRef]);
 
   const handleClick = (id: string) => {
     if (!navRef.current) return;
@@ -76,13 +79,13 @@ export function FormSectionNav({
     isClickScrolling.current = true;
 
     const scrollContainer = getScrollParent(navRef.current);
-    const navHeight = navRef.current.offsetHeight;
+    const navHeight = scrollOffset ?? navRef.current.offsetHeight;
 
     const targetTop = target.getBoundingClientRect().top;
     const containerTop = scrollContainer.getBoundingClientRect().top;
-    const scrollOffset = scrollContainer.scrollTop + (targetTop - containerTop) - navHeight - 8;
+    const finalScrollPos = scrollContainer.scrollTop + (targetTop - containerTop) - navHeight - 8;
 
-    scrollContainer.scrollTo({ top: scrollOffset, behavior: 'smooth' });
+    scrollContainer.scrollTo({ top: finalScrollPos, behavior: 'smooth' });
 
     setTimeout(() => {
       isClickScrolling.current = false;
@@ -94,7 +97,11 @@ export function FormSectionNav({
   return (
     <nav
       ref={navRef}
-      className="sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-zinc-50/95 backdrop-blur-md"
+      className={cn(
+        'sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-zinc-50/95 backdrop-blur-md',
+        className,
+      )}
+      style={top !== undefined ? { top } : undefined}
     >
       <div className="flex items-center w-full gap-2">
         {sections.map((section, i) => {
@@ -134,4 +141,4 @@ export function FormSectionNav({
       </div>
     </nav>
   );
-}
+});

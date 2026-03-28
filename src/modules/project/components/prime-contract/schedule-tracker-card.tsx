@@ -142,7 +142,7 @@ export function ScheduleTrackerCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Schedule Tracker
         </CardTitle>
         <CardToolbar>

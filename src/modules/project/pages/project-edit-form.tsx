@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
@@ -103,6 +103,7 @@ function ProjectEditFormInner({
       name: project.name,
       description: project.description ?? '',
       jobNumber: project.jobNumber ?? '',
+      contractNumber: project.contractNumber ?? '',
       stageId: project.stageId,
       division: project.division,
       gcId: project.gcId,
@@ -114,6 +115,14 @@ function ProjectEditFormInner({
       effectiveStartDate: project.effectiveStartDate?.slice(0, 10) ?? '',
       effectiveEndDate: project.effectiveEndDate?.slice(0, 10) ?? '',
       contractValue: project.primeContract?.contractValue ?? 0,
+      contractType: (project.primeContract as any)?.contractType ?? '',
+      retainagePercent: (project.primeContract as any)?.retainagePercent ?? 0,
+      targetBudgetPercent: (project.primeContract as any)?.targetBudgetPercent ?? 0,
+      paymentTerms: (project.primeContract as any)?.paymentTerms ?? '',
+      estimatedStartDate: (project.primeContract as any)?.estimatedStartDate?.slice(0, 10) ?? '',
+      estimatedCompletionDate: (project.primeContract as any)?.estimatedCompletionDate?.slice(0, 10) ?? '',
+      actualStartDate: (project.primeContract as any)?.actualStartDate?.slice(0, 10) ?? '',
+      actualCompletionDate: (project.primeContract as any)?.actualCompletionDate?.slice(0, 10) ?? '',
     },
   });
 
@@ -153,13 +162,22 @@ function ProjectEditFormInner({
     }
   };
 
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, []);
+ 
   return (
     <form
       onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
-      <Toolbar sticky={false}>
+      <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>
           <ToolbarHeading>
             <ToolbarPageTitle>Edit Project</ToolbarPageTitle>
@@ -176,14 +194,17 @@ function ProjectEditFormInner({
         </ToolbarWrapper>
       </Toolbar>
 
-      {/* ── Main layout ── */}
+      {/* ── Section Navigation ── */}
       <FormSectionNav
         sections={PROJECT_FORM_SECTIONS}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        scrollOffset={headerHeight}
+        className="sticky border-b border-border mb-6"
+        top={headerHeight}
       />
 
-      <div className="pt-6 space-y-6">
+      <div className="space-y-6">
           {/* ════════════════════════════════════════════
               Section 1: Project Info
              ════════════════════════════════════════════ */}

@@ -8,7 +8,7 @@ import { cn } from '@app/lib/utils';
 
 // Define CardContext
 type CardContextType = {
-  variant: 'default' | 'accent';
+  variant: 'default' | 'accent' | 'themed';
 };
 
 const CardContext = React.createContext<CardContextType>({
@@ -30,24 +30,26 @@ const cardVariants = cva('flex flex-col items-stretch text-card-foreground round
     variant: {
       default: 'bg-card border border-border shadow-xs black/5',
       accent: 'bg-muted shadow-xs p-1',
+      themed: 'bg-card border border-border shadow-xs',
     },
   },
   defaultVariants: {
-    variant: 'default',
+    variant: 'themed',
   },
 });
 
 const cardHeaderVariants = cva(
-  'flex items-center justify-between flex-wrap px-5 min-h-14 gap-2.5',
+  'flex items-center justify-between flex-wrap px-5 py-3  gap-2.5 w-full',
   {
     variants: {
       variant: {
         default: 'border-b border-border',
         accent: '',
+        themed: 'bg-card-header text-card-header-foreground rounded-t-xl [&_h3]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/60 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_svg]:text-card-header-foreground',
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: 'themed',
     },
   }
 );
@@ -57,10 +59,11 @@ const cardContentVariants = cva('grow p-5', {
     variant: {
       default: '',
       accent: 'bg-card rounded-t-xl [&:last-child]:rounded-b-xl',
+      themed: '',
     },
   },
   defaultVariants: {
-    variant: 'default',
+    variant: 'themed',
   },
 });
 
@@ -69,10 +72,11 @@ const cardTableVariants = cva('grid grow', {
     variant: {
       default: '',
       accent: 'bg-card rounded-xl',
+      themed: '',
     },
   },
   defaultVariants: {
-    variant: 'default',
+    variant: 'themed',
   },
 });
 
@@ -81,21 +85,22 @@ const cardFooterVariants = cva('flex items-center px-5 min-h-14', {
     variant: {
       default: 'border-t border-border',
       accent: 'bg-card rounded-b-xl mt-[2px]',
+      themed: 'border-t border-border',
     },
   },
   defaultVariants: {
-    variant: 'default',
+    variant: 'themed',
   },
 });
 
 // Card Component
 function Card({
   className,
-  variant = 'default',
+  variant = 'themed',
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants>) {
   return (
-    <CardContext.Provider value={{ variant: variant || 'default' }}>
+    <CardContext.Provider value={{ variant: variant || 'themed' }}>
       <div data-slot="card" className={cn(cardVariants({ variant }), className)} {...props} />
     </CardContext.Provider>
   );

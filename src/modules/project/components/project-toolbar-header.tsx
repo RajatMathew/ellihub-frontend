@@ -7,7 +7,10 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
+import { Avatar, AvatarFallback, AvatarImage } from '@app/components/ui/avatar';
+import { AvatarGroup, AvatarGroupItem } from '@app/components/ui/avatar-group';
 import { Badge } from '@app/components/ui/badge';
+import { Button } from '@app/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +26,15 @@ interface ProjectToolbarHeaderProps {
   title: string;
   project: ProjectDetail | undefined;
   children?: React.ReactNode;
+  onTeamClick?: () => void;
 }
 
-export function ProjectToolbarHeader({ title, project, children }: ProjectToolbarHeaderProps) {
+export function ProjectToolbarHeader({
+  title,
+  project,
+  children,
+  onTeamClick,
+}: ProjectToolbarHeaderProps) {
   const { data: stages } = useProjectStagesQuery();
   const updateMutation = useUpdateProjectMutation();
 
@@ -33,6 +42,29 @@ export function ProjectToolbarHeader({ title, project, children }: ProjectToolba
     if (!project || stageId === project.stageId) return;
     updateMutation.mutate({ id: project.id, data: { stageId } });
   };
+
+  // Get initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Gather team members for avatar display
+  const teamMembers = project?.teamMembers?.filter((ta) => ta.role !== 'Lead PM') || [];
+  const allTeamMembers = [
+    ...(project?.leadPM ? [{ id: project.leadPM.id, name: project.leadPM.name }] : []),
+    ...teamMembers
+      .filter((tm) => tm.employee)
+      .map((tm) => ({ id: tm.employee!.id, name: tm.employee!.name })),
+  ];
+
+  // Show max 4 avatars + count
+  const displayedMembers = allTeamMembers.slice(0, 4);
+  const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
     <Toolbar>
@@ -116,7 +148,34 @@ export function ProjectToolbarHeader({ title, project, children }: ProjectToolba
             )}
           </div>
         </ToolbarHeading>
-        {children && <ToolbarActions>{children}</ToolbarActions>}
+        <ToolbarActions>
+          {/* Team Avatar Group Button */}
+          {project && onTeamClick && allTeamMembers.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onTeamClick}
+              className="gap-2 hover:bg-muted/50"
+            >
+              <AvatarGroup className="-space-x-2">
+                {displayedMembers.map((member) => (
+                  <AvatarGroupItem key={member.id}>
+                    <Avatar className="size-7 border-2 border-background">
+                      <AvatarImage src="" alt={member.name} />
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </AvatarGroupItem>
+                ))}
+              </AvatarGroup>
+              {remainingCount > 0 && (
+                <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+              )}
+            </Button>
+          )}
+          {children}
+        </ToolbarActions>
       </ToolbarWrapper>
     </Toolbar>
   );

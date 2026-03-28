@@ -29,10 +29,20 @@
   --chart-3: var(--color-yellow-500);
   --chart-4: var(--color-red-500);
   --chart-5: var(--color-purple-500);
-  --border: oklch(94% 0.004 286.32); /* between --color-zinc-100 and --color-zinc-200 */
+  --border: oklch(94% 0.004 286.32);
+  /* between --color-zinc-100 and --color-zinc-200 */
   --input: var(--color-zinc-200);
   --ring: var(--color-zinc-400);
   --radius: 0.5rem;
+  --card-header: var(--color-purple-900);
+  --card-header-foreground: var(--color-white);
+  --card-header-border: var(--color-purple-950);
+  --teal-header-accent: var(--color-purple-800);
+  --teal-header-accent-foreground: var(--color-white);
+  --info: var(--color-green-600);
+  --label-light: lab(47.8878 1.65477 -5.77283);
+  --label-lighter: lab(35.1166 1.78212 -6.1173);
+  --separator: lab(96.1634 0.0993311 -0.364041);
 }
 
 .dark {
@@ -60,6 +70,15 @@
   --border: var(--color-zinc-800);
   --input: var(--color-zinc-800);
   --ring: var(--color-zinc-600);
+  --card-header: var(--color-teal-900);
+  --card-header-foreground: var(--color-teal-50);
+  --card-header-border: var(--color-teal-950);
+  --teal-header-accent: var(--color-teal-800);
+  --teal-header-accent-foreground: var(--color-white);
+  --info: var(--color-green-500);
+  --label-light: lab(60 2 -7);
+  --label-lighter: lab(50 2 -7);
+  --separator: var(--color-zinc-800);
 }
 
 /** Theme Setup **/
@@ -81,6 +100,15 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-card-header: var(--card-header);
+  --color-card-header-foreground: var(--card-header-foreground);
+  --color-card-header-border: var(--card-header-border);
+  --color-teal-header-accent: var(--teal-header-accent);
+  --color-teal-header-accent-foreground: var(--teal-header-accent-foreground);
+  --color-info: var(--info);
+  --color-label-light: var(--label-light);
+  --color-label-lighter: var(--label-lighter);
+  --color-separator: var(--separator);
 
   /** Base Styles **/
   --color-border: var(--border);
@@ -99,14 +127,17 @@
     from {
       transform: translateX(0);
     }
+
     to {
       transform: translateX(calc(-100% - var(--gap)));
     }
   }
+
   @keyframes marquee-vertical {
     from {
       transform: translateY(0);
     }
+
     to {
       transform: translateY(calc(-100% - var(--gap)));
     }
@@ -119,8 +150,14 @@
     @apply border-border;
   }
 
+  body {
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+      'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
   *:focus-visible {
-    @apply outline-ring rounded-xs shadow-none outline-2 outline-offset-3 transition-none!;
+    @apply !outline-ring !rounded-xs !shadow-none !outline-2 !outline-offset-3 !transition-none;
   }
 }
 
@@ -129,13 +166,16 @@
   ::-webkit-scrollbar {
     width: 5px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: var(--input);
     border-radius: 5px;
   }
+
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--input) transparent;
@@ -151,7 +191,7 @@ html {
 @utility container {
   @apply mx-auto max-w-none px-4 lg:px-5;
 
-  @media (width >= --theme(--breakpoint-xl)) {
+  @media (width >=--theme(--breakpoint-xl)) {
     @apply max-w-(--breakpoint-xl);
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, FileText, X } from 'lucide-react';
@@ -167,6 +167,15 @@ export default function ProjectForm() {
 
   const [activeSection, setActiveSection] = useState<string>('project-info');
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, []);
 
   /* ---- Submit ---- */
 
@@ -340,7 +349,7 @@ export default function ProjectForm() {
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
-      <Toolbar sticky={false}>
+      <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>
           <ToolbarHeading>
             <ToolbarPageTitle>{isEditMode ? 'Edit Project' : 'New Project'}</ToolbarPageTitle>
@@ -362,11 +371,14 @@ export default function ProjectForm() {
         </ToolbarWrapper>
       </Toolbar>
 
-      {/* ── Main layout ── */}
+      {/* ── Section Navigation ── */}
       <FormSectionNav
         sections={PROJECT_FORM_SECTIONS}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        top={headerHeight}
+        scrollOffset={headerHeight}
+        className="sticky border-b border-border mb-6"
       />
 
       <div className="pt-6 space-y-6">
