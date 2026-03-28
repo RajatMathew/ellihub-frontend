@@ -29,7 +29,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <title>{title}</title>
       </Helmet>
       <LayoutProvider
-        bodyClassName="lg:bg-muted lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
+        bodyClassName="bg-background lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
         style={
           {
             '--page-margin': '0px',

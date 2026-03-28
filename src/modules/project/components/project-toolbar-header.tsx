@@ -1,4 +1,5 @@
 import { ChevronDown, Check } from 'lucide-react';
+import { getContrastColor } from '@app/lib/helpers';
 
 import {
   Toolbar,
@@ -74,7 +75,10 @@ export function ProjectToolbarHeader({
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
             {project?.status && (
               <Badge
-                style={{ backgroundColor: project.status.color, color: '#fff' }}
+                style={{
+                  backgroundColor: project.status.color,
+                  color: getContrastColor(project.status.color),
+                }}
                 size="sm"
               >
                 {project.status.label}

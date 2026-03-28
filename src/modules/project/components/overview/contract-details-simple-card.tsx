@@ -1,4 +1,5 @@
 import { Badge } from '@app/components/ui/badge';
+import { getContrastColor } from '@app/lib/helpers';
 import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
 
 import { InfoRow } from '@modules/project/components/info-row';
@@ -42,7 +43,10 @@ export function ContractDetailsSimpleCard({
             >
               {project.stage ? (
                 <Badge
-                  style={{ backgroundColor: project.stage.color, color: '#fff' }}
+                  style={{
+                    backgroundColor: project.stage.color,
+                    color: getContrastColor(project.stage.color),
+                  }}
                   size="sm"
                 >
                   {project.stage.name}

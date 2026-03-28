@@ -98,7 +98,7 @@ export const FormSectionNav = forwardRef<
     <nav
       ref={navRef}
       className={cn(
-        'sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-zinc-50/95 backdrop-blur-md',
+        'sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-background/95 backdrop-blur-md',
         className,
       )}
       style={top !== undefined ? { top } : undefined}

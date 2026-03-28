@@ -129,3 +129,65 @@ export function parseSizeParam(v: string | null, defaultSize = 10): number {
   const n = Number(v);
   return [5, 10, 25, 50, 100].includes(n) ? n : defaultSize;
 }
+export function getContrastColor(hexColor: string | undefined): string {
+  if (!hexColor) return '#ffffff';
+
+  // Define some common color names to hex
+  const colorMap: Record<string, string> = {
+    yellow: '#fbbf24', // tailwind yellow-400
+    amber: '#f59e0b',
+    orange: '#f97316',
+    red: '#ef4444',
+    blue: '#3b82f6',
+    green: '#22c55e',
+    emerald: '#10b981',
+    teal: '#14b8a6',
+    cyan: '#06b6d4',
+    sky: '#0ea5e9',
+    indigo: '#6366f1',
+    violet: '#8b5cf6',
+    purple: '#a855f7',
+    fuchsia: '#d946ef',
+    pink: '#ec4899',
+    rose: '#f43f5e',
+    slate: '#64748b',
+    gray: '#6b7280',
+    zinc: '#71717a',
+    neutral: '#737373',
+    stone: '#78716c',
+  };
+
+  let hex = hexColor.toLowerCase();
+
+  // If it's a known color name, use the hex
+  if (colorMap[hex]) {
+    hex = colorMap[hex];
+  }
+
+  // Ensure it's a hex
+  if (!hex.startsWith('#')) {
+    // Basic fallback for non-hex colors that aren't in map
+    const brightColors = ['yellow', 'amber', 'orange', 'cyan', 'lime'];
+    return brightColors.includes(hex) ? '#000000' : '#ffffff';
+  }
+
+  // Remove the hash
+  hex = hex.replace('#', '');
+
+  // Handle shorthand hex like #ABC
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+
+  // Convert hex to RGB
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
+
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  return luminance > 0.65 ? '#000000' : '#ffffff';
+}

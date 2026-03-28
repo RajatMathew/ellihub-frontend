@@ -33,7 +33,7 @@ function MetricItem({
   return (
     <div
       className={cn(
-        'bg-white flex flex-col gap-y-1 px-4 py-2.5 border-r border-separator last:border-r-0',
+        'bg-transparent flex flex-col gap-y-1 px-4 py-2.5 border-r border-separator last:border-r-0',
         className
       )}
     >
@@ -64,37 +64,37 @@ export function FinancialStatsBar({
     (pipeline?.approved?.count ?? 0) + (pipeline?.executed?.count ?? 0);
 
   return (
-    <div className="w-full bg-card text-foreground leading-normal grid grid-cols-1 md:grid-cols-4 border border-separator overflow-hidden rounded-xl">
+    <div className="w-full bg-card text-foreground leading-normal grid grid-cols-1 md:grid-cols-4 border border-separator overflow-hidden rounded-xl shadow-xs">
       <MetricItem
         label="Original"
         value={formatCurrency(computations.original)}
         description={`${contract?.contractType ?? 'Original Contract'}`}
-        dotColor="bg-[lab(65.6464_1.53497_-5.42429)]"
-        valueColor="text-[lab(8.30603_0.618205_-2.16572)]"
+        dotColor="bg-label-lighter"
+        valueColor="text-foreground"
         className="border-b md:border-b-0"
       />
       <MetricItem
         label="Approved COs"
         value={`+${formatCurrency(computations.approvedCOs)}`}
         description={`${approvedCOsCount} approved COs`}
-        dotColor="bg-[lab(66.9756_-58.27_19.5419)]"
-        valueColor="text-[lab(55.0481_-49.9246_15.93)]"
+        dotColor="bg-emerald-500"
+        valueColor="text-emerald-600 dark:text-emerald-500"
         className="border-b md:border-b-0"
       />
       <MetricItem
         label="Contract Sum"
         value={formatCurrency(computations.contractSum)}
         description="Revised Total"
-        dotColor="bg-[lab(8.30603_0.618205_-2.16572)]"
-        valueColor="text-[lab(8.30603_0.618205_-2.16572)]"
+        dotColor="bg-foreground"
+        valueColor="text-foreground"
         className="border-b md:border-b-0"
       />
       <MetricItem
         label="Committed (POs)"
         value={formatCurrency(totalPOCommitted)}
         description={`${activePOsCount} active purchase orders`}
-        dotColor="bg-[lab(72.7183_31.8672_97.9407)]"
-        valueColor="text-[lab(60.3514_40.5624_87.1228)]"
+        dotColor="bg-amber-500"
+        valueColor="text-amber-600 dark:text-amber-500"
       />
     </div>
   );
