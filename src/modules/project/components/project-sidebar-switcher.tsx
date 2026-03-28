@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-
 import { ChevronsUpDown } from 'lucide-react';
 
 import { Button } from '@app/components/ui/button';
@@ -15,14 +13,12 @@ import {
   CommandList,
 } from '@app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
-
+import { useProjectNavigation } from '@app/hooks/use-project-hook';
 import { useProjectsQuery } from '@modules/project/hooks';
 
 export function ProjectSidebarSwitcher() {
   const [open, setOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { projectId } = useParams<{ projectId: string }>();
+  const { changeProject, projectId } = useProjectNavigation();
 
   const { data } = useProjectsQuery({ size: 100 });
   const projects = data?.data ?? [];
@@ -34,13 +30,7 @@ export function ProjectSidebarSwitcher() {
       setOpen(false);
       return;
     }
-    const encodedCurrent = encodeURIComponent(projectId!);
-    const encodedNext = encodeURIComponent(id);
-    const newPath = location.pathname.replace(
-      `/projects/${encodedCurrent}`,
-      `/projects/${encodedNext}`,
-    );
-    navigate(newPath, { replace: true });
+    changeProject(id);
     setOpen(false);
   };
 

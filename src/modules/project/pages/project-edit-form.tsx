@@ -4,8 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { FormSectionNav } from '@app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
@@ -27,10 +29,9 @@ import {
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
-
-import { FormSectionNav } from '@app/components/form-section-nav';
 import { useEmployeesQuery } from '@app/hooks/use-employees';
 import { useGCsQuery } from '@modules/directory/hooks';
+import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
 import {
   DIVISION_OPTIONS,
   PROJECT_FORM_SECTIONS,
@@ -47,8 +48,6 @@ import {
   type ProjectFormValues,
   type UpdateProjectInput,
 } from '@modules/project/schemas/project.schema';
-import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
-import type { NavigateFunction } from 'react-router-dom';
 
 export default function ProjectEditForm() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -89,11 +88,9 @@ function ProjectEditFormInner({
   /* ---- Build dropdown options ---- */
 
   const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
-  const statusOptions =
-    statusesQuery.data?.map((s) => ({ value: s.id, label: s.label })) ?? [];
+  const statusOptions = statusesQuery.data?.map((s) => ({ value: s.id, label: s.label })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions =
-    employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
 
   /* ---- Form setup with existing values ---- */
 
@@ -120,9 +117,11 @@ function ProjectEditFormInner({
       targetBudgetPercent: (project.primeContract as any)?.targetBudgetPercent ?? 0,
       paymentTerms: (project.primeContract as any)?.paymentTerms ?? '',
       estimatedStartDate: (project.primeContract as any)?.estimatedStartDate?.slice(0, 10) ?? '',
-      estimatedCompletionDate: (project.primeContract as any)?.estimatedCompletionDate?.slice(0, 10) ?? '',
+      estimatedCompletionDate:
+        (project.primeContract as any)?.estimatedCompletionDate?.slice(0, 10) ?? '',
       actualStartDate: (project.primeContract as any)?.actualStartDate?.slice(0, 10) ?? '',
-      actualCompletionDate: (project.primeContract as any)?.actualCompletionDate?.slice(0, 10) ?? '',
+      actualCompletionDate:
+        (project.primeContract as any)?.actualCompletionDate?.slice(0, 10) ?? '',
     },
   });
 
@@ -156,7 +155,7 @@ function ProjectEditFormInner({
     try {
       await updateMutation.mutateAsync({ id: projectId, data: payload });
       toast.success('Project updated.');
-      navigate(`/app/projects/${projectId}/overview`);
+      navigate(`/app/project/${projectId}/overview`);
     } catch {
       /* error toast from mutation */
     }
@@ -170,7 +169,7 @@ function ProjectEditFormInner({
       setHeaderHeight(headerRef.current.offsetHeight);
     }
   }, []);
- 
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
@@ -184,7 +183,7 @@ function ProjectEditFormInner({
           </ToolbarHeading>
           <ToolbarActions>
             <Button variant="outline" size="sm" type="button" asChild>
-              <Link to={`/app/projects/${projectId}/overview`}>Cancel</Link>
+              <Link to={`/app/project/${projectId}/overview`}>Cancel</Link>
             </Button>
             <Button size="sm" type="submit" disabled={isSubmitting}>
               <Check className="size-4" />
@@ -205,137 +204,154 @@ function ProjectEditFormInner({
       />
 
       <div className="space-y-6">
-          {/* ════════════════════════════════════════════
+        {/* ════════════════════════════════════════════
               Section 1: Project Info
              ════════════════════════════════════════════ */}
-          <Card id="project-info">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Project Info</h2>
-                <p className="text-sm text-muted-foreground">
-                  General details about the project and its location.
-                </p>
-              </div>
+        <Card id="project-info">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Project Info</h2>
+              <p className="text-sm text-muted-foreground">
+                General details about the project and its location.
+              </p>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Row: Project Stage + Status */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="stageId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project Stage
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={stageOptions}
-                        value={field.value || null}
-                        onValueChange={(v) => field.onChange(v ?? '')}
-                        placeholder="Select stage..."
-                        searchPlaceholder="Search stages..."
-                        emptyMessage="No stages found."
-                      />
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Field>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                    Project Status
-                  </FieldLabel>
-                  <SearchableSelect
-                    options={statusOptions}
-                    value={statusId || null}
-                    onValueChange={(v) => setStatusId(v ?? '')}
-                    placeholder="Select status..."
-                    searchPlaceholder="Search statuses..."
-                    emptyMessage="No statuses found."
-                  />
-                </Field>
-              </div>
-
-              {/* Row: Job Number (read-only) */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="jobNumber"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project ID / Job #
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          placeholder="P-2026-9299"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                          disabled
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Project Name */}
+            {/* Row: Project Stage + Status */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Controller
-                name="name"
+                name="stageId"
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Project Name
+                      Project Stage
                     </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="Enter the official project title"
-                        aria-invalid={fieldState.invalid}
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              {/* Row: Description */}
-              <Controller
-                name="description"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Description / Scope
-                    </FieldLabel>
-                    <Textarea
-                      {...field}
-                      rows={5}
-                      placeholder="Brief scope of work..."
-                      aria-invalid={fieldState.invalid}
+                    <SearchableSelect
+                      options={stageOptions}
+                      value={field.value || null}
+                      onValueChange={(v) => field.onChange(v ?? '')}
+                      placeholder="Select stage..."
+                      searchPlaceholder="Search stages..."
+                      emptyMessage="No stages found."
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
 
-              {/* ── Location sub-section ── */}
-              <div className="pt-2">
-                <h3 className="text-base font-semibold text-foreground mb-4">Location</h3>
+              <Field>
+                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                  Project Status
+                </FieldLabel>
+                <SearchableSelect
+                  options={statusOptions}
+                  value={statusId || null}
+                  onValueChange={(v) => setStatusId(v ?? '')}
+                  placeholder="Select status..."
+                  searchPlaceholder="Search statuses..."
+                  emptyMessage="No statuses found."
+                />
+              </Field>
+            </div>
 
-                {/* Street Address */}
+            {/* Row: Job Number (read-only) */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="jobNumber"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Project ID / Job #
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="P-2026-9299"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        disabled
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row: Project Name */}
+            <Controller
+              name="name"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Project Name
+                  </FieldLabel>
+                  <InputWrapper>
+                    <Input
+                      {...field}
+                      placeholder="Enter the official project title"
+                      aria-invalid={fieldState.invalid}
+                      autoComplete="off"
+                    />
+                  </InputWrapper>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+
+            {/* Row: Description */}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Description / Scope
+                  </FieldLabel>
+                  <Textarea
+                    {...field}
+                    rows={5}
+                    placeholder="Brief scope of work..."
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+
+            {/* ── Location sub-section ── */}
+            <div className="pt-2">
+              <h3 className="text-base font-semibold text-foreground mb-4">Location</h3>
+
+              {/* Street Address */}
+              <Controller
+                name="streetAddress"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Street Address
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input {...field} autoComplete="off" />
+                    </InputWrapper>
+                  </Field>
+                )}
+              />
+
+              {/* City + State + Zip */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mt-5">
                 <Controller
-                  name="streetAddress"
+                  name="city"
                   control={control}
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Street Address
+                        City
                       </FieldLabel>
                       <InputWrapper>
                         <Input {...field} autoComplete="off" />
@@ -344,217 +360,195 @@ function ProjectEditFormInner({
                   )}
                 />
 
-                {/* City + State + Zip */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mt-5">
-                  <Controller
-                    name="city"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          City
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input {...field} autoComplete="off" />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
+                <Controller
+                  name="state"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        State
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input {...field} maxLength={2} placeholder="NY" autoComplete="off" />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
 
-                  <Controller
-                    name="state"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          State
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input
-                            {...field}
-                            maxLength={2}
-                            placeholder="NY"
-                            autoComplete="off"
-                          />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="zipCode"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Zip Code
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input {...field} autoComplete="off" maxLength={10} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="zipCode"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Zip Code
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input {...field} autoComplete="off" maxLength={10} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* ── Key Stakeholders sub-section ── */}
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-4">Key Stakeholders</h3>
+            {/* ── Key Stakeholders sub-section ── */}
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-4">Key Stakeholders</h3>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <Controller
-                    name="gcId"
-                    control={control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          General Contractor
-                        </FieldLabel>
-                        <SearchableSelect
-                          options={gcOptions}
-                          value={field.value || null}
-                          onValueChange={(v) => field.onChange(v ?? '')}
-                          placeholder="Select GC..."
-                          searchPlaceholder="Search contractors..."
-                          emptyMessage="No contractors found."
-                        />
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="leadPMId"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Project Manager
-                        </FieldLabel>
-                        <SearchableSelect
-                          options={pmOptions}
-                          value={field.value || null}
-                          onValueChange={(v) => field.onChange(v ?? '')}
-                          placeholder="Select PM..."
-                          searchPlaceholder="Search people..."
-                          emptyMessage="No contacts found."
-                        />
-                      </Field>
-                    )}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ════════════════════════════════════════════
-              Section 2: Contract
-             ════════════════════════════════════════════ */}
-          <Card id="contract">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Contract</h2>
-                <p className="text-sm text-muted-foreground">Financials and timeline.</p>
-              </div>
-
-              <Separator />
-
-              {/* Row: Contract Category */}
-              <Controller
-                name="division"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Contract Category
-                    </FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue placeholder="Select category..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DIVISION_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              {/* Row: Start Date + End Date */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="effectiveStartDate"
+                  name="gcId"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Start Date
+                        General Contractor
                       </FieldLabel>
-                      <InputWrapper>
-                        <Input type="date" {...field} />
-                      </InputWrapper>
+                      <SearchableSelect
+                        options={gcOptions}
+                        value={field.value || null}
+                        onValueChange={(v) => field.onChange(v ?? '')}
+                        placeholder="Select GC..."
+                        searchPlaceholder="Search contractors..."
+                        emptyMessage="No contractors found."
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
 
                 <Controller
-                  name="effectiveEndDate"
+                  name="leadPMId"
                   control={control}
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        End Date
+                        Project Manager
                       </FieldLabel>
-                      <InputWrapper>
-                        <Input type="date" {...field} />
-                      </InputWrapper>
+                      <SearchableSelect
+                        options={pmOptions}
+                        value={field.value || null}
+                        onValueChange={(v) => field.onChange(v ?? '')}
+                        placeholder="Select PM..."
+                        searchPlaceholder="Search people..."
+                        emptyMessage="No contacts found."
+                      />
                     </Field>
                   )}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Row: Contract Value (read-only — edited via contract dialog) */}
+        {/* ════════════════════════════════════════════
+              Section 2: Contract
+             ════════════════════════════════════════════ */}
+        <Card id="contract">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Contract</h2>
+              <p className="text-sm text-muted-foreground">Financials and timeline.</p>
+            </div>
+
+            <Separator />
+
+            {/* Row: Contract Category */}
+            <Controller
+              name="division"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Contract Category
+                  </FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={fieldState.invalid}>
+                      <SelectValue placeholder="Select category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIVISION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+
+            {/* Row: Start Date + End Date */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Controller
-                name="contractValue"
+                name="effectiveStartDate"
                 control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
+                render={({ field }) => (
+                  <Field>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Contract Value
+                      Start Date
                     </FieldLabel>
                     <InputWrapper>
-                      <span className="text-muted-foreground text-sm">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                        placeholder="0.00"
-                        aria-invalid={fieldState.invalid}
-                        disabled
-                      />
+                      <Input type="date" {...field} />
                     </InputWrapper>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Contract value is managed from the contract details section.
-                    </p>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
-            </CardContent>
-          </Card>
+
+              <Controller
+                name="effectiveEndDate"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      End Date
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input type="date" {...field} />
+                    </InputWrapper>
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row: Contract Value (read-only — edited via contract dialog) */}
+            <Controller
+              name="contractValue"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Contract Value
+                  </FieldLabel>
+                  <InputWrapper>
+                    <span className="text-muted-foreground text-sm">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      placeholder="0.00"
+                      aria-invalid={fieldState.invalid}
+                      disabled
+                    />
+                  </InputWrapper>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Contract value is managed from the contract details section.
+                  </p>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+          </CardContent>
+        </Card>
       </div>
     </form>
   );

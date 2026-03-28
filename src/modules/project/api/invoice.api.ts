@@ -1,24 +1,23 @@
 import { z } from 'zod';
 
 import api from '@app/api';
-
 import {
   invoiceDetailSchema,
   invoicePaginatedResponseSchema,
   invoiceStatusSchema,
   invoiceSummarySchema,
   type CreateInvoiceInput,
-  type UpdateInvoiceInput,
-  type InvoiceLineItemInput,
-  type InvoiceRejectInput,
-  type InvoiceMarkPaidInput,
-  type InvoiceDisputeInput,
-  type InvoiceResolveDisputeInput,
-  type ListInvoiceParams,
-  type InvoicePaginatedResponse,
   type InvoiceDetail,
+  type InvoiceDisputeInput,
+  type InvoiceLineItemInput,
+  type InvoiceMarkPaidInput,
+  type InvoicePaginatedResponse,
+  type InvoiceRejectInput,
+  type InvoiceResolveDisputeInput,
   type InvoiceStatus,
   type InvoiceSummary,
+  type ListInvoiceParams,
+  type UpdateInvoiceInput,
 } from '@modules/project/schemas/invoice.schema';
 
 const BASE = '/invoices';
@@ -66,7 +65,7 @@ export const invoiceApi = {
   },
 
   async summary(projectId: string): Promise<InvoiceSummary> {
-    const res = await api.get(`/projects/${projectId}/invoice-summary`);
+    const res = await api.get(`/project/${projectId}/invoice-summary`);
     const raw = res.data?.data ?? res.data;
     const result = invoiceSummarySchema.safeParse(raw);
     if (!result.success) {
@@ -104,7 +103,8 @@ export const invoiceApi = {
     if (data.category) payload.category = data.category;
     if (data.notes) payload.notes = data.notes;
     if (data.invoiceDocumentId) payload.invoiceDocumentId = data.invoiceDocumentId;
-    if (data.retainagePercent != null && data.retainagePercent > 0) payload.retainagePercent = data.retainagePercent;
+    if (data.retainagePercent != null && data.retainagePercent > 0)
+      payload.retainagePercent = data.retainagePercent;
     if (data.taxAmount != null && data.taxAmount > 0) payload.taxAmount = data.taxAmount;
     if (data.taxRate != null && data.taxRate > 0) payload.taxRate = data.taxRate;
     if (data.lineItems && data.lineItems.length > 0) payload.lineItems = data.lineItems;

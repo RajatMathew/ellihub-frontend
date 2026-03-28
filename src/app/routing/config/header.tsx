@@ -1,7 +1,8 @@
-import { HeaderToolbar } from '@app/components/header/header-toolbar';
+// import { HeaderToolbar } from '@app/components/header/header-toolbar';
+
 import type { MenuConfig } from '@app/config/types';
 
-import { mainSidebarMenu, projectsDetailSidebarMenu, projectSidebarMenu } from './sidebar';
+import { mainSidebarMenu, projectSidebarMenu } from './sidebar';
 
 export interface HeaderConfig {
   breadcrumbs?: boolean | React.ReactNode;
@@ -14,13 +15,13 @@ export const mainHeaderConfig: HeaderConfig = {
   menuConfig: mainSidebarMenu,
 };
 
-export const projectHeaderConfig: HeaderConfig = {
-  breadcrumbs: true,
-  toolbar: <HeaderToolbar />,
-  menuConfig: projectSidebarMenu,
-};
+// export const projectHeaderConfig: HeaderConfig = {
+//   breadcrumbs: true,
+//   toolbar: <HeaderToolbar />,
+//   menuConfig: projectSidebarMenu,
+// };
 
 export const projectsDetailHeaderConfig: HeaderConfig = {
   breadcrumbs: true,
-  menuConfig: projectsDetailSidebarMenu,
+  menuConfig: projectSidebarMenu,
 };

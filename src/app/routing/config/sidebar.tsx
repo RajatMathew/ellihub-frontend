@@ -2,7 +2,6 @@ import { ArrowLeft } from 'lucide-react';
 
 import type { MenuConfig } from '@app/config/types';
 import { ProjectSidebarSwitcher } from '@modules/project/components/project-sidebar-switcher';
-import { ProjectSwitcher } from '@modules/project/project-switcher';
 
 const isDev = import.meta.env.DEV;
 
@@ -51,7 +50,7 @@ export const projectSidebarMenu: MenuConfig = [
     children: [{ title: 'Back to Projects', path: '../../projects', icon: ArrowLeft }],
   },
   { type: 'separator' },
-  { type: 'custom', render: () => <ProjectSwitcher /> },
+  { type: 'custom', render: () => <ProjectSidebarSwitcher /> },
   { type: 'separator' },
   {
     type: 'menu',
@@ -62,8 +61,8 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'GC',
     children: [
-      { title: 'Prime Contracts', path: '../contracts' },
-      { title: 'Prime Change Orders', path: '../change-orders' },
+      { title: 'Prime Contracts', path: '../prime-contracts' },
+      { title: 'Prime Change Orders', path: '../prime-change-orders' },
     ],
   },
   { type: 'separator' },
@@ -77,31 +76,9 @@ export const projectSidebarMenu: MenuConfig = [
       { title: 'Invoices', path: '../invoices' },
     ],
   },
-  { type: 'separator' },
-  {
-    type: 'menu',
-    children: [{ title: 'Files', path: '../files' }],
-  },
-];
-
-export const projectsDetailSidebarMenu: MenuConfig = [
-  {
-    type: 'menu',
-    children: [{ title: 'Back to Dashboard', path: '../../projects', icon: ArrowLeft }],
-  },
-  { type: 'separator' },
-  { type: 'custom', render: () => <ProjectSidebarSwitcher /> },
-  { type: 'separator' },
-  {
-    type: 'menu',
-    children: [
-      { title: 'Overview', path: '../overview' },
-      { title: 'Prime Contracts', path: '../prime-contracts' },
-      { title: 'Prime Change Orders', path: '../prime-change-orders' },
-      { title: 'RFQs', path: '../rfqs' },
-      { title: 'Purchase Orders', path: '../purchase-orders' },
-      { title: 'Change Orders', path: '../vendors/change-orders' },
-      { title: 'Invoices', path: '../invoices' },
-    ],
-  },
+  // { type: 'separator' },
+  // {
+  //   type: 'menu',
+  //   children: [{ title: 'Files', path: '../files' }],
+  // },
 ];

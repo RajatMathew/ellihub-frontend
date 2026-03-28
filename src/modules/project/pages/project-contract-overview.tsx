@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { useEmployeesQuery } from '@app/hooks/use-employees';
-
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -25,17 +24,17 @@ import {
   ProjectTeamDialog,
 } from '@modules/project/components/overview';
 import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
-import { usePrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
 import { ScheduleTrackerCard } from '@modules/project/components/prime-contract/schedule-tracker-card';
+import { usePrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
 import { ProjectToolbarHeader } from '@modules/project/components/project-toolbar-header';
-import { useContractAttachmentsQuery } from '@modules/project/hooks/contract-attachment.hooks';
 import {
   useDeleteProjectMutation,
-  useProjectDetailQuery,
   useProjectContractQuery,
-  useProjectScheduleQuery,
+  useProjectDetailQuery,
   useProjectFolderQuery,
+  useProjectScheduleQuery,
 } from '@modules/project/hooks';
+import { useContractAttachmentsQuery } from '@modules/project/hooks/contract-attachment.hooks';
 import { usePCOListQuery, usePCOPipelineQuery } from '@modules/project/hooks/pco.hooks';
 import { useEmployeeOptions } from '@modules/project/hooks/use-employee-options';
 import { usePOCalculations } from '@modules/project/hooks/use-po-calculations';
@@ -60,8 +59,7 @@ export default function ProjectContractOverview() {
   });
   const { data: allPOs } = usePOsQuery({ projectId, size: 1000 });
   const { data: attachments } = useContractAttachmentsQuery(projectId);
-  const { data: scheduleData, isLoading: isLoadingSchedule } =
-    useProjectScheduleQuery(projectId);
+  const { data: scheduleData, isLoading: isLoadingSchedule } = useProjectScheduleQuery(projectId);
   const { data: primeContractFolderId } = useProjectFolderQuery(
     projectId || undefined,
     'prime contract'
@@ -124,7 +122,7 @@ export default function ProjectContractOverview() {
             Share
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/app/projects/${projectId}/edit`}>
+            <Link to={`/app/project/${projectId}/edit`}>
               <Pencil className="size-4" />
               Edit Project
             </Link>
@@ -137,16 +135,13 @@ export default function ProjectContractOverview() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link to={`/app/projects/${projectId}/edit`}>
+                <Link to={`/app/project/${projectId}/edit`}>
                   <Pencil className="size-4" />
                   Edit Project
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
                 Delete Project
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -175,17 +170,9 @@ export default function ProjectContractOverview() {
 
         {/* ---- Contract Documents + Payments + Recent Activity ---- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <ContractDocumentsSimpleCard
-            projectId={projectId}
-            documents={docs}
-            isLoading={false}
-          />
+          <ContractDocumentsSimpleCard projectId={projectId} documents={docs} isLoading={false} />
           <PaymentsPlaceholderCard />
-          <PrimeChangeOrdersCard
-            projectId={projectId}
-            pcos={recentPCOs}
-            isLoading={false}
-          />
+          <PrimeChangeOrdersCard projectId={projectId} pcos={recentPCOs} isLoading={false} />
         </div>
 
         {/* ---- Team Dialog ---- */}
