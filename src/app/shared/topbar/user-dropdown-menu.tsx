@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import {
   BetweenHorizontalStart,
+  Bug,
   Coffee,
   CreditCard,
   FileText,
@@ -151,6 +152,30 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             Help Center
           </Link>
         </DropdownMenuItem>
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="flex items-center gap-2">
+            <Bug /> Debug
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-48">
+            <DropdownMenuItem asChild>
+              <Link to="" className="flex items-center gap-2">
+                <Coffee />
+                Logger
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href="#"
+                onClick={() => window.toggleDevtools()}
+                className="flex items-center gap-2"
+              >
+                <FileText />
+                Query Devtools
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         {/* Language Submenu with Radio Group */}
         <DropdownMenuSub>

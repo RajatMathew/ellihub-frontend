@@ -4,7 +4,7 @@ import { Toaster } from '@app/components/ui/sonner';
 
 import '@app/styles/globals.css';
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { AppLayout } from './components/layouts';
 import { AppLoadingScreen } from './components/loader/app';
@@ -15,7 +15,17 @@ const isDev = import.meta.env.DEV;
 
 const AppRouting = lazy(() => DelayForDemo(import('./routing'), isDev ? 0 : 2000));
 
+const ReactQueryDevtoolsProduction = lazy(() =>
+  import('@tanstack/react-query-devtools/build/modern/production.js').then((d) => ({
+    default: d.ReactQueryDevtools,
+  }))
+);
+
 export function App() {
+  const [showDevtools, setShowDevtools] = useState(false);
+  useEffect(() => {
+    window.toggleDevtools = () => setShowDevtools((old) => !old);
+  }, []);
   return (
     <QueryProvider>
       <LoadingBarContainer>
@@ -26,6 +36,11 @@ export function App() {
         </Suspense>
         <Toaster position="top-center" />
       </LoadingBarContainer>
+      {showDevtools && (
+        <Suspense fallback={null}>
+          <ReactQueryDevtoolsProduction initialIsOpen={true} />
+        </Suspense>
+      )}
     </QueryProvider>
   );
 }
