@@ -1,8 +1,8 @@
 import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { checkDeletedAt } from '@modules/common/utils';
 import { ConflictError, NotFoundError } from '@utils';
+import { checkDeletedAt } from '@utils/utils';
 import { ulid } from 'ulid';
 
 import {
@@ -124,10 +124,7 @@ export const CostCodeService = {
         });
     },
 
-    updateCostCode: async (
-        id: string,
-        request: CostCodeUpdateRequest
-    ): Promise<CostCode> => {
+    updateCostCode: async (id: string, request: CostCodeUpdateRequest): Promise<CostCode> => {
         const costCode = await prisma.costCode.findUnique({
             where: { id },
         });

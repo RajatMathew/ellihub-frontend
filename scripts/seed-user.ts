@@ -44,4 +44,7 @@ async function seed() {
     }
 }
 
-seed();
+seed().catch((e) => {
+    console.error('Seed failed:', e);
+    process.exit(1);
+});

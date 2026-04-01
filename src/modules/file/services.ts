@@ -2,9 +2,9 @@ import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { checkDeletedAt } from '@modules/common/utils';
 import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
+import { checkDeletedAt } from '@utils/utils';
 import { ulid } from 'ulid';
 
 import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';

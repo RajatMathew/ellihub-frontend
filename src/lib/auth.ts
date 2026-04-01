@@ -19,11 +19,11 @@ export const auth = betterAuth({
     basePath: '/api/v1/auth',
     advanced: {
         defaultCookieAttributes: {
-            sameSite: 'none', // allow cross-site
-            secure: true, // required with sameSite: none
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // allow cross-site
+            secure: process.env.NODE_ENV === 'production', // required with sameSite: none
             httpOnly: true,
         },
-        useSecureCookies: true,
+        useSecureCookies: process.env.NODE_ENV === 'production',
     },
     emailAndPassword: {
         enabled: true,

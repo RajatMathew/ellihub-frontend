@@ -38,46 +38,11 @@
                 }
             }
         },
-        "/users/me": {
-            "get": {
-                "tags": ["Users"],
-                "summary": "Get current authenticated user",
-                "operationId": "getCurrentUser",
-                "responses": {
-                    "200": {
-                        "description": "Current user details",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/User" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/users/{id}": {
             "get": {
                 "tags": ["Users"],
                 "summary": "Get user by ID",
-                "operationId": "getUserById",
+                "operationId": "getUser",
                 "parameters": [
                     {
                         "name": "id",
@@ -125,10 +90,45 @@
                 }
             }
         },
+        "/users/me": {
+            "get": {
+                "tags": ["Users"],
+                "summary": "Get current authenticated user",
+                "operationId": "getCurrentUser",
+                "responses": {
+                    "200": {
+                        "description": "Current user details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/User" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - no active session",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/org-role": {
             "post": {
                 "tags": ["Users"],
-                "summary": "Create an organization role",
+                "summary": "Create an organization role with permissions",
                 "operationId": "createOrgRole",
                 "requestBody": {
                     "required": true,
@@ -157,6 +157,14 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
                         "content": {
@@ -171,7 +179,7 @@
         "/users/org-role/list": {
             "get": {
                 "tags": ["Users"],
-                "summary": "List organization roles",
+                "summary": "List all organization roles",
                 "operationId": "listOrgRoles",
                 "responses": {
                     "200": {
@@ -184,7 +192,10 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "array", "items": { "type": "object" } }
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "type": "object" }
+                                                }
                                             }
                                         }
                                     ]
@@ -210,14 +221,9 @@
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
-                    "name": { "type": "string" },
                     "email": { "type": "string", "format": "email" },
-                    "emailVerified": { "type": "boolean" },
-                    "image": { "type": "string", "nullable": true },
+                    "name": { "type": "string" },
                     "role": { "type": "string", "enum": ["admin", "user"] },
-                    "banned": { "type": "boolean" },
-                    "banReason": { "type": "string", "nullable": true },
-                    "banExpires": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -226,57 +232,32 @@
                 "type": "object",
                 "required": ["role", "permission"],
                 "properties": {
-                    "role": { "type": "string", "minLength": 3, "example": "project-manager" },
-                    "permission": { "$ref": "#/components/schemas/PermissionStatement" }
-                }
-            },
-            "PermissionStatement": {
-                "type": "object",
-                "description": "Permission statements for organization roles. All fields are optional arrays.",
-                "properties": {
-                    "user": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["manage-permissions"] }
-                    },
-                    "role": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["list", "create", "update", "delete"] }
-                    },
-                    "project": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "view-assigned-projects", "view-all"] }
-                    },
-                    "leave": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["approve", "view"] }
-                    },
-                    "costCodeGroup": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "costCode": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "contact": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "professionalRole": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "generalContractor": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "gcType": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
-                    },
-                    "vendor": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                    "role": { "type": "string", "minLength": 3, "description": "Role name" },
+                    "permission": {
+                        "type": "object",
+                        "description": "Permission statements per resource",
+                        "properties": {
+                            "user": {
+                                "type": "array",
+                                "items": { "type": "string", "enum": ["manage-permissions"] }
+                            },
+                            "project": {
+                                "type": "array",
+                                "items": { "type": "string", "enum": ["create", "update", "delete", "view-assigned-projects", "view-all"] }
+                            },
+                            "leave": {
+                                "type": "array",
+                                "items": { "type": "string", "enum": ["approve", "view"] }
+                            },
+                            "costCodeGroup": {
+                                "type": "array",
+                                "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                            },
+                            "costCode": {
+                                "type": "array",
+                                "items": { "type": "string", "enum": ["create", "update", "delete", "read"] }
+                            }
+                        }
                     }
                 }
             }
