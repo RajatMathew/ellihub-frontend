@@ -4,7 +4,7 @@ import { prisma as prismaClient } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
-import { checkDeletedAt } from '@utils/utils';
+import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';

@@ -2,7 +2,7 @@ import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ConflictError, NotFoundError } from '@utils';
-import { checkDeletedAt } from '@utils/utils';
+import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
