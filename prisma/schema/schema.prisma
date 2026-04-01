@@ -17,3 +17,11 @@ model Configuration {
   key1   String?
   key2   String?
 }
+
+model Lookup {
+  id    String @id
+  type  String
+  label String
+
+  @@unique([type, label])
+}
