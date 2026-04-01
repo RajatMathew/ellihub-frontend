@@ -8,3 +8,4 @@ echo "Running seed scripts in order..."
 
 bun run scripts/seed-user.ts
 bun run scripts/seed-root-folder.ts
+bun run scripts/seed-cost-codes.ts

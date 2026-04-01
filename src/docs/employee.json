@@ -400,8 +400,7 @@
                     "email": { "type": "string", "format": "email" },
                     "phoneNumber": { "type": "string" },
                     "roleId": { "type": "string", "nullable": true },
-                    "tenantId": { "type": "string" },
-                    "createdAt": { "type": "string", "format": "date-time" },
+                                        "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }

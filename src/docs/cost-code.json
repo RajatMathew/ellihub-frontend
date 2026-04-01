@@ -650,8 +650,7 @@
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
-                    "tenantId": { "type": "string" },
-                    "createdAt": { "type": "string", "format": "date-time" },
+                                        "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
@@ -680,8 +679,7 @@
                     "code": { "type": "string" },
                     "description": { "type": "string" },
                     "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
-                    "tenantId": { "type": "string" },
-                    "createdAt": { "type": "string", "format": "date-time" },
+                                        "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }

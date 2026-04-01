@@ -1,12 +1,10 @@
 model Employee {
-  id              String                  @id
-  name            String
-  email           String                  @unique
-  phoneNumber     String
-  userId          String?
-  projectsLeading Project[]
-  projects        ProjectTeamAssignment[]
-  deletedAt       DateTime?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  id          String    @id
+  name        String
+  email       String    @unique
+  phoneNumber String
+  userId      String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

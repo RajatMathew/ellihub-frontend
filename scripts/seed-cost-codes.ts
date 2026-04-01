@@ -1,8 +1,6 @@
 import { prisma } from '@lib/prisma';
 import { ulid } from 'ulid';
 
-const TENANT_ID = 'default';
-
 const categories = [
     { id: ulid(), name: 'Labor', description: 'Labor and workforce costs' },
     { id: ulid(), name: 'Material', description: 'Raw materials and supplies' },
@@ -16,7 +14,7 @@ export const seedCostCodes = async () => {
     const createdCategories = [];
     for (const cat of categories) {
         const existing = await prisma.costCodeCategory.findFirst({
-            where: { name: cat.name, tenantId: TENANT_ID },
+            where: { name: cat.name },
         });
 
         if (existing) {
@@ -28,7 +26,6 @@ export const seedCostCodes = async () => {
                     id: cat.id,
                     name: cat.name,
                     description: cat.description,
-                    tenantId: TENANT_ID,
                 },
             });
             createdCategories.push(result);
@@ -55,7 +52,7 @@ export const seedCostCodes = async () => {
 
     for (const cc of costCodes) {
         const existing = await prisma.costCode.findFirst({
-            where: { code: cc.code, tenantId: TENANT_ID },
+            where: { code: cc.code },
         });
 
         if (existing) {
@@ -68,7 +65,6 @@ export const seedCostCodes = async () => {
                     name: cc.name,
                     description: cc.description,
                     costCodeCategoryId: cc.categoryId,
-                    tenantId: TENANT_ID,
                 },
             });
             console.log(`  Created: ${cc.code} - ${cc.name}`);

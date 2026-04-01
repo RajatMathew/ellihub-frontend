@@ -12,8 +12,6 @@ import {
     CostCodeUpdateRequest,
 } from './models';
 
-const TENANT_ID = 'default';
-
 export const CostCodeService = {
     createCostCodeCategory: async (
         request: CostCodeCategoryCreateRequest
@@ -21,7 +19,6 @@ export const CostCodeService = {
         return await prisma.costCodeCategory.create({
             data: {
                 ...request,
-                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
@@ -35,7 +32,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
@@ -54,7 +51,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
@@ -67,7 +64,6 @@ export const CostCodeService = {
         return await prisma.costCodeCategory.findMany({
             where: {
                 deletedAt: null,
-                tenantId: TENANT_ID,
             },
         });
     },
@@ -77,7 +73,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
@@ -96,17 +92,16 @@ export const CostCodeService = {
             where: { id: request.costCodeCategoryId },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
         checkDeletedAt(costCodeCategory);
 
-        // Check code uniqueness within tenant (excluding soft-deleted)
+        // Check code uniqueness (excluding soft-deleted)
         const existing = await prisma.costCode.findFirst({
             where: {
                 code: request.code,
-                tenantId: TENANT_ID,
                 deletedAt: null,
             },
         });
@@ -118,7 +113,6 @@ export const CostCodeService = {
         return await prisma.costCode.create({
             data: {
                 ...request,
-                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
@@ -129,7 +123,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
@@ -141,7 +135,7 @@ export const CostCodeService = {
                 where: { id: request.costCodeCategoryId },
             });
 
-            if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            if (!costCodeCategory) {
                 throw new NotFoundError('Cost code category not found');
             }
 
@@ -153,7 +147,6 @@ export const CostCodeService = {
             const existing = await prisma.costCode.findFirst({
                 where: {
                     code: request.code,
-                    tenantId: TENANT_ID,
                     deletedAt: null,
                     NOT: { id },
                 },
@@ -177,7 +170,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
@@ -197,7 +190,6 @@ export const CostCodeService = {
 
         const whereClause = {
             deletedAt: null,
-            tenantId: TENANT_ID,
             ...restFilter,
             ...(costCodeCategoryId && { costCodeCategoryId }),
             ...(search && {
@@ -232,7 +224,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
