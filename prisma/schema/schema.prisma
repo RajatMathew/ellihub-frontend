@@ -23,5 +23,7 @@ model Lookup {
   type  String
   label String
 
+  contacts Contact[]
+
   @@unique([type, label])
 }

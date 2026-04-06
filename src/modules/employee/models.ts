@@ -13,8 +13,8 @@ export type EmployeeCreateRequest = z.infer<typeof EmployeeCreateSchema>;
 export const EmployeeUpdateSchema = z
     .object({
         name: z.string().min(2),
-        email: z.string().email(),
-        phoneNumber: z.string().min(7),
+        email: z.email(),
+        phoneNumber: z.string().min(5),
     })
     .partial();
 
