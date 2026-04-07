@@ -1,0 +1,772 @@
+{
+    "paths": {
+        "/contact": {
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "List contacts (paginated)",
+                "operationId": "listContacts",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "fullName" },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+                        "description": "Sort direction"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by full name"
+                    },
+                    {
+                        "name": "professionalRoleId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by professional role lookup ULID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of contacts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/Contact" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires contact:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "post": {
+                "tags": ["Contacts"],
+                "summary": "Create a contact",
+                "operationId": "createContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ContactCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Contact created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires contact:create)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Linked entity (professional role / vendor / GC) not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Contacts"],
+                "summary": "Update a contact (full replace)",
+                "operationId": "updateContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ContactUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contact updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires contact:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contact or linked entity not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contact/{id}": {
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "Get a contact by ID",
+                "operationId": "getContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Contact ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires contact:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/gc/add": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Link a general contractor to a contact",
+                "operationId": "addGcToContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddGcToContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Link created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/ContactGCLink" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact or general contractor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/gc/remove": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Unlink a general contractor from a contact",
+                "operationId": "removeGcFromContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveGcFromContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Link removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/vendor/add": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Link a vendor to a contact",
+                "operationId": "addVendorToContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddVendorToContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Link created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/ContactVendorLink" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact or vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/vendor/remove": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Unlink a vendor from a contact",
+                "operationId": "removeVendorFromContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveVendorFromContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": { "description": "Link removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/email/add": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Add an email to a contact",
+                "operationId": "addEmailToContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddEmailToContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Email added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Email already exists on contact", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/email/remove": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Remove an email from a contact",
+                "operationId": "removeEmailFromContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveEmailFromContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Email removed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact or email not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/phone/add": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Add a phone number to a contact",
+                "operationId": "addPhoneToContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddPhoneToContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Phone added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Phone already exists on contact", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/phone/remove": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Remove a phone number from a contact",
+                "operationId": "removePhoneFromContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemovePhoneFromContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Phone removed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact or phone not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/tag/add": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Add a tag to a contact",
+                "operationId": "addTagToContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddTagToContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tag added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Tag already exists on contact", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/tag/remove": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Remove a tag from a contact",
+                "operationId": "removeTagFromContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveTagFromContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tag removed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact or tag not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ContactEmail": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                    "label": { "type": "string", "minLength": 1 },
+                    "email": { "type": "string", "format": "email" },
+                    "isPrimary": { "type": "boolean" }
+                }
+            },
+            "ContactPhone": {
+                "type": "object",
+                "required": ["number"],
+                "properties": {
+                    "label": { "type": "string", "minLength": 1 },
+                    "number": { "type": "string", "minLength": 1 },
+                    "isPrimary": { "type": "boolean" }
+                }
+            },
+            "LinkedCompany": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "isPrimary": { "type": "boolean", "default": false }
+                }
+            },
+            "Contact": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "fullName": { "type": "string" },
+                    "professionalRoleId": { "type": "string", "nullable": true },
+                    "email": {
+                        "type": "array",
+                        "nullable": true,
+                        "items": { "$ref": "#/components/schemas/ContactEmail" }
+                    },
+                    "phoneNumber": {
+                        "type": "array",
+                        "nullable": true,
+                        "items": { "$ref": "#/components/schemas/ContactPhone" }
+                    },
+                    "tags": { "type": "array", "items": { "type": "string" } },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "ContactGCLink": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "contactId": { "type": "string" },
+                    "generalContractorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ContactVendorLink": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "contactId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ContactCreateRequest": {
+                "type": "object",
+                "required": ["fullName", "email"],
+                "properties": {
+                    "fullName": { "type": "string", "minLength": 2 },
+                    "professionalRoleId": { "type": "string", "nullable": true, "description": "Lookup ULID" },
+                    "email": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/components/schemas/ContactEmail" }
+                    },
+                    "phoneNumber": {
+                        "type": "array",
+                        "nullable": true,
+                        "items": { "$ref": "#/components/schemas/ContactPhone" }
+                    },
+                    "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                    "linkedGc": {
+                        "type": "array",
+                        "nullable": true,
+                        "items": { "$ref": "#/components/schemas/LinkedCompany" }
+                    },
+                    "linkedVendors": {
+                        "type": "array",
+                        "nullable": true,
+                        "items": { "$ref": "#/components/schemas/LinkedCompany" }
+                    }
+                }
+            },
+            "ContactUpdateRequest": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/ContactCreateRequest" },
+                    {
+                        "type": "object",
+                        "required": ["id"],
+                        "properties": {
+                            "id": { "type": "string", "description": "Contact ULID" }
+                        }
+                    }
+                ]
+            },
+            "AddGcToContactRequest": {
+                "type": "object",
+                "required": ["contactId", "generalContractorId"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "generalContractorId": { "type": "string", "description": "ULID" },
+                    "isPrimary": { "type": "boolean", "default": false }
+                }
+            },
+            "RemoveGcFromContactRequest": {
+                "type": "object",
+                "required": ["contactId", "generalContractorId"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "generalContractorId": { "type": "string", "description": "ULID" }
+                }
+            },
+            "AddVendorToContactRequest": {
+                "type": "object",
+                "required": ["contactId", "vendorId"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "vendorId": { "type": "string", "description": "ULID" },
+                    "isPrimary": { "type": "boolean", "default": false }
+                }
+            },
+            "RemoveVendorFromContactRequest": {
+                "type": "object",
+                "required": ["contactId", "vendorId"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "vendorId": { "type": "string", "description": "ULID" }
+                }
+            },
+            "AddEmailToContactRequest": {
+                "type": "object",
+                "required": ["contactId", "email"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "email": { "$ref": "#/components/schemas/ContactEmail" }
+                }
+            },
+            "RemoveEmailFromContactRequest": {
+                "type": "object",
+                "required": ["contactId", "email"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "email": { "type": "string", "format": "email" }
+                }
+            },
+            "AddPhoneToContactRequest": {
+                "type": "object",
+                "required": ["contactId", "phone"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "phone": { "$ref": "#/components/schemas/ContactPhone" }
+                }
+            },
+            "RemovePhoneFromContactRequest": {
+                "type": "object",
+                "required": ["contactId", "number"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "number": { "type": "string", "minLength": 1 }
+                }
+            },
+            "AddTagToContactRequest": {
+                "type": "object",
+                "required": ["contactId", "tag"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "tag": { "type": "string", "minLength": 1 }
+                }
+            },
+            "RemoveTagFromContactRequest": {
+                "type": "object",
+                "required": ["contactId", "tag"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "tag": { "type": "string", "minLength": 1 }
+                }
+            }
+        }
+    }
+}

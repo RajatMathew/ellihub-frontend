@@ -1,7 +1,7 @@
 import { auth } from '@lib/auth';
 import { costCodeRoutes } from '@modules/cost-code';
+import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
-import { employeeRoutes } from '@modules/hr/employee';
 import { lookupRoutes } from '@modules/lookup';
 import { userRoutes } from '@modules/user';
 import { Hono } from 'hono';

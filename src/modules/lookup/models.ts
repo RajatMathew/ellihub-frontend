@@ -16,5 +16,5 @@ export const LookupUpdateSchema = z.object({
 export type LookupUpdateRequest = z.infer<typeof LookupUpdateSchema>;
 
 export enum LookupType {
-    PROFESSIONAL_ROLE,
+    PROFESSIONAL_ROLE = 'PROFESSIONAL_ROLE',
 }
