@@ -39,3 +39,26 @@ export const VendorUpdateSchema = VendorCreateSchema.extend({
 });
 
 export type VendorUpdateRequest = z.infer<typeof VendorUpdateSchema>;
+
+export const AddVendorDocumentSchema = z.object({
+    vendorId: z.ulid(),
+    fileId: z.ulid(),
+    expiresOn: z.iso.date().optional().nullable(),
+});
+
+export type AddVendorDocumentRequest = z.infer<typeof AddVendorDocumentSchema>;
+
+export const UpdateVendorDocumentSchema = z.object({
+    vendorId: z.ulid(),
+    fileId: z.ulid(),
+    expiresOn: z.iso.date().optional().nullable(),
+});
+
+export type UpdateVendorDocumentRequest = z.infer<typeof UpdateVendorDocumentSchema>;
+
+export const RemoveVendorDocumentSchema = z.object({
+    vendorId: z.ulid(),
+    fileId: z.ulid(),
+});
+
+export type RemoveVendorDocumentRequest = z.infer<typeof RemoveVendorDocumentSchema>;

@@ -1,11 +1,17 @@
-import { Vendor } from '@db/client';
+import { Vendor, VendorDocument } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { NotFoundError } from '@utils';
+import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
-import { VendorCreateRequest, VendorUpdateRequest } from './models';
+import {
+    AddVendorDocumentRequest,
+    RemoveVendorDocumentRequest,
+    UpdateVendorDocumentRequest,
+    VendorCreateRequest,
+    VendorUpdateRequest,
+} from './models';
 
 export const VendorService = {
     createVendor: async (request: VendorCreateRequest): Promise<Vendor> => {
@@ -126,6 +132,67 @@ export const VendorService = {
             where: { id },
             data: { deletedAt: new Date() },
         });
+    },
+
+    addDocumentToVendor: async (request: AddVendorDocumentRequest): Promise<VendorDocument> => {
+        const { vendorId, fileId, expiresOn } = request;
+
+        const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+        if (!vendor) {
+            throw new NotFoundError('Vendor not found');
+        }
+        checkDeletedAt(vendor);
+
+        const file = await prisma.file.findUnique({ where: { id: fileId } });
+        if (!file) {
+            throw new NotFoundError('File not found');
+        }
+        checkDeletedAt(file);
+
+        const existing = await prisma.vendorDocument.findUnique({
+            where: { vendorId_fileId: { vendorId, fileId } },
+        });
+        if (existing) {
+            throw new ConflictError('Document already linked to this vendor');
+        }
+
+        return await prisma.vendorDocument.create({
+            data: {
+                id: ulid(),
+                vendorId,
+                fileId,
+                expiresOn: expiresOn ? new Date(expiresOn) : null,
+            },
+        });
+    },
+
+    updateVendorDocument: async (request: UpdateVendorDocumentRequest): Promise<VendorDocument> => {
+        const { vendorId, fileId, expiresOn } = request;
+
+        const document = await prisma.vendorDocument.findUnique({
+            where: { vendorId_fileId: { vendorId, fileId } },
+        });
+        if (!document) {
+            throw new NotFoundError('Vendor document not found');
+        }
+
+        return await prisma.vendorDocument.update({
+            where: { id: document.id },
+            data: { expiresOn: expiresOn ? new Date(expiresOn) : null },
+        });
+    },
+
+    removeDocumentFromVendor: async (request: RemoveVendorDocumentRequest): Promise<void> => {
+        const { vendorId, fileId } = request;
+
+        const document = await prisma.vendorDocument.findUnique({
+            where: { vendorId_fileId: { vendorId, fileId } },
+        });
+        if (!document) {
+            throw new NotFoundError('Vendor document not found');
+        }
+
+        await prisma.vendorDocument.delete({ where: { id: document.id } });
     },
 
     getVendors: async (

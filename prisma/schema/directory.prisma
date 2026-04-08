@@ -19,9 +19,26 @@ model Vendor {
     updatedAt DateTime  @updatedAt
 
     contactLinks ContactVendor[]
+    documents    VendorDocument[]
 
     @@index([name])
     @@index([status])
+}
+
+model VendorDocument {
+    id       String @id
+    fileId   String
+    file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+    vendorId String
+    vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+    expiresOn DateTime? @db.Date
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([vendorId, fileId])
+    @@index([fileId])
 }
 
 enum PaymentTerms {

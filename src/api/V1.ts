@@ -4,6 +4,7 @@ import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { lookupRoutes } from '@modules/lookup';
 import { userRoutes } from '@modules/user';
+import { vendorRoutes } from '@modules/vendor';
 import { Hono } from 'hono';
 import { authMiddleware } from 'src/middleware/auth';
 
@@ -20,5 +21,6 @@ app.route('/users', userRoutes);
 app.route('/file', fileRoutes);
 app.route('/hr/employee', employeeRoutes);
 app.route('/lookup', lookupRoutes);
+app.route('/vendor', vendorRoutes);
 
 export default app;
