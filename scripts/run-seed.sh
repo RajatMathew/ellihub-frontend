@@ -11,3 +11,4 @@ bun run scripts/seed-root-folder.ts
 bun run scripts/seed-cost-codes.ts
 bun run scripts/seed-professional-roles.ts
 bun run scripts/seed-vendor-types.ts
+bun run scripts/seed-gc-types.ts

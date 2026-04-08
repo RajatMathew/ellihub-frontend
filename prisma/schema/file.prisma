@@ -26,6 +26,7 @@ model File {
   updatedAt DateTime  @updatedAt
 
   vendorDocuments VendorDocument[]
+  gcDocuments     GCDocument[]
 }
 
 enum FileType {
