@@ -5,6 +5,7 @@ import { seedCostCodes } from '../../../scripts/seed-cost-codes';
 import { seedGcTypes } from '../../../scripts/seed-gc-types';
 import { seedProfessionalRoles } from '../../../scripts/seed-professional-roles';
 import { seedRootFolder } from '../../../scripts/seed-root-folder';
+import { seedUser } from '../../../scripts/seed-user';
 import { seedVendorTypes } from '../../../scripts/seed-vendor-types';
 
 const app = new Hono();
@@ -49,6 +50,30 @@ app.post('/run', (c) => {
         202,
         'Seeders started in background'
     );
+});
+
+app.post('/user', (c) => {
+    const expected = process.env.SEED_API_KEY;
+    if (!expected) {
+        return failure(c, 'Seeder endpoint disabled (SEED_API_KEY not set)', 403);
+    }
+
+    const provided = c.req.header('x-seed-key');
+    if (provided !== expected) {
+        return failure(c, 'Invalid seed key', 401);
+    }
+
+    void (async () => {
+        console.log('[seeder] starting user seed');
+        try {
+            await seedUser();
+            console.log('[seeder] user seed ok');
+        } catch (e) {
+            console.error('[seeder] user seed failed:', e);
+        }
+    })();
+
+    return success(c, { status: 'started' }, 202, 'User seeder started in background');
 });
 
 export default app;

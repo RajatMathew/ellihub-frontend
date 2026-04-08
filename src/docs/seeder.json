@@ -4,7 +4,7 @@
             "post": {
                 "tags": ["Seeder"],
                 "summary": "Run all seed scripts",
-                "description": "Kicks off the seed scripts (cost codes, professional roles, vendor types, GC types, root folder) in the background and returns immediately with 202. Each script runs in its own subprocess; output is logged to the API server's stdout/stderr. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. If `SEED_API_KEY` is unset, the endpoint is disabled.",
+                "description": "Kicks off the seed scripts (root folder, cost codes, professional roles, vendor types, GC types) in the background and returns immediately with 202. Seeders run in-process, sequentially. Output is logged to the API server's stdout/stderr. Does NOT include the user seeder — use `POST /seed/user` for that. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. If `SEED_API_KEY` is unset, the endpoint is disabled.",
                 "operationId": "runSeeders",
                 "parameters": [
                     {
@@ -27,6 +27,56 @@
                                             "type": "object",
                                             "properties": {
                                                 "data": { "$ref": "#/components/schemas/SeederRunAccepted" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid seed key",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    },
+                    "403": {
+                        "description": "Seeder endpoint disabled (SEED_API_KEY not set)",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    }
+                }
+            }
+        },
+        "/seed/user": {
+            "post": {
+                "tags": ["Seeder"],
+                "summary": "Create the default admin user",
+                "description": "Runs the user seeder in the background (creates an admin user and default organization). Returns 202 immediately. Output is logged to the API server's stdout/stderr. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var.",
+                "operationId": "runUserSeeder",
+                "parameters": [
+                    {
+                        "name": "x-seed-key",
+                        "in": "header",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Shared secret matching SEED_API_KEY"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "User seeder accepted and running in background",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": { "type": "string", "enum": ["started"] }
+                                                    }
+                                                }
                                             }
                                         }
                                     ]
