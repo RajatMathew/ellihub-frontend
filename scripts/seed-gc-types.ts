@@ -29,7 +29,9 @@ export const seedGcTypes = async () => {
     console.log('\nSeed complete!');
 };
 
-seedGcTypes().catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-});
+if (process.argv[1]?.endsWith('seed-gc-types.ts')) {
+    seedGcTypes().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

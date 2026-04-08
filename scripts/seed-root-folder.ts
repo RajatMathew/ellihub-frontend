@@ -60,7 +60,9 @@ export const seedRootFolder = async () => {
     }
 };
 
-seedRootFolder().catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-});
+if (process.argv[1]?.endsWith('seed-root-folder.ts')) {
+    seedRootFolder().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

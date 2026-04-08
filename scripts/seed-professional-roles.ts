@@ -39,7 +39,9 @@ export const seedProfessionalRoles = async () => {
     console.log('\nSeed complete!');
 };
 
-seedProfessionalRoles().catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-});
+if (process.argv[1]?.endsWith('seed-professional-roles.ts')) {
+    seedProfessionalRoles().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

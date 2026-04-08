@@ -29,7 +29,9 @@ export const seedVendorTypes = async () => {
     console.log('\nSeed complete!');
 };
 
-seedVendorTypes().catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-});
+if (process.argv[1]?.endsWith('seed-vendor-types.ts')) {
+    seedVendorTypes().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

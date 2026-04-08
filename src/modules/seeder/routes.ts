@@ -1,41 +1,36 @@
-import { resolve } from 'path';
-
 import { failure, success } from '@utils';
 import { Hono } from 'hono';
 
+import { seedCostCodes } from '../../../scripts/seed-cost-codes';
+import { seedGcTypes } from '../../../scripts/seed-gc-types';
+import { seedProfessionalRoles } from '../../../scripts/seed-professional-roles';
+import { seedRootFolder } from '../../../scripts/seed-root-folder';
+import { seedVendorTypes } from '../../../scripts/seed-vendor-types';
+
 const app = new Hono();
 
-const SEED_SCRIPTS = [
-    'seed-root-folder.ts',
-    'seed-cost-codes.ts',
-    'seed-professional-roles.ts',
-    'seed-vendor-types.ts',
-    'seed-gc-types.ts',
+const SEEDERS: Array<{ name: string; run: () => Promise<void> }> = [
+    { name: 'root-folder', run: seedRootFolder },
+    { name: 'cost-codes', run: seedCostCodes },
+    { name: 'professional-roles', run: seedProfessionalRoles },
+    { name: 'vendor-types', run: seedVendorTypes },
+    { name: 'gc-types', run: seedGcTypes },
 ];
 
-const runScript = async (
-    script: string
-): Promise<{ script: string; ok: boolean; output: string }> => {
-    const path = resolve(process.cwd(), 'scripts', script);
-    const proc = Bun.spawn(['bun', 'run', path], {
-        stdout: 'pipe',
-        stderr: 'pipe',
-    });
-
-    const [stdout, stderr] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-    ]);
-    const exitCode = await proc.exited;
-
-    return {
-        script,
-        ok: exitCode === 0,
-        output: [stdout, stderr].filter(Boolean).join('\n'),
-    };
+const runAllSeeders = async (): Promise<void> => {
+    console.log('[seeder] starting background run');
+    for (const { name, run } of SEEDERS) {
+        try {
+            await run();
+            console.log(`[seeder] ${name} ok`);
+        } catch (e) {
+            console.error(`[seeder] ${name} failed:`, e);
+        }
+    }
+    console.log('[seeder] background run complete');
 };
 
-app.post('/run', async (c) => {
+app.post('/run', (c) => {
     const expected = process.env.SEED_API_KEY;
     if (!expected) {
         return failure(c, 'Seeder endpoint disabled (SEED_API_KEY not set)', 403);
@@ -46,13 +41,14 @@ app.post('/run', async (c) => {
         return failure(c, 'Invalid seed key', 401);
     }
 
-    const results = [];
-    for (const script of SEED_SCRIPTS) {
-        results.push(await runScript(script));
-    }
+    void runAllSeeders();
 
-    const allOk = results.every((r) => r.ok);
-    return success(c, { allOk, results }, allOk ? 200 : 500);
+    return success(
+        c,
+        { seeders: SEEDERS.map((s) => s.name), status: 'started' },
+        202,
+        'Seeders started in background'
+    );
 });
 
 export default app;

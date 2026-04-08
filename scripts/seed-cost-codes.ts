@@ -74,7 +74,9 @@ export const seedCostCodes = async () => {
     console.log('\nSeed complete!');
 };
 
-seedCostCodes().catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-});
+if (process.argv[1]?.endsWith('seed-cost-codes.ts')) {
+    seedCostCodes().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

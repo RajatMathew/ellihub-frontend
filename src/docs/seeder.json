@@ -4,7 +4,7 @@
             "post": {
                 "tags": ["Seeder"],
                 "summary": "Run all seed scripts",
-                "description": "Executes the seed scripts (cost codes, professional roles, vendor types, GC types, root folder) in a fresh subprocess each. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. If `SEED_API_KEY` is unset, the endpoint is disabled.",
+                "description": "Kicks off the seed scripts (cost codes, professional roles, vendor types, GC types, root folder) in the background and returns immediately with 202. Each script runs in its own subprocess; output is logged to the API server's stdout/stderr. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. If `SEED_API_KEY` is unset, the endpoint is disabled.",
                 "operationId": "runSeeders",
                 "parameters": [
                     {
@@ -16,8 +16,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "All seeders ran successfully",
+                    "202": {
+                        "description": "Seeders accepted and running in background",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -26,7 +26,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "$ref": "#/components/schemas/SeederRunResult" }
+                                                "data": { "$ref": "#/components/schemas/SeederRunAccepted" }
                                             }
                                         }
                                     ]
@@ -41,24 +41,6 @@
                     "403": {
                         "description": "Seeder endpoint disabled (SEED_API_KEY not set)",
                         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-                    },
-                    "500": {
-                        "description": "One or more seeders failed (response body still contains per-script results)",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/SeederRunResult" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -66,21 +48,14 @@
     },
     "components": {
         "schemas": {
-            "SeederScriptResult": {
+            "SeederRunAccepted": {
                 "type": "object",
                 "properties": {
-                    "script": { "type": "string", "example": "seed-cost-codes.ts" },
-                    "ok": { "type": "boolean" },
-                    "output": { "type": "string", "description": "Combined stdout/stderr from the script" }
-                }
-            },
-            "SeederRunResult": {
-                "type": "object",
-                "properties": {
-                    "allOk": { "type": "boolean" },
-                    "results": {
+                    "status": { "type": "string", "enum": ["started"] },
+                    "scripts": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/SeederScriptResult" }
+                        "items": { "type": "string" },
+                        "description": "Names of seed scripts that will run, in order"
                     }
                 }
             }
