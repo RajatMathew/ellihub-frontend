@@ -60,6 +60,12 @@ app.put(
     }
 );
 
+app.delete('/:id', requirePermission({ contact: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await ContactService.deleteContact(id);
+    return success(c, null);
+});
+
 app.patch(
     '/gc/add',
     requirePermission({ contact: ['update'] }),

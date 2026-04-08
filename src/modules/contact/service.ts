@@ -313,6 +313,23 @@ export const ContactService = {
         });
     },
 
+    deleteContact: async (id: string): Promise<void> => {
+        const contact = await prisma.contact.findUnique({
+            where: { id },
+        });
+
+        if (!contact) {
+            throw new NotFoundError('Contact not found');
+        }
+
+        checkDeletedAt(contact);
+
+        await prisma.contact.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+    },
+
     addVendorToContact: async (request: AddVendorToContactRequest): Promise<ContactVendor> => {
         const { contactId, vendorId, isPrimary } = request;
 
