@@ -4,6 +4,7 @@ import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
 import { lookupRoutes } from '@modules/lookup';
+import { seederRoutes } from '@modules/seeder';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
 import { Hono } from 'hono';
@@ -14,6 +15,8 @@ const app = new Hono();
 app.on(['POST', 'GET'], '/auth/*', (c) => {
     return auth.handler(c.req.raw);
 });
+
+app.route('/seed', seederRoutes);
 
 app.use('/*', authMiddleware);
 

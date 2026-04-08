@@ -1,0 +1,89 @@
+{
+    "paths": {
+        "/seed/run": {
+            "post": {
+                "tags": ["Seeder"],
+                "summary": "Run all seed scripts",
+                "description": "Executes the seed scripts (cost codes, professional roles, vendor types, GC types, root folder) in a fresh subprocess each. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. If `SEED_API_KEY` is unset, the endpoint is disabled.",
+                "operationId": "runSeeders",
+                "parameters": [
+                    {
+                        "name": "x-seed-key",
+                        "in": "header",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Shared secret matching SEED_API_KEY"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All seeders ran successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/SeederRunResult" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid seed key",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    },
+                    "403": {
+                        "description": "Seeder endpoint disabled (SEED_API_KEY not set)",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    },
+                    "500": {
+                        "description": "One or more seeders failed (response body still contains per-script results)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/SeederRunResult" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "SeederScriptResult": {
+                "type": "object",
+                "properties": {
+                    "script": { "type": "string", "example": "seed-cost-codes.ts" },
+                    "ok": { "type": "boolean" },
+                    "output": { "type": "string", "description": "Combined stdout/stderr from the script" }
+                }
+            },
+            "SeederRunResult": {
+                "type": "object",
+                "properties": {
+                    "allOk": { "type": "boolean" },
+                    "results": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/SeederScriptResult" }
+                    }
+                }
+            }
+        }
+    }
+}
