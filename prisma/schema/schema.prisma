@@ -24,6 +24,7 @@ model Lookup {
   label String
 
   contacts Contact[]
+  vendors  Vendor[]
 
   @@unique([type, label])
 }

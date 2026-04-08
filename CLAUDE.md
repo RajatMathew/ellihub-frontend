@@ -59,6 +59,9 @@ src/
 │   └── s3-upload.ts       # File upload
 ├── handler/
 │   └── error.ts           # Global error handler
+├── docs/                  # OpenAPI per-module JSON specs (merged at build)
+│   ├── base.json
+│   └── {module}.json
 └── utils/
     ├── error.ts           # Custom error classes
     ├── response.ts        # success()/failure() helpers
@@ -85,7 +88,8 @@ Every module follows a **4-file structure**:
 - `GET /api/v1/{resource}` — list (paginated)
 - `GET /api/v1/{resource}/:id` — get by ID
 - `POST /api/v1/{resource}` — create
-- `PUT /api/v1/{resource}/:id` — update
+- `PUT /api/v1/{resource}/:id` — update (or `PUT /api/v1/{resource}` with `id` in body — see contact module)
+- `PATCH /api/v1/{resource}/{action}` — sub-resource mutations (e.g. add/remove a linked entity, tag, email)
 - `DELETE /api/v1/{resource}/:id` — soft delete
 
 ### Responses
@@ -128,9 +132,18 @@ Middleware parses query params: `page`, `size`, `sortBy`, `sortOrder`, `search`,
 
 ## Database
 
-- **Schema:** Multi-file Prisma schema in `prisma/schema/` (auth, project, hr, directory, file)
+- **Schema:** Multi-file Prisma schema in `prisma/schema/` (auth, project, hr, directory, file, catalogue)
 - **Client output:** `src/lib/db/client`
 - After schema changes: `bun run db:migrate` then `bun run db:generate`
+
+## OpenAPI Docs
+
+- Per-module specs live in `src/docs/{module}.json` and are merged into `dist/api-doc.json` by `scripts/build-openapi.ts`.
+- When adding/changing routes, update the matching `src/docs/{module}.json` (paths + component schemas).
+
+## Seeding
+
+- One-off seed scripts live in `scripts/seed-*.ts` and are executed via `bun run scripts/seed-{name}.ts`. They should be idempotent (check before insert).
 
 ## Code Quality
 

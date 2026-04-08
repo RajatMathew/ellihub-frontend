@@ -1,7 +1,8 @@
 model Vendor {
     id           String       @id
     name         String
-    type         VendorType
+    type         Lookup?      @relation(fields: [typeId], references: [id])
+    typeId       String?
     categoryTags String[]
     taxId        String?
     status       VendorStatus
@@ -9,6 +10,7 @@ model Vendor {
     email        String?
     phone        String?
     website      String?
+    fax          String?
     paymentTerms PaymentTerms @default(NET_30)
     notes        String?
 
@@ -20,7 +22,6 @@ model Vendor {
 
     @@index([name])
     @@index([status])
-    @@index([type])
 }
 
 enum PaymentTerms {
@@ -32,17 +33,9 @@ enum PaymentTerms {
     DUE_ON_RECEIPT
 }
 
-enum VendorType {
-    MATERIAL
-    FABRICATION
-    INSTALLATION
-}
-
 enum VendorStatus {
     ACTIVE
     INACTIVE
-    BLACKLISTED
-    PROSPECT
 }
 
 model GCType {
