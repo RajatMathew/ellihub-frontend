@@ -43,8 +43,12 @@ src/
 ├── modules/               # Domain modules (each has index, models, routes, services)
 │   ├── cost-code/
 │   ├── user/
-│   ├── hr/employee/
+│   ├── employee/
 │   ├── file/
+│   ├── lookup/
+│   ├── contact/
+│   ├── vendor/
+│   ├── gc/
 │   └── ...
 ├── lib/
 │   ├── auth.ts            # Better Auth config
@@ -75,7 +79,7 @@ Every module follows a **4-file structure**:
 1. **`index.ts`** — re-exports routes
 2. **`models.ts`** — Zod schemas for request/response validation
 3. **`routes.ts`** — Hono router with middleware + handlers
-4. **`services.ts`** — Business logic, Prisma queries
+4. **`service.ts`** (or `services.ts`) — Business logic, Prisma queries
 
 ### Adding a new module
 
