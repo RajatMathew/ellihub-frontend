@@ -81,6 +81,7 @@ export const useUpdateCostCodeMutation = () => {
     onSuccess: (_, data) => {
       qc.invalidateQueries({ queryKey: costCodesKeys.all });
       qc.invalidateQueries({ queryKey: costCodesKeys.detail(data.id) });
+      toast.success('Cost code updated successfully.');
     },
     onError: () => toast.error('Failed to update cost code. Please try again.'),
   });

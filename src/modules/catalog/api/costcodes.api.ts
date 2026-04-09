@@ -46,7 +46,7 @@ export const costCodesApi = {
       costCodeCategoryId: data.costCodeCategoryId,
       description: data.description ?? null,
     };
-    const res = await api.put(`${BASE}`, payload);
+    const res = await api.put(`${BASE}/${data.id}`, payload);
     return costCodeSchema.parse(res.data?.data ?? res.data);
   },
 

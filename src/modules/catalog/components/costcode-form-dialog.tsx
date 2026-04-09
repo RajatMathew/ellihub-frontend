@@ -77,7 +77,7 @@ export function CostCodeFormDialog({
         <form
           onSubmit={handleSubmit(
             (data) => onSubmit(data as CostCodeCreate | CostCode),
-            (errors) => console.warn('Form errors', errors)
+            () => {}
           )}
           className="space-y-4"
         >

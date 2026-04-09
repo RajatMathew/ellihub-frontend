@@ -1,5 +1,4 @@
-import { ChevronDown, Check } from 'lucide-react';
-import { getContrastColor } from '@app/lib/helpers';
+import { Check, ChevronDown } from 'lucide-react';
 
 import {
   Toolbar,
@@ -18,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-
+import { getContrastColor } from '@app/lib/helpers';
 import { DIVISION_LABELS } from '@modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@modules/project/hooks';
 import type { ProjectDetail } from '@modules/project/schemas/project.schema';
@@ -68,7 +67,7 @@ export function ProjectToolbarHeader({
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
-    <Toolbar>
+    <Toolbar className="bg-white dark:bg-background">
       <ToolbarWrapper>
         <ToolbarHeading>
           <div className="flex items-center gap-3">
@@ -101,10 +100,7 @@ export function ProjectToolbarHeader({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
                   {stages.map((stage) => (
-                    <DropdownMenuItem
-                      key={stage.id}
-                      onClick={() => handleStageChange(stage.id)}
-                    >
+                    <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
                       <span
                         className="size-2.5 rounded-sm shrink-0"
                         style={{ backgroundColor: stage.color }}
