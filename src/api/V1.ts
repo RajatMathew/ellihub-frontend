@@ -1,4 +1,5 @@
 import { auth } from '@lib/auth';
+import { contactRoutes } from '@modules/contact';
 import { costCodeRoutes } from '@modules/cost-code';
 import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
@@ -27,5 +28,6 @@ app.route('/hr/employee', employeeRoutes);
 app.route('/lookup', lookupRoutes);
 app.route('/vendor', vendorRoutes);
 app.route('/gc', gcRoutes);
+app.route('/contact', contactRoutes);
 
 export default app;
