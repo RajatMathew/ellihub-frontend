@@ -142,80 +142,11 @@
                         }
                     }
                 }
-            }
-        },
-        "/hr/employee/{id}": {
-            "get": {
-                "tags": ["Employees"],
-                "summary": "Get an employee by ID",
-                "operationId": "getEmployee",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Employee ID (ULID)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Employee details",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/Employee" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permissions (requires project:view-all)",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Employee not found",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
             },
             "put": {
                 "tags": ["Employees"],
                 "summary": "Update an employee",
                 "operationId": "updateEmployee",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Employee ID (ULID)"
-                    }
-                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -261,6 +192,66 @@
                     },
                     "403": {
                         "description": "Insufficient permissions (requires project:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hr/employee/{id}": {
+            "get": {
+                "tags": ["Employees"],
+                "summary": "Get an employee by ID",
+                "operationId": "getEmployee",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Employee ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employee details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Employee" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:view-all)",
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -418,11 +409,14 @@
             },
             "EmployeeUpdateRequest": {
                 "type": "object",
-                "description": "All fields are optional",
+                "required": ["id", "name", "email", "phoneNumber", "createAccount"],
                 "properties": {
+                    "id": { "type": "string", "description": "Employee ID (ULID)" },
                     "name": { "type": "string", "minLength": 2 },
                     "email": { "type": "string", "format": "email" },
-                    "phoneNumber": { "type": "string", "minLength": 7 }
+                    "phoneNumber": { "type": "string", "minLength": 7 },
+                    "roleId": { "type": "string", "minLength": 3, "description": "Optional role ID" },
+                    "createAccount": { "type": "boolean" }
                 }
             }
         }

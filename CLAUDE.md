@@ -92,7 +92,7 @@ Every module follows a **4-file structure**:
 - `GET /api/v1/{resource}` — list (paginated)
 - `GET /api/v1/{resource}/:id` — get by ID
 - `POST /api/v1/{resource}` — create
-- `PUT /api/v1/{resource}/:id` — update (or `PUT /api/v1/{resource}` with `id` in body — see contact module)
+- `PUT /api/v1/{resource}` — update (with `id` in request body)
 - `PATCH /api/v1/{resource}/{action}` — sub-resource mutations (e.g. add/remove a linked entity, tag, email)
 - `DELETE /api/v1/{resource}/:id` — soft delete
 
@@ -107,6 +107,21 @@ Every module follows a **4-file structure**:
 
 ### Error Classes (src/utils/error.ts)
 `NotFoundError`, `ConflictError`, `BadRequestError`, `ForbiddenError`, `UnauthorizedError`, `TooManyRequestsError`
+
+### Update Request Schema Pattern
+All update schemas extend their create schema with an `id` field:
+```typescript
+export const UpdateSchema = CreateSchema.extend({ id: z.ulid() });
+// For partial updates:
+export const UpdateSchema = CreateSchema.partial().extend({ id: z.ulid() });
+```
+
+### File System
+- Root sub-folders: `projects`, `employees`, `gc`, `vendor`, `temp` (all non-deletable, seeded via `scripts/seed-root-folder.ts`)
+- Entity folder creation: when a GC, vendor, or employee is created, a folder named by their ID (with `displayName` set to entity name) is auto-created under the respective root sub-folder
+- File uploads: `parentId` is optional — files without a `parentId` default to the `temp` folder
+- Files have an optional `displayName` field for user-friendly display
+- Document linking (GC/vendor): moves the file into the entity's folder within a transaction
 
 ### Soft Deletes
 All entities use `deletedAt: DateTime?`. Delete operations set `deletedAt = new Date()`. Services filter with `deletedAt: null`.

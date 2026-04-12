@@ -109,80 +109,11 @@
                         }
                     }
                 }
-            }
-        },
-        "/cost-code/categories/{id}": {
-            "get": {
-                "tags": ["Cost Code Categories"],
-                "summary": "Get a cost code category by ID",
-                "operationId": "getCostCodeCategory",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Category ID (ULID)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Category details",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/CostCodeCategory" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permissions (requires costCodeGroup:read)",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Category not found",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
             },
             "put": {
                 "tags": ["Cost Code Categories"],
                 "summary": "Update a cost code category",
                 "operationId": "updateCostCodeCategory",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Category ID (ULID)"
-                    }
-                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -244,6 +175,66 @@
                     },
                     "409": {
                         "description": "Category name already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/cost-code/categories/{id}": {
+            "get": {
+                "tags": ["Cost Code Categories"],
+                "summary": "Get a cost code category by ID",
+                "operationId": "getCostCodeCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Category ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCodeCategory" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found",
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
@@ -449,80 +440,11 @@
                         }
                     }
                 }
-            }
-        },
-        "/cost-code/{id}": {
-            "get": {
-                "tags": ["Cost Codes"],
-                "summary": "Get a cost code by ID",
-                "operationId": "getCostCode",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Cost code ID (ULID)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Cost code details",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/CostCode" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permissions (requires costCode:read)",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Cost code not found",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
             },
             "put": {
                 "tags": ["Cost Codes"],
                 "summary": "Update a cost code",
                 "operationId": "updateCostCode",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Cost code ID (ULID)"
-                    }
-                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -591,6 +513,66 @@
                         }
                     }
                 }
+            }
+        },
+        "/cost-code/{id}": {
+            "get": {
+                "tags": ["Cost Codes"],
+                "summary": "Get a cost code by ID",
+                "operationId": "getCostCode",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Cost code ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cost code details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCode" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cost code not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
             },
             "delete": {
                 "tags": ["Cost Codes"],
@@ -650,7 +632,7 @@
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
-                                        "createdAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
@@ -665,8 +647,10 @@
             },
             "CostCodeCategoryUpdateRequest": {
                 "type": "object",
-                "description": "All fields are optional",
+                "required": ["id"],
+                "description": "All fields except id are optional",
                 "properties": {
+                    "id": { "type": "string", "description": "Category ID (ULID)" },
                     "name": { "type": "string", "minLength": 2 },
                     "description": { "type": "string", "nullable": true }
                 }
@@ -679,7 +663,7 @@
                     "code": { "type": "string" },
                     "description": { "type": "string" },
                     "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
-                                        "createdAt": { "type": "string", "format": "date-time" },
+                    "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
@@ -696,8 +680,10 @@
             },
             "CostCodeUpdateRequest": {
                 "type": "object",
-                "description": "All fields are optional",
+                "required": ["id"],
+                "description": "All fields except id are optional",
                 "properties": {
+                    "id": { "type": "string", "description": "Cost code ID (ULID)" },
                     "name": { "type": "string", "minLength": 2 },
                     "code": { "type": "string", "minLength": 2 },
                     "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
