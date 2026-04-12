@@ -102,7 +102,7 @@ export const EmployeeService = {
         if (!employee) throw new NotFoundError('Employee not found');
         checkDeletedAt(employee);
 
-        if (data.email) {
+        if (data.email && data.email !== employee.email) {
             const existing = await prisma.employee.findFirst({
                 where: {
                     email: data.email,
@@ -116,18 +116,26 @@ export const EmployeeService = {
             }
         }
 
+        const nameChanged = data.name && data.name !== employee.name;
+        const emailChanged = data.email && data.email !== employee.email;
+
         return await prisma.$transaction(async (tx) => {
             const updated = await tx.employee.update({
                 where: { id },
                 data,
             });
 
-            if (employee.userId && (data.name || data.email)) {
+            if (nameChanged) {
+                const folderId = await FileService.getEmployeeFolderId(id, tx);
+                await FileService.updateFolderDisplayName(folderId, data.name, tx);
+            }
+
+            if (employee.userId && (nameChanged || emailChanged)) {
                 await tx.user.update({
                     where: { id: employee.userId },
                     data: {
-                        ...(data.name && { name: data.name }),
-                        ...(data.email && { email: data.email }),
+                        ...(nameChanged && { name: data.name }),
+                        ...(emailChanged && { email: data.email }),
                     },
                 });
             }

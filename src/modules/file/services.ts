@@ -267,6 +267,84 @@ export const FileService = {
         return projectFolder.id;
     },
 
+    getGcFolderId: async (gcId: string, tx?: TransactionClient): Promise<string> => {
+        const prisma = tx || prismaClient;
+        const gcRootFolder = await FileService.getRootFolder('gc', tx);
+
+        const gcFolder = await prisma.file.findFirst({
+            where: {
+                name: gcId,
+                parentId: gcRootFolder.id,
+            },
+            select: { id: true },
+        });
+
+        if (!gcFolder) throw new NotFoundError(`Folder not found for GC: ${gcId}`);
+
+        return gcFolder.id;
+    },
+
+    getVendorFolderId: async (vendorId: string, tx?: TransactionClient): Promise<string> => {
+        const prisma = tx || prismaClient;
+        const vendorRootFolder = await FileService.getRootFolder('vendor', tx);
+
+        const vendorFolder = await prisma.file.findFirst({
+            where: {
+                name: vendorId,
+                parentId: vendorRootFolder.id,
+            },
+            select: { id: true },
+        });
+
+        if (!vendorFolder) throw new NotFoundError(`Folder not found for vendor: ${vendorId}`);
+
+        return vendorFolder.id;
+    },
+
+    getEmployeeFolderId: async (employeeId: string, tx?: TransactionClient): Promise<string> => {
+        const prisma = tx || prismaClient;
+        const employeesRootFolder = await FileService.getRootFolder('employees', tx);
+
+        const employeeFolder = await prisma.file.findFirst({
+            where: {
+                name: employeeId,
+                parentId: employeesRootFolder.id,
+            },
+            select: { id: true },
+        });
+
+        if (!employeeFolder)
+            throw new NotFoundError(`Folder not found for employee: ${employeeId}`);
+
+        return employeeFolder.id;
+    },
+
+    updateFolderDisplayName: async (
+        folderId: string,
+        displayName: string,
+        tx?: TransactionClient
+    ): Promise<void> => {
+        const prisma = tx || prismaClient;
+
+        await prisma.file.update({
+            where: { id: folderId },
+            data: { displayName },
+        });
+    },
+
+    moveFileToFolder: async (
+        fileId: string,
+        folderId: string,
+        tx?: TransactionClient
+    ): Promise<void> => {
+        const prisma = tx || prismaClient;
+
+        await prisma.file.update({
+            where: { id: fileId },
+            data: { parentId: folderId },
+        });
+    },
+
     getProjectSubFolderId: async (
         projectId: string,
         type:

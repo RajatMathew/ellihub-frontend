@@ -7,11 +7,7 @@ export const LookupCreateSchema = z.object({
 
 export type LookupCreateRequest = z.infer<typeof LookupCreateSchema>;
 
-export const LookupUpdateSchema = z.object({
-    id: z.ulid(),
-    type: z.string().min(1),
-    label: z.string().min(1),
-});
+export const LookupUpdateSchema = LookupCreateSchema.extend({ id: z.ulid() });
 
 export type LookupUpdateRequest = z.infer<typeof LookupUpdateSchema>;
 

@@ -37,26 +37,21 @@ app.post(
 );
 
 app.put(
-    '/categories/:id',
+    '/categories',
     requirePermission({ costCodeGroup: ['update'] }),
     zValidator('json', CostCodeCategoryUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const category = await CostCodeService.updateCostCodeCategory(id, data);
+        const category = await CostCodeService.updateCostCodeCategory(data);
         return success(c, category);
     }
 );
 
-app.delete(
-    '/categories/:id',
-    requirePermission({ costCodeGroup: ['delete'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        await CostCodeService.deleteCostCodeCategory(id);
-        return success(c, null);
-    }
-);
+app.delete('/categories/:id', requirePermission({ costCodeGroup: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await CostCodeService.deleteCostCodeCategory(id);
+    return success(c, null);
+});
 
 // Cost Code Routes
 app.get(
@@ -88,25 +83,20 @@ app.post(
 );
 
 app.put(
-    '/:id',
+    '/',
     requirePermission({ costCode: ['update'] }),
     zValidator('json', CostCodeUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const costCode = await CostCodeService.updateCostCode(id, data);
+        const costCode = await CostCodeService.updateCostCode(data);
         return success(c, costCode);
     }
 );
 
-app.delete(
-    '/:id',
-    requirePermission({ costCode: ['delete'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        await CostCodeService.deleteCostCode(id);
-        return success(c, null);
-    }
-);
+app.delete('/:id', requirePermission({ costCode: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await CostCodeService.deleteCostCode(id);
+    return success(c, null);
+});
 
 export default app;

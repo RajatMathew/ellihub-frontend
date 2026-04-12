@@ -114,6 +114,11 @@ export const GcService = {
                 });
             }
 
+            if (request.name !== gc.name) {
+                const folderId = await FileService.getGcFolderId(id, tx);
+                await FileService.updateFolderDisplayName(folderId, request.name, tx);
+            }
+
             return updated;
         });
     },
@@ -155,13 +160,18 @@ export const GcService = {
             throw new ConflictError('Document already linked to this general contractor');
         }
 
-        return await prisma.gCDocument.create({
-            data: {
-                id: ulid(),
-                gcId,
-                fileId,
-                expiresOn: expiresOn ? new Date(expiresOn) : null,
-            },
+        return await prisma.$transaction(async (tx) => {
+            const gcFolderId = await FileService.getGcFolderId(gcId, tx);
+            await FileService.moveFileToFolder(fileId, gcFolderId, tx);
+
+            return await tx.gCDocument.create({
+                data: {
+                    id: ulid(),
+                    gcId,
+                    fileId,
+                    expiresOn: expiresOn ? new Date(expiresOn) : null,
+                },
+            });
         });
     },
 

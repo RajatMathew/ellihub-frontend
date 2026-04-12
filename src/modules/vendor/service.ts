@@ -118,6 +118,11 @@ export const VendorService = {
                 });
             }
 
+            if (request.name !== vendor.name) {
+                const folderId = await FileService.getVendorFolderId(id, tx);
+                await FileService.updateFolderDisplayName(folderId, request.name, tx);
+            }
+
             return updated;
         });
     },
@@ -159,13 +164,18 @@ export const VendorService = {
             throw new ConflictError('Document already linked to this vendor');
         }
 
-        return await prisma.vendorDocument.create({
-            data: {
-                id: ulid(),
-                vendorId,
-                fileId,
-                expiresOn: expiresOn ? new Date(expiresOn) : null,
-            },
+        return await prisma.$transaction(async (tx) => {
+            const vendorFolderId = await FileService.getVendorFolderId(vendorId, tx);
+            await FileService.moveFileToFolder(fileId, vendorFolderId, tx);
+
+            return await tx.vendorDocument.create({
+                data: {
+                    id: ulid(),
+                    vendorId,
+                    fileId,
+                    expiresOn: expiresOn ? new Date(expiresOn) : null,
+                },
+            });
         });
     },
 

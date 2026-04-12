@@ -25,9 +25,10 @@ export const CostCodeService = {
     },
 
     updateCostCodeCategory: async (
-        id: string,
         request: CostCodeCategoryUpdateRequest
     ): Promise<CostCodeCategory> => {
+        const { id, ...data } = request;
+
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id },
         });
@@ -40,9 +41,7 @@ export const CostCodeService = {
 
         return await prisma.costCodeCategory.update({
             where: { id },
-            data: {
-                ...request,
-            },
+            data,
         });
     },
 
@@ -118,7 +117,9 @@ export const CostCodeService = {
         });
     },
 
-    updateCostCode: async (id: string, request: CostCodeUpdateRequest): Promise<CostCode> => {
+    updateCostCode: async (request: CostCodeUpdateRequest): Promise<CostCode> => {
+        const { id, ...data } = request;
+
         const costCode = await prisma.costCode.findUnique({
             where: { id },
         });
@@ -130,9 +131,9 @@ export const CostCodeService = {
         checkDeletedAt(costCode);
 
         // If costCodeCategoryId is being updated, validate it
-        if (request.costCodeCategoryId) {
+        if (data.costCodeCategoryId) {
             const costCodeCategory = await prisma.costCodeCategory.findUnique({
-                where: { id: request.costCodeCategoryId },
+                where: { id: data.costCodeCategoryId },
             });
 
             if (!costCodeCategory) {
@@ -143,10 +144,10 @@ export const CostCodeService = {
         }
 
         // Check code uniqueness if code is being updated
-        if (request.code) {
+        if (data.code) {
             const existing = await prisma.costCode.findFirst({
                 where: {
-                    code: request.code,
+                    code: data.code,
                     deletedAt: null,
                     NOT: { id },
                 },
@@ -159,9 +160,7 @@ export const CostCodeService = {
 
         return await prisma.costCode.update({
             where: { id },
-            data: {
-                ...request,
-            },
+            data,
         });
     },
 
