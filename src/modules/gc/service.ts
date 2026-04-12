@@ -206,7 +206,14 @@ export const GcService = {
             ...(gcTypeId && { gcTypeId }),
             ...(status && { status }),
             ...(search && {
-                OR: [{ name: { contains: search, mode: 'insensitive' as const } }],
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' as const } },
+                    { email: { contains: search, mode: 'insensitive' as const } },
+                    { phone: { contains: search, mode: 'insensitive' as const } },
+                    { website: { contains: search, mode: 'insensitive' as const } },
+                    { address: { contains: search, mode: 'insensitive' as const } },
+                    { fax: { contains: search, mode: 'insensitive' as const } },
+                ],
             }),
         };
 

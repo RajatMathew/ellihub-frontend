@@ -65,7 +65,28 @@ export const paginationMiddleware = (options: IPaginationOptions = {}) => {
             : defaultFields;
 
         const search = query.search ? (query.search as string) : '';
-        const filter = query.filter ? JSON.parse(query.filter as string) : {};
+
+        const reservedKeys = new Set([
+            'page',
+            'size',
+            'sortBy',
+            'sortOrder',
+            'fields',
+            'search',
+            'filter',
+        ]);
+
+        const queryFilters: Record<string, string> = {};
+        for (const [key, value] of Object.entries(query)) {
+            if (!reservedKeys.has(key) && value !== undefined) {
+                queryFilters[key] = value;
+            }
+        }
+
+        const filter = {
+            ...(query.filter ? JSON.parse(query.filter as string) : {}),
+            ...queryFilters,
+        };
 
         c.set('pagination', {
             page,
