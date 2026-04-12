@@ -37,7 +37,7 @@ app.post(
     zValidator('json', VendorCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const vendor = await VendorService.createVendor(data);
+        const vendor = await VendorService.createVendor(data, c.get('user')!.id);
         return success(c, vendor, 201);
     }
 );

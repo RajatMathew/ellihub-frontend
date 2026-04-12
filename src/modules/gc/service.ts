@@ -1,6 +1,7 @@
 import { GCDocument, GeneralContractor } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { FileService } from '@modules/file/services';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -14,7 +15,7 @@ import {
 } from './models';
 
 export const GcService = {
-    createGc: async (request: GcCreateRequest): Promise<GeneralContractor> => {
+    createGc: async (request: GcCreateRequest, userId: string): Promise<GeneralContractor> => {
         const { gcTypeId, contacts, ...rest } = request;
 
         const type = await prisma.lookup.findUnique({ where: { id: gcTypeId } });
@@ -45,6 +46,8 @@ export const GcService = {
                     })),
                 });
             }
+
+            await FileService.createGcFolder(tx, gc.id, request.name, userId);
 
             return gc;
         });

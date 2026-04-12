@@ -1,6 +1,7 @@
 model File {
-  id   String @id
-  name String
+  id          String  @id
+  name        String
+  displayName String?
 
   objectId String?
   mimeType String?

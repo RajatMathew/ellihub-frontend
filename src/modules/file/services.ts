@@ -122,12 +122,14 @@ export const FileService = {
     createProjectFolders: async (
         tx: TransactionClient,
         projectId: string,
+        displayName: string,
         userId: string
     ): Promise<void> => {
         const projectsRootFolder = await FileService.getRootFolder('projects', tx);
 
         const subFolders: {
             name: string;
+            displayName: string;
             protectedFolderType:
                 | 'INVOICE'
                 | 'RFQ'
@@ -136,18 +138,31 @@ export const FileService = {
                 | 'PRIME_CO'
                 | 'PRIME_CONTRACT';
         }[] = [
-            { name: 'invoice', protectedFolderType: 'INVOICE' },
-            { name: 'rfq', protectedFolderType: 'RFQ' },
-            { name: 'purchase order', protectedFolderType: 'PURCHASE_ORDER' },
-            { name: 'purchase order co', protectedFolderType: 'PURCHASE_ORDER_CO' },
-            { name: 'prime co', protectedFolderType: 'PRIME_CO' },
-            { name: 'prime contract', protectedFolderType: 'PRIME_CONTRACT' },
+            { name: 'invoice', displayName: 'Invoice', protectedFolderType: 'INVOICE' },
+            { name: 'rfq', displayName: 'RFQ', protectedFolderType: 'RFQ' },
+            {
+                name: 'purchase order',
+                displayName: 'Purchase Order',
+                protectedFolderType: 'PURCHASE_ORDER',
+            },
+            {
+                name: 'purchase order co',
+                displayName: 'Purchase Order CO',
+                protectedFolderType: 'PURCHASE_ORDER_CO',
+            },
+            { name: 'prime co', displayName: 'Prime CO', protectedFolderType: 'PRIME_CO' },
+            {
+                name: 'prime contract',
+                displayName: 'Prime Contract',
+                protectedFolderType: 'PRIME_CONTRACT',
+            },
         ];
 
         const projectFolder = await tx.file.create({
             data: {
                 id: ulid(),
                 name: projectId,
+                displayName,
                 type: 'FOLDER',
                 createdBy: userId,
                 isDeletable: false,
@@ -161,6 +176,7 @@ export const FileService = {
                 data: {
                     id: ulid(),
                     name: sf.name,
+                    displayName: sf.displayName,
                     type: 'FOLDER',
                     createdBy: userId,
                     isDeletable: false,
@@ -171,13 +187,19 @@ export const FileService = {
         }
     },
 
-    createGcFolder: async (tx: TransactionClient, gcId: string, userId: string): Promise<void> => {
+    createGcFolder: async (
+        tx: TransactionClient,
+        gcId: string,
+        displayName: string,
+        userId: string
+    ): Promise<void> => {
         const gcRootFolder = await FileService.getRootFolder('gc', tx);
 
         await tx.file.create({
             data: {
                 id: ulid(),
                 name: gcId,
+                displayName,
                 type: 'FOLDER',
                 createdBy: userId,
                 isDeletable: false,
@@ -189,6 +211,7 @@ export const FileService = {
     createVendorFolder: async (
         tx: TransactionClient,
         vendorId: string,
+        displayName: string,
         userId: string
     ): Promise<void> => {
         const vendorRootFolder = await FileService.getRootFolder('vendor', tx);
@@ -197,6 +220,7 @@ export const FileService = {
             data: {
                 id: ulid(),
                 name: vendorId,
+                displayName,
                 type: 'FOLDER',
                 createdBy: userId,
                 isDeletable: false,
@@ -208,6 +232,7 @@ export const FileService = {
     createEmployeeFolder: async (
         tx: TransactionClient,
         employeeId: string,
+        displayName: string,
         userId: string
     ): Promise<void> => {
         const employeesRootFolder = await FileService.getRootFolder('employees', tx);
@@ -216,6 +241,7 @@ export const FileService = {
             data: {
                 id: ulid(),
                 name: employeeId,
+                displayName,
                 type: 'FOLDER',
                 createdBy: userId,
                 isDeletable: false,

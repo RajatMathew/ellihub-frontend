@@ -16,6 +16,7 @@ export type FileFolderRenameRequest = z.infer<typeof FileFolderRenameSchema>;
 
 export const FileUploadSchema = z.object({
     name: z.string().min(1),
+    displayName: z.string().min(1).optional(),
     parentId: z.ulid().optional(),
     mimeType: z.string().optional(),
     size: z.number(),

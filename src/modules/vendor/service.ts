@@ -1,6 +1,7 @@
 import { Vendor, VendorDocument } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { FileService } from '@modules/file/services';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -14,7 +15,7 @@ import {
 } from './models';
 
 export const VendorService = {
-    createVendor: async (request: VendorCreateRequest): Promise<Vendor> => {
+    createVendor: async (request: VendorCreateRequest, userId: string): Promise<Vendor> => {
         const { typeId, contacts, ...rest } = request;
 
         if (typeId) {
@@ -47,6 +48,8 @@ export const VendorService = {
                     })),
                 });
             }
+
+            await FileService.createVendorFolder(tx, vendor.id, request.name, userId);
 
             return vendor;
         });

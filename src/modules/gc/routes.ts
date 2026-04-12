@@ -37,7 +37,7 @@ app.post(
     zValidator('json', GcCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const gc = await GcService.createGc(data);
+        const gc = await GcService.createGc(data, c.get('user')!.id);
         return success(c, gc, 201);
     }
 );
