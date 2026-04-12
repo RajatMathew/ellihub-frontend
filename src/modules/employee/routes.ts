@@ -25,7 +25,7 @@ app.post(
     zValidator('json', EmployeeCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const employee = await EmployeeService.create(data);
+        const employee = await EmployeeService.create(data, c.get('user')!.id);
         return success(c, employee, 201);
     }
 );
@@ -37,13 +37,12 @@ app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
 });
 
 app.put(
-    '/:id',
+    '/',
     requirePermission({ project: ['update'] }),
     zValidator('json', EmployeeUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const employee = await EmployeeService.update(id, data);
+        const employee = await EmployeeService.update(data);
         return success(c, employee);
     }
 );
@@ -52,12 +51,6 @@ app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
     const id = c.req.param('id');
     await EmployeeService.delete(id);
     return success(c, null, 200, 'Employee deleted');
-});
-
-app.get('/:id/projects', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const projects = await EmployeeService.getProjects(id);
-    return success(c, projects);
 });
 
 export default app;

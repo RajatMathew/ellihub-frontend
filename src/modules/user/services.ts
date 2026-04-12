@@ -1,11 +1,11 @@
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { auth } from '@lib/auth';
 import { prisma as prismaClient } from '@lib/prisma';
-import { InternalServerError, NotFoundError } from '@utils';
+import { ConflictError, InternalServerError, NotFoundError } from '@utils';
 import { User } from 'better-auth';
 import { ulid } from 'ulid';
 
-import { RoleCreateRequest, UserCreateRequest } from './models';
+import { RoleCreateRequest, UserCreateRequest, UserUpdateRequest } from './models';
 
 export const UserService = {
     getUser: async (id: string) => {
@@ -70,6 +70,25 @@ export const UserService = {
         }
 
         return user;
+    },
+
+    updateUser: async (request: UserUpdateRequest): Promise<User> => {
+        const { id, ...data } = request;
+
+        const user = await prismaClient.user.findUnique({ where: { id } });
+        if (!user) throw new NotFoundError('User not found');
+
+        if (data.email) {
+            const existing = await prismaClient.user.findFirst({
+                where: { email: data.email, NOT: { id } },
+            });
+            if (existing) throw new ConflictError('A user with this email already exists');
+        }
+
+        return await prismaClient.user.update({
+            where: { id },
+            data,
+        });
     },
 
     createOrgRole: async (request: RoleCreateRequest, headers: Headers) => {

@@ -1,6 +1,7 @@
 import { Employee } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { FileService } from '@modules/file/services';
 import { UserService } from '@modules/user/services';
 import { generateRandomPassword } from '@modules/user/utils';
 import { ConflictError, NotFoundError } from '@utils';
@@ -51,7 +52,7 @@ export const EmployeeService = {
         return employee;
     },
 
-    create: async (request: EmployeeCreateRequest): Promise<Employee> => {
+    create: async (request: EmployeeCreateRequest, userId: string): Promise<Employee> => {
         const existing = await prisma.employee.findFirst({
             where: {
                 email: request.email,
@@ -88,11 +89,15 @@ export const EmployeeService = {
                 );
             }
 
+            await FileService.createEmployeeFolder(tx, employee.id, request.name, userId);
+
             return employee;
         });
     },
 
-    update: async (id: string, data: EmployeeUpdateRequest) => {
+    update: async (request: EmployeeUpdateRequest) => {
+        const { id, ...data } = request;
+
         const employee = await prisma.employee.findUnique({ where: { id } });
         if (!employee) throw new NotFoundError('Employee not found');
         checkDeletedAt(employee);
@@ -111,9 +116,23 @@ export const EmployeeService = {
             }
         }
 
-        return await prisma.employee.update({
-            where: { id },
-            data,
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.employee.update({
+                where: { id },
+                data,
+            });
+
+            if (employee.userId && (data.name || data.email)) {
+                await tx.user.update({
+                    where: { id: employee.userId },
+                    data: {
+                        ...(data.name && { name: data.name }),
+                        ...(data.email && { email: data.email }),
+                    },
+                });
+            }
+
+            return updated;
         });
     },
 
@@ -122,64 +141,9 @@ export const EmployeeService = {
         if (!employee) throw new NotFoundError('Employee not found');
         checkDeletedAt(employee);
 
-        const leadPMCount = await prisma.project.count({
-            where: { leadPMId: id, deletedAt: null },
-        });
-
-        if (leadPMCount > 0) {
-            throw new ConflictError(`Cannot delete employee: lead PM on ${leadPMCount} project(s)`);
-        }
-
-        const teamCount = await prisma.projectTeamAssignment.count({
-            where: { employeeId: id, deletedAt: null },
-        });
-
-        if (teamCount > 0) {
-            throw new ConflictError(`Cannot delete employee: assigned to ${teamCount} project(s)`);
-        }
-
         await prisma.employee.update({
             where: { id },
             data: { deletedAt: new Date() },
         });
-    },
-
-    getProjects: async (employeeId: string) => {
-        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
-        if (!employee) throw new NotFoundError('Employee not found');
-        checkDeletedAt(employee);
-
-        const [leadingProjects, teamAssignments] = await Promise.all([
-            prisma.project.findMany({
-                where: { leadPMId: employeeId, deletedAt: null },
-                select: {
-                    id: true,
-                    name: true,
-                    jobNumber: true,
-                    status: { select: { id: true, name: true, label: true, color: true } },
-                },
-            }),
-            prisma.projectTeamAssignment.findMany({
-                where: { employeeId, deletedAt: null },
-                include: {
-                    project: {
-                        select: {
-                            id: true,
-                            name: true,
-                            jobNumber: true,
-                            status: { select: { id: true, name: true, label: true, color: true } },
-                        },
-                    },
-                },
-            }),
-        ]);
-
-        return {
-            asLeadPM: leadingProjects,
-            asTeamMember: teamAssignments.map((a) => ({
-                ...a.project,
-                role: a.role,
-            })),
-        };
     },
 };

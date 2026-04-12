@@ -23,9 +23,10 @@ model Lookup {
   type  String
   label String
 
-  contacts           Contact[]
-  vendors            Vendor[]
-  generalContractors GeneralContractor[]
+  contacts            Contact[]
+  vendors             Vendor[]
+  generalContractors  GeneralContractor[]
+  departmentEmployees DepartmentEmployee[]
 
   @@unique([type, label])
 }

@@ -3,10 +3,25 @@ model Employee {
   name        String
   email       String    @unique
   phoneNumber String
+  address     String?
+  startDate   DateTime?
   userId      String?
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  departments DepartmentEmployee[]
+}
+
+model DepartmentEmployee {
+  employeeId   String
+  departmentId String
+  role         Lookup     @relation(fields: [roleId], references: [id])
+  roleId       String
+  employee     Employee   @relation(fields: [employeeId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@id([employeeId, departmentId])
 }
 
 model Department {
@@ -17,6 +32,8 @@ model Department {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  employees DepartmentEmployee[]
 
   @@index([name])
 }
