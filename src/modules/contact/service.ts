@@ -122,8 +122,8 @@ export const ContactService = {
         data: Contact[];
         count: number;
     }> => {
-        const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, professionalRoleId, ...restFilter } = filter || {};
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { professionalRoleId, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,

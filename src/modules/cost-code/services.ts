@@ -185,8 +185,8 @@ export const CostCodeService = {
         data: CostCode[];
         count: number;
     }> => {
-        const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, costCodeCategoryId, ...restFilter } = filter || {};
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { costCodeCategoryId, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,

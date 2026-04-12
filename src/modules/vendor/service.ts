@@ -201,8 +201,8 @@ export const VendorService = {
         data: Vendor[];
         count: number;
     }> => {
-        const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, typeId, status, ...restFilter } = filter || {};
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { typeId, status, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,

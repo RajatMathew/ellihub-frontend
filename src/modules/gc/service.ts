@@ -197,8 +197,8 @@ export const GcService = {
         data: GeneralContractor[];
         count: number;
     }> => {
-        const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, gcTypeId, status, ...restFilter } = filter || {};
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { gcTypeId, status, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,
