@@ -20,6 +20,10 @@ export const FileService = {
         'prime co',
         'prime contract',
         'invoice',
+        'temp',
+        'vendor',
+        'employees',
+        'gc',
     ],
 
     createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
@@ -167,6 +171,59 @@ export const FileService = {
         }
     },
 
+    createGcFolder: async (tx: TransactionClient, gcId: string, userId: string): Promise<void> => {
+        const gcRootFolder = await FileService.getRootFolder('gc', tx);
+
+        await tx.file.create({
+            data: {
+                id: ulid(),
+                name: gcId,
+                type: 'FOLDER',
+                createdBy: userId,
+                isDeletable: false,
+                parentId: gcRootFolder.id,
+            },
+        });
+    },
+
+    createVendorFolder: async (
+        tx: TransactionClient,
+        vendorId: string,
+        userId: string
+    ): Promise<void> => {
+        const vendorRootFolder = await FileService.getRootFolder('vendor', tx);
+
+        await tx.file.create({
+            data: {
+                id: ulid(),
+                name: vendorId,
+                type: 'FOLDER',
+                createdBy: userId,
+                isDeletable: false,
+                parentId: vendorRootFolder.id,
+            },
+        });
+    },
+
+    createEmployeeFolder: async (
+        tx: TransactionClient,
+        employeeId: string,
+        userId: string
+    ): Promise<void> => {
+        const employeesRootFolder = await FileService.getRootFolder('employees', tx);
+
+        await tx.file.create({
+            data: {
+                id: ulid(),
+                name: employeeId,
+                type: 'FOLDER',
+                createdBy: userId,
+                isDeletable: false,
+                parentId: employeesRootFolder.id,
+            },
+        });
+    },
+
     getProjectFolderId: async (projectId: string, tx?: TransactionClient): Promise<string> => {
         const prisma = tx || prismaClient;
 
@@ -216,7 +273,7 @@ export const FileService = {
     },
 
     getRootFolder: async (
-        folder: 'root' | 'projects' | 'employees' | 'gc',
+        folder: 'root' | 'projects' | 'employees' | 'gc' | 'vendor' | 'temp',
         tx?: TransactionClient
     ): Promise<File> => {
         const prisma = tx || prismaClient;
@@ -250,6 +307,11 @@ export const FileService = {
         if (!subFolder) throw new NotFoundError(`${folder} folder not found.`);
 
         return subFolder;
+    },
+
+    getTempFolderId: async (tx?: TransactionClient): Promise<string> => {
+        const tempFolder = await FileService.getRootFolder('temp', tx);
+        return tempFolder.id;
     },
 
     getFolderDetails: async (id: string): Promise<File> => {

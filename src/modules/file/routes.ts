@@ -38,9 +38,13 @@ app.get(
 );
 
 app.post('/upload', s3Upload, async (c) => {
-    console.log(c.get('fileId'));
+    const fileData = c.get('fileData')!;
 
-    await FileService.uploadFile(c.get('fileData')!, c.get('fileId')!, c.get('user')!.id);
+    if (!fileData.parentId) {
+        fileData.parentId = await FileService.getTempFolderId();
+    }
+
+    await FileService.uploadFile(fileData, c.get('fileId')!, c.get('user')!.id);
 
     return success(c, '');
 });

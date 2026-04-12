@@ -29,7 +29,7 @@ export const seedRootFolder = async () => {
         console.log('Created root folder.');
     } else console.log('Root folder already exists');
 
-    const rootSubFolders = ['projects', 'employees', 'gc'];
+    const rootSubFolders = ['projects', 'employees', 'gc', 'vendor', 'temp'];
 
     for (const folder of rootSubFolders) {
         const subFolder = await prisma.file.findFirst({
