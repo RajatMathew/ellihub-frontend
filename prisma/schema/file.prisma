@@ -26,8 +26,9 @@ model File {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  vendorDocuments VendorDocument[]
-  gcDocuments     GCDocument[]
+  vendorDocuments   VendorDocument[]
+  gcDocuments       GCDocument[]
+  employeeDocuments EmployeeDocument[]
 }
 
 enum FileType {
