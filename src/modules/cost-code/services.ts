@@ -212,6 +212,9 @@ export const CostCodeService = {
                 orderBy: {
                     [sortBy as keyof CostCode]: sortOrder,
                 },
+                include: {
+                    costCodeCategory: true,
+                },
             }),
         ]);
 
