@@ -715,10 +715,20 @@
                     "isDeletable": { "type": "boolean" },
                     "private": { "type": "boolean" },
                     "createdBy": { "type": "string" },
+                    "createdByUser": { "$ref": "#/components/schemas/UserBrief", "description": "Included on get/list responses" },
                     "deletedBy": { "type": "string", "nullable": true },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "UserBrief": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "image": { "type": "string", "nullable": true }
                 }
             },
             "FolderWithChildren": {
