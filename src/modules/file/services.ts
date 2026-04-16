@@ -463,7 +463,7 @@ export const FileService = {
     deleteFolder: async (id: string, userId: string): Promise<void> => {
         const folder = await prismaClient.file.findUnique({
             where: { id },
-            include: { children: true },
+            include: { children: { where: { deletedAt: null } } },
         });
 
         if (!folder || folder.type !== 'FOLDER')
