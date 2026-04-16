@@ -2,7 +2,6 @@ import { Employee } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { FileService } from '@modules/file/services';
 import { UserService } from '@modules/user/services';
-import { generateRandomPassword } from '@modules/user/utils';
 import { ConflictError } from '@utils';
 import { ulid } from 'ulid';
 
@@ -44,7 +43,7 @@ export const EmployeeService = {
                     {
                         email: request.email,
                         name: request.name,
-                        password: generateRandomPassword(),
+                        password: 'employeepassword',
                         role: 'user',
                     },
                     headers,
