@@ -220,6 +220,7 @@
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "typeId": { "type": "string", "nullable": true },
+                    "type": { "description": "Lookup row for the vendor type; included on get/list responses", "nullable": true },
                     "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] },
                     "categoryTags": { "type": "array", "items": { "type": "string" } },
                     "taxId": { "type": "string", "nullable": true },
@@ -230,9 +231,26 @@
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
                     "notes": { "type": "string", "nullable": true },
+                    "contactLinks": {
+                        "type": "array",
+                        "description": "Contacts linked to this vendor; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/VendorContactLink" }
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "VendorContactLink": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "contactId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean" },
+                    "contact": { "$ref": "#/components/schemas/Contact", "description": "Linked contact; included on get/list responses" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
             "VendorDocument": {

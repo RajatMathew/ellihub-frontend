@@ -633,6 +633,7 @@
                     "id": { "type": "string", "description": "ULID" },
                     "fullName": { "type": "string" },
                     "professionalRoleId": { "type": "string", "nullable": true },
+                    "professionalRole": { "description": "Lookup row for the professional role; included on get/list responses", "nullable": true },
                     "email": {
                         "type": "array",
                         "nullable": true,
@@ -644,6 +645,16 @@
                         "items": { "$ref": "#/components/schemas/ContactPhone" }
                     },
                     "tags": { "type": "array", "items": { "type": "string" } },
+                    "vendorLinks": {
+                        "type": "array",
+                        "description": "Vendors this contact is linked to; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/ContactVendorLink" }
+                    },
+                    "gcLinks": {
+                        "type": "array",
+                        "description": "General contractors this contact is linked to; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/ContactGCLink" }
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
@@ -656,6 +667,7 @@
                     "contactId": { "type": "string" },
                     "generalContractorId": { "type": "string" },
                     "isPrimary": { "type": "boolean" },
+                    "generalContractor": { "$ref": "#/components/schemas/GeneralContractor", "description": "Linked GC; included on get/list responses" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }
@@ -667,6 +679,7 @@
                     "contactId": { "type": "string" },
                     "vendorId": { "type": "string" },
                     "isPrimary": { "type": "boolean" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor", "description": "Linked vendor; included on get/list responses" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
                 }

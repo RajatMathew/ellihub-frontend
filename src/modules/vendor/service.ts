@@ -241,6 +241,11 @@ export const VendorService = {
                 },
                 include: {
                     type: true,
+                    contactLinks: {
+                        include: {
+                            contact: true,
+                        },
+                    },
                 },
             }),
         ]);

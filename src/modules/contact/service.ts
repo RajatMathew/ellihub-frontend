@@ -148,6 +148,16 @@ export const ContactService = {
                 },
                 include: {
                     professionalRole: true,
+                    vendorLinks: {
+                        include: {
+                            vendor: true,
+                        },
+                    },
+                    gcLinks: {
+                        include: {
+                            generalContractor: true,
+                        },
+                    },
                 },
             }),
         ]);

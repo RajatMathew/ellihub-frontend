@@ -244,6 +244,11 @@ export const GcService = {
                 },
                 include: {
                     gcType: true,
+                    contactLinks: {
+                        include: {
+                            contact: true,
+                        },
+                    },
                 },
             }),
         ]);

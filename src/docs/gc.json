@@ -215,6 +215,7 @@
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "gcTypeId": { "type": "string" },
+                    "gcType": { "description": "Lookup row for the GC type; included on get/list responses", "nullable": true },
                     "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] },
                     "address": { "type": "string", "nullable": true },
                     "email": { "type": "string", "format": "email", "nullable": true },
@@ -223,9 +224,26 @@
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
                     "retainagePercent": { "type": "number" },
+                    "contactLinks": {
+                        "type": "array",
+                        "description": "Contacts linked to this GC; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/GcContactLink" }
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "GcContactLink": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "contactId": { "type": "string" },
+                    "generalContractorId": { "type": "string" },
+                    "isPrimary": { "type": "boolean" },
+                    "contact": { "$ref": "#/components/schemas/Contact", "description": "Linked contact; included on get/list responses" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
             "GcDocument": {
