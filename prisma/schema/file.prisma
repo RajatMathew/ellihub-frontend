@@ -19,7 +19,9 @@ model File {
 
   private Boolean @default(false)
 
-  createdBy String
+  createdBy     String
+  createdByUser User   @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
   deletedBy String?
 
   deletedAt DateTime?

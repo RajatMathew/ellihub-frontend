@@ -421,7 +421,13 @@ export const FileService = {
     getFolderDetails: async (id: string): Promise<File> => {
         const folder = await prismaClient.file.findUnique({
             where: { id },
-            include: { children: { where: { deletedAt: null } } },
+            include: {
+                createdByUser: true,
+                children: {
+                    where: { deletedAt: null },
+                    include: { createdByUser: true },
+                },
+            },
         });
 
         checkDeletedAt(folder);
@@ -544,6 +550,7 @@ export const FileService = {
                 skip,
                 take,
                 orderBy: { [sortBy as keyof File]: sortOrder },
+                include: { createdByUser: true },
             }),
         ]);
 
