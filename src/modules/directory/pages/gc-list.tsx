@@ -67,7 +67,6 @@ import { formatCurrency, getInitials, parsePageParam, parseSizeParam } from '@ap
 import { useDeleteGCMutation, useGCsQuery, useGCTypesQuery } from '../hooks';
 import type {
   GCStatus,
-  GCTypeCode,
   GeneralContractor,
   ListGCsParams,
 } from '../schemas/gc.schema';
@@ -183,8 +182,7 @@ export function GCListPage() {
 
   const hasActiveFilters = !!searchQuery || !!gcTypeIdFilter || !!statusFilter;
 
-  // Fetch all GCs (unfiltered) to derive the type tabs
-  const { data: allData } = useGCsQuery({ limit: 100 });
+  // Fetch GCs and types
   const { data: apiTypes } = useGCTypesQuery();
   const { data, isLoading, isError, refetch } = useGCsQuery(filters);
   const del = useDeleteGCMutation();
