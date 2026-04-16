@@ -25,10 +25,11 @@ import {
   VENDOR_STATUS_OPTIONS,
   VENDOR_TYPE_OPTIONS,
 } from '../constants/vendors.constants';
-import { useCreateVendorMutation } from '../hooks';
+import { useCreateVendorMutation, useVendorTypesQuery } from '../hooks';
 import {
   quickCreateVendorSchema,
   type QuickCreateVendorValues,
+  type VendorTypeObject,
 } from '../schemas/vendor.schema';
 
 export function QuickCreateVendorDialog({
@@ -41,31 +42,35 @@ export function QuickCreateVendorDialog({
   onCreated: (vendor: { id: string; name: string }) => void;
 }) {
   const createMutation = useCreateVendorMutation();
+  const { data: apiTypes } = useVendorTypesQuery();
+
+  const defaultTypeId = apiTypes?.[0]?.id ?? '';
 
   const { control, handleSubmit, reset } = useForm<QuickCreateVendorValues>({
     resolver: zodResolver(quickCreateVendorSchema),
     defaultValues: {
       name: '',
-      type: 'MATERIAL',
+      type: defaultTypeId,
       status: 'ACTIVE',
     },
   });
 
   useEffect(() => {
     if (open) {
-      reset({ name: '', type: 'MATERIAL', status: 'ACTIVE' });
+      reset({ name: '', type: defaultTypeId, status: 'ACTIVE' });
     }
-  }, [open, reset]);
+  }, [open, reset, defaultTypeId]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) reset();
     onOpenChange(next);
   };
 
-  const onSubmit = async (data: QuickCreateVendorValues) => {
+  const onSubmit = async (data: QuickCreateVendorValues, e?: React.BaseSyntheticEvent) => {
+    e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       name: data.name,
-      type: data.type,
+      typeId: data.type || undefined,
       status: data.status,
     });
     onCreated({ id: created.id, name: created.name });
@@ -116,11 +121,17 @@ export function QuickCreateVendorDialog({
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {VENDOR_TYPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    {(apiTypes && apiTypes.length > 0
+                      ? apiTypes.map((t) => ({ value: t.id, label: t.label }))
+                      : VENDOR_TYPE_OPTIONS
+                    ).map((opt) => {
+                      const val = typeof opt.value === 'string' ? opt.value : (opt.value as VendorTypeObject).id;
+                      return (
+                        <SelectItem key={val} value={val}>
+                          {opt.label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

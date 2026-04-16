@@ -60,12 +60,13 @@ export function QuickCreateContactDialog({
     onOpenChange(next);
   };
 
-  const onSubmit = async (data: QuickCreateContactValues) => {
+  const onSubmit = async (data: QuickCreateContactValues, e?: React.BaseSyntheticEvent) => {
+    e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       fullName: data.fullName,
       professionalRoleId: data.professionalRoleId || undefined,
-      email: data.email ? { email: data.email, label: 'Work' } : undefined,
-      phoneNumber: data.phone ? { phone: data.phone, label: 'Office' } : undefined,
+      email: data.email ? [{ email: data.email, label: 'Work' }] : [],
+      phoneNumber: data.phone ? [{ number: data.phone, label: 'Office' }] : [],
     });
     onCreated({ id: created.id, fullName: created.fullName });
     handleOpenChange(false);
@@ -120,7 +121,7 @@ export function QuickCreateContactDialog({
                   <SelectContent>
                     {roles.map((role) => (
                       <SelectItem key={role.id} value={role.id}>
-                        {role.name}
+                        {role.label || role.name || role.id}
                       </SelectItem>
                     ))}
                   </SelectContent>

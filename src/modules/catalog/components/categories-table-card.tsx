@@ -27,6 +27,8 @@ import type { CostCodeCategory } from '@modules/catalog/schemas/costcode-categor
 interface CategoriesTableCardProps {
   categories: CostCodeCategory[];
   isLoading: boolean;
+  isError?: boolean;
+  refetch?: () => void;
   search: string;
   onSearchChange: (search: string) => void;
   onEdit: (category: CostCodeCategory) => void;
@@ -36,6 +38,8 @@ interface CategoriesTableCardProps {
 export function CategoriesTableCard({
   categories,
   isLoading,
+  isError,
+  refetch,
   search,
   onSearchChange,
   onEdit,
@@ -118,25 +122,42 @@ export function CategoriesTableCard({
         </CardToolbar>
       </CardHeader>
 
-      <DataGrid
-        table={table}
-        recordCount={categories.length}
-        isLoading={isLoading}
-        emptyMessage={
-          <div className="flex flex-col items-center gap-2 py-8">
-            <Tag className="size-10 text-muted-foreground/50" />
-            <p className="text-sm font-medium">No categories found</p>
+      {isError ? (
+        <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="rounded-full bg-destructive/10 p-3">
+            <Tag className="size-6 text-destructive" />
           </div>
-        }
-        tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
-      >
-        <CardTable>
-          <DataGridTable />
-        </CardTable>
-        <CardFooter>
-          <DataGridPagination />
-        </CardFooter>
-      </DataGrid>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">Failed to load categories</p>
+            <p className="text-xs text-muted-foreground">
+              There was an error fetching the data. Please try again.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch?.()}>
+            Try Again
+          </Button>
+        </div>
+      ) : (
+        <DataGrid
+          table={table}
+          recordCount={categories.length}
+          isLoading={isLoading}
+          emptyMessage={
+            <div className="flex flex-col items-center gap-2 py-8">
+              <Tag className="size-10 text-muted-foreground/50" />
+              <p className="text-sm font-medium">No categories found</p>
+            </div>
+          }
+          tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
+        >
+          <CardTable>
+            <DataGridTable />
+          </CardTable>
+          <CardFooter>
+            <DataGridPagination />
+          </CardFooter>
+        </DataGrid>
+      )}
     </Card>
   );
 }

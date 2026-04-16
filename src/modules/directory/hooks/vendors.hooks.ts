@@ -26,6 +26,12 @@ export const useVendorDetailQuery = (id: string) =>
     enabled: !!id,
   });
 
+export const useVendorTypesQuery = () =>
+  useQuery({
+    queryKey: ['vendors', 'types'],
+    queryFn: () => vendorsApi.getTypes(),
+  });
+
 /* ---- mutations ---- */
 
 export const useCreateVendorMutation = () => {

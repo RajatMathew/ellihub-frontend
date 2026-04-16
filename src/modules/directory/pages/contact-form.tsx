@@ -32,35 +32,18 @@ import { FormSectionNav } from '@app/components/form-section-nav';
 import { QuickCreateVendorDialog } from '../components';
 import { CONTACT_FORM_SECTIONS } from '../constants/contacts.constants';
 import {
+  useAddGCLinkMutation,
   useAddVendorLinkMutation,
   useContactDetailQuery,
   useContactForm,
   useCreateContactMutation,
+  useGCsQuery,
   useProfessionalRolesQuery,
-  useRemoveVendorLinkMutation,
   useUpdateContactMutation,
   useVendorsQuery,
 } from '../hooks';
-import type { Contact, ContactVendorLink, CreateContactInput } from '../schemas/contact.schema';
+import type { ContactFormValues, CreateContactInput } from '../schemas/contact.schema';
 
-/* ---- Helpers ---- */
-
-function computeVendorLinkDiff(
-  original: ContactVendorLink[],
-  current: { vendorId: string; isPrimary: boolean }[],
-) {
-  const originalByVendor = new Map(original.map((l) => [l.vendorId, l]));
-  const currentByVendor = new Map(current.map((l) => [l.vendorId, l]));
-
-  const toRemove = original.filter((l) => !currentByVendor.has(l.vendorId));
-  const toAdd = current.filter((l) => !originalByVendor.has(l.vendorId));
-  const toUpdate = current.filter((l) => {
-    const orig = originalByVendor.get(l.vendorId);
-    return orig && orig.isPrimary !== l.isPrimary;
-  });
-
-  return { toRemove, toAdd, toUpdate };
-}
 
 /* ---- Page ---- */
 
@@ -70,36 +53,65 @@ export function ContactFormPage() {
   const isEdit = !!id;
 
   const { data: contact, isLoading: isLoadingContact } = useContactDetailQuery(id ?? '');
-  const { data: roles = [] } = useProfessionalRolesQuery();
+  const { data: roles = [], isLoading: isLoadingRoles } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
+  const { data: gcsData } = useGCsQuery({ limit: 1000 });
   const createMutation = useCreateContactMutation();
   const updateMutation = useUpdateContactMutation();
   const addVendorLinkMutation = useAddVendorLinkMutation();
-  const removeVendorLinkMutation = useRemoveVendorLinkMutation();
+  const addGCLinkMutation = useAddGCLinkMutation();
+
 
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
     value: v.id,
     label: v.name,
   }));
 
+  const gcOptions = (gcsData?.data ?? []).map((g) => ({
+    value: g.id,
+    label: g.name,
+  }));
+
+  // The backend may return `professionalRoleId: null` at the root level even
+  // when the nested `professionalRole` object contains the real ID, so we
+  // fall back to `professionalRole?.id` as the source of truth.
+  const resolvedRoleId = (id: string | null | undefined, role?: { id: string } | null) =>
+    id ?? role?.id ?? undefined;
+
   const { control, handleSubmit, reset, formState } = useContactForm(
-    isEdit && contact
-      ? contact
+    (isEdit && contact
+      ? {
+          fullName: contact.fullName,
+          professionalRoleId: resolvedRoleId(contact.professionalRoleId, contact.professionalRole),
+          email: contact.email?.[0],
+          phoneNumber: contact.phoneNumber?.[0],
+          tags: contact.tags ?? [],
+        }
       : {
           fullName: '',
           professionalRoleId: undefined,
           email: undefined,
           phoneNumber: undefined,
           tags: [],
-        },
+        }) as Partial<ContactFormValues>,
   );
 
-  // Reset form when contact data loads in edit mode
+  // Reset form when contact data loads in edit mode.
+  // `roles` is included in the dependency array because the Select component
+  // needs the options list to be present before it can display the selected
+  // value — resetting again once roles arrive ensures the value shows up
+  // regardless of which page the user navigated from (table vs detail page).
   useEffect(() => {
     if (isEdit && contact) {
-      reset(contact as any);
+      reset({
+        fullName: contact.fullName,
+        professionalRoleId: resolvedRoleId(contact.professionalRoleId, contact.professionalRole),
+        email: contact.email?.[0],
+        phoneNumber: contact.phoneNumber?.[0],
+        tags: contact.tags ?? [],
+      } as Partial<ContactFormValues>);
     }
-  }, [isEdit, contact, reset]);
+  }, [isEdit, contact, roles, reset]);
 
   const [activeSection, setActiveSection] = useState<string>('contact-info');
   // Lazy initializer — safe because we return early while loading in edit mode,
@@ -110,91 +122,122 @@ export function ContactFormPage() {
         ? (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary }))
         : [],
   );
+  const [gcLinks, setGCLinks] = useState<{ generalContractorId: string; isPrimary: boolean }[]>(
+    () =>
+      isEdit && contact
+        ? (contact.gcLinks ?? []).map((l) => ({
+            generalContractorId: l.generalContractorId,
+            isPrimary: l.isPrimary,
+          }))
+        : [],
+  );
+
+  // Sync vendor links when contact data loads/updates in edit mode
+  useEffect(() => {
+    if (isEdit && contact) {
+      setVendorLinks(
+        (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary })),
+      );
+      setGCLinks(
+        (contact.gcLinks ?? []).map((l) => ({
+          generalContractorId: l.generalContractorId,
+          isPrimary: l.isPrimary,
+        })),
+      );
+    }
+  }, [isEdit, contact]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
+  const handleFillRandom = () => {
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const randomRole = roles[Math.floor(Math.random() * roles.length)];
+    reset({
+      fullName: `Test Contact ${randomSuffix}`,
+      professionalRoleId: randomRole?.id,
+      email: { email: `test-${randomSuffix}@example.com`, label: 'Work' },
+      phoneNumber: {
+        number: `(555) 000-${randomSuffix.toString().padStart(4, '0')}`,
+        label: 'Office',
+      },
+      tags: ['Test', 'Random'],
+    } as Partial<ContactFormValues>);
+    toast.info('Form filled with test data.');
+  };
+
   const handleVendorCreated = (vendor: { id: string; name: string }) => {
     setVendorLinks((prev) => [...prev, { vendorId: vendor.id, isPrimary: false }]);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onSubmit = async (formData: any) => {
-    const payload: CreateContactInput = {
-      fullName: formData.fullName,
-      professionalRoleId: formData.professionalRoleId ?? undefined,
-      email: formData.email?.email ? formData.email : undefined,
-      phoneNumber: formData.phoneNumber?.phone ? formData.phoneNumber : undefined,
-      tags: formData.tags,
-      vendorLinks: vendorLinks.length > 0 ? vendorLinks : [],
-    };
+  const onSubmit = async (formData: ContactFormValues) => {
+    const emailArray = formData.email?.email ? [formData.email] : [];
+    const phoneArray = formData.phoneNumber?.number
+      ? [{ number: formData.phoneNumber.number, label: formData.phoneNumber.label ?? 'Office' }]
+      : [];
 
     if (isEdit && id) {
       setIsSaving(true);
       try {
-        // 1. PUT basic contact fields
+        // 1. PUT basic contact fields first.
+        //    The backend's PUT does a full replace and clears vendorLinks,
+        //    so we update basic fields first, then re-add all desired vendor links.
         await updateMutation.mutateAsync({
           id,
           data: {
-            fullName: payload.fullName,
-            professionalRoleId: payload.professionalRoleId ?? null,
-            email: payload.email ?? null,
-            phoneNumber: payload.phoneNumber ?? null,
-            tags: payload.tags,
+            fullName: formData.fullName,
+            professionalRoleId: formData.professionalRoleId ?? null,
+            email: emailArray,
+            phoneNumber: phoneArray,
+            tags: formData.tags,
           },
         });
 
-        // 2. Persist vendor link changes via sub-resource APIs
-        const originalLinks = contact?.vendorLinks ?? [];
-        const { toRemove, toAdd, toUpdate } = computeVendorLinkDiff(originalLinks, vendorLinks);
-
-        const linkOps: Promise<Contact>[] = [
-          ...toRemove.map((link) =>
-            removeVendorLinkMutation.mutateAsync({ contactId: id, linkId: link.id }),
-          ),
-          ...toAdd.map((link) =>
-            addVendorLinkMutation.mutateAsync({
-              contactId: id,
-              data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
-            }),
-          ),
-          ...toUpdate.map((link) => {
-            const orig = originalLinks.find((o) => o.vendorId === link.vendorId)!;
-            return removeVendorLinkMutation
-              .mutateAsync({ contactId: id, linkId: orig.id })
-              .then(() =>
-                addVendorLinkMutation.mutateAsync({
-                  contactId: id,
-                  data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
-                }),
-              );
-          }),
-        ];
-
-        if (linkOps.length > 0) {
-          const results = await Promise.allSettled(linkOps);
-          const failures = results.filter((r) => r.status === 'rejected');
-          if (failures.length > 0) {
-            toast.error(`${failures.length} vendor link operation(s) failed.`);
-            return;
-          }
+        // 2. Re-add all desired vendor & GC links (the PUT already cleared them).
+        //    No remove calls needed — the update wiped all existing links.
+        for (const link of vendorLinks) {
+          await addVendorLinkMutation.mutateAsync({
+            contactId: id,
+            data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
+          });
+        }
+        for (const link of gcLinks) {
+          await addGCLinkMutation.mutateAsync({
+            contactId: id,
+            data: { generalContractorId: link.generalContractorId, isPrimary: link.isPrimary },
+          });
         }
 
+        toast.success('Contact updated successfully.');
         navigate('..', { relative: 'path' });
       } catch {
-        // updateMutation.mutateAsync error — toast already shown by mutation onError
+        // Mutation onError handlers already show toasts
       } finally {
         setIsSaving(false);
       }
     } else {
+      const payload: CreateContactInput = {
+        fullName: formData.fullName,
+        professionalRoleId: formData.professionalRoleId ?? undefined,
+        email: emailArray,
+        phoneNumber: phoneArray,
+        tags: formData.tags,
+        vendorLinks: vendorLinks.length > 0 ? vendorLinks : [],
+        gcLinks: gcLinks.length > 0 ? gcLinks : [],
+      };
+
       createMutation.mutate(payload, {
         onSuccess: () => navigate('..', { relative: 'path' }),
       });
     }
   };
 
-  if (isEdit && isLoadingContact) {
+  // Wait for both contact data AND roles to load before rendering the form.
+  // This guarantees useContactForm initialises with the correct professionalRoleId
+  // as its defaultValues, so the Radix Select displays the pre-selected value
+  // correctly regardless of which navigation path (table vs detail page) was used.
+  if (isEdit && (isLoadingContact || isLoadingRoles)) {
     return (
       <div className="container-fluid py-7.5">
         <div className="text-sm text-muted-foreground">Loading contact...</div>
@@ -203,10 +246,11 @@ export function ContactFormPage() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
-      className="container-fluid py-7.5"
-    >
+    <>
+      <form
+        onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+        className="container-fluid py-7.5"
+      >
       {/* Toolbar */}
       <Toolbar sticky={false}>
         <ToolbarWrapper>
@@ -228,12 +272,20 @@ export function ContactFormPage() {
             </span>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" type="button" onClick={handleFillRandom}>
+              Fill Random
+            </Button>
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
               </Link>
             </Button>
-            <Button size="sm" type="submit" disabled={isSubmitting}>
+            <Button
+              size="sm"
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleSubmit(onSubmit)()}
+            >
               <Check className="size-4" />
               {isEdit ? 'Save Changes' : 'Create Contact'}
             </Button>
@@ -294,7 +346,8 @@ export function ContactFormPage() {
                         Professional Role
                       </FieldLabel>
                       <Select
-                        value={field.value ?? ''}
+                        key={`${roles.length}-${field.value || 'none'}`}
+                        value={field.value ? String(field.value) : ''}
                         onValueChange={(v) => field.onChange(v || undefined)}
                       >
                         <SelectTrigger aria-invalid={fieldState.invalid}>
@@ -306,7 +359,7 @@ export function ContactFormPage() {
                         <SelectContent>
                           {roles.map((role) => (
                             <SelectItem key={role.id} value={role.id}>
-                              {role.name}
+                              {role.label || role.name || role.id}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -358,7 +411,7 @@ export function ContactFormPage() {
                   name="phoneNumber"
                   control={control}
                   render={({ field, fieldState }) => {
-                    const phoneValue = field.value?.phone ?? '';
+                    const phoneValue = field.value?.number ?? '';
                     return (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
@@ -372,7 +425,7 @@ export function ContactFormPage() {
                             onChange={(e) => {
                               const val = e.target.value.replace(/[^+\d\s\-().]/g, '');
                               field.onChange(
-                                val ? { phone: val, label: 'Office' } : undefined,
+                                val ? { number: val, label: 'Office' } : undefined,
                               );
                             }}
                             placeholder="(555) 000-0000"
@@ -416,104 +469,193 @@ export function ContactFormPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">External Association</h2>
                 <p className="text-sm text-muted-foreground">
-                  Link this contact to one or more vendors.
+                  Link this contact to one or more vendors or general contractors.
                 </p>
               </div>
 
               <Separator />
 
-              {/* Linked vendors list */}
-              {vendorLinks.length > 0 && (
-                <div className="space-y-2">
-                  {vendorLinks.map((link, index) => {
-                    const vendorName =
-                      vendorOptions.find((v) => v.value === link.vendorId)?.label ??
-                      link.vendorId;
-                    return (
-                      <div
-                        key={link.vendorId}
-                        className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
-                      >
-                        <Building2 className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 text-sm font-medium text-foreground">
-                          {vendorName}
-                        </span>
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                          Primary
-                          <Switch
-                            checked={link.isPrimary}
-                            onCheckedChange={(checked) =>
-                              setVendorLinks((prev) =>
-                                prev.map((l, i) =>
-                                  i === index ? { ...l, isPrimary: checked } : l,
-                                ),
-                              )
-                            }
-                          />
-                        </label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          mode="icon"
-                          className="size-7 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            setVendorLinks((prev) => prev.filter((_, i) => i !== index))
-                          }
+              {/* Vendors Sub-section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Vendors</h3>
+                
+                {/* Linked vendors list */}
+                {vendorLinks.length > 0 && (
+                  <div className="space-y-2">
+                    {vendorLinks.map((link, index) => {
+                      const vendorName =
+                        vendorOptions.find((v) => v.value === link.vendorId)?.label ??
+                        link.vendorId;
+                      return (
+                        <div
+                          key={link.vendorId}
+                          className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
                         >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Add vendor select */}
-              <Field>
-                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                  Add Vendor
-                </FieldLabel>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      options={vendorOptions.filter(
-                        (v) => !vendorLinks.some((l) => l.vendorId === v.value),
-                      )}
-                      value={null}
-                      onValueChange={(vendorId) => {
-                        if (vendorId) {
-                          setVendorLinks((prev) => [
-                            ...prev,
-                            { vendorId, isPrimary: false },
-                          ]);
-                        }
-                      }}
-                      placeholder="Search Vendors..."
-                      searchPlaceholder="Search vendors..."
-                      emptyMessage="No vendors found."
-                    />
+                          <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                          <span className="flex-1 text-sm font-medium text-foreground">
+                            {vendorName}
+                          </span>
+                          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                            Primary
+                            <Switch
+                              checked={link.isPrimary}
+                              onCheckedChange={(checked) =>
+                                setVendorLinks((prev) =>
+                                  prev.map((l, i) =>
+                                    i === index ? { ...l, isPrimary: checked } : l,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            mode="icon"
+                            className="size-7 text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setVendorLinks((prev) => prev.filter((_, i) => i !== index))
+                            }
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setVendorDialogOpen(true)}
-                  >
-                    <Plus className="size-4" />
-                    Create Vendor
-                  </Button>
-                </div>
-              </Field>
+                )}
+
+                {/* Add vendor select */}
+                <Field>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Add Vendor
+                  </FieldLabel>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        options={vendorOptions.filter(
+                          (v) => !vendorLinks.some((l) => l.vendorId === v.value),
+                        )}
+                        value={null}
+                        onValueChange={(vendorId) => {
+                          if (vendorId) {
+                            setVendorLinks((prev) => [
+                              ...prev,
+                              { vendorId, isPrimary: false },
+                            ]);
+                          }
+                        }}
+                        placeholder="Search Vendors..."
+                        searchPlaceholder="Search vendors..."
+                        emptyMessage="No vendors found."
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setVendorDialogOpen(true)}
+                    >
+                      <Plus className="size-4" />
+                      Create Vendor
+                    </Button>
+                  </div>
+                </Field>
+              </div>
+
+              <Separator />
+
+              {/* GCs Sub-section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">General Contractors</h3>
+                
+                {/* Linked GCs list */}
+                {gcLinks.length > 0 && (
+                  <div className="space-y-2">
+                    {gcLinks.map((link, index) => {
+                      const gcName =
+                        gcOptions.find((g) => g.value === link.generalContractorId)?.label ??
+                        link.generalContractorId;
+                      return (
+                        <div
+                          key={link.generalContractorId}
+                          className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
+                        >
+                          <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                          <span className="flex-1 text-sm font-medium text-foreground">
+                            {gcName}
+                          </span>
+                          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                            Primary
+                            <Switch
+                              checked={link.isPrimary}
+                              onCheckedChange={(checked) =>
+                                setGCLinks((prev) =>
+                                  prev.map((l, i) =>
+                                    i === index ? { ...l, isPrimary: checked } : l,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            mode="icon"
+                            className="size-7 text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setGCLinks((prev) => prev.filter((_, i) => i !== index))
+                            }
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Add gc select */}
+                <Field>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Add GC
+                  </FieldLabel>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        options={gcOptions.filter(
+                          (g) => !gcLinks.some((l) => l.generalContractorId === g.value),
+                        )}
+                        value={null}
+                        onValueChange={(generalContractorId) => {
+                          if (generalContractorId) {
+                            setGCLinks((prev) => [
+                              ...prev,
+                              { generalContractorId, isPrimary: false },
+                            ]);
+                          }
+                        }}
+                        placeholder="Search GCs..."
+                        searchPlaceholder="Search GCs..."
+                        emptyMessage="No GCs found."
+                      />
+                    </div>
+                  </div>
+                </Field>
+              </div>
             </CardContent>
           </Card>
       </div>
 
-      <QuickCreateVendorDialog
-        open={vendorDialogOpen}
-        onOpenChange={setVendorDialogOpen}
-        onCreated={handleVendorCreated}
-      />
     </form>
+
+    <QuickCreateVendorDialog
+      open={vendorDialogOpen}
+      onOpenChange={setVendorDialogOpen}
+      onCreated={handleVendorCreated}
+    />
+    </>
   );
 }

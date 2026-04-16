@@ -64,7 +64,7 @@ import {
 } from '@app/components/toolbar/toolbar';
 import { formatCurrency, getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
-import { useDeleteGCMutation, useGCsQuery, useGCStatsQuery } from '../hooks';
+import { useDeleteGCMutation, useGCsQuery, useGCTypesQuery } from '../hooks';
 import type {
   GCStatus,
   GCTypeCode,
@@ -80,7 +80,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SORT_BY_OPTIONS = ['name', 'type', 'status', 'createdAt'] as const;
 type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
-const GC_TYPE_BADGE_VARIANTS: Record<GCTypeCode, 'primary' | 'success' | 'info' | 'warning'> = {
+const GC_TYPE_BADGE_VARIANTS: Record<string, 'primary' | 'success' | 'info' | 'warning'> = {
   PUBLIC_STATE: 'primary',
   PRIVATE: 'success',
   INSTITUTIONAL: 'info',
@@ -184,28 +184,24 @@ export function GCListPage() {
   const hasActiveFilters = !!searchQuery || !!gcTypeIdFilter || !!statusFilter;
 
   // Fetch all GCs (unfiltered) to derive the type tabs
-  // Separate unfiltered query just for deriving type tabs
   const { data: allData } = useGCsQuery({ limit: 100 });
+  const { data: apiTypes } = useGCTypesQuery();
   const { data, isLoading, isError, refetch } = useGCsQuery(filters);
-  const { data: stats } = useGCStatsQuery();
   const del = useDeleteGCMutation();
 
   // Use API data
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
-  const resolvedStats = stats ?? { totalGCs: 0, activeProjects: 0, totalCommitted: 0 };
+  const resolvedStats = {
+    totalGCs: totalCount,
+    activeProjects: 0,
+    totalCommitted: 0,
+  };
 
-  // Derive unique GC types from the full unfiltered data for stable tabs
+  // Use all available types from lookup for stable tabs
   const typeTabs = useMemo(() => {
-    const items = allData?.data ?? [];
-    const seen = new Map<string, { id: string; name: string; code: string }>();
-    for (const gc of items) {
-      if (gc.gcType && !seen.has(gc.gcType.id)) {
-        seen.set(gc.gcType.id, { id: gc.gcType.id, name: gc.gcType.name, code: gc.gcType.code });
-      }
-    }
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [allData]);
+    return apiTypes ?? [];
+  }, [apiTypes]);
 
   // Map URL sort state to TanStack SortingState
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -281,15 +277,15 @@ export function GCListPage() {
         id: 'type',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         cell: ({ row }) => {
-          const typeCode = row.original.gcType?.code as GCTypeCode | undefined;
-          const typeName = row.original.gcType?.name ?? 'Unknown';
+          const typeCode = row.original.gcType?.code;
+          const typeName = row.original.gcType?.label || row.original.gcType?.name || (row.original.gcTypeId ? apiTypes?.find(t => t.id === row.original.gcTypeId)?.label : 'Unknown');
           return (
             <Badge
-              variant={typeCode ? (GC_TYPE_BADGE_VARIANTS[typeCode] ?? 'primary') : 'primary'}
+              variant={(typeCode && typeCode in GC_TYPE_BADGE_VARIANTS ? GC_TYPE_BADGE_VARIANTS[typeCode] : 'primary') as 'primary' | 'success' | 'info' | 'warning'}
               appearance="outline"
               size="sm"
             >
-              {typeName}
+              {typeName || 'Unknown'}
             </Badge>
           );
         },
@@ -424,7 +420,7 @@ export function GCListPage() {
         enableSorting: false,
       },
     ],
-    [del],
+    [del, apiTypes],
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -543,7 +539,7 @@ export function GCListPage() {
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {tab.name}
+                  {tab.label || tab.name}
                 </button>
               ))}
             </div>
@@ -573,7 +569,7 @@ export function GCListPage() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="PROSPECTING">Prospect</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
                 </SelectContent>
               </Select>
               {hasActiveFilters && (

@@ -53,12 +53,12 @@ import { PAYMENT_TERMS_LABELS } from '../constants/shared.constants';
 import { useDeleteVendorMutation, useVendorDetailQuery } from '../hooks';
 import type {
   VendorStatus,
-  VendorType,
+  VendorTypeEnum,
 } from '../schemas/vendor.schema';
 
 /* ---- Display maps ---- */
 
-const VENDOR_TYPE_LABELS: Record<VendorType, string> = {
+const VENDOR_TYPE_LABELS: Record<VendorTypeEnum, string> = {
   MATERIAL: 'Material',
   FABRICATION: 'Fabrication',
   INSTALLATION: 'Installation',
@@ -67,15 +67,11 @@ const VENDOR_TYPE_LABELS: Record<VendorType, string> = {
 
 const VENDOR_STATUS_COLORS: Record<VendorStatus, string> = {
   ACTIVE: 'bg-success',
-  PROSPECT: 'bg-primary',
-  BLACKLISTED: 'bg-destructive',
   INACTIVE: 'bg-muted-foreground',
 };
 
 const VENDOR_STATUS_LABELS: Record<VendorStatus, string> = {
   ACTIVE: 'Active',
-  PROSPECT: 'Prospect',
-  BLACKLISTED: 'Blacklisted',
   INACTIVE: 'Inactive',
 };
 
@@ -129,7 +125,9 @@ export function VendorDetailPage() {
               <span>
                 Type:{' '}
                 <span className="text-foreground">
-                  {VENDOR_TYPE_LABELS[vendor.type] ?? vendor.type}
+                  {typeof vendor.type === 'string'
+                    ? (VENDOR_TYPE_LABELS[vendor.type as VendorTypeEnum] ?? vendor.type)
+                    : (vendor.type?.label || vendor.type?.type || 'Unknown')}
                 </span>
               </span>
               {vendor.taxId && (

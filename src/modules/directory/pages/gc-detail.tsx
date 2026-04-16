@@ -91,7 +91,7 @@ export function GCDetailPage() {
   /* ---- Computed values from real API data ---- */
   const contactLinks = (gc?.contactLinks ?? []).filter((l) => !l.contact.deletedAt);
   const projectCount = gc?.projects?.length ?? 0;
-  const typeName = gc?.gcType?.name ?? 'Unknown';
+  const typeName = gc?.gcType?.label || gc?.gcType?.name || 'Unknown';
   const typeCode = gc?.gcType?.code as GCTypeCode | undefined;
   const resolvedStats = stats ?? { totalGCs: 0, activeProjects: 0, totalCommitted: 0 };
 

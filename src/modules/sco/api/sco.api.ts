@@ -70,7 +70,7 @@ export const scoApi = {
   },
 
   async getChangeTypes(): Promise<SCOChangeType[]> {
-    const res = await api.get(`${BASE}/change-types`);
+    const res = await api.get('/lookup/type/SCO_CHANGE_TYPE');
     const raw = res.data?.data ?? res.data ?? [];
     return (raw as unknown[]).map((item) => {
       const result = scoChangeTypeSchema.safeParse(item);

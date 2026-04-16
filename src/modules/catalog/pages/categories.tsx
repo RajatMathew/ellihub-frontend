@@ -29,7 +29,7 @@ export default function CostCodeCategoriesListPage() {
   const [search, setSearch] = useState('');
 
   /* ---- Queries & Mutations ---- */
-  const { data: categories = [], isLoading } = useCostCodeCategoriesQuery();
+  const { data: categories = [], isLoading, isError, refetch } = useCostCodeCategoriesQuery();
   const createMutation = useCreateCostCodeCategoryMutation();
   const updateMutation = useUpdateCostCodeCategoryMutation();
   const deleteMutation = useDeleteCostCodeCategoryMutation();
@@ -111,6 +111,8 @@ export default function CostCodeCategoriesListPage() {
       <CategoriesTableCard
         categories={filteredCategories}
         isLoading={isLoading}
+        isError={isError}
+        refetch={refetch}
         search={search}
         onSearchChange={setSearch}
         onEdit={handleEdit}

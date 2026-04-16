@@ -273,6 +273,9 @@ export const scoDetailSchema = z
     voidedBy: z.string().nullable().optional(),
     voidedAt: z.string().nullable().optional(),
     voidReason: z.string().nullable().optional(),
+    taxPercent: z.coerce.number().optional(),
+    retainagePercent: z.coerce.number().optional(),
+    paymentTerms: z.string().optional(),
     lineItems: z.array(scoLineItemSchema).optional().default([]),
     attachments: z.array(z.object({ id: z.string(), documentId: z.string() }).passthrough()).optional().default([]),
     statusHistory: z

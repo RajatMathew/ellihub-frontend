@@ -5,18 +5,20 @@ import { z } from 'zod';
 export const contactEmailSchema = z.object({
   email: z.string().email('Invalid email address'),
   label: z.string(),
+  isPrimary: z.boolean().optional(),
 });
 
 export type ContactEmail = z.infer<typeof contactEmailSchema>;
 
 export const contactPhoneSchema = z.object({
-  phone: z.string(),
+  number: z.string(),
   label: z.string(),
+  isPrimary: z.boolean().optional(),
 });
 
 /** Input-only phone validation (not used for API response parsing). */
 export const contactPhoneInputSchema = z.object({
-  phone: z
+  number: z
     .string()
     .refine((val) => /^[+\d\s\-().]+$/.test(val), 'Phone number contains invalid characters')
     .refine((val) => val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number'),
@@ -26,15 +28,15 @@ export const contactPhoneInputSchema = z.object({
 /** Form-level phone validation — errors surface on the object (for Controller fieldState). */
 export const contactPhoneFormSchema = z
   .object({
-    phone: z.string(),
+    number: z.string(),
     label: z.string(),
   })
   .refine(
-    (data) => /^[+\d\s\-().]+$/.test(data.phone),
+    (data) => /^[+\d\s\-().]+$/.test(data.number),
     'Phone number contains invalid characters',
   )
   .refine(
-    (data) => data.phone.replace(/\D/g, '').length >= 7,
+    (data) => data.number.replace(/\D/g, '').length >= 7,
     'Enter a valid phone number',
   );
 
@@ -42,13 +44,16 @@ export type ContactPhone = z.infer<typeof contactPhoneSchema>;
 
 // --- Relation types ---
 
-export const professionalRoleSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  deletedAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
+export const professionalRoleSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional(),
+    label: z.string().optional(),
+    deletedAt: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
 
 export type ProfessionalRole = z.infer<typeof professionalRoleSchema>;
 
@@ -56,9 +61,9 @@ export const contactVendorLinkSchema = z.object({
   id: z.string(),
   contactId: z.string(),
   vendorId: z.string(),
-  isPrimary: z.boolean(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  isPrimary: z.boolean().optional().default(false),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type ContactVendorLink = z.infer<typeof contactVendorLinkSchema>;
@@ -67,9 +72,9 @@ export const contactGCLinkSchema = z.object({
   id: z.string(),
   contactId: z.string(),
   generalContractorId: z.string(),
-  isPrimary: z.boolean(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  isPrimary: z.boolean().optional().default(false),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type ContactGCLink = z.infer<typeof contactGCLinkSchema>;
@@ -80,15 +85,15 @@ export const contactSchema = z.object({
   id: z.string(),
   fullName: z.string().min(1, 'Name is required'),
   professionalRoleId: z.string().nullable(),
-  professionalRole: professionalRoleSchema.nullable(),
-  email: contactEmailSchema.nullable(),
-  phoneNumber: contactPhoneSchema.nullable(),
-  tags: z.array(z.string()),
-  vendorLinks: z.array(contactVendorLinkSchema),
-  gcLinks: z.array(contactGCLinkSchema),
-  deletedAt: z.string().datetime().nullable().optional(),
-  createdAt: z.string().datetime().optional(),
-  updatedAt: z.string().datetime().optional(),
+  professionalRole: professionalRoleSchema.nullish(),
+  email: z.array(contactEmailSchema).default([]),
+  phoneNumber: z.array(contactPhoneSchema).default([]),
+  tags: z.array(z.string()).default([]),
+  vendorLinks: z.array(contactVendorLinkSchema).default([]),
+  gcLinks: z.array(contactGCLinkSchema).default([]),
+  deletedAt: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 export type Contact = z.infer<typeof contactSchema>;
@@ -111,14 +116,34 @@ export const contactPaginatedResponseSchema = z.object({
 
 export type ContactPaginatedResponse = z.infer<typeof contactPaginatedResponseSchema>;
 
+// --- Form Schema (UI Only) ---
+
+export const contactFormSchema = z
+  .object({
+    fullName: z.string().min(1, 'Name is required'),
+    professionalRoleId: z.string().optional(),
+    email: contactEmailSchema.nullable().optional(),
+    phoneNumber: contactPhoneFormSchema.nullable().optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .refine(
+    (data) => (data.email && data.email.email) || (data.phoneNumber && data.phoneNumber.number),
+    {
+      message: 'At least one email or phone number is required',
+      path: ['email'],
+    },
+  );
+
+export type ContactFormValues = z.infer<typeof contactFormSchema>;
+
 // --- Inputs ---
 
 export const createContactInputSchema = z
   .object({
     fullName: z.string().min(1, 'Name is required'),
     professionalRoleId: z.string().optional(),
-    email: contactEmailSchema.nullable().optional(),
-    phoneNumber: contactPhoneFormSchema.nullable().optional(),
+    email: z.array(contactEmailSchema).optional(),
+    phoneNumber: z.array(contactPhoneFormSchema).optional(),
     tags: z.array(z.string()).optional(),
     vendorLinks: z
       .array(z.object({ vendorId: z.string(), isPrimary: z.boolean().optional() }))
@@ -129,7 +154,7 @@ export const createContactInputSchema = z
       )
       .optional(),
   })
-  .refine((data) => data.email || data.phoneNumber, {
+  .refine((data) => (data.email && data.email.length > 0) || (data.phoneNumber && data.phoneNumber.length > 0), {
     message: 'At least one email or phone number is required',
     path: ['email'],
   });
@@ -139,8 +164,8 @@ export type CreateContactInput = z.infer<typeof createContactInputSchema>;
 export const updateContactInputSchema = z.object({
   fullName: z.string().min(1).optional(),
   professionalRoleId: z.string().nullable().optional(),
-  email: contactEmailSchema.nullable().optional(),
-  phoneNumber: contactPhoneSchema.nullable().optional(),
+  email: z.array(contactEmailSchema).optional(),
+  phoneNumber: z.array(contactPhoneSchema).optional(),
   tags: z.array(z.string()).optional(),
 });
 

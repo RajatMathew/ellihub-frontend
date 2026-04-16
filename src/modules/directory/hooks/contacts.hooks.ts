@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 import { contactsApi } from '@modules/directory/api/contacts.api';
 import { contactsKeys } from '@modules/directory/constants/contacts.keys';
 import {
-  createContactInputSchema,
-  contactSchema,
+  contactFormSchema,
   type Contact,
   type ContactPhone,
   type ContactEmail,
+  type ContactFormValues,
   type CreateContactInput,
   type UpdateContactInput,
   type ListContactsParams,
@@ -158,8 +158,8 @@ export const useAddVendorLinkMutation = () => {
 export const useRemoveVendorLinkMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ contactId, linkId }: { contactId: string; linkId: string }) =>
-      contactsApi.removeVendorLink(contactId, linkId),
+    mutationFn: ({ contactId, vendorId }: { contactId: string; vendorId: string }) =>
+      contactsApi.removeVendorLink(contactId, vendorId),
     onSuccess: (_, { contactId }) => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
@@ -193,8 +193,13 @@ export const useAddGCLinkMutation = () => {
 export const useRemoveGCLinkMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ contactId, linkId }: { contactId: string; linkId: string }) =>
-      contactsApi.removeGCLink(contactId, linkId),
+    mutationFn: ({
+      contactId,
+      generalContractorId,
+    }: {
+      contactId: string;
+      generalContractorId: string;
+    }) => contactsApi.removeGCLink(contactId, generalContractorId),
     onSuccess: (_, { contactId }) => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
@@ -206,14 +211,11 @@ export const useRemoveGCLinkMutation = () => {
 
 /* ---- form hooks ---- */
 
-export const useContactForm = (defaults?: Partial<Contact> | Partial<CreateContactInput>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const schema: any =
-    defaults && 'id' in defaults && defaults.id != null
-      ? contactSchema
-      : createContactInputSchema;
-  return useForm({
-    resolver: zodResolver(schema),
-    defaultValues: defaults as any,
+export const useContactForm = (
+  defaults?: Partial<Contact> | Partial<CreateContactInput> | Partial<ContactFormValues>,
+) => {
+  return useForm<ContactFormValues>({
+    resolver: zodResolver(contactFormSchema),
+    defaultValues: defaults as Partial<ContactFormValues>,
   });
 };

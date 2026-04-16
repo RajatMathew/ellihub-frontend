@@ -63,7 +63,7 @@ import {
 } from '@app/components/toolbar/toolbar';
 import { getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
-import { useDeleteVendorMutation, useVendorsQuery } from '../hooks';
+import { useDeleteVendorMutation, useVendorsQuery, useVendorTypesQuery } from '../hooks';
 import type {
   ListVendorsParams,
   Vendor,
@@ -81,12 +81,10 @@ type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
 const VENDOR_STATUS_LABELS: Record<VendorStatus, string> = {
   ACTIVE: 'Active',
-  PROSPECT: 'Prospect',
-  BLACKLISTED: 'Blacklisted',
   INACTIVE: 'Inactive',
 };
 
-const VENDOR_TYPE_BADGE_VARIANTS: Record<VendorType, 'primary' | 'success' | 'info' | 'warning'> = {
+const VENDOR_TYPE_BADGE_VARIANTS: Record<string, 'primary' | 'success' | 'info' | 'warning'> = {
   MATERIAL: 'primary',
   FABRICATION: 'success',
   INSTALLATION: 'info',
@@ -100,12 +98,22 @@ function isSortByField(v: string | null): v is SortByField {
 }
 
 function isValidVendorStatus(v: string | null): v is VendorStatus {
-  return v === 'ACTIVE' || v === 'PROSPECT' || v === 'BLACKLISTED' || v === 'INACTIVE';
+  return v === 'ACTIVE' || v === 'INACTIVE';
 }
 
-function isValidVendorType(v: string | null): v is VendorType {
-  return v === 'MATERIAL' || v === 'FABRICATION' || v === 'INSTALLATION' || v === 'SUBCONTRACTOR';
+function getVendorTypeLabel(type: VendorType | null | undefined): string {
+  if (!type) return 'Unknown';
+  if (typeof type === 'string') return type;
+  return type.label || type.type || 'Unknown';
 }
+
+function getVendorTypeCode(type: VendorType | null | undefined): string {
+  if (!type) return '';
+  if (typeof type === 'string') return type;
+  return type.type || '';
+}
+
+
 
 /* ---- Page ---- */
 
@@ -121,9 +129,7 @@ export function VendorListPage() {
     : 'name';
   const sortOrder: 'asc' | 'desc' =
     searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
-  const typeFilter: VendorType | undefined = isValidVendorType(searchParams.get('type'))
-    ? (searchParams.get('type') as VendorType)
-    : undefined;
+  const typeFilter = searchParams.get('type') || undefined;
   const statusFilter: VendorStatus | undefined = isValidVendorStatus(searchParams.get('status'))
     ? (searchParams.get('status') as VendorStatus)
     : undefined;
@@ -184,6 +190,7 @@ export function VendorListPage() {
 
   // Fetch all vendors (unfiltered) to derive type tabs
   const { data: allData } = useVendorsQuery({ limit: 100 });
+  const { data: apiTypes } = useVendorTypesQuery();
   const { data, isLoading, isError, refetch } = useVendorsQuery(filters);
   const del = useDeleteVendorMutation();
 
@@ -191,15 +198,10 @@ export function VendorListPage() {
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
 
-  // Derive unique vendor types from the full unfiltered data for stable tabs
+  // Use all available types from lookup for stable tabs
   const typeTabs = useMemo(() => {
-    const items = allData?.data ?? [];
-    const seen = new Set<VendorType>();
-    for (const v of items) {
-      if (v.type) seen.add(v.type);
-    }
-    return Array.from(seen).sort();
-  }, [allData]);
+    return apiTypes ?? [];
+  }, [apiTypes]);
 
   // Compute stats from available list data (no /stats endpoint)
   const computedStats = useMemo(() => {
@@ -265,13 +267,7 @@ export function VendorListPage() {
                 </span>
                 {status !== 'ACTIVE' && (
                   <Badge
-                    variant={
-                      status === 'BLACKLISTED'
-                        ? 'destructive'
-                        : status === 'PROSPECT'
-                          ? 'primary'
-                          : 'secondary'
-                    }
+                    variant="secondary"
                     size="sm"
                   >
                     {VENDOR_STATUS_LABELS[status]}
@@ -296,13 +292,18 @@ export function VendorListPage() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         cell: ({ row }) => {
           const type = row.original.type;
+          if (!type) return <span className="text-xs text-muted-foreground italic">No type</span>;
+
+          const typeLabel = typeof type === 'string' ? (apiTypes?.find(t => t.id === type)?.label ?? type) : getVendorTypeLabel(type);
+          const typeCode = getVendorTypeCode(type);
+
           return (
             <Badge
-              variant={VENDOR_TYPE_BADGE_VARIANTS[type] ?? 'primary'}
+              variant={(typeCode && typeCode in VENDOR_TYPE_BADGE_VARIANTS ? VENDOR_TYPE_BADGE_VARIANTS[typeCode] : 'primary') as 'primary' | 'success' | 'info' | 'warning'}
               appearance="outline"
               size="sm"
             >
-              {type}
+              {typeLabel}
             </Badge>
           );
         },
@@ -434,7 +435,7 @@ export function VendorListPage() {
         enableSorting: false,
       },
     ],
-    [del],
+    [del, apiTypes],
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -542,18 +543,18 @@ export function VendorListPage() {
               </button>
               {typeTabs.map((tab) => (
                 <button
-                  key={tab}
+                  key={tab.id}
                   type="button"
                   onClick={() =>
-                    updateParams({ type: tab, page: undefined })
+                    updateParams({ type: tab.id, page: undefined })
                   }
                   className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
-                    typeFilter === tab
+                    typeFilter === tab.id
                       ? 'border-foreground text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {tab}
+                  {tab.label || tab.code}
                 </button>
               ))}
             </div>

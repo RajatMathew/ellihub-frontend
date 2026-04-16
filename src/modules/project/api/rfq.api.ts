@@ -111,7 +111,7 @@ export const rfqApi = {
   },
 
   async listStatuses(): Promise<RFQStatus[]> {
-    const res = await api.get(`${BASE}/statuses`);
+    const res = await api.get('/lookup/type/RFQ_STATUS');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(rfqStatusSchema).safeParse(raw);
     if (!result.success) {

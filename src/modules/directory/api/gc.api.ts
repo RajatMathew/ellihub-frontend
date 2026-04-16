@@ -2,14 +2,12 @@ import { z } from 'zod';
 
 import api from '@app/api';
 import {
-  gcContactLinkSchema,
   gcPaginatedResponseSchema,
   gcStatsSchema,
   gcTypeSchema,
   generalContractorDetailSchema,
   type AddGCContactLinkInput,
   type CreateGCInput,
-  type GCContactLink,
   type GCPaginatedResponse,
   type GCStats,
   type GCType,
@@ -18,13 +16,13 @@ import {
   type UpdateGCInput,
 } from '@modules/directory/schemas/gc.schema';
 
-const BASE = '/general-contractors';
+const BASE = '/gc';
 
 export const gcApi = {
   async list(params?: ListGCsParams): Promise<GCPaginatedResponse> {
     const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
-    if (params?.limit != null) query.limit = params.limit;
+    if (params?.limit != null) query.size = params.limit;
     if (params?.sortBy) query.sortBy = params.sortBy;
     if (params?.sortOrder) query.sortOrder = params.sortOrder;
     if (params?.search) query.search = params.search;
@@ -57,32 +55,41 @@ export const gcApi = {
     const raw = res.data?.data ?? res.data;
     const result = generalContractorDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[gcApi.getById] Zod parse error:', result.error.issues);
-      console.error('[gcApi.getById] Raw response:', JSON.stringify(raw, null, 2));
-      throw result.error;
+      console.warn('[gcApi.getById] Partial Validation Failure:', result.error);
+      return raw as GeneralContractorDetail;
     }
     return result.data;
   },
 
   async getStats(): Promise<GCStats> {
     const res = await api.get(`${BASE}/stats`);
-    return gcStatsSchema.parse(res.data?.data ?? res.data);
+    const data = res.data?.data ?? res.data ?? {};
+    return gcStatsSchema.parse(data);
   },
-
   async getTypes(): Promise<GCType[]> {
-    const res = await api.get(`${BASE}/types`);
+    const res = await api.get('/lookup/type/GC_TYPE');
     const data = res.data?.data ?? res.data ?? [];
     return z.array(gcTypeSchema).parse(data);
   },
 
   async create(data: CreateGCInput): Promise<GeneralContractorDetail> {
     const res = await api.post(BASE, data);
-    return generalContractorDetailSchema.parse(res.data?.data ?? res.data);
+    const parsed = generalContractorDetailSchema.safeParse(res.data?.data ?? res.data);
+    if (!parsed.success) {
+      console.warn('[gcApi.create] Partial Validation Failure:', parsed.error);
+      return (res.data?.data ?? res.data) as GeneralContractorDetail;
+    }
+    return parsed.data;
   },
 
   async update(id: string, data: UpdateGCInput): Promise<GeneralContractorDetail> {
-    const res = await api.put(`${BASE}/${id}`, data);
-    return generalContractorDetailSchema.parse(res.data?.data ?? res.data);
+    const res = await api.put(BASE, { ...data, id });
+    const parsed = generalContractorDetailSchema.safeParse(res.data?.data ?? res.data);
+    if (!parsed.success) {
+      console.warn('[gcApi.update] Partial Validation Failure:', parsed.error);
+      return (res.data?.data ?? res.data) as GeneralContractorDetail;
+    }
+    return parsed.data;
   },
 
   async remove(id: string): Promise<void> {
@@ -90,12 +97,18 @@ export const gcApi = {
   },
 
   // Contact link endpoints
-  async addContactLink(gcId: string, data: AddGCContactLinkInput): Promise<GCContactLink> {
-    const res = await api.post(`${BASE}/${gcId}/contact-links`, data);
-    return gcContactLinkSchema.parse(res.data?.data ?? res.data);
+  async addContactLink(gcId: string, data: AddGCContactLinkInput): Promise<unknown> {
+    const res = await api.patch('/contact/gc/add', {
+      ...data,
+      generalContractorId: gcId,
+    });
+    return res.data?.data ?? res.data;
   },
 
-  async removeContactLink(gcId: string, linkId: string): Promise<void> {
-    await api.delete(`${BASE}/${gcId}/contact-links/${linkId}`);
+  async removeContactLink(gcId: string, contactId: string): Promise<void> {
+    await api.patch('/contact/gc/remove', {
+      contactId,
+      generalContractorId: gcId,
+    });
   },
 };

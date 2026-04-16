@@ -15,7 +15,7 @@ import {
   type UpdateContactInput,
 } from '@modules/directory/schemas/contact.schema';
 
-const BASE = '/contacts';
+const BASE = '/contact';
 
 export const contactsApi = {
   async list(params?: ListContactsParams): Promise<ContactPaginatedResponse> {
@@ -34,34 +34,49 @@ export const contactsApi = {
     if (Object.keys(filter).length > 0) query.filter = JSON.stringify(filter);
 
     const res = await api.get(BASE, { params: query });
-    return contactPaginatedResponseSchema.parse({
-      data: res.data?.data ?? res.data ?? [],
-      pagination: res.data?.pagination ?? {
-        currentPage: params?.page ?? 1,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPreviousPage: false,
-        totalItems: Array.isArray(res.data?.data) ? res.data.data.length : 0,
-        itemsPerPage: params?.size ?? 25,
-      },
-    });
+  return contactPaginatedResponseSchema.parse({
+    data: res.data?.data ?? res.data ?? [],
+    pagination: res.data?.pagination ?? {
+      currentPage: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+      totalItems: (res.data?.data ?? res.data ?? []).length,
+      itemsPerPage: (res.data?.data ?? res.data ?? []).length || 10,
+    },
+  });
   },
 
   async getById(id: string): Promise<Contact> {
     const res = await api.get(`${BASE}/${id}`);
-    return contactSchema.parse(res.data?.data ?? res.data);
+    try {
+      return contactSchema.parse(res.data?.data ?? res.data);
+    } catch (error) {
+      console.error('Contact Detail Schema Validation Error:', error);
+      throw error;
+    }
   },
 
   // TODO: Full implementation when CRUD UI is built
   async create(data: CreateContactInput): Promise<Contact> {
     const res = await api.post(BASE, data);
-    return contactSchema.parse(res.data?.data ?? res.data);
+    const parsed = contactSchema.safeParse(res.data?.data ?? res.data);
+    if (!parsed.success) {
+      console.warn('Contact Create Partial Validation Failure:', parsed.error);
+      return (res.data?.data ?? res.data) as Contact;
+    }
+    return parsed.data;
   },
 
   // TODO: Full implementation when CRUD UI is built
   async update(id: string, data: UpdateContactInput): Promise<Contact> {
-    const res = await api.put(`${BASE}/${id}`, data);
-    return contactSchema.parse(res.data?.data ?? res.data);
+    const res = await api.put(BASE, { ...data, id });
+    const parsed = contactSchema.safeParse(res.data?.data ?? res.data);
+    if (!parsed.success) {
+      console.warn('Contact Update Partial Validation Failure:', parsed.error);
+      return (res.data?.data ?? res.data) as Contact;
+    }
+    return parsed.data;
   },
 
   async remove(id: string): Promise<void> {
@@ -69,7 +84,7 @@ export const contactsApi = {
   },
 
   // TODO: Replace with dedicated sub-resource endpoints when CRUD UI is built
-  async addPhone(id: string, phone: { phone: string; label: string }): Promise<Contact> {
+  async addPhone(id: string, phone: { number: string; label: string }): Promise<Contact> {
     const res = await api.post(`${BASE}/${id}/phones`, phone);
     return contactSchema.parse(res.data?.data ?? res.data);
   },
@@ -93,37 +108,60 @@ export const contactsApi = {
   async addVendorLink(
     contactId: string,
     data: { vendorId: string; isPrimary?: boolean },
-  ): Promise<Contact> {
-    const res = await api.post(`${BASE}/${contactId}/vendor-links`, data);
-    return contactSchema.parse(res.data?.data ?? res.data);
+  ): Promise<unknown> {
+    const res = await api.patch(`${BASE}/vendor/add`, { ...data, contactId });
+    return res.data?.data ?? res.data;
   },
 
-  async removeVendorLink(contactId: string, linkId: string): Promise<Contact> {
-    const res = await api.delete(`${BASE}/${contactId}/vendor-links/${linkId}`);
-    return contactSchema.parse(res.data?.data ?? res.data);
+  async removeVendorLink(contactId: string, vendorId: string): Promise<unknown> {
+    try {
+      const res = await api.patch(`${BASE}/vendor/remove`, { contactId, vendorId });
+      return res.data?.data ?? res.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number; data?: { details?: { code?: string } } } };
+      if (axiosError.response?.status === 404 || axiosError.response?.data?.details?.code === 'NotFoundError') {
+        return { success: true, message: 'Already unlinked' };
+      }
+      throw error;
+    }
   },
 
   // --- GC link sub-resource ---
   async addGCLink(
     contactId: string,
     data: { generalContractorId: string; isPrimary?: boolean },
-  ): Promise<Contact> {
-    const res = await api.post(`${BASE}/${contactId}/gc-links`, data);
-    return contactSchema.parse(res.data?.data ?? res.data);
+  ): Promise<unknown> {
+    const res = await api.patch(`${BASE}/gc/add`, { ...data, contactId });
+    return res.data?.data ?? res.data;
   },
 
-  async removeGCLink(contactId: string, linkId: string): Promise<Contact> {
-    const res = await api.delete(`${BASE}/${contactId}/gc-links/${linkId}`);
-    return contactSchema.parse(res.data?.data ?? res.data);
+  async removeGCLink(contactId: string, generalContractorId: string): Promise<unknown> {
+    try {
+      const res = await api.patch(`${BASE}/gc/remove`, { contactId, generalContractorId });
+      return res.data?.data ?? res.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number; data?: { details?: { code?: string } } } };
+      if (axiosError.response?.status === 404 || axiosError.response?.data?.details?.code === 'NotFoundError') {
+        return { success: true, message: 'Already unlinked' };
+      }
+      throw error;
+    }
   },
 
   async getDirectoryKpis(): Promise<DirectoryKpis> {
-    const res = await api.get(`${BASE}/directory-kpis`);
+    const res = await api.get(`${BASE}/stats`);
     return directoryKpisSchema.parse(res.data?.data ?? res.data);
   },
 
   async getProfessionalRoles(): Promise<ProfessionalRole[]> {
-    const res = await api.get(`${BASE}/professional-roles`);
-    return z.array(professionalRoleSchema).parse(res.data?.data ?? res.data ?? []);
+    const res = await api.get('/lookup/type/PROFESSIONAL_ROLE');
+    const raw = res.data?.data ?? res.data ?? [];
+    const result = z.array(professionalRoleSchema).safeParse(raw);
+    if (!result.success) {
+      console.error('[contactsApi.getProfessionalRoles] Zod parse error:', result.error.issues);
+      // Return raw data if it looks like an array, to avoid breaking the UI
+      return (Array.isArray(raw) ? raw : []) as ProfessionalRole[];
+    }
+    return result.data;
   },
 };

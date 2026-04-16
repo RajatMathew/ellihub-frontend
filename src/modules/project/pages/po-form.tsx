@@ -482,8 +482,8 @@ export function POFormPage() {
                     const contact = contactsById.get(contactId);
                     if (!contact) return;
                     setValue('contactName', contact.fullName, { shouldDirty: true });
-                    setValue('contactEmail', contact.email?.email ?? '', { shouldDirty: true });
-                    setValue('contactPhone', contact.phoneNumber?.phone ?? '', { shouldDirty: true });
+                    setValue('contactEmail', contact.email?.[0]?.email ?? '', { shouldDirty: true });
+                    setValue('contactPhone', contact.phoneNumber?.[0]?.number ?? '', { shouldDirty: true });
                   }}
                   placeholder="Search contacts..."
                   searchPlaceholder="Search by name..."

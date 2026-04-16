@@ -71,7 +71,7 @@ import {
   useProfessionalRolesQuery,
   useVendorsQuery,
 } from '../hooks';
-import type { Contact, DirectoryKpis, ListContactsParams } from '../schemas/contact.schema';
+import type { Contact, ListContactsParams } from '../schemas/contact.schema';
 
 /* ---- Constants ---- */
 
@@ -80,13 +80,6 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 const SORT_BY_OPTIONS = ['fullName', 'createdAt', 'updatedAt'] as const;
 type SortByField = (typeof SORT_BY_OPTIONS)[number];
-
-const FALLBACK_KPIS: DirectoryKpis = {
-  totalContacts: 0,
-  primaryContacts: 0,
-  gcLinks: 0,
-  vendorLinks: 0,
-};
 
 /* ---- Search-param helpers ---- */
 
@@ -172,14 +165,12 @@ export function ContactsListPage() {
   // Use API data
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
-  const resolvedKpis = kpis ?? FALLBACK_KPIS;
-
-  // Build name lookup maps for vendor/GC IDs → names
-  const vendorNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const v of vendorsData?.data ?? []) map.set(v.id, v.name);
-    return map;
-  }, [vendorsData]);
+  const resolvedKpis = kpis ?? {
+    totalContacts: totalCount,
+    primaryContacts: 0,
+    gcLinks: 0,
+    vendorLinks: 0,
+  };
 
   // Map URL sort state → TanStack SortingState
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -211,6 +202,13 @@ export function ContactsListPage() {
     },
   ];
 
+  // Build name lookup maps for vendor/GC IDs → names
+  const vendorNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vendorsData?.data ?? []) map.set(v.id, v.name);
+    return map;
+  }, [vendorsData]);
+
   const columns = useMemo<ColumnDef<Contact>[]>(
     () => [
       {
@@ -230,9 +228,9 @@ export function ContactsListPage() {
               >
                 {row.original.fullName}
               </Link>
-              {row.original.professionalRole?.name && (
+              {row.original.professionalRole && (
                 <span className="text-2sm text-muted-foreground">
-                  {row.original.professionalRole.name}
+                  {row.original.professionalRole.label || row.original.professionalRole.name}
                 </span>
               )}
             </div>
@@ -277,7 +275,7 @@ export function ContactsListPage() {
         id: 'email',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
         cell: ({ row }) => {
-          const email = row.original.email;
+          const email = row.original.email?.[0];
           if (!email) return <span className="text-sm text-muted-foreground">—</span>;
           return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -303,13 +301,13 @@ export function ContactsListPage() {
         id: 'phone',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
         cell: ({ row }) => {
-          const phone = row.original.phoneNumber;
+          const phone = row.original.phoneNumber?.[0];
           if (!phone) return <span className="text-sm text-muted-foreground">—</span>;
           return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="size-3.5" />
-              <a href={`tel:${phone.phone}`} className="hover:text-primary">
-                {phone.phone}
+              <a href={`tel:${phone.number}`} className="hover:text-primary">
+                {phone.number}
               </a>
             </div>
           );
@@ -328,14 +326,16 @@ export function ContactsListPage() {
       {
         id: 'role',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Roles" />,
-        cell: ({ row }) =>
-          row.original.professionalRole?.name ? (
+        cell: ({ row }) => {
+          const role = row.original.professionalRole;
+          return role ? (
             <Badge variant="primary" appearance="light" size="sm">
-              {row.original.professionalRole.name}
+              {role.label || role.name || role.id}
             </Badge>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
-          ),
+          );
+        },
         meta: {
           headerClassName: 'min-w-[150px]',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
@@ -497,7 +497,7 @@ export function ContactsListPage() {
                   <SelectItem value="all">All Roles</SelectItem>
                   {professionalRoles?.map((role) => (
                     <SelectItem key={role.id} value={role.id}>
-                      {role.name}
+                      {role.label || role.name || role.id}
                     </SelectItem>
                   ))}
                 </SelectContent>

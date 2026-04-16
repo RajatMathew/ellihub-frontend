@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, Check, CircleUserRound, FileText, Globe, Mail, Phone, Plus, X } from 'lucide-react';
@@ -18,13 +18,7 @@ import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@app/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
@@ -38,7 +32,6 @@ import {
   useCreateGCMutation,
   useGCDetailQuery,
   useGCTypesQuery,
-  useRemoveGCContactLinkMutation,
   useUpdateGCMutation,
 } from '../hooks';
 import {
@@ -78,7 +71,6 @@ export function GCFormPage() {
   const createMutation = useCreateGCMutation();
   const updateMutation = useUpdateGCMutation();
   const addContactLinkMutation = useAddGCContactLinkMutation();
-  const removeContactLinkMutation = useRemoveGCContactLinkMutation();
 
   // Contact options for SearchableSelect
   const contactOptions = (contactsData?.data ?? []).map((c) => ({
@@ -87,7 +79,7 @@ export function GCFormPage() {
   }));
 
   // Form setup
-  const { control, handleSubmit, reset } = useForm<GCFormValues>({
+  const { control, handleSubmit, reset, watch, setValue } = useForm<GCFormValues>({
     resolver: zodResolver(gcFormSchema),
     defaultValues: {
       name: '',
@@ -110,12 +102,15 @@ export function GCFormPage() {
   const [originalLinks, setOriginalLinks] = useState<GCContactLink[]>([]);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
+  // Track if we have performed the initial form population to avoid wiping user changes
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Reset form when GC data loads in edit mode
   useEffect(() => {
-    if (isEdit && gcDetail) {
+    if (isEdit && gcDetail && !isInitialized) {
       reset({
         name: gcDetail.name,
-        gcTypeId: gcDetail.gcTypeId,
+        gcTypeId: gcDetail.gcTypeId || gcDetail.gcType?.id || '',
         website: gcDetail.website ?? '',
         status: gcDetail.status,
         email: gcDetail.email ?? '',
@@ -131,8 +126,23 @@ export function GCFormPage() {
       setContactLinks(
         activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })),
       );
+      setIsInitialized(true);
     }
-  }, [isEdit, gcDetail, reset]);
+  }, [isEdit, gcDetail, reset, isInitialized]);
+
+  // Special sync for gcTypeId if it arrived late in gcTypes
+  useEffect(() => {
+    if (isEdit && gcDetail && gcTypes.length > 0 && !watch('gcTypeId')) {
+      setValue('gcTypeId', gcDetail.gcTypeId || gcDetail.gcType?.id || '');
+    }
+  }, [gcTypes.length, isEdit, gcDetail, setValue, watch]);
+
+  const gcTypeOptions = useMemo(() => 
+    gcTypes.map((t) => ({
+      value: t.id,
+      label: t.label || t.name || 'Unknown',
+    })),
+  [gcTypes]);
 
   const [activeSection, setActiveSection] = useState<string>('info');
   const [isSaving, setIsSaving] = useState(false);
@@ -140,6 +150,27 @@ export function GCFormPage() {
 
   const handleContactCreated = (contact: { id: string; fullName: string }) => {
     setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+  };
+
+  const handleFillRandom = () => {
+    if (gcTypes.length === 0) {
+      toast.error('No GC types available to pick from.');
+      return;
+    }
+    const randomType = gcTypes[Math.floor(Math.random() * gcTypes.length)];
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    reset({
+      name: `Test GC ${randomSuffix}`,
+      gcTypeId: randomType.id,
+      website: `https://test-gc-${randomSuffix}.com`,
+      status: 'ACTIVE',
+      email: `test-${randomSuffix}@example.com`,
+      phone: `(555) 000-${randomSuffix.toString().padStart(4, '0')}`,
+      address: `${randomSuffix} Test Parkway, Dallas TX 75201`,
+      paymentTerms: 'NET_30',
+      retainagePercent: 10,
+    });
+    toast.info('Form filled with test data.');
   };
 
   const onSubmit = async (formData: GCFormValues) => {
@@ -161,39 +192,18 @@ export function GCFormPage() {
         // 1. Update GC fields
         await updateMutation.mutateAsync({ id, data: payload });
 
-        // 2. Compute contact link diff
-        const originalByContact = new Map(
-          originalLinks.map((l) => [l.contactId, l]),
-        );
-        const currentByContact = new Map(
-          contactLinks.map((l) => [l.contactId, l]),
-        );
-
-        const toRemove = originalLinks.filter(
-          (l) => !currentByContact.has(l.contactId),
-        );
-        const toAdd = contactLinks.filter(
-          (l) => !originalByContact.has(l.contactId),
-        );
-
-        const linkOps: Promise<unknown>[] = [
-          ...toRemove.map((link) =>
-            removeContactLinkMutation.mutateAsync({ gcId: id, linkId: link.id }),
-          ),
-          ...toAdd.map((link) =>
+        // 2. Re-add all contact links (the PUT replaces/clears them)
+        if (contactLinks.length > 0) {
+          const linkOps = contactLinks.map((link) =>
             addContactLinkMutation.mutateAsync({
               gcId: id,
               data: { contactId: link.contactId, isPrimary: link.isPrimary },
             }),
-          ),
-        ];
-
-        if (linkOps.length > 0) {
+          );
           const results = await Promise.allSettled(linkOps);
           const failures = results.filter((r) => r.status === 'rejected');
           if (failures.length > 0) {
-            toast.error(`${failures.length} contact link operation(s) failed.`);
-            return;
+            toast.error(`${failures.length} contact link(s) failed to save.`);
           }
         }
 
@@ -244,7 +254,8 @@ export function GCFormPage() {
   }
 
   return (
-    <form
+    <>
+      <form
       onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
       className="container-fluid py-7.5"
     >
@@ -269,15 +280,29 @@ export function GCFormPage() {
             </span>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" type="button" onClick={handleFillRandom}>
+              Fill Random
+            </Button>
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
               </Link>
             </Button>
-            <Button variant="outline" size="sm" type="submit" disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleSubmit(onSubmit)()}
+            >
               Save as Draft
             </Button>
-            <Button size="sm" type="submit" disabled={isSubmitting}>
+            <Button
+              size="sm"
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleSubmit(onSubmit)()}
+            >
               <Check className="size-4" />
               {isEdit ? 'Save Changes' : 'Create GC'}
             </Button>
@@ -330,30 +355,27 @@ export function GCFormPage() {
                   )}
                 />
 
-                <Controller
-                  name="gcTypeId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        GC Type
-                      </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger aria-invalid={fieldState.invalid}>
-                          <SelectValue placeholder="Select type..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {gcTypes.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
+                      <Controller
+                        name="gcTypeId"
+                        control={control}
+                        render={({ field, fieldState }) => (
+                          <Field data-invalid={fieldState.invalid}>
+                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                              GC Type
+                            </FieldLabel>
+                            <SearchableSelect
+                              options={gcTypeOptions}
+                              value={field.value || null}
+                              onValueChange={(val) => field.onChange(val || '')}
+                              placeholder="Select type..."
+                              searchPlaceholder="Search types..."
+                              emptyMessage="No types found."
+                              disabled={gcTypes.length === 0}
+                            />
+                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                          </Field>
+                        )}
+                      />
               </div>
 
               {/* Row 2: Website + Status */}
@@ -660,11 +682,13 @@ export function GCFormPage() {
           </Card>
       </div>
 
-      <QuickCreateContactDialog
-        open={contactDialogOpen}
-        onOpenChange={setContactDialogOpen}
-        onCreated={handleContactCreated}
-      />
     </form>
+
+    <QuickCreateContactDialog
+      open={contactDialogOpen}
+      onOpenChange={setContactDialogOpen}
+      onCreated={handleContactCreated}
+    />
+    </>
   );
 }

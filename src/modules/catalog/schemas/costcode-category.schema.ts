@@ -4,7 +4,7 @@ export const costCodeCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable().optional(),
-  tenantId: z.string(),
+  tenantId: z.string().optional(),
   deletedAt: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

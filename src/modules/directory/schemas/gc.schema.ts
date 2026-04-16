@@ -2,16 +2,10 @@ import { z } from 'zod';
 
 // --- Enums ---
 
-export const gcTypeCodeSchema = z.enum([
-  'PUBLIC_STATE',
-  'PRIVATE',
-  'INSTITUTIONAL',
-  'CIVIL',
-  'SCA',
-]);
-export type GCTypeCode = z.infer<typeof gcTypeCodeSchema>;
+export const gcTypeCodeSchema = z.string();
+export type GCTypeCode = string;
 
-export const gcStatusSchema = z.enum(['PROSPECTING', 'ACTIVE', 'INACTIVE']);
+export const gcStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PROSPECTING']);
 export type GCStatus = z.infer<typeof gcStatusSchema>;
 
 export const paymentTermsSchema = z.enum([
@@ -29,8 +23,9 @@ export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 export const gcTypeSchema = z
   .object({
     id: z.string(),
-    name: z.string(),
-    code: gcTypeCodeSchema,
+    name: z.string().optional(),
+    label: z.string().optional(),
+    code: z.string().optional(),
     description: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
@@ -41,23 +36,25 @@ export type GCType = z.infer<typeof gcTypeSchema>;
 
 // --- Contact link (detail endpoint shape) ---
 
-const contactEmailSchema = z
-  .object({ email: z.string(), label: z.string() })
-  .nullable()
-  .optional();
+const contactEmailSchema = z.object({
+  email: z.string(),
+  label: z.string(),
+  isPrimary: z.boolean().optional(),
+});
 
-const contactPhoneSchema = z
-  .object({ phone: z.string(), label: z.string() })
-  .nullable()
-  .optional();
+const contactPhoneSchema = z.object({
+  number: z.string(),
+  label: z.string(),
+  isPrimary: z.boolean().optional(),
+});
 
 export const gcContactLinkContactSchema = z
   .object({
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: contactEmailSchema,
-    phoneNumber: contactPhoneSchema,
+    email: z.array(contactEmailSchema).optional().default([]),
+    phoneNumber: z.array(contactPhoneSchema).optional().default([]),
     tags: z.array(z.string()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -87,8 +84,8 @@ export const generalContractorSchema = z
   .object({
     id: z.string(),
     name: z.string().min(1, 'GC name is required'),
-    gcTypeId: z.string(),
-    gcType: gcTypeSchema,
+    gcTypeId: z.string().nullable().optional(),
+    gcType: gcTypeSchema.nullable().optional(),
     status: gcStatusSchema,
     address: z.string().nullable().optional().default(null),
     phone: z.string().nullable().optional().default(null),
@@ -117,8 +114,8 @@ export const generalContractorDetailSchema = z
   .object({
     id: z.string(),
     name: z.string(),
-    gcTypeId: z.string(),
-    gcType: gcTypeSchema,
+    gcTypeId: z.string().nullable().optional(),
+    gcType: gcTypeSchema.nullable().optional(),
     status: gcStatusSchema,
     address: z.string().nullable().optional().default(null),
     phone: z.string().nullable().optional().default(null),

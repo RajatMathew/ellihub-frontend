@@ -2,20 +2,27 @@ import { z } from 'zod';
 
 // --- Enums ---
 
-export const vendorTypeSchema = z.enum([
+export const vendorTypeEnumSchema = z.enum([
   'MATERIAL',
   'FABRICATION',
   'INSTALLATION',
   'SUBCONTRACTOR',
 ]);
+export type VendorTypeEnum = z.infer<typeof vendorTypeEnumSchema>;
+
+export const vendorTypeObjectSchema = z.object({
+  id: z.string(),
+  type: z.string().optional(),
+  label: z.string().optional(),
+  name: z.string().optional(),
+});
+export type VendorTypeObject = z.infer<typeof vendorTypeObjectSchema>;
+
+// Current API returns an object for type or a string ID/enum
+export const vendorTypeSchema = z.union([z.string(), vendorTypeObjectSchema]);
 export type VendorType = z.infer<typeof vendorTypeSchema>;
 
-export const vendorStatusSchema = z.enum([
-  'PROSPECT',
-  'ACTIVE',
-  'BLACKLISTED',
-  'INACTIVE',
-]);
+export const vendorStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export type VendorStatus = z.infer<typeof vendorStatusSchema>;
 
 export const paymentTermsSchema = z.enum([
@@ -30,23 +37,25 @@ export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 
 // --- Contact link (detail endpoint shape) ---
 
-const contactEmailSchema = z
-  .object({ email: z.string(), label: z.string() })
-  .nullable()
-  .optional();
+const contactEmailSchema = z.object({
+  email: z.string(),
+  label: z.string(),
+  isPrimary: z.boolean().optional(),
+});
 
-const contactPhoneSchema = z
-  .object({ phone: z.string(), label: z.string() })
-  .nullable()
-  .optional();
+const contactPhoneSchema = z.object({
+  number: z.string(),
+  label: z.string(),
+  isPrimary: z.boolean().optional(),
+});
 
 export const vendorContactLinkContactSchema = z
   .object({
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: contactEmailSchema,
-    phoneNumber: contactPhoneSchema,
+    email: z.array(contactEmailSchema).optional().default([]),
+    phoneNumber: z.array(contactPhoneSchema).optional().default([]),
     tags: z.array(z.string()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -76,7 +85,8 @@ export const vendorSchema = z
   .object({
     id: z.string(),
     name: z.string().min(1, 'Vendor name is required'),
-    type: vendorTypeSchema,
+    typeId: z.string().nullable().optional(),
+    type: vendorTypeSchema.nullable().optional(),
     categoryTags: z.array(z.string()).optional().default([]),
     phone: z.string().nullable().optional().default(null),
     email: z.string().nullable().optional().default(null),
@@ -107,7 +117,8 @@ export const vendorDetailSchema = z
   .object({
     id: z.string(),
     name: z.string(),
-    type: vendorTypeSchema,
+    typeId: z.string().nullable().optional(),
+    type: vendorTypeSchema.nullable().optional(),
     categoryTags: z.array(z.string()).optional().default([]),
     phone: z.string().nullable().optional().default(null),
     email: z.string().nullable().optional().default(null),
@@ -156,7 +167,8 @@ export type CreateVendorContactInput = z.infer<typeof createVendorContactInputSc
 
 export const createVendorInputSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
-  type: vendorTypeSchema,
+  typeId: z.string().optional(),
+    type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
@@ -172,6 +184,7 @@ export type CreateVendorInput = z.infer<typeof createVendorInputSchema>;
 
 export const updateVendorInputSchema = z.object({
   name: z.string().min(1).optional(),
+  typeId: z.string().optional(),
   type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().nullable().optional(),
@@ -222,7 +235,7 @@ export type VendorFormValues = z.infer<typeof vendorFormSchema>;
 
 export const quickCreateVendorSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
-  type: vendorTypeSchema,
+  type: z.string().min(1, 'Vendor type is required'),
   status: vendorStatusSchema,
 });
 

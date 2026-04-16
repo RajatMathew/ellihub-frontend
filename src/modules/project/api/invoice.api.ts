@@ -210,7 +210,7 @@ export const invoiceApi = {
   /* ---- lookups ---- */
 
   async listStatuses(): Promise<InvoiceStatus[]> {
-    const res = await api.get(`${BASE}/statuses`);
+    const res = await api.get('/lookup/type/INVOICE_STATUS');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(invoiceStatusSchema).safeParse(raw);
     if (!result.success) {

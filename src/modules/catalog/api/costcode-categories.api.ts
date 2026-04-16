@@ -14,7 +14,15 @@ const BASE = '/cost-code/categories';
 export const costCodeCategoriesApi = {
   async list(): Promise<CostCodeCategory[]> {
     const res = await api.get(BASE);
-    return costCodeCategoryListSchema.parse(res.data?.data ?? res.data);
+    const rawData = res.data?.data ?? res.data ?? [];
+    const result = costCodeCategoryListSchema.safeParse(rawData);
+    
+    if (!result.success) {
+      console.warn('[costCodeCategoriesApi.list] Validation failed:', result.error.format());
+      return rawData as CostCodeCategory[];
+    }
+    
+    return result.data;
   },
 
   async get(id: string): Promise<CostCodeCategory> {

@@ -43,6 +43,7 @@ import {
   useDeleteVendorContactMutation,
   useUpdateVendorMutation,
   useVendorDetailQuery,
+  useVendorTypesQuery,
 } from '../hooks';
 import {
   vendorFormSchema,
@@ -50,7 +51,7 @@ import {
   type VendorContactLink,
   type VendorFormValues,
   type VendorStatus,
-  type VendorType,
+  type VendorTypeObject,
 } from '../schemas/vendor.schema';
 
 /* ---- Helpers ---- */
@@ -76,6 +77,7 @@ export function VendorFormPage() {
   // Queries
   const { data: vendorDetail, isLoading: isLoadingVendor } = useVendorDetailQuery(id ?? '');
   const { data: contactsData } = useContactsQuery({ size: 1000 });
+  const { data: apiTypes } = useVendorTypesQuery();
 
   // Mutations
   const createMutation = useCreateVendorMutation();
@@ -113,27 +115,45 @@ export function VendorFormPage() {
   // Reset form when vendor data loads in edit mode
   useEffect(() => {
     if (isEdit && vendorDetail) {
+      const typeValue =
+        vendorDetail.typeId ||
+        (typeof vendorDetail.type === 'object' ? vendorDetail.type?.id : vendorDetail.type) ||
+        '';
+
+
       reset({
         name: vendorDetail.name,
-        type: vendorDetail.type,
-        status: vendorDetail.status,
-        taxId: vendorDetail.taxId ?? '',
         website: vendorDetail.website ?? '',
         paymentTerms: vendorDetail.paymentTerms,
+        type: typeValue,
+        status: vendorDetail.status,
+        taxId: vendorDetail.taxId ?? '',
       });
-      const activeLinks = (vendorDetail.contactLinks ?? []).filter(
-        (l) => !l.contact?.deletedAt,
-      );
+      const activeLinks = (vendorDetail.contactLinks ?? []).filter((l) => !l.contact?.deletedAt);
       setOriginalLinks(activeLinks);
-      setContactLinks(
-        activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })),
-      );
+      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })));
     }
-  }, [isEdit, vendorDetail, reset]);
+  }, [isEdit, vendorDetail, reset, apiTypes]);
 
   const [activeSection, setActiveSection] = useState<string>('info');
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
+
+  const fillRandom = () => {
+    const randomId = Math.floor(Math.random() * 10000);
+    const randomType = apiTypes?.[Math.floor(Math.random() * (apiTypes?.length || 1))]?.id;
+
+    reset({
+      name: `Random Vendor ${randomId}`,
+      type: randomType ?? 'MATERIAL',
+      status: (['ACTIVE', 'INACTIVE'] as const)[Math.floor(Math.random() * 2)],
+      taxId: `${Math.floor(10 + Math.random() * 89)}-${Math.floor(
+        1000000 + Math.random() * 8999999,
+      )}`,
+      website: `https://vendor-${randomId}.com`,
+      paymentTerms: 'NET_30',
+    });
+  };
 
   const handleContactCreated = (contact: { id: string; fullName: string }) => {
     setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
@@ -148,7 +168,7 @@ export function VendorFormPage() {
           id,
           data: {
             name: formData.name,
-            type: formData.type as VendorType,
+            typeId: formData.type || undefined,
             status: formData.status as VendorStatus,
             taxId: formData.taxId || null,
             website: formData.website || null,
@@ -205,7 +225,7 @@ export function VendorFormPage() {
         // 1. Create vendor
         const created = await createMutation.mutateAsync({
           name: formData.name,
-          type: formData.type as VendorType,
+          typeId: formData.type || undefined,
           status: formData.status as VendorStatus,
           taxId: formData.taxId || undefined,
           website: formData.website || undefined,
@@ -271,6 +291,11 @@ export function VendorFormPage() {
             </span>
           </ToolbarHeading>
           <ToolbarActions>
+            {!isEdit && (
+              <Button variant="outline" size="sm" type="button" onClick={fillRandom}>
+                Fill Random
+              </Button>
+            )}
             <Button variant="outline" size="sm" type="button" asChild>
               <Link to=".." relative="path">
                 Cancel
@@ -340,16 +365,26 @@ export function VendorFormPage() {
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Vendor Type
                       </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        key={`type-${field.value}`}
+                        value={field.value || ''}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger aria-invalid={fieldState.invalid}>
                           <SelectValue placeholder="Select type..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {VENDOR_TYPE_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
+                          {(apiTypes && apiTypes.length > 0
+                            ? (apiTypes as VendorTypeObject[]).map((t) => ({ value: t.id, label: t.label || t.name }))
+                            : VENDOR_TYPE_OPTIONS
+                          ).map((opt) => {
+                            const val = typeof opt.value === 'string' ? opt.value : (opt.value as VendorTypeObject).id;
+                            return (
+                              <SelectItem key={val} value={val}>
+                                {opt.label}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -363,25 +398,31 @@ export function VendorFormPage() {
                 <Controller
                   name="status"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Default Status
-                      </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {VENDOR_STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  )}
+                  render={({ field }) => {
+                    return (
+                      <Field>
+                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                          Default Status
+                        </FieldLabel>
+                        <Select
+                          key={`status-${field.value}`}
+                          value={field.value || ''}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VENDOR_STATUS_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    );
+                  }}
                 />
 
                 <Controller

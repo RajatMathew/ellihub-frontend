@@ -193,7 +193,7 @@ export function CostCodePicker({
             aria-expanded={open}
             aria-invalid={invalid}
             className={cn(
-              'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
+              'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-(--text-sm--line-height) gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
               'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
               '[&>span]:line-clamp-1',
             )}
@@ -439,9 +439,9 @@ export function SCOFormPage() {
         vendorContactEmail: scoDetail.vendorContactEmail ?? '',
         vendorReferenceNumber: scoDetail.vendorReferenceNumber ?? '',
         costCodeId: scoDetail.costCode?.id ?? undefined,
-        taxPercent: Number((scoDetail as any).taxPercent ?? 0),
-        retainagePercent: Number((scoDetail as any).retainagePercent ?? 0),
-        paymentTerms: (scoDetail as any).paymentTerms ?? 'NET_30',
+        taxPercent: Number(scoDetail.taxPercent ?? 0),
+        retainagePercent: Number(scoDetail.retainagePercent ?? 0),
+        paymentTerms: scoDetail.paymentTerms ?? 'NET_30',
         lineItems:
           scoDetail.lineItems.length > 0
             ? scoDetail.lineItems.map((li) => ({
@@ -894,7 +894,7 @@ export function SCOFormPage() {
                     const contact = contactsById.get(contactId);
                     if (!contact) return;
                     setValue('vendorContactName', contact.fullName, { shouldDirty: true });
-                    setValue('vendorContactEmail', contact.email?.email ?? '', { shouldDirty: true });
+                    setValue('vendorContactEmail', contact.email?.[0]?.email ?? '', { shouldDirty: true });
                   }}
                   placeholder="Search contacts..."
                   searchPlaceholder="Search by name..."

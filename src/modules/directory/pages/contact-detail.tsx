@@ -88,7 +88,7 @@ export function ContactDetailPage() {
     return map;
   }, [vendorsData]);
 
-  const roleName = apiContact?.professionalRole?.name ?? null;
+  const roleName = apiContact?.professionalRole?.label ?? apiContact?.professionalRole?.name ?? null;
   const resolvedVendorLinks = (apiContact?.vendorLinks ?? []).map((link) => ({
     ...link,
     name: vendorNames.get(link.vendorId) ?? link.vendorId,
@@ -107,7 +107,7 @@ export function ContactDetailPage() {
   const [addPhoneError, setAddPhoneError] = useState('');
 
   const validateAndSubmitPhone = () => {
-    const result = contactPhoneInputSchema.safeParse({ phone: newPhone.trim(), label: newPhoneLabel });
+    const result = contactPhoneInputSchema.safeParse({ number: newPhone.trim(), label: newPhoneLabel });
     if (!result.success) {
       setAddPhoneError(result.error.issues[0]?.message ?? 'Enter a valid phone number.');
       return;
@@ -119,7 +119,7 @@ export function ContactDetailPage() {
   const handleAddPhone = () => {
     if (!id || !newPhone.trim()) return;
     addPhoneMutation.mutate(
-      { id, phone: { phone: newPhone.trim(), label: newPhoneLabel } },
+      { id, phone: { number: newPhone.trim(), label: newPhoneLabel } },
       {
         onSuccess: () => {
           setNewPhone('');
@@ -483,11 +483,11 @@ export function ContactDetailPage() {
                         )}
                       </div>
                       <div className="space-y-3">
-                        {contact.phoneNumber ? (
+                        {contact.phoneNumber?.[0] ? (
                           <ContactInfoItem
                             icon={Phone}
-                            value={contact.phoneNumber.phone}
-                            label={contact.phoneNumber.label}
+                            value={contact.phoneNumber[0].number}
+                            label={contact.phoneNumber[0].label}
                             onRemove={() => setRemovePhoneConfirm(true)}
                           />
                         ) : (
@@ -495,7 +495,7 @@ export function ContactDetailPage() {
                             <span className="text-sm text-muted-foreground">No phone number</span>
                           )
                         )}
-                        {showAddPhone && !contact.phoneNumber && (
+                        {showAddPhone && !contact.phoneNumber?.[0] && (
                           <InlineAddForm
                             placeholder="(555) 000-0000"
                             value={newPhone}
@@ -533,11 +533,11 @@ export function ContactDetailPage() {
                         )}
                       </div>
                       <div className="space-y-3">
-                        {contact.email ? (
+                        {contact.email?.[0] ? (
                           <ContactInfoItem
                             icon={Mail}
-                            value={contact.email.email}
-                            label={contact.email.label}
+                            value={contact.email[0].email}
+                            label={contact.email[0].label}
                             onRemove={() => setRemoveEmailConfirm(true)}
                           />
                         ) : (
@@ -545,7 +545,7 @@ export function ContactDetailPage() {
                             <span className="text-sm text-muted-foreground">No email address</span>
                           )
                         )}
-                        {showAddEmail && !contact.email && (
+                        {showAddEmail && !contact.email?.[0] && (
                           <InlineAddForm
                             placeholder="email@example.com"
                             inputType="email"
@@ -641,7 +641,7 @@ export function ContactDetailPage() {
         description={
           <>
             Remove{' '}
-            <strong>{contact.phoneNumber?.phone ?? ''}</strong>{' '}
+            <strong>{contact.phoneNumber?.[0]?.number ?? ''}</strong>{' '}
             from {contact.fullName}?
           </>
         }
@@ -666,7 +666,7 @@ export function ContactDetailPage() {
         description={
           <>
             Remove{' '}
-            <strong>{contact.email?.email ?? ''}</strong>{' '}
+            <strong>{contact.email?.[0]?.email ?? ''}</strong>{' '}
             from {contact.fullName}?
           </>
         }

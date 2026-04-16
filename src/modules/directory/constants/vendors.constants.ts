@@ -15,8 +15,6 @@ export const VENDOR_TYPE_OPTIONS: { value: VendorType; label: string }[] = [
 
 export const VENDOR_STATUS_OPTIONS: { value: VendorStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
-  { value: 'PROSPECT', label: 'Prospect' },
-  { value: 'BLACKLISTED', label: 'Blacklisted' },
   { value: 'INACTIVE', label: 'Inactive' },
 ];
 

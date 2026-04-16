@@ -92,8 +92,8 @@ export const useAddGCContactLinkMutation = () => {
 export const useRemoveGCContactLinkMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ gcId, linkId }: { gcId: string; linkId: string }) =>
-      gcApi.removeContactLink(gcId, linkId),
+    mutationFn: ({ gcId, contactId }: { gcId: string; contactId: string }) =>
+      gcApi.removeContactLink(gcId, contactId),
     onSuccess: (_, { gcId }) => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });

@@ -200,7 +200,7 @@ export const pcoApi = {
   /* ---- lookups ---- */
 
   async listStatuses(): Promise<PCOStatus[]> {
-    const res = await api.get(`${BASE}/statuses`);
+    const res = await api.get('/lookup/type/PCO_STATUS');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(pcoStatusSchema).safeParse(raw);
     if (!result.success) {
@@ -211,7 +211,7 @@ export const pcoApi = {
   },
 
   async listChangeTypes(): Promise<PCOChangeType[]> {
-    const res = await api.get(`${BASE}/change-types`);
+    const res = await api.get('/lookup/type/PCO_CHANGE_TYPE');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(pcoChangeTypeSchema).safeParse(raw);
     if (!result.success) {

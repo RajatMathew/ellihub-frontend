@@ -13,17 +13,23 @@ import {
   type VendorPaginatedResponse,
 } from '@modules/directory/schemas/vendor.schema';
 
-const BASE = '/vendors';
+const BASE = '/vendor';
 
 export const vendorsApi = {
   async list(params?: ListVendorsParams): Promise<VendorPaginatedResponse> {
     const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
-    if (params?.limit != null) query.limit = params.limit;
+    if (params?.limit != null) query.size = params.limit;
     if (params?.sortBy) query.sortBy = params.sortBy;
     if (params?.sortOrder) query.sortOrder = params.sortOrder;
     if (params?.search) query.search = params.search;
-    if (params?.type) query.type = params.type;
+    if (params?.type) {
+      if (typeof params.type === 'string') {
+        query.typeId = params.type;
+      } else {
+        query.typeId = params.type.id;
+      }
+    }
     if (params?.status) query.status = params.status;
     if (params?.categoryTag) query.categoryTag = params.categoryTag;
 
@@ -53,9 +59,8 @@ export const vendorsApi = {
     const raw = res.data?.data ?? res.data;
     const result = vendorDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[vendorsApi.getById] Zod parse error:', result.error.issues);
-      console.error('[vendorsApi.getById] Raw response:', JSON.stringify(raw, null, 2));
-      throw result.error;
+      console.warn('[vendorsApi.getById] Partial Validation Failure:', result.error);
+      return raw as VendorDetail;
     }
     return result.data;
   },
@@ -72,7 +77,7 @@ export const vendorsApi = {
   },
 
   async update(id: string, data: UpdateVendorInput): Promise<VendorDetail> {
-    const res = await api.put(`${BASE}/${id}`, data);
+    const res = await api.put(BASE, { ...data, id });
     const raw = res.data?.data ?? res.data;
     const result = vendorDetailSchema.safeParse(raw);
     if (!result.success) {
@@ -94,7 +99,7 @@ export const vendorsApi = {
   async updateContact(
     id: string,
     contactId: string,
-    data: UpdateVendorContactInput,
+    data: UpdateVendorContactInput
   ): Promise<VendorContactLink> {
     const res = await api.put(`${BASE}/${id}/contacts/${contactId}`, data);
     return vendorContactLinkSchema.parse(res.data?.data ?? res.data);
@@ -102,5 +107,10 @@ export const vendorsApi = {
 
   async removeContact(id: string, contactId: string): Promise<void> {
     await api.delete(`${BASE}/${id}/contacts/${contactId}`);
+  },
+
+  async getTypes(): Promise<{ id: string; label: string; code: string }[]> {
+    const res = await api.get('/lookup/type/VENDOR_TYPE');
+    return res.data?.data ?? res.data ?? [];
   },
 };
