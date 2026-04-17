@@ -15,6 +15,7 @@ export const statement = {
     gcType: ['create', 'update', 'delete', 'read'],
     vendor: ['create', 'update', 'delete', 'read'],
     department: ['create', 'update', 'delete', 'read'],
+    activityLog: ['create', 'read'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -33,6 +34,7 @@ export const owner = ac.newRole({
     gcType: ['create', 'update', 'delete', 'read'],
     vendor: ['create', 'update', 'delete', 'read'],
     department: ['create', 'update', 'delete', 'read'],
+    activityLog: ['create', 'read'],
 });
 
 // Export the type

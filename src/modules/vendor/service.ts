@@ -1,6 +1,7 @@
 import { Vendor, VendorDocument } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -30,6 +31,15 @@ export const VendorService = {
 
             await FileService.createVendorFolder(tx, vendor.id, request.name, userId);
 
+            await ActivityLogService.log({
+                userId,
+                entityType: 'vendor',
+                entityId: vendor.id,
+                action: 'create',
+                description: `Created vendor ${vendor.name}`,
+                tx,
+            });
+
             return vendor;
         });
     },
@@ -52,7 +62,7 @@ export const VendorService = {
         return vendor;
     },
 
-    updateVendor: async (request: VendorUpdateRequest): Promise<Vendor> => {
+    updateVendor: async (request: VendorUpdateRequest, userId: string): Promise<Vendor> => {
         const { id, typeId, ...rest } = request;
 
         const vendor = await prisma.vendor.findUnique({ where: { id } });
@@ -79,11 +89,20 @@ export const VendorService = {
                 await FileService.updateFolderDisplayName(folderId, request.name, tx);
             }
 
+            await ActivityLogService.log({
+                userId,
+                entityType: 'vendor',
+                entityId: updated.id,
+                action: 'update',
+                description: `Updated vendor ${updated.name}`,
+                tx,
+            });
+
             return updated;
         });
     },
 
-    deleteVendor: async (id: string): Promise<void> => {
+    deleteVendor: async (id: string, userId: string): Promise<void> => {
         const vendor = await prisma.vendor.findUnique({ where: { id } });
 
         if (!vendor) {
@@ -96,9 +115,20 @@ export const VendorService = {
             where: { id },
             data: { deletedAt: new Date() },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'vendor',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted vendor ${vendor.name}`,
+        });
     },
 
-    addDocumentToVendor: async (request: AddVendorDocumentRequest): Promise<VendorDocument> => {
+    addDocumentToVendor: async (
+        request: AddVendorDocumentRequest,
+        userId: string
+    ): Promise<VendorDocument> => {
         const { vendorId, fileId, expiresOn } = request;
 
         const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
@@ -124,7 +154,7 @@ export const VendorService = {
             const vendorFolderId = await FileService.getVendorFolderId(vendorId, tx);
             await FileService.moveFileToFolder(fileId, vendorFolderId, tx);
 
-            return await tx.vendorDocument.create({
+            const doc = await tx.vendorDocument.create({
                 data: {
                     id: ulid(),
                     vendorId,
@@ -132,10 +162,24 @@ export const VendorService = {
                     expiresOn: expiresOn ? new Date(expiresOn) : null,
                 },
             });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'vendor',
+                entityId: vendorId,
+                action: 'link',
+                description: `Linked document ${file.name} to vendor ${vendor.name}`,
+                tx,
+            });
+
+            return doc;
         });
     },
 
-    updateVendorDocument: async (request: UpdateVendorDocumentRequest): Promise<VendorDocument> => {
+    updateVendorDocument: async (
+        request: UpdateVendorDocumentRequest,
+        userId: string
+    ): Promise<VendorDocument> => {
         const { vendorId, fileId, expiresOn } = request;
 
         const document = await prisma.vendorDocument.findUnique({
@@ -145,13 +189,26 @@ export const VendorService = {
             throw new NotFoundError('Vendor document not found');
         }
 
-        return await prisma.vendorDocument.update({
+        const updated = await prisma.vendorDocument.update({
             where: { id: document.id },
             data: { expiresOn: expiresOn ? new Date(expiresOn) : null },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'vendor',
+            entityId: vendorId,
+            action: 'update',
+            description: `Updated vendor document (fileId=${fileId})`,
+        });
+
+        return updated;
     },
 
-    removeDocumentFromVendor: async (request: RemoveVendorDocumentRequest): Promise<void> => {
+    removeDocumentFromVendor: async (
+        request: RemoveVendorDocumentRequest,
+        userId: string
+    ): Promise<void> => {
         const { vendorId, fileId } = request;
 
         const document = await prisma.vendorDocument.findUnique({
@@ -162,6 +219,14 @@ export const VendorService = {
         }
 
         await prisma.vendorDocument.delete({ where: { id: document.id } });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'vendor',
+            entityId: vendorId,
+            action: 'unlink',
+            description: `Unlinked document (fileId=${fileId}) from vendor`,
+        });
     },
 
     getVendors: async (

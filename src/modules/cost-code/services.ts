@@ -1,6 +1,7 @@
 import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { ActivityLogService } from '@modules/activity-log';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -14,18 +15,30 @@ import {
 
 export const CostCodeService = {
     createCostCodeCategory: async (
-        request: CostCodeCategoryCreateRequest
+        request: CostCodeCategoryCreateRequest,
+        userId: string
     ): Promise<CostCodeCategory> => {
-        return await prisma.costCodeCategory.create({
+        const created = await prisma.costCodeCategory.create({
             data: {
                 ...request,
                 id: ulid(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: created.id,
+            action: 'create',
+            description: `Created cost code category ${created.name}`,
+        });
+
+        return created;
     },
 
     updateCostCodeCategory: async (
-        request: CostCodeCategoryUpdateRequest
+        request: CostCodeCategoryUpdateRequest,
+        userId: string
     ): Promise<CostCodeCategory> => {
         const { id, ...data } = request;
 
@@ -39,10 +52,20 @@ export const CostCodeService = {
 
         checkDeletedAt(costCodeCategory);
 
-        return await prisma.costCodeCategory.update({
+        const updated = await prisma.costCodeCategory.update({
             where: { id },
             data,
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: updated.id,
+            action: 'update',
+            description: `Updated cost code category ${updated.name}`,
+        });
+
+        return updated;
     },
 
     getCostCodeCategory: async (id: string): Promise<CostCodeCategory> => {
@@ -67,7 +90,7 @@ export const CostCodeService = {
         });
     },
 
-    deleteCostCodeCategory: async (id: string): Promise<void> => {
+    deleteCostCodeCategory: async (id: string, userId: string): Promise<void> => {
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id },
         });
@@ -84,9 +107,17 @@ export const CostCodeService = {
                 deletedAt: new Date(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted cost code category ${costCodeCategory.name}`,
+        });
     },
 
-    createCostCode: async (request: CostCodeCreateRequest): Promise<CostCode> => {
+    createCostCode: async (request: CostCodeCreateRequest, userId: string): Promise<CostCode> => {
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id: request.costCodeCategoryId },
         });
@@ -109,15 +140,25 @@ export const CostCodeService = {
             throw new ConflictError('A cost code with this code already exists');
         }
 
-        return await prisma.costCode.create({
+        const created = await prisma.costCode.create({
             data: {
                 ...request,
                 id: ulid(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: created.id,
+            action: 'create',
+            description: `Created cost code ${created.code} — ${created.name}`,
+        });
+
+        return created;
     },
 
-    updateCostCode: async (request: CostCodeUpdateRequest): Promise<CostCode> => {
+    updateCostCode: async (request: CostCodeUpdateRequest, userId: string): Promise<CostCode> => {
         const { id, ...data } = request;
 
         const costCode = await prisma.costCode.findUnique({
@@ -158,10 +199,20 @@ export const CostCodeService = {
             }
         }
 
-        return await prisma.costCode.update({
+        const updated = await prisma.costCode.update({
             where: { id },
             data,
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: updated.id,
+            action: 'update',
+            description: `Updated cost code ${updated.code} — ${updated.name}`,
+        });
+
+        return updated;
     },
 
     getCostCode: async (id: string): Promise<CostCode> => {
@@ -221,7 +272,7 @@ export const CostCodeService = {
         return { data, count };
     },
 
-    deleteCostCode: async (id: string): Promise<void> => {
+    deleteCostCode: async (id: string, userId: string): Promise<void> => {
         const costCode = await prisma.costCode.findUnique({
             where: { id },
         });
@@ -237,6 +288,14 @@ export const CostCodeService = {
             data: {
                 deletedAt: new Date(),
             },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted cost code ${costCode.code} — ${costCode.name}`,
         });
     },
 };

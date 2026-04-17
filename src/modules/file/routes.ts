@@ -78,7 +78,7 @@ app.put(
     zValidator('json', FileFolderRenameSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const folder = await FileService.rename(data);
+        const folder = await FileService.rename(data, c.get('user')!.id);
         return success(c, folder);
     }
 );

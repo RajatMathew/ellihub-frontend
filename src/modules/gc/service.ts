@@ -1,6 +1,7 @@
 import { GCDocument, GeneralContractor } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -28,6 +29,15 @@ export const GcService = {
 
             await FileService.createGcFolder(tx, gc.id, request.name, userId);
 
+            await ActivityLogService.log({
+                userId,
+                entityType: 'gc',
+                entityId: gc.id,
+                action: 'create',
+                description: `Created general contractor ${gc.name}`,
+                tx,
+            });
+
             return gc;
         });
     },
@@ -50,7 +60,7 @@ export const GcService = {
         return gc;
     },
 
-    updateGc: async (request: GcUpdateRequest): Promise<GeneralContractor> => {
+    updateGc: async (request: GcUpdateRequest, userId: string): Promise<GeneralContractor> => {
         const { id, gcTypeId, ...rest } = request;
 
         const gc = await prisma.generalContractor.findUnique({ where: { id } });
@@ -75,11 +85,20 @@ export const GcService = {
                 await FileService.updateFolderDisplayName(folderId, request.name, tx);
             }
 
+            await ActivityLogService.log({
+                userId,
+                entityType: 'gc',
+                entityId: updated.id,
+                action: 'update',
+                description: `Updated general contractor ${updated.name}`,
+                tx,
+            });
+
             return updated;
         });
     },
 
-    deleteGc: async (id: string): Promise<void> => {
+    deleteGc: async (id: string, userId: string): Promise<void> => {
         const gc = await prisma.generalContractor.findUnique({ where: { id } });
 
         if (!gc) {
@@ -92,9 +111,17 @@ export const GcService = {
             where: { id },
             data: { deletedAt: new Date() },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'gc',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted general contractor ${gc.name}`,
+        });
     },
 
-    addDocumentToGc: async (request: AddGcDocumentRequest): Promise<GCDocument> => {
+    addDocumentToGc: async (request: AddGcDocumentRequest, userId: string): Promise<GCDocument> => {
         const { gcId, fileId, expiresOn } = request;
 
         const gc = await prisma.generalContractor.findUnique({ where: { id: gcId } });
@@ -120,7 +147,7 @@ export const GcService = {
             const gcFolderId = await FileService.getGcFolderId(gcId, tx);
             await FileService.moveFileToFolder(fileId, gcFolderId, tx);
 
-            return await tx.gCDocument.create({
+            const doc = await tx.gCDocument.create({
                 data: {
                     id: ulid(),
                     gcId,
@@ -128,10 +155,24 @@ export const GcService = {
                     expiresOn: expiresOn ? new Date(expiresOn) : null,
                 },
             });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'gc',
+                entityId: gcId,
+                action: 'link',
+                description: `Linked document ${file.name} to GC ${gc.name}`,
+                tx,
+            });
+
+            return doc;
         });
     },
 
-    updateGcDocument: async (request: UpdateGcDocumentRequest): Promise<GCDocument> => {
+    updateGcDocument: async (
+        request: UpdateGcDocumentRequest,
+        userId: string
+    ): Promise<GCDocument> => {
         const { gcId, fileId, expiresOn } = request;
 
         const document = await prisma.gCDocument.findUnique({
@@ -141,13 +182,26 @@ export const GcService = {
             throw new NotFoundError('GC document not found');
         }
 
-        return await prisma.gCDocument.update({
+        const updated = await prisma.gCDocument.update({
             where: { id: document.id },
             data: { expiresOn: expiresOn ? new Date(expiresOn) : null },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'gc',
+            entityId: gcId,
+            action: 'update',
+            description: `Updated GC document (fileId=${fileId})`,
+        });
+
+        return updated;
     },
 
-    removeDocumentFromGc: async (request: RemoveGcDocumentRequest): Promise<void> => {
+    removeDocumentFromGc: async (
+        request: RemoveGcDocumentRequest,
+        userId: string
+    ): Promise<void> => {
         const { gcId, fileId } = request;
 
         const document = await prisma.gCDocument.findUnique({
@@ -158,6 +212,14 @@ export const GcService = {
         }
 
         await prisma.gCDocument.delete({ where: { id: document.id } });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'gc',
+            entityId: gcId,
+            action: 'unlink',
+            description: `Unlinked document (fileId=${fileId}) from GC`,
+        });
     },
 
     getGcs: async (

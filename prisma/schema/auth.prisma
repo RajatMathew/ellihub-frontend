@@ -16,6 +16,7 @@ model User {
   banExpires               DateTime?
   profile                  String?
   createdFiles             File[]
+  activityLogs             ActivityLog[]
 
   @@unique([email])
   @@map("user")

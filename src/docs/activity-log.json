@@ -1,0 +1,258 @@
+{
+    "paths": {
+        "/activity-log": {
+            "get": {
+                "tags": ["Activity Log"],
+                "summary": "List activity log entries (paginated, filterable)",
+                "operationId": "listActivityLogs",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by actor User ULID"
+                    },
+                    {
+                        "name": "entityType",
+                        "in": "query",
+                        "schema": { "$ref": "#/components/schemas/ActivityEntityType" }
+                    },
+                    {
+                        "name": "entityId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by referenced entity ULID"
+                    },
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "schema": { "$ref": "#/components/schemas/ActivityAction" }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Inclusive lower bound on createdAt"
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Inclusive upper bound on createdAt"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of activity entries",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/ActivityLog" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires activityLog:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "post": {
+                "tags": ["Activity Log"],
+                "summary": "Create a standalone activity entry (e.g. a manual note/comment)",
+                "operationId": "createActivityLog",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ActivityLogCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Entry created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/ActivityLog" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires activityLog:create)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/activity-log/entity/{entityType}/{entityId}": {
+            "get": {
+                "tags": ["Activity Log"],
+                "summary": "List activity entries for a specific entity",
+                "operationId": "listActivityLogsForEntity",
+                "parameters": [
+                    {
+                        "name": "entityType",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "$ref": "#/components/schemas/ActivityEntityType" }
+                    },
+                    {
+                        "name": "entityId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Entity ULID"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated per-entity feed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/ActivityLog" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires activityLog:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ActivityEntityType": {
+                "type": "string",
+                "enum": [
+                    "contact",
+                    "vendor",
+                    "gc",
+                    "employee",
+                    "department",
+                    "file",
+                    "costCode",
+                    "costCodeCategory",
+                    "professionalRole",
+                    "project"
+                ]
+            },
+            "ActivityAction": {
+                "type": "string",
+                "enum": [
+                    "create",
+                    "update",
+                    "delete",
+                    "link",
+                    "unlink",
+                    "addEmail",
+                    "removeEmail",
+                    "addPhone",
+                    "removePhone",
+                    "addTag",
+                    "removeTag",
+                    "comment"
+                ]
+            },
+            "ActivityLog": {
+                "type": "object",
+                "description": "Immutable audit/activity entry. Polymorphic: references its target via (entityType, entityId).",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "userId": { "type": "string", "description": "Acting User ULID" },
+                    "user": {
+                        "type": "object",
+                        "description": "Actor summary (joined on read endpoints)",
+                        "properties": {
+                            "id": { "type": "string" },
+                            "name": { "type": "string" },
+                            "email": { "type": "string" },
+                            "image": { "type": "string", "nullable": true }
+                        }
+                    },
+                    "entityType": { "$ref": "#/components/schemas/ActivityEntityType" },
+                    "entityId": { "type": "string", "description": "ULID of the referenced entity" },
+                    "action": { "$ref": "#/components/schemas/ActivityAction" },
+                    "description": { "type": "string", "description": "Pre-formatted human-readable summary" },
+                    "note": { "type": "string", "nullable": true, "description": "Optional free-form text" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ActivityLogCreateRequest": {
+                "type": "object",
+                "required": ["entityType", "entityId", "action", "description"],
+                "properties": {
+                    "entityType": { "$ref": "#/components/schemas/ActivityEntityType" },
+                    "entityId": { "type": "string", "description": "ULID" },
+                    "action": { "$ref": "#/components/schemas/ActivityAction" },
+                    "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+                    "note": { "type": "string", "minLength": 1, "maxLength": 2000, "nullable": true }
+                }
+            }
+        }
+    }
+}

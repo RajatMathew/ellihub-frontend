@@ -1,5 +1,6 @@
 import { Employee } from '@db/client';
 import { prisma } from '@lib/prisma';
+import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { UserService } from '@modules/user/services';
 import { ConflictError } from '@utils';
@@ -54,6 +55,15 @@ export const EmployeeService = {
             }
 
             await FileService.createEmployeeFolder(tx, employee.id, request.name, userId);
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'employee',
+                entityId: employee.id,
+                action: 'create',
+                description: `Created employee ${employee.name}`,
+                tx,
+            });
 
             return employee;
         });

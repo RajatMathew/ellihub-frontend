@@ -2,6 +2,7 @@ import { File } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { ActivityLogService } from '@modules/activity-log';
 import { UserService } from '@modules/user/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -66,11 +67,19 @@ export const FileService = {
             return file;
         });
 
+        await ActivityLogService.log({
+            userId,
+            entityType: 'file',
+            entityId: f.id,
+            action: 'create',
+            description: `Created folder ${f.name}`,
+        });
+
         return f;
     },
 
     uploadFile: async (request: FileUploadRequest, objectId: string, userId: string) => {
-        await prismaClient.file.create({
+        const file = await prismaClient.file.create({
             data: {
                 ...request,
                 id: objectId,
@@ -78,6 +87,14 @@ export const FileService = {
                 createdBy: userId,
                 objectId,
             },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'file',
+            entityId: file.id,
+            action: 'create',
+            description: `Uploaded file ${file.name}`,
         });
     },
 
@@ -438,7 +455,7 @@ export const FileService = {
         return folder;
     },
 
-    rename: async (request: FileFolderRenameRequest): Promise<File> => {
+    rename: async (request: FileFolderRenameRequest, userId: string): Promise<File> => {
         const file = await prismaClient.file.findUnique({
             where: { id: request.id },
         });
@@ -452,12 +469,22 @@ export const FileService = {
                 'Cannot rename this file / folder because it is protected or non-deletable.'
             );
 
-        return await prismaClient.file.update({
+        const updated = await prismaClient.file.update({
             where: { id: request.id },
             data: {
                 name: request.name,
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'file',
+            entityId: updated.id,
+            action: 'update',
+            description: `Renamed ${file.name} to ${updated.name}`,
+        });
+
+        return updated;
     },
 
     deleteFolder: async (id: string, userId: string): Promise<void> => {
@@ -488,6 +515,14 @@ export const FileService = {
                 deletedAt: new Date(),
                 deletedBy: userId,
             },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'file',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted folder ${folder.name}`,
         });
     },
 
@@ -577,6 +612,14 @@ export const FileService = {
                 deletedAt: new Date(),
                 deletedBy: userId,
             },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'file',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted file ${file.name}`,
         });
     },
 };

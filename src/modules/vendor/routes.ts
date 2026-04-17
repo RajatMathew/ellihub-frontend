@@ -48,14 +48,14 @@ app.put(
     zValidator('json', VendorUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const vendor = await VendorService.updateVendor(data);
+        const vendor = await VendorService.updateVendor(data, c.get('user')!.id);
         return success(c, vendor);
     }
 );
 
 app.delete('/:id', requirePermission({ vendor: ['delete'] }), async (c) => {
     const id = c.req.param('id');
-    await VendorService.deleteVendor(id);
+    await VendorService.deleteVendor(id, c.get('user')!.id);
     return success(c, null);
 });
 
@@ -65,7 +65,7 @@ app.patch(
     zValidator('json', AddVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const document = await VendorService.addDocumentToVendor(data);
+        const document = await VendorService.addDocumentToVendor(data, c.get('user')!.id);
         return success(c, document);
     }
 );
@@ -76,7 +76,7 @@ app.patch(
     zValidator('json', UpdateVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const document = await VendorService.updateVendorDocument(data);
+        const document = await VendorService.updateVendorDocument(data, c.get('user')!.id);
         return success(c, document);
     }
 );
@@ -87,7 +87,7 @@ app.patch(
     zValidator('json', RemoveVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        await VendorService.removeDocumentFromVendor(data);
+        await VendorService.removeDocumentFromVendor(data, c.get('user')!.id);
         return success(c, null);
     }
 );

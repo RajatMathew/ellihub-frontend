@@ -40,7 +40,7 @@ app.post(
     zValidator('json', ContactCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.createContact(data);
+        const contact = await ContactService.createContact(data, c.get('user')!.id);
         return success(c, contact, 201);
     }
 );
@@ -51,14 +51,14 @@ app.put(
     zValidator('json', ContactUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.updateContact(data);
+        const contact = await ContactService.updateContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
 
 app.delete('/:id', requirePermission({ contact: ['delete'] }), async (c) => {
     const id = c.req.param('id');
-    await ContactService.deleteContact(id);
+    await ContactService.deleteContact(id, c.get('user')!.id);
     return success(c, null);
 });
 
@@ -68,7 +68,7 @@ app.patch(
     zValidator('json', AddEmailToContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.addEmailToContact(data);
+        const contact = await ContactService.addEmailToContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
@@ -79,7 +79,7 @@ app.patch(
     zValidator('json', RemoveEmailFromContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.removeEmailFromContact(data);
+        const contact = await ContactService.removeEmailFromContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
@@ -90,7 +90,7 @@ app.patch(
     zValidator('json', AddPhoneToContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.addPhoneToContact(data);
+        const contact = await ContactService.addPhoneToContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
@@ -101,7 +101,7 @@ app.patch(
     zValidator('json', RemovePhoneFromContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.removePhoneFromContact(data);
+        const contact = await ContactService.removePhoneFromContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
@@ -112,7 +112,7 @@ app.patch(
     zValidator('json', AddTagToContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.addTagToContact(data);
+        const contact = await ContactService.addTagToContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
@@ -123,7 +123,7 @@ app.patch(
     zValidator('json', RemoveTagFromContactSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const contact = await ContactService.removeTagFromContact(data);
+        const contact = await ContactService.removeTagFromContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );

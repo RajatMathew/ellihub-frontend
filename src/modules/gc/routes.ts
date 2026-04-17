@@ -48,14 +48,14 @@ app.put(
     zValidator('json', GcUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const gc = await GcService.updateGc(data);
+        const gc = await GcService.updateGc(data, c.get('user')!.id);
         return success(c, gc);
     }
 );
 
 app.delete('/:id', requirePermission({ generalContractor: ['delete'] }), async (c) => {
     const id = c.req.param('id');
-    await GcService.deleteGc(id);
+    await GcService.deleteGc(id, c.get('user')!.id);
     return success(c, null);
 });
 
@@ -65,7 +65,7 @@ app.patch(
     zValidator('json', AddGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const document = await GcService.addDocumentToGc(data);
+        const document = await GcService.addDocumentToGc(data, c.get('user')!.id);
         return success(c, document);
     }
 );
@@ -76,7 +76,7 @@ app.patch(
     zValidator('json', UpdateGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const document = await GcService.updateGcDocument(data);
+        const document = await GcService.updateGcDocument(data, c.get('user')!.id);
         return success(c, document);
     }
 );
@@ -87,7 +87,7 @@ app.patch(
     zValidator('json', RemoveGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
-        await GcService.removeDocumentFromGc(data);
+        await GcService.removeDocumentFromGc(data, c.get('user')!.id);
         return success(c, null);
     }
 );

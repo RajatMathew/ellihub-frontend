@@ -1,6 +1,7 @@
 import { Contact } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
+import { ActivityLogService } from '@modules/activity-log';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -19,7 +20,7 @@ import {
 } from './models';
 
 export const ContactService = {
-    createContact: async (request: ContactCreateRequest): Promise<Contact> => {
+    createContact: async (request: ContactCreateRequest, userId: string): Promise<Contact> => {
         const {
             professionalRoleId,
             vendorId,
@@ -54,7 +55,7 @@ export const ContactService = {
             checkDeletedAt(gc);
         }
 
-        return await prisma.contact.create({
+        const created = await prisma.contact.create({
             data: {
                 id: ulid(),
                 fullName,
@@ -71,6 +72,16 @@ export const ContactService = {
                 generalContractor: true,
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: created.id,
+            action: 'create',
+            description: `Created contact ${created.fullName}`,
+        });
+
+        return created;
     },
 
     getContact: async (id: string): Promise<Contact> => {
@@ -133,7 +144,7 @@ export const ContactService = {
         return { data, count };
     },
 
-    updateContact: async (request: ContactUpdateRequest): Promise<Contact> => {
+    updateContact: async (request: ContactUpdateRequest, userId: string): Promise<Contact> => {
         const {
             id,
             professionalRoleId,
@@ -193,7 +204,7 @@ export const ContactService = {
             nextGcId = generalContractorId === null ? null : undefined;
         }
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id },
             data: {
                 fullName,
@@ -210,9 +221,19 @@ export const ContactService = {
                 generalContractor: true,
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: updated.id,
+            action: 'update',
+            description: `Updated contact ${updated.fullName}`,
+        });
+
+        return updated;
     },
 
-    deleteContact: async (id: string): Promise<void> => {
+    deleteContact: async (id: string, userId: string): Promise<void> => {
         const contact = await prisma.contact.findUnique({
             where: { id },
         });
@@ -227,9 +248,20 @@ export const ContactService = {
             where: { id },
             data: { deletedAt: new Date() },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted contact ${contact.fullName}`,
+        });
     },
 
-    addEmailToContact: async (request: AddEmailToContactRequest): Promise<Contact> => {
+    addEmailToContact: async (
+        request: AddEmailToContactRequest,
+        userId: string
+    ): Promise<Contact> => {
         const { contactId, email } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -252,13 +284,26 @@ export const ContactService = {
             ? [...existing.map((e) => ({ ...e, isPrimary: false })), email]
             : [...existing, email];
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { email: next },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'addEmail',
+            description: `Added email ${email.email} to contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 
-    removeEmailFromContact: async (request: RemoveEmailFromContactRequest): Promise<Contact> => {
+    removeEmailFromContact: async (
+        request: RemoveEmailFromContactRequest,
+        userId: string
+    ): Promise<Contact> => {
         const { contactId, email } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -278,13 +323,26 @@ export const ContactService = {
             throw new NotFoundError('Email not found on this contact');
         }
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { email: next },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'removeEmail',
+            description: `Removed email ${email} from contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 
-    addPhoneToContact: async (request: AddPhoneToContactRequest): Promise<Contact> => {
+    addPhoneToContact: async (
+        request: AddPhoneToContactRequest,
+        userId: string
+    ): Promise<Contact> => {
         const { contactId, phone } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -307,13 +365,26 @@ export const ContactService = {
             ? [...existing.map((p) => ({ ...p, isPrimary: false })), phone]
             : [...existing, phone];
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { phoneNumber: next },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'addPhone',
+            description: `Added phone ${phone.number} to contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 
-    removePhoneFromContact: async (request: RemovePhoneFromContactRequest): Promise<Contact> => {
+    removePhoneFromContact: async (
+        request: RemovePhoneFromContactRequest,
+        userId: string
+    ): Promise<Contact> => {
         const { contactId, number } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -333,13 +404,23 @@ export const ContactService = {
             throw new NotFoundError('Phone number not found on this contact');
         }
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { phoneNumber: next },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'removePhone',
+            description: `Removed phone ${number} from contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 
-    addTagToContact: async (request: AddTagToContactRequest): Promise<Contact> => {
+    addTagToContact: async (request: AddTagToContactRequest, userId: string): Promise<Contact> => {
         const { contactId, tag } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -356,13 +437,26 @@ export const ContactService = {
             throw new ConflictError('Tag already exists on this contact');
         }
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { tags: [...contact.tags, tag] },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'addTag',
+            description: `Added tag '${tag}' to contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 
-    removeTagFromContact: async (request: RemoveTagFromContactRequest): Promise<Contact> => {
+    removeTagFromContact: async (
+        request: RemoveTagFromContactRequest,
+        userId: string
+    ): Promise<Contact> => {
         const { contactId, tag } = request;
 
         const contact = await prisma.contact.findUnique({
@@ -379,9 +473,19 @@ export const ContactService = {
             throw new NotFoundError('Tag not found on this contact');
         }
 
-        return await prisma.contact.update({
+        const updated = await prisma.contact.update({
             where: { id: contactId },
             data: { tags: contact.tags.filter((t) => t !== tag) },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'removeTag',
+            description: `Removed tag '${tag}' from contact ${contact.fullName}`,
+        });
+
+        return updated;
     },
 };
