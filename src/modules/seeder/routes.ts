@@ -66,10 +66,10 @@ app.post('/reset', (c) => {
     void (async () => {
         console.log('[seeder] starting db reset (prisma migrate reset)');
         try {
-            const proc = Bun.spawn(
-                ['bunx', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],
-                { stdout: 'pipe', stderr: 'pipe' }
-            );
+            const proc = Bun.spawn(['bunx', 'prisma', 'migrate', 'reset', '--force'], {
+                stdout: 'pipe',
+                stderr: 'pipe',
+            });
             const [stdout, stderr, code] = await Promise.all([
                 new Response(proc.stdout).text(),
                 new Response(proc.stderr).text(),
