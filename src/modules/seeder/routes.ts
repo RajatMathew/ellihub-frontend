@@ -52,6 +52,42 @@ app.post('/run', (c) => {
     );
 });
 
+app.post('/reset', (c) => {
+    const expected = process.env.SEED_API_KEY;
+    if (!expected) {
+        return failure(c, 'Seeder endpoint disabled (SEED_API_KEY not set)', 403);
+    }
+
+    const provided = c.req.header('x-seed-key');
+    if (provided !== expected) {
+        return failure(c, 'Invalid seed key', 401);
+    }
+
+    void (async () => {
+        console.log('[seeder] starting db reset (prisma migrate reset)');
+        try {
+            const proc = Bun.spawn(
+                ['bunx', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],
+                { stdout: 'pipe', stderr: 'pipe' }
+            );
+            const [stdout, stderr, code] = await Promise.all([
+                new Response(proc.stdout).text(),
+                new Response(proc.stderr).text(),
+                proc.exited,
+            ]);
+            if (code === 0) {
+                console.log('[seeder] db reset ok\n', stdout);
+            } else {
+                console.error(`[seeder] db reset failed (exit ${code})\n`, stderr || stdout);
+            }
+        } catch (e) {
+            console.error('[seeder] db reset failed:', e);
+        }
+    })();
+
+    return success(c, { status: 'started' }, 202, 'DB reset started in background');
+});
+
 app.post('/user', (c) => {
     const expected = process.env.SEED_API_KEY;
     if (!expected) {
