@@ -45,6 +45,56 @@
                 }
             }
         },
+        "/seed/reset": {
+            "post": {
+                "tags": ["Seeder"],
+                "summary": "Reset the database",
+                "description": "Runs `prisma migrate reset --force --skip-seed` in a background subprocess. Drops all data, re-applies migrations, and does NOT run seeders. Returns 202 immediately. Subprocess output is logged to the API server's stdout/stderr. Gated by the `x-seed-key` header which must match the `SEED_API_KEY` env var. DESTRUCTIVE — intended for non-production environments only.",
+                "operationId": "resetDatabase",
+                "parameters": [
+                    {
+                        "name": "x-seed-key",
+                        "in": "header",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Shared secret matching SEED_API_KEY"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "DB reset accepted and running in background",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": { "type": "string", "enum": ["started"] }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid seed key",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    },
+                    "403": {
+                        "description": "Seeder endpoint disabled (SEED_API_KEY not set)",
+                        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+                    }
+                }
+            }
+        },
         "/seed/user": {
             "post": {
                 "tags": ["Seeder"],
