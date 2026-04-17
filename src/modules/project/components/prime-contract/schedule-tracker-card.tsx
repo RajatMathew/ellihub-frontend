@@ -132,9 +132,9 @@ export function ScheduleTrackerCard({
   const handleUploadSubmit = async (payload: { file: File; data: { name: string; parentId: string; mimeType?: string; size: number } }) => {
     const fileItem = await uploadMutation.mutateAsync(payload);
     if (uploadTarget === 'add') {
-      setNewEntry((prev) => ({ ...prev, fileId: fileItem.id, fileName: fileItem.name }));
+      setNewEntry((prev) => ({ ...prev, fileId: fileItem.id, fileName: fileItem.name || '' }));
     } else if (uploadTarget === 'edit' && editingEntry) {
-      setEditingEntry((prev) => prev ? { ...prev, fileId: fileItem.id, fileName: fileItem.name } : prev);
+      setEditingEntry((prev) => prev ? { ...prev, fileId: fileItem.id, fileName: fileItem.name || '' } : prev);
     }
     setUploadTarget(null);
   };
@@ -335,7 +335,7 @@ export function ScheduleTrackerCard({
                           title={entry.file.name}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (entry.fileId) downloadFile.mutate(entry.fileId);
+                            if (entry.file) downloadFile.mutate(entry.file);
                           }}
                         >
                           {entry.file.name}

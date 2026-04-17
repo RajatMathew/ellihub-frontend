@@ -10,7 +10,8 @@ export type FileType = z.infer<typeof fileTypeSchema>;
 export const fileSchema = z
   .object({
     id: z.string(),
-    name: z.string(),
+    name: z.string().nullable().optional(),
+    displayName: z.string().nullable().optional(),
     objectId: z.string().nullable().optional(),
     mimeType: z.string().nullable().optional(),
     size: z.number().nullable().optional(),
@@ -18,11 +19,11 @@ export const fileSchema = z
     type: fileTypeSchema,
     isDeletable: z.boolean(),
     private: z.boolean(),
-    createdBy: z.string(),
+    createdBy: z.string().nullable().optional(),
     deletedBy: z.string().nullable().optional(),
     deletedAt: z.string().nullable().optional(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
+    createdAt: z.string().nullable().optional(),
+    updatedAt: z.string().nullable().optional(),
   })
   .passthrough();
 

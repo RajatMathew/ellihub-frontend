@@ -217,19 +217,39 @@ export function ContactFormPage() {
         setIsSaving(false);
       }
     } else {
-      const payload: CreateContactInput = {
-        fullName: formData.fullName,
-        professionalRoleId: formData.professionalRoleId ?? undefined,
-        email: emailArray,
-        phoneNumber: phoneArray,
-        tags: formData.tags,
-        vendorLinks: vendorLinks.length > 0 ? vendorLinks : [],
-        gcLinks: gcLinks.length > 0 ? gcLinks : [],
-      };
+      setIsSaving(true);
+      try {
+        const payload: CreateContactInput = {
+          fullName: formData.fullName,
+          professionalRoleId: formData.professionalRoleId ?? undefined,
+          email: emailArray,
+          phoneNumber: phoneArray,
+          tags: formData.tags,
+        };
 
-      createMutation.mutate(payload, {
-        onSuccess: () => navigate('..', { relative: 'path' }),
-      });
+        const newContact = await createMutation.mutateAsync(payload);
+        const newId = newContact.id;
+
+        for (const link of vendorLinks) {
+          await addVendorLinkMutation.mutateAsync({
+            contactId: newId,
+            data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
+          });
+        }
+        for (const link of gcLinks) {
+          await addGCLinkMutation.mutateAsync({
+            contactId: newId,
+            data: { generalContractorId: link.generalContractorId, isPrimary: link.isPrimary },
+          });
+        }
+
+        toast.success('Contact created successfully.');
+        navigate('..', { relative: 'path' });
+      } catch {
+        // Mutation onError handlers already show toasts
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 

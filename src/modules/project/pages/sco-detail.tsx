@@ -538,7 +538,7 @@ export function SCODetailPage() {
                             variant="ghost"
                             mode="icon"
                             size="sm"
-                            onClick={() => downloadFile.mutate(att.document!.id)}
+                            onClick={() => downloadFile.mutate(att.document!)}
                           >
                             <Download className="size-3.5" />
                           </Button>

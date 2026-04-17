@@ -22,7 +22,7 @@ import {
 interface RenameDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  item: { id: string; name: string } | null;
+  item: { id: string; name?: string | null; displayName?: string | null } | null;
   onSubmit: (data: FileFolderRenameInput) => void;
   isSubmitting: boolean;
 }
@@ -41,7 +41,7 @@ export function RenameDialog({
 
   useEffect(() => {
     if (open && item) {
-      reset({ id: item.id, name: item.name });
+      reset({ id: item.id, name: item.displayName || item.name || '' });
     }
   }, [open, item, reset]);
 

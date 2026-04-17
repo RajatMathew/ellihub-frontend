@@ -12,12 +12,13 @@ import {
 
 import { cn } from '@app/lib/utils';
 
-function getExtension(name: string): string {
+function getExtension(name: string | null | undefined): string {
+  if (!name) return '';
   const dotIdx = name.lastIndexOf('.');
   return dotIdx > 0 ? name.slice(dotIdx + 1).toLowerCase() : '';
 }
 
-function resolveIcon(mime: string | null | undefined, name: string) {
+function resolveIcon(mime: string | null | undefined, name: string | null | undefined) {
   const ext = getExtension(name);
 
   if (mime?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext))
@@ -73,7 +74,7 @@ function resolveIcon(mime: string | null | undefined, name: string) {
 
 interface FileTypeIconProps extends LucideProps {
   mimeType?: string | null;
-  fileName: string;
+  fileName?: string | null;
   fileType: 'FILE' | 'FOLDER';
 }
 

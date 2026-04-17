@@ -9,7 +9,7 @@ import type { ColumnFiltersState, RowData, SortingState, Table } from '@tanstack
 import { cn } from '@app/lib/utils';
 
 declare module '@tanstack/react-table' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
     headerClassName?: string;

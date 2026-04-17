@@ -89,7 +89,7 @@ export function GCDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   /* ---- Computed values from real API data ---- */
-  const contactLinks = (gc?.contactLinks ?? []).filter((l) => !l.contact.deletedAt);
+  const contactLinks = gc?.contactLinks ?? [];
   const projectCount = gc?.projects?.length ?? 0;
   const typeName = gc?.gcType?.label || gc?.gcType?.name || 'Unknown';
   const typeCode = gc?.gcType?.code as GCTypeCode | undefined;
@@ -221,7 +221,7 @@ export function GCDetailPage() {
               bgClass="bg-primary/10"
               label="Retainage"
               value={`${gc.retainagePercent}%`}
-              description={PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms}
+              description={gc.paymentTerms ? (PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms) : 'No terms'}
             />
           </div>
 
@@ -305,7 +305,7 @@ export function GCDetailPage() {
                             Payment Terms
                           </div>
                           <div className="text-sm font-medium text-foreground">
-                            {PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms}
+                            {gc.paymentTerms ? (PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms) : '—'}
                           </div>
                         </div>
                       </div>
@@ -338,7 +338,7 @@ export function GCDetailPage() {
                         contactLinks.map((link) => (
                           <ContactCard
                             key={link.id}
-                            fullName={link.contact.fullName}
+                            fullName={link.contact?.fullName || `Contact ID: ${link.contactId.slice(-6)}`}
                             email={getContactDisplayEmail(link)}
                             phone={getContactDisplayPhone(link)}
                             isPrimary={link.isPrimary}

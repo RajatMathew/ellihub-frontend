@@ -46,7 +46,10 @@ export const useCreateGCMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: () => toast.error('Failed to create general contractor.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to create general contractor.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -59,7 +62,10 @@ export const useUpdateGCMutation = () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to update general contractor.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to update general contractor.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -70,7 +76,10 @@ export const useDeleteGCMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: () => toast.error('Failed to archive general contractor.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to archive general contractor.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -85,7 +94,10 @@ export const useAddGCContactLinkMutation = () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: () => toast.error('Failed to add contact link.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to add contact link.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -98,6 +110,9 @@ export const useRemoveGCContactLinkMutation = () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: () => toast.error('Failed to remove contact link.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to remove contact link.';
+      toast.error(msg);
+    },
   });
 };

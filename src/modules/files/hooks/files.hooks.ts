@@ -54,7 +54,10 @@ export const useCreateFolderMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
       qc.invalidateQueries({ queryKey: filesKeys.folderDetail(parentId) });
     },
-    onError: () => toast.error('Failed to create folder.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to create folder.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -67,7 +70,10 @@ export const useUploadFileMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
       qc.invalidateQueries({ queryKey: filesKeys.folderDetail(parentId) });
     },
-    onError: () => toast.error('Failed to upload file.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to upload file.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -78,7 +84,10 @@ export const useRenameMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
-    onError: () => toast.error('Failed to rename.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to rename.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -89,23 +98,40 @@ export const useDeleteFolderMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
-    onError: () => toast.error('Failed to delete folder.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to delete folder.';
+      toast.error(msg);
+    },
   });
 };
 
 export const useDownloadFile = () => {
   return useMutation({
-    mutationFn: async (id: string) => {
-      const url = await filesApi.getDownloadLink(id);
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    mutationFn: async (file: { id: string; name?: string | null; displayName?: string | null }) => {
+      const url = await filesApi.getDownloadLink(file.id);
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Download failed');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.displayName || file.name || 'download';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        console.error('Blob download failed, falling back to window.open', err);
+        window.open(url, '_blank');
+      }
     },
-    onError: () => toast.error('Failed to download file.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to download file.';
+      toast.error(msg);
+    },
   });
 };
 
@@ -116,6 +142,9 @@ export const useDeleteFileMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
-    onError: () => toast.error('Failed to delete file.'),
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to delete file.';
+      toast.error(msg);
+    },
   });
 };

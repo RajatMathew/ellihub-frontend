@@ -199,7 +199,7 @@ export default function FilesListPage() {
   // ── Folder navigation ──────────────────────────────────────────────
   const handleFolderClick = useCallback(
     (folder: FileItem) => {
-      const newPath = [...folderPath, { id: folder.id, name: folder.name }];
+      const newPath = [...folderPath, { id: folder.id, name: folder.displayName || folder.name || '' }];
       updateParams({
         folderId: folder.id,
         folderPath: encodeFolderPath(newPath),
@@ -239,7 +239,7 @@ export default function FilesListPage() {
   // ── Export handler ─────────────────────────────────────────────────
   const handleExport = useCallback(() => {
     const rows = allChildren.map((item) => ({
-      name: item.name,
+      name: item.displayName || item.name,
       size: item.size ?? '',
       createdBy: item.createdBy,
       updatedAt: item.updatedAt,
@@ -249,9 +249,9 @@ export default function FilesListPage() {
       header.join(','),
       ...rows.map((r) =>
         [
-          `"${r.name.replace(/"/g, '""')}"`,
+          `"${(r.name || '').replace(/"/g, '""')}"`,
           r.size,
-          `"${r.createdBy.replace(/"/g, '""')}"`,
+          `"${(r.createdBy || '').replace(/"/g, '""')}"`,
           r.updatedAt,
         ].join(','),
       ),
@@ -275,7 +275,9 @@ export default function FilesListPage() {
     // Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((f) => f.name.toLowerCase().includes(q));
+      result = result.filter((f) =>
+        (f.displayName || f.name || '').toLowerCase().includes(q)
+      );
     }
 
     // Date range filter
@@ -283,7 +285,7 @@ export default function FilesListPage() {
       const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : -Infinity;
       const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
       result = result.filter((f) => {
-        const ts = new Date(f.createdAt).getTime();
+        const ts = new Date(f.createdAt || 0).getTime();
         return ts >= fromTs && ts <= toTs;
       });
     }
@@ -293,17 +295,17 @@ export default function FilesListPage() {
       let cmp = 0;
       switch (sortBy) {
         case 'name':
-          cmp = a.name.localeCompare(b.name);
+          cmp = (a.displayName || a.name || '').localeCompare(b.displayName || b.name || '');
           break;
         case 'size':
           cmp = (a.size ?? 0) - (b.size ?? 0);
           break;
         case 'createdAt':
-          cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          cmp = new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
           break;
         case 'updatedAt':
         default:
-          cmp = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          cmp = new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
           break;
       }
       return sortOrder === 'asc' ? cmp : -cmp;
@@ -668,7 +670,7 @@ export default function FilesListPage() {
         title={`Delete ${deleteItem?.type === 'FOLDER' ? 'folder' : 'file'}`}
         description={
           <>
-            Are you sure you want to delete <strong>{deleteItem?.name}</strong>? This action cannot be undone.
+            Are you sure you want to delete <strong>{deleteItem?.displayName || deleteItem?.name}</strong>? This action cannot be undone.
           </>
         }
         confirmLabel="Delete"

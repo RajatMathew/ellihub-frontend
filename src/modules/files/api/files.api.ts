@@ -48,6 +48,14 @@ export const filesApi = {
   async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
     const formData = new FormData();
     formData.append('file', file);
+    
+    // Append fields individually (root level of FormData)
+    formData.append('name', data.name);
+    formData.append('parentId', data.parentId);
+    if (data.mimeType) formData.append('mimeType', data.mimeType);
+    formData.append('size', String(data.size));
+    
+    // Keep 'data' field as a stringified object for backward compatibility
     formData.append('data', JSON.stringify(data));
 
     await api.post(`${BASE}/upload`, formData);
@@ -56,7 +64,7 @@ export const filesApi = {
     const folder = await this.getFolderDetails(data.parentId);
     const match = folder.children
       .filter((c) => c.name === data.name && c.type === 'FILE')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
 
     if (!match) {
       throw new Error('Upload succeeded but file not found in folder');
@@ -85,6 +93,6 @@ export const filesApi = {
   },
 
   async deleteFile(id: string): Promise<void> {
-    await api.delete(`${BASE}/file/${id}`);
+    await api.delete(`${BASE}/${id}`);
   },
 };

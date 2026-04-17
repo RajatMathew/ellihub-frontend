@@ -39,15 +39,15 @@ export function FilesGridView({ data, onFolderClick, onFilePreview }: FilesGridV
                 <FileTypeIcon
                   fileType={item.type}
                   mimeType={item.mimeType}
-                  fileName={item.name}
+                  fileName={item.displayName || item.name}
                   className="size-8"
                 />
               </div>
               <span className="text-sm font-medium text-foreground text-center line-clamp-2 w-full">
-                {item.name}
+                {item.displayName || item.name}
               </span>
               <span className="text-xs text-muted-foreground">
-                {formatDateTime(item.updatedAt)}
+                {formatDateTime(item.updatedAt || '')}
               </span>
               {!isFolder && (
                 <Button
@@ -56,7 +56,7 @@ export function FilesGridView({ data, onFolderClick, onFilePreview }: FilesGridV
                   className="size-7 p-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    downloadFile.mutate(item.id);
+                    downloadFile.mutate(item);
                   }}
                 >
                   <Download className="size-3.5" />

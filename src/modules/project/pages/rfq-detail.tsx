@@ -732,7 +732,7 @@ export default function RFQDetailPage() {
                           <button
                             type="button"
                             className="text-sm font-medium truncate text-primary hover:underline block max-w-full text-left"
-                            onClick={() => downloadFile.mutate(att.document!.id)}
+                            onClick={() => downloadFile.mutate(att.document!)}
                           >
                             {att.document.name ?? 'Untitled Document'}
                           </button>

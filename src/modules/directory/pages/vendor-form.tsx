@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { FormSectionNav } from '@app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
@@ -28,7 +29,6 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav } from '@app/components/form-section-nav';
 import { QuickCreateContactDialog } from '../components';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
 import {
@@ -59,10 +59,12 @@ import {
 function getContactName(
   contactId: string,
   originalLinks: VendorContactLink[],
-  contactsData: { id: string; fullName: string }[],
+  contactsData: { id: string; fullName: string }[]
 ): string {
   const fromLink = originalLinks.find((l) => l.contactId === contactId);
-  if (fromLink) return fromLink.contact.fullName;
+  if (fromLink && fromLink.contact && fromLink.contact.fullName) {
+    return fromLink.contact.fullName;
+  }
   const fromQuery = contactsData.find((c) => c.id === contactId);
   return fromQuery?.fullName ?? contactId;
 }
@@ -96,7 +98,7 @@ export function VendorFormPage() {
     resolver: zodResolver(vendorFormSchema),
     defaultValues: {
       name: '',
-      type: 'MATERIAL',
+      type: '',
       status: 'ACTIVE',
       taxId: '',
       website: '',
@@ -105,35 +107,36 @@ export function VendorFormPage() {
   });
 
   // Contact links state — unified source of truth
-  const [contactLinks, setContactLinks] = useState<
-    { contactId: string; isPrimary: boolean }[]
-  >([]);
+  const [contactLinks, setContactLinks] = useState<{ contactId: string; isPrimary: boolean }[]>([]);
   // Server snapshot for diffing on save (edit mode)
   const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
 
+  // Track if we have performed the initial form population to avoid wiping user changes
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Reset form when vendor data loads in edit mode
   useEffect(() => {
-    if (isEdit && vendorDetail) {
+    if (isEdit && vendorDetail && !isInitialized) {
       const typeValue =
         vendorDetail.typeId ||
         (typeof vendorDetail.type === 'object' ? vendorDetail.type?.id : vendorDetail.type) ||
         '';
 
-
       reset({
         name: vendorDetail.name,
         website: vendorDetail.website ?? '',
-        paymentTerms: vendorDetail.paymentTerms,
+        paymentTerms: vendorDetail.paymentTerms ?? '',
         type: typeValue,
         status: vendorDetail.status,
         taxId: vendorDetail.taxId ?? '',
       });
-      const activeLinks = (vendorDetail.contactLinks ?? []).filter((l) => !l.contact?.deletedAt);
+      const activeLinks = vendorDetail.contactLinks ?? [];
       setOriginalLinks(activeLinks);
-      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })));
+      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary })));
+      setIsInitialized(true);
     }
-  }, [isEdit, vendorDetail, reset, apiTypes]);
+  }, [isEdit, vendorDetail, reset, apiTypes, isInitialized]);
 
   const [activeSection, setActiveSection] = useState<string>('info');
   const [isSaving, setIsSaving] = useState(false);
@@ -148,7 +151,7 @@ export function VendorFormPage() {
       type: randomType ?? 'MATERIAL',
       status: (['ACTIVE', 'INACTIVE'] as const)[Math.floor(Math.random() * 2)],
       taxId: `${Math.floor(10 + Math.random() * 89)}-${Math.floor(
-        1000000 + Math.random() * 8999999,
+        1000000 + Math.random() * 8999999
       )}`,
       website: `https://vendor-${randomId}.com`,
       paymentTerms: 'NET_30',
@@ -177,29 +180,19 @@ export function VendorFormPage() {
         });
 
         // 2. Compute contact link diff
-        const originalByContact = new Map(
-          originalLinks.map((l) => [l.contactId, l]),
-        );
-        const currentByContact = new Map(
-          contactLinks.map((l) => [l.contactId, l]),
-        );
+        const originalByContact = new Map(originalLinks.map((l) => [l.contactId, l]));
+        const currentByContact = new Map(contactLinks.map((l) => [l.contactId, l]));
 
-        const toRemove = originalLinks.filter(
-          (l) => !currentByContact.has(l.contactId),
-        );
-        const toAdd = contactLinks.filter(
-          (l) => !originalByContact.has(l.contactId),
-        );
+        const toRemove = originalLinks.filter((l) => !currentByContact.has(l.contactId));
+        const toAdd = contactLinks.filter((l) => !originalByContact.has(l.contactId));
 
         const linkOps: Promise<unknown>[] = [
-          ...toRemove.map((link) =>
-            removeContactMutation.mutateAsync({ id, contactId: link.id }),
-          ),
+          ...toRemove.map((link) => removeContactMutation.mutateAsync({ id, contactId: link.id })),
           ...toAdd.map((link) =>
             addVendorLinkMutation.mutateAsync({
               contactId: link.contactId,
               data: { vendorId: id, isPrimary: link.isPrimary },
-            }),
+            })
           ),
         ];
 
@@ -238,7 +231,7 @@ export function VendorFormPage() {
             addVendorLinkMutation.mutateAsync({
               contactId: link.contactId,
               data: { vendorId: created.id, isPrimary: link.isPrimary },
-            }),
+            })
           );
           const results = await Promise.allSettled(linkOps);
           const failures = results.filter((r) => r.status === 'rejected');
@@ -281,9 +274,7 @@ export function VendorFormPage() {
               {' / '}
               <span>{isEdit ? 'Edit' : 'New Vendor'}</span>
             </div>
-            <ToolbarPageTitle>
-              {isEdit ? 'Edit Vendor' : 'Add New Vendor'}
-            </ToolbarPageTitle>
+            <ToolbarPageTitle>{isEdit ? 'Edit Vendor' : 'Add New Vendor'}</ToolbarPageTitle>
             <span className="text-sm text-muted-foreground">
               {isEdit
                 ? 'Update vendor profile and contact information.'
@@ -320,176 +311,104 @@ export function VendorFormPage() {
       />
 
       <div className="pt-6 space-y-6">
-          {/* ---- Section: Info ---- */}
-          <Card id="info">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
-                  Info
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Corporate identity and system status.
-                </p>
-              </div>
+        {/* ---- Section: Info ---- */}
+        <Card id="info">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
+                Info
+              </h2>
+              <p className="text-sm text-muted-foreground">Corporate identity and system status.</p>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Row 1: Vendor Name + Vendor Type */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="name"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
+            {/* Row 1: Vendor Name + Vendor Type */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="name"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Vendor Name
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="e.g. Acme Construction Services"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="type"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Vendor Type
+                    </FieldLabel>
+                    <Select
+                      key={`type-${field.value}`}
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Select vendor type..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(apiTypes && apiTypes.length > 0
+                          ? (apiTypes as VendorTypeObject[]).map((t) => ({
+                              value: t.id,
+                              label: t.label || t.name,
+                            }))
+                          : VENDOR_TYPE_OPTIONS
+                        ).map((opt) => {
+                          const val =
+                            typeof opt.value === 'string'
+                              ? opt.value
+                              : (opt.value as VendorTypeObject).id;
+                          return (
+                            <SelectItem key={val} value={val}>
+                              {opt.label}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row 2: Default Status + Tax ID */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => {
+                  return (
+                    <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Vendor Name
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          placeholder="e.g. Acme Construction Services"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="type"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Vendor Type
+                        Default Status
                       </FieldLabel>
                       <Select
-                        key={`type-${field.value}`}
+                        key={`status-${field.value}`}
                         value={field.value || ''}
                         onValueChange={field.onChange}
                       >
-                        <SelectTrigger aria-invalid={fieldState.invalid}>
-                          <SelectValue placeholder="Select type..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(apiTypes && apiTypes.length > 0
-                            ? (apiTypes as VendorTypeObject[]).map((t) => ({ value: t.id, label: t.label || t.name }))
-                            : VENDOR_TYPE_OPTIONS
-                          ).map((opt) => {
-                            const val = typeof opt.value === 'string' ? opt.value : (opt.value as VendorTypeObject).id;
-                            return (
-                              <SelectItem key={val} value={val}>
-                                {opt.label}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row 2: Default Status + Tax ID */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => {
-                    return (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Default Status
-                        </FieldLabel>
-                        <Select
-                          key={`status-${field.value}`}
-                          value={field.value || ''}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {VENDOR_STATUS_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    );
-                  }}
-                />
-
-                <Controller
-                  name="taxId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Tax ID / EIN{' '}
-                        <span className="text-muted-foreground font-normal">(Optional)</span>
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(e.target.value.replace(/[^\d-]/g, ''))
-                          }
-                          placeholder="12-3456789"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                          maxLength={10}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row 3: Website + Payment Terms */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="website"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Website
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Globe className="size-4" />
-                        <Input
-                          {...field}
-                          placeholder="https://..."
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="paymentTerms"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Payment Terms
-                      </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select status..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                          {VENDOR_STATUS_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -497,144 +416,215 @@ export function VendorFormPage() {
                         </SelectContent>
                       </Select>
                     </Field>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  );
+                }}
+              />
 
-          {/* ---- Section: Contacts ---- */}
-          <Card id="contacts">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
-                  Contacts
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Manage multiple points of contact for this vendor.
-                </p>
-              </div>
+              <Controller
+                name="taxId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Tax ID / EIN{' '}
+                      <span className="text-muted-foreground font-normal">(Optional)</span>
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.replace(/[^\d-]/g, ''))}
+                        placeholder="12-3456789"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        maxLength={10}
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
 
-              <Separator />
+            {/* Row 3: Website + Payment Terms */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="website"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Website
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Globe className="size-4" />
+                      <Input
+                        {...field}
+                        placeholder="https://..."
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-              {/* Linked contacts list */}
-              {contactLinks.length > 0 && (
-                <div className="space-y-2">
-                  {contactLinks.map((link, index) => {
-                    const name = getContactName(
-                      link.contactId,
-                      originalLinks,
-                      contactsData?.data ?? [],
-                    );
-                    return (
-                      <div
-                        key={link.contactId}
-                        className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
-                      >
-                        <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 text-sm font-medium text-foreground">
-                          {name}
-                        </span>
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                          Primary
-                          <Switch
-                            checked={link.isPrimary}
-                            onCheckedChange={(checked) =>
-                              setContactLinks((prev) =>
-                                prev.map((l, i) =>
-                                  i === index ? { ...l, isPrimary: checked } : l,
-                                ),
-                              )
-                            }
-                          />
-                        </label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          mode="icon"
-                          className="size-7 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            setContactLinks((prev) => prev.filter((_, i) => i !== index))
+              <Controller
+                name="paymentTerms"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Payment Terms
+                    </FieldLabel>
+                    <Select
+                      key={`terms-${field.value}`}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select terms..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ---- Section: Contacts ---- */}
+        <Card id="contacts">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
+                Contacts
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Manage multiple points of contact for this vendor.
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Linked contacts list */}
+            {contactLinks.length > 0 && (
+              <div className="space-y-2">
+                {contactLinks.map((link, index) => {
+                  const name = getContactName(
+                    link.contactId,
+                    originalLinks,
+                    contactsData?.data ?? []
+                  );
+                  return (
+                    <div
+                      key={link.contactId}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
+                    >
+                      <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 text-sm font-medium text-foreground">{name}</span>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        Primary
+                        <Switch
+                          checked={!!link.isPrimary}
+                          onCheckedChange={(checked) =>
+                            setContactLinks((prev) =>
+                              prev.map((l, i) => (i === index ? { ...l, isPrimary: checked } : l))
+                            )
                           }
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Add contact select */}
-              <Field>
-                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                  Add Contact
-                </FieldLabel>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      options={contactOptions.filter(
-                        (c) => !contactLinks.some((l) => l.contactId === c.value),
-                      )}
-                      value={null}
-                      onValueChange={(contactId) => {
-                        if (contactId) {
-                          setContactLinks((prev) => [
-                            ...prev,
-                            { contactId, isPrimary: false },
-                          ]);
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        mode="icon"
+                        className="size-7 text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          setContactLinks((prev) => prev.filter((_, i) => i !== index))
                         }
-                      }}
-                      placeholder="Search Contacts..."
-                      searchPlaceholder="Search contacts..."
-                      emptyMessage="No contacts found."
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setContactDialogOpen(true)}
-                  >
-                    <Plus className="size-4" />
-                    Create Contact
-                  </Button>
-                </div>
-              </Field>
-
-              {contactLinks.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No contacts linked yet. Search above or create a new contact.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ---- Section: Compliance Docs (Future Update) ---- */}
-          <Card id="compliance-docs">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
-                  Compliance Docs
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Track insurance and legal documentation status.
-                </p>
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
+            )}
 
-              <Separator />
+            {/* Add contact select */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                Add Contact
+              </FieldLabel>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    options={contactOptions.filter(
+                      (c) => !contactLinks.some((l) => l.contactId === c.value)
+                    )}
+                    value={null}
+                    onValueChange={(contactId) => {
+                      if (contactId) {
+                        setContactLinks((prev) => [...prev, { contactId, isPrimary: false }]);
+                      }
+                    }}
+                    placeholder="Search Contacts..."
+                    searchPlaceholder="Search contacts..."
+                    emptyMessage="No contacts found."
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setContactDialogOpen(true)}
+                >
+                  <Plus className="size-4" />
+                  Create Contact
+                </Button>
+              </div>
+            </Field>
 
+            {contactLinks.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <FileText className="size-10 text-muted-foreground/40" />
                 <p className="text-sm text-muted-foreground">
-                  Compliance document tracking will be available in a future update.
+                  No contacts linked yet. Search above or create a new contact.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ---- Section: Compliance Docs (Future Update) ---- */}
+        <Card id="compliance-docs">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground uppercase tracking-wide">
+                Compliance Docs
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Track insurance and legal documentation status.
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <FileText className="size-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                Compliance document tracking will be available in a future update.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <QuickCreateContactDialog

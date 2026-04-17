@@ -87,9 +87,9 @@ export function VendorDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   /* ---- Computed values from real API data ---- */
-  const contactLinks = (vendor?.contactLinks ?? []).filter(
-    (l) => !l.contact?.deletedAt
-  );
+
+  // Also keep links that don't have contact object yet for debugging/fallback
+  const allLinks = vendor?.contactLinks ?? [];
 
   if (isLoading) {
     return (
@@ -287,7 +287,7 @@ export function VendorDetailPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Payment Terms</span>
                         <Badge variant="secondary" size="sm">
-                          {PAYMENT_TERMS_LABELS[vendor.paymentTerms] ?? vendor.paymentTerms}
+                          {vendor.paymentTerms ? (PAYMENT_TERMS_LABELS[vendor.paymentTerms] ?? vendor.paymentTerms) : '—'}
                         </Badge>
                       </div>
                       <Separator />
@@ -321,15 +321,15 @@ export function VendorDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {contactLinks.length > 0 ? (
+                    {allLinks.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {contactLinks.map((link) => (
+                        {allLinks.map((link) => (
                           <div
                             key={link.id}
                             className="p-4 rounded-lg border border-border"
                           >
                             <ContactCard
-                              fullName={link.contact.fullName}
+                              fullName={link.contact?.fullName || `Contact ID: ${link.contactId.slice(-6)}`}
                               email={getContactDisplayEmail(link)}
                               phone={getContactDisplayPhone(link)}
                               isPrimary={link.isPrimary}

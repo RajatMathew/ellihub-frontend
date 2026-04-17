@@ -73,7 +73,7 @@ export const vendorContactLinkSchema = z
     isPrimary: z.boolean(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
-    contact: vendorContactLinkContactSchema,
+    contact: vendorContactLinkContactSchema.optional().nullable(),
   })
   .passthrough();
 
@@ -93,12 +93,13 @@ export const vendorSchema = z
     taxId: z.string().nullable().optional().default(null),
     website: z.string().nullable().optional().default(null),
     address: z.string().nullable().optional().default(null),
-    paymentTerms: paymentTermsSchema.optional().default('NET_30'),
+    paymentTerms: paymentTermsSchema.nullable().optional(),
     notes: z.string().nullable().optional().default(null),
     status: vendorStatusSchema,
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
+    contactLinks: z.array(vendorContactLinkSchema).optional().default([]),
     _count: z
       .object({
         contactLinks: z.number().default(0),
@@ -125,7 +126,7 @@ export const vendorDetailSchema = z
     taxId: z.string().nullable().optional().default(null),
     website: z.string().nullable().optional().default(null),
     address: z.string().nullable().optional().default(null),
-    paymentTerms: paymentTermsSchema.optional().default('NET_30'),
+    paymentTerms: paymentTermsSchema.nullable().optional(),
     notes: z.string().nullable().optional().default(null),
     status: vendorStatusSchema,
     deletedAt: z.string().nullable().optional().default(null),

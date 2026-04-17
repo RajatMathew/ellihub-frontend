@@ -9,9 +9,11 @@ import {
 } from '@tanstack/react-table';
 import {
   AlertCircle,
+  Building2,
   Filter,
   Mail,
   MoreHorizontal,
+  Package,
   Phone,
   Plus,
   RefreshCcw,
@@ -54,20 +56,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@app/components/ui/select';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
+import { Toolbar, ToolbarActions, ToolbarHeading, ToolbarPageTitle, ToolbarWrapper } from '@app/components/toolbar/toolbar';
 import { Skeleton } from '@app/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@app/components/ui/tooltip';
 import { getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import {
   useContactsQuery,
   useDeleteContactMutation,
-  useDirectoryKpisQuery,
   useProfessionalRolesQuery,
   useVendorsQuery,
 } from '../hooks';
@@ -157,20 +153,27 @@ export function ContactsListPage() {
   const hasActiveFilters = !!searchQuery || !!roleFilter;
 
   const { data, isLoading, isError, refetch } = useContactsQuery(filters);
-  const { data: kpis } = useDirectoryKpisQuery();
   const { data: professionalRoles } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const del = useDeleteContactMutation();
+  const { data: statsData } = useContactsQuery({
+    ...filters,
+    size: 100, // Fetch more for stats accuracy
+    page: 1,
+  });
 
   // Use API data
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
-  const resolvedKpis = kpis ?? {
-    totalContacts: totalCount,
-    primaryContacts: 0,
-    gcLinks: 0,
-    vendorLinks: 0,
-  };
+
+  // Locally compute KPIs from current/expanded results
+  const resolvedKpis = useMemo(() => {
+    const items = statsData?.data ?? [];
+    return {
+      gcLinks: items.filter((c) => (c.gcLinks?.length ?? 0) > 0).length,
+      vendorLinks: items.filter((c) => (c.vendorLinks?.length ?? 0) > 0).length,
+    };
+  }, [statsData]);
 
   // Map URL sort state → TanStack SortingState
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
@@ -178,27 +181,21 @@ export function ContactsListPage() {
   const statsItems = [
     {
       label: 'Total Contacts',
-      value: resolvedKpis.totalContacts,
+      value: totalCount,
       icon: <Users className="size-6 text-primary" />,
       bgClass: 'bg-primary/10',
     },
     {
-      label: 'Primary Contacts',
-      value: resolvedKpis.primaryContacts,
-      icon: <Users className="size-6 text-info" />,
-      bgClass: 'bg-info/10',
+      label: 'Vendors Linked',
+      value: resolvedKpis.vendorLinks,
+      icon: <Package className="size-6 text-warning" />,
+      bgClass: 'bg-warning/10',
     },
     {
       label: 'GC Linked',
       value: resolvedKpis.gcLinks,
-      icon: <Users className="size-6 text-success" />,
+      icon: <Building2 className="size-6 text-success" />,
       bgClass: 'bg-success/10',
-    },
-    {
-      label: 'Vendors Linked',
-      value: resolvedKpis.vendorLinks,
-      icon: <Users className="size-6 text-warning" />,
-      bgClass: 'bg-warning/10',
     },
   ];
 
@@ -256,13 +253,30 @@ export function ContactsListPage() {
         ),
         cell: ({ row }) => {
           const links = row.original.vendorLinks;
-          if (!links?.length)
-            return <span className="text-sm text-muted-foreground">—</span>;
+          if (!links?.length) return <span className="text-sm text-muted-foreground">—</span>;
+          
           const firstName = vendorNames.get(links[0].vendorId) ?? links[0].vendorId;
+          
+          if (links.length === 1) {
+            return <span className="text-sm text-muted-foreground">{firstName}</span>;
+          }
+
           return (
-            <span className="text-sm text-muted-foreground">
-              {links.length === 1 ? firstName : `${firstName} +${links.length - 1}`}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-muted-foreground cursor-default underline decoration-dotted underline-offset-4 decoration-muted-foreground/50 hover:decoration-muted-foreground">
+                  {firstName} <span className="text-muted-foreground/75 text-xs font-semibold">+{links.length - 1}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="flex flex-col gap-1 p-2">
+                <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest mb-0.5">Linked Vendors</span>
+                {links.map((l) => (
+                  <span key={l.id} className="text-xs font-medium">
+                    {vendorNames.get(l.vendorId) ?? l.vendorId}
+                  </span>
+                ))}
+              </TooltipContent>
+            </Tooltip>
           );
         },
         meta: {
@@ -462,7 +476,7 @@ export function ContactsListPage() {
       </Toolbar>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5 lg:mb-7.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 lg:mb-7.5">
         {statsItems.map((item) => (
           <StatsCard
             key={item.label}

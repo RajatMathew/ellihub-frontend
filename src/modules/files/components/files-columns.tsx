@@ -40,11 +40,11 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
             <FileTypeIcon
               fileType={row.original.type}
               mimeType={row.original.mimeType}
-              fileName={row.original.name}
+              fileName={row.original.displayName || row.original.name}
               className="size-4 shrink-0"
             />
             <span className="text-sm font-medium text-foreground line-clamp-1">
-              {row.original.name}
+              {row.original.displayName || row.original.name || 'Unnamed'}
             </span>
           </div>
         ),
@@ -83,7 +83,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         header: ({ column }) => <DataGridColumnHeader column={column} title="Updated" />,
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
-            {formatDateTime(row.original.updatedAt)}
+            {formatDateTime(row.original.updatedAt || '')}
           </span>
         ),
         meta: {
@@ -112,7 +112,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                     variant="ghost"
                     size="sm"
                     className="size-8 p-0"
-                    onClick={() => downloadFile.mutate(row.original.id)}
+                    onClick={() => downloadFile.mutate(row.original)}
                   >
                     <Download className="size-3.5" />
                   </Button>
@@ -137,7 +137,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                       Rename
                     </DropdownMenuItem>
                     {isFile && (
-                      <DropdownMenuItem onClick={() => downloadFile.mutate(row.original.id)}>
+                      <DropdownMenuItem onClick={() => downloadFile.mutate(row.original)}>
                         <Download className="size-3.5" />
                         Download
                       </DropdownMenuItem>

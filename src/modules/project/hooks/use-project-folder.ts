@@ -19,7 +19,7 @@ async function resolveProjectFolder(
   // 2. Find "projects" folder in root children
   const rootDetail = await filesApi.getFolderDetails(root.id);
   const projectsFolder = rootDetail.children.find(
-    (c) => c.type === 'FOLDER' && c.name.toLowerCase() === 'projects',
+    (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects',
   );
   if (!projectsFolder) throw new Error('Projects folder not found');
 
@@ -35,7 +35,7 @@ async function resolveProjectFolder(
   // 4. Find the named subfolder
   const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
   const subfolder = projectFolderDetail.children.find(
-    (c) => c.type === 'FOLDER' && c.name.toLowerCase() === subfolderName.toLowerCase(),
+    (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === subfolderName.toLowerCase(),
   );
   if (!subfolder) throw new Error(`Subfolder "${subfolderName}" not found`);
 

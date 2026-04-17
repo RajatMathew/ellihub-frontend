@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { Avatar, AvatarFallback } from '@app/components/ui/avatar';
+
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
@@ -61,7 +61,7 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-import { getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
+import { parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteVendorMutation, useVendorsQuery, useVendorTypesQuery } from '../hooks';
 import type {
@@ -252,7 +252,8 @@ export function VendorListPage() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor Name" />,
         cell: ({ row }) => {
           const status = row.original.status;
-          const contactCount = row.original._count?.contactLinks ?? 0;
+          const contactLinks = row.original.contactLinks ?? [];
+          const contactCount = contactLinks.length || (row.original._count?.contactLinks ?? 0);
           return (
             <div className="flex flex-col gap-0.5">
               <Link
@@ -317,25 +318,29 @@ export function VendorListPage() {
         id: 'contact',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Contact" />,
         cell: ({ row }) => {
-          const { email, name } = row.original;
-          if (!email)
-            return <span className="text-sm text-muted-foreground">&mdash;</span>;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-8">
-                <AvatarFallback className="text-[10px] font-semibold">
-                  {getInitials(name, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-foreground">{name}</span>
-                <a
-                  href={`mailto:${email}`}
-                  className="text-2sm text-muted-foreground hover:text-primary"
-                >
-                  {email}
-                </a>
+          const firstLink = row.original.contactLinks?.[0];
+          const contact = firstLink?.contact;
+          const contactName = contact?.fullName;
+          const contactEmail = contact?.email?.[0]?.email;
+
+          if (!contactName) {
+            const { email, name } = row.original;
+            if (!email)
+              return <span className="text-sm text-muted-foreground">&mdash;</span>;
+            return (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground leading-tight">{name}</span>
+                <span className="text-xs text-muted-foreground truncate">{email}</span>
               </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-foreground leading-tight">{contactName}</span>
+              {contactEmail && (
+                <span className="text-xs text-muted-foreground truncate">{contactEmail}</span>
+              )}
             </div>
           );
         },

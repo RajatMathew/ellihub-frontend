@@ -1,11 +1,22 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Check, CircleUserRound, FileText, Globe, Mail, Phone, Plus, X } from 'lucide-react';
+import {
+  Building2,
+  Check,
+  CircleUserRound,
+  FileText,
+  Globe,
+  Mail,
+  Phone,
+  Plus,
+  X,
+} from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { FormSectionNav } from '@app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
@@ -18,11 +29,16 @@ import { Card, CardContent } from '@app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@app/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
-import { FormSectionNav } from '@app/components/form-section-nav';
 import { QuickCreateContactDialog } from '../components';
 import { GC_FORM_SECTIONS, GC_STATUS_OPTIONS } from '../constants/gc.constants';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
@@ -47,10 +63,12 @@ import {
 function getContactName(
   contactId: string,
   originalLinks: GCContactLink[],
-  contactsData: { id: string; fullName: string }[],
+  contactsData: { id: string; fullName: string }[]
 ): string {
   const fromLink = originalLinks.find((l) => l.contactId === contactId);
-  if (fromLink) return fromLink.contact.fullName;
+  if (fromLink && fromLink.contact && fromLink.contact.fullName) {
+    return fromLink.contact.fullName;
+  }
   const fromQuery = contactsData.find((c) => c.id === contactId);
   return fromQuery?.fullName ?? contactId;
 }
@@ -95,9 +113,7 @@ export function GCFormPage() {
   });
 
   // Contact links state — unified source of truth
-  const [contactLinks, setContactLinks] = useState<
-    { contactId: string; isPrimary: boolean }[]
-  >([]);
+  const [contactLinks, setContactLinks] = useState<{ contactId: string; isPrimary: boolean }[]>([]);
   // Server snapshot for diffing on save (edit mode)
   const [originalLinks, setOriginalLinks] = useState<GCContactLink[]>([]);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
@@ -116,16 +132,12 @@ export function GCFormPage() {
         email: gcDetail.email ?? '',
         phone: gcDetail.phone ?? '',
         address: gcDetail.address ?? '',
-        paymentTerms: gcDetail.paymentTerms,
+        paymentTerms: gcDetail.paymentTerms ?? '',
         retainagePercent: gcDetail.retainagePercent,
       });
-      const activeLinks = (gcDetail.contactLinks ?? []).filter(
-        (l) => !l.contact.deletedAt,
-      );
+      const activeLinks = gcDetail.contactLinks ?? [];
       setOriginalLinks(activeLinks);
-      setContactLinks(
-        activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: l.isPrimary })),
-      );
+      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary })));
       setIsInitialized(true);
     }
   }, [isEdit, gcDetail, reset, isInitialized]);
@@ -137,12 +149,14 @@ export function GCFormPage() {
     }
   }, [gcTypes.length, isEdit, gcDetail, setValue, watch]);
 
-  const gcTypeOptions = useMemo(() => 
-    gcTypes.map((t) => ({
-      value: t.id,
-      label: t.label || t.name || 'Unknown',
-    })),
-  [gcTypes]);
+  const gcTypeOptions = useMemo(
+    () =>
+      gcTypes.map((t) => ({
+        value: t.id,
+        label: t.label || t.name || 'Unknown',
+      })),
+    [gcTypes]
+  );
 
   const [activeSection, setActiveSection] = useState<string>('info');
   const [isSaving, setIsSaving] = useState(false);
@@ -198,7 +212,7 @@ export function GCFormPage() {
             addContactLinkMutation.mutateAsync({
               gcId: id,
               data: { contactId: link.contactId, isPrimary: link.isPrimary },
-            }),
+            })
           );
           const results = await Promise.allSettled(linkOps);
           const failures = results.filter((r) => r.status === 'rejected');
@@ -226,7 +240,7 @@ export function GCFormPage() {
             addContactLinkMutation.mutateAsync({
               gcId: created.id,
               data: { contactId: link.contactId, isPrimary: link.isPrimary },
-            }),
+            })
           );
           const results = await Promise.allSettled(linkOps);
           const failures = results.filter((r) => r.status === 'rejected');
@@ -256,68 +270,68 @@ export function GCFormPage() {
   return (
     <>
       <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
-      className="container-fluid py-7.5"
-    >
-      {/* Toolbar */}
-      <Toolbar sticky={false}>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              <Link to=".." relative="path" className="hover:text-foreground">
-                General Contractors
-              </Link>
-              {' / '}
-              <span>{isEdit ? 'Edit' : 'New GC'}</span>
-            </div>
-            <ToolbarPageTitle>
-              {isEdit ? 'Edit General Contractor' : 'Add General Contractor'}
-            </ToolbarPageTitle>
-            <span className="text-sm text-muted-foreground">
-              {isEdit
-                ? 'Update the general contractor information below.'
-                : 'Register a new General Contractor to track volume, projects, and compliance documents.'}
-            </span>
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Button variant="outline" size="sm" type="button" onClick={handleFillRandom}>
-              Fill Random
-            </Button>
-            <Button variant="outline" size="sm" type="button" asChild>
-              <Link to=".." relative="path">
-                Cancel
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleSubmit(onSubmit)()}
-            >
-              Save as Draft
-            </Button>
-            <Button
-              size="sm"
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleSubmit(onSubmit)()}
-            >
-              <Check className="size-4" />
-              {isEdit ? 'Save Changes' : 'Create GC'}
-            </Button>
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+        onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+        className="container-fluid py-7.5"
+      >
+        {/* Toolbar */}
+        <Toolbar sticky={false}>
+          <ToolbarWrapper>
+            <ToolbarHeading>
+              <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                <Link to=".." relative="path" className="hover:text-foreground">
+                  General Contractors
+                </Link>
+                {' / '}
+                <span>{isEdit ? 'Edit' : 'New GC'}</span>
+              </div>
+              <ToolbarPageTitle>
+                {isEdit ? 'Edit General Contractor' : 'Add General Contractor'}
+              </ToolbarPageTitle>
+              <span className="text-sm text-muted-foreground">
+                {isEdit
+                  ? 'Update the general contractor information below.'
+                  : 'Register a new General Contractor to track volume, projects, and compliance documents.'}
+              </span>
+            </ToolbarHeading>
+            <ToolbarActions>
+              <Button variant="outline" size="sm" type="button" onClick={handleFillRandom}>
+                Fill Random
+              </Button>
+              <Button variant="outline" size="sm" type="button" asChild>
+                <Link to=".." relative="path">
+                  Cancel
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleSubmit(onSubmit)()}
+              >
+                Save as Draft
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleSubmit(onSubmit)()}
+              >
+                <Check className="size-4" />
+                {isEdit ? 'Save Changes' : 'Create GC'}
+              </Button>
+            </ToolbarActions>
+          </ToolbarWrapper>
+        </Toolbar>
 
-      {/* Main layout: top nav + content */}
-      <FormSectionNav
-        sections={GC_FORM_SECTIONS}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
+        {/* Main layout: top nav + content */}
+        <FormSectionNav
+          sections={GC_FORM_SECTIONS}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
 
-      <div className="pt-6 space-y-6">
+        <div className="pt-6 space-y-6">
           {/* ---- Section: General Information ---- */}
           <Card id="info">
             <CardContent className="space-y-6">
@@ -355,27 +369,27 @@ export function GCFormPage() {
                   )}
                 />
 
-                      <Controller
-                        name="gcTypeId"
-                        control={control}
-                        render={({ field, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                              GC Type
-                            </FieldLabel>
-                            <SearchableSelect
-                              options={gcTypeOptions}
-                              value={field.value || null}
-                              onValueChange={(val) => field.onChange(val || '')}
-                              placeholder="Select type..."
-                              searchPlaceholder="Search types..."
-                              emptyMessage="No types found."
-                              disabled={gcTypes.length === 0}
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
+                <Controller
+                  name="gcTypeId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        GC Type
+                      </FieldLabel>
+                      <SearchableSelect
+                        options={gcTypeOptions}
+                        value={field.value || null}
+                        onValueChange={(val) => field.onChange(val || '')}
+                        placeholder="Select GC type..."
+                        searchPlaceholder="Search types..."
+                        emptyMessage="No types found."
+                        disabled={gcTypes.length === 0}
                       />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
               </div>
 
               {/* Row 2: Website + Status */}
@@ -390,7 +404,12 @@ export function GCFormPage() {
                       </FieldLabel>
                       <InputWrapper>
                         <Globe className="size-4" />
-                        <Input {...field} placeholder="https://..." aria-invalid={fieldState.invalid} autoComplete="off" />
+                        <Input
+                          {...field}
+                          placeholder="https://..."
+                          aria-invalid={fieldState.invalid}
+                          autoComplete="off"
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -405,9 +424,13 @@ export function GCFormPage() {
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Initial Status
                       </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        key={`status-${field.value}`}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select status..." />
                         </SelectTrigger>
                         <SelectContent>
                           {GC_STATUS_OPTIONS.map((opt) => (
@@ -505,9 +528,13 @@ export function GCFormPage() {
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Payment Terms
                       </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        key={`terms-${field.value}`}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select terms..." />
                         </SelectTrigger>
                         <SelectContent>
                           {PAYMENT_TERMS_OPTIONS.map((opt) => (
@@ -569,7 +596,7 @@ export function GCFormPage() {
                     const name = getContactName(
                       link.contactId,
                       originalLinks,
-                      contactsData?.data ?? [],
+                      contactsData?.data ?? []
                     );
                     return (
                       <div
@@ -577,18 +604,14 @@ export function GCFormPage() {
                         className="flex items-center gap-3 rounded-lg border border-border bg-accent/50 px-4 py-3"
                       >
                         <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 text-sm font-medium text-foreground">
-                          {name}
-                        </span>
+                        <span className="flex-1 text-sm font-medium text-foreground">{name}</span>
                         <label className="flex items-center gap-2 text-xs text-muted-foreground">
                           Primary
                           <Switch
-                            checked={link.isPrimary}
+                            checked={!!link.isPrimary}
                             onCheckedChange={(checked) =>
                               setContactLinks((prev) =>
-                                prev.map((l, i) =>
-                                  i === index ? { ...l, isPrimary: checked } : l,
-                                ),
+                                prev.map((l, i) => (i === index ? { ...l, isPrimary: checked } : l))
                               )
                             }
                           />
@@ -620,15 +643,12 @@ export function GCFormPage() {
                   <div className="flex-1">
                     <SearchableSelect
                       options={contactOptions.filter(
-                        (c) => !contactLinks.some((l) => l.contactId === c.value),
+                        (c) => !contactLinks.some((l) => l.contactId === c.value)
                       )}
                       value={null}
                       onValueChange={(contactId) => {
                         if (contactId) {
-                          setContactLinks((prev) => [
-                            ...prev,
-                            { contactId, isPrimary: false },
-                          ]);
+                          setContactLinks((prev) => [...prev, { contactId, isPrimary: false }]);
                         }
                       }}
                       placeholder="Search Contacts..."
@@ -680,15 +700,14 @@ export function GCFormPage() {
               </div>
             </CardContent>
           </Card>
-      </div>
+        </div>
+      </form>
 
-    </form>
-
-    <QuickCreateContactDialog
-      open={contactDialogOpen}
-      onOpenChange={setContactDialogOpen}
-      onCreated={handleContactCreated}
-    />
+      <QuickCreateContactDialog
+        open={contactDialogOpen}
+        onOpenChange={setContactDialogOpen}
+        onCreated={handleContactCreated}
+      />
     </>
   );
 }

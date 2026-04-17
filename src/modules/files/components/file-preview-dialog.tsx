@@ -12,7 +12,7 @@ import {
 
 import type { FileItem } from '@modules/files/schemas/file.schema';
 
-import { useFilePreviewQuery, useTextContentQuery } from '../hooks/files.hooks';
+import { useDownloadFile, useFilePreviewQuery, useTextContentQuery } from '../hooks/files.hooks';
 import { FileTypeIcon } from './file-type-icon';
 
 // ── Preview support detection ────────────────────────────────────────
@@ -21,7 +21,7 @@ type PreviewType = 'image' | 'pdf' | 'video' | 'audio' | 'text' | 'none';
 
 function getPreviewType(item: FileItem): PreviewType {
   const mime = item.mimeType ?? '';
-  const ext = item.name.split('.').pop()?.toLowerCase() ?? '';
+  const ext = (item.displayName || item.name || '').split('.').pop()?.toLowerCase() ?? '';
 
   if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext))
     return 'image';
@@ -63,15 +63,10 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
     isFile && previewType === 'text' && !!url,
   );
 
+  const downloadFile = useDownloadFile();
+
   const handleDownload = () => {
-    if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (file) downloadFile.mutate(file);
   };
 
   return (
@@ -83,11 +78,11 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               <FileTypeIcon
                 fileType={file.type}
                 mimeType={file.mimeType}
-                fileName={file.name}
+                fileName={file.displayName || file.name}
                 className="size-5 shrink-0"
               />
             )}
-            <span className="truncate">{file?.name}</span>
+            <span className="truncate">{file?.displayName || file?.name}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -109,7 +104,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
             <div className="flex items-center justify-center h-full p-4">
               <img
                 src={url}
-                alt={file?.name}
+                alt={file?.displayName || file?.name || undefined}
                 className="max-w-full max-h-full object-contain rounded-md"
               />
             </div>
@@ -118,7 +113,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
           {!isLoading && !isError && url && previewType === 'pdf' && (
             <iframe
               src={url}
-              title={file?.name}
+              title={file?.displayName || file?.name || undefined}
               className="w-full h-full rounded-md border"
             />
           )}
@@ -140,7 +135,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               <FileTypeIcon
                 fileType="FILE"
                 mimeType={file?.mimeType}
-                fileName={file?.name ?? ''}
+                fileName={file?.displayName || file?.name || ''}
                 className="size-16"
               />
               <audio src={url} controls className="w-full max-w-md">
@@ -160,7 +155,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               <FileTypeIcon
                 fileType="FILE"
                 mimeType={file?.mimeType}
-                fileName={file?.name ?? ''}
+                fileName={file?.displayName || file?.name || ''}
                 className="size-16 text-muted-foreground/40"
               />
               <p className="text-sm text-muted-foreground">Preview not available for this file type</p>

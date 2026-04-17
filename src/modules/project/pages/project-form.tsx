@@ -293,7 +293,7 @@ export default function ProjectForm() {
           const root = await filesApi.getRootFolder();
           const rootDetail = await filesApi.getFolderDetails(root.id);
           const projectsFolder = rootDetail.children.find(
-            (c) => c.type === 'FOLDER' && c.name.toLowerCase() === 'projects',
+            (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects',
           );
           if (projectsFolder) {
             const projectsFolderDetail = await filesApi.getFolderDetails(projectsFolder.id);
@@ -303,7 +303,7 @@ export default function ProjectForm() {
             if (projectFolder) {
               const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
               const primeContractFolder = projectFolderDetail.children.find(
-                (c) => c.type === 'FOLDER' && c.name.toLowerCase() === 'prime contract',
+                (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'prime contract',
               );
               if (primeContractFolder) {
                 for (const file of selectedFiles) {
