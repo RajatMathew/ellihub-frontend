@@ -5,17 +5,13 @@ import { requirePermission } from 'src/middleware/auth';
 
 import {
     AddEmailToContactSchema,
-    AddGcToContactSchema,
     AddPhoneToContactSchema,
     AddTagToContactSchema,
-    AddVendorToContactSchema,
     ContactCreateSchema,
     ContactUpdateSchema,
     RemoveEmailFromContactSchema,
-    RemoveGcFromContactSchema,
     RemovePhoneFromContactSchema,
     RemoveTagFromContactSchema,
-    RemoveVendorFromContactSchema,
 } from './models';
 import { ContactService } from './service';
 
@@ -65,50 +61,6 @@ app.delete('/:id', requirePermission({ contact: ['delete'] }), async (c) => {
     await ContactService.deleteContact(id);
     return success(c, null);
 });
-
-app.patch(
-    '/gc/add',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', AddGcToContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const link = await ContactService.addGcToContact(data);
-        return success(c, link);
-    }
-);
-
-app.patch(
-    '/gc/remove',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', RemoveGcFromContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        await ContactService.removeGcFromContact(data);
-        return success(c, null);
-    }
-);
-
-app.patch(
-    '/vendor/add',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', AddVendorToContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const link = await ContactService.addVendorToContact(data);
-        return success(c, link);
-    }
-);
-
-app.patch(
-    '/vendor/remove',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', RemoveVendorFromContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        await ContactService.removeVendorFromContact(data);
-        return success(c, null);
-    }
-);
 
 app.patch(
     '/email/add',

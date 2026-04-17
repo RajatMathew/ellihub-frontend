@@ -267,118 +267,6 @@
                 }
             }
         },
-        "/contact/gc/add": {
-            "patch": {
-                "tags": ["Contacts"],
-                "summary": "Link a general contractor to a contact",
-                "operationId": "addGcToContact",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/AddGcToContactRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Link created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/ContactGCLink" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": { "description": "Contact or general contractor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/contact/gc/remove": {
-            "patch": {
-                "tags": ["Contacts"],
-                "summary": "Unlink a general contractor from a contact",
-                "operationId": "removeGcFromContact",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RemoveGcFromContactRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Link removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "404": { "description": "Link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/contact/vendor/add": {
-            "patch": {
-                "tags": ["Contacts"],
-                "summary": "Link a vendor to a contact",
-                "operationId": "addVendorToContact",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/AddVendorToContactRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Link created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/ContactVendorLink" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": { "description": "Contact or vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/contact/vendor/remove": {
-            "patch": {
-                "tags": ["Contacts"],
-                "summary": "Unlink a vendor from a contact",
-                "operationId": "removeVendorFromContact",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RemoveVendorFromContactRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Link removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "404": { "description": "Link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
         "/contact/email/add": {
             "patch": {
                 "tags": ["Contacts"],
@@ -619,16 +507,9 @@
                     "isPrimary": { "type": "boolean" }
                 }
             },
-            "LinkedCompany": {
-                "type": "object",
-                "required": ["id"],
-                "properties": {
-                    "id": { "type": "string", "description": "ULID" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
             "Contact": {
                 "type": "object",
+                "description": "A contact may be linked to AT MOST one vendor OR one general contractor, never both. Both vendorId and generalContractorId may be null for unaffiliated contacts.",
                 "properties": {
                     "id": { "type": "string", "description": "ULID" },
                     "fullName": { "type": "string" },
@@ -645,48 +526,19 @@
                         "items": { "$ref": "#/components/schemas/ContactPhone" }
                     },
                     "tags": { "type": "array", "items": { "type": "string" } },
-                    "vendorLinks": {
-                        "type": "array",
-                        "description": "Vendors this contact is linked to; included on get/list responses",
-                        "items": { "$ref": "#/components/schemas/ContactVendorLink" }
-                    },
-                    "gcLinks": {
-                        "type": "array",
-                        "description": "General contractors this contact is linked to; included on get/list responses",
-                        "items": { "$ref": "#/components/schemas/ContactGCLink" }
-                    },
+                    "vendorId": { "type": "string", "nullable": true, "description": "ULID of the vendor this contact belongs to, if any" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor", "nullable": true, "description": "Vendor this contact belongs to; included on get/list responses" },
+                    "generalContractorId": { "type": "string", "nullable": true, "description": "ULID of the GC this contact belongs to, if any" },
+                    "generalContractor": { "$ref": "#/components/schemas/GeneralContractor", "nullable": true, "description": "GC this contact belongs to; included on get/list responses" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
-            "ContactGCLink": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "description": "ULID" },
-                    "contactId": { "type": "string" },
-                    "generalContractorId": { "type": "string" },
-                    "isPrimary": { "type": "boolean" },
-                    "generalContractor": { "$ref": "#/components/schemas/GeneralContractor", "description": "Linked GC; included on get/list responses" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "ContactVendorLink": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "description": "ULID" },
-                    "contactId": { "type": "string" },
-                    "vendorId": { "type": "string" },
-                    "isPrimary": { "type": "boolean" },
-                    "vendor": { "$ref": "#/components/schemas/Vendor", "description": "Linked vendor; included on get/list responses" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
-                }
-            },
             "ContactCreateRequest": {
                 "type": "object",
                 "required": ["fullName", "email"],
+                "description": "Set at most one of vendorId or generalContractorId. Providing both is a validation error.",
                 "properties": {
                     "fullName": { "type": "string", "minLength": 2 },
                     "professionalRoleId": { "type": "string", "nullable": true, "description": "Lookup ULID" },
@@ -701,16 +553,8 @@
                         "items": { "$ref": "#/components/schemas/ContactPhone" }
                     },
                     "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                    "linkedGc": {
-                        "type": "array",
-                        "nullable": true,
-                        "items": { "$ref": "#/components/schemas/LinkedCompany" }
-                    },
-                    "linkedVendors": {
-                        "type": "array",
-                        "nullable": true,
-                        "items": { "$ref": "#/components/schemas/LinkedCompany" }
-                    }
+                    "vendorId": { "type": "string", "nullable": true, "description": "ULID of the vendor to link. Mutually exclusive with generalContractorId." },
+                    "generalContractorId": { "type": "string", "nullable": true, "description": "ULID of the GC to link. Mutually exclusive with vendorId." }
                 }
             },
             "ContactUpdateRequest": {
@@ -724,40 +568,6 @@
                         }
                     }
                 ]
-            },
-            "AddGcToContactRequest": {
-                "type": "object",
-                "required": ["contactId", "generalContractorId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "ULID" },
-                    "generalContractorId": { "type": "string", "description": "ULID" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
-            "RemoveGcFromContactRequest": {
-                "type": "object",
-                "required": ["contactId", "generalContractorId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "ULID" },
-                    "generalContractorId": { "type": "string", "description": "ULID" }
-                }
-            },
-            "AddVendorToContactRequest": {
-                "type": "object",
-                "required": ["contactId", "vendorId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "ULID" },
-                    "vendorId": { "type": "string", "description": "ULID" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
-            "RemoveVendorFromContactRequest": {
-                "type": "object",
-                "required": ["contactId", "vendorId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "ULID" },
-                    "vendorId": { "type": "string", "description": "ULID" }
-                }
             },
             "AddEmailToContactRequest": {
                 "type": "object",

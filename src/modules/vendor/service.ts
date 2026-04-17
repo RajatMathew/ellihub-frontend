@@ -16,38 +16,17 @@ import {
 
 export const VendorService = {
     createVendor: async (request: VendorCreateRequest, userId: string): Promise<Vendor> => {
-        const { typeId, contacts, ...rest } = request;
+        const { typeId, ...rest } = request;
 
         if (typeId) {
             const type = await prisma.lookup.findUnique({ where: { id: typeId } });
             if (!type) throw new NotFoundError('Vendor type not found');
         }
 
-        if (contacts?.length) {
-            const found = await prisma.contact.findMany({
-                where: { id: { in: contacts.map((c) => c.contactId) }, deletedAt: null },
-            });
-            if (found.length !== contacts.length) {
-                throw new NotFoundError('One or more contacts not found');
-            }
-            found.forEach(checkDeletedAt);
-        }
-
         return await prisma.$transaction(async (tx) => {
             const vendor = await tx.vendor.create({
                 data: { ...rest, id: ulid(), typeId: typeId ?? null },
             });
-
-            if (contacts?.length) {
-                await tx.contactVendor.createMany({
-                    data: contacts.map((c) => ({
-                        id: ulid(),
-                        vendorId: vendor.id,
-                        contactId: c.contactId,
-                        isPrimary: c.isPrimary,
-                    })),
-                });
-            }
 
             await FileService.createVendorFolder(tx, vendor.id, request.name, userId);
 
@@ -60,7 +39,7 @@ export const VendorService = {
             where: { id },
             include: {
                 type: true,
-                contactLinks: { include: { contact: true } },
+                contacts: true,
             },
         });
 
@@ -74,7 +53,7 @@ export const VendorService = {
     },
 
     updateVendor: async (request: VendorUpdateRequest): Promise<Vendor> => {
-        const { id, typeId, contacts, ...rest } = request;
+        const { id, typeId, ...rest } = request;
 
         const vendor = await prisma.vendor.findUnique({ where: { id } });
 
@@ -89,34 +68,11 @@ export const VendorService = {
             if (!type) throw new NotFoundError('Vendor type not found');
         }
 
-        if (contacts?.length) {
-            const found = await prisma.contact.findMany({
-                where: { id: { in: contacts.map((c) => c.contactId) }, deletedAt: null },
-            });
-            if (found.length !== contacts.length) {
-                throw new NotFoundError('One or more contacts not found');
-            }
-            found.forEach(checkDeletedAt);
-        }
-
         return await prisma.$transaction(async (tx) => {
-            await tx.contactVendor.deleteMany({ where: { vendorId: id } });
-
             const updated = await tx.vendor.update({
                 where: { id },
                 data: { ...rest, typeId: typeId ?? null },
             });
-
-            if (contacts?.length) {
-                await tx.contactVendor.createMany({
-                    data: contacts.map((c) => ({
-                        id: ulid(),
-                        vendorId: id,
-                        contactId: c.contactId,
-                        isPrimary: c.isPrimary,
-                    })),
-                });
-            }
 
             if (request.name !== vendor.name) {
                 const folderId = await FileService.getVendorFolderId(id, tx);
@@ -241,11 +197,7 @@ export const VendorService = {
                 },
                 include: {
                     type: true,
-                    contactLinks: {
-                        include: {
-                            contact: true,
-                        },
-                    },
+                    contacts: true,
                 },
             }),
         ]);

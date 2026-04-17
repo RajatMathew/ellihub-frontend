@@ -11,11 +11,6 @@ export const PaymentTermsSchema = z.enum([
     'DUE_ON_RECEIPT',
 ]);
 
-export const VendorContactSchema = z.object({
-    contactId: z.ulid(),
-    isPrimary: z.boolean().default(false),
-});
-
 export const VendorCreateSchema = z.object({
     name: z.string().min(2),
     typeId: z.ulid().optional().nullable(),
@@ -29,7 +24,6 @@ export const VendorCreateSchema = z.object({
     fax: z.string().min(1).optional().nullable(),
     paymentTerms: PaymentTermsSchema.default('NET_30'),
     notes: z.string().optional().nullable(),
-    contacts: z.array(VendorContactSchema).nullable().optional(),
 });
 
 export type VendorCreateRequest = z.infer<typeof VendorCreateSchema>;

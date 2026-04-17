@@ -63,7 +63,7 @@
                     "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "403": { "description": "Insufficient permissions (requires vendor:create)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Vendor type or linked contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Vendor type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             },
             "put": {
@@ -91,7 +91,7 @@
                     "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "403": { "description": "Insufficient permissions (requires vendor:update)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Vendor or linked entity not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Vendor or vendor type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
@@ -206,14 +206,6 @@
     },
     "components": {
         "schemas": {
-            "VendorContact": {
-                "type": "object",
-                "required": ["contactId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "Contact ULID" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
             "Vendor": {
                 "type": "object",
                 "properties": {
@@ -231,26 +223,14 @@
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
                     "notes": { "type": "string", "nullable": true },
-                    "contactLinks": {
+                    "contacts": {
                         "type": "array",
-                        "description": "Contacts linked to this vendor; included on get/list responses",
-                        "items": { "$ref": "#/components/schemas/VendorContactLink" }
+                        "description": "Contacts belonging to this vendor; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/Contact" }
                     },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
-                }
-            },
-            "VendorContactLink": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "description": "ULID" },
-                    "contactId": { "type": "string" },
-                    "vendorId": { "type": "string" },
-                    "isPrimary": { "type": "boolean" },
-                    "contact": { "$ref": "#/components/schemas/Contact", "description": "Linked contact; included on get/list responses" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
             "VendorDocument": {
@@ -279,8 +259,7 @@
                     "website": { "type": "string", "format": "uri", "nullable": true },
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "default": "NET_30" },
-                    "notes": { "type": "string", "nullable": true },
-                    "contacts": { "type": "array", "nullable": true, "items": { "$ref": "#/components/schemas/VendorContact" } }
+                    "notes": { "type": "string", "nullable": true }
                 }
             },
             "VendorUpdateRequest": {

@@ -18,8 +18,8 @@ model Vendor {
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 
-    contactLinks ContactVendor[]
-    documents    VendorDocument[]
+    contacts  Contact[]
+    documents VendorDocument[]
 
     @@index([name])
     @@index([status])
@@ -73,8 +73,8 @@ model GeneralContractor {
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 
-    contactLinks ContactGC[]
-    documents    GCDocument[]
+    contacts  Contact[]
+    documents GCDocument[]
 
     @@index([name])
     @@index([status])
@@ -112,41 +112,17 @@ model Contact {
     phoneNumber        Json?
     tags               String[]
 
+    vendorId            String?
+    vendor              Vendor?            @relation(fields: [vendorId], references: [id])
+    generalContractorId String?
+    generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
+
     deletedAt DateTime?
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 
-    vendorLinks ContactVendor[]
-    gcLinks     ContactGC[]
-
     @@index([fullName])
     @@index([deletedAt])
-}
-
-model ContactVendor {
-    id        String  @id
-    contactId String
-    contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-    vendorId  String
-    vendor    Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-    isPrimary Boolean @default(false)
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@unique([contactId, vendorId])
-}
-
-model ContactGC {
-    id                  String            @id
-    contactId           String
-    contact             Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
-    generalContractorId String
-    generalContractor   GeneralContractor @relation(fields: [generalContractorId], references: [id], onDelete: Cascade)
-    isPrimary           Boolean           @default(false)
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@unique([contactId, generalContractorId])
+    @@index([vendorId])
+    @@index([generalContractorId])
 }

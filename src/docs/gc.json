@@ -61,7 +61,7 @@
                         }
                     },
                     "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "GC type or linked contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "GC type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             },
             "put": {
@@ -86,7 +86,7 @@
                             }
                         }
                     },
-                    "404": { "description": "GC or linked entity not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "GC or GC type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
@@ -201,14 +201,6 @@
     },
     "components": {
         "schemas": {
-            "GcContact": {
-                "type": "object",
-                "required": ["contactId"],
-                "properties": {
-                    "contactId": { "type": "string", "description": "Contact ULID" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
             "GeneralContractor": {
                 "type": "object",
                 "properties": {
@@ -224,26 +216,14 @@
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
                     "retainagePercent": { "type": "number" },
-                    "contactLinks": {
+                    "contacts": {
                         "type": "array",
-                        "description": "Contacts linked to this GC; included on get/list responses",
-                        "items": { "$ref": "#/components/schemas/GcContactLink" }
+                        "description": "Contacts belonging to this GC; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/Contact" }
                     },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
-                }
-            },
-            "GcContactLink": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string", "description": "ULID" },
-                    "contactId": { "type": "string" },
-                    "generalContractorId": { "type": "string" },
-                    "isPrimary": { "type": "boolean" },
-                    "contact": { "$ref": "#/components/schemas/Contact", "description": "Linked contact; included on get/list responses" },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
             "GcDocument": {
@@ -270,8 +250,7 @@
                     "website": { "type": "string", "format": "uri", "nullable": true },
                     "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "default": "NET_30" },
-                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "default": 10 },
-                    "contacts": { "type": "array", "nullable": true, "items": { "$ref": "#/components/schemas/GcContact" } }
+                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "default": 10 }
                 }
             },
             "GcUpdateRequest": {

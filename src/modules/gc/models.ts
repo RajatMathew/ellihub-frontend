@@ -11,11 +11,6 @@ export const PaymentTermsSchema = z.enum([
     'DUE_ON_RECEIPT',
 ]);
 
-export const GcContactSchema = z.object({
-    contactId: z.ulid(),
-    isPrimary: z.boolean().default(false),
-});
-
 export const GcCreateSchema = z.object({
     name: z.string().min(2),
     gcTypeId: z.ulid(),
@@ -27,7 +22,6 @@ export const GcCreateSchema = z.object({
     fax: z.string().min(1).optional().nullable(),
     paymentTerms: PaymentTermsSchema.default('NET_30'),
     retainagePercent: z.number().min(0).max(100).default(10),
-    contacts: z.array(GcContactSchema).nullable().optional(),
 });
 
 export type GcCreateRequest = z.infer<typeof GcCreateSchema>;

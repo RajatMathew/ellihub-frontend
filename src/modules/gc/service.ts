@@ -16,36 +16,15 @@ import {
 
 export const GcService = {
     createGc: async (request: GcCreateRequest, userId: string): Promise<GeneralContractor> => {
-        const { gcTypeId, contacts, ...rest } = request;
+        const { gcTypeId, ...rest } = request;
 
         const type = await prisma.lookup.findUnique({ where: { id: gcTypeId } });
         if (!type) throw new NotFoundError('GC type not found');
-
-        if (contacts?.length) {
-            const found = await prisma.contact.findMany({
-                where: { id: { in: contacts.map((c) => c.contactId) }, deletedAt: null },
-            });
-            if (found.length !== contacts.length) {
-                throw new NotFoundError('One or more contacts not found');
-            }
-            found.forEach(checkDeletedAt);
-        }
 
         return await prisma.$transaction(async (tx) => {
             const gc = await tx.generalContractor.create({
                 data: { ...rest, id: ulid(), gcTypeId },
             });
-
-            if (contacts?.length) {
-                await tx.contactGC.createMany({
-                    data: contacts.map((c) => ({
-                        id: ulid(),
-                        generalContractorId: gc.id,
-                        contactId: c.contactId,
-                        isPrimary: c.isPrimary,
-                    })),
-                });
-            }
 
             await FileService.createGcFolder(tx, gc.id, request.name, userId);
 
@@ -58,7 +37,7 @@ export const GcService = {
             where: { id },
             include: {
                 gcType: true,
-                contactLinks: { include: { contact: true } },
+                contacts: true,
             },
         });
 
@@ -72,7 +51,7 @@ export const GcService = {
     },
 
     updateGc: async (request: GcUpdateRequest): Promise<GeneralContractor> => {
-        const { id, gcTypeId, contacts, ...rest } = request;
+        const { id, gcTypeId, ...rest } = request;
 
         const gc = await prisma.generalContractor.findUnique({ where: { id } });
 
@@ -85,34 +64,11 @@ export const GcService = {
         const type = await prisma.lookup.findUnique({ where: { id: gcTypeId } });
         if (!type) throw new NotFoundError('GC type not found');
 
-        if (contacts?.length) {
-            const found = await prisma.contact.findMany({
-                where: { id: { in: contacts.map((c) => c.contactId) }, deletedAt: null },
-            });
-            if (found.length !== contacts.length) {
-                throw new NotFoundError('One or more contacts not found');
-            }
-            found.forEach(checkDeletedAt);
-        }
-
         return await prisma.$transaction(async (tx) => {
-            await tx.contactGC.deleteMany({ where: { generalContractorId: id } });
-
             const updated = await tx.generalContractor.update({
                 where: { id },
                 data: { ...rest, gcTypeId },
             });
-
-            if (contacts?.length) {
-                await tx.contactGC.createMany({
-                    data: contacts.map((c) => ({
-                        id: ulid(),
-                        generalContractorId: id,
-                        contactId: c.contactId,
-                        isPrimary: c.isPrimary,
-                    })),
-                });
-            }
 
             if (request.name !== gc.name) {
                 const folderId = await FileService.getGcFolderId(id, tx);
@@ -244,11 +200,7 @@ export const GcService = {
                 },
                 include: {
                     gcType: true,
-                    contactLinks: {
-                        include: {
-                            contact: true,
-                        },
-                    },
+                    contacts: true,
                 },
             }),
         ]);
