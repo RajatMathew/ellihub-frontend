@@ -14,9 +14,11 @@ import {
     ContactEmail,
     ContactPhone,
     ContactUpdateRequest,
+    LinkContactRequest,
     RemoveEmailFromContactRequest,
     RemovePhoneFromContactRequest,
     RemoveTagFromContactRequest,
+    UnlinkContactRequest,
 } from './models';
 
 export const ContactService = {
@@ -484,6 +486,84 @@ export const ContactService = {
             entityId: contactId,
             action: 'removeTag',
             description: `Removed tag '${tag}' from contact ${contact.fullName}`,
+        });
+
+        return updated;
+    },
+
+    linkContact: async (request: LinkContactRequest, userId: string): Promise<Contact> => {
+        const { contactId, vendorId, generalContractorId } = request;
+
+        const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+        if (!contact) throw new NotFoundError('Contact not found');
+        checkDeletedAt(contact);
+
+        let targetLabel: string;
+        if (vendorId) {
+            const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+            if (!vendor) throw new NotFoundError('Vendor not found');
+            checkDeletedAt(vendor);
+            targetLabel = `vendor ${vendor.name}`;
+        } else {
+            const gc = await prisma.generalContractor.findUnique({
+                where: { id: generalContractorId! },
+            });
+            if (!gc) throw new NotFoundError('General contractor not found');
+            checkDeletedAt(gc);
+            targetLabel = `GC ${gc.name}`;
+        }
+
+        const updated = await prisma.contact.update({
+            where: { id: contactId },
+            data: {
+                vendorId: vendorId ?? null,
+                generalContractorId: generalContractorId ?? null,
+            },
+            include: {
+                professionalRole: true,
+                vendor: true,
+                generalContractor: true,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'link',
+            description: `Linked contact ${contact.fullName} to ${targetLabel}`,
+        });
+
+        return updated;
+    },
+
+    unlinkContact: async (request: UnlinkContactRequest, userId: string): Promise<Contact> => {
+        const { contactId } = request;
+
+        const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+        if (!contact) throw new NotFoundError('Contact not found');
+        checkDeletedAt(contact);
+
+        if (!contact.vendorId && !contact.generalContractorId) {
+            throw new NotFoundError('Contact is not linked to a vendor or GC');
+        }
+
+        const updated = await prisma.contact.update({
+            where: { id: contactId },
+            data: { vendorId: null, generalContractorId: null },
+            include: {
+                professionalRole: true,
+                vendor: true,
+                generalContractor: true,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'contact',
+            entityId: contactId,
+            action: 'unlink',
+            description: `Unlinked contact ${contact.fullName} from vendor/GC`,
         });
 
         return updated;

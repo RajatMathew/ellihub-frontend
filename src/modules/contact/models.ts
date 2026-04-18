@@ -92,3 +92,21 @@ export const RemoveTagFromContactSchema = z.object({
 });
 
 export type RemoveTagFromContactRequest = z.infer<typeof RemoveTagFromContactSchema>;
+
+export const LinkContactSchema = z
+    .object({
+        contactId: z.ulid(),
+        vendorId: z.ulid().optional(),
+        generalContractorId: z.ulid().optional(),
+    })
+    .refine((d) => Boolean(d.vendorId) !== Boolean(d.generalContractorId), {
+        message: 'Provide exactly one of vendorId or generalContractorId',
+    });
+
+export type LinkContactRequest = z.infer<typeof LinkContactSchema>;
+
+export const UnlinkContactSchema = z.object({
+    contactId: z.ulid(),
+});
+
+export type UnlinkContactRequest = z.infer<typeof UnlinkContactSchema>;

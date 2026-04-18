@@ -485,6 +485,79 @@
                     "404": { "description": "Contact or tag not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
+        },
+        "/contact/link": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Link a contact to a vendor OR a general contractor (mutually exclusive; clears the other side)",
+                "operationId": "linkContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/LinkContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contact linked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error (e.g. both vendorId and generalContractorId provided, or neither)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Contact, vendor, or GC not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/contact/unlink": {
+            "patch": {
+                "tags": ["Contacts"],
+                "summary": "Unlink a contact from its vendor/GC (clears both)",
+                "operationId": "unlinkContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/UnlinkContactRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contact unlinked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Contact" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Contact not found, or contact is not linked to a vendor/GC", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
         }
     },
     "components": {
@@ -615,6 +688,23 @@
                 "properties": {
                     "contactId": { "type": "string", "description": "ULID" },
                     "tag": { "type": "string", "minLength": 1 }
+                }
+            },
+            "LinkContactRequest": {
+                "type": "object",
+                "required": ["contactId"],
+                "description": "Provide exactly one of vendorId or generalContractorId. The other side is cleared.",
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" },
+                    "vendorId": { "type": "string", "description": "Vendor ULID. Mutually exclusive with generalContractorId." },
+                    "generalContractorId": { "type": "string", "description": "GC ULID. Mutually exclusive with vendorId." }
+                }
+            },
+            "UnlinkContactRequest": {
+                "type": "object",
+                "required": ["contactId"],
+                "properties": {
+                    "contactId": { "type": "string", "description": "ULID" }
                 }
             }
         }

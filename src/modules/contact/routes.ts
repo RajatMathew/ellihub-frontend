@@ -9,9 +9,11 @@ import {
     AddTagToContactSchema,
     ContactCreateSchema,
     ContactUpdateSchema,
+    LinkContactSchema,
     RemoveEmailFromContactSchema,
     RemovePhoneFromContactSchema,
     RemoveTagFromContactSchema,
+    UnlinkContactSchema,
 } from './models';
 import { ContactService } from './service';
 
@@ -124,6 +126,28 @@ app.patch(
     async (c) => {
         const data = c.req.valid('json');
         const contact = await ContactService.removeTagFromContact(data, c.get('user')!.id);
+        return success(c, contact);
+    }
+);
+
+app.patch(
+    '/link',
+    requirePermission({ contact: ['update'] }),
+    zValidator('json', LinkContactSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const contact = await ContactService.linkContact(data, c.get('user')!.id);
+        return success(c, contact);
+    }
+);
+
+app.patch(
+    '/unlink',
+    requirePermission({ contact: ['update'] }),
+    zValidator('json', UnlinkContactSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const contact = await ContactService.unlinkContact(data, c.get('user')!.id);
         return success(c, contact);
     }
 );
