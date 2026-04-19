@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { seedCostCodes } from '../../../scripts/seed-cost-codes';
 import { seedGcTypes } from '../../../scripts/seed-gc-types';
 import { seedProfessionalRoles } from '../../../scripts/seed-professional-roles';
+import { seedProjectStages } from '../../../scripts/seed-project-stages';
 import { seedRootFolder } from '../../../scripts/seed-root-folder';
 import { seedUser } from '../../../scripts/seed-user';
 import { seedVendorTypes } from '../../../scripts/seed-vendor-types';
@@ -16,6 +17,7 @@ const SEEDERS: Array<{ name: string; run: () => Promise<void> }> = [
     { name: 'professional-roles', run: seedProfessionalRoles },
     { name: 'vendor-types', run: seedVendorTypes },
     { name: 'gc-types', run: seedGcTypes },
+    { name: 'project-stages', run: seedProjectStages },
 ];
 
 const runAllSeeders = async (): Promise<void> => {
