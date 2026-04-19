@@ -7,7 +7,7 @@ import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
-import { ProjectCreateRequest } from './models';
+import { ProjectCreateRequest, ProjectUpdateRequest } from './models';
 
 export const ProjectService = {
     createProject: async (request: ProjectCreateRequest, userId: string): Promise<Project> => {
@@ -172,6 +172,81 @@ export const ProjectService = {
         ]);
 
         return { data, count };
+    },
+
+    updateProject: async (request: ProjectUpdateRequest, userId: string): Promise<Project> => {
+        const {
+            id,
+            stageId,
+            divisionId,
+            gcId,
+            leadPMId,
+            estimatedStartDate,
+            estimatedEndDate,
+            setInactiveDate,
+            tcoDate,
+            jobNumber,
+            ...rest
+        } = request;
+
+        const project = await prisma.project.findUnique({ where: { id } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const stage = await prisma.lookup.findUnique({ where: { id: stageId } });
+        if (!stage) throw new NotFoundError('Project stage not found');
+
+        const division = await prisma.lookup.findUnique({ where: { id: divisionId } });
+        if (!division) throw new NotFoundError('Project division not found');
+
+        const gc = await prisma.generalContractor.findUnique({ where: { id: gcId } });
+        if (!gc) throw new NotFoundError('General contractor not found');
+
+        if (leadPMId) {
+            const leadPM = await prisma.employee.findUnique({ where: { id: leadPMId } });
+            if (!leadPM) throw new NotFoundError('Lead PM not found');
+        }
+
+        if (jobNumber && jobNumber !== project.jobNumber) {
+            const existing = await prisma.project.findFirst({
+                where: { jobNumber, NOT: { id } },
+            });
+            if (existing) throw new ConflictError('Job number already exists');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.project.update({
+                where: { id },
+                data: {
+                    ...rest,
+                    jobNumber: jobNumber ?? project.jobNumber,
+                    stageId,
+                    divisionId,
+                    gcId,
+                    leadPMId: leadPMId ?? null,
+                    estimatedStartDate: estimatedStartDate ? new Date(estimatedStartDate) : null,
+                    estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate) : null,
+                    setInactiveDate: setInactiveDate ? new Date(setInactiveDate) : null,
+                    tcoDate: tcoDate ? new Date(tcoDate) : null,
+                },
+            });
+
+            if (updated.name !== project.name) {
+                const folderId = await FileService.getProjectFolderId(id, tx);
+                await FileService.updateFolderDisplayName(folderId, updated.name, tx);
+            }
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: id,
+                action: 'update',
+                description: `Updated project ${updated.name}`,
+                tx,
+            });
+
+            return updated;
+        });
     },
 
     setActive: async (id: string, userId: string): Promise<Project> => {

@@ -38,3 +38,9 @@ export const ProjectCreateSchema = z.object({
 });
 
 export type ProjectCreateRequest = z.infer<typeof ProjectCreateSchema>;
+
+export const ProjectUpdateSchema = ProjectCreateSchema.omit({ status: true }).extend({
+    id: z.ulid(),
+});
+
+export type ProjectUpdateRequest = z.infer<typeof ProjectUpdateSchema>;

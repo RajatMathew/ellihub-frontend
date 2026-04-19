@@ -3,7 +3,7 @@ import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import { ProjectCreateSchema } from './models';
+import { ProjectCreateSchema, ProjectUpdateSchema } from './models';
 import { ProjectService } from './service';
 
 const app = new Hono();
@@ -45,6 +45,17 @@ app.post(
         const data = c.req.valid('json');
         const project = await ProjectService.createProject(data, c.get('user')!.id);
         return success(c, project, 201);
+    }
+);
+
+app.put(
+    '/',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', ProjectUpdateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const project = await ProjectService.updateProject(data, c.get('user')!.id);
+        return success(c, project);
     }
 );
 
