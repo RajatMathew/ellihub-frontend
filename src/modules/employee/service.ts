@@ -1,5 +1,6 @@
 import { Employee } from '@db/client';
 import { prisma } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { UserService } from '@modules/user/services';
@@ -67,6 +68,44 @@ export const EmployeeService = {
 
             return employee;
         });
+    },
+
+    list: async (params: PaginationParams): Promise<{ data: Employee[]; count: number }> => {
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+
+        const whereClause = {
+            deletedAt: null,
+            ...(filter || {}),
+            ...(search && {
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' as const } },
+                    { email: { contains: search, mode: 'insensitive' as const } },
+                ],
+            }),
+        };
+
+        const [count, data] = await prisma.$transaction([
+            prisma.employee.count({ where: whereClause }),
+            prisma.employee.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: { [sortBy as keyof Employee]: sortOrder },
+            }),
+        ]);
+
+        return { data, count };
+    },
+
+    get: async (id: string): Promise<Employee> => {
+        const employee = await prisma.employee.findUnique({
+            where: { id },
+            include: { departments: { include: { department: true } } },
+        });
+        if (!employee || employee.deletedAt) {
+            throw new NotFoundError('Employee not found');
+        }
+        return employee;
     },
 
     update: async (request: EmployeeUpdateRequest, userId: string): Promise<Employee> => {

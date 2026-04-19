@@ -205,6 +205,14 @@
                                 "schema": { "$ref": "#/components/schemas/ErrorResponse" }
                             }
                         }
+                    },
+                    "409": {
+                        "description": "Email already in use by another employee or user",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
                     }
                 }
             }
