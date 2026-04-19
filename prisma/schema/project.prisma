@@ -16,8 +16,8 @@ model Project {
     state         String?
     zipCode       String?
 
-    effectiveStartDate DateTime?
-    effectiveEndDate   DateTime?
+    estimatedStartDate DateTime?
+    estimatedEndDate   DateTime?
 
     gc       GeneralContractor @relation(fields: [gcId], references: [id])
     gcId     String
