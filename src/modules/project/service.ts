@@ -1,4 +1,4 @@
-import { PrimeContract, Project, ProjectTeamMember } from '@db/client';
+import { PrimeContract, Project, ProjectSchedule, ProjectTeamMember } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -9,10 +9,13 @@ import { ulid } from 'ulid';
 
 import {
     AddPrimeContractRequest,
+    AddScheduleRequest,
     AddTeamMemberRequest,
     ProjectCreateRequest,
     ProjectUpdateRequest,
+    RemoveScheduleRequest,
     RemoveTeamMemberRequest,
+    UpdateScheduleRequest,
 } from './models';
 
 export const ProjectService = {
@@ -252,6 +255,131 @@ export const ProjectService = {
             });
 
             return updated;
+        });
+    },
+
+    addSchedule: async (request: AddScheduleRequest, userId: string): Promise<ProjectSchedule> => {
+        const { projectId, fileId, date, adjustedFinishDate, ...rest } = request;
+
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        if (fileId) {
+            const file = await prisma.file.findUnique({ where: { id: fileId } });
+            if (!file) throw new NotFoundError('File not found');
+            checkDeletedAt(file);
+
+            const existing = await prisma.projectSchedule.findUnique({ where: { fileId } });
+            if (existing) throw new ConflictError('File already attached to a schedule');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            if (fileId) {
+                const folderId = await FileService.getProjectSubFolderId(projectId, 'SCHEDULE', tx);
+                await FileService.moveFileToFolder(fileId, folderId, tx);
+            }
+
+            const schedule = await tx.projectSchedule.create({
+                data: {
+                    ...rest,
+                    id: ulid(),
+                    projectId,
+                    ...(fileId ? { fileId } : {}),
+                    date: new Date(date),
+                    adjustedFinishDate: adjustedFinishDate ? new Date(adjustedFinishDate) : null,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: projectId,
+                action: 'create',
+                description: `Added schedule entry to project ${project.name}`,
+                tx,
+            });
+
+            return schedule;
+        });
+    },
+
+    updateSchedule: async (
+        request: UpdateScheduleRequest,
+        userId: string
+    ): Promise<ProjectSchedule> => {
+        const { id, fileId, date, adjustedFinishDate, ...rest } = request;
+
+        const schedule = await prisma.projectSchedule.findUnique({
+            where: { id },
+            include: { project: true },
+        });
+        if (!schedule) throw new NotFoundError('Schedule not found');
+        checkDeletedAt(schedule);
+
+        if (fileId && fileId !== schedule.fileId) {
+            const file = await prisma.file.findUnique({ where: { id: fileId } });
+            if (!file) throw new NotFoundError('File not found');
+            checkDeletedAt(file);
+
+            const existing = await prisma.projectSchedule.findUnique({ where: { fileId } });
+            if (existing) throw new ConflictError('File already attached to a schedule');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            if (fileId && fileId !== schedule.fileId) {
+                const folderId = await FileService.getProjectSubFolderId(
+                    schedule.projectId,
+                    'SCHEDULE',
+                    tx
+                );
+                await FileService.moveFileToFolder(fileId, folderId, tx);
+            }
+
+            const updated = await tx.projectSchedule.update({
+                where: { id },
+                data: {
+                    ...rest,
+                    date: new Date(date),
+                    adjustedFinishDate: adjustedFinishDate ? new Date(adjustedFinishDate) : null,
+                    fileId: fileId ?? null,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: schedule.projectId,
+                action: 'update',
+                description: `Updated schedule entry on project ${schedule.project.name}`,
+                tx,
+            });
+
+            return updated;
+        });
+    },
+
+    removeSchedule: async (request: RemoveScheduleRequest, userId: string): Promise<void> => {
+        const { id } = request;
+
+        const schedule = await prisma.projectSchedule.findUnique({
+            where: { id },
+            include: { project: true },
+        });
+        if (!schedule) throw new NotFoundError('Schedule not found');
+        checkDeletedAt(schedule);
+
+        await prisma.projectSchedule.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'project',
+            entityId: schedule.projectId,
+            action: 'delete',
+            description: `Removed schedule entry from project ${schedule.project.name}`,
         });
     },
 

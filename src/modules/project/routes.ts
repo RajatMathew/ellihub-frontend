@@ -5,10 +5,13 @@ import { requirePermission } from 'src/middleware/auth';
 
 import {
     AddPrimeContractSchema,
+    AddScheduleSchema,
     AddTeamMemberSchema,
     ProjectCreateSchema,
     ProjectUpdateSchema,
+    RemoveScheduleSchema,
     RemoveTeamMemberSchema,
+    UpdateScheduleSchema,
 } from './models';
 import { ProjectService } from './service';
 
@@ -62,6 +65,39 @@ app.put(
         const data = c.req.valid('json');
         const project = await ProjectService.updateProject(data, c.get('user')!.id);
         return success(c, project);
+    }
+);
+
+app.patch(
+    '/schedule/add',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', AddScheduleSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const schedule = await ProjectService.addSchedule(data, c.get('user')!.id);
+        return success(c, schedule);
+    }
+);
+
+app.patch(
+    '/schedule/update',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', UpdateScheduleSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const schedule = await ProjectService.updateSchedule(data, c.get('user')!.id);
+        return success(c, schedule);
+    }
+);
+
+app.patch(
+    '/schedule/remove',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', RemoveScheduleSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await ProjectService.removeSchedule(data, c.get('user')!.id);
+        return success(c, null);
     }
 );
 

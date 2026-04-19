@@ -153,7 +153,8 @@ export const FileService = {
                 | 'PURCHASE_ORDER'
                 | 'PURCHASE_ORDER_CO'
                 | 'PRIME_CO'
-                | 'PRIME_CONTRACT';
+                | 'PRIME_CONTRACT'
+                | 'SCHEDULE';
         }[] = [
             { name: 'invoice', displayName: 'Invoice', protectedFolderType: 'INVOICE' },
             { name: 'rfq', displayName: 'RFQ', protectedFolderType: 'RFQ' },
@@ -173,6 +174,7 @@ export const FileService = {
                 displayName: 'Prime Contract',
                 protectedFolderType: 'PRIME_CONTRACT',
             },
+            { name: 'schedule', displayName: 'Schedule', protectedFolderType: 'SCHEDULE' },
         ];
 
         const projectFolder = await tx.file.create({
@@ -370,7 +372,8 @@ export const FileService = {
             | 'PURCHASE_ORDER'
             | 'PURCHASE_ORDER_CO'
             | 'PRIME_CO'
-            | 'PRIME_CONTRACT',
+            | 'PRIME_CONTRACT'
+            | 'SCHEDULE',
         tx?: TransactionClient
     ): Promise<string> => {
         const prisma = tx || prismaClient;

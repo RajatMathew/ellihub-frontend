@@ -49,6 +49,7 @@ enum ProtectedFolderType {
   PURCHASE_ORDER_CO
   PRIME_CO
   PRIME_CONTRACT
+  SCHEDULE
 }
 
 model FileAccess {

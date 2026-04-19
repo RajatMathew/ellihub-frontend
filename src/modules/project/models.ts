@@ -67,3 +67,31 @@ export const RemoveTeamMemberSchema = z.object({
 });
 
 export type RemoveTeamMemberRequest = z.infer<typeof RemoveTeamMemberSchema>;
+
+export const AddScheduleSchema = z.object({
+    projectId: z.ulid(),
+    date: z.iso.date(),
+    description: z.string().min(1),
+    adjustedFinishDate: z.iso.date().optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    fileId: z.ulid().optional().nullable(),
+});
+
+export type AddScheduleRequest = z.infer<typeof AddScheduleSchema>;
+
+export const UpdateScheduleSchema = z.object({
+    id: z.ulid(),
+    date: z.iso.date(),
+    description: z.string().min(1),
+    adjustedFinishDate: z.iso.date().optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    fileId: z.ulid().optional().nullable(),
+});
+
+export type UpdateScheduleRequest = z.infer<typeof UpdateScheduleSchema>;
+
+export const RemoveScheduleSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveScheduleRequest = z.infer<typeof RemoveScheduleSchema>;

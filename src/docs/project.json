@@ -308,6 +308,77 @@
                 }
             }
         },
+        "/project/schedule/add": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Add a schedule entry to a project",
+                "operationId": "addProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Schedule added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/schedule/update": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Update a schedule entry",
+                "operationId": "updateProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Schedule updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Schedule or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/schedule/remove": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Remove a schedule entry (soft delete)",
+                "operationId": "removeProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Schedule removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Schedule not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/project/prime-contract/add": {
             "patch": {
                 "tags": ["Projects"],
@@ -470,6 +541,52 @@
                 "properties": {
                     "projectId": { "type": "string" },
                     "employeeId": { "type": "string" }
+                }
+            },
+            "ProjectSchedule": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "date": { "type": "string", "format": "date-time" },
+                    "description": { "type": "string" },
+                    "adjustedFinishDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "fileId": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "AddScheduleRequest": {
+                "type": "object",
+                "required": ["projectId", "date", "description"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "date": { "type": "string", "format": "date" },
+                    "description": { "type": "string", "minLength": 1 },
+                    "adjustedFinishDate": { "type": "string", "format": "date", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "fileId": { "type": "string", "nullable": true }
+                }
+            },
+            "UpdateScheduleRequest": {
+                "type": "object",
+                "required": ["id", "date", "description"],
+                "properties": {
+                    "id": { "type": "string", "description": "Schedule ULID" },
+                    "date": { "type": "string", "format": "date" },
+                    "description": { "type": "string", "minLength": 1 },
+                    "adjustedFinishDate": { "type": "string", "format": "date", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "fileId": { "type": "string", "nullable": true }
+                }
+            },
+            "RemoveScheduleRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "Schedule ULID" }
                 }
             },
             "AddPrimeContractRequest": {
