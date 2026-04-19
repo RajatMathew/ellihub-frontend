@@ -42,7 +42,7 @@ app.put(
     zValidator('json', EmployeeUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const employee = await EmployeeService.update(data);
+        const employee = await EmployeeService.update(data, c.get('user')!.id);
         return success(c, employee);
     }
 );
