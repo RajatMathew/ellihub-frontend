@@ -3,7 +3,13 @@ import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import { ProjectCreateSchema, ProjectUpdateSchema } from './models';
+import {
+    AddPrimeContractSchema,
+    AddTeamMemberSchema,
+    ProjectCreateSchema,
+    ProjectUpdateSchema,
+    RemoveTeamMemberSchema,
+} from './models';
 import { ProjectService } from './service';
 
 const app = new Hono();
@@ -56,6 +62,39 @@ app.put(
         const data = c.req.valid('json');
         const project = await ProjectService.updateProject(data, c.get('user')!.id);
         return success(c, project);
+    }
+);
+
+app.patch(
+    '/team-member/add',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', AddTeamMemberSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const member = await ProjectService.addTeamMember(data, c.get('user')!.id);
+        return success(c, member);
+    }
+);
+
+app.patch(
+    '/team-member/remove',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', RemoveTeamMemberSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await ProjectService.removeTeamMember(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+app.patch(
+    '/prime-contract/add',
+    requirePermission({ project: ['update'] }),
+    zValidator('json', AddPrimeContractSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const primeContract = await ProjectService.addPrimeContract(data, c.get('user')!.id);
+        return success(c, primeContract);
     }
 );
 

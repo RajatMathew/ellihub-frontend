@@ -44,3 +44,26 @@ export const ProjectUpdateSchema = ProjectCreateSchema.omit({ status: true }).ex
 });
 
 export type ProjectUpdateRequest = z.infer<typeof ProjectUpdateSchema>;
+
+export const AddPrimeContractSchema = z.object({
+    projectId: z.ulid(),
+    fileId: z.ulid(),
+});
+
+export type AddPrimeContractRequest = z.infer<typeof AddPrimeContractSchema>;
+
+export const AddTeamMemberSchema = z.object({
+    projectId: z.ulid(),
+    employeeId: z.ulid(),
+    role: z.string().min(1),
+    isLead: z.boolean().default(false),
+});
+
+export type AddTeamMemberRequest = z.infer<typeof AddTeamMemberSchema>;
+
+export const RemoveTeamMemberSchema = z.object({
+    projectId: z.ulid(),
+    employeeId: z.ulid(),
+});
+
+export type RemoveTeamMemberRequest = z.infer<typeof RemoveTeamMemberSchema>;

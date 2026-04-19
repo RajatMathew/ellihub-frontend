@@ -1,4 +1,4 @@
-import { Project } from '@db/client';
+import { PrimeContract, Project, ProjectTeamMember } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -7,7 +7,13 @@ import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
-import { ProjectCreateRequest, ProjectUpdateRequest } from './models';
+import {
+    AddPrimeContractRequest,
+    AddTeamMemberRequest,
+    ProjectCreateRequest,
+    ProjectUpdateRequest,
+    RemoveTeamMemberRequest,
+} from './models';
 
 export const ProjectService = {
     createProject: async (request: ProjectCreateRequest, userId: string): Promise<Project> => {
@@ -246,6 +252,128 @@ export const ProjectService = {
             });
 
             return updated;
+        });
+    },
+
+    addTeamMember: async (
+        request: AddTeamMemberRequest,
+        userId: string
+    ): Promise<ProjectTeamMember> => {
+        const { projectId, employeeId, role, isLead } = request;
+
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+        if (!employee) throw new NotFoundError('Employee not found');
+        checkDeletedAt(employee);
+
+        const existing = await prisma.projectTeamMember.findUnique({
+            where: { employeeId_projectId: { employeeId, projectId } },
+        });
+        if (existing) throw new ConflictError('Employee is already a team member');
+
+        return await prisma.$transaction(async (tx) => {
+            if (isLead) {
+                await tx.projectTeamMember.updateMany({
+                    where: { projectId, isLead: true },
+                    data: { isLead: false },
+                });
+                await tx.project.update({
+                    where: { id: projectId },
+                    data: { leadPMId: employeeId },
+                });
+            }
+
+            const member = await tx.projectTeamMember.create({
+                data: { projectId, employeeId, role, isLead },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: projectId,
+                action: 'link',
+                description: `Added ${employee.name} to project ${project.name} as ${role}`,
+                tx,
+            });
+
+            return member;
+        });
+    },
+
+    removeTeamMember: async (request: RemoveTeamMemberRequest, userId: string): Promise<void> => {
+        const { projectId, employeeId } = request;
+
+        const member = await prisma.projectTeamMember.findUnique({
+            where: { employeeId_projectId: { employeeId, projectId } },
+            include: { project: true, employee: true },
+        });
+        if (!member) throw new NotFoundError('Team member not found');
+
+        await prisma.$transaction(async (tx) => {
+            await tx.projectTeamMember.delete({
+                where: { employeeId_projectId: { employeeId, projectId } },
+            });
+
+            if (member.isLead) {
+                await tx.project.update({
+                    where: { id: projectId },
+                    data: { leadPMId: null },
+                });
+            }
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: projectId,
+                action: 'unlink',
+                description: `Removed ${member.employee.name} from project ${member.project.name}`,
+                tx,
+            });
+        });
+    },
+
+    addPrimeContract: async (
+        request: AddPrimeContractRequest,
+        userId: string
+    ): Promise<PrimeContract> => {
+        const { projectId, fileId } = request;
+
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        const file = await prisma.file.findUnique({ where: { id: fileId } });
+        if (!file) throw new NotFoundError('File not found');
+        checkDeletedAt(file);
+
+        const existing = await prisma.primeContract.findUnique({ where: { projectId } });
+        if (existing) throw new ConflictError('Prime contract already exists for this project');
+
+        return await prisma.$transaction(async (tx) => {
+            const folderId = await FileService.getProjectSubFolderId(
+                projectId,
+                'PRIME_CONTRACT',
+                tx
+            );
+            await FileService.moveFileToFolder(fileId, folderId, tx);
+
+            const primeContract = await tx.primeContract.create({
+                data: { id: ulid(), projectId, fileId },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: projectId,
+                action: 'link',
+                description: `Added prime contract to project ${project.name}`,
+                tx,
+            });
+
+            return primeContract;
         });
     },
 
