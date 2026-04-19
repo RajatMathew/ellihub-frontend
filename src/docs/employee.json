@@ -324,69 +324,6 @@
                     }
                 }
             }
-        },
-        "/hr/employee/{id}/projects": {
-            "get": {
-                "tags": ["Employees"],
-                "summary": "Get projects assigned to an employee",
-                "operationId": "getEmployeeProjects",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": { "type": "string" },
-                        "description": "Employee ID (ULID)"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of assigned projects",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": { "type": "object" }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permissions (requires project:view-all)",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Employee not found",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "components": {
