@@ -21,3 +21,18 @@ export const EmployeeUpdateSchema = EmployeeCreateSchema.omit({
 }).extend({ id: z.ulid() });
 
 export type EmployeeUpdateRequest = z.infer<typeof EmployeeUpdateSchema>;
+
+export const AddEmployeeDocumentSchema = z.object({
+    employeeId: z.ulid(),
+    fileId: z.ulid(),
+    expiresOn: z.iso.date().optional().nullable(),
+});
+
+export type AddEmployeeDocumentRequest = z.infer<typeof AddEmployeeDocumentSchema>;
+
+export const RemoveEmployeeDocumentSchema = z.object({
+    employeeId: z.ulid(),
+    fileId: z.ulid(),
+});
+
+export type RemoveEmployeeDocumentRequest = z.infer<typeof RemoveEmployeeDocumentSchema>;

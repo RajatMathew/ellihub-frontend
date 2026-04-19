@@ -1,4 +1,4 @@
-import { Employee } from '@db/client';
+import { Employee, EmployeeDocument } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -7,7 +7,12 @@ import { UserService } from '@modules/user/services';
 import { ConflictError, NotFoundError } from '@utils';
 import { ulid } from 'ulid';
 
-import { EmployeeCreateRequest, EmployeeUpdateRequest } from './models';
+import {
+    AddEmployeeDocumentRequest,
+    EmployeeCreateRequest,
+    EmployeeUpdateRequest,
+    RemoveEmployeeDocumentRequest,
+} from './models';
 
 export const EmployeeService = {
     create: async (
@@ -173,6 +178,79 @@ export const EmployeeService = {
             });
 
             return employee;
+        });
+    },
+
+    addDocument: async (
+        request: AddEmployeeDocumentRequest,
+        userId: string
+    ): Promise<EmployeeDocument> => {
+        const { employeeId, fileId, expiresOn } = request;
+
+        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+        if (!employee || employee.deletedAt) {
+            throw new NotFoundError('Employee not found');
+        }
+
+        const file = await prisma.file.findUnique({ where: { id: fileId } });
+        if (!file || file.deletedAt) {
+            throw new NotFoundError('File not found');
+        }
+
+        const existing = await prisma.employeeDocument.findUnique({
+            where: { employeeId_fileId: { employeeId, fileId } },
+        });
+        if (existing) {
+            throw new ConflictError('Document already linked to this employee');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const employeeFolderId = await FileService.getEmployeeFolderId(employeeId, tx);
+            await FileService.moveFileToFolder(fileId, employeeFolderId, tx);
+
+            const doc = await tx.employeeDocument.create({
+                data: {
+                    id: ulid(),
+                    employeeId,
+                    fileId,
+                    expiresOn: expiresOn ? new Date(expiresOn) : null,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'employee',
+                entityId: employeeId,
+                action: 'link',
+                description: `Linked document ${file.name} to employee ${employee.name}`,
+                tx,
+            });
+
+            return doc;
+        });
+    },
+
+    removeDocument: async (
+        request: RemoveEmployeeDocumentRequest,
+        userId: string
+    ): Promise<void> => {
+        const { employeeId, fileId } = request;
+
+        const document = await prisma.employeeDocument.findUnique({
+            where: { employeeId_fileId: { employeeId, fileId } },
+        });
+        if (!document) {
+            throw new NotFoundError('Employee document not found');
+        }
+
+        await prisma.employeeDocument.delete({ where: { id: document.id } });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'employee',
+            entityId: employeeId,
+            action: 'unlink',
+            description: `Unlinked document (fileId=${fileId}) from employee`,
         });
     },
 };
