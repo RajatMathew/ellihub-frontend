@@ -16,4 +16,6 @@ export enum LookupType {
     VENDOR_TYPE = 'VENDOR_TYPE',
     GC_TYPE = 'GC_TYPE',
     PROJECT_STAGE = 'PROJECT_STAGE',
+    TRADE_CATEGORY = 'TRADE_CATEGORY',
+    UNIT = 'UNIT',
 }

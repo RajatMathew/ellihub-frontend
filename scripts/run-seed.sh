@@ -13,3 +13,5 @@ bun run scripts/seed-professional-roles.ts
 bun run scripts/seed-vendor-types.ts
 bun run scripts/seed-gc-types.ts
 bun run scripts/seed-project-stages.ts
+bun run scripts/seed-trade-categories.ts
+bun run scripts/seed-units.ts
