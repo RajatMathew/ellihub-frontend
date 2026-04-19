@@ -16,10 +16,6 @@ export type ActivityAction =
     | 'delete'
     | 'link'
     | 'unlink'
-    | 'addEmail'
-    | 'removeEmail'
-    | 'addPhone'
-    | 'removePhone'
     | 'addTag'
     | 'removeTag'
     | 'comment';

@@ -4,14 +4,10 @@ import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
-    AddEmailToContactSchema,
-    AddPhoneToContactSchema,
     AddTagToContactSchema,
     ContactCreateSchema,
     ContactUpdateSchema,
     LinkContactSchema,
-    RemoveEmailFromContactSchema,
-    RemovePhoneFromContactSchema,
     RemoveTagFromContactSchema,
     UnlinkContactSchema,
 } from './models';
@@ -63,50 +59,6 @@ app.delete('/:id', requirePermission({ contact: ['delete'] }), async (c) => {
     await ContactService.deleteContact(id, c.get('user')!.id);
     return success(c, null);
 });
-
-app.patch(
-    '/email/add',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', AddEmailToContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const contact = await ContactService.addEmailToContact(data, c.get('user')!.id);
-        return success(c, contact);
-    }
-);
-
-app.patch(
-    '/email/remove',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', RemoveEmailFromContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const contact = await ContactService.removeEmailFromContact(data, c.get('user')!.id);
-        return success(c, contact);
-    }
-);
-
-app.patch(
-    '/phone/add',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', AddPhoneToContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const contact = await ContactService.addPhoneToContact(data, c.get('user')!.id);
-        return success(c, contact);
-    }
-);
-
-app.patch(
-    '/phone/remove',
-    requirePermission({ contact: ['update'] }),
-    zValidator('json', RemovePhoneFromContactSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const contact = await ContactService.removePhoneFromContact(data, c.get('user')!.id);
-        return success(c, contact);
-    }
-);
 
 app.patch(
     '/tag/add',

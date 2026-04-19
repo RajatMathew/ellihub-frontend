@@ -108,8 +108,8 @@ model Contact {
     fullName           String
     professionalRoleId String?
     professionalRole   Lookup?  @relation(fields: [professionalRoleId], references: [id])
-    email              Json?
-    phoneNumber        Json?
+    email              String?
+    phoneNumber        String?
     tags               String[]
 
     vendorId            String?

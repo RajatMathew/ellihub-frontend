@@ -209,10 +209,6 @@
                     "delete",
                     "link",
                     "unlink",
-                    "addEmail",
-                    "removeEmail",
-                    "addPhone",
-                    "removePhone",
                     "addTag",
                     "removeTag",
                     "comment"

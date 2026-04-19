@@ -7,16 +7,10 @@ import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
-    AddEmailToContactRequest,
-    AddPhoneToContactRequest,
     AddTagToContactRequest,
     ContactCreateRequest,
-    ContactEmail,
-    ContactPhone,
     ContactUpdateRequest,
     LinkContactRequest,
-    RemoveEmailFromContactRequest,
-    RemovePhoneFromContactRequest,
     RemoveTagFromContactRequest,
     UnlinkContactRequest,
 } from './models';
@@ -62,8 +56,8 @@ export const ContactService = {
                 id: ulid(),
                 fullName,
                 professionalRoleId: professionalRoleId ?? null,
-                email: email ?? undefined,
-                phoneNumber: phoneNumber ?? undefined,
+                email,
+                phoneNumber: phoneNumber ?? null,
                 tags: tags ?? [],
                 vendorId: vendorId ?? null,
                 generalContractorId: generalContractorId ?? null,
@@ -119,7 +113,11 @@ export const ContactService = {
             ...restFilter,
             ...(professionalRoleId && { professionalRoleId }),
             ...(search && {
-                OR: [{ fullName: { contains: search, mode: 'insensitive' as const } }],
+                OR: [
+                    { fullName: { contains: search, mode: 'insensitive' as const } },
+                    { email: { contains: search, mode: 'insensitive' as const } },
+                    { phoneNumber: { contains: search, mode: 'insensitive' as const } },
+                ],
             }),
         };
 
@@ -211,8 +209,8 @@ export const ContactService = {
             data: {
                 fullName,
                 professionalRoleId: professionalRoleId ?? null,
-                email: email ?? undefined,
-                phoneNumber: phoneNumber ?? undefined,
+                email,
+                phoneNumber: phoneNumber ?? null,
                 tags: tags ?? [],
                 vendorId: nextVendorId,
                 generalContractorId: nextGcId,
@@ -258,168 +256,6 @@ export const ContactService = {
             action: 'delete',
             description: `Deleted contact ${contact.fullName}`,
         });
-    },
-
-    addEmailToContact: async (
-        request: AddEmailToContactRequest,
-        userId: string
-    ): Promise<Contact> => {
-        const { contactId, email } = request;
-
-        const contact = await prisma.contact.findUnique({
-            where: { id: contactId },
-        });
-
-        if (!contact) {
-            throw new NotFoundError('Contact not found');
-        }
-
-        checkDeletedAt(contact);
-
-        const existing = (contact.email as ContactEmail[] | null) ?? [];
-
-        if (existing.some((e) => e.email === email.email)) {
-            throw new ConflictError('Email already exists on this contact');
-        }
-
-        const next = email.isPrimary
-            ? [...existing.map((e) => ({ ...e, isPrimary: false })), email]
-            : [...existing, email];
-
-        const updated = await prisma.contact.update({
-            where: { id: contactId },
-            data: { email: next },
-        });
-
-        await ActivityLogService.log({
-            userId,
-            entityType: 'contact',
-            entityId: contactId,
-            action: 'addEmail',
-            description: `Added email ${email.email} to contact ${contact.fullName}`,
-        });
-
-        return updated;
-    },
-
-    removeEmailFromContact: async (
-        request: RemoveEmailFromContactRequest,
-        userId: string
-    ): Promise<Contact> => {
-        const { contactId, email } = request;
-
-        const contact = await prisma.contact.findUnique({
-            where: { id: contactId },
-        });
-
-        if (!contact) {
-            throw new NotFoundError('Contact not found');
-        }
-
-        checkDeletedAt(contact);
-
-        const existing = (contact.email as ContactEmail[] | null) ?? [];
-        const next = existing.filter((e) => e.email !== email);
-
-        if (next.length === existing.length) {
-            throw new NotFoundError('Email not found on this contact');
-        }
-
-        const updated = await prisma.contact.update({
-            where: { id: contactId },
-            data: { email: next },
-        });
-
-        await ActivityLogService.log({
-            userId,
-            entityType: 'contact',
-            entityId: contactId,
-            action: 'removeEmail',
-            description: `Removed email ${email} from contact ${contact.fullName}`,
-        });
-
-        return updated;
-    },
-
-    addPhoneToContact: async (
-        request: AddPhoneToContactRequest,
-        userId: string
-    ): Promise<Contact> => {
-        const { contactId, phone } = request;
-
-        const contact = await prisma.contact.findUnique({
-            where: { id: contactId },
-        });
-
-        if (!contact) {
-            throw new NotFoundError('Contact not found');
-        }
-
-        checkDeletedAt(contact);
-
-        const existing = (contact.phoneNumber as ContactPhone[] | null) ?? [];
-
-        if (existing.some((p) => p.number === phone.number)) {
-            throw new ConflictError('Phone number already exists on this contact');
-        }
-
-        const next = phone.isPrimary
-            ? [...existing.map((p) => ({ ...p, isPrimary: false })), phone]
-            : [...existing, phone];
-
-        const updated = await prisma.contact.update({
-            where: { id: contactId },
-            data: { phoneNumber: next },
-        });
-
-        await ActivityLogService.log({
-            userId,
-            entityType: 'contact',
-            entityId: contactId,
-            action: 'addPhone',
-            description: `Added phone ${phone.number} to contact ${contact.fullName}`,
-        });
-
-        return updated;
-    },
-
-    removePhoneFromContact: async (
-        request: RemovePhoneFromContactRequest,
-        userId: string
-    ): Promise<Contact> => {
-        const { contactId, number } = request;
-
-        const contact = await prisma.contact.findUnique({
-            where: { id: contactId },
-        });
-
-        if (!contact) {
-            throw new NotFoundError('Contact not found');
-        }
-
-        checkDeletedAt(contact);
-
-        const existing = (contact.phoneNumber as ContactPhone[] | null) ?? [];
-        const next = existing.filter((p) => p.number !== number);
-
-        if (next.length === existing.length) {
-            throw new NotFoundError('Phone number not found on this contact');
-        }
-
-        const updated = await prisma.contact.update({
-            where: { id: contactId },
-            data: { phoneNumber: next },
-        });
-
-        await ActivityLogService.log({
-            userId,
-            entityType: 'contact',
-            entityId: contactId,
-            action: 'removePhone',
-            description: `Removed phone ${number} from contact ${contact.fullName}`,
-        });
-
-        return updated;
     },
 
     addTagToContact: async (request: AddTagToContactRequest, userId: string): Promise<Contact> => {
