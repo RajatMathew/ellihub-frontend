@@ -34,6 +34,10 @@ model File {
   primeContracts    PrimeContract[]
 
   projectSchedules ProjectSchedule[]
+
+  rfqattachments RFQAttachment[]
+
+  vendorQuoteAttachments VendorQuoteAttachment[]
 }
 
 enum FileType {
