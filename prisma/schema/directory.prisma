@@ -41,15 +41,6 @@ model VendorDocument {
     @@index([fileId])
 }
 
-enum PaymentTerms {
-    NET_15
-    NET_30
-    NET_45
-    NET_60
-    NET_90
-    DUE_ON_RECEIPT
-}
-
 enum VendorStatus {
     ACTIVE
     INACTIVE
@@ -75,6 +66,7 @@ model GeneralContractor {
 
     contacts  Contact[]
     documents GCDocument[]
+    projects  Project[]
 
     @@index([name])
     @@index([status])

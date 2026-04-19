@@ -31,6 +31,9 @@ model File {
   vendorDocuments   VendorDocument[]
   gcDocuments       GCDocument[]
   employeeDocuments EmployeeDocument[]
+  primeContracts    PrimeContract[]
+
+  projectSchedules ProjectSchedule[]
 }
 
 enum FileType {

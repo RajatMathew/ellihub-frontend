@@ -27,6 +27,17 @@ model Lookup {
   vendors             Vendor[]
   generalContractors  GeneralContractor[]
   departmentEmployees DepartmentEmployee[]
+  projectStages       Project[]            @relation("project_stage")
+  projectDivisions    Project[]            @relation("project_division")
 
   @@unique([type, label])
+}
+
+enum PaymentTerms {
+  NET_15
+  NET_30
+  NET_45
+  NET_60
+  NET_90
+  DUE_ON_RECEIPT
 }

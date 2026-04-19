@@ -13,8 +13,10 @@ model Employee {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
-  departments DepartmentEmployee[]
-  documents   EmployeeDocument[]
+  departments     DepartmentEmployee[]
+  documents       EmployeeDocument[]
+  leadProjects    Project[]
+  projectTeams    ProjectTeamMember[]
 }
 
 model EmployeeDocument {
