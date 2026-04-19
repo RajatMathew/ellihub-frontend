@@ -1,0 +1,118 @@
+model RFQ {
+    id        String  @id
+    project   Project @relation(fields: [projectId], references: [id])
+    projectId String
+
+    rfqNumber   String  @unique
+    title       String
+    description String? @db.Text
+
+    status RFQStatus @default(DRAFT)
+
+    bidDeadline DateTime @db.Date
+
+    type   Lookup @relation(fields: [typeId], references: [id])
+    typeId String
+
+    awardedVendor   Vendor?  @relation(fields: [awardedVendorId], references: [id])
+    awardedVendorId String?
+    awardedAmount   Decimal? @db.Decimal(15, 2)
+
+    //   generatedPO   PurchaseOrder? @relation("RFQGeneratedPO", fields: [generatedPOId], references: [id])
+    //   generatedPOId String?        @unique
+
+    cancellationReason String?
+
+    createdBy String
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    rfqdeliverables RFQDeliverable[]
+    vendorQuotes    RFQVendorQuote[]
+    rfqattachments  RFQAttachment[]
+
+    @@index([projectId])
+    @@index([bidDeadline])
+}
+
+enum RFQStatus {
+    DRAFT
+    PUBLISHED
+    AWARDED
+    VOID
+}
+
+model RFQAttachment {
+    id         String   @id
+    rfq        RFQ      @relation(fields: [rfqId], references: [id])
+    rfqId      String
+    document   File     @relation(fields: [documentId], references: [id])
+    documentId String   @unique
+    createdAt  DateTime @default(now())
+
+    @@index([rfqId])
+}
+
+enum BiddingType {
+    ANONYMOUS
+    OPEN
+}
+
+model RFQDeliverable {
+    id    String @id
+    rfq   RFQ    @relation(fields: [rfqId], references: [id])
+    rfqId String
+
+    unit   Lookup @relation(fields: [unitId], references: [id])
+    unitId String
+
+    quantity   Decimal @db.Decimal(10, 2)
+    costCodeId String?
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    @@index([rfqId])
+}
+
+model RFQVendorQuote {
+    id       String @id
+    rfq      RFQ    @relation(fields: [rfqId], references: [id])
+    rfqId    String
+    vendor   Vendor @relation(fields: [vendorId], references: [id])
+    vendorId String
+
+    hasSubmittedQuote Boolean   @default(false)
+    submittedAt       DateTime?
+    declinedToQuote   Boolean   @default(false)
+    declineReason     String?
+
+    quotedAmount Decimal                 @db.Decimal(15, 2)
+    leadTime     String?
+    attachments  VendorQuoteAttachment[]
+
+    isAwarded Boolean @default(false)
+
+    notes String? @db.Text
+
+    updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+
+    @@unique([rfqId, vendorId])
+    @@index([rfqId])
+    @@index([vendorId])
+}
+
+model VendorQuoteAttachment {
+    id         String         @id
+    quote      RFQVendorQuote @relation(fields: [quoteId], references: [id])
+    quoteId    String
+    document   File           @relation(fields: [documentId], references: [id])
+    documentId String         @unique
+    createdAt  DateTime       @default(now())
+
+    @@index([quoteId])
+}

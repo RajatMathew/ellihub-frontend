@@ -45,6 +45,8 @@ model Project {
     primeContract    PrimeContract[]
     projectSchedules ProjectSchedule[]
 
+    rfqs RFQ[]
+
     @@index([stageId])
     @@index([status])
     @@index([gcId])
@@ -97,46 +99,4 @@ model ProjectSchedule {
     updatedAt          DateTime  @updatedAt
 
     @@index([projectId])
-}
-
-model RFQ {
-    id        String  @id
-    project   Project @relation(fields: [projectId], references: [id])
-    projectId String
-
-    rfqNumber   String  @unique
-    title       String
-    description String? @db.Text
-
-    status RFQStatus
-
-    bidDeadline DateTime
-
-    track TradeCategory @default(MATERIAL)
-
-    awardedVendor   Vendor?  @relation(fields: [awardedVendorId], references: [id])
-    awardedVendorId String?
-    awardedAmount   Decimal? @db.Decimal(15, 2)
-
-    // generatedPO   PurchaseOrder? @relation("RFQGeneratedPO", fields: [generatedPOId], references: [id])
-    // generatedPOId String?        @unique
-
-    publishedBy        String?
-    publishedAt        DateTime?
-    awardedBy          String?
-    awardedAt          DateTime?
-    cancelledBy        String?
-    cancelledAt        DateTime?
-    cancellationReason String?
-
-    createdById String
-    createdBy   Employee
-
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-
-    @@index([projectId])
-    @@index([statusId])
-    @@index([bidDeadline])
 }

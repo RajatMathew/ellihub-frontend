@@ -18,8 +18,10 @@ model Vendor {
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 
-    contacts  Contact[]
-    documents VendorDocument[]
+    contacts        Contact[]
+    documents       VendorDocument[]
+    rfqs            RFQ[]
+    rfqvendorQuotes RFQVendorQuote[]
 
     @@index([name])
     @@index([status])

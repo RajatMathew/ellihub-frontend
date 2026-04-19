@@ -29,6 +29,8 @@ model Lookup {
   departmentEmployees DepartmentEmployee[]
   projectStages       Project[]            @relation("project_stage")
   projectDivisions    Project[]            @relation("project_division")
+  rfqs                RFQ[]
+  rfqdeliverables     RFQDeliverable[]
 
   @@unique([type, label])
 }
