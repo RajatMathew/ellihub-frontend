@@ -1,13 +1,16 @@
-import { Prisma, PurchaseOrder } from '@db/client';
+import { POAttachment, Prisma, PurchaseOrder } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { ActivityLogService } from '@modules/activity-log';
-import { BadRequestError, NotFoundError } from '@utils';
+import { FileService } from '@modules/file/services';
+import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
+    AddPoAttachmentRequest,
     PoCreateRequest,
     PoUpdateRequest,
+    RemovePoAttachmentRequest,
     SetPoCancelledRequest,
     SetPoDeliveredRequest,
     SetPoDraftRequest,
@@ -333,6 +336,75 @@ export const PoService = {
             });
 
             return updated;
+        });
+    },
+
+    addAttachment: async (
+        request: AddPoAttachmentRequest,
+        userId: string
+    ): Promise<POAttachment> => {
+        const { purchaseOrderId, documentId } = request;
+
+        const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.status !== 'DRAFT') {
+            throw new BadRequestError('Attachments can only be added while PO is in DRAFT');
+        }
+
+        const file = await prisma.file.findUnique({ where: { id: documentId } });
+        if (!file) throw new NotFoundError('File not found');
+        checkDeletedAt(file);
+
+        const existing = await prisma.pOAttachment.findUnique({ where: { documentId } });
+        if (existing) throw new ConflictError('File already attached to a PO');
+
+        return await prisma.$transaction(async (tx) => {
+            const folderId = await FileService.getProjectSubFolderId(
+                po.projectId,
+                'PURCHASE_ORDER',
+                tx
+            );
+            await FileService.moveFileToFolder(documentId, folderId, tx);
+
+            const attachment = await tx.pOAttachment.create({
+                data: { id: ulid(), purchaseOrderId, documentId },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'purchaseOrder',
+                entityId: purchaseOrderId,
+                action: 'link',
+                description: `Attached file ${file.name} to PO ${po.poNumber}`,
+                tx,
+            });
+
+            return attachment;
+        });
+    },
+
+    removeAttachment: async (request: RemovePoAttachmentRequest, userId: string): Promise<void> => {
+        const { id } = request;
+
+        const attachment = await prisma.pOAttachment.findUnique({
+            where: { id },
+            include: { purchaseOrder: true, document: true },
+        });
+        if (!attachment) throw new NotFoundError('Attachment not found');
+        checkDeletedAt(attachment.purchaseOrder);
+        if (attachment.purchaseOrder.status !== 'DRAFT') {
+            throw new BadRequestError('Attachments can only be removed while PO is in DRAFT');
+        }
+
+        await prisma.pOAttachment.delete({ where: { id } });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: attachment.purchaseOrderId,
+            action: 'unlink',
+            description: `Removed attachment ${attachment.document.name} from PO ${attachment.purchaseOrder.poNumber}`,
         });
     },
 

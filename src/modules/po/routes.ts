@@ -3,8 +3,10 @@ import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
+    AddPoAttachmentSchema,
     PoCreateSchema,
     PoUpdateSchema,
+    RemovePoAttachmentSchema,
     SetPoCancelledSchema,
     SetPoDeliveredSchema,
     SetPoDraftSchema,
@@ -83,6 +85,28 @@ app.patch(
         const data = c.req.valid('json');
         const po = await PoService.setCancelled(data, c.get('user')!.id);
         return success(c, po);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', AddPoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await PoService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', RemovePoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await PoService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
     }
 );
 

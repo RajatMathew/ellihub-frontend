@@ -69,3 +69,16 @@ export const SetPoDraftSchema = z.object({
 });
 
 export type SetPoDraftRequest = z.infer<typeof SetPoDraftSchema>;
+
+export const AddPoAttachmentSchema = z.object({
+    purchaseOrderId: z.ulid(),
+    documentId: z.ulid(),
+});
+
+export type AddPoAttachmentRequest = z.infer<typeof AddPoAttachmentSchema>;
+
+export const RemovePoAttachmentSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemovePoAttachmentRequest = z.infer<typeof RemovePoAttachmentSchema>;
