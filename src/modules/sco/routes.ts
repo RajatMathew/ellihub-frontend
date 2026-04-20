@@ -1,3 +1,4 @@
+import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
@@ -11,6 +12,23 @@ import {
 import { ScoService } from './service';
 
 const app = new Hono();
+
+app.get(
+    '/',
+    requirePermission({ subChangeOrder: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c) => {
+        const pagination = c.get('pagination');
+        const { data, count } = await ScoService.getScos(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
+
+app.get('/:id', requirePermission({ subChangeOrder: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const sco = await ScoService.getSco(id);
+    return success(c, sco);
+});
 
 app.post(
     '/',

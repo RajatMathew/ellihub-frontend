@@ -1,5 +1,6 @@
 import { Prisma, SCOAttachment, SubChangeOrder } from '@db/client';
 import { prisma } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { BadRequestError, NotFoundError } from '@utils';
@@ -15,6 +16,59 @@ import {
 import { generateScoNumber } from './utils';
 
 export const ScoService = {
+    getSco: async (id: string): Promise<SubChangeOrder> => {
+        const sco = await prisma.subChangeOrder.findUnique({
+            where: { id },
+            include: {
+                project: true,
+                changeType: true,
+                lineItems: {
+                    where: { deletedAt: null },
+                    orderBy: { sequenceNumber: 'asc' },
+                    include: { unit: true, category: true },
+                },
+                attachments: { include: { document: true } },
+            },
+        });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        return sco;
+    },
+
+    getScos: async (
+        params: PaginationParams
+    ): Promise<{ data: SubChangeOrder[]; count: number }> => {
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { projectId, status, changeTypeId, ...restFilter } = filter || {};
+
+        const whereClause: Prisma.SubChangeOrderWhereInput = {
+            deletedAt: null,
+            ...restFilter,
+            ...(projectId && { projectId }),
+            ...(status && { status }),
+            ...(changeTypeId && { changeTypeId }),
+            ...(search && {
+                OR: [
+                    { scoNumber: { contains: search, mode: 'insensitive' as const } },
+                    { title: { contains: search, mode: 'insensitive' as const } },
+                ],
+            }),
+        };
+
+        const [count, data] = await prisma.$transaction([
+            prisma.subChangeOrder.count({ where: whereClause }),
+            prisma.subChangeOrder.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: { [sortBy as keyof SubChangeOrder]: sortOrder },
+                include: { project: true, changeType: true },
+            }),
+        ]);
+
+        return { data, count };
+    },
+
     createSco: async (request: ScoCreateRequest, userId: string): Promise<SubChangeOrder> => {
         const {
             projectId,
