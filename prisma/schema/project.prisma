@@ -45,7 +45,8 @@ model Project {
     primeContract    PrimeContract[]
     projectSchedules ProjectSchedule[]
 
-    rfqs RFQ[]
+    rfqs           RFQ[]
+    purchaseOrders PurchaseOrder[]
 
     @@index([stageId])
     @@index([status])

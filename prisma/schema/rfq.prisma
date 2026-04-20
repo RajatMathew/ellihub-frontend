@@ -32,6 +32,7 @@ model RFQ {
     rfqdeliverables RFQDeliverable[]
     vendorQuotes    RFQVendorQuote[]
     rfqattachments  RFQAttachment[]
+    purchaseOrders  PurchaseOrder[]  @relation("RFQPurchaseOrders")
 
     @@index([projectId])
     @@index([bidDeadline])

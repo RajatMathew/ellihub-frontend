@@ -23,14 +23,16 @@ model Lookup {
   type  String
   label String
 
-  contacts            Contact[]
-  vendors             Vendor[]
-  generalContractors  GeneralContractor[]
-  departmentEmployees DepartmentEmployee[]
-  projectStages       Project[]            @relation("project_stage")
-  projectDivisions    Project[]            @relation("project_division")
-  rfqs                RFQ[]
-  rfqdeliverables     RFQDeliverable[]
+  contacts               Contact[]
+  vendors                Vendor[]
+  generalContractors     GeneralContractor[]
+  departmentEmployees    DepartmentEmployee[]
+  projectStages          Project[]               @relation("project_stage")
+  projectDivisions       Project[]               @relation("project_division")
+  rfqs                   RFQ[]
+  rfqdeliverables        RFQDeliverable[]
+  purchaseOrders         PurchaseOrder[]         @relation("POTradeCategory")
+  purchaseOrderLineItems PurchaseOrderLineItem[] @relation("POLineItemUnit")
 
   @@unique([type, label])
 }

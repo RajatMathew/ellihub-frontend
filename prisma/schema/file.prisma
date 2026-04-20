@@ -38,6 +38,8 @@ model File {
   rfqattachments RFQAttachment[]
 
   vendorQuoteAttachments VendorQuoteAttachment[]
+
+  poattachments POAttachment[]
 }
 
 enum FileType {

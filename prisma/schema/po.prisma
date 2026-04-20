@@ -1,0 +1,114 @@
+model PurchaseOrder {
+    id        String  @id
+    project   Project @relation(fields: [projectId], references: [id])
+    projectId String
+    vendor    Vendor  @relation(fields: [vendorId], references: [id])
+    vendorId  String
+    rfq       RFQ?    @relation("RFQPurchaseOrders", fields: [rfqId], references: [id])
+    rfqId     String?
+
+    poNumber String @unique
+
+    tradeCategory   Lookup @relation("POTradeCategory", fields: [tradeCategoryId], references: [id])
+    tradeCategoryId String
+
+    description String? @db.Text
+
+    status POStatus
+
+    leadTime String?
+
+    shipToAddress String? @db.Text
+    address       String?
+
+    expectedDate DateTime?
+    deliveryDate DateTime?
+
+    subtotal     Decimal  @db.Decimal(15, 2)
+    markupAmount Decimal? @db.Decimal(15, 2)
+
+    taxPercent Decimal?
+    taxAmount  Decimal? @db.Decimal(15, 2)
+
+    total Decimal @db.Decimal(15, 2)
+
+    retainagePercent Decimal? @default(0)
+
+    paymentTerms PaymentTerms
+    notes        String?      @db.Text
+
+    // research block
+    issuedBy           String?
+    issuedAt           DateTime?
+    approvedBy         String?
+    approvedAt         DateTime?
+    rejectedBy         String?
+    rejectedAt         DateTime?
+    rejectionReason    String?
+    cancelledBy        String?
+    cancelledAt        DateTime?
+    cancellationReason String?
+
+    createdBy String
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    lineItems   PurchaseOrderLineItem[]
+    attachments POAttachment[]
+
+    @@index([projectId])
+    @@index([vendorId])
+    @@index([rfqId])
+    @@index([tradeCategoryId])
+}
+
+enum POStatus {
+    DRAFT
+    ISSUED
+    DELIVERED
+    CANCELLED
+}
+
+model PurchaseOrderLineItem {
+    id              String        @id
+    purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+    purchaseOrderId String
+
+    lineNumber  Int
+    description String
+
+    //  unit master
+    unit   Lookup @relation("POLineItemUnit", fields: [unitId], references: [id])
+    unitId String
+
+    quantity  Decimal? @db.Decimal(10, 2)
+    unitPrice Decimal?
+
+    amount Decimal?
+
+    costCodeId String?
+
+    notes String? @db.Text
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    @@unique([purchaseOrderId, lineNumber])
+    @@index([purchaseOrderId])
+    @@index([costCodeId])
+    @@index([unitId])
+}
+
+model POAttachment {
+    id              String        @id
+    purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+    purchaseOrderId String
+    document        File          @relation(fields: [documentId], references: [id])
+    documentId      String        @unique
+
+    createdAt DateTime @default(now())
+
+    @@index([purchaseOrderId])
+}

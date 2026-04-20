@@ -22,6 +22,7 @@ model Vendor {
     documents       VendorDocument[]
     rfqs            RFQ[]
     rfqvendorQuotes RFQVendorQuote[]
+    purchaseOrders  PurchaseOrder[]
 
     @@index([name])
     @@index([status])
