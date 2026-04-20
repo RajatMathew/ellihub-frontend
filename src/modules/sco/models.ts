@@ -29,3 +29,16 @@ export type ScoCreateRequest = z.infer<typeof ScoCreateSchema>;
 export const ScoUpdateSchema = ScoCreateSchema.extend({ id: z.ulid() });
 
 export type ScoUpdateRequest = z.infer<typeof ScoUpdateSchema>;
+
+export const AddScoAttachmentSchema = z.object({
+    scoId: z.ulid(),
+    documentId: z.ulid(),
+});
+
+export type AddScoAttachmentRequest = z.infer<typeof AddScoAttachmentSchema>;
+
+export const RemoveScoAttachmentSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveScoAttachmentRequest = z.infer<typeof RemoveScoAttachmentSchema>;

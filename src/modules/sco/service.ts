@@ -1,11 +1,17 @@
-import { Prisma, SubChangeOrder } from '@db/client';
+import { Prisma, SCOAttachment, SubChangeOrder } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { ActivityLogService } from '@modules/activity-log';
+import { FileService } from '@modules/file/services';
 import { BadRequestError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
-import { ScoCreateRequest, ScoUpdateRequest } from './models';
+import {
+    AddScoAttachmentRequest,
+    RemoveScoAttachmentRequest,
+    ScoCreateRequest,
+    ScoUpdateRequest,
+} from './models';
 import { generateScoNumber } from './utils';
 
 export const ScoService = {
@@ -207,6 +213,71 @@ export const ScoService = {
             });
 
             return updated;
+        });
+    },
+
+    addAttachment: async (
+        request: AddScoAttachmentRequest,
+        userId: string
+    ): Promise<SCOAttachment> => {
+        const { scoId, documentId } = request;
+
+        const sco = await prisma.subChangeOrder.findUnique({ where: { id: scoId } });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        if (sco.status !== 'DRAFT') {
+            throw new BadRequestError('Attachments can only be added while SCO is in DRAFT');
+        }
+
+        const file = await prisma.file.findUnique({ where: { id: documentId } });
+        if (!file) throw new NotFoundError('File not found');
+        checkDeletedAt(file);
+
+        return await prisma.$transaction(async (tx) => {
+            const folderId = await FileService.getProjectSubFolderId(sco.projectId, 'PRIME_CO', tx);
+            await FileService.moveFileToFolder(documentId, folderId, tx);
+
+            const attachment = await tx.sCOAttachment.create({
+                data: { id: ulid(), scoId, documentId },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'subChangeOrder',
+                entityId: scoId,
+                action: 'link',
+                description: `Attached file ${file.name} to SCO ${sco.scoNumber}`,
+                tx,
+            });
+
+            return attachment;
+        });
+    },
+
+    removeAttachment: async (
+        request: RemoveScoAttachmentRequest,
+        userId: string
+    ): Promise<void> => {
+        const { id } = request;
+
+        const attachment = await prisma.sCOAttachment.findUnique({
+            where: { id },
+            include: { sco: true, document: true },
+        });
+        if (!attachment) throw new NotFoundError('Attachment not found');
+        checkDeletedAt(attachment.sco);
+        if (attachment.sco.status !== 'DRAFT') {
+            throw new BadRequestError('Attachments can only be removed while SCO is in DRAFT');
+        }
+
+        await prisma.sCOAttachment.delete({ where: { id } });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'subChangeOrder',
+            entityId: attachment.scoId,
+            action: 'unlink',
+            description: `Removed attachment ${attachment.document.name} from SCO ${attachment.sco.scoNumber}`,
         });
     },
 };
