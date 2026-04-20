@@ -2,7 +2,12 @@ import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import { RfqCreateSchema } from './models';
+import {
+    AddRfqAttachmentSchema,
+    RemoveRfqAttachmentSchema,
+    RfqCreateSchema,
+    RfqUpdateSchema,
+} from './models';
 import { RfqService } from './service';
 
 const app = new Hono();
@@ -15,6 +20,39 @@ app.post(
         const data = c.req.valid('json');
         const rfq = await RfqService.createRfq(data, c.get('user')!.id);
         return success(c, rfq, 201);
+    }
+);
+
+app.put(
+    '/',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RfqUpdateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.updateRfq(data, c.get('user')!.id);
+        return success(c, rfq);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AddRfqAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await RfqService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveRfqAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await RfqService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
     }
 );
 
