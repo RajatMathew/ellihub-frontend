@@ -1,3 +1,4 @@
+import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
@@ -15,6 +16,23 @@ import {
 import { PoService } from './service';
 
 const app = new Hono();
+
+app.get(
+    '/',
+    requirePermission({ purchaseOrder: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c) => {
+        const pagination = c.get('pagination');
+        const { data, count } = await PoService.getPurchaseOrders(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
+
+app.get('/:id', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const po = await PoService.getPurchaseOrder(id);
+    return success(c, po);
+});
 
 app.post(
     '/',

@@ -1,5 +1,6 @@
 import { POAttachment, Prisma, PurchaseOrder } from '@db/client';
 import { prisma } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
@@ -19,6 +20,67 @@ import {
 import { generatePoNumber } from './utils';
 
 export const PoService = {
+    getPurchaseOrder: async (id: string): Promise<PurchaseOrder> => {
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: {
+                project: true,
+                vendor: true,
+                rfq: true,
+                tradeCategory: true,
+                lineItems: {
+                    where: { deletedAt: null },
+                    orderBy: { lineNumber: 'asc' },
+                    include: { unit: true },
+                },
+                attachments: { include: { document: true } },
+            },
+        });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        return po;
+    },
+
+    getPurchaseOrders: async (
+        params: PaginationParams
+    ): Promise<{ data: PurchaseOrder[]; count: number }> => {
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { projectId, vendorId, rfqId, status, tradeCategoryId, ...restFilter } = filter || {};
+
+        const whereClause: Prisma.PurchaseOrderWhereInput = {
+            deletedAt: null,
+            ...restFilter,
+            ...(projectId && { projectId }),
+            ...(vendorId && { vendorId }),
+            ...(rfqId && { rfqId }),
+            ...(status && { status }),
+            ...(tradeCategoryId && { tradeCategoryId }),
+            ...(search && {
+                OR: [
+                    { poNumber: { contains: search, mode: 'insensitive' as const } },
+                    { description: { contains: search, mode: 'insensitive' as const } },
+                ],
+            }),
+        };
+
+        const [count, data] = await prisma.$transaction([
+            prisma.purchaseOrder.count({ where: whereClause }),
+            prisma.purchaseOrder.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: { [sortBy as keyof PurchaseOrder]: sortOrder },
+                include: {
+                    project: true,
+                    vendor: true,
+                    tradeCategory: true,
+                },
+            }),
+        ]);
+
+        return { data, count };
+    },
+
     createPurchaseOrder: async (
         request: PoCreateRequest,
         userId: string
