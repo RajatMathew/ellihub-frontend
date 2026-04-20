@@ -7,6 +7,7 @@ import { ulid } from 'ulid';
 
 import {
     PoCreateRequest,
+    PoUpdateRequest,
     SetPoCancelledRequest,
     SetPoDeliveredRequest,
     SetPoDraftRequest,
@@ -213,6 +214,125 @@ export const PoService = {
             });
 
             return po;
+        });
+    },
+
+    updatePurchaseOrder: async (
+        request: PoUpdateRequest,
+        userId: string
+    ): Promise<PurchaseOrder> => {
+        const {
+            id,
+            projectId,
+            vendorId,
+            rfqId,
+            tradeCategoryId,
+            expectedDate,
+            taxPercent,
+            markupAmount,
+            retainagePercent,
+            lineItems,
+            ...rest
+        } = request;
+
+        const existing = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(existing);
+        if (existing.status !== 'DRAFT') {
+            throw new BadRequestError('PO can only be updated while in DRAFT');
+        }
+        if (existing.projectId !== projectId) {
+            throw new BadRequestError('PO project cannot be changed');
+        }
+
+        const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+        if (!vendor) throw new NotFoundError('Vendor not found');
+        checkDeletedAt(vendor);
+
+        if (rfqId) {
+            const rfq = await prisma.rFQ.findUnique({ where: { id: rfqId } });
+            if (!rfq) throw new NotFoundError('RFQ not found');
+            checkDeletedAt(rfq);
+            if (rfq.projectId !== projectId) {
+                throw new BadRequestError('RFQ does not belong to the given project');
+            }
+        }
+
+        const tradeCategory = await prisma.lookup.findUnique({ where: { id: tradeCategoryId } });
+        if (!tradeCategory) throw new NotFoundError('Trade category not found');
+
+        const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
+        const units = await prisma.lookup.findMany({ where: { id: { in: unitIds } } });
+        if (units.length !== unitIds.length) {
+            throw new NotFoundError('One or more line item units not found');
+        }
+
+        const costCodeIds = [
+            ...new Set(lineItems.map((li) => li.costCodeId).filter((v): v is string => !!v)),
+        ];
+        if (costCodeIds.length) {
+            const costCodes = await prisma.costCode.findMany({
+                where: { id: { in: costCodeIds } },
+            });
+            if (costCodes.length !== costCodeIds.length) {
+                throw new NotFoundError('One or more cost codes not found');
+            }
+        }
+
+        const lineAmounts = lineItems.map((li) =>
+            new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice))
+        );
+        const subtotal = lineAmounts.reduce((sum, amt) => sum.plus(amt), new Prisma.Decimal(0));
+        const taxAmount =
+            taxPercent != null
+                ? subtotal.times(new Prisma.Decimal(taxPercent)).dividedBy(100)
+                : new Prisma.Decimal(0);
+        const total = subtotal.plus(taxAmount);
+
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.purchaseOrder.update({
+                where: { id },
+                data: {
+                    ...rest,
+                    vendorId,
+                    rfqId: rfqId ?? null,
+                    tradeCategoryId,
+                    expectedDate: expectedDate ? new Date(expectedDate) : null,
+                    subtotal,
+                    markupAmount: markupAmount ?? null,
+                    taxPercent: taxPercent ?? null,
+                    taxAmount: taxPercent != null ? taxAmount : null,
+                    total,
+                    retainagePercent: retainagePercent ?? 0,
+                },
+            });
+
+            await tx.purchaseOrderLineItem.deleteMany({ where: { purchaseOrderId: id } });
+            await tx.purchaseOrderLineItem.createMany({
+                data: lineItems.map((li, i) => ({
+                    id: ulid(),
+                    purchaseOrderId: id,
+                    lineNumber: i + 1,
+                    description: li.description,
+                    unitId: li.unitId,
+                    quantity: new Prisma.Decimal(li.quantity),
+                    unitPrice: new Prisma.Decimal(li.unitPrice),
+                    amount: lineAmounts[i],
+                    costCodeId: li.costCodeId ?? null,
+                    notes: li.notes ?? null,
+                })),
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'purchaseOrder',
+                entityId: id,
+                action: 'update',
+                description: `Updated PO ${updated.poNumber}`,
+                tx,
+            });
+
+            return updated;
         });
     },
 

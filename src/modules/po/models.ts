@@ -40,6 +40,10 @@ export const PoCreateSchema = z.object({
 
 export type PoCreateRequest = z.infer<typeof PoCreateSchema>;
 
+export const PoUpdateSchema = PoCreateSchema.extend({ id: z.ulid() });
+
+export type PoUpdateRequest = z.infer<typeof PoUpdateSchema>;
+
 export const SetPoIssuedSchema = z.object({
     id: z.ulid(),
 });

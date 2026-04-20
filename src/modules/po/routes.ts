@@ -4,6 +4,7 @@ import { requirePermission } from 'src/middleware/auth';
 
 import {
     PoCreateSchema,
+    PoUpdateSchema,
     SetPoCancelledSchema,
     SetPoDeliveredSchema,
     SetPoDraftSchema,
@@ -21,6 +22,17 @@ app.post(
         const data = c.req.valid('json');
         const po = await PoService.createPurchaseOrder(data, c.get('user')!.id);
         return success(c, po, 201);
+    }
+);
+
+app.put(
+    '/',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', PoUpdateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.updatePurchaseOrder(data, c.get('user')!.id);
+        return success(c, po);
     }
 );
 
