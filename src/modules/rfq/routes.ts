@@ -18,4 +18,16 @@ app.post(
     }
 );
 
+app.patch('/:id/set-draft', requirePermission({ rfq: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RfqService.setDraft(id, c.get('user')!.id);
+    return success(c, rfq);
+});
+
+app.patch('/:id/set-published', requirePermission({ rfq: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RfqService.setPublished(id, c.get('user')!.id);
+    return success(c, rfq);
+});
+
 export default app;

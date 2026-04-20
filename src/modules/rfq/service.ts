@@ -59,4 +59,46 @@ export const RfqService = {
             return rfq;
         });
     },
+
+    setDraft: async (id: string, userId: string): Promise<RFQ> => {
+        const rfq = await prisma.rFQ.findUnique({ where: { id } });
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+
+        const updated = await prisma.rFQ.update({
+            where: { id },
+            data: { status: 'DRAFT' },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'rfq',
+            entityId: id,
+            action: 'update',
+            description: `Set RFQ ${updated.rfqNumber} to DRAFT`,
+        });
+
+        return updated;
+    },
+
+    setPublished: async (id: string, userId: string): Promise<RFQ> => {
+        const rfq = await prisma.rFQ.findUnique({ where: { id } });
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+
+        const updated = await prisma.rFQ.update({
+            where: { id },
+            data: { status: 'PUBLISHED' },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'rfq',
+            entityId: id,
+            action: 'update',
+            description: `Set RFQ ${updated.rfqNumber} to PUBLISHED`,
+        });
+
+        return updated;
+    },
 };
