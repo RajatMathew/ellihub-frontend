@@ -55,7 +55,7 @@ export const RfqService = {
         }
 
         return await prisma.$transaction(async (tx) => {
-            const prefix = `${project.jobNumber}-`;
+            const prefix = `RFQ-${project.jobNumber}-`;
             const latest = await tx.rFQ.findFirst({
                 where: { rfqNumber: { startsWith: prefix } },
                 orderBy: { rfqNumber: 'desc' },
