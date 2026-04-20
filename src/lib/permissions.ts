@@ -18,6 +18,7 @@ export const statement = {
     activityLog: ['create', 'read'],
     rfq: ['create', 'update', 'delete', 'read'],
     purchaseOrder: ['create', 'update', 'delete', 'read'],
+    subChangeOrder: ['create', 'update', 'delete', 'read'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -39,6 +40,7 @@ export const owner = ac.newRole({
     activityLog: ['create', 'read'],
     rfq: ['create', 'update', 'delete', 'read'],
     purchaseOrder: ['create', 'update', 'delete', 'read'],
+    subChangeOrder: ['create', 'update', 'delete', 'read'],
 });
 
 // Export the type

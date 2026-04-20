@@ -10,7 +10,8 @@ export type ActivityEntityType =
     | 'professionalRole'
     | 'project'
     | 'rfq'
-    | 'purchaseOrder';
+    | 'purchaseOrder'
+    | 'subChangeOrder';
 
 export type ActivityAction =
     | 'create'

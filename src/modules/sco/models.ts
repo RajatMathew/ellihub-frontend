@@ -1,0 +1,27 @@
+import z from 'zod';
+
+export const SCOLineItemSchema = z.object({
+    description: z.string().min(1).optional().nullable(),
+    qty: z.number().positive(),
+    unitId: z.ulid(),
+    unitPrice: z.number().nonnegative(),
+    categoryId: z.ulid(),
+    costCodeId: z.ulid().optional().nullable(),
+});
+
+export type SCOLineItemInput = z.infer<typeof SCOLineItemSchema>;
+
+export const ScoCreateSchema = z.object({
+    projectId: z.ulid(),
+    date: z.iso.date(),
+    title: z.string().min(1),
+    description: z.string().min(1).optional().nullable(),
+    markupAmount: z.number().nonnegative().optional().nullable(),
+    scheduleImpactDays: z.number().int().optional().nullable(),
+    requestedBy: z.string().min(1).optional().nullable(),
+    changeTypeId: z.ulid().optional().nullable(),
+    impactsSchedule: z.boolean().optional(),
+    lineItems: z.array(SCOLineItemSchema).min(1, 'At least one line item is required'),
+});
+
+export type ScoCreateRequest = z.infer<typeof ScoCreateSchema>;

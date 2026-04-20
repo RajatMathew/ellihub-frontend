@@ -8,6 +8,7 @@ import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
 import { lookupRoutes } from '@modules/lookup';
 import { poRoutes } from '@modules/po';
+import { scoRoutes } from '@modules/sco';
 import { seederRoutes } from '@modules/seeder';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
@@ -35,5 +36,6 @@ app.route('/gc', gcRoutes);
 app.route('/contact', contactRoutes);
 app.route('/activity-log', activityLogRoutes);
 app.route('/purchase-order', poRoutes);
+app.route('/sub-change-order', scoRoutes);
 
 export default app;
