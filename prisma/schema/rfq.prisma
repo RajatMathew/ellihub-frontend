@@ -90,7 +90,7 @@ model RFQVendorQuote {
     declinedToQuote   Boolean   @default(false)
     declineReason     String?
 
-    quotedAmount Decimal                 @db.Decimal(15, 2)
+    quotedAmount Decimal?                @db.Decimal(15, 2)
     leadTime     String?
     attachments  VendorQuoteAttachment[]
 

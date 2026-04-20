@@ -4,9 +4,18 @@ import { requirePermission } from 'src/middleware/auth';
 
 import {
     AddRfqAttachmentSchema,
+    AddVendorSchema,
+    AwardRfqSchema,
+    DeclineQuoteSchema,
+    EditQuoteSchema,
+    RemoveQuoteSchema,
     RemoveRfqAttachmentSchema,
+    RemoveVendorSchema,
     RfqCreateSchema,
     RfqUpdateSchema,
+    SubmitQuoteSchema,
+    UnawardRfqSchema,
+    VoidRfqSchema,
 } from './models';
 import { RfqService } from './service';
 
@@ -35,6 +44,72 @@ app.put(
 );
 
 app.patch(
+    '/vendor/add',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AddVendorSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const quote = await RfqService.addVendor(data, c.get('user')!.id);
+        return success(c, quote);
+    }
+);
+
+app.patch(
+    '/vendor/submit-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', SubmitQuoteSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const quote = await RfqService.submitQuote(data, c.get('user')!.id);
+        return success(c, quote);
+    }
+);
+
+app.patch(
+    '/vendor/decline-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', DeclineQuoteSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const quote = await RfqService.declineQuote(data, c.get('user')!.id);
+        return success(c, quote);
+    }
+);
+
+app.patch(
+    '/vendor/remove-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveQuoteSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const quote = await RfqService.removeQuote(data, c.get('user')!.id);
+        return success(c, quote);
+    }
+);
+
+app.patch(
+    '/vendor/edit-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', EditQuoteSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const quote = await RfqService.editQuote(data, c.get('user')!.id);
+        return success(c, quote);
+    }
+);
+
+app.patch(
+    '/vendor/remove',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveVendorSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await RfqService.removeVendor(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+app.patch(
     '/attachment/add',
     requirePermission({ rfq: ['update'] }),
     zValidator('json', AddRfqAttachmentSchema),
@@ -53,6 +128,39 @@ app.patch(
         const data = c.req.valid('json');
         await RfqService.removeAttachment(data, c.get('user')!.id);
         return success(c, null);
+    }
+);
+
+app.patch(
+    '/award',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AwardRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.awardRfq(data, c.get('user')!.id);
+        return success(c, rfq);
+    }
+);
+
+app.patch(
+    '/un-award',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', UnawardRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.unawardRfq(data, c.get('user')!.id);
+        return success(c, rfq);
+    }
+);
+
+app.patch(
+    '/set-void',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', VoidRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.setVoid(data, c.get('user')!.id);
+        return success(c, rfq);
     }
 );
 
