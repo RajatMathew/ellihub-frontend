@@ -12,6 +12,7 @@ export const ActivityEntityTypeSchema = z.enum([
     'professionalRole',
     'project',
     'rfq',
+    'purchaseOrder',
 ]);
 
 export const ActivityActionSchema = z.enum([

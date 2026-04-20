@@ -7,6 +7,7 @@ import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
 import { lookupRoutes } from '@modules/lookup';
+import { poRoutes } from '@modules/po';
 import { seederRoutes } from '@modules/seeder';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
@@ -33,5 +34,6 @@ app.route('/vendor', vendorRoutes);
 app.route('/gc', gcRoutes);
 app.route('/contact', contactRoutes);
 app.route('/activity-log', activityLogRoutes);
+app.route('/purchase-order', poRoutes);
 
 export default app;

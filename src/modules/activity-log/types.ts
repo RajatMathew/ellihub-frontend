@@ -9,7 +9,8 @@ export type ActivityEntityType =
     | 'costCodeCategory'
     | 'professionalRole'
     | 'project'
-    | 'rfq';
+    | 'rfq'
+    | 'purchaseOrder';
 
 export type ActivityAction =
     | 'create'
