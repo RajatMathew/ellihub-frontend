@@ -16,6 +16,7 @@ export const statement = {
     vendor: ['create', 'update', 'delete', 'read'],
     department: ['create', 'update', 'delete', 'read'],
     activityLog: ['create', 'read'],
+    rfq: ['create', 'update', 'delete', 'read'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -35,6 +36,7 @@ export const owner = ac.newRole({
     vendor: ['create', 'update', 'delete', 'read'],
     department: ['create', 'update', 'delete', 'read'],
     activityLog: ['create', 'read'],
+    rfq: ['create', 'update', 'delete', 'read'],
 });
 
 // Export the type

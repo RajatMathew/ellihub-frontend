@@ -8,7 +8,8 @@ export type ActivityEntityType =
     | 'costCode'
     | 'costCodeCategory'
     | 'professionalRole'
-    | 'project';
+    | 'project'
+    | 'rfq';
 
 export type ActivityAction =
     | 'create'
