@@ -25,3 +25,7 @@ export const ScoCreateSchema = z.object({
 });
 
 export type ScoCreateRequest = z.infer<typeof ScoCreateSchema>;
+
+export const ScoUpdateSchema = ScoCreateSchema.extend({ id: z.ulid() });
+
+export type ScoUpdateRequest = z.infer<typeof ScoUpdateSchema>;

@@ -109,4 +109,104 @@ export const ScoService = {
             return sco;
         });
     },
+
+    updateSco: async (request: ScoUpdateRequest, userId: string): Promise<SubChangeOrder> => {
+        const {
+            id,
+            projectId,
+            date,
+            changeTypeId,
+            markupAmount,
+            scheduleImpactDays,
+            impactsSchedule,
+            lineItems,
+            ...rest
+        } = request;
+
+        const existing = await prisma.subChangeOrder.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(existing);
+        if (existing.status !== 'DRAFT') {
+            throw new BadRequestError('SCO can only be updated while in DRAFT');
+        }
+        if (existing.projectId !== projectId) {
+            throw new BadRequestError('SCO project cannot be changed');
+        }
+
+        if (changeTypeId) {
+            const changeType = await prisma.lookup.findUnique({ where: { id: changeTypeId } });
+            if (!changeType) throw new NotFoundError('Change type not found');
+        }
+
+        const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
+        const categoryIds = [...new Set(lineItems.map((li) => li.categoryId))];
+        const lookupIds = [...new Set([...unitIds, ...categoryIds])];
+        const lookups = await prisma.lookup.findMany({ where: { id: { in: lookupIds } } });
+        const lookupSet = new Set(lookups.map((l) => l.id));
+        if (unitIds.some((uid) => !lookupSet.has(uid))) {
+            throw new NotFoundError('One or more line item units not found');
+        }
+        if (categoryIds.some((cid) => !lookupSet.has(cid))) {
+            throw new NotFoundError('One or more line item categories not found');
+        }
+
+        const costCodeIds = [
+            ...new Set(lineItems.map((li) => li.costCodeId).filter((v): v is string => !!v)),
+        ];
+        if (costCodeIds.length) {
+            const costCodes = await prisma.costCode.findMany({
+                where: { id: { in: costCodeIds } },
+            });
+            if (costCodes.length !== costCodeIds.length) {
+                throw new NotFoundError('One or more cost codes not found');
+            }
+        }
+
+        const lineAmounts = lineItems.map((li) =>
+            new Prisma.Decimal(li.qty).times(new Prisma.Decimal(li.unitPrice))
+        );
+        const amount = lineAmounts.reduce((sum, v) => sum.plus(v), new Prisma.Decimal(0));
+
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.subChangeOrder.update({
+                where: { id },
+                data: {
+                    ...rest,
+                    date: new Date(date),
+                    amount,
+                    markupAmount: markupAmount ?? null,
+                    scheduleImpactDays: scheduleImpactDays ?? null,
+                    changeTypeId: changeTypeId ?? null,
+                    impactsSchedule: impactsSchedule ?? false,
+                },
+            });
+
+            await tx.subCOLineItem.deleteMany({ where: { subCoId: id } });
+            await tx.subCOLineItem.createMany({
+                data: lineItems.map((li, i) => ({
+                    id: ulid(),
+                    subCoId: id,
+                    sequenceNumber: i + 1,
+                    description: li.description ?? null,
+                    qty: li.qty,
+                    unitId: li.unitId,
+                    unitPrice: new Prisma.Decimal(li.unitPrice),
+                    amount: lineAmounts[i],
+                    categoryId: li.categoryId,
+                    costCodeId: li.costCodeId ?? null,
+                })),
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'subChangeOrder',
+                entityId: id,
+                action: 'update',
+                description: `Updated SCO ${updated.scoNumber}`,
+                tx,
+            });
+
+            return updated;
+        });
+    },
 };
