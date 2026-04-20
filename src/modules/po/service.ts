@@ -5,7 +5,13 @@ import { BadRequestError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
-import { PoCreateRequest } from './models';
+import {
+    PoCreateRequest,
+    SetPoCancelledRequest,
+    SetPoDeliveredRequest,
+    SetPoDraftRequest,
+    SetPoIssuedRequest,
+} from './models';
 import { generatePoNumber } from './utils';
 
 export const PoService = {
@@ -208,5 +214,127 @@ export const PoService = {
 
             return po;
         });
+    },
+
+    setDraft: async (request: SetPoDraftRequest, userId: string): Promise<PurchaseOrder> => {
+        const { id } = request;
+        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.status === 'DRAFT') {
+            throw new BadRequestError('PO is already in DRAFT');
+        }
+
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: {
+                status: 'DRAFT',
+                issuedBy: null,
+                issuedAt: null,
+                deliveryDate: null,
+                cancelledBy: null,
+                cancelledAt: null,
+                cancellationReason: null,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: id,
+            action: 'update',
+            description: `Set PO ${updated.poNumber} to DRAFT`,
+        });
+
+        return updated;
+    },
+
+    setIssued: async (request: SetPoIssuedRequest, userId: string): Promise<PurchaseOrder> => {
+        const { id } = request;
+        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.status !== 'DRAFT') {
+            throw new BadRequestError('Only DRAFT POs can be issued');
+        }
+
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: { status: 'ISSUED', issuedBy: userId, issuedAt: new Date() },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: id,
+            action: 'update',
+            description: `Issued PO ${updated.poNumber}`,
+        });
+
+        return updated;
+    },
+
+    setDelivered: async (
+        request: SetPoDeliveredRequest,
+        userId: string
+    ): Promise<PurchaseOrder> => {
+        const { id, deliveryDate } = request;
+        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.status !== 'ISSUED') {
+            throw new BadRequestError('Only ISSUED POs can be marked as DELIVERED');
+        }
+
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: { status: 'DELIVERED', deliveryDate: new Date(deliveryDate) },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: id,
+            action: 'update',
+            description: `Marked PO ${updated.poNumber} as DELIVERED`,
+        });
+
+        return updated;
+    },
+
+    setCancelled: async (
+        request: SetPoCancelledRequest,
+        userId: string
+    ): Promise<PurchaseOrder> => {
+        const { id, cancellationReason } = request;
+        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.status === 'CANCELLED') {
+            throw new BadRequestError('PO is already cancelled');
+        }
+        if (po.status === 'DELIVERED') {
+            throw new BadRequestError('Delivered PO cannot be cancelled');
+        }
+
+        const updated = await prisma.purchaseOrder.update({
+            where: { id },
+            data: {
+                status: 'CANCELLED',
+                cancelledBy: userId,
+                cancelledAt: new Date(),
+                cancellationReason,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: id,
+            action: 'update',
+            description: `Cancelled PO ${updated.poNumber}`,
+        });
+
+        return updated;
     },
 };

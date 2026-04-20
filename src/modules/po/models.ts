@@ -39,3 +39,29 @@ export const PoCreateSchema = z.object({
 });
 
 export type PoCreateRequest = z.infer<typeof PoCreateSchema>;
+
+export const SetPoIssuedSchema = z.object({
+    id: z.ulid(),
+});
+
+export type SetPoIssuedRequest = z.infer<typeof SetPoIssuedSchema>;
+
+export const SetPoDeliveredSchema = z.object({
+    id: z.ulid(),
+    deliveryDate: z.iso.date(),
+});
+
+export type SetPoDeliveredRequest = z.infer<typeof SetPoDeliveredSchema>;
+
+export const SetPoCancelledSchema = z.object({
+    id: z.ulid(),
+    cancellationReason: z.string().min(1),
+});
+
+export type SetPoCancelledRequest = z.infer<typeof SetPoCancelledSchema>;
+
+export const SetPoDraftSchema = z.object({
+    id: z.ulid(),
+});
+
+export type SetPoDraftRequest = z.infer<typeof SetPoDraftSchema>;
