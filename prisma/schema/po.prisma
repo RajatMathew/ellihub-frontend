@@ -112,3 +112,90 @@ model POAttachment {
 
     @@index([purchaseOrderId])
 }
+
+// Sub change order
+
+model SubChangeOrder {
+    id          String    @id
+    project     Project   @relation(fields: [projectId], references: [id])
+    projectId   String
+    scoNumber   String    @unique
+    date        DateTime
+    title       String
+    description String?
+    amount      Decimal   @db.Decimal(10, 2)
+    status      SCOStatus
+
+    createdBy String
+
+    markupAmount       Float?
+    scheduleImpactDays Int?
+    requestedBy        String?
+
+    changeType      Lookup? @relation("SCOChangeType", fields: [changeTypeId], references: [id])
+    changeTypeId    String?
+    impactsSchedule Boolean @default(false)
+
+    approvedBy      String?
+    approvedAt      DateTime?
+    rejectedBy      String?
+    rejectedAt      DateTime?
+    rejectionReason String?
+    voidedBy        String?
+    voidedAt        DateTime?
+    voidReason      String?
+
+    lineItems   SubCOLineItem[]
+    attachments SCOAttachment[]
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    @@index([projectId])
+    @@index([changeTypeId])
+    @@index([scoNumber])
+}
+
+enum SCOStatus {
+    DRAFT
+    APPROVED
+    REJECTED
+    VOID
+}
+
+model SCOAttachment {
+    id         String         @id
+    sco        SubChangeOrder @relation(fields: [scoId], references: [id])
+    scoId      String
+    document   File           @relation(fields: [documentId], references: [id])
+    documentId String         @unique
+    createdAt  DateTime       @default(now())
+
+    @@index([scoId])
+}
+
+model SubCOLineItem {
+    id             String         @id
+    subCo          SubChangeOrder @relation(fields: [subCoId], references: [id])
+    subCoId        String         @map("subCoid")
+    sequenceNumber Int
+    description    String?
+    qty            Float
+    unit           Lookup         @relation("SCOLineItemUnit", fields: [unitId], references: [id])
+    unitId         String
+    unitPrice      Decimal        @db.Decimal(10, 2)
+    amount         Decimal
+    category       Lookup         @relation("SCOLineItemCategory", fields: [categoryId], references: [id]) // keep
+    categoryId     String
+    costCodeId     String?
+    deletedAt      DateTime?
+    createdAt      DateTime       @default(now())
+    updatedAt      DateTime       @updatedAt
+
+    @@unique([subCoId, sequenceNumber])
+    @@index([subCoId])
+    @@index([unitId])
+    @@index([categoryId])
+    @@index([costCodeId])
+}

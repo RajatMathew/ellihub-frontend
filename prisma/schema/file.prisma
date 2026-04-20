@@ -40,6 +40,8 @@ model File {
   vendorQuoteAttachments VendorQuoteAttachment[]
 
   poattachments POAttachment[]
+
+  scoattachments SCOAttachment[]
 }
 
 enum FileType {

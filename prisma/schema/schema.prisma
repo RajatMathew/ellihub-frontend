@@ -33,6 +33,9 @@ model Lookup {
   rfqdeliverables        RFQDeliverable[]
   purchaseOrders         PurchaseOrder[]         @relation("POTradeCategory")
   purchaseOrderLineItems PurchaseOrderLineItem[] @relation("POLineItemUnit")
+  subCOLineItemUnits      SubCOLineItem[]        @relation("SCOLineItemUnit")
+  subCOLineItemCategories SubCOLineItem[]        @relation("SCOLineItemCategory")
+  subChangeOrders         SubChangeOrder[]       @relation("SCOChangeType")
 
   @@unique([type, label])
 }
