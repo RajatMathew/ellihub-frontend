@@ -8,6 +8,8 @@ import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
 import { lookupRoutes } from '@modules/lookup';
 import { poRoutes } from '@modules/po';
+import { projectRoutes } from '@modules/project';
+import { rfqRoutes } from '@modules/rfq';
 import { scoRoutes } from '@modules/sco';
 import { seederRoutes } from '@modules/seeder';
 import { userRoutes } from '@modules/user';
@@ -35,6 +37,8 @@ app.route('/vendor', vendorRoutes);
 app.route('/gc', gcRoutes);
 app.route('/contact', contactRoutes);
 app.route('/activity-log', activityLogRoutes);
+app.route('/project', projectRoutes);
+app.route('/rfq', rfqRoutes);
 app.route('/purchase-order', poRoutes);
 app.route('/sub-change-order', scoRoutes);
 
