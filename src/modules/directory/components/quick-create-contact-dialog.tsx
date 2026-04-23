@@ -65,8 +65,8 @@ export function QuickCreateContactDialog({
     const created = await createMutation.mutateAsync({
       fullName: data.fullName,
       professionalRoleId: data.professionalRoleId || undefined,
-      email: data.email ? [{ email: data.email, label: 'Work' }] : [],
-      phoneNumber: data.phone ? [{ number: data.phone, label: 'Office' }] : [],
+      email: data.email || undefined,
+      phoneNumber: data.phone || undefined,
     });
     onCreated({ id: created.id, fullName: created.fullName });
     handleOpenChange(false);

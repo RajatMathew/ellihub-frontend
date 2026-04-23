@@ -37,10 +37,10 @@ import {
   VENDOR_TYPE_OPTIONS,
 } from '../constants/vendors.constants';
 import {
-  useAddVendorLinkMutation,
   useContactsQuery,
   useCreateVendorMutation,
-  useDeleteVendorContactMutation,
+  useUnlinkEntityMutation,
+  useLinkEntityMutation,
   useUpdateVendorMutation,
   useVendorDetailQuery,
   useVendorTypesQuery,
@@ -84,8 +84,8 @@ export function VendorFormPage() {
   // Mutations
   const createMutation = useCreateVendorMutation();
   const updateMutation = useUpdateVendorMutation();
-  const removeContactMutation = useDeleteVendorContactMutation();
-  const addVendorLinkMutation = useAddVendorLinkMutation();
+  const unlinkEntityMutation = useUnlinkEntityMutation();
+  const linkEntityMutation = useLinkEntityMutation();
 
   // Contact options for SearchableSelect
   const contactOptions = (contactsData?.data ?? []).map((c) => ({
@@ -131,9 +131,28 @@ export function VendorFormPage() {
         status: vendorDetail.status,
         taxId: vendorDetail.taxId ?? '',
       });
-      const activeLinks = vendorDetail.contactLinks ?? [];
-      setOriginalLinks(activeLinks);
-      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary })));
+      // Consolidate contacts from both legacy links and new direct array
+      const resolvedLinks: VendorContactLink[] = [...(vendorDetail.contactLinks ?? [])];
+      
+      // Add contacts from the direct array if they are not already represented in links
+      if (vendorDetail.contacts && vendorDetail.contacts.length > 0) {
+        vendorDetail.contacts.forEach((contact) => {
+          if (!resolvedLinks.some((l) => l.contactId === contact.id)) {
+            resolvedLinks.push({
+              id: contact.id, // Fallback to contact ID if link ID is missing
+              contactId: contact.id,
+              vendorId: vendorDetail.id,
+              isPrimary: (contact as any).isPrimary || false,
+              contact: contact,
+            } as VendorContactLink);
+          }
+        });
+      }
+
+      setOriginalLinks(resolvedLinks);
+      setContactLinks(
+        resolvedLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary }))
+      );
       setIsInitialized(true);
     }
   }, [isEdit, vendorDetail, reset, apiTypes, isInitialized]);
@@ -187,11 +206,11 @@ export function VendorFormPage() {
         const toAdd = contactLinks.filter((l) => !originalByContact.has(l.contactId));
 
         const linkOps: Promise<unknown>[] = [
-          ...toRemove.map((link) => removeContactMutation.mutateAsync({ id, contactId: link.id })),
+          ...toRemove.map((link) => unlinkEntityMutation.mutateAsync(link.contactId)),
           ...toAdd.map((link) =>
-            addVendorLinkMutation.mutateAsync({
+            linkEntityMutation.mutateAsync({
               contactId: link.contactId,
-              data: { vendorId: id, isPrimary: link.isPrimary },
+              vendorId: id,
             })
           ),
         ];
@@ -228,9 +247,9 @@ export function VendorFormPage() {
         // 2. Link selected contacts via contact-side API
         if (contactLinks.length > 0) {
           const linkOps = contactLinks.map((link) =>
-            addVendorLinkMutation.mutateAsync({
+            linkEntityMutation.mutateAsync({
               contactId: link.contactId,
-              data: { vendorId: created.id, isPrimary: link.isPrimary },
+              vendorId: created.id,
             })
           );
           const results = await Promise.allSettled(linkOps);

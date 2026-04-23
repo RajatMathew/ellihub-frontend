@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Briefcase,
   DollarSign,
-  ExternalLink,
   FileText,
   FolderOpen,
+  ExternalLink,
   Globe,
   Mail,
   MapPin,
@@ -14,9 +14,13 @@ import {
   PanelRightOpen,
   Pencil,
   Phone,
+  PlusCircle,
   ShieldCheck,
+  Clock,
+  History,
   Trash2,
   UserMinus,
+  CheckCircle2,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -46,11 +50,10 @@ import {
   ComingSoonPlaceholder,
   ContactCard,
   DetailSidebar,
-  getContactDisplayEmail,
-  getContactDisplayPhone,
 } from '../components';
 import { PAYMENT_TERMS_LABELS } from '../constants/shared.constants';
-import { useDeleteVendorMutation, useVendorDetailQuery } from '../hooks';
+import { useActivityLogQuery, useDeleteVendorMutation, useVendorDetailQuery } from '../hooks';
+import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
 import type {
   VendorStatus,
   VendorTypeEnum,
@@ -86,10 +89,77 @@ export function VendorDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+    entityType: 'vendor',
+    entityId: id,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    size: 50,
+  });
+
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    if (!activityData?.data) return [];
+    return activityData.data.map((log) => {
+      const action = log.action.toLowerCase();
+      let icon = <Clock className="size-4" />;
+      let color = "border-muted-foreground/20 bg-muted/30";
+
+      if (action.includes('create')) {
+        icon = <PlusCircle className="size-4 text-primary" />;
+        color = "border-primary/20 bg-primary/5";
+      } else if (action.includes('update')) {
+        icon = <Pencil className="size-4 text-info" />;
+        color = "border-info/20 bg-info/5";
+      } else if (action.includes('delete') || action.includes('archive')) {
+        icon = <Trash2 className="size-4 text-destructive" />;
+        color = "border-destructive/20 bg-destructive/5";
+      } else if (action.includes('link')) {
+        icon = <CheckCircle2 className="size-4 text-success" />;
+        color = "border-success/20 bg-success/5";
+      }
+
+      return {
+        id: log.id,
+        user: log.user?.name || 'System',
+        action: log.description,
+        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        avatar: log.user?.image || undefined,
+        icon,
+        color,
+      };
+    });
+  }, [activityData]);
+
   /* ---- Computed values from real API data ---- */
 
-  // Also keep links that don't have contact object yet for debugging/fallback
-  const allLinks = vendor?.contactLinks ?? [];
+  // Consolidate contacts from both legacy links and new direct array
+  const resolvedContacts = useMemo(() => {
+    if (!vendor) return [];
+    
+    // Start with direct contacts array
+    const contacts = (vendor.contacts ?? []).map(c => ({
+      ...c,
+      isPrimary: false // Default for direct contacts if not specified
+    }));
+
+    // Add contacts from links if they are not already in the list
+    (vendor.contactLinks ?? []).forEach(link => {
+      if (link.contact && !contacts.find(c => c.id === link.contact?.id)) {
+        contacts.push({
+          ...link.contact,
+          isPrimary: link.isPrimary
+        });
+      } else if (link.contact) {
+        // If already in list, update isPrimary if the link says so
+        const existing = contacts.find(c => c.id === link.contact?.id);
+        if (existing && link.isPrimary) {
+          existing.isPrimary = true;
+        }
+      }
+    });
+
+    return contacts;
+  }, [vendor]);
 
   if (isLoading) {
     return (
@@ -243,8 +313,8 @@ export function VendorDetailPage() {
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                   {/* Financial Overview — no API data yet */}
                   <Card>
-                    <CardHeader className="bg-card-foreground rounded-t-lg">
-                      <CardTitle className="text-xs font-semibold tracking-widest text-card uppercase">
+                    <CardHeader>
+                      <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Financial Overview
                       </CardTitle>
                     </CardHeader>
@@ -278,8 +348,8 @@ export function VendorDetailPage() {
 
                   {/* Info — from API */}
                   <Card>
-                    <CardHeader className="bg-card-foreground rounded-t-lg">
-                      <CardTitle className="text-xs font-semibold tracking-widest text-card uppercase">
+                    <CardHeader>
+                      <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                         Info
                       </CardTitle>
                     </CardHeader>
@@ -321,18 +391,18 @@ export function VendorDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {allLinks.length > 0 ? (
+                    {resolvedContacts.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {allLinks.map((link) => (
+                        {resolvedContacts.map((contact) => (
                           <div
-                            key={link.id}
+                            key={contact.id}
                             className="p-4 rounded-lg border border-border"
                           >
                             <ContactCard
-                              fullName={link.contact?.fullName || `Contact ID: ${link.contactId.slice(-6)}`}
-                              email={getContactDisplayEmail(link)}
-                              phone={getContactDisplayPhone(link)}
-                              isPrimary={link.isPrimary}
+                              fullName={contact.fullName}
+                              email={contact.email?.[0]?.email}
+                              phone={contact.phoneNumber?.[0]?.number}
+                              isPrimary={contact.isPrimary}
                             />
                           </div>
                         ))}
@@ -387,7 +457,26 @@ export function VendorDetailPage() {
         </div>
 
         {/* ---- Right sidebar ---- */}
-        <DetailSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+        <DetailSidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          activityChildren={
+            <div className="p-4">
+              {isActivityLoading ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Loading activity...
+                </div>
+              ) : activityItems.length > 0 ? (
+                <ActivityFeed items={activityItems} />
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <History className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+                </div>
+              )}
+            </div>
+          }
+        >
           <div className="space-y-6 pt-2">
             {/* Verification & Compliance — partial real data */}
             <div>

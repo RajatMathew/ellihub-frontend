@@ -58,25 +58,57 @@ function HoverBackground({
     restDelta: 0.1,
   });
 
+  const createSeededRandom = (seed: number) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  };
+
   const animatedObjects = React.useMemo(
     () =>
       Array.from({ length: objectCount }, (_, i) => {
-        const shape = Math.random() > 0.5 ? 'circle' : 'square';
+        const baseSeed = objectCount * 41 + objects.length * 37 + i * 29;
+        const positionXSeed = createSeededRandom(baseSeed + 1);
+        const positionYSeed = createSeededRandom(baseSeed + 2);
+        const sizeSeed = createSeededRandom(baseSeed + 3);
+        const delaySeed = createSeededRandom(baseSeed + 4);
+        const directionSeed = createSeededRandom(baseSeed + 5);
+        const breathSeed = createSeededRandom(baseSeed + 6);
+        const parallaxSeed = createSeededRandom(baseSeed + 7);
+        const rotationSeed = createSeededRandom(baseSeed + 8);
+        const shape = createSeededRandom(baseSeed + 9) > 0.5 ? 'circle' : 'square';
         return {
           id: i,
-          x: Math.random() * 90 + 5, // 5-95% to avoid edges
-          y: Math.random() * 90 + 5,
-          size: Math.random() * 60 + 20, // 20-80px
+          x: positionXSeed * 90 + 5, // 5-95% to avoid edges
+          y: positionYSeed * 90 + 5,
+          size: sizeSeed * 60 + 20, // 20-80px
           color: objects[i % objects.length],
-          delay: Math.random() * 2,
+          delay: delaySeed * 2,
           shape,
-          floatDirection: Math.random() > 0.5 ? 1 : -1,
-          breathDuration: Math.random() * 3 + 3, // 3-6 seconds
-          parallaxStrength: Math.random() * 0.5 + 0.3, // 0.3-0.8 for more varied parallax depth
-          baseRotation: Math.random() * 360, // Random starting rotation offset
+          floatDirection: directionSeed > 0.5 ? 1 : -1,
+          breathDuration: breathSeed * 3 + 3, // 3-6 seconds
+          parallaxStrength: parallaxSeed * 0.5 + 0.3, // 0.3-0.8 for more varied parallax depth
+          baseRotation: rotationSeed * 360, // Random starting rotation offset
         };
       }),
     [objectCount, objects]
+  );
+
+  const hoverParticles = React.useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, i) => {
+        const baseSeed = objectCount * 43 + i * 31;
+        const leftSeed = createSeededRandom(baseSeed + 1);
+        const topSeed = createSeededRandom(baseSeed + 2);
+        const delaySeed = createSeededRandom(baseSeed + 3);
+
+        return {
+          id: `particle-${i}`,
+          left: leftSeed * 100,
+          top: topSeed * 100,
+          delay: delaySeed * 2,
+        };
+      }),
+    [objectCount]
   );
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -187,13 +219,13 @@ function HoverBackground({
       {/* Floating Particles on Hover */}
       {isHovered && (
         <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 20 }).map((_, i) => (
+          {hoverParticles.map((particle) => (
             <motion.div
-              key={`particle-${i}`}
+              key={particle.id}
               className="absolute w-1 h-1 bg-white/60 rounded-full"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
               }}
               initial={{ opacity: 0, scale: 0 }}
               animate={{
@@ -203,7 +235,7 @@ function HoverBackground({
               }}
               transition={{
                 duration: 3,
-                delay: Math.random() * 2,
+                delay: particle.delay,
                 repeat: Infinity,
                 ease: 'easeOut',
               }}

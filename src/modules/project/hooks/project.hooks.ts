@@ -61,8 +61,19 @@ export const useUpdateProjectMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
       projectApi.update(id, data),
     onSuccess: (updated: ProjectDetail) => {
-      qc.invalidateQueries({ queryKey: projectKeys.all });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(updated.id) });
+      const next = typeof updated === 'object' && updated != null ? updated : {};
+      // Merge update into cache to prevent UI flicker/disappearing nested fields
+      qc.setQueryData(projectKeys.detail(updated.id), (old: any) => ({
+        ...(old || {}),
+        ...next,
+      }));
+      
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.detail(updated.id) }),
+      ]).then(() => {
+        toast.success('Project updated successfully.');
+      });
     },
     onError: () => toast.error('Failed to update project.'),
   });
@@ -73,8 +84,90 @@ export const useDeleteProjectMutation = () => {
   return useMutation({
     mutationFn: (id: string) => projectApi.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: projectKeys.all });
+      return qc.invalidateQueries({ queryKey: projectKeys.all }).then(() => {
+        toast.success('Project deleted successfully.');
+      });
     },
     onError: () => toast.error('Failed to delete project.'),
+  });
+};
+
+export const useSetProjectActiveMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => projectApi.setActive(id),
+    onSuccess: (_updated, id) => {
+      if (!id) return;
+      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
+        ...(old || {}),
+      }));
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
+      ]).then(() => {
+        toast.success('Project is now Active.');
+      });
+    },
+    onError: () => toast.error('Failed to set project active.'),
+  });
+};
+
+export const useSetProjectInactiveMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => projectApi.setInactive(id),
+    onSuccess: (_updated, id) => {
+      if (!id) return;
+      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
+        ...(old || {}),
+      }));
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
+      ]).then(() => {
+        toast.success('Project is now Inactive.');
+      });
+    },
+    onError: () => toast.error('Failed to set project inactive.'),
+  });
+};
+
+export const useSetProjectClosedMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => projectApi.setClosed(id),
+    onSuccess: (_updated, id) => {
+      if (!id) return;
+      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
+        ...(old || {}),
+      }));
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
+      ]).then(() => {
+        toast.success('Project closed successfully.');
+      });
+    },
+    onError: () => toast.error('Failed to close project.'),
+  });
+};
+
+export const useSetProjectCompletedMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => projectApi.setCompleted(id),
+    onSuccess: (_updated, id) => {
+      if (!id) return;
+      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
+        ...(old || {}),
+      }));
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
+      ]).then(() => {
+        toast.success('Project marked as Completed.');
+      });
+    },
+    onError: () => toast.error('Failed to set project completed.'),
   });
 };

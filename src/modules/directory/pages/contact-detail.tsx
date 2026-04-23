@@ -3,14 +3,18 @@ import { useRef, useMemo, useState } from 'react';
 import {
   Briefcase,
   Building2,
+  CheckCircle2,
+  Clock,
   ExternalLink,
   FolderOpen,
+  History,
   Mail,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
   Phone,
   Plus,
+  PlusCircle,
   Tag,
   Trash2,
   X,
@@ -49,7 +53,9 @@ import {
   useRemovePhoneMutation,
   useUpdateContactMutation,
   useVendorsQuery,
+  useActivityLogQuery,
 } from '../hooks';
+import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
 import { contactEmailSchema, contactPhoneInputSchema } from '../schemas/contact.schema';
 
 /* ---- Constants ---- */
@@ -89,15 +95,101 @@ export function ContactDetailPage() {
   }, [vendorsData]);
 
   const roleName = apiContact?.professionalRole?.label ?? apiContact?.professionalRole?.name ?? null;
-  const resolvedVendorLinks = (apiContact?.vendorLinks ?? []).map((link) => ({
-    ...link,
-    name: vendorNames.get(link.vendorId) ?? link.vendorId,
-  }));
+  const resolvedVendorLinks = useMemo(() => {
+    const links = (apiContact?.vendorLinks ?? []).map((link) => ({
+      ...link,
+      name: vendorNames.get(link.vendorId) ?? link.vendorId,
+    }));
+    
+    // Add root-level vendor if it's not already in links
+    if (apiContact?.vendor && !links.find(l => l.vendorId === apiContact.vendor?.id)) {
+      links.push({
+        id: 'root-vendor',
+        contactId: apiContact.id,
+        vendorId: apiContact.vendor.id,
+        isPrimary: true,
+        name: apiContact.vendor.name,
+      });
+    }
+    return links;
+  }, [apiContact, vendorNames]);
+
+  const resolvedGCLinks = useMemo(() => {
+    const links = (apiContact?.gcLinks ?? []).map((link) => ({
+      ...link,
+      name: link.generalContractorId, // Ideally we'd have a GC name map too
+    }));
+    
+    // Add root-level GC if it's not already in links
+    if (apiContact?.generalContractor && !links.find(l => l.generalContractorId === apiContact.generalContractor?.id)) {
+      links.push({
+        id: 'root-gc',
+        contactId: apiContact.id,
+        generalContractorId: apiContact.generalContractor.id,
+        isPrimary: true,
+        name: apiContact.generalContractor.name,
+      });
+    }
+    return links;
+  }, [apiContact]);
+
+  const allMergedLinks = useMemo(() => {
+    return [
+      ...resolvedVendorLinks.map((l) => ({ ...l, entityType: 'VENDOR' as const })),
+      ...resolvedGCLinks.map((l) => ({ ...l, entityType: 'GC' as const })),
+    ];
+  }, [resolvedVendorLinks, resolvedGCLinks]);
+
   const primaryVendorName =
-    resolvedVendorLinks.find((l) => l.isPrimary)?.name ?? resolvedVendorLinks[0]?.name ?? null;
+    resolvedVendorLinks.find((l) => l.isPrimary)?.name ?? 
+    resolvedGCLinks.find((l) => l.isPrimary)?.name ??
+    resolvedVendorLinks[0]?.name ?? 
+    resolvedGCLinks[0]?.name ?? 
+    null;
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+    entityType: 'contact',
+    entityId: id,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    size: 50,
+  });
+
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    if (!activityData?.data) return [];
+    return activityData.data.map((log) => {
+      const action = log.action.toLowerCase();
+      let icon = <Clock className="size-4" />;
+      let color = "border-muted-foreground/20 bg-muted/30";
+
+      if (action.includes('create')) {
+        icon = <PlusCircle className="size-4 text-primary" />;
+        color = "border-primary/20 bg-primary/5";
+      } else if (action.includes('update')) {
+        icon = <Pencil className="size-4 text-info" />;
+        color = "border-info/20 bg-info/5";
+      } else if (action.includes('delete') || action.includes('archive')) {
+        icon = <Trash2 className="size-4 text-destructive" />;
+        color = "border-destructive/20 bg-destructive/5";
+      } else if (action.includes('link') || action.includes('unlink')) {
+        icon = <CheckCircle2 className="size-4 text-success" />;
+        color = "border-success/20 bg-success/5";
+      }
+
+      return {
+        id: log.id,
+        user: log.user?.name || 'System',
+        action: log.description,
+        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        avatar: log.user?.image || undefined,
+        icon,
+        color,
+      };
+    });
+  }, [activityData]);
 
   /* ---- Add phone inline form ---- */
   const [showAddPhone, setShowAddPhone] = useState(false);
@@ -317,7 +409,7 @@ export function ContactDetailPage() {
               icon={<Building2 className="size-5 text-success" />}
               bgClass="bg-success/10"
               label="Companies"
-              value={resolvedVendorLinks.length}
+              value={allMergedLinks.length}
               description="Linked entities"
             />
             <StatsCard
@@ -379,8 +471,8 @@ export function ContactDetailPage() {
                           Company
                         </div>
                         <div className="text-sm font-medium text-foreground">
-                          {resolvedVendorLinks.length > 0
-                            ? resolvedVendorLinks.map((l) => l.name).join(', ')
+                          {allMergedLinks.length > 0
+                            ? allMergedLinks.map((l) => l.name).join(', ')
                             : '—'}
                         </div>
                       </div>
@@ -581,15 +673,34 @@ export function ContactDetailPage() {
         </div>
 
         {/* ---- Right sidebar ---- */}
-        <DetailSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+        <DetailSidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          activityChildren={
+            <div className="p-4">
+              {isActivityLoading ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Loading activity...
+                </div>
+              ) : activityItems.length > 0 ? (
+                <ActivityFeed items={activityItems} />
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <History className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+                </div>
+              )}
+            </div>
+          }
+        >
           <div className="space-y-4 pt-2">
             <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Entity Association
             </div>
-            {resolvedVendorLinks.length > 0 ? (
+            {allMergedLinks.length > 0 ? (
               <div className="space-y-3">
-                {resolvedVendorLinks.map((link) => (
-                  <Card key={link.id}>
+                {allMergedLinks.map((link) => (
+                  <Card key={`${link.entityType}-${link.id}`}>
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
@@ -602,15 +713,17 @@ export function ContactDetailPage() {
                             </Badge>
                           )}
                         </div>
-                        <Button variant="ghost" size="sm" mode="icon" className="size-6">
-                          <ExternalLink className="size-3.5" />
+                        <Button variant="ghost" size="sm" mode="icon" className="size-6" asChild>
+                          <Link to={link.entityType === 'VENDOR' ? `/directory/vendors/${link.vendorId}` : `/directory/general-contractors/${link.generalContractorId}`}>
+                            <ExternalLink className="size-3.5" />
+                          </Link>
                         </Button>
                       </div>
                       <Separator />
                       <div className="flex items-center gap-2">
                         <Building2 className="size-4 text-muted-foreground" />
                         <span className="text-xs font-semibold text-foreground uppercase">
-                          {roleName ?? '—'}
+                          {link.entityType}
                         </span>
                       </div>
                     </CardContent>

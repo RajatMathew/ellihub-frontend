@@ -1,5 +1,12 @@
-import type { Division } from '../schemas/project.schema';
+import type { Division, ProjectStatusEnum } from '../schemas/project.schema';
 import type { PaymentTerms } from '../schemas/project-contract.schema';
+
+export const PROJECT_STATUS_OPTIONS: { value: ProjectStatusEnum; label: string }[] = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'COMPLETED', label: 'Completed' },
+];
 
 export const STAGE_COLOR_MAP: Record<string, string> = {
   green: 'success',

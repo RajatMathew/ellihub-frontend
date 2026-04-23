@@ -28,19 +28,20 @@ import {
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
 
+import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
 import { FormSectionNav } from '@app/components/form-section-nav';
 import { QuickCreateVendorDialog } from '../components';
 import { CONTACT_FORM_SECTIONS } from '../constants/contacts.constants';
 import {
-  useAddGCLinkMutation,
-  useAddVendorLinkMutation,
   useContactDetailQuery,
   useContactForm,
   useCreateContactMutation,
   useGCsQuery,
+  useLinkEntityMutation,
   useProfessionalRolesQuery,
   useUpdateContactMutation,
   useVendorsQuery,
+  useUnlinkEntityMutation,
 } from '../hooks';
 import type { ContactFormValues, CreateContactInput } from '../schemas/contact.schema';
 
@@ -58,8 +59,8 @@ export function ContactFormPage() {
   const { data: gcsData } = useGCsQuery({ limit: 1000 });
   const createMutation = useCreateContactMutation();
   const updateMutation = useUpdateContactMutation();
-  const addVendorLinkMutation = useAddVendorLinkMutation();
-  const addGCLinkMutation = useAddGCLinkMutation();
+  const linkEntityMutation = useLinkEntityMutation();
+  const unlinkMutation = useUnlinkEntityMutation();
 
 
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
@@ -117,38 +118,114 @@ export function ContactFormPage() {
   // Lazy initializer — safe because we return early while loading in edit mode,
   // so `contact` is already available by the time this renders.
   const [vendorLinks, setVendorLinks] = useState<{ vendorId: string; isPrimary: boolean }[]>(
-    () =>
-      isEdit && contact
-        ? (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary }))
-        : [],
+    () => {
+      if (!isEdit || !contact) return [];
+      const links = (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary }));
+      // Include root-level vendor if present and not already in merged list
+      if (contact.vendorId && !links.find(l => l.vendorId === contact.vendorId)) {
+        links.push({ vendorId: contact.vendorId, isPrimary: true });
+      }
+      return links;
+    }
   );
   const [gcLinks, setGCLinks] = useState<{ generalContractorId: string; isPrimary: boolean }[]>(
-    () =>
-      isEdit && contact
-        ? (contact.gcLinks ?? []).map((l) => ({
-            generalContractorId: l.generalContractorId,
-            isPrimary: l.isPrimary,
-          }))
-        : [],
+    () => {
+      if (!isEdit || !contact) return [];
+      const links = (contact.gcLinks ?? []).map((l) => ({
+        generalContractorId: l.generalContractorId,
+        isPrimary: l.isPrimary,
+      }));
+      // Include root-level GC if present and not already in merged list
+      if (contact.generalContractorId && !links.find(l => l.generalContractorId === contact.generalContractorId)) {
+        links.push({ generalContractorId: contact.generalContractorId, isPrimary: true });
+      }
+      return links;
+    }
   );
 
   // Sync vendor links when contact data loads/updates in edit mode
   useEffect(() => {
     if (isEdit && contact) {
-      setVendorLinks(
-        (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary })),
-      );
-      setGCLinks(
-        (contact.gcLinks ?? []).map((l) => ({
-          generalContractorId: l.generalContractorId,
-          isPrimary: l.isPrimary,
-        })),
-      );
+      const vl = (contact.vendorLinks ?? []).map((l) => ({ vendorId: l.vendorId, isPrimary: l.isPrimary }));
+      if (contact.vendorId && !vl.find(l => l.vendorId === contact.vendorId)) {
+        vl.push({ vendorId: contact.vendorId, isPrimary: true });
+      }
+      setVendorLinks(vl);
+
+      const gl = (contact.gcLinks ?? []).map((l) => ({
+        generalContractorId: l.generalContractorId,
+        isPrimary: l.isPrimary,
+      }));
+      if (contact.generalContractorId && !gl.find(l => l.generalContractorId === contact.generalContractorId)) {
+        gl.push({ generalContractorId: contact.generalContractorId, isPrimary: true });
+      }
+      setGCLinks(gl);
     }
   }, [isEdit, contact]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
+  
+  // States for association replacement confirmation
+  const [pendingAssociation, setPendingAssociation] = useState<{ id: string; type: 'VENDOR' | 'GC' } | null>(null);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+
+  // States for unlinking confirmation
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
+  const [pendingUnlink, setPendingUnlink] = useState<{ index: number; type: 'VENDOR' | 'GC'; name: string } | null>(null);
+
+  const currentAssociation = vendorLinks[0] 
+    ? { id: vendorLinks[0].vendorId, name: vendorOptions.find(v => v.value === vendorLinks[0].vendorId)?.label || 'Current Vendor', type: 'VENDOR' }
+    : gcLinks[0]
+    ? { id: gcLinks[0].generalContractorId, name: gcOptions.find(g => g.value === gcLinks[0].generalContractorId)?.label || 'Current GC', type: 'GC' }
+    : null;
+
+  const handleAddAssociation = (id: string, type: 'VENDOR' | 'GC') => {
+    if (currentAssociation) {
+      setPendingAssociation({ id, type });
+      setShowReplaceConfirm(true);
+    } else {
+      if (type === 'VENDOR') {
+        setVendorLinks([{ vendorId: id, isPrimary: true }]);
+      } else {
+        setGCLinks([{ generalContractorId: id, isPrimary: true }]);
+      }
+    }
+  };
+
+  const confirmReplace = () => {
+    if (!pendingAssociation) return;
+    
+    // Clear all existing
+    setVendorLinks([]);
+    setGCLinks([]);
+    
+    if (pendingAssociation.type === 'VENDOR') {
+      setVendorLinks([{ vendorId: pendingAssociation.id, isPrimary: true }]);
+    } else {
+      setGCLinks([{ generalContractorId: pendingAssociation.id, isPrimary: true }]);
+    }
+    
+    setPendingAssociation(null);
+    setShowReplaceConfirm(false);
+  };
+
+  const handleUnlinkClick = (index: number, type: 'VENDOR' | 'GC', name: string) => {
+    setPendingUnlink({ index, type, name });
+    setShowUnlinkConfirm(true);
+  };
+
+  const confirmUnlink = () => {
+    if (!pendingUnlink) return;
+    if (pendingUnlink.type === 'VENDOR') {
+      setVendorLinks((prev) => prev.filter((_, i) => i !== pendingUnlink.index));
+    } else {
+      setGCLinks((prev) => prev.filter((_, i) => i !== pendingUnlink.index));
+    }
+    setPendingUnlink(null);
+    setShowUnlinkConfirm(false);
+  };
+
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const handleFillRandom = () => {
@@ -172,41 +249,49 @@ export function ContactFormPage() {
   };
 
   const onSubmit = async (formData: ContactFormValues) => {
-    const emailArray = formData.email?.email ? [formData.email] : [];
-    const phoneArray = formData.phoneNumber?.number
-      ? [{ number: formData.phoneNumber.number, label: formData.phoneNumber.label ?? 'Office' }]
-      : [];
+    const email = formData.email?.email || undefined;
+    const phoneNumber = formData.phoneNumber?.number || undefined;
+
+    const primaryVendorId =
+      vendorLinks.find((l) => l.isPrimary)?.vendorId || vendorLinks[0]?.vendorId;
+    const primaryGCId =
+      gcLinks.find((l) => l.isPrimary)?.generalContractorId || gcLinks[0]?.generalContractorId;
 
     if (isEdit && id) {
       setIsSaving(true);
       try {
-        // 1. PUT basic contact fields first.
-        //    The backend's PUT does a full replace and clears vendorLinks,
-        //    so we update basic fields first, then re-add all desired vendor links.
+        // 1. PUT basic contact fields.
         await updateMutation.mutateAsync({
           id,
           data: {
             fullName: formData.fullName,
             professionalRoleId: formData.professionalRoleId ?? null,
-            email: emailArray,
-            phoneNumber: phoneArray,
+            email,
+            phoneNumber,
             tags: formData.tags,
+            // We still send these in the body if the PUT supports them
+            vendorId: primaryVendorId,
+            generalContractorId: primaryGCId,
           },
         });
 
-        // 2. Re-add all desired vendor & GC links (the PUT already cleared them).
-        //    No remove calls needed — the update wiped all existing links.
-        for (const link of vendorLinks) {
-          await addVendorLinkMutation.mutateAsync({
+        // 2. Explicitly call the link or unlink endpoint to ensure the association is set correctly.
+        //    The backend says it's mutually exclusive.
+        if (primaryVendorId || primaryGCId) {
+          await linkEntityMutation.mutateAsync({
             contactId: id,
-            data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
+            vendorId: primaryVendorId,
+            generalContractorId: primaryGCId,
           });
-        }
-        for (const link of gcLinks) {
-          await addGCLinkMutation.mutateAsync({
-            contactId: id,
-            data: { generalContractorId: link.generalContractorId, isPrimary: link.isPrimary },
-          });
+        } else if (isEdit) {
+          // If editing and no association is selected, ensure it's cleared on the backend.
+          try {
+            await unlinkMutation.mutateAsync(id);
+          } catch (err) {
+            console.error('Failed to unlink entity:', err);
+            // We don't necessarily want to block the whole update if unlink fails
+            // but the user should be aware if it's critical.
+          }
         }
 
         toast.success('Contact updated successfully.');
@@ -222,24 +307,22 @@ export function ContactFormPage() {
         const payload: CreateContactInput = {
           fullName: formData.fullName,
           professionalRoleId: formData.professionalRoleId ?? undefined,
-          email: emailArray,
-          phoneNumber: phoneArray,
+          email,
+          phoneNumber,
           tags: formData.tags,
+          vendorId: primaryVendorId,
+          generalContractorId: primaryGCId,
         };
 
         const newContact = await createMutation.mutateAsync(payload);
         const newId = newContact.id;
 
-        for (const link of vendorLinks) {
-          await addVendorLinkMutation.mutateAsync({
+        // Explicitly call the link endpoint for the new contact.
+        if (primaryVendorId || primaryGCId) {
+          await linkEntityMutation.mutateAsync({
             contactId: newId,
-            data: { vendorId: link.vendorId, isPrimary: link.isPrimary },
-          });
-        }
-        for (const link of gcLinks) {
-          await addGCLinkMutation.mutateAsync({
-            contactId: newId,
-            data: { generalContractorId: link.generalContractorId, isPrimary: link.isPrimary },
+            vendorId: primaryVendorId,
+            generalContractorId: primaryGCId,
           });
         }
 
@@ -535,7 +618,7 @@ export function ContactFormPage() {
                             mode="icon"
                             className="size-7 text-muted-foreground hover:text-destructive"
                             onClick={() =>
-                              setVendorLinks((prev) => prev.filter((_, i) => i !== index))
+                              handleUnlinkClick(index, 'VENDOR', vendorName)
                             }
                           >
                             <X className="size-3.5" />
@@ -560,10 +643,7 @@ export function ContactFormPage() {
                         value={null}
                         onValueChange={(vendorId) => {
                           if (vendorId) {
-                            setVendorLinks((prev) => [
-                              ...prev,
-                              { vendorId, isPrimary: false },
-                            ]);
+                            handleAddAssociation(vendorId, 'VENDOR');
                           }
                         }}
                         placeholder="Search Vendors..."
@@ -626,7 +706,7 @@ export function ContactFormPage() {
                             mode="icon"
                             className="size-7 text-muted-foreground hover:text-destructive"
                             onClick={() =>
-                              setGCLinks((prev) => prev.filter((_, i) => i !== index))
+                              handleUnlinkClick(index, 'GC', gcName)
                             }
                           >
                             <X className="size-3.5" />
@@ -651,10 +731,7 @@ export function ContactFormPage() {
                         value={null}
                         onValueChange={(generalContractorId) => {
                           if (generalContractorId) {
-                            setGCLinks((prev) => [
-                              ...prev,
-                              { generalContractorId, isPrimary: false },
-                            ]);
+                            handleAddAssociation(generalContractorId, 'GC');
                           }
                         }}
                         placeholder="Search GCs..."
@@ -675,6 +752,39 @@ export function ContactFormPage() {
       open={vendorDialogOpen}
       onOpenChange={setVendorDialogOpen}
       onCreated={handleVendorCreated}
+    />
+
+    <ConfirmDialog
+      open={showReplaceConfirm}
+      onOpenChange={setShowReplaceConfirm}
+      title="Change Association?"
+      description={
+        <>
+          This contact is already linked to <strong>{currentAssociation?.name}</strong>. 
+          Do you want to replace it with <strong>{pendingAssociation?.type === 'VENDOR' ? vendorOptions.find(v => v.value === pendingAssociation?.id)?.label : gcOptions.find(g => g.value === pendingAssociation?.id)?.label}</strong>?
+          <br /><br />
+          Contacts can only be linked to one Vendor or GC at a time.
+        </>
+      }
+      confirmLabel="Replace Association"
+      onConfirm={confirmReplace}
+      variant="primary"
+    />
+
+    <ConfirmDialog
+      open={showUnlinkConfirm}
+      onOpenChange={setShowUnlinkConfirm}
+      title="Remove Association?"
+      description={
+        <>
+          Are you sure you want to remove the association with <strong>{pendingUnlink?.name}</strong>? 
+          <br /><br />
+          This contact will no longer be linked to this {pendingUnlink?.type === 'VENDOR' ? 'Vendor' : 'General Contractor'}.
+        </>
+      }
+      confirmLabel="Remove"
+      onConfirm={confirmUnlink}
+      variant="destructive"
     />
     </>
   );

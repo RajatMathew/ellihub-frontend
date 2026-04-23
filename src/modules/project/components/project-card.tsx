@@ -1,29 +1,22 @@
 import { Link } from 'react-router-dom';
 
-import { Badge, BadgeDot } from '@app/components/ui/badge';
 import { Card, CardContent } from '@app/components/ui/card';
 import { Progress } from '@app/components/ui/progress';
 import { formatCurrency } from '@app/lib/helpers';
 import type { ProjectListItem } from '@modules/project/schemas/project.schema';
 
 export function ProjectCard({ project }: { project: ProjectListItem }) {
-  const contractValue = project.primeContract?.contractValue ?? 0;
+  const contractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
 
   return (
-    <Link to={`../project/${project.id}/overview`} className="block h-full">
+    <Link to={`/app/project/${project.id}/overview`} className="block h-full">
       <Card className="h-full hover:border-primary/50 transition-colors">
         <CardContent className="p-4 space-y-3 h-full flex flex-col">
           {/* Row 1: Name + Stage badge */}
           <div className="flex items-start justify-between gap-2 min-h-9">
-            <span className="text-sm font-semibold uppercase leading-tight line-clamp-2">
+            <span className="flex-1 text-sm font-semibold uppercase leading-tight line-clamp-2">
               {project.name}
             </span>
-            {project.stage && (
-              <Badge variant="outline" size="sm" className="shrink-0">
-                <BadgeDot style={{ color: project.stage.color }} />
-                {project.stage.code}
-              </Badge>
-            )}
           </div>
 
           {/* Row 2: GC + Lead PM */}

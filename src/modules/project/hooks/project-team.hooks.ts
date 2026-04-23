@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { projectTeamApi } from '@modules/project/api/project-team.api';
 import { projectTeamKeys } from '@modules/project/constants/project-team.keys';
 import { projectKeys } from '@modules/project/constants/project.keys';
-import type { AddTeamMemberInput } from '@modules/project/schemas/project-team.schema';
 
 export const useProjectTeamQuery = (projectId: string) =>
   useQuery({
@@ -16,13 +15,12 @@ export const useProjectTeamQuery = (projectId: string) =>
 export const useAddTeamMemberMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      data,
-    }: {
+    mutationFn: (data: {
       projectId: string;
-      data: AddTeamMemberInput;
-    }) => projectTeamApi.addMember(projectId, data),
+      employeeId: string;
+      role: string;
+      isLead?: boolean;
+    }) => projectTeamApi.addMember(data),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: projectTeamKeys.detail(projectId) });
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });

@@ -24,7 +24,7 @@ export const costCodesApi = {
       data: res.data?.data ?? res.data ?? [],
       count:
         res.data?.count ??
-        (Array.isArray(res.data?.data) ? res.data.data.length : (res.data?.count ?? 0)),
+        (Array.isArray(res.data?.data) ? res.data.pagination.totalItems : (res.data?.count ?? 0)),
     });
   },
 

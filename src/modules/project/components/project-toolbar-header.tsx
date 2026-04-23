@@ -20,7 +20,7 @@ import {
 import { getContrastColor } from '@app/lib/helpers';
 import { DIVISION_LABELS } from '@modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@modules/project/hooks';
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import type { Division, ProjectDetail } from '@modules/project/schemas/project.schema';
 
 interface ProjectToolbarHeaderProps {
   title: string;
@@ -40,7 +40,41 @@ export function ProjectToolbarHeader({
 
   const handleStageChange = (stageId: string) => {
     if (!project || stageId === project.stageId) return;
-    updateMutation.mutate({ id: project.id, data: { stageId } });
+    
+    // Helper to format ISO date string to YYYY-MM-DD for backend
+    const formatDate = (dateStr?: string | null) => {
+      if (!dateStr) return undefined;
+      return dateStr.split('T')[0];
+    };
+
+    // PUT /project is a full replace, so we must send all required fields
+    const fullPayload: any = {
+      name: project.name,
+      description: project.description,
+      jobNumber: project.jobNumber,
+      contractNumber: project.contractNumber,
+      divisionId: project.divisionId,
+      gcId: project.gcId,
+      leadPMId: project.leadPMId,
+      stageId: stageId,
+      status: project.status,
+      streetAddress: project.streetAddress,
+      city: project.city,
+      state: project.state,
+      zipCode: project.zipCode,
+      contractValue: project.contractValue,
+      contractType: project.primeContract?.contractType,
+      retainagePercent: project.retainagePercent,
+      targetBudgetPercent: project.targetBudgetPercent,
+      taxRate: project.taxRate,
+      paymentTerms: project.primeContract?.paymentTerms,
+      estimatedStartDate: formatDate(project.estimatedStartDate),
+      estimatedEndDate: formatDate(project.estimatedEndDate),
+      setInactiveDate: formatDate(project.setInactiveDate),
+      tcoDate: formatDate(project.tcoDate),
+    };
+
+    updateMutation.mutate({ id: project.id, data: fullPayload });
   };
 
   // Get initials from name
@@ -72,47 +106,101 @@ export function ProjectToolbarHeader({
         <ToolbarHeading>
           <div className="flex items-center gap-3">
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
-            {project?.status && (
-              <Badge
-                style={{
-                  backgroundColor: project.status.color,
-                  color: getContrastColor(project.status.color),
-                }}
-                size="sm"
-              >
-                {project.status.label}
-              </Badge>
+            {(project?.status || project?.statusRef) && (
+              (() => {
+                const status = project?.statusRef ?? project?.status;
+                const STATUS_COLORS: Record<string, string> = {
+                  ACTIVE: '#22c55e', // success
+                  INACTIVE: '#f59e0b', // warning
+                  CLOSED: '#71717a', // muted
+                  COMPLETED: '#3b82f6', // primary
+                };
+                const STATUS_LABELS: Record<string, string> = {
+                  ACTIVE: 'Active',
+                  INACTIVE: 'Inactive',
+                  CLOSED: 'Closed',
+                  COMPLETED: 'Completed',
+                };
+                
+                const color =
+                  typeof status === 'string'
+                    ? (STATUS_COLORS[status] || '#3b82f6')
+                    : status?.color || '#3b82f6';
+                  
+                const label =
+                  typeof status === 'string'
+                    ? (STATUS_LABELS[status] || status)
+                    : status?.label || status?.name || 'N/A';
+
+                return (
+                  <Badge
+                    style={{
+                      backgroundColor: color,
+                      color: getContrastColor(color),
+                    }}
+                    size="sm"
+                  >
+                    {label}
+                  </Badge>
+                );
+              })()
             )}
             {project?.stage && stages && stages.length > 0 ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              (() => {
+                const STAGE_COLORS: Record<string, string> = {
+                  SUBMITTALS: '#6366f1',
+                  BUYOUT: '#8b5cf6',
+                  FABRICATION: '#ec4899',
+                  INSTALLATION: '#3b82f6',
+                  PUNCHLIST: '#f59e0b',
+                  CLOSEOUT: '#10b981',
+                };
+                const name = project.stage.name || project.stage.label || '';
+                const nameUpper = name.toUpperCase();
+                let color =
+                  typeof project.stage.color === 'string' ? project.stage.color : '#94a3b8';
+
+                if (!color) {
+                  for (const [key, c] of Object.entries(STAGE_COLORS)) {
+                    if (nameUpper.includes(key)) {
+                      color = c;
+                      break;
+                    }
+                  }
+                }
+                
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                   >
-                    <span
-                      className="size-2 rounded-sm shrink-0"
-                      style={{ backgroundColor: project.stage.color }}
-                    />
-                    {project.stage.name}
-                    <ChevronDown className="size-3 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  {stages.map((stage) => (
-                    <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
-                      <span
-                        className="size-2.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: stage.color }}
-                      />
-                      <span className="flex-1">{stage.name}</span>
-                      {stage.id === project.stageId && (
-                        <Check className="size-3.5 text-foreground" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                        <span
+                          className="size-2 rounded-sm shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        {name}
+                        <ChevronDown className="size-3 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {stages.map((stage) => (
+                        <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
+                        <span
+                          className="size-2.5 rounded-sm shrink-0"
+                          style={{ backgroundColor: typeof stage.color === 'string' ? stage.color : undefined }}
+                        />
+                          <span className="flex-1">{stage.name}</span>
+                          {stage.id === project.stageId && (
+                            <Check className="size-3.5 text-foreground" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })()
             ) : project?.stage ? (
               <Badge variant="secondary" appearance="outline" size="sm">
                 {project.stage.name}
@@ -133,7 +221,9 @@ export function ProjectToolbarHeader({
             {project?.division && (
               <span>
                 <span className="font-medium">Division:</span>{' '}
-                {DIVISION_LABELS[project.division] ?? project.division}
+                {typeof project.division === 'string' 
+                  ? (DIVISION_LABELS[project.division as Division] ?? project.division)
+                  : (project.division?.label || project.division?.name || 'N/A')}
               </span>
             )}
             {project?.gc && (

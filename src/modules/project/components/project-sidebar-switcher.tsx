@@ -20,7 +20,7 @@ export function ProjectSidebarSwitcher() {
   const [open, setOpen] = useState(false);
   const { changeProject, projectId } = useProjectNavigation();
 
-  const { data } = useProjectsQuery({ size: 100 });
+  const { data } = useProjectsQuery({ size: 25, sortBy: 'createdAt', sortOrder: 'desc' });
   const projects = data?.data ?? [];
 
   const currentProject = projects.find((p) => p.id === projectId);
@@ -48,7 +48,7 @@ export function ProjectSidebarSwitcher() {
               </div>
               {currentProject && (
                 <div className="text-xs opacity-75 truncate">
-                  {currentProject.jobNumber} &middot; {currentProject.division}
+                  {currentProject.jobNumber} &middot; {typeof currentProject.division === 'string' ? currentProject.division : (currentProject.division?.label || currentProject.division?.name || 'N/A')}
                 </div>
               )}
             </div>
@@ -65,13 +65,17 @@ export function ProjectSidebarSwitcher() {
                   <CommandItem
                     key={project.id}
                     value={project.id}
-                    keywords={[project.name, project.jobNumber ?? '', project.division]}
+                    keywords={[
+                      project.name, 
+                      project.jobNumber ?? '', 
+                      typeof project.division === 'string' ? project.division : (project.division?.label || project.division?.name || '')
+                    ]}
                     onSelect={() => handleSelect(project.id)}
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{project.name}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {project.jobNumber} &middot; {project.division}
+                        {project.jobNumber} &middot; {typeof project.division === 'string' ? project.division : (project.division?.label || project.division?.name || 'N/A')}
                       </div>
                     </div>
                     {project.id === projectId && <CommandCheck />}

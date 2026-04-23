@@ -53,8 +53,14 @@ export const gcContactLinkContactSchema = z
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: z.array(contactEmailSchema).optional().default([]),
-    phoneNumber: z.array(contactPhoneSchema).optional().default([]),
+    email: z.preprocess((val) => {
+      if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+      return val;
+    }, z.array(contactEmailSchema).optional().default([])),
+    phoneNumber: z.preprocess((val) => {
+      if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+      return val;
+    }, z.array(contactPhoneSchema).optional().default([])),
     tags: z.array(z.string()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -95,14 +101,16 @@ export const generalContractorSchema = z
     retainagePercent: z.number().optional().default(10.0),
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
-    updatedAt: z.string().optional().default(''),
+    contactLinks: z.array(gcContactLinkSchema).optional().default([]),
+    contacts: z.array(gcContactLinkContactSchema).optional().default([]),
     _count: z
       .object({
         projects: z.number().default(0),
         contactLinks: z.number().default(0),
+        contacts: z.number().default(0),
       })
       .optional()
-      .default({ projects: 0, contactLinks: 0 }),
+      .default({ projects: 0, contactLinks: 0, contacts: 0 }),
   })
   .passthrough();
 
@@ -127,6 +135,7 @@ export const generalContractorDetailSchema = z
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
+    contacts: z.array(gcContactLinkContactSchema).optional().default([]),
     projects: z.array(z.object({ id: z.string() }).passthrough()).optional().default([]),
   })
   .passthrough();

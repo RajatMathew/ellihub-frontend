@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, FileText, X } from 'lucide-react';
-import { Controller, useForm } from 'react-hook-form';
+import { Check, FileText, Sparkles, X } from 'lucide-react';
+import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { FormSectionNav } from '@app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
@@ -28,31 +29,36 @@ import {
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
-
-import { FormSectionNav } from '@app/components/form-section-nav';
-import { useEmployeesQuery } from '@app/hooks/use-employees';
 import { useGCsQuery } from '@modules/directory/hooks';
 import { filesApi } from '@modules/files/api/files.api';
+import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
 import { contractAttachmentApi } from '@modules/project/api/contract-attachment.api';
 import {
-  DIVISION_OPTIONS,
   PROJECT_FORM_SECTIONS,
+  PROJECT_STATUS_OPTIONS,
 } from '@modules/project/constants/project-form.constants';
 import { PAYMENT_TERMS_OPTIONS } from '@modules/project/constants/project.constants';
 import {
   useCreateProjectMutation,
   useCreateScheduleEntryMutation,
-  useProjectDetailQuery,
+  useDivisionsQuery,
   useProjectContractQuery,
+  useProjectDetailQuery,
   useProjectStagesQuery,
+  useSetProjectActiveMutation,
+  useSetProjectClosedMutation,
+  useSetProjectCompletedMutation,
+  useSetProjectInactiveMutation,
   useUpdateProjectMutation,
-  useUpsertProjectContractMutation,
 } from '@modules/project/hooks';
 import {
   projectFormSchema,
   type CreateProjectInput,
   type ProjectFormValues,
 } from '@modules/project/schemas/project.schema';
+
+const parseDateValue = (value: unknown): string =>
+  typeof value === 'string' ? value.split('T')[0] : '';
 
 export default function ProjectForm() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -61,49 +67,56 @@ export default function ProjectForm() {
 
   /* ---- Queries ---- */
 
-  const { data: existingProject, isLoading: isLoadingProject } = useProjectDetailQuery(projectId ?? '');
+  const { data: existingProject, isLoading: isLoadingProject } = useProjectDetailQuery(
+    projectId ?? ''
+  );
   const { data: existingContract } = useProjectContractQuery(isEditMode ? projectId! : '');
   const stagesQuery = useProjectStagesQuery();
+  const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
   const employeesQuery = useEmployeesQuery({ size: 1000 });
 
   /* ---- Build dropdown options ---- */
 
   const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
-
+  const divisionOptions =
+    divisionsQuery.data?.map((d) => ({
+      value: d.id,
+      label: d.label || d.name || 'Unknown',
+    })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-
-  const pmOptions =
-    employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
 
   /* ---- Form setup ---- */
 
   const { control, handleSubmit, reset } = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema),
+    resolver: zodResolver(projectFormSchema) as Resolver<ProjectFormValues>,
     defaultValues: {
       name: '',
       description: '',
       jobNumber: '',
       contractNumber: '',
       stageId: '',
-      division: 'SCA',
+      status: 'ACTIVE',
+      divisionId: '',
       gcId: '',
       leadPMId: '',
       streetAddress: '',
       city: '',
       state: '',
       zipCode: '',
-      effectiveStartDate: '',
-      effectiveEndDate: '',
       contractValue: 0,
       contractType: '',
       retainagePercent: 0,
       targetBudgetPercent: 0,
-      paymentTerms: '',
+      taxRate: 0,
+      paymentTerms: 'NET_30',
       estimatedStartDate: '',
-      estimatedCompletionDate: '',
+      estimatedEndDate: '',
       actualStartDate: '',
       actualCompletionDate: '',
+      setInactiveDate: '',
+      tcoDate: '',
     },
   });
 
@@ -117,24 +130,26 @@ export default function ProjectForm() {
         jobNumber: existingProject.jobNumber ?? '',
         contractNumber: existingProject.contractNumber ?? '',
         stageId: existingProject.stageId,
-        division: existingProject.division,
+        status: existingProject.status ?? 'ACTIVE',
+        divisionId: existingProject.divisionId ?? '',
         gcId: existingProject.gcId,
         leadPMId: existingProject.leadPMId ?? '',
         streetAddress: existingProject.streetAddress ?? '',
         city: existingProject.city ?? '',
         state: existingProject.state ?? '',
         zipCode: existingProject.zipCode ?? '',
-        effectiveStartDate: existingProject.effectiveStartDate?.split('T')[0] ?? '',
-        effectiveEndDate: existingProject.effectiveEndDate?.split('T')[0] ?? '',
-        contractValue: contract?.contractValue ?? 0,
+        contractValue: Number(contract?.contractValue ?? 0),
         contractType: contract?.contractType ?? '',
         retainagePercent: contract?.retainagePercent ?? 0,
         targetBudgetPercent: contract?.targetBudgetPercent ?? 0,
+        taxRate: Number(contract?.taxRate ?? 0),
         paymentTerms: contract?.paymentTerms ?? '',
-        estimatedStartDate: contract?.estimatedStartDate?.split('T')[0] ?? '',
-        estimatedCompletionDate: contract?.estimatedCompletionDate?.split('T')[0] ?? '',
-        actualStartDate: contract?.actualStartDate?.split('T')[0] ?? '',
-        actualCompletionDate: contract?.actualCompletionDate?.split('T')[0] ?? '',
+        estimatedStartDate: parseDateValue(contract?.estimatedStartDate),
+        estimatedEndDate: parseDateValue(contract?.estimatedEndDate),
+        setInactiveDate: parseDateValue(contract?.setInactiveDate),
+        tcoDate: parseDateValue(contract?.tcoDate),
+        actualStartDate: parseDateValue((contract as any)?.actualStartDate),
+        actualCompletionDate: parseDateValue((contract as any)?.actualCompletionDate),
       });
     }
   }, [isEditMode, existingProject, existingContract, reset]);
@@ -144,15 +159,12 @@ export default function ProjectForm() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
 
-  const handleFileSelected = useCallback(
-    (file: File | null) => {
-      if (file) {
-        setSelectedFiles((prev) => [...prev, file]);
-      }
-      setCurrentFile(null);
-    },
-    [],
-  );
+  const handleFileSelected = useCallback((file: File | null) => {
+    if (file) {
+      setSelectedFiles((prev) => [...prev, file]);
+    }
+    setCurrentFile(null);
+  }, []);
 
   const handleRemoveFile = useCallback((index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
@@ -162,11 +174,20 @@ export default function ProjectForm() {
 
   const createMutation = useCreateProjectMutation();
   const updateMutation = useUpdateProjectMutation();
-  const upsertContractMutation = useUpsertProjectContractMutation();
+  const setActiveMutation = useSetProjectActiveMutation();
+  const setInactiveMutation = useSetProjectInactiveMutation();
+  const setClosedMutation = useSetProjectClosedMutation();
+  const setCompletedMutation = useSetProjectCompletedMutation();
   const createScheduleMutation = useCreateScheduleEntryMutation();
 
   const [activeSection, setActiveSection] = useState<string>('project-info');
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isSubmitting =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    setActiveMutation.isPending ||
+    setInactiveMutation.isPending ||
+    setClosedMutation.isPending ||
+    setCompletedMutation.isPending;
 
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -179,111 +200,132 @@ export default function ProjectForm() {
 
   /* ---- Submit ---- */
 
+  const fillRandom = () => {
+    const randomId = Math.floor(Math.random() * 10000);
+    const start = new Date();
+    start.setDate(start.getDate() + Math.floor(Math.random() * 30));
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 12);
+
+    reset({
+      name: `Random Project ${randomId}`,
+      description: 'Generic project description for testing purposes.',
+      jobNumber: `P-2024-${randomId}`,
+      contractNumber: `C-CON-${randomId}`,
+      stageId: stageOptions[Math.floor(Math.random() * stageOptions.length)]?.value || '',
+      status:
+        PROJECT_STATUS_OPTIONS[Math.floor(Math.random() * PROJECT_STATUS_OPTIONS.length)]?.value ||
+        'ACTIVE',
+      divisionId: divisionOptions[Math.floor(Math.random() * divisionOptions.length)]?.value || '',
+      gcId: gcOptions[Math.floor(Math.random() * gcOptions.length)]?.value || '',
+      leadPMId: pmOptions[Math.floor(Math.random() * pmOptions.length)]?.value || '',
+      streetAddress: `${randomId} Test Parkway`,
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      contractValue: Math.floor(Math.random() * 1000000) + 50000,
+      contractType: 'Lump Sum',
+      retainagePercent: 10,
+      targetBudgetPercent: 8,
+      taxRate: 8.875,
+      paymentTerms:
+        PAYMENT_TERMS_OPTIONS[Math.floor(Math.random() * PAYMENT_TERMS_OPTIONS.length)]?.value ||
+        'NET_30',
+      estimatedStartDate: start.toISOString().split('T')[0],
+      estimatedEndDate: end.toISOString().split('T')[0],
+    });
+  };
+
   const onSubmit = async (data: ProjectFormValues) => {
     try {
       let resultProjectId: string;
 
       if (isEditMode && projectId) {
-        // Update project fields (contract is NOT updatable via this endpoint)
-        const projectPayload: CreateProjectInput = {
+        // Update project fields
+        const updatePayload: any = {
           name: data.name,
           description: data.description,
           contractNumber: data.contractNumber || undefined,
           stageId: data.stageId,
-          division: data.division,
+          status: data.status,
+          divisionId: data.divisionId,
           gcId: data.gcId,
           leadPMId: data.leadPMId || undefined,
           streetAddress: data.streetAddress || undefined,
           city: data.city || undefined,
           state: data.state || undefined,
           zipCode: data.zipCode || undefined,
+          contractValue: data.contractValue,
+          contractType: data.contractType || undefined,
+          retainagePercent: data.retainagePercent,
+          targetBudgetPercent: data.targetBudgetPercent,
+          taxRate: data.taxRate,
+          paymentTerms: data.paymentTerms || undefined,
+          estimatedStartDate: data.estimatedStartDate || undefined,
+          estimatedEndDate: data.estimatedEndDate || undefined,
+          setInactiveDate: data.setInactiveDate || undefined,
+          tcoDate: data.tcoDate || undefined,
         };
-        const updated = await updateMutation.mutateAsync({ id: projectId, data: projectPayload });
+        const updated = await updateMutation.mutateAsync({ id: projectId, data: updatePayload });
         resultProjectId = updated.id;
 
-        // Update contract via separate endpoint
-        if (data.contractValue) {
-          try {
-            await upsertContractMutation.mutateAsync({
-              projectId,
-              data: {
-                contractValue: data.contractValue,
-                contractType: data.contractType || undefined,
-                retainagePercent: data.retainagePercent || undefined,
-                targetBudgetPercent: data.targetBudgetPercent || undefined,
-                paymentTerms: (data.paymentTerms as 'NET_15' | 'NET_30' | 'NET_45' | 'NET_60' | 'NET_90' | 'DUE_ON_RECEIPT') || undefined,
-                estimatedStartDate: data.estimatedStartDate || null,
-                estimatedCompletionDate: data.estimatedCompletionDate || null,
-                actualStartDate: data.actualStartDate || null,
-                actualCompletionDate: data.actualCompletionDate || null,
-              },
-            });
-          } catch {
-            console.warn('Contract update failed');
-          }
+        // Handle status change if needed (backend has separate status endpoints)
+        const oldStatus = existingProject?.status;
+        const newStatus = data.status;
+
+        if (oldStatus !== newStatus) {
+          if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
+          else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
+          else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
+          else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
         }
 
         toast.success('Project updated.');
       } else {
-        // Create new project (contract is included in create payload)
+        // Create new project (flat payload matching Swagger)
         const createPayload: CreateProjectInput = {
           name: data.name,
           description: data.description,
           jobNumber: data.jobNumber || undefined,
+          contractNumber: data.contractNumber || undefined,
           stageId: data.stageId,
-          division: data.division,
+          divisionId: data.divisionId,
+          status: data.status,
           gcId: data.gcId,
           leadPMId: data.leadPMId || undefined,
           streetAddress: data.streetAddress || undefined,
           city: data.city || undefined,
           state: data.state || undefined,
           zipCode: data.zipCode || undefined,
-          contract: data.contractValue ? { contractValue: data.contractValue } : undefined,
+          contractValue: data.contractValue,
+          contractType: data.contractType || undefined,
+          retainagePercent: data.retainagePercent,
+          targetBudgetPercent: data.targetBudgetPercent,
+          taxRate: data.taxRate,
+          paymentTerms: data.paymentTerms || undefined,
+          estimatedStartDate: data.estimatedStartDate || undefined,
+          estimatedEndDate: data.estimatedEndDate || undefined,
+          setInactiveDate: data.setInactiveDate || undefined,
+          tcoDate: data.tcoDate || undefined,
         };
         const project = await createMutation.mutateAsync(createPayload);
         resultProjectId = project.id;
-
-        // Upsert contract with full details (retainage, target budget, dates, etc.)
-        if (data.contractValue) {
-          try {
-            await upsertContractMutation.mutateAsync({
-              projectId: resultProjectId,
-              data: {
-                contractValue: data.contractValue,
-                contractType: data.contractType || undefined,
-                retainagePercent: data.retainagePercent || undefined,
-                targetBudgetPercent: data.targetBudgetPercent || undefined,
-                paymentTerms: (data.paymentTerms as 'NET_15' | 'NET_30' | 'NET_45' | 'NET_60' | 'NET_90' | 'DUE_ON_RECEIPT') || undefined,
-                estimatedStartDate: data.estimatedStartDate || null,
-                estimatedCompletionDate: data.estimatedCompletionDate || null,
-                actualStartDate: data.actualStartDate || null,
-                actualCompletionDate: data.actualCompletionDate || null,
-              },
-            });
-          } catch {
-            console.warn('Contract upsert failed after project creation');
-          }
-        }
-
-        // Create schedule entry if start date provided
-        if (data.effectiveStartDate) {
-          try {
-            await createScheduleMutation.mutateAsync({
-              projectId: resultProjectId,
-              data: {
-                date: data.effectiveStartDate,
-                description: 'Project scheduled start',
-                adjustedStartDate: data.effectiveStartDate,
-                adjustedFinishDate: data.effectiveEndDate || undefined,
-              },
-            });
-          } catch {
-            // Project was created; schedule entry failed — non-blocking
-            console.warn('Schedule entry creation failed');
-          }
-        }
-
         toast.success('Project created.');
+      }
+
+      // Create schedule entry if start date provided (optional)
+      if (data.estimatedStartDate) {
+        try {
+          await createScheduleMutation.mutateAsync({
+            projectId: resultProjectId!,
+            date: data.estimatedStartDate,
+            description: 'Project scheduled start',
+            adjustedStartDate: data.estimatedStartDate,
+            adjustedFinishDate: data.estimatedEndDate || undefined,
+          });
+        } catch {
+          console.warn('Schedule entry creation failed');
+        }
       }
 
       // Upload contract documents if any were selected
@@ -293,17 +335,17 @@ export default function ProjectForm() {
           const root = await filesApi.getRootFolder();
           const rootDetail = await filesApi.getFolderDetails(root.id);
           const projectsFolder = rootDetail.children.find(
-            (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects',
+            (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects'
           );
           if (projectsFolder) {
             const projectsFolderDetail = await filesApi.getFolderDetails(projectsFolder.id);
             const projectFolder = projectsFolderDetail.children.find(
-              (c) => c.type === 'FOLDER' && c.name === resultProjectId,
+              (c) => c.type === 'FOLDER' && c.name === resultProjectId
             );
             if (projectFolder) {
               const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
               const primeContractFolder = projectFolderDetail.children.find(
-                (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'prime contract',
+                (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'prime contract'
               );
               if (primeContractFolder) {
                 for (const file of selectedFiles) {
@@ -345,7 +387,7 @@ export default function ProjectForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+      onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
@@ -356,12 +398,26 @@ export default function ProjectForm() {
           </ToolbarHeading>
           <ToolbarActions>
             <Button variant="outline" size="sm" type="button" asChild>
-              <Link to=".." relative="path">Cancel</Link>
+              <Link to=".." relative="path">
+                Cancel
+              </Link>
             </Button>
             {!isEditMode && (
-              <Button variant="outline" size="sm" type="submit" disabled={isSubmitting}>
-                Save as Draft
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={fillRandom}
+                  className="text-primary hover:text-primary border-primary/20 hover:border-primary/40 bg-primary/5"
+                >
+                  <Sparkles className="size-4" />
+                  Fill Random
+                </Button>
+                <Button variant="outline" size="sm" type="submit" disabled={isSubmitting}>
+                  Save as Draft
+                </Button>
+              </>
             )}
             <Button size="sm" type="submit" disabled={isSubmitting}>
               <Check className="size-4" />
@@ -382,120 +438,161 @@ export default function ProjectForm() {
       />
 
       <div className="pt-6 space-y-6">
-          {/* ════════════════════════════════════════════
+        {/* ════════════════════════════════════════════
               Section 1: Project Info
              ════════════════════════════════════════════ */}
-          <Card id="project-info">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Project Info</h2>
-                <p className="text-sm text-muted-foreground">
-                  General details about the project and its location.
-                </p>
-              </div>
+        <Card id="project-info">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Project Info</h2>
+              <p className="text-sm text-muted-foreground">
+                General details about the project and its location.
+              </p>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Row: Project Status + Job # */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="stageId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project Status
-                      </FieldLabel>
-                      <SearchableSelect
-                        options={stageOptions}
-                        value={field.value || null}
-                        onValueChange={(v) => field.onChange(v ?? '')}
-                        placeholder="Select status..."
-                        searchPlaceholder="Search stages..."
-                        emptyMessage="No stages found."
-                      />
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="jobNumber"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project ID / Job #
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          placeholder="P-2026-9299"
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                          disabled={isEditMode}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Project Name */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <Controller
-                name="name"
+                name="status"
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Project Name
+                      Project Status
                     </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="Enter the official project title"
-                        aria-invalid={fieldState.invalid}
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Select status..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROJECT_STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
 
-              {/* Row: Description */}
               <Controller
-                name="description"
+                name="stageId"
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Description / Scope
+                      Project Stage
                     </FieldLabel>
-                    <Textarea
-                      {...field}
-                      rows={5}
-                      placeholder="Brief scope of work..."
-                      aria-invalid={fieldState.invalid}
+                    <SearchableSelect
+                      options={stageOptions}
+                      value={field.value || null}
+                      onValueChange={(v) => field.onChange(v ?? '')}
+                      placeholder="Select stage..."
+                      searchPlaceholder="Search stages..."
+                      emptyMessage="No stages found."
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
 
-              {/* ── Location sub-section ── */}
-              <div className="pt-2">
-                <h3 className="text-base font-semibold text-foreground mb-4">Location</h3>
+              <Controller
+                name="jobNumber"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Project ID / Job #
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="P-2026-9299"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        disabled={isEditMode}
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
 
-                {/* Street Address */}
+            {/* Row: Project Name */}
+            <Controller
+              name="name"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Project Name
+                  </FieldLabel>
+                  <InputWrapper>
+                    <Input
+                      {...field}
+                      placeholder="Enter the official project title"
+                      aria-invalid={fieldState.invalid}
+                      autoComplete="off"
+                    />
+                  </InputWrapper>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+
+            {/* Row: Description */}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                    Description / Scope
+                  </FieldLabel>
+                  <Textarea
+                    {...field}
+                    rows={5}
+                    placeholder="Brief scope of work..."
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              )}
+            />
+
+            {/* ── Location sub-section ── */}
+            <div className="pt-2">
+              <h3 className="text-base font-semibold text-foreground mb-4">Location</h3>
+
+              {/* Street Address */}
+              <Controller
+                name="streetAddress"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Street Address
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input {...field} autoComplete="off" />
+                    </InputWrapper>
+                  </Field>
+                )}
+              />
+
+              {/* City + State + Zip */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mt-5">
                 <Controller
-                  name="streetAddress"
+                  name="city"
                   control={control}
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Street Address
+                        City
                       </FieldLabel>
                       <InputWrapper>
                         <Input {...field} autoComplete="off" />
@@ -504,451 +601,453 @@ export default function ProjectForm() {
                   )}
                 />
 
-                {/* City + State + Zip */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-3 mt-5">
-                  <Controller
-                    name="city"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          City
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input {...field} autoComplete="off" />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
+                <Controller
+                  name="state"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        State
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input {...field} maxLength={2} placeholder="NY" autoComplete="off" />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
 
-                  <Controller
-                    name="state"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          State
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input
-                            {...field}
-                            maxLength={2}
-                            placeholder="NY"
-                            autoComplete="off"
-                          />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="zipCode"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Zip Code
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input {...field} autoComplete="off" maxLength={10} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="zipCode"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Zip Code
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input {...field} autoComplete="off" maxLength={10} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* ── Key Stakeholders sub-section ── */}
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-4">Key Stakeholders</h3>
+            {/* ── Key Stakeholders sub-section ── */}
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-4">Key Stakeholders</h3>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <Controller
-                    name="gcId"
-                    control={control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          General Contractor
-                        </FieldLabel>
-                        <SearchableSelect
-                          options={gcOptions}
-                          value={field.value || null}
-                          onValueChange={(v) => field.onChange(v ?? '')}
-                          placeholder="Select GC..."
-                          searchPlaceholder="Search contractors..."
-                          emptyMessage="No contractors found."
-                        />
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
-                    )}
-                  />
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <Controller
+                  name="gcId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        General Contractor
+                      </FieldLabel>
+                      <SearchableSelect
+                        options={gcOptions}
+                        value={field.value || null}
+                        onValueChange={(v) => field.onChange(v ?? '')}
+                        placeholder="Select GC..."
+                        searchPlaceholder="Search contractors..."
+                        emptyMessage="No contractors found."
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
 
-                  <Controller
-                    name="leadPMId"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Project Manager
-                        </FieldLabel>
-                        <SearchableSelect
-                          options={pmOptions}
-                          value={field.value || null}
-                          onValueChange={(v) => field.onChange(v ?? '')}
-                          placeholder="Select PM..."
-                          searchPlaceholder="Search people..."
-                          emptyMessage="No contacts found."
-                        />
-                      </Field>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="leadPMId"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Project Manager
+                      </FieldLabel>
+                      <SearchableSelect
+                        options={pmOptions}
+                        value={field.value || null}
+                        onValueChange={(v) => field.onChange(v ?? '')}
+                        placeholder="Select PM..."
+                        searchPlaceholder="Search people..."
+                        emptyMessage="No contacts found."
+                      />
+                    </Field>
+                  )}
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* ════════════════════════════════════════════
+        {/* ════════════════════════════════════════════
               Section 2: Contract
              ════════════════════════════════════════════ */}
-          <Card id="contract">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Contract</h2>
-                <p className="text-sm text-muted-foreground">Financials and timeline.</p>
-              </div>
+        <Card id="contract">
+          <CardContent className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Contract</h2>
+              <p className="text-sm text-muted-foreground">Financials and timeline.</p>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Row: Contract Number + Contract Type */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="contractNumber"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contract Number
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input {...field} placeholder="e.g. C-2026-001" autoComplete="off" />
-                      </InputWrapper>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="contractType"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contract Type
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input {...field} placeholder="e.g. Lump Sum, GMP" autoComplete="off" />
-                      </InputWrapper>
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Contract Category + Payment Terms */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="division"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contract Category
-                      </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger aria-invalid={fieldState.invalid}>
-                          <SelectValue placeholder="Select category..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DIVISION_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="paymentTerms"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Payment Terms
-                      </FieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment terms..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAYMENT_TERMS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Contract Value + Retainage % */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="contractValue"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contract Value
-                      </FieldLabel>
-                      <InputWrapper>
-                        <span className="text-muted-foreground text-sm">$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          placeholder="0.00"
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="retainagePercent"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Retainage %
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min={0}
-                          max={100}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          placeholder="0"
-                          aria-invalid={fieldState.invalid}
-                        />
-                        <span className="text-muted-foreground text-sm">%</span>
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Row: Target Budget % */}
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="targetBudgetPercent"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Target Budget %
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min={0}
-                          max={100}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          placeholder="0"
-                          aria-invalid={fieldState.invalid}
-                        />
-                        <span className="text-muted-foreground text-sm">%</span>
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              {/* ── Dates sub-section ── */}
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-4">Dates</h3>
-
-                {/* Row: Effective Start + End */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <Controller
-                    name="effectiveStartDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Effective Start Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="effectiveEndDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Effective End Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-                </div>
-
-                {/* Row: Estimated Start + Completion */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
-                  <Controller
-                    name="estimatedStartDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Estimated Start Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="estimatedCompletionDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Estimated Completion Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-                </div>
-
-                {/* Row: Actual Start + Completion */}
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
-                  <Controller
-                    name="actualStartDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Actual Start Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    name="actualCompletionDate"
-                    control={control}
-                    render={({ field }) => (
-                      <Field>
-                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                          Actual Completion Date
-                        </FieldLabel>
-                        <InputWrapper>
-                          <Input type="date" {...field} />
-                        </InputWrapper>
-                      </Field>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* ── Contract Documents sub-section ── */}
-              <div>
-                <h3 className="text-base font-semibold text-foreground mb-4">
-                  Contract Documents
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Select files to attach as contract documents. They will be uploaded after the project is {isEditMode ? 'saved' : 'created'}.
-                </p>
-
-                {selectedFiles.length > 0 && (
-                  <div className="space-y-2 mb-4">
-                    {selectedFiles.map((file, index) => (
-                      <div
-                        key={`${file.name}-${index}`}
-                        className="flex items-center gap-3 p-2.5 rounded-lg border"
-                      >
-                        <FileText className="size-4 text-muted-foreground shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{file.name}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          mode="icon"
-                          size="sm"
-                          type="button"
-                          onClick={() => handleRemoveFile(index)}
-                        >
-                          <X className="size-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+            {/* Row: Contract Number + Contract Type */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="contractNumber"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Contract Number
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input {...field} placeholder="e.g. C-2026-001" autoComplete="off" />
+                    </InputWrapper>
+                  </Field>
                 )}
+              />
 
-                <FileDropZone
-                  value={currentFile}
-                  onChange={handleFileSelected}
-                  disabled={isSubmitting}
+              <Controller
+                name="contractType"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Contract Type
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input {...field} placeholder="e.g. Lump Sum, GMP" autoComplete="off" />
+                    </InputWrapper>
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row: Contract Category + Payment Terms */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="divisionId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Contract Category / Division
+                    </FieldLabel>
+                    <SearchableSelect
+                      options={divisionOptions}
+                      value={field.value || null}
+                      onValueChange={(v) => field.onChange(v ?? '')}
+                      placeholder="Select division..."
+                      searchPlaceholder="Search divisions..."
+                      emptyMessage="No divisions found."
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="paymentTerms"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Payment Terms
+                    </FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment terms..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row: Contract Value + Retainage % */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="contractValue"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Contract Value
+                    </FieldLabel>
+                    <InputWrapper>
+                      <span className="text-muted-foreground text-sm">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="0.00"
+                        aria-invalid={fieldState.invalid}
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="retainagePercent"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Retainage %
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={100}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="0"
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <span className="text-muted-foreground text-sm">%</span>
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
+
+            {/* Row: Target Budget % + Tax Rate */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Controller
+                name="targetBudgetPercent"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Target Budget %
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={100}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="0"
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <span className="text-muted-foreground text-sm">%</span>
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="taxRate"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Tax Rate %
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min={0}
+                        max={100}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="0"
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <span className="text-muted-foreground text-sm">%</span>
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </div>
+
+            <Separator />
+
+            {/* ── Dates sub-section ── */}
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-4">Dates</h3>
+
+              {/* Row: Estimated Start + End */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
+                <Controller
+                  name="estimatedStartDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Estimated Start Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="estimatedEndDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Estimated End Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
                 />
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Row: Set Inactive Date + TCO Date */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
+                <Controller
+                  name="setInactiveDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Set Inactive Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="tcoDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        TCO Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+              </div>
+
+              {/* Row: Actual Start + Completion */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
+                <Controller
+                  name="actualStartDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Actual Start Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="actualCompletionDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Actual Completion Date
+                      </FieldLabel>
+                      <InputWrapper>
+                        <Input type="date" {...field} />
+                      </InputWrapper>
+                    </Field>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ── Contract Documents sub-section ── */}
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-4">Contract Documents</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Select files to attach as contract documents. They will be uploaded after the
+                project is {isEditMode ? 'saved' : 'created'}.
+              </p>
+
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {selectedFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-3 p-2.5 rounded-lg border"
+                    >
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        mode="icon"
+                        size="sm"
+                        type="button"
+                        onClick={() => handleRemoveFile(index)}
+                      >
+                        <X className="size-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <FileDropZone
+                value={currentFile}
+                onChange={handleFileSelected}
+                disabled={isSubmitting}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </form>
   );

@@ -54,8 +54,14 @@ export const vendorContactLinkContactSchema = z
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: z.array(contactEmailSchema).optional().default([]),
-    phoneNumber: z.array(contactPhoneSchema).optional().default([]),
+    email: z.preprocess((val) => {
+      if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+      return val;
+    }, z.array(contactEmailSchema).optional().default([])),
+    phoneNumber: z.preprocess((val) => {
+      if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+      return val;
+    }, z.array(contactPhoneSchema).optional().default([])),
     tags: z.array(z.string()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -100,13 +106,15 @@ export const vendorSchema = z
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
     contactLinks: z.array(vendorContactLinkSchema).optional().default([]),
+    contacts: z.array(vendorContactLinkContactSchema).optional().default([]),
     _count: z
       .object({
         contactLinks: z.number().default(0),
+        contacts: z.number().default(0),
       })
       .passthrough()
       .optional()
-      .default({ contactLinks: 0 }),
+      .default({ contactLinks: 0, contacts: 0 }),
   })
   .passthrough();
 
@@ -133,6 +141,7 @@ export const vendorDetailSchema = z
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
     contactLinks: z.array(vendorContactLinkSchema).optional().default([]),
+    contacts: z.array(vendorContactLinkContactSchema).optional().default([]),
   })
   .passthrough();
 

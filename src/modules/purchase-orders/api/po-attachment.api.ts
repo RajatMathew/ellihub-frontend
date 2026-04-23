@@ -1,6 +1,6 @@
 import api from '@app/api';
 
-const BASE = '/pos';
+const BASE = '/po';
 
 export const poAttachmentApi = {
   async add(poId: string, data: { fileId: string }) {

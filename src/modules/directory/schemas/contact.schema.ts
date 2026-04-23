@@ -86,9 +86,31 @@ export const contactSchema = z.object({
   fullName: z.string().min(1, 'Name is required'),
   professionalRoleId: z.string().nullable(),
   professionalRole: professionalRoleSchema.nullish(),
-  email: z.array(contactEmailSchema).default([]),
-  phoneNumber: z.array(contactPhoneSchema).default([]),
+  email: z.preprocess((val) => {
+    if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+    return val;
+  }, z.array(contactEmailSchema).default([])),
+  phoneNumber: z.preprocess((val) => {
+    if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+    return val;
+  }, z.array(contactPhoneSchema).default([])),
   tags: z.array(z.string()).default([]),
+  vendorId: z.string().nullable().optional(),
+  generalContractorId: z.string().nullable().optional(),
+  vendor: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+    })
+    .nullable()
+    .optional(),
+  generalContractor: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+    })
+    .nullable()
+    .optional(),
   vendorLinks: z.array(contactVendorLinkSchema).default([]),
   gcLinks: z.array(contactGCLinkSchema).default([]),
   deletedAt: z.string().nullable().optional(),
@@ -138,35 +160,26 @@ export type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 // --- Inputs ---
 
-export const createContactInputSchema = z
-  .object({
-    fullName: z.string().min(1, 'Name is required'),
-    professionalRoleId: z.string().optional(),
-    email: z.array(contactEmailSchema).optional(),
-    phoneNumber: z.array(contactPhoneFormSchema).optional(),
-    tags: z.array(z.string()).optional(),
-    vendorLinks: z
-      .array(z.object({ vendorId: z.string(), isPrimary: z.boolean().optional() }))
-      .optional(),
-    gcLinks: z
-      .array(
-        z.object({ generalContractorId: z.string(), isPrimary: z.boolean().optional() }),
-      )
-      .optional(),
-  })
-  .refine((data) => (data.email && data.email.length > 0) || (data.phoneNumber && data.phoneNumber.length > 0), {
-    message: 'At least one email or phone number is required',
-    path: ['email'],
-  });
+export const createContactInputSchema = z.object({
+  fullName: z.string().min(1, 'Name is required'),
+  professionalRoleId: z.string().optional(),
+  email: z.string().email('Invalid email address').optional(),
+  phoneNumber: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  vendorId: z.string().optional(),
+  generalContractorId: z.string().optional(),
+});
 
 export type CreateContactInput = z.infer<typeof createContactInputSchema>;
 
 export const updateContactInputSchema = z.object({
   fullName: z.string().min(1).optional(),
   professionalRoleId: z.string().nullable().optional(),
-  email: z.array(contactEmailSchema).optional(),
-  phoneNumber: z.array(contactPhoneSchema).optional(),
+  email: z.string().email('Invalid email address').optional(),
+  phoneNumber: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  vendorId: z.string().optional(),
+  generalContractorId: z.string().optional(),
 });
 
 export type UpdateContactInput = z.infer<typeof updateContactInputSchema>;

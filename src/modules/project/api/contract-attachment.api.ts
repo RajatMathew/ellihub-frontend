@@ -5,7 +5,7 @@ import {
   type ContractAttachment,
 } from '@modules/project/schemas/contract-attachment.schema';
 
-const BASE = '/projects';
+const BASE = '/project';
 
 export const contractAttachmentApi = {
   async list(projectId: string): Promise<ContractAttachment[]> {

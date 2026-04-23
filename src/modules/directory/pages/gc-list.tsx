@@ -322,26 +322,34 @@ export function GCListPage() {
           <DataGridColumnHeader column={column} title="Primary Contact" />
         ),
         cell: ({ row }) => {
-          const { email } = row.original;
-          if (!email)
+          const contact = row.original.contacts?.[0] || row.original.contactLinks?.[0]?.contact;
+          const { email: gcEmail } = row.original;
+          
+          if (!contact && !gcEmail)
             return <span className="text-sm text-muted-foreground">&mdash;</span>;
+            
+          const displayName = contact?.fullName || row.original.name;
+          const displayEmail = contact?.email?.[0]?.email || gcEmail;
+
           return (
             <div className="flex items-center gap-3">
               <Avatar className="size-8">
                 <AvatarFallback className="text-[10px] font-semibold">
-                  {getInitials(row.original.name, 2)}
+                  {getInitials(displayName, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-foreground">
-                  {row.original.name}
+                  {displayName}
                 </span>
-                <a
-                  href={`mailto:${email}`}
-                  className="text-2sm text-muted-foreground hover:text-primary"
-                >
-                  {email}
-                </a>
+                {displayEmail && (
+                  <a
+                    href={`mailto:${displayEmail}`}
+                    className="text-2sm text-muted-foreground hover:text-primary"
+                  >
+                    {displayEmail}
+                  </a>
+                )}
               </div>
             </div>
           );

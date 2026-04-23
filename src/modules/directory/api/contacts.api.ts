@@ -104,48 +104,19 @@ export const contactsApi = {
     return contactSchema.parse(res.data?.data ?? res.data);
   },
 
-  // --- Vendor link sub-resource ---
-  async addVendorLink(
-    contactId: string,
-    data: { vendorId: string; isPrimary?: boolean },
-  ): Promise<unknown> {
-    const res = await api.patch(`${BASE}/vendor/add`, { ...data, contactId });
+  // --- Link association (Vendor or GC) ---
+  async linkEntity(data: {
+    contactId: string;
+    vendorId?: string | null;
+    generalContractorId?: string | null;
+  }): Promise<unknown> {
+    const res = await api.patch(`${BASE}/link`, data);
     return res.data?.data ?? res.data;
   },
 
-  async removeVendorLink(contactId: string, vendorId: string): Promise<unknown> {
-    try {
-      const res = await api.patch(`${BASE}/vendor/remove`, { contactId, vendorId });
-      return res.data?.data ?? res.data;
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number; data?: { details?: { code?: string } } } };
-      if (axiosError.response?.status === 404 || axiosError.response?.data?.details?.code === 'NotFoundError') {
-        return { success: true, message: 'Already unlinked' };
-      }
-      throw error;
-    }
-  },
-
-  // --- GC link sub-resource ---
-  async addGCLink(
-    contactId: string,
-    data: { generalContractorId: string; isPrimary?: boolean },
-  ): Promise<unknown> {
-    const res = await api.patch(`${BASE}/gc/add`, { ...data, contactId });
+  async unlinkEntity(contactId: string): Promise<unknown> {
+    const res = await api.patch(`${BASE}/unlink`, { contactId });
     return res.data?.data ?? res.data;
-  },
-
-  async removeGCLink(contactId: string, generalContractorId: string): Promise<unknown> {
-    try {
-      const res = await api.patch(`${BASE}/gc/remove`, { contactId, generalContractorId });
-      return res.data?.data ?? res.data;
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { status?: number; data?: { details?: { code?: string } } } };
-      if (axiosError.response?.status === 404 || axiosError.response?.data?.details?.code === 'NotFoundError') {
-        return { success: true, message: 'Already unlinked' };
-      }
-      throw error;
-    }
   },
 
   async getDirectoryKpis(): Promise<DirectoryKpis> {

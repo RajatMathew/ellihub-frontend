@@ -82,14 +82,12 @@ export function ScheduleTrackerCard({
     if (!newEntry.date || !newEntry.description) return;
     await createMutation.mutateAsync({
       projectId,
-      data: {
-        date: newEntry.date,
-        description: newEntry.description,
-        adjustedStartDate: newEntry.adjustedStartDate || undefined,
-        adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
-        notes: newEntry.notes || undefined,
-        fileId: newEntry.fileId || undefined,
-      },
+      date: newEntry.date,
+      description: newEntry.description,
+      adjustedStartDate: newEntry.adjustedStartDate || undefined,
+      adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
+      notes: newEntry.notes || undefined,
+      fileId: newEntry.fileId || undefined,
     });
     setNewEntry({ date: '', description: '', adjustedStartDate: '', adjustedFinishDate: '', notes: '', fileId: '', fileName: '' });
     setIsAdding(false);
@@ -111,22 +109,20 @@ export function ScheduleTrackerCard({
   const handleSaveEdit = async () => {
     if (!editingEntry) return;
     await updateMutation.mutateAsync({
+      id: editingEntry.id,
       projectId,
-      entryId: editingEntry.id,
-      data: {
-        date: editingEntry.date || undefined,
-        description: editingEntry.description || undefined,
-        adjustedStartDate: editingEntry.adjustedStartDate || null,
-        adjustedFinishDate: editingEntry.adjustedFinishDate || null,
-        notes: editingEntry.notes || null,
-        fileId: editingEntry.fileId || null,
-      },
+      date: editingEntry.date || undefined,
+      description: editingEntry.description || undefined,
+      adjustedStartDate: editingEntry.adjustedStartDate || undefined,
+      adjustedFinishDate: editingEntry.adjustedFinishDate || undefined,
+      notes: editingEntry.notes || undefined,
+      fileId: editingEntry.fileId || undefined,
     });
     setEditingEntry(null);
   };
 
   const handleDeleteEntry = async (entryId: string) => {
-    await deleteMutation.mutateAsync({ projectId, entryId });
+    await deleteMutation.mutateAsync({ projectId, id: entryId });
   };
 
   const handleUploadSubmit = async (payload: { file: File; data: { name: string; parentId: string; mimeType?: string; size: number } }) => {
@@ -294,6 +290,7 @@ export function ScheduleTrackerCard({
                         <Button
                           variant="primary"
                           size="sm"
+                          type="button"
                           onClick={handleSaveEdit}
                           disabled={updateMutation.isPending}
                         >
@@ -448,6 +445,7 @@ export function ScheduleTrackerCard({
                       <Button
                         variant="primary"
                         size="sm"
+                        type="button"
                         onClick={handleAddEntry}
                         disabled={
                           createMutation.isPending ||

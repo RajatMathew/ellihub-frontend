@@ -76,7 +76,7 @@ export type BidComparison = {
   };
 };
 
-const BASE = '/rfqs';
+const BASE = '/rfq';
 
 export const rfqApi = {
   async list(params: ListRFQParams): Promise<RFQPaginatedResponse> {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  type ColumnDef,
-  type SortingState,
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
+  type ColumnDef,
+  type SortingState,
 } from '@tanstack/react-table';
 import {
   AlertCircle,
@@ -21,7 +21,13 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarHeading,
+  ToolbarPageTitle,
+  ToolbarWrapper,
+} from '@app/components/toolbar/toolbar';
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
@@ -54,22 +60,10 @@ import {
 } from '@app/components/ui/select';
 import { Skeleton } from '@app/components/ui/skeleton';
 import { StatsCard } from '@app/components/ui/stats-card';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
 import { parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteVendorMutation, useVendorsQuery, useVendorTypesQuery } from '../hooks';
-import type {
-  ListVendorsParams,
-  Vendor,
-  VendorStatus,
-  VendorType,
-} from '../schemas/vendor.schema';
+import type { ListVendorsParams, Vendor, VendorStatus, VendorType } from '../schemas/vendor.schema';
 
 /* ---- Constants ---- */
 
@@ -113,8 +107,6 @@ function getVendorTypeCode(type: VendorType | null | undefined): string {
   return type.type || '';
 }
 
-
-
 /* ---- Page ---- */
 
 export function VendorListPage() {
@@ -127,8 +119,7 @@ export function VendorListPage() {
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
     : 'name';
-  const sortOrder: 'asc' | 'desc' =
-    searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
+  const sortOrder: 'asc' | 'desc' = searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
   const typeFilter = searchParams.get('type') || undefined;
   const statusFilter: VendorStatus | undefined = isValidVendorStatus(searchParams.get('status'))
     ? (searchParams.get('status') as VendorStatus)
@@ -158,7 +149,7 @@ export function VendorListPage() {
         return next;
       });
     },
-    [setSearchParams],
+    [setSearchParams]
   );
 
   const handleSearchChange = useCallback(
@@ -169,7 +160,7 @@ export function VendorListPage() {
         updateParams({ search: value || undefined, page: undefined });
       }, SEARCH_DEBOUNCE_MS);
     },
-    [updateParams],
+    [updateParams]
   );
 
   // Clean up debounce on unmount
@@ -249,16 +240,19 @@ export function VendorListPage() {
     () => [
       {
         accessorKey: 'name',
+        size: 180,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor Name" />,
         cell: ({ row }) => {
           const status = row.original.status;
-          const contactLinks = row.original.contactLinks ?? [];
-          const contactCount = contactLinks.length || (row.original._count?.contactLinks ?? 0);
+          const contactCount =
+            (row.original.contacts?.length || 0) + (row.original.contactLinks?.length || 0) ||
+            (row.original._count?.contacts ?? 0) ||
+            (row.original._count?.contactLinks ?? 0);
           return (
             <div className="flex flex-col gap-0.5">
               <Link
                 to={`${row.original.id}`}
-                className="text-sm font-semibold text-foreground uppercase hover:text-primary"
+                className="text-sm font-semibold text-foreground uppercase hover:text-primary whitespace-nowrap"
               >
                 {row.original.name}
               </Link>
@@ -267,10 +261,7 @@ export function VendorListPage() {
                   {contactCount} Contact{contactCount !== 1 ? 's' : ''}
                 </span>
                 {status !== 'ACTIVE' && (
-                  <Badge
-                    variant="secondary"
-                    size="sm"
-                  >
+                  <Badge variant="secondary" size="sm">
                     {VENDOR_STATUS_LABELS[status]}
                   </Badge>
                 )}
@@ -290,17 +281,25 @@ export function VendorListPage() {
       },
       {
         id: 'type',
+        size: 110,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         cell: ({ row }) => {
           const type = row.original.type;
           if (!type) return <span className="text-xs text-muted-foreground italic">No type</span>;
 
-          const typeLabel = typeof type === 'string' ? (apiTypes?.find(t => t.id === type)?.label ?? type) : getVendorTypeLabel(type);
+          const typeLabel =
+            typeof type === 'string'
+              ? (apiTypes?.find((t) => t.id === type)?.label ?? type)
+              : getVendorTypeLabel(type);
           const typeCode = getVendorTypeCode(type);
 
           return (
             <Badge
-              variant={(typeCode && typeCode in VENDOR_TYPE_BADGE_VARIANTS ? VENDOR_TYPE_BADGE_VARIANTS[typeCode] : 'primary') as 'primary' | 'success' | 'info' | 'warning'}
+              variant={
+                (typeCode && typeCode in VENDOR_TYPE_BADGE_VARIANTS
+                  ? VENDOR_TYPE_BADGE_VARIANTS[typeCode]
+                  : 'primary') as 'primary' | 'success' | 'info' | 'warning'
+              }
               appearance="outline"
               size="sm"
             >
@@ -309,24 +308,22 @@ export function VendorListPage() {
           );
         },
         meta: {
-          headerClassName: 'min-w-[130px]',
           skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
         },
         enableSorting: false,
       },
       {
         id: 'contact',
+        size: 200,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Contact" />,
         cell: ({ row }) => {
-          const firstLink = row.original.contactLinks?.[0];
-          const contact = firstLink?.contact;
+          const contact = row.original.contacts?.[0] || row.original.contactLinks?.[0]?.contact;
           const contactName = contact?.fullName;
           const contactEmail = contact?.email?.[0]?.email;
 
           if (!contactName) {
             const { email, name } = row.original;
-            if (!email)
-              return <span className="text-sm text-muted-foreground">&mdash;</span>;
+            if (!email) return <span className="text-sm text-muted-foreground">&mdash;</span>;
             return (
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground leading-tight">{name}</span>
@@ -337,7 +334,9 @@ export function VendorListPage() {
 
           return (
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-foreground leading-tight">{contactName}</span>
+              <span className="text-sm font-medium text-foreground leading-tight">
+                {contactName}
+              </span>
               {contactEmail && (
                 <span className="text-xs text-muted-foreground truncate">{contactEmail}</span>
               )}
@@ -345,7 +344,6 @@ export function VendorListPage() {
           );
         },
         meta: {
-          headerClassName: 'min-w-[220px]',
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-8 rounded-full" />
@@ -360,6 +358,7 @@ export function VendorListPage() {
       },
       {
         id: 'compliance',
+        size: 90,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Compliance" />,
         cell: () => (
           <Badge variant="secondary" size="sm">
@@ -368,39 +367,33 @@ export function VendorListPage() {
           </Badge>
         ),
         meta: {
-          headerClassName: 'min-w-[120px]',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
         },
         enableSorting: false,
       },
       {
         id: 'totalCommitted',
-        header: ({ column }) => (
-          <DataGridColumnHeader column={column} title="Total Committed" />
-        ),
-        cell: () => (
-          <span className="text-sm text-muted-foreground">&mdash;</span>
-        ),
+        size: 110,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Total Committed" />,
+        cell: () => <span className="text-sm text-muted-foreground">&mdash;</span>,
         meta: {
-          headerClassName: 'min-w-[130px]',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
         enableSorting: false,
       },
       {
         id: 'balance',
+        size: 80,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Balance" />,
-        cell: () => (
-          <span className="text-sm text-muted-foreground">&mdash;</span>
-        ),
+        cell: () => <span className="text-sm text-muted-foreground">&mdash;</span>,
         meta: {
-          headerClassName: 'min-w-[100px]',
           skeleton: <Skeleton className="h-3.5 w-16" />,
         },
         enableSorting: false,
       },
       {
         id: 'actions',
+        size: 40,
         header: () => null,
         cell: ({ row }) => (
           <DropdownMenu>
@@ -434,13 +427,13 @@ export function VendorListPage() {
           </DropdownMenu>
         ),
         meta: {
-          headerClassName: 'w-[60px]',
+          cellClassName: 'px-2',
           skeleton: <Skeleton className="size-7 rounded-md" />,
         },
         enableSorting: false,
       },
     ],
-    [del, apiTypes],
+    [del, apiTypes]
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -550,9 +543,7 @@ export function VendorListPage() {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() =>
-                    updateParams({ type: tab.id, page: undefined })
-                  }
+                  onClick={() => updateParams({ type: tab.id, page: undefined })}
                   className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
                     typeFilter === tab.id
                       ? 'border-foreground text-foreground'

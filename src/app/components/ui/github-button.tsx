@@ -1,6 +1,7 @@
 'use client';
 
 /* eslint-disable react-refresh/only-export-components -- githubButtonVariants and types exported for API */
+/* eslint-disable react-hooks/set-state-in-effect -- derived animation state sync from props */
 import React, { useCallback, useEffect, useState } from 'react';
 
 import { cva, type VariantProps } from 'class-variance-authority';

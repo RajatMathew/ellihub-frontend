@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- reset() is a dialog lifecycle helper, not external synchronization */
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@app/components/ui/button';

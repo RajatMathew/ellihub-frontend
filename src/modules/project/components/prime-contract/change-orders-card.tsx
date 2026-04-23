@@ -31,7 +31,35 @@ export function ChangeOrdersCard({
   originalContractValue,
   isLoading,
 }: ChangeOrdersCardProps) {
-  let runningCV = originalContractValue;
+  const enrichedPcos = pcos.map((pco) => {
+    const statusName = pco.status?.name ?? pco.status?.label;
+    const isApproved =
+      (statusName?.toLowerCase().includes('approved') ?? false) ||
+      (statusName?.toLowerCase().includes('executed') ?? false);
+    return {
+      pco,
+      statusName,
+      isApproved,
+    };
+  });
+
+  const cumulativePcos = enrichedPcos.reduce<
+    Array<{
+      pco: (typeof enrichedPcos)[number]['pco'];
+      statusName: (typeof enrichedPcos)[number]['statusName'];
+      isApproved: boolean;
+      revisedCV?: number;
+    }>
+  >((acc, item) => {
+    const runningTotal = acc.length > 0 ? (acc[acc.length - 1].revisedCV ?? originalContractValue) : originalContractValue;
+    const nextValue = item.isApproved ? runningTotal + item.pco.amount : runningTotal;
+
+    acc.push({
+      ...item,
+      revisedCV: nextValue,
+    });
+    return acc;
+  }, []);
 
   return (
     <Card>
@@ -69,14 +97,7 @@ export function ChangeOrdersCard({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pcos.map((pco) => {
-                const statusName = pco.status?.name ?? pco.status?.label;
-                const isApproved =
-                  statusName?.toLowerCase().includes('approved') ||
-                  statusName?.toLowerCase().includes('executed');
-                if (isApproved) {
-                  runningCV += pco.amount;
-                }
+              {cumulativePcos.map(({ pco, statusName, isApproved, revisedCV }) => {
                 return (
                   <TableRow key={pco.id}>
                     <TableCell className="font-medium">
@@ -100,7 +121,7 @@ export function ChangeOrdersCard({
                       {formatCurrency(pco.amount)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {isApproved ? formatCurrency(runningCV) : '—'}
+                      {isApproved ? formatCurrency(revisedCV ?? originalContractValue) : '—'}
                     </TableCell>
                   </TableRow>
                 );

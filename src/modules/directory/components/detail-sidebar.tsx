@@ -9,10 +9,12 @@ export function DetailSidebar({
   open,
   onClose,
   children,
+  activityChildren,
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  activityChildren?: ReactNode;
 }) {
   if (!open) return null;
 
@@ -38,13 +40,15 @@ export function DetailSidebar({
         <TabsContent value="details">{children}</TabsContent>
 
         <TabsContent value="activity">
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <Clock className="size-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">Activity Log</p>
-            <p className="text-xs text-muted-foreground">
-              Activity tracking will be available in a future update.
-            </p>
-          </div>
+          {activityChildren || (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <Clock className="size-10 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">Activity Log</p>
+              <p className="text-xs text-muted-foreground">
+                Activity tracking will be available in a future update.
+              </p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

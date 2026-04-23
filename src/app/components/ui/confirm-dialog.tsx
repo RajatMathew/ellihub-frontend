@@ -18,7 +18,7 @@ interface ConfirmDialogProps {
   description: ReactNode;
   confirmLabel: string;
   onConfirm: () => void;
-  variant?: 'default' | 'destructive';
+  variant?: 'default' | 'destructive' | 'primary';
   isPending?: boolean;
 }
 

@@ -2,7 +2,6 @@ import { lazy } from 'react';
 
 import { Outlet } from 'react-router-dom';
 
-import FutureFeature from '@app/components/error/future-feature';
 import { NotFound } from '@app/components/error/not-found';
 import DelayForDemo from '@app/lib/delay';
 import { NavigateTo } from '@app/lib/navigateTo';
@@ -16,6 +15,8 @@ const Costcodes = lazy(() => import('@modules/catalog/routes/costcodes.route'));
 const DirectoryContacts = lazy(() => import('@modules/directory/routes/contacts.route'));
 const DirectoryGC = lazy(() => import('@modules/directory/routes/gc.route'));
 const DirectoryVendors = lazy(() => import('@modules/directory/routes/vendors.route'));
+const HrEmployees = lazy(() => import('@modules/hr/routes/employees.route'));
+const HrDepartments = lazy(() => import('@modules/hr/routes/departments.route'));
 const FilesRoutes = lazy(() => import('@modules/files/routes/files.route'));
 const ProjectsRoutes = lazy(() => import('@modules/project/routes/projects.route'));
 
@@ -75,7 +76,16 @@ export const routeTree: RouteDef[] = [
         component: DirectoryVendors,
         title: 'Vendors',
       },
-      { path: 'hr', component: FutureFeature, title: 'HR' },
+      {
+        path: 'hr/employees/*',
+        component: HrEmployees,
+        title: 'Employees',
+      },
+      {
+        path: 'hr/departments/*',
+        component: HrDepartments,
+        title: 'Departments',
+      },
       { path: 'files/*', component: FilesRoutes, title: 'Files' },
       {
         path: 'project/:projectId/*',

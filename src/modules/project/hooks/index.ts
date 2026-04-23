@@ -11,3 +11,5 @@ export * from './rfq.hooks';
 export * from './invoice.hooks';
 export * from './invoice-attachment.hooks';
 export * from './use-project-folder';
+export * from './lookup.hooks';
+export * from '@modules/directory/hooks/activity.hooks';

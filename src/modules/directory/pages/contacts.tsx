@@ -9,11 +9,9 @@ import {
 } from '@tanstack/react-table';
 import {
   AlertCircle,
-  Building2,
   Filter,
   Mail,
   MoreHorizontal,
-  Package,
   Phone,
   Plus,
   RefreshCcw,
@@ -36,7 +34,6 @@ import {
   CardTitle,
   CardToolbar,
 } from '@app/components/ui/card';
-import { StatsCard } from '@app/components/ui/stats-card';
 import { DataGrid } from '@app/components/ui/data-grid';
 import { DataGridColumnHeader } from '@app/components/ui/data-grid-column-header';
 import { DataGridPagination } from '@app/components/ui/data-grid-pagination';
@@ -156,48 +153,14 @@ export function ContactsListPage() {
   const { data: professionalRoles } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const del = useDeleteContactMutation();
-  const { data: statsData } = useContactsQuery({
-    ...filters,
-    size: 100, // Fetch more for stats accuracy
-    page: 1,
-  });
 
   // Use API data
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
 
-  // Locally compute KPIs from current/expanded results
-  const resolvedKpis = useMemo(() => {
-    const items = statsData?.data ?? [];
-    return {
-      gcLinks: items.filter((c) => (c.gcLinks?.length ?? 0) > 0).length,
-      vendorLinks: items.filter((c) => (c.vendorLinks?.length ?? 0) > 0).length,
-    };
-  }, [statsData]);
 
   // Map URL sort state → TanStack SortingState
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
-
-  const statsItems = [
-    {
-      label: 'Total Contacts',
-      value: totalCount,
-      icon: <Users className="size-6 text-primary" />,
-      bgClass: 'bg-primary/10',
-    },
-    {
-      label: 'Vendors Linked',
-      value: resolvedKpis.vendorLinks,
-      icon: <Package className="size-6 text-warning" />,
-      bgClass: 'bg-warning/10',
-    },
-    {
-      label: 'GC Linked',
-      value: resolvedKpis.gcLinks,
-      icon: <Building2 className="size-6 text-success" />,
-      bgClass: 'bg-success/10',
-    },
-  ];
 
   // Build name lookup maps for vendor/GC IDs → names
   const vendorNames = useMemo(() => {
@@ -247,16 +210,39 @@ export function ContactsListPage() {
         },
       },
       {
-        id: 'vendorLinks',
+        id: 'linkedEntity',
         header: ({ column }) => (
-          <DataGridColumnHeader column={column} title="Vendor / Company" />
+          <DataGridColumnHeader column={column} title="Linked Company" />
         ),
         cell: ({ row }) => {
-          const links = row.original.vendorLinks;
-          if (!links?.length) return <span className="text-sm text-muted-foreground">—</span>;
-          
-          const firstName = vendorNames.get(links[0].vendorId) ?? links[0].vendorId;
-          
+          const contact = row.original;
+          const links: { name: string; id: string; type: string }[] = [];
+
+          // 1. Check root-level vendor
+          if (contact.vendor) {
+            links.push({ id: contact.vendor.id, name: contact.vendor.name, type: 'VENDOR' });
+          }
+          // 2. Check root-level GC
+          if (contact.generalContractor) {
+            links.push({ id: contact.generalContractor.id, name: contact.generalContractor.name, type: 'GC' });
+          }
+          // 3. Add vendorLinks (if not duplicate of root vendor)
+          (contact.vendorLinks || []).forEach((l) => {
+            if (!links.find((ex) => ex.id === l.vendorId)) {
+              links.push({ id: l.vendorId, name: vendorNames.get(l.vendorId) || l.vendorId, type: 'VENDOR' });
+            }
+          });
+          // 4. Add gcLinks
+          (contact.gcLinks || []).forEach((l) => {
+            if (!links.find((ex) => ex.id === l.generalContractorId)) {
+              links.push({ id: l.generalContractorId, name: l.generalContractorId, type: 'GC' });
+            }
+          });
+
+          if (links.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+
+          const firstName = links[0].name;
+
           if (links.length === 1) {
             return <span className="text-sm text-muted-foreground">{firstName}</span>;
           }
@@ -269,10 +255,10 @@ export function ContactsListPage() {
                 </span>
               </TooltipTrigger>
               <TooltipContent side="top" className="flex flex-col gap-1 p-2">
-                <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest mb-0.5">Linked Vendors</span>
+                <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-widest mb-0.5">Linked Entities</span>
                 {links.map((l) => (
-                  <span key={l.id} className="text-xs font-medium">
-                    {vendorNames.get(l.vendorId) ?? l.vendorId}
+                  <span key={`${l.type}-${l.id}`} className="text-xs font-medium">
+                    {l.name} ({l.type})
                   </span>
                 ))}
               </TooltipContent>
@@ -475,18 +461,6 @@ export function ContactsListPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 lg:mb-7.5">
-        {statsItems.map((item) => (
-          <StatsCard
-            key={item.label}
-            icon={item.icon}
-            bgClass={item.bgClass}
-            label={item.label}
-            value={item.value}
-          />
-        ))}
-      </div>
 
       {/* Contacts Table */}
       <Card>

@@ -19,8 +19,9 @@ interface ContractDetailsCardProps {
 }
 
 export function ContractDetailsCard({ project, contract }: ContractDetailsCardProps) {
-  const stageBadgeVariant =
-    STAGE_COLOR_MAP[project?.stage?.color ?? ''] ?? 'secondary';
+  const stageColor =
+    typeof project?.stage?.color === 'string' ? project.stage.color : undefined;
+  const stageBadgeVariant = STAGE_COLOR_MAP[stageColor ?? ''] ?? 'secondary';
 
   return (
     <Card>
@@ -50,7 +51,11 @@ export function ContractDetailsCard({ project, contract }: ContractDetailsCardPr
           )}
         </InfoRow>
 
-        <InfoRow label="Division">{project?.division ?? '—'}</InfoRow>
+        <InfoRow label="Division">
+          {typeof project?.division === 'string'
+            ? project.division
+            : project?.division?.label || project?.division?.name || '—'}
+        </InfoRow>
 
         <Separator className="my-2" />
 

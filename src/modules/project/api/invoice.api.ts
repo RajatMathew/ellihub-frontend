@@ -20,7 +20,7 @@ import {
   type UpdateInvoiceInput,
 } from '@modules/project/schemas/invoice.schema';
 
-const BASE = '/invoices';
+const BASE = '/invoice';
 
 export const invoiceApi = {
   /* ---- list + summary ---- */

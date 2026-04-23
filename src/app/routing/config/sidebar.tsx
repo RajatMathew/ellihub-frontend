@@ -28,9 +28,17 @@ export const mainSidebarMenu: MenuConfig = [
   },
   { type: 'separator' },
   {
+    type: 'group-collapsed',
+    title: 'HR',
+    children: [
+      { title: 'Employees', path: '../hr/employees' },
+      { title: 'Departments', path: '../hr/departments' },
+    ],
+  },
+  { type: 'separator' },
+  {
     type: 'menu',
     children: [
-      { title: 'HR', path: '../hr' },
       { title: 'Files', path: '../files' },
     ],
   },

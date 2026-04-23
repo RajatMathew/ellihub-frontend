@@ -43,11 +43,12 @@ import { QuickCreateContactDialog } from '../components';
 import { GC_FORM_SECTIONS, GC_STATUS_OPTIONS } from '../constants/gc.constants';
 import { PAYMENT_TERMS_OPTIONS } from '../constants/shared.constants';
 import {
-  useAddGCContactLinkMutation,
   useContactsQuery,
   useCreateGCMutation,
   useGCDetailQuery,
   useGCTypesQuery,
+  useLinkEntityMutation,
+  useUnlinkEntityMutation,
   useUpdateGCMutation,
 } from '../hooks';
 import {
@@ -88,7 +89,8 @@ export function GCFormPage() {
   // Mutations
   const createMutation = useCreateGCMutation();
   const updateMutation = useUpdateGCMutation();
-  const addContactLinkMutation = useAddGCContactLinkMutation();
+  const linkEntityMutation = useLinkEntityMutation();
+  const unlinkEntityMutation = useUnlinkEntityMutation();
 
   // Contact options for SearchableSelect
   const contactOptions = (contactsData?.data ?? []).map((c) => ({
@@ -135,9 +137,28 @@ export function GCFormPage() {
         paymentTerms: gcDetail.paymentTerms ?? '',
         retainagePercent: gcDetail.retainagePercent,
       });
-      const activeLinks = gcDetail.contactLinks ?? [];
-      setOriginalLinks(activeLinks);
-      setContactLinks(activeLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary })));
+      // Consolidate contacts from both legacy links and new direct array
+      const resolvedLinks: GCContactLink[] = [...(gcDetail.contactLinks ?? [])];
+
+      // Add contacts from the direct array if they are not already represented in links
+      if (gcDetail.contacts && gcDetail.contacts.length > 0) {
+        gcDetail.contacts.forEach((contact) => {
+          if (!resolvedLinks.some((l) => l.contactId === contact.id)) {
+            resolvedLinks.push({
+              id: contact.id, // Fallback to contact ID if link ID is missing
+              contactId: contact.id,
+              generalContractorId: gcDetail.id,
+              isPrimary: (contact as any).isPrimary || false,
+              contact: contact,
+            } as GCContactLink);
+          }
+        });
+      }
+
+      setOriginalLinks(resolvedLinks);
+      setContactLinks(
+        resolvedLinks.map((l) => ({ contactId: l.contactId, isPrimary: !!l.isPrimary }))
+      );
       setIsInitialized(true);
     }
   }, [isEdit, gcDetail, reset, isInitialized]);
@@ -206,18 +227,29 @@ export function GCFormPage() {
         // 1. Update GC fields
         await updateMutation.mutateAsync({ id, data: payload });
 
-        // 2. Re-add all contact links (the PUT replaces/clears them)
-        if (contactLinks.length > 0) {
-          const linkOps = contactLinks.map((link) =>
-            addContactLinkMutation.mutateAsync({
-              gcId: id,
-              data: { contactId: link.contactId, isPrimary: link.isPrimary },
+        // 2. Compute contact link diff
+        const originalByContact = new Map(originalLinks.map((l) => [l.contactId, l]));
+        const currentByContact = new Map(contactLinks.map((l) => [l.contactId, l]));
+
+        const toRemove = originalLinks.filter((l) => !currentByContact.has(l.contactId));
+        const toAdd = contactLinks.filter((l) => !originalByContact.has(l.contactId));
+
+        const linkOps: Promise<unknown>[] = [
+          ...toRemove.map((link) => unlinkEntityMutation.mutateAsync(link.contactId)),
+          ...toAdd.map((link) =>
+            linkEntityMutation.mutateAsync({
+              contactId: link.contactId,
+              generalContractorId: id,
             })
-          );
+          ),
+        ];
+
+        if (linkOps.length > 0) {
           const results = await Promise.allSettled(linkOps);
           const failures = results.filter((r) => r.status === 'rejected');
           if (failures.length > 0) {
-            toast.error(`${failures.length} contact link(s) failed to save.`);
+            toast.error(`${failures.length} contact link operation(s) failed.`);
+            return;
           }
         }
 
@@ -237,9 +269,9 @@ export function GCFormPage() {
         // 2. Link selected contacts via GC-side API
         if (contactLinks.length > 0) {
           const linkOps = contactLinks.map((link) =>
-            addContactLinkMutation.mutateAsync({
-              gcId: created.id,
-              data: { contactId: link.contactId, isPrimary: link.isPrimary },
+            linkEntityMutation.mutateAsync({
+              contactId: link.contactId,
+              generalContractorId: created.id,
             })
           );
           const results = await Promise.allSettled(linkOps);

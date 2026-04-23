@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-import { useEmployeesQuery } from '@app/hooks/use-employees';
+import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -71,6 +71,7 @@ export default function ProjectContractOverview() {
 
   /* ---- Custom Hooks ---- */
   const computations = usePrimeContractComputations({
+    project,
     contract,
     pipeline,
     invoiceSummary: undefined, // payments deferred to accounting module

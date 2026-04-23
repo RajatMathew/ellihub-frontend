@@ -13,6 +13,14 @@ interface ContractDetailsSimpleCardProps {
 export function ContractDetailsSimpleCard({
   project,
 }: ContractDetailsSimpleCardProps) {
+  const resolveDivisionLabel = (division: ProjectDetail['division']) => {
+    if (typeof division === 'string') {
+      return DIVISION_LABELS[division as keyof typeof DIVISION_LABELS] ?? division;
+    }
+
+    return division?.label || division?.name || 'N/A';
+  };
+
   return (
     <Card className="min-h-[360px] flex flex-col">
       <CardHeader>
@@ -39,18 +47,43 @@ export function ContractDetailsSimpleCard({
             <InfoRow
               label="Stage"
               className="pb-1 border-b-2 border-separator"
-              valueClassName="font-bold"
+              valueClassName="font-bold flex justify-end"
             >
               {project.stage ? (
-                <Badge
-                  style={{
-                    backgroundColor: project.stage.color,
-                    color: getContrastColor(project.stage.color),
-                  }}
-                  size="sm"
-                >
-                  {project.stage.name}
-                </Badge>
+                (() => {
+                  const STAGE_COLORS: Record<string, string> = {
+                    SUBMITTALS: '#6366f1',
+                    BUYOUT: '#8b5cf6',
+                    FABRICATION: '#ec4899',
+                    INSTALLATION: '#3b82f6',
+                    PUNCHLIST: '#f59e0b',
+                    CLOSEOUT: '#10b981',
+                  };
+                  const name = project.stage.name || project.stage.label || '';
+                  const nameUpper = name.toUpperCase();
+                  let color = typeof project.stage.color === 'string' ? project.stage.color : '#94a3b8';
+                  
+                  if (!project.stage.color) {
+                    for (const [key, c] of Object.entries(STAGE_COLORS)) {
+                      if (nameUpper.includes(key)) {
+                        color = c;
+                        break;
+                      }
+                    }
+                  }
+
+                  return (
+                    <Badge
+                      style={{
+                        backgroundColor: color,
+                        color: getContrastColor(color),
+                      }}
+                      size="sm"
+                    >
+                      {name}
+                    </Badge>
+                  );
+                })()
               ) : (
                 '—'
               )}
@@ -60,7 +93,7 @@ export function ContractDetailsSimpleCard({
               className="pb-3 border-b-2 border-separator uppercase"
               valueClassName="font-bold"
             >
-              {DIVISION_LABELS[project.division] ?? project.division}
+              {resolveDivisionLabel(project.division)}
             </InfoRow>
           </div>
         </div>

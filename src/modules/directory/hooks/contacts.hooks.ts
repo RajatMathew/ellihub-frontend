@@ -134,79 +134,55 @@ export const useRemoveEmailMutation = () => {
   });
 };
 
-/* ---- vendor link mutations ---- */
+/* ---- entity linking mutations ---- */
+
+export const useLinkEntityMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: contactsApi.linkEntity,
+    onSuccess: (_, { contactId }) => {
+      qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
+      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
+    },
+    onError: () => toast.error('Failed to update entity link.'),
+  });
+};
+
+export const useUnlinkEntityMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) => contactsApi.unlinkEntity(contactId),
+    onSuccess: (_, contactId) => {
+      qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
+      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
+    },
+    onError: () => toast.error('Failed to remove entity link.'),
+  });
+};
+
+/* --- Backwards compatibility wrappers --- */
 
 export const useAddVendorLinkMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      contactId,
-      data,
-    }: {
-      contactId: string;
-      data: { vendorId: string; isPrimary?: boolean };
-    }) => contactsApi.addVendorLink(contactId, data),
-    onSuccess: (_, { contactId }) => {
-      qc.invalidateQueries({ queryKey: contactsKeys.all });
-      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
-      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
-    },
-    onError: () => toast.error('Failed to add vendor link.'),
-  });
+  const link = useLinkEntityMutation();
+  return {
+    ...link,
+    mutateAsync: (args: { contactId: string; data: { vendorId: string } }) =>
+      link.mutateAsync({ contactId: args.contactId, vendorId: args.data.vendorId }),
+  };
 };
-
-export const useRemoveVendorLinkMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ contactId, vendorId }: { contactId: string; vendorId: string }) =>
-      contactsApi.removeVendorLink(contactId, vendorId),
-    onSuccess: (_, { contactId }) => {
-      qc.invalidateQueries({ queryKey: contactsKeys.all });
-      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
-      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
-    },
-    onError: () => toast.error('Failed to remove vendor link.'),
-  });
-};
-
-/* ---- GC link mutations ---- */
 
 export const useAddGCLinkMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      contactId,
-      data,
-    }: {
-      contactId: string;
-      data: { generalContractorId: string; isPrimary?: boolean };
-    }) => contactsApi.addGCLink(contactId, data),
-    onSuccess: (_, { contactId }) => {
-      qc.invalidateQueries({ queryKey: contactsKeys.all });
-      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
-      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
-    },
-    onError: () => toast.error('Failed to add GC link.'),
-  });
-};
-
-export const useRemoveGCLinkMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      contactId,
-      generalContractorId,
-    }: {
-      contactId: string;
-      generalContractorId: string;
-    }) => contactsApi.removeGCLink(contactId, generalContractorId),
-    onSuccess: (_, { contactId }) => {
-      qc.invalidateQueries({ queryKey: contactsKeys.all });
-      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
-      qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
-    },
-    onError: () => toast.error('Failed to remove GC link.'),
-  });
+  const link = useLinkEntityMutation();
+  return {
+    ...link,
+    mutateAsync: (args: { contactId: string; data: { generalContractorId: string } }) =>
+      link.mutateAsync({
+        contactId: args.contactId,
+        generalContractorId: args.data.generalContractorId,
+      }),
+  };
 };
 
 /* ---- form hooks ---- */

@@ -19,7 +19,9 @@ export function useTeamMemberActions({ projectId }: UseTeamMemberActionsOptions)
     async (employeeId: string) => {
       await addTeamMemberMutation.mutateAsync({
         projectId,
-        data: { employeeId },
+        employeeId,
+        role: 'Member', // Default role required by backend
+        isLead: false,
       });
     },
     [addTeamMemberMutation, projectId]

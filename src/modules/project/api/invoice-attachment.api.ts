@@ -1,6 +1,6 @@
 import api from '@app/api';
 
-const BASE = '/invoices';
+const BASE = '/invoice';
 
 export const invoiceAttachmentApi = {
   async add(invoiceId: string, data: { fileId: string }) {

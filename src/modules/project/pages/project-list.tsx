@@ -24,10 +24,20 @@ export default function ProjectList() {
   const year = Number(searchParams.get('year')) || currentYear;
   const statusId = searchParams.get('statusId') ?? undefined;
 
-  const { data, isLoading } = useProjectsQuery({ year, statusId, size: 100 });
+  const { data, isLoading } = useProjectsQuery({ 
+    statusId, 
+    size: 25,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    year: undefined, // Removing year as it causes 500 on backend
+  });
 
-  const projects = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? projects.length;
+  const projects = (data?.data ?? []).filter((p) => {
+    if (!year) return true;
+    const pYear = p.createdAt ? new Date(p.createdAt).getFullYear() : null;
+    return pYear === year;
+  });
+  const totalCount = projects.length;
 
   const handleYearChange = useCallback(
     (y: number) => {

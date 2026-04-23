@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -29,17 +29,18 @@ import {
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
-import { useEmployeesQuery } from '@app/hooks/use-employees';
 import { useGCsQuery } from '@modules/directory/hooks';
+import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
 import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
+import { PROJECT_FORM_SECTIONS, PROJECT_STATUS_OPTIONS } from '@modules/project/constants/project-form.constants';
 import {
-  DIVISION_OPTIONS,
-  PROJECT_FORM_SECTIONS,
-} from '@modules/project/constants/project-form.constants';
-import {
+  useDivisionsQuery,
   useProjectDetailQuery,
   useProjectStagesQuery,
-  useProjectStatusesQuery,
+  useSetProjectActiveMutation,
+  useSetProjectClosedMutation,
+  useSetProjectCompletedMutation,
+  useSetProjectInactiveMutation,
   useUpdateProjectMutation,
 } from '@modules/project/hooks';
 import {
@@ -48,6 +49,9 @@ import {
   type ProjectFormValues,
   type UpdateProjectInput,
 } from '@modules/project/schemas/project.schema';
+
+const parseDateValue = (value: unknown): string =>
+  typeof value === 'string' ? value.split('T')[0] : '';
 
 export default function ProjectEditForm() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -81,59 +85,71 @@ function ProjectEditFormInner({
   /* ---- Queries ---- */
 
   const stagesQuery = useProjectStagesQuery();
-  const statusesQuery = useProjectStatusesQuery();
+  const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
   const employeesQuery = useEmployeesQuery({ size: 1000 });
 
   /* ---- Build dropdown options ---- */
 
   const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
-  const statusOptions = statusesQuery.data?.map((s) => ({ value: s.id, label: s.label })) ?? [];
+  const divisionOptions =
+    divisionsQuery.data?.map((d) => ({
+      value: d.id,
+      label: d.label || d.name || 'Unknown',
+    })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
   const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
 
   /* ---- Form setup with existing values ---- */
 
   const { control, handleSubmit } = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema),
+    resolver: zodResolver(projectFormSchema) as Resolver<ProjectFormValues>,
     defaultValues: {
       name: project.name,
       description: project.description ?? '',
       jobNumber: project.jobNumber ?? '',
       contractNumber: project.contractNumber ?? '',
       stageId: project.stageId,
-      division: project.division,
+      status: project.status ?? 'ACTIVE',
+      divisionId: (project as any).divisionId ?? '',
       gcId: project.gcId,
       leadPMId: project.leadPMId ?? '',
       streetAddress: project.streetAddress ?? '',
       city: project.city ?? '',
       state: project.state ?? '',
       zipCode: project.zipCode ?? '',
-      effectiveStartDate: project.effectiveStartDate?.slice(0, 10) ?? '',
-      effectiveEndDate: project.effectiveEndDate?.slice(0, 10) ?? '',
       contractValue: project.primeContract?.contractValue ?? 0,
       contractType: (project.primeContract as any)?.contractType ?? '',
       retainagePercent: (project.primeContract as any)?.retainagePercent ?? 0,
       targetBudgetPercent: (project.primeContract as any)?.targetBudgetPercent ?? 0,
+      taxRate: (project.primeContract as any)?.taxRate ?? 0,
       paymentTerms: (project.primeContract as any)?.paymentTerms ?? '',
       estimatedStartDate: (project.primeContract as any)?.estimatedStartDate?.slice(0, 10) ?? '',
-      estimatedCompletionDate:
-        (project.primeContract as any)?.estimatedCompletionDate?.slice(0, 10) ?? '',
-      actualStartDate: (project.primeContract as any)?.actualStartDate?.slice(0, 10) ?? '',
-      actualCompletionDate:
-        (project.primeContract as any)?.actualCompletionDate?.slice(0, 10) ?? '',
+      estimatedEndDate: (project.primeContract as any)?.estimatedEndDate?.slice(0, 10) ?? '',
+      actualStartDate: parseDateValue((project.primeContract as any)?.actualStartDate),
+      actualCompletionDate: parseDateValue((project.primeContract as any)?.actualCompletionDate),
+      setInactiveDate: (project.primeContract as any)?.setInactiveDate?.slice(0, 10) ?? '',
+      tcoDate: (project.primeContract as any)?.tcoDate?.slice(0, 10) ?? '',
     },
   });
 
   /* ---- Status (not in projectFormSchema, managed separately) ---- */
 
-  const [statusId, setStatusId] = useState<string>(project.statusId ?? '');
-
   /* ---- Mutation ---- */
 
   const updateMutation = useUpdateProjectMutation();
+  const setActiveMutation = useSetProjectActiveMutation();
+  const setInactiveMutation = useSetProjectInactiveMutation();
+  const setClosedMutation = useSetProjectClosedMutation();
+  const setCompletedMutation = useSetProjectCompletedMutation();
+
   const [activeSection, setActiveSection] = useState<string>('project-info');
-  const isSubmitting = updateMutation.isPending;
+  const isSubmitting =
+    updateMutation.isPending ||
+    setActiveMutation.isPending ||
+    setInactiveMutation.isPending ||
+    setClosedMutation.isPending ||
+    setCompletedMutation.isPending;
 
   /* ---- Submit ---- */
 
@@ -142,18 +158,41 @@ function ProjectEditFormInner({
       name: data.name,
       description: data.description,
       stageId: data.stageId,
-      division: data.division,
+      divisionId: data.divisionId,
       gcId: data.gcId,
       leadPMId: data.leadPMId || undefined,
-      statusId: statusId || undefined,
+      status: data.status,
       streetAddress: data.streetAddress || undefined,
       city: data.city || undefined,
       state: data.state || undefined,
       zipCode: data.zipCode || undefined,
+      contractValue: data.contractValue,
+      contractType: data.contractType || undefined,
+      retainagePercent: data.retainagePercent,
+      targetBudgetPercent: data.targetBudgetPercent,
+      taxRate: data.taxRate,
+      paymentTerms: data.paymentTerms || undefined,
+      estimatedStartDate: data.estimatedStartDate || undefined,
+      estimatedEndDate: data.estimatedEndDate || undefined,
+      setInactiveDate: data.setInactiveDate || undefined,
+      tcoDate: data.tcoDate || undefined,
     };
 
     try {
+      // 1. Update general fields
       await updateMutation.mutateAsync({ id: projectId, data: payload });
+
+      // 2. Handle status change if needed (backend has separate status endpoints)
+      const oldStatus = project.status;
+      const newStatus = data.status;
+
+      if (oldStatus !== newStatus) {
+        if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
+        else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
+        else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
+        else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
+      }
+
       toast.success('Project updated.');
       navigate(`/app/project/${projectId}/overview`);
     } catch {
@@ -171,8 +210,7 @@ function ProjectEditFormInner({
   }, []);
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
+    <form onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
@@ -241,19 +279,30 @@ function ProjectEditFormInner({
                 )}
               />
 
-              <Field>
-                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                  Project Status
-                </FieldLabel>
-                <SearchableSelect
-                  options={statusOptions}
-                  value={statusId || null}
-                  onValueChange={(v) => setStatusId(v ?? '')}
-                  placeholder="Select status..."
-                  searchPlaceholder="Search statuses..."
-                  emptyMessage="No statuses found."
-                />
-              </Field>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Project Status
+                    </FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <SelectValue placeholder="Select status..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROJECT_STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
             </div>
 
             {/* Row: Job Number (read-only) */}
@@ -458,25 +507,21 @@ function ProjectEditFormInner({
 
             {/* Row: Contract Category */}
             <Controller
-              name="division"
+              name="divisionId"
               control={control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                    Contract Category
+                    Contract Category / Division
                   </FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger aria-invalid={fieldState.invalid}>
-                      <SelectValue placeholder="Select category..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIVISION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={divisionOptions}
+                    value={field.value || null}
+                    onValueChange={(v) => field.onChange(v ?? '')}
+                    placeholder="Select division..."
+                    searchPlaceholder="Search divisions..."
+                    emptyMessage="No divisions found."
+                  />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
@@ -485,12 +530,12 @@ function ProjectEditFormInner({
             {/* Row: Start Date + End Date */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Controller
-                name="effectiveStartDate"
+                name="estimatedStartDate"
                 control={control}
                 render={({ field }) => (
                   <Field>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Start Date
+                      Estimated Start Date
                     </FieldLabel>
                     <InputWrapper>
                       <Input type="date" {...field} />
@@ -500,12 +545,12 @@ function ProjectEditFormInner({
               />
 
               <Controller
-                name="effectiveEndDate"
+                name="estimatedEndDate"
                 control={control}
                 render={({ field }) => (
                   <Field>
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      End Date
+                      Estimated End Date
                     </FieldLabel>
                     <InputWrapper>
                       <Input type="date" {...field} />

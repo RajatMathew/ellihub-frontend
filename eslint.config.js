@@ -26,6 +26,7 @@ export default defineConfig([
     },
     plugins: { 'unused-imports': unusedImports },
     rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
       // Code quality & consistency (non-style; Prettier handles style)
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off',

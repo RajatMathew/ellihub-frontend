@@ -8,6 +8,7 @@ import {
   FileText,
   MoreHorizontal,
   PanelRightOpen,
+  Clock,
   Pencil,
   Trash2,
   Upload,
@@ -74,7 +75,11 @@ import {
   useMarkPaidInvoiceMutation,
   useRejectInvoiceMutation,
   useResolveDisputeInvoiceMutation,
+  useActivityLogQuery,
 } from '../hooks';
+import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
+import { useMemo } from 'react';
+import { History, PlusCircle } from 'lucide-react';
 import {
   invoiceMarkPaidInputSchema,
   type InvoiceMarkPaidInput,
@@ -111,6 +116,50 @@ export function InvoiceDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
+
+  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+    entityType: 'invoice',
+    entityId: invoiceId,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    size: 50,
+  });
+
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    if (!activityData?.data) return [];
+    return activityData.data.map((log) => {
+      const action = log.action.toLowerCase();
+      let icon = <Clock className="size-4" />;
+      let color = "border-muted-foreground/20 bg-muted/30";
+
+      if (action.includes('create')) {
+        icon = <PlusCircle className="size-4 text-primary" />;
+        color = "border-primary/20 bg-primary/5";
+      } else if (action.includes('update')) {
+        icon = <Pencil className="size-4 text-info" />;
+        color = "border-info/20 bg-info/5";
+      } else if (action.includes('approve') || action.includes('paid') || action.includes('resolve')) {
+        icon = <CheckCircle2 className="size-4 text-success" />;
+        color = "border-success/20 bg-success/5";
+      } else if (action.includes('delete') || action.includes('reject')) {
+        icon = <Trash2 className="size-4 text-destructive" />;
+        color = "border-destructive/20 bg-destructive/5";
+      } else if (action.includes('dispute')) {
+        icon = <XCircle className="size-4 text-warning" />;
+        color = "border-warning/20 bg-warning/5";
+      }
+
+      return {
+        id: log.id,
+        user: log.user?.name || 'System',
+        action: log.description,
+        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        avatar: log.user?.image || undefined,
+        icon,
+        color,
+      };
+    });
+  }, [activityData]);
 
   // Reject dialog state
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -481,7 +530,26 @@ export function InvoiceDetailPage() {
         </div>
 
         {/* ---- Right sidebar ---- */}
-        <DetailSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+        <DetailSidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          activityChildren={
+            <div className="p-4">
+              {isActivityLoading ? (
+                <div className="py-6 text-center text-sm text-muted-foreground uppercase tracking-widest">
+                  Loading activity...
+                </div>
+              ) : activityItems.length > 0 ? (
+                <ActivityFeed items={activityItems} />
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <History className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold">No activity recorded yet.</p>
+                </div>
+              )}
+            </div>
+          }
+        >
           <div className="space-y-6 pt-2">
             {/* Financial Summary */}
             <div>

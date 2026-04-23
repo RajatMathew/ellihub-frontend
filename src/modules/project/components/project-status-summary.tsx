@@ -20,6 +20,20 @@ interface ProjectStatusSummaryProps {
   onStatusClick: (id: string | undefined) => void;
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE: 'var(--success)',
+  INACTIVE: 'var(--warning)',
+  CLOSED: 'var(--muted-foreground)',
+  COMPLETED: 'var(--primary)',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Active',
+  INACTIVE: 'Inactive',
+  CLOSED: 'Closed',
+  COMPLETED: 'Completed',
+};
+
 export function ProjectStatusSummary({
   projects,
   activeStatusId,
@@ -29,10 +43,25 @@ export function ProjectStatusSummary({
     const map = new Map<string, StatusGroup>();
 
     for (const project of projects) {
-      if (!project.status) continue;
-      const { id, label, color } = project.status;
+      const status = project.statusRef ?? project.status;
+      if (!status) continue;
+      
+      let id: string;
+      let label: string;
+      let color: string;
+
+      if (typeof status === 'string') {
+        id = status;
+        label = STATUS_LABELS[id] || id;
+        color = STATUS_COLORS[id] || 'var(--primary)';
+      } else {
+        id = status.id;
+        label = status.label || status.name || 'Unknown';
+        color = status.color || 'var(--primary)';
+      }
+
       const existing = map.get(id);
-      const value = project.primeContract?.contractValue ?? 0;
+      const value = project.contractValue ?? 0;
 
       if (existing) {
         existing.total += value;
@@ -42,7 +71,6 @@ export function ProjectStatusSummary({
       }
     }
 
-    // Sort by status order if available, otherwise by label
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [projects]);
 

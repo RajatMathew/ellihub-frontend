@@ -15,7 +15,7 @@ import {
   type SCOLineItemInput,
 } from '../schemas/sco.schema';
 
-const BASE = '/scos';
+const BASE = '/sco';
 
 export const scoApi = {
   async list(params?: ListSCOsParams): Promise<SCOPaginatedResponse> {

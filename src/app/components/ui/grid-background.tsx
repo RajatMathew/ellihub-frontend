@@ -37,6 +37,11 @@ type GridBackgroundProps = HTMLMotionProps<'div'> & {
   };
 };
 
+const createSeededRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
+
 function GridBackground({
   className,
   children,
@@ -79,8 +84,15 @@ function GridBackground({
   const animatedBeams = React.useMemo(
     () =>
       Array.from({ length: Math.min(count, 12) }, (_, i) => {
-        const direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-        const startPosition = Math.random() > 0.5 ? 'start' : 'end';
+        const baseSeed = count * 31 + rows * 17 + cols * 19 + i * 23;
+        const directionSeed = createSeededRandom(baseSeed + 1);
+        const lineSeed = createSeededRandom(baseSeed + 2);
+        const delaySeed = createSeededRandom(baseSeed + 3);
+        const durationSeed = createSeededRandom(baseSeed + 4);
+        const repeatSeed = createSeededRandom(baseSeed + 5);
+
+        const direction = directionSeed > 0.5 ? 'horizontal' : 'vertical';
+        const startPosition = createSeededRandom(baseSeed + 6) > 0.5 ? 'start' : 'end';
 
         return {
           id: i,
@@ -91,10 +103,11 @@ function GridBackground({
           // For vertical beams: choose a column index (1 to cols-1) - exclude edges
           gridLine:
             direction === 'horizontal'
-              ? Math.floor(Math.random() * (rows - 1)) + 1
-              : Math.floor(Math.random() * (cols - 1)) + 1,
-          delay: Math.random() * 2,
-          duration: speed + Math.random() * 2,
+              ? Math.floor(lineSeed * (rows - 1)) + 1
+              : Math.floor(lineSeed * (cols - 1)) + 1,
+          delay: delaySeed * 2,
+          duration: speed + durationSeed * 2,
+          repeatDelay: repeatSeed * 3 + 2,
         };
       }),
     [count, beamColors, speed, cols, rows]
@@ -194,7 +207,7 @@ function GridBackground({
               duration: beam.duration,
               delay: beam.delay,
               repeat: Infinity,
-              repeatDelay: Math.random() * 3 + 2, // 2-5s pause between repeats
+              repeatDelay: beam.repeatDelay, // 2-5s pause between repeats
               ease: 'linear',
               times: [0, 0.1, 0.9, 1], // Quick fade in, maintain, quick fade out
             }}

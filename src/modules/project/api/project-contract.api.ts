@@ -6,7 +6,7 @@ import {
   type UpsertPrimeContractInput,
 } from '@modules/project/schemas/project-contract.schema';
 
-const BASE = '/projects';
+const BASE = '/project';
 
 export const projectContractApi = {
   async get(projectId: string): Promise<PrimeContract> {
@@ -30,5 +30,9 @@ export const projectContractApi = {
       throw result.error;
     }
     return result.data;
+  },
+
+  async addAttachment(data: { projectId: string; fileId: string }): Promise<void> {
+    await api.patch(`${BASE}/prime-contract/add`, data);
   },
 };

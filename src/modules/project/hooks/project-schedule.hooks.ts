@@ -5,9 +5,7 @@ import { projectScheduleApi } from '@modules/project/api/project-schedule.api';
 import { projectScheduleKeys } from '@modules/project/constants/project-schedule.keys';
 import { projectKeys } from '@modules/project/constants/project.keys';
 import type {
-  CreateScheduleEntryInput,
   ListScheduleParams,
-  UpdateScheduleEntryInput,
 } from '@modules/project/schemas/project-schedule.schema';
 
 export const useProjectScheduleQuery = (projectId: string, params?: ListScheduleParams) =>
@@ -20,13 +18,15 @@ export const useProjectScheduleQuery = (projectId: string, params?: ListSchedule
 export const useCreateScheduleEntryMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      data,
-    }: {
+    mutationFn: (data: {
       projectId: string;
-      data: CreateScheduleEntryInput;
-    }) => projectScheduleApi.create(projectId, data),
+      date: string;
+      description: string;
+      adjustedStartDate?: string;
+      adjustedFinishDate?: string;
+      notes?: string;
+      fileId?: string;
+    }) => projectScheduleApi.create(data),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: projectScheduleKeys.list(projectId) });
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
@@ -38,18 +38,21 @@ export const useCreateScheduleEntryMutation = () => {
 export const useUpdateScheduleEntryMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      entryId,
-      data,
-    }: {
-      projectId: string;
-      entryId: string;
-      data: UpdateScheduleEntryInput;
-    }) => projectScheduleApi.update(projectId, entryId, data),
-    onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: projectScheduleKeys.list(projectId) });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    mutationFn: (data: {
+      id: string;
+      date?: string;
+      description?: string;
+      adjustedStartDate?: string;
+      adjustedFinishDate?: string;
+      notes?: string;
+      fileId?: string;
+      projectId?: string; // and this if needed for invalidation
+    }) => projectScheduleApi.update(data),
+    onSuccess: (_, variables) => {
+      if (variables.projectId) {
+        qc.invalidateQueries({ queryKey: projectScheduleKeys.list(variables.projectId) });
+        qc.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) });
+      }
     },
     onError: () => toast.error('Failed to update schedule entry.'),
   });
@@ -58,13 +61,8 @@ export const useUpdateScheduleEntryMutation = () => {
 export const useDeleteScheduleEntryMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      entryId,
-    }: {
-      projectId: string;
-      entryId: string;
-    }) => projectScheduleApi.remove(projectId, entryId),
+    mutationFn: ({ projectId, id }: { projectId: string; id: string }) =>
+      projectScheduleApi.remove(projectId, id),
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: projectScheduleKeys.list(projectId) });
       qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });

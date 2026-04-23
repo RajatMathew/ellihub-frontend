@@ -25,7 +25,7 @@ import {
   type PCOFinancialImpact,
 } from '@modules/project/schemas/pco.schema';
 
-const BASE = '/pcos';
+const BASE = '/pco';
 
 /**
  * Backend wraps all responses in: { success, message, data, pagination?, ... }

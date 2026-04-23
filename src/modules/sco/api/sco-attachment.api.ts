@@ -1,6 +1,6 @@
 import api from '@app/api';
 
-const BASE = '/scos';
+const BASE = '/sco';
 
 export const scoAttachmentApi = {
   async add(scoId: string, data: { fileId: string }) {

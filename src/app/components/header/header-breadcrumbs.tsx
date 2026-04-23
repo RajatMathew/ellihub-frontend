@@ -10,7 +10,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@app/components/ui/breadcrumb';
-
 import { useProjectDetailQuery } from '@modules/project/hooks';
 
 export function HeaderBreadcrumbs() {
@@ -54,7 +53,7 @@ export function HeaderBreadcrumbs() {
           <Fragment key={crumb.path}>
             {index > 0 && <BreadcrumbSeparator />}
             <BreadcrumbItem>
-              {crumb.isLast ? (
+              {crumb.isLast || index == 0 ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
               ) : (
                 <BreadcrumbLink asChild>

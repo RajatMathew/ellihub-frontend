@@ -32,7 +32,10 @@ export const FormSectionNav = forwardRef<
   const internalRef = useRef<HTMLElement>(null);
   const navRef = (ref as React.RefObject<HTMLElement>) || internalRef;
   const onChangeRef = useRef(onSectionChange);
-  onChangeRef.current = onSectionChange;
+
+  useEffect(() => {
+    onChangeRef.current = onSectionChange;
+  }, [onSectionChange]);
 
   useEffect(() => {
     if (!navRef.current) return;

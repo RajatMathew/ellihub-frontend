@@ -9,7 +9,7 @@ import {
   type POPaginatedResponse,
 } from '../schemas/po.schema';
 
-const BASE = '/pos';
+const BASE = '/po';
 
 export const poApi = {
   async get(id: string): Promise<PODetail> {

@@ -5,7 +5,7 @@ import {
   type PCOAttachment,
 } from '@modules/project/schemas/pco-attachment.schema';
 
-const BASE = '/pcos';
+const BASE = '/pco';
 
 export const pcoAttachmentApi = {
   async list(pcoId: string): Promise<PCOAttachment[]> {
