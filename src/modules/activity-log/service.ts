@@ -13,6 +13,7 @@ type LogParams = {
     action: ActivityAction;
     description: string;
     note?: string | null;
+    affectedEntityIds?: string[];
     tx?: TransactionClient;
 };
 
@@ -42,6 +43,7 @@ export const ActivityLogService = {
                 action: rest.action,
                 description: rest.description,
                 note: rest.note ?? null,
+                affectedEntityIds: rest.affectedEntityIds ?? [],
             },
         });
     },
@@ -52,7 +54,10 @@ export const ActivityLogService = {
         pagination: PaginationParams
     ): Promise<{ data: ActivityLog[]; count: number }> => {
         const { skip, take } = pagination;
-        const where = { entityType, entityId };
+        const where = {
+            entityType,
+            OR: [{ entityId }, { affectedEntityIds: { has: entityId } }],
+        };
 
         const [count, data] = await prisma.$transaction([
             prisma.activityLog.count({ where }),
@@ -78,7 +83,9 @@ export const ActivityLogService = {
         const where = {
             ...(userId && { userId }),
             ...(entityType && { entityType }),
-            ...(entityId && { entityId }),
+            ...(entityId && {
+                OR: [{ entityId }, { affectedEntityIds: { has: entityId } }],
+            }),
             ...(action && { action }),
             ...((from || to) && {
                 createdAt: {

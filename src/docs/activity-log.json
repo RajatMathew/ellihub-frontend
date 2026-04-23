@@ -41,7 +41,7 @@
                         "name": "entityId",
                         "in": "query",
                         "schema": { "type": "string" },
-                        "description": "Filter by referenced entity ULID"
+                        "description": "Filter by referenced entity ULID (matches entries where id equals entityId OR is present in affectedEntityIds)"
                     },
                     {
                         "name": "action",
@@ -142,7 +142,7 @@
                         "in": "path",
                         "required": true,
                         "schema": { "type": "string" },
-                        "description": "Entity ULID"
+                        "description": "Entity ULID (matches entries where id equals entityId OR is present in affectedEntityIds)"
                     },
                     {
                         "name": "page",
@@ -235,6 +235,11 @@
                     "action": { "$ref": "#/components/schemas/ActivityAction" },
                     "description": { "type": "string", "description": "Pre-formatted human-readable summary" },
                     "note": { "type": "string", "nullable": true, "description": "Optional free-form text" },
+                    "affectedEntityIds": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Additional entity ULIDs this log entry references. Queries filtering by entityId will also match entries where the id appears here."
+                    },
                     "createdAt": { "type": "string", "format": "date-time" }
                 }
             },

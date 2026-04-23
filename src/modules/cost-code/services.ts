@@ -153,6 +153,7 @@ export const CostCodeService = {
             entityId: created.id,
             action: 'create',
             description: `Created cost code ${created.code} — ${created.name}`,
+            affectedEntityIds: [created.costCodeCategoryId],
         });
 
         return created;
@@ -210,6 +211,12 @@ export const CostCodeService = {
             entityId: updated.id,
             action: 'update',
             description: `Updated cost code ${updated.code} — ${updated.name}`,
+            affectedEntityIds: [
+                updated.costCodeCategoryId,
+                ...(costCode.costCodeCategoryId !== updated.costCodeCategoryId
+                    ? [costCode.costCodeCategoryId]
+                    : []),
+            ],
         });
 
         return updated;
@@ -296,6 +303,7 @@ export const CostCodeService = {
             entityId: id,
             action: 'delete',
             description: `Deleted cost code ${costCode.code} — ${costCode.name}`,
+            affectedEntityIds: [costCode.costCodeCategoryId],
         });
     },
 };

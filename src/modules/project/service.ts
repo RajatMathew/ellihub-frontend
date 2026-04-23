@@ -104,6 +104,7 @@ export const ProjectService = {
                 entityId: project.id,
                 action: 'create',
                 description: `Created project ${project.name} (${project.jobNumber})`,
+                affectedEntityIds: [gcId, ...(leadPMId ? [leadPMId] : [])],
                 tx,
             });
 
@@ -251,6 +252,14 @@ export const ProjectService = {
                 entityId: id,
                 action: 'update',
                 description: `Updated project ${updated.name}`,
+                affectedEntityIds: [
+                    gcId,
+                    ...(leadPMId ? [leadPMId] : []),
+                    ...(project.gcId !== gcId ? [project.gcId] : []),
+                    ...(project.leadPMId && project.leadPMId !== leadPMId
+                        ? [project.leadPMId]
+                        : []),
+                ],
                 tx,
             });
 
@@ -297,6 +306,7 @@ export const ProjectService = {
                 entityId: projectId,
                 action: 'create',
                 description: `Added schedule entry to project ${project.name}`,
+                affectedEntityIds: [schedule.id, ...(fileId ? [fileId] : [])],
                 tx,
             });
 
@@ -352,6 +362,11 @@ export const ProjectService = {
                 entityId: schedule.projectId,
                 action: 'update',
                 description: `Updated schedule entry on project ${schedule.project.name}`,
+                affectedEntityIds: [
+                    schedule.id,
+                    ...(fileId ? [fileId] : []),
+                    ...(schedule.fileId && schedule.fileId !== fileId ? [schedule.fileId] : []),
+                ],
                 tx,
             });
 
@@ -380,6 +395,7 @@ export const ProjectService = {
             entityId: schedule.projectId,
             action: 'delete',
             description: `Removed schedule entry from project ${schedule.project.name}`,
+            affectedEntityIds: [schedule.id, ...(schedule.fileId ? [schedule.fileId] : [])],
         });
     },
 
@@ -424,6 +440,7 @@ export const ProjectService = {
                 entityId: projectId,
                 action: 'link',
                 description: `Added ${employee.name} to project ${project.name} as ${role}`,
+                affectedEntityIds: [employeeId],
                 tx,
             });
 
@@ -458,6 +475,7 @@ export const ProjectService = {
                 entityId: projectId,
                 action: 'unlink',
                 description: `Removed ${member.employee.name} from project ${member.project.name}`,
+                affectedEntityIds: [employeeId],
                 tx,
             });
         });
@@ -498,6 +516,7 @@ export const ProjectService = {
                 entityId: projectId,
                 action: 'link',
                 description: `Added prime contract to project ${project.name}`,
+                affectedEntityIds: [fileId, primeContract.id],
                 tx,
             });
 

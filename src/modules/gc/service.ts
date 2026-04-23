@@ -107,6 +107,11 @@ export const GcService = {
 
         checkDeletedAt(gc);
 
+        const affectedContacts = await prisma.contact.findMany({
+            where: { generalContractorId: id },
+            select: { id: true },
+        });
+
         await prisma.$transaction([
             prisma.contact.updateMany({
                 where: { generalContractorId: id },
@@ -124,6 +129,7 @@ export const GcService = {
             entityId: id,
             action: 'delete',
             description: `Deleted general contractor ${gc.name}`,
+            affectedEntityIds: affectedContacts.map((c) => c.id),
         });
     },
 
@@ -168,6 +174,7 @@ export const GcService = {
                 entityId: gcId,
                 action: 'link',
                 description: `Linked document ${file.name} to GC ${gc.name}`,
+                affectedEntityIds: [fileId],
                 tx,
             });
 
@@ -199,6 +206,7 @@ export const GcService = {
             entityId: gcId,
             action: 'update',
             description: `Updated GC document (fileId=${fileId})`,
+            affectedEntityIds: [fileId],
         });
 
         return updated;
@@ -225,6 +233,7 @@ export const GcService = {
             entityId: gcId,
             action: 'unlink',
             description: `Unlinked document (fileId=${fileId}) from GC`,
+            affectedEntityIds: [fileId],
         });
     },
 

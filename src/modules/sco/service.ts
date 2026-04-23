@@ -163,6 +163,7 @@ export const ScoService = {
                 entityId: sco.id,
                 action: 'create',
                 description: `Created SCO ${sco.scoNumber} on project ${project.name}`,
+                affectedEntityIds: [projectId],
                 tx,
             });
 
@@ -263,6 +264,7 @@ export const ScoService = {
                 entityId: id,
                 action: 'update',
                 description: `Updated SCO ${updated.scoNumber}`,
+                affectedEntityIds: [projectId],
                 tx,
             });
 
@@ -301,6 +303,7 @@ export const ScoService = {
                 entityId: scoId,
                 action: 'link',
                 description: `Attached file ${file.name} to SCO ${sco.scoNumber}`,
+                affectedEntityIds: [documentId, sco.projectId],
                 tx,
             });
 
@@ -332,6 +335,7 @@ export const ScoService = {
             entityId: attachment.scoId,
             action: 'unlink',
             description: `Removed attachment ${attachment.document.name} from SCO ${attachment.sco.scoNumber}`,
+            affectedEntityIds: [attachment.documentId, attachment.sco.projectId],
         });
     },
 };

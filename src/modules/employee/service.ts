@@ -223,6 +223,7 @@ export const EmployeeService = {
                 entityId: employeeId,
                 action: 'link',
                 description: `Linked document ${file.name} to employee ${employee.name}`,
+                affectedEntityIds: [fileId],
                 tx,
             });
 
@@ -251,6 +252,7 @@ export const EmployeeService = {
             entityId: employeeId,
             action: 'unlink',
             description: `Unlinked document (fileId=${fileId}) from employee`,
+            affectedEntityIds: [fileId],
         });
     },
 };

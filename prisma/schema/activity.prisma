@@ -1,16 +1,18 @@
 model ActivityLog {
-  id          String   @id
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id     String @id
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  entityType  String
-  entityId    String
+  entityType String
+  entityId   String
 
   action      String
   description String
   note        String?
 
-  createdAt   DateTime @default(now())
+  affectedEntityIds String[] @default([])
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([entityType, entityId, createdAt(sort: Desc)])

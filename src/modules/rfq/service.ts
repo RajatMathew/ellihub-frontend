@@ -96,6 +96,7 @@ export const RfqService = {
                 entityId: rfq.id,
                 action: 'create',
                 description: `Created RFQ ${rfq.rfqNumber} on project ${project.name}`,
+                affectedEntityIds: [projectId],
                 tx,
             });
 
@@ -119,6 +120,7 @@ export const RfqService = {
             entityId: id,
             action: 'update',
             description: `Set RFQ ${updated.rfqNumber} to DRAFT`,
+            affectedEntityIds: [rfq.projectId],
         });
 
         return updated;
@@ -182,6 +184,7 @@ export const RfqService = {
                 entityId: id,
                 action: 'update',
                 description: `Updated RFQ ${updated.rfqNumber}`,
+                affectedEntityIds: [rfq.projectId],
                 tx,
             });
 
@@ -218,6 +221,7 @@ export const RfqService = {
             entityId: rfqId,
             action: 'link',
             description: `Added vendor ${vendor.name} to RFQ ${rfq.rfqNumber}`,
+            affectedEntityIds: [vendorId, rfq.projectId, quote.id],
         });
 
         return quote;
@@ -289,6 +293,7 @@ export const RfqService = {
                 entityId: quote.rfqId,
                 action: 'update',
                 description: `Submitted quote from ${quote.vendor.name} on RFQ ${quote.rfq.rfqNumber}`,
+                affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id, ...attachments],
                 tx,
             });
 
@@ -355,6 +360,7 @@ export const RfqService = {
                 entityId: quote.rfqId,
                 action: 'update',
                 description: `Edited quote from ${quote.vendor.name} on RFQ ${quote.rfq.rfqNumber}`,
+                affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id, ...attachments],
                 tx,
             });
 
@@ -399,6 +405,7 @@ export const RfqService = {
                 entityId: quote.rfqId,
                 action: 'update',
                 description: `Removed submitted quote from ${quote.vendor.name} on RFQ ${quote.rfq.rfqNumber}`,
+                affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id],
                 tx,
             });
 
@@ -441,6 +448,7 @@ export const RfqService = {
             entityId: quote.rfqId,
             action: 'update',
             description: `${quote.vendor.name} declined to quote on RFQ ${quote.rfq.rfqNumber}`,
+            affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id],
         });
 
         return updated;
@@ -471,6 +479,7 @@ export const RfqService = {
                 entityId: quote.rfqId,
                 action: 'unlink',
                 description: `Removed vendor quote from ${quote.vendor.name} on RFQ ${quote.rfq.rfqNumber}`,
+                affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id],
                 tx,
             });
         });
@@ -510,6 +519,7 @@ export const RfqService = {
                 entityId: rfqId,
                 action: 'link',
                 description: `Attached file ${file.name} to RFQ ${rfq.rfqNumber}`,
+                affectedEntityIds: [documentId, rfq.projectId],
                 tx,
             });
 
@@ -540,6 +550,7 @@ export const RfqService = {
             entityId: attachment.rfqId,
             action: 'unlink',
             description: `Removed attachment ${attachment.document.name} from RFQ ${attachment.rfq.rfqNumber}`,
+            affectedEntityIds: [attachment.documentId, attachment.rfq.projectId],
         });
     },
 
@@ -584,6 +595,7 @@ export const RfqService = {
                 entityId: quote.rfqId,
                 action: 'update',
                 description: `Awarded RFQ ${updated.rfqNumber} to ${quote.vendor.name}`,
+                affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id],
                 tx,
             });
 
@@ -622,6 +634,10 @@ export const RfqService = {
                 entityId: id,
                 action: 'update',
                 description: `Un-awarded RFQ ${updated.rfqNumber}`,
+                affectedEntityIds: [
+                    rfq.projectId,
+                    ...(rfq.awardedVendorId ? [rfq.awardedVendorId] : []),
+                ],
                 tx,
             });
 
@@ -653,6 +669,7 @@ export const RfqService = {
             entityId: id,
             action: 'update',
             description: `Voided RFQ ${updated.rfqNumber}`,
+            affectedEntityIds: [rfq.projectId],
         });
 
         return updated;
@@ -674,6 +691,7 @@ export const RfqService = {
             entityId: id,
             action: 'update',
             description: `Set RFQ ${updated.rfqNumber} to PUBLISHED`,
+            affectedEntityIds: [rfq.projectId],
         });
 
         return updated;

@@ -194,6 +194,7 @@ export const PoService = {
                 entityId: po.id,
                 action: 'create',
                 description: `Created PO ${po.poNumber} on project ${project.name}`,
+                affectedEntityIds: [projectId, vendorId, ...(rfqId ? [rfqId] : [])],
                 tx,
             });
 
@@ -275,6 +276,7 @@ export const PoService = {
                 entityId: po.id,
                 action: 'create',
                 description: `Created PO ${po.poNumber} from RFQ ${rfq.rfqNumber}`,
+                affectedEntityIds: [rfq.id, rfq.projectId, rfq.awardedVendorId!],
                 tx,
             });
 
@@ -394,6 +396,13 @@ export const PoService = {
                 entityId: id,
                 action: 'update',
                 description: `Updated PO ${updated.poNumber}`,
+                affectedEntityIds: [
+                    projectId,
+                    vendorId,
+                    ...(rfqId ? [rfqId] : []),
+                    ...(existing.vendorId !== vendorId ? [existing.vendorId] : []),
+                    ...(existing.rfqId && existing.rfqId !== rfqId ? [existing.rfqId] : []),
+                ],
                 tx,
             });
 
@@ -439,6 +448,7 @@ export const PoService = {
                 entityId: purchaseOrderId,
                 action: 'link',
                 description: `Attached file ${file.name} to PO ${po.poNumber}`,
+                affectedEntityIds: [documentId],
                 tx,
             });
 
@@ -467,6 +477,7 @@ export const PoService = {
             entityId: attachment.purchaseOrderId,
             action: 'unlink',
             description: `Removed attachment ${attachment.document.name} from PO ${attachment.purchaseOrder.poNumber}`,
+            affectedEntityIds: [attachment.documentId],
         });
     },
 
@@ -498,6 +509,7 @@ export const PoService = {
             entityId: id,
             action: 'update',
             description: `Set PO ${updated.poNumber} to DRAFT`,
+            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
         });
 
         return updated;
@@ -523,6 +535,7 @@ export const PoService = {
             entityId: id,
             action: 'update',
             description: `Issued PO ${updated.poNumber}`,
+            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
         });
 
         return updated;
@@ -551,6 +564,7 @@ export const PoService = {
             entityId: id,
             action: 'update',
             description: `Marked PO ${updated.poNumber} as DELIVERED`,
+            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
         });
 
         return updated;
@@ -587,6 +601,7 @@ export const PoService = {
             entityId: id,
             action: 'update',
             description: `Cancelled PO ${updated.poNumber}`,
+            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
         });
 
         return updated;

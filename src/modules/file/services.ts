@@ -73,6 +73,7 @@ export const FileService = {
             entityId: f.id,
             action: 'create',
             description: `Created folder ${f.name}`,
+            affectedEntityIds: f.parentId ? [f.parentId] : [],
         });
 
         return f;
@@ -95,6 +96,7 @@ export const FileService = {
             entityId: file.id,
             action: 'create',
             description: `Uploaded file ${file.name}`,
+            affectedEntityIds: file.parentId ? [file.parentId] : [],
         });
     },
 
@@ -528,6 +530,7 @@ export const FileService = {
             entityId: id,
             action: 'delete',
             description: `Deleted folder ${folder.name}`,
+            affectedEntityIds: folder.parentId ? [folder.parentId] : [],
         });
     },
 
@@ -625,6 +628,7 @@ export const FileService = {
             entityId: id,
             action: 'delete',
             description: `Deleted file ${file.name}`,
+            affectedEntityIds: file.parentId ? [file.parentId] : [],
         });
     },
 };

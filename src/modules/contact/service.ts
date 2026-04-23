@@ -75,6 +75,7 @@ export const ContactService = {
             entityId: created.id,
             action: 'create',
             description: `Created contact ${created.fullName}`,
+            affectedEntityIds: [vendorId, generalContractorId].filter((v): v is string => !!v),
         });
 
         return created;
@@ -246,6 +247,14 @@ export const ContactService = {
             entityId: updated.id,
             action: 'update',
             description: `Updated contact ${updated.fullName}`,
+            affectedEntityIds: [
+                updated.vendorId,
+                updated.generalContractorId,
+                contact.vendorId !== updated.vendorId ? contact.vendorId : null,
+                contact.generalContractorId !== updated.generalContractorId
+                    ? contact.generalContractorId
+                    : null,
+            ].filter((v): v is string => !!v),
         });
 
         return updated;
@@ -386,6 +395,7 @@ export const ContactService = {
             entityId: contactId,
             action: 'link',
             description: `Linked contact ${contact.fullName} to ${targetLabel}`,
+            affectedEntityIds: [vendorId, generalContractorId].filter((v): v is string => !!v),
         });
 
         return updated;
@@ -418,6 +428,9 @@ export const ContactService = {
             entityId: contactId,
             action: 'unlink',
             description: `Unlinked contact ${contact.fullName} from vendor/GC`,
+            affectedEntityIds: [contact.vendorId, contact.generalContractorId].filter(
+                (v): v is string => !!v
+            ),
         });
 
         return updated;

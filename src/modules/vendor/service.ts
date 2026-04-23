@@ -111,6 +111,11 @@ export const VendorService = {
 
         checkDeletedAt(vendor);
 
+        const affectedContacts = await prisma.contact.findMany({
+            where: { vendorId: id },
+            select: { id: true },
+        });
+
         await prisma.$transaction([
             prisma.contact.updateMany({
                 where: { vendorId: id },
@@ -128,6 +133,7 @@ export const VendorService = {
             entityId: id,
             action: 'delete',
             description: `Deleted vendor ${vendor.name}`,
+            affectedEntityIds: affectedContacts.map((c) => c.id),
         });
     },
 
@@ -175,6 +181,7 @@ export const VendorService = {
                 entityId: vendorId,
                 action: 'link',
                 description: `Linked document ${file.name} to vendor ${vendor.name}`,
+                affectedEntityIds: [fileId],
                 tx,
             });
 
@@ -206,6 +213,7 @@ export const VendorService = {
             entityId: vendorId,
             action: 'update',
             description: `Updated vendor document (fileId=${fileId})`,
+            affectedEntityIds: [fileId],
         });
 
         return updated;
@@ -232,6 +240,7 @@ export const VendorService = {
             entityId: vendorId,
             action: 'unlink',
             description: `Unlinked document (fileId=${fileId}) from vendor`,
+            affectedEntityIds: [fileId],
         });
     },
 
