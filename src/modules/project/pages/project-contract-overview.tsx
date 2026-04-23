@@ -70,15 +70,16 @@ export default function ProjectContractOverview() {
   const deleteMutation = useDeleteProjectMutation();
 
   /* ---- Custom Hooks ---- */
+  const { totalPOCommitted, activePOsCount } = usePOCalculations({
+    pos: allPOs?.data,
+  });
+
   const computations = usePrimeContractComputations({
     project,
     contract,
     pipeline,
+    totalPOCommitted,
     invoiceSummary: undefined, // payments deferred to accounting module
-  });
-
-  const { totalPOCommitted, activePOsCount } = usePOCalculations({
-    pos: allPOs?.data,
   });
 
   const teamActions = useTeamMemberActions({ projectId });

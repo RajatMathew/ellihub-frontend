@@ -25,19 +25,34 @@ export default function ProjectList() {
   const statusId = searchParams.get('statusId') ?? undefined;
 
   const { data, isLoading } = useProjectsQuery({ 
-    statusId, 
-    size: 25,
+    size: 100, // Fetch more to allow client-side filtering
     sortBy: 'createdAt',
     sortOrder: 'desc',
-    year: undefined, // Removing year as it causes 500 on backend
+    year: undefined, 
   });
 
   const projects = (data?.data ?? []).filter((p) => {
+    // Filter by year
+    if (year) {
+      const pYear = p.createdAt ? new Date(p.createdAt).getFullYear() : null;
+      if (pYear !== year) return false;
+    }
+    // Filter by status (we filter in JS so summary cards stay visible)
+    if (statusId) {
+      const pStatus = p.statusRef?.id ?? p.status;
+      if (pStatus !== statusId) return false;
+    }
+    return true;
+  });
+
+  // For the summary cards, we want the count for the whole year, regardless of status filter
+  const summaryProjects = (data?.data ?? []).filter((p) => {
     if (!year) return true;
     const pYear = p.createdAt ? new Date(p.createdAt).getFullYear() : null;
     return pYear === year;
   });
-  const totalCount = projects.length;
+
+  const totalCount = summaryProjects.length;
 
   const handleYearChange = useCallback(
     (y: number) => {
@@ -112,7 +127,7 @@ export default function ProjectList() {
       {!isLoading && (
         <>
           <ProjectStatusSummary
-            projects={projects}
+            projects={summaryProjects}
             activeStatusId={statusId}
             onStatusClick={handleStatusClick}
           />
