@@ -144,6 +144,24 @@ export const ContactService = {
         return { data, count };
     },
 
+    searchUnlinkedContacts: async (
+        search?: string
+    ): Promise<{ id: string; fullName: string }[]> => {
+        return prisma.contact.findMany({
+            where: {
+                deletedAt: null,
+                vendorId: null,
+                generalContractorId: null,
+                ...(search && {
+                    fullName: { contains: search, mode: 'insensitive' as const },
+                }),
+            },
+            select: { id: true, fullName: true },
+            orderBy: { fullName: 'asc' },
+            take: 25,
+        });
+    },
+
     updateContact: async (request: ContactUpdateRequest, userId: string): Promise<Contact> => {
         const {
             id,

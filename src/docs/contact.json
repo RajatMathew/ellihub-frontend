@@ -1,5 +1,51 @@
 {
     "paths": {
+        "/contact/search": {
+            "get": {
+                "tags": ["Contacts"],
+                "summary": "Search unlinked contacts (not linked to a vendor or GC)",
+                "operationId": "searchUnlinkedContacts",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by full name (case-insensitive, partial match)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of unlinked contacts (id and fullName only)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": { "type": "string" },
+                                                            "fullName": { "type": "string" }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires contact:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/contact": {
             "get": {
                 "tags": ["Contacts"],

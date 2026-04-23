@@ -26,6 +26,12 @@ app.get(
     }
 );
 
+app.get('/search', requirePermission({ contact: ['read'] }), async (c) => {
+    const search = c.req.query('search');
+    const contacts = await ContactService.searchUnlinkedContacts(search);
+    return success(c, contacts);
+});
+
 app.get('/:id', requirePermission({ contact: ['read'] }), async (c) => {
     const id = c.req.param('id');
     const contact = await ContactService.getContact(id);
