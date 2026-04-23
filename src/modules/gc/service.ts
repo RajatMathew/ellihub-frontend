@@ -107,10 +107,16 @@ export const GcService = {
 
         checkDeletedAt(gc);
 
-        await prisma.generalContractor.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
+        await prisma.$transaction([
+            prisma.contact.updateMany({
+                where: { generalContractorId: id },
+                data: { generalContractorId: null },
+            }),
+            prisma.generalContractor.update({
+                where: { id },
+                data: { deletedAt: new Date() },
+            }),
+        ]);
 
         await ActivityLogService.log({
             userId,

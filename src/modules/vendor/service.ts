@@ -111,10 +111,16 @@ export const VendorService = {
 
         checkDeletedAt(vendor);
 
-        await prisma.vendor.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
+        await prisma.$transaction([
+            prisma.contact.updateMany({
+                where: { vendorId: id },
+                data: { vendorId: null },
+            }),
+            prisma.vendor.update({
+                where: { id },
+                data: { deletedAt: new Date() },
+            }),
+        ]);
 
         await ActivityLogService.log({
             userId,
