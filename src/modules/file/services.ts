@@ -411,6 +411,7 @@ export const FileService = {
 
                 parentId: null,
             },
+            include: { createdByUser: true },
         });
 
         if (!rootFolder) throw new NotFoundError('Root folder not found.');
@@ -426,6 +427,7 @@ export const FileService = {
 
                 parentId: rootFolder.id,
             },
+            include: { createdByUser: true },
         });
 
         if (!subFolder) throw new NotFoundError(`${folder} folder not found.`);
