@@ -15,3 +15,4 @@ bun run scripts/seed-gc-types.ts
 bun run scripts/seed-project-stages.ts
 bun run scripts/seed-trade-categories.ts
 bun run scripts/seed-units.ts
+bun run scripts/seed-pto-types.ts

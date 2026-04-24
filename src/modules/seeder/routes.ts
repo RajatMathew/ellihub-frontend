@@ -5,6 +5,7 @@ import { seedCostCodes } from '../../../scripts/seed-cost-codes';
 import { seedGcTypes } from '../../../scripts/seed-gc-types';
 import { seedProfessionalRoles } from '../../../scripts/seed-professional-roles';
 import { seedProjectStages } from '../../../scripts/seed-project-stages';
+import { seedPtoTypes } from '../../../scripts/seed-pto-types';
 import { seedRootFolder } from '../../../scripts/seed-root-folder';
 import { seedTradeCategories } from '../../../scripts/seed-trade-categories';
 import { seedUnits } from '../../../scripts/seed-units';
@@ -22,6 +23,7 @@ const SEEDERS: Array<{ name: string; run: () => Promise<void> }> = [
     { name: 'project-stages', run: seedProjectStages },
     { name: 'trade-categories', run: seedTradeCategories },
     { name: 'units', run: seedUnits },
+    { name: 'pto-types', run: seedPtoTypes },
 ];
 
 const runAllSeeders = async (): Promise<void> => {

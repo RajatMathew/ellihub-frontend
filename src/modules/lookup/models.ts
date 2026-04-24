@@ -18,4 +18,5 @@ export enum LookupType {
     PROJECT_STAGE = 'PROJECT_STAGE',
     TRADE_CATEGORY = 'TRADE_CATEGORY',
     UNIT = 'UNIT',
+    PTO_TYPE = 'PTO_TYPE',
 }
