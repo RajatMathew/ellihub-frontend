@@ -429,7 +429,7 @@
             },
             "SubmitQuoteRequest": {
                 "type": "object",
-                "required": ["id", "quotedAmount"],
+                "required": ["id", "quotedAmount", "attachments"],
                 "properties": {
                     "id": { "type": "string", "description": "RFQVendorQuote ULID" },
                     "quotedAmount": { "type": "number", "minimum": 0 },
@@ -437,7 +437,7 @@
                     "attachments": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "default": []
+                        "minItems": 1
                     }
                 }
             },

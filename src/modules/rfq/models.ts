@@ -63,12 +63,14 @@ export const SubmitQuoteSchema = z.object({
     id: z.ulid(),
     quotedAmount: z.number().nonnegative(),
     leadTime: z.string().min(1).optional().nullable(),
-    attachments: z.array(z.ulid()).default([]),
+    attachments: z.array(z.ulid()).min(1, 'At least one attachment is required'),
 });
 
 export type SubmitQuoteRequest = z.infer<typeof SubmitQuoteSchema>;
 
-export const EditQuoteSchema = SubmitQuoteSchema;
+export const EditQuoteSchema = SubmitQuoteSchema.extend({
+    attachments: z.array(z.ulid()).default([]),
+});
 
 export type EditQuoteRequest = z.infer<typeof EditQuoteSchema>;
 
