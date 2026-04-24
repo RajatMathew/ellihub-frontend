@@ -70,7 +70,9 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         accessorKey: 'createdBy',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Uploaded By" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground truncate block max-w-[150px]">{row.original.createdBy}</span>
+          <span className="text-sm text-foreground truncate block max-w-[150px]">
+            {row.original.createdByUser?.name || row.original.createdBy || '—'}
+          </span>
         ),
         meta: {
           headerClassName: 'min-w-[120px]',

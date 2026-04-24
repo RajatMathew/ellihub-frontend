@@ -241,7 +241,7 @@ export default function FilesListPage() {
     const rows = allChildren.map((item) => ({
       name: item.displayName || item.name,
       size: item.size ?? '',
-      createdBy: item.createdBy,
+      createdBy: item.createdByUser?.name || item.createdBy || '',
       updatedAt: item.updatedAt,
     }));
     const header = ['Name', 'Size', 'Created By', 'Updated At'];

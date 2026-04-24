@@ -20,6 +20,15 @@ export const fileSchema = z
     isDeletable: z.boolean(),
     private: z.boolean(),
     createdBy: z.string().nullable().optional(),
+    createdByUser: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        email: z.string().nullable().optional(),
+        image: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
     deletedBy: z.string().nullable().optional(),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().nullable().optional(),
