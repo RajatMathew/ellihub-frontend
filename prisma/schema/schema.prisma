@@ -27,6 +27,7 @@ model Lookup {
   vendors                Vendor[]
   generalContractors     GeneralContractor[]
   departmentEmployees    DepartmentEmployee[]
+  paidTimeOffs           PaidTimeOff[]
   projectStages          Project[]               @relation("project_stage")
   projectDivisions       Project[]               @relation("project_division")
   rfqs                   RFQ[]

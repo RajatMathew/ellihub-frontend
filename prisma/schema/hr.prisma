@@ -13,10 +13,18 @@ model Employee {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
 
-  departments     DepartmentEmployee[]
-  documents       EmployeeDocument[]
-  leadProjects    Project[]
-  projectTeams    ProjectTeamMember[]
+  status EmployeeStatus @default(ACTIVE)
+
+  departments  DepartmentEmployee[]
+  documents    EmployeeDocument[]
+  leadProjects Project[]
+  projectTeams ProjectTeamMember[]
+  paidTimeOffs PaidTimeOff[]
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
 }
 
 model EmployeeDocument {
@@ -58,4 +66,34 @@ model Department {
   employees DepartmentEmployee[]
 
   @@index([name])
+}
+
+model PaidTimeOff {
+  id         String   @id
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  typeId     String
+  type       Lookup   @relation(fields: [typeId], references: [id])
+  startDate  DateTime  @db.Date
+  endDate    DateTime  @db.Date
+  reason     String?
+  status     PTOStatus @default(PENDING)
+
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([typeId])
+  @@index([status])
+}
+
+enum PTOStatus {
+  APPROVED
+  REJECTED
+  PENDING
 }
