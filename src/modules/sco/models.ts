@@ -30,6 +30,32 @@ export const ScoUpdateSchema = ScoCreateSchema.extend({ id: z.ulid() });
 
 export type ScoUpdateRequest = z.infer<typeof ScoUpdateSchema>;
 
+export const SetScoDraftSchema = z.object({
+    id: z.ulid(),
+});
+
+export type SetScoDraftRequest = z.infer<typeof SetScoDraftSchema>;
+
+export const SetScoApprovedSchema = z.object({
+    id: z.ulid(),
+});
+
+export type SetScoApprovedRequest = z.infer<typeof SetScoApprovedSchema>;
+
+export const SetScoRejectedSchema = z.object({
+    id: z.ulid(),
+    rejectionReason: z.string().min(1),
+});
+
+export type SetScoRejectedRequest = z.infer<typeof SetScoRejectedSchema>;
+
+export const SetScoVoidSchema = z.object({
+    id: z.ulid(),
+    voidReason: z.string().min(1),
+});
+
+export type SetScoVoidRequest = z.infer<typeof SetScoVoidSchema>;
+
 export const AddScoAttachmentSchema = z.object({
     scoId: z.ulid(),
     documentId: z.ulid(),

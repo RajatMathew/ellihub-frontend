@@ -8,6 +8,10 @@ import {
     RemoveScoAttachmentSchema,
     ScoCreateSchema,
     ScoUpdateSchema,
+    SetScoApprovedSchema,
+    SetScoDraftSchema,
+    SetScoRejectedSchema,
+    SetScoVoidSchema,
 } from './models';
 import { ScoService } from './service';
 
@@ -48,6 +52,50 @@ app.put(
     async (c) => {
         const data = c.req.valid('json');
         const sco = await ScoService.updateSco(data, c.get('user')!.id);
+        return success(c, sco);
+    }
+);
+
+app.patch(
+    '/set-draft',
+    requirePermission({ subChangeOrder: ['update'] }),
+    zValidator('json', SetScoDraftSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const sco = await ScoService.setDraft(data, c.get('user')!.id);
+        return success(c, sco);
+    }
+);
+
+app.patch(
+    '/approve',
+    requirePermission({ subChangeOrder: ['update'] }),
+    zValidator('json', SetScoApprovedSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const sco = await ScoService.setApproved(data, c.get('user')!.id);
+        return success(c, sco);
+    }
+);
+
+app.patch(
+    '/reject',
+    requirePermission({ subChangeOrder: ['update'] }),
+    zValidator('json', SetScoRejectedSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const sco = await ScoService.setRejected(data, c.get('user')!.id);
+        return success(c, sco);
+    }
+);
+
+app.patch(
+    '/set-void',
+    requirePermission({ subChangeOrder: ['update'] }),
+    zValidator('json', SetScoVoidSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const sco = await ScoService.setVoid(data, c.get('user')!.id);
         return success(c, sco);
     }
 );

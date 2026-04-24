@@ -12,6 +12,10 @@ import {
     RemoveScoAttachmentRequest,
     ScoCreateRequest,
     ScoUpdateRequest,
+    SetScoApprovedRequest,
+    SetScoDraftRequest,
+    SetScoRejectedRequest,
+    SetScoVoidRequest,
 } from './models';
 import { generateScoNumber } from './utils';
 
@@ -337,5 +341,138 @@ export const ScoService = {
             description: `Removed attachment ${attachment.document.name} from SCO ${attachment.sco.scoNumber}`,
             affectedEntityIds: [attachment.documentId, attachment.sco.projectId],
         });
+    },
+
+    setDraft: async (request: SetScoDraftRequest, userId: string): Promise<SubChangeOrder> => {
+        const { id } = request;
+        const sco = await prisma.subChangeOrder.findUnique({ where: { id } });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        if (sco.status === 'DRAFT') {
+            throw new BadRequestError('SCO is already in DRAFT');
+        }
+
+        const updated = await prisma.subChangeOrder.update({
+            where: { id },
+            data: {
+                status: 'DRAFT',
+                approvedBy: null,
+                approvedAt: null,
+                rejectedBy: null,
+                rejectedAt: null,
+                rejectionReason: null,
+                voidedBy: null,
+                voidedAt: null,
+                voidReason: null,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'subChangeOrder',
+            entityId: id,
+            action: 'update',
+            description: `Set SCO ${updated.scoNumber} to DRAFT`,
+            affectedEntityIds: [sco.projectId],
+        });
+
+        return updated;
+    },
+
+    setApproved: async (
+        request: SetScoApprovedRequest,
+        userId: string
+    ): Promise<SubChangeOrder> => {
+        const { id } = request;
+        const sco = await prisma.subChangeOrder.findUnique({ where: { id } });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        if (sco.status !== 'DRAFT') {
+            throw new BadRequestError('Only DRAFT SCOs can be approved');
+        }
+
+        const updated = await prisma.subChangeOrder.update({
+            where: { id },
+            data: { status: 'APPROVED', approvedBy: userId, approvedAt: new Date() },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'subChangeOrder',
+            entityId: id,
+            action: 'update',
+            description: `Approved SCO ${updated.scoNumber}`,
+            affectedEntityIds: [sco.projectId],
+        });
+
+        return updated;
+    },
+
+    setRejected: async (
+        request: SetScoRejectedRequest,
+        userId: string
+    ): Promise<SubChangeOrder> => {
+        const { id, rejectionReason } = request;
+        const sco = await prisma.subChangeOrder.findUnique({ where: { id } });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        if (sco.status !== 'DRAFT') {
+            throw new BadRequestError('Only DRAFT SCOs can be rejected');
+        }
+
+        const updated = await prisma.subChangeOrder.update({
+            where: { id },
+            data: {
+                status: 'REJECTED',
+                rejectedBy: userId,
+                rejectedAt: new Date(),
+                rejectionReason,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'subChangeOrder',
+            entityId: id,
+            action: 'update',
+            description: `Rejected SCO ${updated.scoNumber}`,
+            affectedEntityIds: [sco.projectId],
+        });
+
+        return updated;
+    },
+
+    setVoid: async (request: SetScoVoidRequest, userId: string): Promise<SubChangeOrder> => {
+        const { id, voidReason } = request;
+        const sco = await prisma.subChangeOrder.findUnique({ where: { id } });
+        if (!sco) throw new NotFoundError('Sub change order not found');
+        checkDeletedAt(sco);
+        if (sco.status === 'VOID') {
+            throw new BadRequestError('SCO is already void');
+        }
+        if (sco.status !== 'APPROVED') {
+            throw new BadRequestError('Only APPROVED SCOs can be voided');
+        }
+
+        const updated = await prisma.subChangeOrder.update({
+            where: { id },
+            data: {
+                status: 'VOID',
+                voidedBy: userId,
+                voidedAt: new Date(),
+                voidReason,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'subChangeOrder',
+            entityId: id,
+            action: 'update',
+            description: `Voided SCO ${updated.scoNumber}`,
+            affectedEntityIds: [sco.projectId],
+        });
+
+        return updated;
     },
 };
