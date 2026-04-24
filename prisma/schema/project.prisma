@@ -48,6 +48,7 @@ model Project {
     rfqs            RFQ[]
     purchaseOrders  PurchaseOrder[]
     subChangeOrders SubChangeOrder[]
+    invoices        Invoice[]
 
     @@index([stageId])
     @@index([status])

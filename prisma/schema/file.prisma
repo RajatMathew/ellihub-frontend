@@ -42,6 +42,8 @@ model File {
   poattachments POAttachment[]
 
   scoattachments SCOAttachment[]
+
+  invoiceAttachments InvoiceAttachment[]
 }
 
 enum FileType {

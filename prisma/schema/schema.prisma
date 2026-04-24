@@ -36,6 +36,7 @@ model Lookup {
   subCOLineItemUnits      SubCOLineItem[]        @relation("SCOLineItemUnit")
   subCOLineItemCategories SubCOLineItem[]        @relation("SCOLineItemCategory")
   subChangeOrders         SubChangeOrder[]       @relation("SCOChangeType")
+  invoicePaymentMethods   Invoice[]              @relation("InvoicePaymentMethod")
 
   @@unique([type, label])
 }

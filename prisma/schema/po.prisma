@@ -56,6 +56,7 @@ model PurchaseOrder {
 
     lineItems   PurchaseOrderLineItem[]
     attachments POAttachment[]
+    invoices    Invoice[]
 
     @@index([projectId])
     @@index([vendorId])
@@ -198,4 +199,59 @@ model SubCOLineItem {
     @@index([unitId])
     @@index([categoryId])
     @@index([costCodeId])
+}
+
+model Invoice {
+    id              String         @id
+    purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+    purchaseOrderId String?
+
+    invoiceNumber String
+
+    project   Project @relation(fields: [projectId], references: [id])
+    projectId String
+    vendor    Vendor  @relation(fields: [vendorId], references: [id])
+    vendorId  String
+
+    totalAmount Decimal  @db.Decimal(15, 2)
+    invoiceDate DateTime
+    dueDate     DateTime
+
+    notes String? @db.Text
+
+    taxAmount Decimal? @db.Decimal(15, 2)
+    taxRate   Decimal?
+
+    paidDate         DateTime?
+    paymentReference String?
+    paymentMethod    Lookup?   @relation("InvoicePaymentMethod", fields: [paymentMethodId], references: [id])
+    paymentMethodId  String?
+    paymentNotes     String?
+    isPaid           Boolean   @default(false)
+
+    relatedSCOIds String[]
+
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    attachments InvoiceAttachment[]
+
+    @@unique([invoiceNumber, vendorId])
+    @@index([projectId])
+    @@index([vendorId])
+    @@index([purchaseOrderId])
+    @@index([paymentMethodId])
+    @@index([dueDate])
+    @@index([invoiceDate])
+}
+
+model InvoiceAttachment {
+    id         String  @id
+    invoice    Invoice @relation(fields: [invoiceId], references: [id])
+    invoiceId  String
+    document   File    @relation(fields: [documentId], references: [id])
+    documentId String  @unique
+
+    @@index([invoiceId])
 }
