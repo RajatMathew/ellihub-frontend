@@ -1,6 +1,45 @@
 {
     "paths": {
         "/rfq": {
+            "get": {
+                "tags": ["RFQ"],
+                "summary": "List RFQs (paginated)",
+                "operationId": "listRfqs",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by rfqNumber or title" },
+                    { "name": "projectId", "in": "query", "schema": { "type": "string" }, "description": "Filter by project ULID" },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "AWARDED", "VOID"] } },
+                    { "name": "typeId", "in": "query", "schema": { "type": "string" }, "description": "Filter by RFQ type lookup ULID" },
+                    { "name": "awardedVendorId", "in": "query", "schema": { "type": "string" }, "description": "Filter by awarded vendor ULID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of RFQs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/RFQ" } },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires rfq:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
             "post": {
                 "tags": ["RFQ"],
                 "summary": "Create an RFQ (auto-generates rfqNumber as {jobNumber}-NNN)",
@@ -51,6 +90,32 @@
                     },
                     "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/{id}": {
+            "get": {
+                "tags": ["RFQ"],
+                "summary": "Get an RFQ by ID (with deliverables, attachments, vendor quotes)",
+                "operationId": "getRfq",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "RFQ ULID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RFQ details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/RFQ" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "RFQ not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
