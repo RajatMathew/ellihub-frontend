@@ -1,0 +1,257 @@
+{
+    "paths": {
+        "/sub-change-order": {
+            "get": {
+                "tags": ["Sub Change Order"],
+                "summary": "List sub change orders (paginated)",
+                "operationId": "listSubChangeOrders",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[projectId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[status]", "in": "query", "schema": { "$ref": "#/components/schemas/SCOStatus" } },
+                    { "name": "filter[changeTypeId]", "in": "query", "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SubChangeOrder" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Sub Change Order"],
+                "summary": "Create a sub change order (auto-generates scoNumber as SCO-{jobNumber}-NNN)",
+                "operationId": "createSubChangeOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScoCreateRequest" } } }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SubChangeOrder" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation / project missing job number", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Project / change type / unit / category / cost code not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "put": {
+                "tags": ["Sub Change Order"],
+                "summary": "Update a sub change order (DRAFT only, replaces line items)",
+                "operationId": "updateSubChangeOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScoUpdateRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SubChangeOrder" } } }] } } } },
+                    "400": { "description": "Not in DRAFT / project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/{id}": {
+            "get": {
+                "tags": ["Sub Change Order"],
+                "summary": "Get a sub change order by id",
+                "operationId": "getSubChangeOrder",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SubChangeOrder" } } }] } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/set-draft": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Revert an SCO to DRAFT (clears approve/reject/void fields)",
+                "operationId": "setScoDraft",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetScoDraftRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/approve": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Approve a DRAFT SCO",
+                "operationId": "approveSco",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetScoApprovedRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/reject": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Reject a DRAFT SCO (with reason)",
+                "operationId": "rejectSco",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetScoRejectedRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/set-void": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Void an APPROVED SCO (with reason)",
+                "operationId": "setScoVoid",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetScoVoidRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already void or not APPROVED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/attachment/add": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Attach a file to a DRAFT SCO (moved to PRIME_CO subfolder)",
+                "operationId": "addScoAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddScoAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "SCO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/sub-change-order/attachment/remove": {
+            "patch": {
+                "tags": ["Sub Change Order"],
+                "summary": "Remove an SCO attachment (DRAFT only)",
+                "operationId": "removeScoAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveScoAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "SCOStatus": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] },
+            "SCOLineItemInput": {
+                "type": "object",
+                "required": ["qty", "unitId", "unitPrice", "categoryId"],
+                "properties": {
+                    "description": { "type": "string", "nullable": true },
+                    "qty": { "type": "number" },
+                    "unitId": { "type": "string" },
+                    "unitPrice": { "type": "number" },
+                    "categoryId": { "type": "string" },
+                    "costCodeId": { "type": "string", "nullable": true }
+                }
+            },
+            "ScoCreateRequest": {
+                "type": "object",
+                "required": ["projectId", "date", "title", "lineItems"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "date": { "type": "string", "format": "date" },
+                    "title": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "markupAmount": { "type": "number", "nullable": true },
+                    "scheduleImpactDays": { "type": "integer", "nullable": true },
+                    "requestedBy": { "type": "string", "nullable": true },
+                    "changeTypeId": { "type": "string", "nullable": true },
+                    "impactsSchedule": { "type": "boolean" },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/SCOLineItemInput" }, "minItems": 1 }
+                }
+            },
+            "ScoUpdateRequest": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/ScoCreateRequest" },
+                    { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+                ]
+            },
+            "SetScoDraftRequest": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+            "SetScoApprovedRequest": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+            "SetScoRejectedRequest": {
+                "type": "object",
+                "required": ["id", "rejectionReason"],
+                "properties": { "id": { "type": "string" }, "rejectionReason": { "type": "string" } }
+            },
+            "SetScoVoidRequest": {
+                "type": "object",
+                "required": ["id", "voidReason"],
+                "properties": { "id": { "type": "string" }, "voidReason": { "type": "string" } }
+            },
+            "AddScoAttachmentRequest": {
+                "type": "object",
+                "required": ["scoId", "documentId"],
+                "properties": { "scoId": { "type": "string" }, "documentId": { "type": "string" } }
+            },
+            "RemoveScoAttachmentRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "SubChangeOrder": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "scoNumber": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "date": { "type": "string", "format": "date-time" },
+                    "title": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "amount": { "type": "string" },
+                    "status": { "$ref": "#/components/schemas/SCOStatus" },
+                    "createdBy": { "type": "string" },
+                    "markupAmount": { "type": "number", "nullable": true },
+                    "scheduleImpactDays": { "type": "integer", "nullable": true },
+                    "requestedBy": { "type": "string", "nullable": true },
+                    "changeTypeId": { "type": "string", "nullable": true },
+                    "impactsSchedule": { "type": "boolean" },
+                    "approvedBy": { "type": "string", "nullable": true },
+                    "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectedBy": { "type": "string", "nullable": true },
+                    "rejectedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectionReason": { "type": "string", "nullable": true },
+                    "voidedBy": { "type": "string", "nullable": true },
+                    "voidedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "voidReason": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            }
+        }
+    }
+}
