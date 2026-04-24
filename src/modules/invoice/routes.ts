@@ -5,9 +5,13 @@ import { requirePermission } from 'src/middleware/auth';
 
 import {
     AddInvoiceAttachmentSchema,
+    DisputeInvoiceSchema,
     InvoiceCreateSchema,
     InvoiceUpdateSchema,
+    MarkInvoicePaidSchema,
+    MarkInvoiceUnpaidSchema,
     RemoveInvoiceAttachmentSchema,
+    ResolveInvoiceDisputeSchema,
 } from './models';
 import { InvoiceService } from './service';
 
@@ -48,6 +52,50 @@ app.put(
     async (c) => {
         const data = c.req.valid('json');
         const invoice = await InvoiceService.updateInvoice(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/mark-paid',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', MarkInvoicePaidSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.markPaid(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/mark-unpaid',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', MarkInvoiceUnpaidSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.markUnpaid(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/dispute',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', DisputeInvoiceSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.disputeInvoice(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/resolve-dispute',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', ResolveInvoiceDisputeSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.resolveDispute(data, c.get('user')!.id);
         return success(c, invoice);
     }
 );

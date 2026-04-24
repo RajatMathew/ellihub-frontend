@@ -87,6 +87,58 @@
                 }
             }
         },
+        "/invoice/mark-paid": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Mark an invoice as paid",
+                "operationId": "markInvoicePaid",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarkInvoicePaidRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already paid or disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Invoice / payment method not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/mark-unpaid": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Revert an invoice to unpaid (clears payment fields)",
+                "operationId": "markInvoiceUnpaid",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarkInvoiceUnpaidRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not currently paid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/dispute": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Flag an invoice as disputed",
+                "operationId": "disputeInvoice",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DisputeInvoiceRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/resolve-dispute": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Resolve an invoice dispute",
+                "operationId": "resolveInvoiceDispute",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResolveInvoiceDisputeRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/invoice/attachment/add": {
             "patch": {
                 "tags": ["Invoice"],
@@ -162,6 +214,35 @@
                 "required": ["id"],
                 "properties": { "id": { "type": "string" } }
             },
+            "MarkInvoicePaidRequest": {
+                "type": "object",
+                "required": ["id", "paidDate", "paymentMethodId"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "paidDate": { "type": "string", "format": "date" },
+                    "paymentMethodId": { "type": "string" },
+                    "paymentReference": { "type": "string", "nullable": true },
+                    "paymentNotes": { "type": "string", "nullable": true }
+                }
+            },
+            "MarkInvoiceUnpaidRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "DisputeInvoiceRequest": {
+                "type": "object",
+                "required": ["id", "disputeReason"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "disputeReason": { "type": "string" }
+                }
+            },
+            "ResolveInvoiceDisputeRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
             "Invoice": {
                 "type": "object",
                 "properties": {
@@ -182,7 +263,10 @@
                     "paymentMethodId": { "type": "string", "nullable": true },
                     "paymentNotes": { "type": "string", "nullable": true },
                     "isPaid": { "type": "boolean" },
-                    "createdBy": { "type": "string" },
+                    "isDisputed": { "type": "boolean" },
+                    "disputeReason": { "type": "string", "nullable": true },
+                    "disputedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "resolvedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }

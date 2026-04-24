@@ -9,9 +9,13 @@ import { ulid } from 'ulid';
 
 import {
     AddInvoiceAttachmentRequest,
+    DisputeInvoiceRequest,
     InvoiceCreateRequest,
     InvoiceUpdateRequest,
+    MarkInvoicePaidRequest,
+    MarkInvoiceUnpaidRequest,
     RemoveInvoiceAttachmentRequest,
+    ResolveInvoiceDisputeRequest,
 } from './models';
 
 export const InvoiceService = {
@@ -136,7 +140,6 @@ export const InvoiceService = {
                     taxRate: taxRate != null ? new Prisma.Decimal(taxRate) : null,
                     notes: notes ?? null,
                     relatedSCOIds,
-                    createdBy: userId,
                 },
             });
 
@@ -337,5 +340,142 @@ export const InvoiceService = {
                 attachment.invoice.vendorId,
             ],
         });
+    },
+
+    markPaid: async (request: MarkInvoicePaidRequest, userId: string): Promise<Invoice> => {
+        const { id, paidDate, paymentMethodId, paymentReference, paymentNotes } = request;
+
+        const invoice = await prisma.invoice.findUnique({ where: { id } });
+        if (!invoice) throw new NotFoundError('Invoice not found');
+        checkDeletedAt(invoice);
+        if (invoice.isPaid) {
+            throw new BadRequestError('Invoice is already paid');
+        }
+        if (invoice.isDisputed) {
+            throw new BadRequestError('Disputed invoice cannot be marked as paid');
+        }
+
+        const paymentMethod = await prisma.lookup.findUnique({ where: { id: paymentMethodId } });
+        if (!paymentMethod) throw new NotFoundError('Payment method not found');
+
+        const updated = await prisma.invoice.update({
+            where: { id },
+            data: {
+                isPaid: true,
+                paidDate: new Date(paidDate),
+                paymentMethodId,
+                paymentReference: paymentReference ?? null,
+                paymentNotes: paymentNotes ?? null,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'invoice',
+            entityId: id,
+            action: 'update',
+            description: `Marked invoice ${updated.invoiceNumber} as paid`,
+            affectedEntityIds: [invoice.projectId, invoice.vendorId],
+        });
+
+        return updated;
+    },
+
+    markUnpaid: async (request: MarkInvoiceUnpaidRequest, userId: string): Promise<Invoice> => {
+        const { id } = request;
+
+        const invoice = await prisma.invoice.findUnique({ where: { id } });
+        if (!invoice) throw new NotFoundError('Invoice not found');
+        checkDeletedAt(invoice);
+        if (!invoice.isPaid) {
+            throw new BadRequestError('Invoice is not paid');
+        }
+
+        const updated = await prisma.invoice.update({
+            where: { id },
+            data: {
+                isPaid: false,
+                paidDate: null,
+                paymentMethodId: null,
+                paymentReference: null,
+                paymentNotes: null,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'invoice',
+            entityId: id,
+            action: 'update',
+            description: `Reverted invoice ${updated.invoiceNumber} to unpaid`,
+            affectedEntityIds: [invoice.projectId, invoice.vendorId],
+        });
+
+        return updated;
+    },
+
+    disputeInvoice: async (request: DisputeInvoiceRequest, userId: string): Promise<Invoice> => {
+        const { id, disputeReason } = request;
+
+        const invoice = await prisma.invoice.findUnique({ where: { id } });
+        if (!invoice) throw new NotFoundError('Invoice not found');
+        checkDeletedAt(invoice);
+        if (invoice.isDisputed) {
+            throw new BadRequestError('Invoice is already disputed');
+        }
+
+        const updated = await prisma.invoice.update({
+            where: { id },
+            data: {
+                isDisputed: true,
+                disputeReason,
+                disputedAt: new Date(),
+                resolvedAt: null,
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'invoice',
+            entityId: id,
+            action: 'update',
+            description: `Disputed invoice ${updated.invoiceNumber}`,
+            affectedEntityIds: [invoice.projectId, invoice.vendorId],
+        });
+
+        return updated;
+    },
+
+    resolveDispute: async (
+        request: ResolveInvoiceDisputeRequest,
+        userId: string
+    ): Promise<Invoice> => {
+        const { id } = request;
+
+        const invoice = await prisma.invoice.findUnique({ where: { id } });
+        if (!invoice) throw new NotFoundError('Invoice not found');
+        checkDeletedAt(invoice);
+        if (!invoice.isDisputed) {
+            throw new BadRequestError('Invoice is not disputed');
+        }
+
+        const updated = await prisma.invoice.update({
+            where: { id },
+            data: {
+                isDisputed: false,
+                resolvedAt: new Date(),
+            },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'invoice',
+            entityId: id,
+            action: 'update',
+            description: `Resolved dispute on invoice ${updated.invoiceNumber}`,
+            affectedEntityIds: [invoice.projectId, invoice.vendorId],
+        });
+
+        return updated;
     },
 };

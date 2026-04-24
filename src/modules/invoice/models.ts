@@ -35,3 +35,32 @@ export const RemoveInvoiceAttachmentSchema = z.object({
 });
 
 export type RemoveInvoiceAttachmentRequest = z.infer<typeof RemoveInvoiceAttachmentSchema>;
+
+export const MarkInvoicePaidSchema = z.object({
+    id: z.ulid(),
+    paidDate: z.iso.date(),
+    paymentMethodId: z.ulid(),
+    paymentReference: z.string().min(1).optional().nullable(),
+    paymentNotes: z.string().min(1).optional().nullable(),
+});
+
+export type MarkInvoicePaidRequest = z.infer<typeof MarkInvoicePaidSchema>;
+
+export const MarkInvoiceUnpaidSchema = z.object({
+    id: z.ulid(),
+});
+
+export type MarkInvoiceUnpaidRequest = z.infer<typeof MarkInvoiceUnpaidSchema>;
+
+export const DisputeInvoiceSchema = z.object({
+    id: z.ulid(),
+    disputeReason: z.string().min(1),
+});
+
+export type DisputeInvoiceRequest = z.infer<typeof DisputeInvoiceSchema>;
+
+export const ResolveInvoiceDisputeSchema = z.object({
+    id: z.ulid(),
+});
+
+export type ResolveInvoiceDisputeRequest = z.infer<typeof ResolveInvoiceDisputeSchema>;
