@@ -1,5 +1,6 @@
 import { RFQ, RFQAttachment, RFQVendorQuote } from '@db/client';
 import { prisma } from '@lib/prisma';
+import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
@@ -673,6 +674,74 @@ export const RfqService = {
         });
 
         return updated;
+    },
+
+    getRfq: async (id: string): Promise<RFQ> => {
+        const rfq = await prisma.rFQ.findUnique({
+            where: { id },
+            include: {
+                project: true,
+                type: true,
+                awardedVendor: true,
+                rfqdeliverables: { include: { unit: true } },
+                rfqattachments: { include: { document: true } },
+                vendorQuotes: {
+                    include: {
+                        vendor: true,
+                        attachments: { include: { document: true } },
+                    },
+                },
+            },
+        });
+
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+
+        return rfq;
+    },
+
+    getRfqs: async (
+        params: PaginationParams
+    ): Promise<{
+        data: RFQ[];
+        count: number;
+    }> => {
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { projectId, status, typeId, awardedVendorId, ...restFilter } = filter || {};
+
+        const whereClause = {
+            deletedAt: null,
+            ...restFilter,
+            ...(projectId && { projectId }),
+            ...(status && { status }),
+            ...(typeId && { typeId }),
+            ...(awardedVendorId && { awardedVendorId }),
+            ...(search && {
+                OR: [
+                    { rfqNumber: { contains: search, mode: 'insensitive' as const } },
+                    { title: { contains: search, mode: 'insensitive' as const } },
+                ],
+            }),
+        };
+
+        const [count, data] = await prisma.$transaction([
+            prisma.rFQ.count({ where: whereClause }),
+            prisma.rFQ.findMany({
+                where: whereClause,
+                skip,
+                take,
+                orderBy: {
+                    [sortBy as keyof RFQ]: sortOrder,
+                },
+                include: {
+                    project: true,
+                    type: true,
+                    awardedVendor: true,
+                },
+            }),
+        ]);
+
+        return { data, count };
     },
 
     setPublished: async (id: string, userId: string): Promise<RFQ> => {

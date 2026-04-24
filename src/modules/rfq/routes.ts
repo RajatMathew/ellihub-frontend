@@ -1,5 +1,6 @@
+import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
@@ -20,6 +21,23 @@ import {
 import { RfqService } from './service';
 
 const app = new Hono();
+
+app.get(
+    '/',
+    requirePermission({ rfq: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c: Context) => {
+        const pagination = c.get('pagination');
+        const { data, count } = await RfqService.getRfqs(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
+
+app.get('/:id', requirePermission({ rfq: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RfqService.getRfq(id);
+    return success(c, rfq);
+});
 
 app.post(
     '/',
