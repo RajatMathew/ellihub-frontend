@@ -16,3 +16,22 @@ export const InvoiceCreateSchema = z.object({
 });
 
 export type InvoiceCreateRequest = z.infer<typeof InvoiceCreateSchema>;
+
+export const InvoiceUpdateSchema = InvoiceCreateSchema.omit({ attachments: true }).extend({
+    id: z.ulid(),
+});
+
+export type InvoiceUpdateRequest = z.infer<typeof InvoiceUpdateSchema>;
+
+export const AddInvoiceAttachmentSchema = z.object({
+    invoiceId: z.ulid(),
+    documentId: z.ulid(),
+});
+
+export type AddInvoiceAttachmentRequest = z.infer<typeof AddInvoiceAttachmentSchema>;
+
+export const RemoveInvoiceAttachmentSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveInvoiceAttachmentRequest = z.infer<typeof RemoveInvoiceAttachmentSchema>;
