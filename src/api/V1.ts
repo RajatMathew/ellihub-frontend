@@ -6,6 +6,7 @@ import { departmentRoutes } from '@modules/department';
 import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
+import { invoiceRoutes } from '@modules/invoice';
 import { lookupRoutes } from '@modules/lookup';
 import { poRoutes } from '@modules/po';
 import { projectRoutes } from '@modules/project';
@@ -41,5 +42,6 @@ app.route('/project', projectRoutes);
 app.route('/rfq', rfqRoutes);
 app.route('/purchase-order', poRoutes);
 app.route('/sub-change-order', scoRoutes);
+app.route('/invoice', invoiceRoutes);
 
 export default app;

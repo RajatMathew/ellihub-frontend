@@ -11,7 +11,8 @@ export type ActivityEntityType =
     | 'project'
     | 'rfq'
     | 'purchaseOrder'
-    | 'subChangeOrder';
+    | 'subChangeOrder'
+    | 'invoice';
 
 export type ActivityAction =
     | 'create'

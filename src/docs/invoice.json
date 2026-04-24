@@ -1,0 +1,81 @@
+{
+    "paths": {
+        "/invoice": {
+            "post": {
+                "tags": ["Invoice"],
+                "summary": "Create an invoice (attachments moved to project INVOICE subfolder)",
+                "operationId": "createInvoice",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InvoiceCreateRequest" } } }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Invoice" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "PO / SCO project or vendor mismatch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Project / vendor / PO / SCO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Duplicate invoice number for vendor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "InvoiceCreateRequest": {
+                "type": "object",
+                "required": ["projectId", "vendorId", "invoiceNumber", "invoiceDate", "dueDate", "totalAmount", "attachments"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "purchaseOrderId": { "type": "string", "nullable": true },
+                    "invoiceNumber": { "type": "string" },
+                    "invoiceDate": { "type": "string", "format": "date" },
+                    "dueDate": { "type": "string", "format": "date" },
+                    "totalAmount": { "type": "number", "minimum": 0 },
+                    "taxAmount": { "type": "number", "minimum": 0, "nullable": true },
+                    "taxRate": { "type": "number", "minimum": 0, "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "relatedSCOIds": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "attachments": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+                }
+            },
+            "Invoice": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "invoiceNumber": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "purchaseOrderId": { "type": "string", "nullable": true },
+                    "invoiceDate": { "type": "string", "format": "date-time" },
+                    "dueDate": { "type": "string", "format": "date-time" },
+                    "totalAmount": { "type": "string" },
+                    "taxAmount": { "type": "string", "nullable": true },
+                    "taxRate": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "relatedSCOIds": { "type": "array", "items": { "type": "string" } },
+                    "paidDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "paymentReference": { "type": "string", "nullable": true },
+                    "paymentMethodId": { "type": "string", "nullable": true },
+                    "paymentNotes": { "type": "string", "nullable": true },
+                    "isPaid": { "type": "boolean" },
+                    "createdBy": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            }
+        }
+    }
+}
