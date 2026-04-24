@@ -85,6 +85,7 @@ export const RfqService = {
                 data: deliverables.map((d) => ({
                     id: ulid(),
                     rfqId: rfq.id,
+                    name: d.name,
                     unitId: d.unitId,
                     quantity: d.quantity,
                     costCodeId: d.costCodeId ?? null,
@@ -173,6 +174,7 @@ export const RfqService = {
                 data: deliverables.map((d) => ({
                     id: ulid(),
                     rfqId: id,
+                    name: d.name,
                     unitId: d.unitId,
                     quantity: d.quantity,
                     costCodeId: d.costCodeId ?? null,

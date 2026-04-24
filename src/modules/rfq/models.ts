@@ -3,6 +3,7 @@ import z from 'zod';
 export const RfqStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'AWARDED', 'VOID']);
 
 export const RfqDeliverableSchema = z.object({
+    name: z.string().min(1),
     unitId: z.ulid(),
     quantity: z.number().positive(),
     costCodeId: z.ulid().optional().nullable(),

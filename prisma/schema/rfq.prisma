@@ -66,6 +66,8 @@ model RFQDeliverable {
     rfq   RFQ    @relation(fields: [rfqId], references: [id])
     rfqId String
 
+    name String
+
     unit   Lookup @relation(fields: [unitId], references: [id])
     unitId String
 

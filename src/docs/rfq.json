@@ -335,8 +335,9 @@
             },
             "RfqDeliverable": {
                 "type": "object",
-                "required": ["unitId", "quantity"],
+                "required": ["name", "unitId", "quantity"],
                 "properties": {
+                    "name": { "type": "string", "minLength": 1 },
                     "unitId": { "type": "string", "description": "Lookup ULID (UNIT)" },
                     "quantity": { "type": "number", "exclusiveMinimum": 0 },
                     "costCodeId": { "type": "string", "nullable": true }
