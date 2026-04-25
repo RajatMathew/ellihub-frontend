@@ -75,6 +75,31 @@
                 }
             }
         },
+        "/invoice/by-po/{poId}": {
+            "get": {
+                "tags": ["Invoice"],
+                "summary": "List all invoices linked to a purchase order (not paginated)",
+                "operationId": "getInvoicesByPo",
+                "parameters": [{ "name": "poId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Purchase order ULID" }],
+                "responses": {
+                    "200": {
+                        "description": "All invoices linked to the PO, newest first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Invoice" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": { "description": "Insufficient permissions (requires invoice:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Purchase order not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/invoice/{id}": {
             "get": {
                 "tags": ["Invoice"],

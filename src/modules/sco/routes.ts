@@ -28,6 +28,12 @@ app.get(
     }
 );
 
+app.get('/by-po/:poId', requirePermission({ subChangeOrder: ['read'] }), async (c) => {
+    const poId = c.req.param('poId');
+    const scos = await ScoService.getScosByPo(poId);
+    return success(c, scos);
+});
+
 app.get('/:id', requirePermission({ subChangeOrder: ['read'] }), async (c) => {
     const id = c.req.param('id');
     const sco = await ScoService.getSco(id);

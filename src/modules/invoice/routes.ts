@@ -28,6 +28,12 @@ app.get(
     }
 );
 
+app.get('/by-po/:poId', requirePermission({ invoice: ['read'] }), async (c) => {
+    const poId = c.req.param('poId');
+    const invoices = await InvoiceService.getInvoicesByPo(poId);
+    return success(c, invoices);
+});
+
 app.get('/:id', requirePermission({ invoice: ['read'] }), async (c) => {
     const id = c.req.param('id');
     const invoice = await InvoiceService.getInvoice(id);

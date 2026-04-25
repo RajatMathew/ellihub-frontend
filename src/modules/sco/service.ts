@@ -20,6 +20,18 @@ import {
 import { generateScoNumber } from './utils';
 
 export const ScoService = {
+    getScosByPo: async (purchaseOrderId: string) => {
+        const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+
+        return await prisma.subChangeOrder.findMany({
+            where: { purchaseOrderId, deletedAt: null },
+            orderBy: { date: 'desc' },
+            include: { changeType: true },
+        });
+    },
+
     getSco: async (id: string): Promise<SubChangeOrder> => {
         const sco = await prisma.subChangeOrder.findUnique({
             where: { id },

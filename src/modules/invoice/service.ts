@@ -19,6 +19,18 @@ import {
 } from './models';
 
 export const InvoiceService = {
+    getInvoicesByPo: async (purchaseOrderId: string) => {
+        const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+
+        return await prisma.invoice.findMany({
+            where: { purchaseOrderId, deletedAt: null },
+            orderBy: { invoiceDate: 'desc' },
+            include: { vendor: true, paymentMethod: true },
+        });
+    },
+
     getInvoice: async (id: string): Promise<Invoice> => {
         const invoice = await prisma.invoice.findUnique({
             where: { id },

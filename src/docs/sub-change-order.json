@@ -72,6 +72,31 @@
                 }
             }
         },
+        "/sub-change-order/by-po/{poId}": {
+            "get": {
+                "tags": ["Sub Change Order"],
+                "summary": "List all sub change orders linked to a purchase order (not paginated)",
+                "operationId": "getSubChangeOrdersByPo",
+                "parameters": [{ "name": "poId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Purchase order ULID" }],
+                "responses": {
+                    "200": {
+                        "description": "All SCOs linked to the PO, newest first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/SubChangeOrder" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": { "description": "Insufficient permissions (requires subChangeOrder:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Purchase order not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/sub-change-order/{id}": {
             "get": {
                 "tags": ["Sub Change Order"],
