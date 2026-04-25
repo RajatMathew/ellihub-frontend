@@ -5,7 +5,11 @@ import { checkDeletedAt } from '@utils/soft-delete';
 
 export const ptoInclude = {
     type: true,
-    employee: { select: { id: true, name: true, email: true } },
+    employee: {
+        include: {
+            departments: { include: { department: true, role: true } },
+        },
+    },
 } as const;
 
 export const assertPtoType = async (typeId: string) => {

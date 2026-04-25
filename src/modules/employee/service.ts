@@ -96,6 +96,7 @@ export const EmployeeService = {
                 skip,
                 take,
                 orderBy: { [sortBy as keyof Employee]: sortOrder },
+                include: { departments: { include: { department: true, role: true } } },
             }),
         ]);
 
@@ -105,7 +106,7 @@ export const EmployeeService = {
     get: async (id: string): Promise<Employee> => {
         const employee = await prisma.employee.findUnique({
             where: { id },
-            include: { departments: { include: { department: true } } },
+            include: { departments: { include: { department: true, role: true } } },
         });
         if (!employee || employee.deletedAt) {
             throw new NotFoundError('Employee not found');
