@@ -44,6 +44,8 @@ src/
 │   ├── cost-code/
 │   ├── user/
 │   ├── employee/
+│   ├── department/
+│   ├── pto/
 │   ├── file/
 │   ├── lookup/
 │   ├── contact/
@@ -55,6 +57,7 @@ src/
 │   ├── prisma.ts          # Prisma client setup
 │   ├── redis.ts           # Redis client
 │   ├── permissions.ts     # Permission statements (ACL)
+│   ├── scheduler.ts       # Aggregates module cron jobs (node-schedule); started at boot
 │   └── db/                # Generated Prisma client
 ├── middleware/
 │   ├── auth.ts            # Auth + permission middleware
@@ -136,6 +139,15 @@ Middleware parses query params: `page`, `size`, `sortBy`, `sortOrder`, `search`,
 - All routes require auth session (except `/api/v1/auth/*` and `/api/v1/file/read`)
 - Permission middleware: `requirePermission({ resource: ['action'] })`
 - Permissions defined in `src/lib/permissions.ts`
+
+### HR
+- **Employee ↔ Department is one-to-one**: `Employee` holds nullable `departmentId` and `roleId` (Lookup) directly — no join table. Use `/hr/department/employee/assign` and `/employee/remove` to set/clear. When fetching employees, include `{ department: true, role: true }`.
+- **PTO** (`/hr/pto`): `PaidTimeOff` has `status` (`PENDING` | `APPROVED` | `REJECTED`, default `PENDING`) and reviewer fields (`reviewedById`, `reviewedAt`, `reviewNote`). Approve/reject via `PATCH /hr/pto/approve|reject` (`leave:approve`). Updates only allowed while `PENDING`. PTO type is a Lookup of type `PTO_TYPE` (seeded via `scripts/seed-pto-types.ts`).
+
+### Schedulers
+- `src/lib/scheduler.ts` aggregates cron jobs from each module (e.g. `ptoSchedules` from `@modules/pto/scheduler`) and registers them with `node-schedule` at boot via `startScheduler()` in `src/index.ts`.
+- The PTO job (`0 0 * * *`) syncs `Employee.status` between `ACTIVE` and `ON_LEAVE` based on approved PTO covering today (`date-fns` for date math).
+- Add new module schedules by exporting a `ScheduledJob[]` and spreading it into the `jobs` array in `lib/scheduler.ts`.
 
 ## Path Aliases (tsconfig)
 

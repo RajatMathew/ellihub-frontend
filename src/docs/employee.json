@@ -473,6 +473,11 @@
                     "emergencyContactPhone": { "type": "string", "nullable": true },
                     "emergencyContactRelation": { "type": "string", "nullable": true },
                     "userId": { "type": "string", "nullable": true, "description": "Linked user account ID (set when account was created)" },
+                    "status": { "type": "string", "enum": ["ACTIVE", "ON_LEAVE"] },
+                    "departmentId": { "type": "string", "nullable": true },
+                    "department": { "$ref": "#/components/schemas/Department", "nullable": true },
+                    "roleId": { "type": "string", "nullable": true, "description": "Lookup ID for the employee's role" },
+                    "role": { "type": "object", "nullable": true, "description": "Lookup row for the role" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }

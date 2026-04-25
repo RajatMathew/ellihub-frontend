@@ -222,12 +222,43 @@
                 "required": ["id"],
                 "properties": { "id": { "type": "string" } }
             },
+            "SubCOLineItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "subCoId": { "type": "string" },
+                    "sequenceNumber": { "type": "integer" },
+                    "description": { "type": "string", "nullable": true },
+                    "qty": { "type": "number" },
+                    "unitId": { "type": "string" },
+                    "unit": { "type": "object", "description": "Lookup row for the unit" },
+                    "unitPrice": { "type": "string" },
+                    "amount": { "type": "string" },
+                    "categoryId": { "type": "string" },
+                    "category": { "type": "object", "description": "Lookup row for the line item category" },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "SCOAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "scoId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
             "SubChangeOrder": {
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
                     "scoNumber": { "type": "string" },
                     "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
                     "date": { "type": "string", "format": "date-time" },
                     "title": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
@@ -238,6 +269,7 @@
                     "scheduleImpactDays": { "type": "integer", "nullable": true },
                     "requestedBy": { "type": "string", "nullable": true },
                     "changeTypeId": { "type": "string", "nullable": true },
+                    "changeType": { "type": "object", "nullable": true, "description": "Lookup row for the change type" },
                     "impactsSchedule": { "type": "boolean" },
                     "approvedBy": { "type": "string", "nullable": true },
                     "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
@@ -249,7 +281,9 @@
                     "voidReason": { "type": "string", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
-                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/SubCOLineItem" } },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/SCOAttachment" } }
                 }
             }
         }

@@ -240,15 +240,48 @@
                 "required": ["id"],
                 "properties": { "id": { "type": "string" } }
             },
+            "PurchaseOrderLineItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "purchaseOrderId": { "type": "string" },
+                    "lineNumber": { "type": "integer" },
+                    "description": { "type": "string" },
+                    "unitId": { "type": "string" },
+                    "unit": { "type": "object", "description": "Lookup row for the unit" },
+                    "quantity": { "type": "string", "nullable": true },
+                    "unitPrice": { "type": "string", "nullable": true },
+                    "amount": { "type": "string", "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "POAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "purchaseOrderId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
             "PurchaseOrder": {
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
                     "poNumber": { "type": "string" },
                     "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
                     "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
                     "rfqId": { "type": "string", "nullable": true },
+                    "rfq": { "$ref": "#/components/schemas/RFQ", "nullable": true },
                     "tradeCategoryId": { "type": "string" },
+                    "tradeCategory": { "type": "object", "description": "Lookup row for the trade category" },
                     "description": { "type": "string", "nullable": true },
                     "status": { "$ref": "#/components/schemas/POStatus" },
                     "leadTime": { "type": "string", "nullable": true },
@@ -266,13 +299,20 @@
                     "notes": { "type": "string", "nullable": true },
                     "issuedBy": { "type": "string", "nullable": true },
                     "issuedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "approvedBy": { "type": "string", "nullable": true },
+                    "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectedBy": { "type": "string", "nullable": true },
+                    "rejectedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectionReason": { "type": "string", "nullable": true },
                     "cancelledBy": { "type": "string", "nullable": true },
                     "cancelledAt": { "type": "string", "format": "date-time", "nullable": true },
                     "cancellationReason": { "type": "string", "nullable": true },
                     "createdBy": { "type": "string" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
-                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/PurchaseOrderLineItem" } },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/POAttachment" } }
                 }
             }
         }

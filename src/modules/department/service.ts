@@ -46,12 +46,7 @@ export const DepartmentService = {
         const department = await prisma.department.findUnique({
             where: { id },
             include: {
-                employees: {
-                    include: {
-                        employee: true,
-                        role: true,
-                    },
-                },
+                employees: { include: { role: true } },
             },
         });
         if (!department) throw new NotFoundError('Department not found');

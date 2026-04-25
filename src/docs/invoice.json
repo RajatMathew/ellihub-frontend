@@ -243,14 +243,26 @@
                 "required": ["id"],
                 "properties": { "id": { "type": "string" } }
             },
+            "InvoiceAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "invoiceId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" }
+                }
+            },
             "Invoice": {
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
                     "invoiceNumber": { "type": "string" },
                     "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
                     "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
                     "purchaseOrderId": { "type": "string", "nullable": true },
+                    "purchaseOrder": { "$ref": "#/components/schemas/PurchaseOrder", "nullable": true },
                     "invoiceDate": { "type": "string", "format": "date-time" },
                     "dueDate": { "type": "string", "format": "date-time" },
                     "totalAmount": { "type": "string" },
@@ -261,6 +273,7 @@
                     "paidDate": { "type": "string", "format": "date-time", "nullable": true },
                     "paymentReference": { "type": "string", "nullable": true },
                     "paymentMethodId": { "type": "string", "nullable": true },
+                    "paymentMethod": { "type": "object", "nullable": true, "description": "Lookup row for payment method" },
                     "paymentNotes": { "type": "string", "nullable": true },
                     "isPaid": { "type": "boolean" },
                     "isDisputed": { "type": "boolean" },
@@ -269,7 +282,8 @@
                     "resolvedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
-                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/InvoiceAttachment" } }
                 }
             }
         }

@@ -649,7 +649,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "enum": ["INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                            "enum": ["INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT", "SCHEDULE"]
                         },
                         "description": "Protected folder type"
                     }
@@ -710,7 +710,7 @@
                     "protectedFolderType": {
                         "type": "string",
                         "nullable": true,
-                        "enum": ["PROJECT_ROOT", "INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                        "enum": ["PROJECT_ROOT", "INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT", "SCHEDULE"]
                     },
                     "isDeletable": { "type": "boolean" },
                     "private": { "type": "boolean" },

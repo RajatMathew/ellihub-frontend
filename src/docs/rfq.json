@@ -313,24 +313,85 @@
     },
     "components": {
         "schemas": {
+            "RFQDeliverableResponse": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "name": { "type": "string" },
+                    "unitId": { "type": "string" },
+                    "unit": { "type": "object", "description": "Lookup row for the unit" },
+                    "quantity": { "type": "string" },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "RFQAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "VendorQuoteAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "quoteId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "RFQVendorQuote": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
+                    "hasSubmittedQuote": { "type": "boolean" },
+                    "submittedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "declinedToQuote": { "type": "boolean" },
+                    "declineReason": { "type": "string", "nullable": true },
+                    "quotedAmount": { "type": "string", "nullable": true },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "isAwarded": { "type": "boolean" },
+                    "notes": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/VendorQuoteAttachment" } }
+                }
+            },
             "RFQ": {
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
                     "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
                     "rfqNumber": { "type": "string" },
                     "title": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
                     "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "AWARDED", "VOID"] },
                     "bidDeadline": { "type": "string", "format": "date" },
                     "typeId": { "type": "string" },
+                    "type": { "type": "object", "description": "Lookup row for the RFQ type" },
                     "awardedVendorId": { "type": "string", "nullable": true },
-                    "awardedAmount": { "type": "number", "nullable": true },
+                    "awardedVendor": { "$ref": "#/components/schemas/Vendor", "nullable": true },
+                    "awardedAmount": { "type": "string", "nullable": true },
                     "cancellationReason": { "type": "string", "nullable": true },
                     "createdBy": { "type": "string" },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
-                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rfqdeliverables": { "type": "array", "items": { "$ref": "#/components/schemas/RFQDeliverableResponse" } },
+                    "rfqattachments": { "type": "array", "items": { "$ref": "#/components/schemas/RFQAttachment" } },
+                    "vendorQuotes": { "type": "array", "items": { "$ref": "#/components/schemas/RFQVendorQuote" } }
                 }
             },
             "RfqDeliverable": {
