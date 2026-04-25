@@ -54,9 +54,10 @@ model PurchaseOrder {
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 
-    lineItems   PurchaseOrderLineItem[]
-    attachments POAttachment[]
-    invoices    Invoice[]
+    lineItems       PurchaseOrderLineItem[]
+    attachments     POAttachment[]
+    invoices        Invoice[]
+    subChangeOrders SubChangeOrder[]        @relation("POSubChangeOrders")
 
     @@index([projectId])
     @@index([vendorId])
@@ -117,15 +118,17 @@ model POAttachment {
 // Sub change order
 
 model SubChangeOrder {
-    id          String    @id
-    project     Project   @relation(fields: [projectId], references: [id])
-    projectId   String
-    scoNumber   String    @unique
-    date        DateTime
-    title       String
-    description String?
-    amount      Decimal   @db.Decimal(10, 2)
-    status      SCOStatus
+    id              String        @id
+    project         Project       @relation(fields: [projectId], references: [id])
+    projectId       String
+    purchaseOrder   PurchaseOrder @relation("POSubChangeOrders", fields: [purchaseOrderId], references: [id])
+    purchaseOrderId String
+    scoNumber       String        @unique
+    date            DateTime
+    title           String
+    description     String?
+    amount          Decimal       @db.Decimal(10, 2)
+    status          SCOStatus
 
     createdBy String
 
@@ -154,6 +157,7 @@ model SubChangeOrder {
     updatedAt DateTime  @updatedAt
 
     @@index([projectId])
+    @@index([purchaseOrderId])
     @@index([changeTypeId])
     @@index([scoNumber])
 }

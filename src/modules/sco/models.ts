@@ -13,6 +13,7 @@ export type SCOLineItemInput = z.infer<typeof SCOLineItemSchema>;
 
 export const ScoCreateSchema = z.object({
     projectId: z.ulid(),
+    purchaseOrderId: z.ulid(),
     date: z.iso.date(),
     title: z.string().min(1),
     description: z.string().min(1).optional().nullable(),

@@ -180,9 +180,10 @@
             },
             "ScoCreateRequest": {
                 "type": "object",
-                "required": ["projectId", "date", "title", "lineItems"],
+                "required": ["projectId", "purchaseOrderId", "date", "title", "lineItems"],
                 "properties": {
                     "projectId": { "type": "string" },
+                    "purchaseOrderId": { "type": "string", "description": "Mandatory link to the parent PO; must belong to the same project" },
                     "date": { "type": "string", "format": "date" },
                     "title": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
@@ -259,6 +260,8 @@
                     "scoNumber": { "type": "string" },
                     "projectId": { "type": "string" },
                     "project": { "$ref": "#/components/schemas/Project" },
+                    "purchaseOrderId": { "type": "string" },
+                    "purchaseOrder": { "$ref": "#/components/schemas/PurchaseOrder" },
                     "date": { "type": "string", "format": "date-time" },
                     "title": { "type": "string" },
                     "description": { "type": "string", "nullable": true },

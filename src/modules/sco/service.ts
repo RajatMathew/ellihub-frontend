@@ -25,6 +25,7 @@ export const ScoService = {
             where: { id },
             include: {
                 project: true,
+                purchaseOrder: true,
                 changeType: true,
                 lineItems: {
                     where: { deletedAt: null },
@@ -43,12 +44,13 @@ export const ScoService = {
         params: PaginationParams
     ): Promise<{ data: SubChangeOrder[]; count: number }> => {
         const { filter, skip, take, sortBy, sortOrder, search } = params;
-        const { projectId, status, changeTypeId, ...restFilter } = filter || {};
+        const { projectId, purchaseOrderId, status, changeTypeId, ...restFilter } = filter || {};
 
         const whereClause: Prisma.SubChangeOrderWhereInput = {
             deletedAt: null,
             ...restFilter,
             ...(projectId && { projectId }),
+            ...(purchaseOrderId && { purchaseOrderId }),
             ...(status && { status }),
             ...(changeTypeId && { changeTypeId }),
             ...(search && {
@@ -66,7 +68,7 @@ export const ScoService = {
                 skip,
                 take,
                 orderBy: { [sortBy as keyof SubChangeOrder]: sortOrder },
-                include: { project: true, changeType: true },
+                include: { project: true, purchaseOrder: true, changeType: true },
             }),
         ]);
 
@@ -76,6 +78,7 @@ export const ScoService = {
     createSco: async (request: ScoCreateRequest, userId: string): Promise<SubChangeOrder> => {
         const {
             projectId,
+            purchaseOrderId,
             date,
             changeTypeId,
             markupAmount,
@@ -90,6 +93,13 @@ export const ScoService = {
         checkDeletedAt(project);
         if (!project.jobNumber) {
             throw new BadRequestError('Project must have a job number to create an SCO');
+        }
+
+        const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (po.projectId !== projectId) {
+            throw new BadRequestError('Purchase order does not belong to this project');
         }
 
         if (changeTypeId) {
@@ -135,6 +145,7 @@ export const ScoService = {
                     id: ulid(),
                     scoNumber,
                     projectId,
+                    purchaseOrderId,
                     date: new Date(date),
                     status: 'DRAFT',
                     amount,
@@ -179,6 +190,7 @@ export const ScoService = {
         const {
             id,
             projectId,
+            purchaseOrderId,
             date,
             changeTypeId,
             markupAmount,
@@ -196,6 +208,15 @@ export const ScoService = {
         }
         if (existing.projectId !== projectId) {
             throw new BadRequestError('SCO project cannot be changed');
+        }
+
+        if (existing.purchaseOrderId !== purchaseOrderId) {
+            const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
+            if (!po) throw new NotFoundError('Purchase order not found');
+            checkDeletedAt(po);
+            if (po.projectId !== projectId) {
+                throw new BadRequestError('Purchase order does not belong to this project');
+            }
         }
 
         if (changeTypeId) {
@@ -237,6 +258,7 @@ export const ScoService = {
                 where: { id },
                 data: {
                     ...rest,
+                    purchaseOrderId,
                     date: new Date(date),
                     amount,
                     markupAmount: markupAmount ?? null,
