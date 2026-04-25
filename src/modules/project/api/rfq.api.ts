@@ -7,11 +7,8 @@ import {
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatusSchema,
-  type AwardRFQInput,
-  type CancelRFQInput,
   type CreateRFQInput,
   type ListRFQParams,
-  type PublishRFQInput,
   type RFQDetail,
   type RFQDeliverableInput,
   type RFQPaginatedResponse,
@@ -78,10 +75,58 @@ export type BidComparison = {
 
 const BASE = '/rfq';
 
+function normalizeRFQ(item: any) {
+  if (!item) return item;
+
+  // Derive track and typeId from nested type object if needed
+  const track = item.track || item.type?.label || undefined;
+  const typeId = item.typeId || item.type?.id || undefined;
+
+  const deliverables = (item.deliverables ?? item.rfqdeliverables ?? []).map((d: any) => ({
+    ...d,
+    unitId: d.unitId ?? d.unit?.id ?? '',
+    unit: typeof d.unit === 'object' ? d.unit?.label : (d.unit ?? ''),
+    description: d.name || d.description || '',
+    name: d.name || d.description || '',
+  }));
+
+  // Normalize vendor quotes / invites
+  const vendorQuotes = item.vendorQuotes ?? item.quotes ?? [];
+  const normalizedInvites = vendorQuotes.map((q: any) => ({
+    ...q,
+    vendor: q.vendor ?? { id: q.vendorId },
+  }));
+
+  const normalizedQuotes = vendorQuotes
+    .filter((q: any) => q.hasSubmittedQuote || q.quotedAmount != null)
+    .map((q: any) => ({
+      ...q,
+      totalAmount: q.quotedAmount,
+      grandTotal: q.quotedAmount,
+      leadTimeDays: q.leadTime ? parseInt(q.leadTime, 10) : undefined,
+      notes: q.leadTime ? `${q.leadTime} days` : q.notes,
+      vendor: q.vendor ?? { id: q.vendorId },
+    }));
+
+  return {
+    ...item,
+    status:
+      typeof item.status === 'string'
+        ? { id: item.status, name: item.status, label: item.status }
+        : item.status,
+    track,
+    typeId,
+    deliverables,
+    attachments: item.attachments ?? item.rfqattachments,
+    invites: normalizedInvites,
+    quotes: normalizedQuotes,
+  };
+}
+
 export const rfqApi = {
   async list(params: ListRFQParams): Promise<RFQPaginatedResponse> {
     const query: Record<string, string | number> = {};
-    query.projectId = params.projectId;
+    if (params.projectId) query.projectId = params.projectId;
     if (params.page != null) query.page = params.page;
     if (params.size != null) query.size = params.size;
     if (params.sortBy) query.sortBy = params.sortBy;
@@ -91,8 +136,11 @@ export const rfqApi = {
 
     const res = await api.get(BASE, { params: query });
     const body = res.data;
+
+    const normalizedData = (body?.data ?? []).map(normalizeRFQ);
+
     const raw = {
-      data: body?.data ?? [],
+      data: normalizedData,
       pagination: body?.pagination ?? {
         currentPage: params.page ?? 1,
         totalPages: 1,
@@ -102,6 +150,7 @@ export const rfqApi = {
         itemsPerPage: params.size ?? 25,
       },
     };
+
     const result = rfqPaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.list] Zod parse error:', result.error.issues);
@@ -110,20 +159,32 @@ export const rfqApi = {
     return result.data;
   },
 
-  async listStatuses(): Promise<RFQStatus[]> {
+  async getStatuses(): Promise<RFQStatus[]> {
     const res = await api.get('/lookup/type/RFQ_STATUS');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(rfqStatusSchema).safeParse(raw);
     if (!result.success) {
-      console.error('[rfqApi.listStatuses] Zod parse error:', result.error.issues);
+      console.error('[rfqApi.getStatuses] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
   },
 
+  async getTypes(): Promise<any[]> {
+    const res = await api.get('/lookup/type/TRADE_CATEGORY');
+    return res.data?.data ?? res.data ?? [];
+  },
+
   async create(data: CreateRFQInput): Promise<RFQDetail> {
-    const res = await api.post(BASE, data);
-    const raw = res.data?.data ?? res.data;
+    const payload = {
+      ...data,
+      deliverables: data.deliverables.map((d) => ({
+        ...d,
+        name: d.name || d.description || 'Deliverable',
+      })),
+    };
+    const res = await api.post(BASE, payload);
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.create] Zod parse error:', result.error.issues);
@@ -134,7 +195,7 @@ export const rfqApi = {
 
   async getById(id: string): Promise<RFQDetail> {
     const res = await api.get(`${BASE}/${id}`);
-    const raw = res.data?.data ?? res.data;
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.getById] Zod parse error:', result.error.issues);
@@ -144,8 +205,16 @@ export const rfqApi = {
   },
 
   async update(id: string, data: UpdateRFQInput): Promise<RFQDetail> {
-    const res = await api.put(`${BASE}/${id}`, data);
-    const raw = res.data?.data ?? res.data;
+    const payload = {
+      ...data,
+      id,
+      deliverables: data.deliverables.map((d) => ({
+        ...d,
+        name: d.name || d.description || 'Deliverable',
+      })),
+    };
+    const res = await api.put(BASE, payload);
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.update] Zod parse error:', result.error.issues);
@@ -159,7 +228,11 @@ export const rfqApi = {
   },
 
   async addDeliverable(rfqId: string, data: RFQDeliverableInput): Promise<unknown> {
-    const res = await api.post(`${BASE}/${rfqId}/deliverables`, data);
+    const payload = {
+      ...data,
+      name: data.name || data.description || 'Deliverable',
+    };
+    const res = await api.post(`${BASE}/${rfqId}/deliverables`, payload);
     return res.data?.data ?? res.data;
   },
 
@@ -178,29 +251,28 @@ export const rfqApi = {
 
   /* ---- Vendor invitations ---- */
 
-  async inviteVendors(
-    rfqId: string,
-    data: { vendorIds: string[]; sendInviteEmails?: boolean },
-  ): Promise<unknown> {
-    const res = await api.post(`${BASE}/${rfqId}/invite-vendors`, data);
+  async addVendor(data: { rfqId: string; vendorId: string }): Promise<unknown> {
+    const res = await api.patch(`${BASE}/vendor/add`, data);
     return res.data?.data ?? res.data;
+  },
+
+  async removeVendor(quoteId: string): Promise<void> {
+    await api.patch(`${BASE}/vendor/remove`, { id: quoteId });
   },
 
   /* ---- Invite actions ---- */
 
-  async declineInvite(
-    rfqId: string,
-    inviteId: string,
-    data: { declineReason?: string },
-  ): Promise<unknown> {
-    const res = await api.put(`${BASE}/${rfqId}/invites/${inviteId}/decline`, data);
+  async declineInvite(data: { id: string; declineReason?: string }): Promise<unknown> {
+    const res = await api.patch(`${BASE}/vendor/decline-quote`, data);
     return res.data?.data ?? res.data;
   },
 
   /* ---- Bid comparison ---- */
 
   async getBidComparison(rfqId: string): Promise<BidComparison> {
+    console.log('[rfqApi.getBidComparison] fetching for:', rfqId);
     const res = await api.get(`${BASE}/${rfqId}/bid-comparison`);
+    console.log('[rfqApi.getBidComparison] res:', res.status, res.data);
     const raw = res.data?.data ?? res.data;
     if (raw?.quotes?.[0]) console.log('[BidComparison] quote[0] keys:', Object.keys(raw.quotes[0]), 'attachments:', JSON.stringify(raw.quotes[0].attachments));
     return raw;
@@ -208,37 +280,35 @@ export const rfqApi = {
 
   /* ---- Quotes ---- */
 
-  async createQuote(
-    rfqId: string,
-    data: {
-      vendorId: string;
-      lineItems: { deliverableId: string; unitPrice: number; quantity: number; unit: string }[];
-      leadTimeDays?: number;
-      notes?: string;
-    },
-  ): Promise<unknown> {
-    const res = await api.post(`${BASE}/${rfqId}/quotes`, data);
+  async submitQuote(data: {
+    id: string;
+    quotedAmount: number;
+    leadTime?: string;
+    attachments?: string[];
+  }): Promise<unknown> {
+    const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
     return res.data?.data ?? res.data;
   },
 
-  async updateQuote(
-    rfqId: string,
-    quoteId: string,
-    data: {
-      lineItems: { deliverableId: string; unitPrice: number; quantity: number; unit: string }[];
-      leadTimeDays?: number | null;
-      notes?: string | null;
-    },
-  ): Promise<unknown> {
-    const res = await api.put(`${BASE}/${rfqId}/quotes/${quoteId}`, data);
+  async editQuote(data: {
+    id: string;
+    quotedAmount: number;
+    leadTime?: string;
+    attachments?: string[];
+  }): Promise<unknown> {
+    const res = await api.patch(`${BASE}/vendor/edit-quote`, data);
     return res.data?.data ?? res.data;
+  },
+
+  async removeQuote(id: string): Promise<void> {
+    await api.patch(`${BASE}/vendor/remove-quote`, { id });
   },
 
   /* ---- Status ---- */
 
   async changeStatus(id: string, statusId: string): Promise<RFQDetail> {
     const res = await api.put(`${BASE}/${id}/status`, { statusId });
-    const raw = res.data?.data ?? res.data;
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.changeStatus] Zod parse error:', result.error.issues);
@@ -249,9 +319,9 @@ export const rfqApi = {
 
   /* ---- Workflow ---- */
 
-  async publish(id: string, data: PublishRFQInput): Promise<RFQDetail> {
-    const res = await api.post(`${BASE}/${id}/publish`, data);
-    const raw = res.data?.data ?? res.data;
+  async publish(id: string): Promise<RFQDetail> {
+    const res = await api.patch(`${BASE}/${id}/set-published`);
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.publish] Zod parse error:', result.error.issues);
@@ -260,9 +330,9 @@ export const rfqApi = {
     return result.data;
   },
 
-  async cancel(id: string, data: CancelRFQInput): Promise<RFQDetail> {
-    const res = await api.post(`${BASE}/${id}/cancel`, data);
-    const raw = res.data?.data ?? res.data;
+  async cancel(id: string, cancellationReason?: string): Promise<RFQDetail> {
+    const res = await api.patch(`${BASE}/set-void`, { id, cancellationReason });
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.cancel] Zod parse error:', result.error.issues);
@@ -271,9 +341,9 @@ export const rfqApi = {
     return result.data;
   },
 
-  async award(id: string, data: AwardRFQInput): Promise<RFQDetail> {
-    const res = await api.post(`${BASE}/${id}/award`, data);
-    const raw = res.data?.data ?? res.data;
+  async award(quoteId: string): Promise<RFQDetail> {
+    const res = await api.patch(`${BASE}/award`, { quoteId });
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.award] Zod parse error:', result.error.issues);
@@ -284,7 +354,7 @@ export const rfqApi = {
 
   async voidAward(id: string, data: VoidAwardInput): Promise<RFQDetail> {
     const res = await api.post(`${BASE}/${id}/void-award`, data);
-    const raw = res.data?.data ?? res.data;
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.voidAward] Zod parse error:', result.error.issues);
@@ -293,9 +363,9 @@ export const rfqApi = {
     return result.data;
   },
 
-  async unaward(id: string): Promise<RFQDetail> {
-    const res = await api.post(`${BASE}/${id}/unaward`);
-    const raw = res.data?.data ?? res.data;
+  async unaward(rfqId: string): Promise<RFQDetail> {
+    const res = await api.patch(`${BASE}/un-award`, { id: rfqId });
+    const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.unaward] Zod parse error:', result.error.issues);
@@ -304,23 +374,20 @@ export const rfqApi = {
     return result.data;
   },
 
-  async generatePO(
-    rfqId: string,
-    data: { vendorInviteId: string; taxPercent?: number; paymentTerms?: string; notes?: string },
-  ): Promise<unknown> {
-    const res = await api.post(`${BASE}/${rfqId}/generate-po`, data);
+  async generatePO(rfqId: string): Promise<unknown> {
+    const res = await api.post(`/purchase-order/from-rfq/${rfqId}`);
     return res.data?.data ?? res.data;
   },
 
   /* ---- Attachments ---- */
 
-  async addAttachment(rfqId: string, data: { fileId: string }) {
-    const res = await api.post(`${BASE}/${rfqId}/attachments`, data);
+  async addAttachment(data: { rfqId: string; documentId: string }) {
+    const res = await api.patch(`${BASE}/attachment/add`, data);
     return rfqAttachmentSchema.parse(res.data?.data ?? res.data);
   },
 
-  async removeAttachment(rfqId: string, attachmentId: string): Promise<void> {
-    await api.delete(`${BASE}/${rfqId}/attachments/${attachmentId}`);
+  async removeAttachment(attachmentId: string): Promise<void> {
+    await api.patch(`${BASE}/attachment/remove`, { id: attachmentId });
   },
 
   /* ---- Quote Attachments ---- */

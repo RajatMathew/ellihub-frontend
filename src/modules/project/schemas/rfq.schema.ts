@@ -4,11 +4,11 @@ import { z } from 'zod';
 
 export const rfqStatusSchema = z
   .object({
-    id: z.string(),
-    name: z.string(),
-    label: z.string(),
-    color: z.string(),
-    order: z.number(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    label: z.string().optional(),
+    color: z.string().optional(),
+    order: z.number().optional(),
   })
   .passthrough();
 
@@ -22,13 +22,22 @@ export type RFQTrack = (typeof RFQ_TRACKS)[number];
 export const rfqListItemSchema = z
   .object({
     id: z.string(),
-    rfqNumber: z.string(),
+    rfqNumber: z.string().nullable().optional(),
     title: z.string(),
-    status: rfqStatusSchema.nullable().optional(),
-    track: z.enum(RFQ_TRACKS).nullable().optional(),
-    bidDeadline: z.string(),
+    status: z.union([rfqStatusSchema, z.string()]).nullable().optional(),
+    track: z.string().nullable().optional(),
+    type: z
+      .object({
+        id: z.string(),
+        type: z.string(),
+        label: z.string(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    bidDeadline: z.string().nullable().optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
-    biddingType: z.string(),
+    biddingType: z.string().nullable().optional(),
     project: z
       .object({ id: z.string(), name: z.string(), jobNumber: z.string().nullable().optional() })
       .passthrough()
@@ -40,6 +49,7 @@ export const rfqListItemSchema = z
   .passthrough();
 
 export type RFQListItem = z.infer<typeof rfqListItemSchema>;
+
 
 /* ---- Paginated list response ---- */
 
@@ -60,7 +70,7 @@ export type RFQPaginatedResponse = z.infer<typeof rfqPaginatedResponseSchema>;
 /* ---- List query params ---- */
 
 export const listRFQParamsSchema = z.object({
-  projectId: z.string(),
+  projectId: z.string().optional(),
   page: z.number().min(1).optional(),
   size: z.number().min(1).optional(),
   sortBy: z.string().optional(),
@@ -78,10 +88,12 @@ export const rfqDeliverableSchema = z
     id: z.string(),
     rfqId: z.string().optional(),
     sequenceNumber: z.number().optional(),
-    description: z.string(),
+    name: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
     specifications: z.string().nullable().optional(),
-    quantity: z.coerce.number(),
-    unit: z.string(),
+    quantity: z.coerce.number().nullable().optional(),
+    unit: z.union([z.string(), z.object({ id: z.string(), label: z.string() }).passthrough()]).nullable().optional(),
+    unitId: z.string().nullable().optional(),
     costCodeId: z.string().nullable().optional(),
     estimatedUnitPrice: z.coerce.number().nullable().optional(),
     estimatedTotal: z.coerce.number().nullable().optional(),
@@ -101,7 +113,11 @@ export const rfqInviteSchema = z
     rfqId: z.string().optional(),
     vendorId: z.string().optional(),
     vendor: z
-      .object({ id: z.string(), name: z.string(), email: z.string().nullable().optional() })
+      .object({
+        id: z.string(),
+        name: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
+      })
       .passthrough()
       .nullable()
       .optional(),
@@ -123,7 +139,7 @@ export const rfqQuoteSchema = z
     rfqId: z.string().optional(),
     vendorId: z.string().optional(),
     vendor: z
-      .object({ id: z.string(), name: z.string() })
+      .object({ id: z.string(), name: z.string().nullable().optional() })
       .passthrough()
       .nullable()
       .optional(),
@@ -170,7 +186,7 @@ export const rfqDetailSchema = z
     rfqNumber: z.string().nullable().optional(),
     title: z.string(),
     description: z.string().nullable().optional(),
-    status: rfqStatusSchema.nullable().optional(),
+    status: z.union([rfqStatusSchema, z.string()]).nullable().optional(),
     statusId: z.string().optional(),
     costCodeId: z.string().nullable().optional(),
     costCode: z
@@ -185,8 +201,18 @@ export const rfqDetailSchema = z
       .optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
     track: z.enum(RFQ_TRACKS).nullable().optional(),
-    bidDeadline: z.string(),
-    biddingType: z.string(),
+    type: z
+      .object({
+        id: z.string(),
+        type: z.string(),
+        label: z.string(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+
+    bidDeadline: z.string().nullable().optional(),
+    biddingType: z.string().nullable().optional(),
     minimumVendors: z.number().optional(),
     deliverables: z.array(rfqDeliverableSchema).optional().default([]),
     invites: z.array(rfqInviteSchema).optional().default([]),
@@ -202,12 +228,13 @@ export const rfqDetailSchema = z
           awardedQuoteId: z.string().nullable().optional(),
         }).passthrough(),
       )
+      .nullable()
       .optional()
       .default([]),
     generatedPO: z.any().nullable().optional(),
     awardedAmount: z.coerce.number().nullable().optional(),
     awardedVendor: z
-      .object({ id: z.string(), name: z.string() })
+      .object({ id: z.string(), name: z.string().nullable().optional() })
       .passthrough()
       .nullable()
       .optional(),
@@ -225,10 +252,12 @@ export type RFQDetail = z.infer<typeof rfqDetailSchema>;
 /* ---- Input schemas (form validation) ---- */
 
 export const rfqDeliverableInputSchema = z.object({
-  description: z.string().min(1, 'Description is required'),
+  name: z.string().min(1, 'Name is required').optional(),
+  description: z.string().optional(),
   specifications: z.string().optional(),
   quantity: z.number().min(0).optional(),
   unit: z.string().optional(),
+  unitId: z.string().optional(),
   costCodeId: z.string().optional(),
   estimatedUnitPrice: z.number().min(0).optional(),
 });
@@ -239,24 +268,19 @@ export const createRFQInputSchema = z.object({
   projectId: z.string().min(1),
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
-  estimatedBudget: z.number().min(0).optional(),
-  track: z.enum(RFQ_TRACKS).optional().default('MATERIAL'),
+  typeId: z.string().min(1, 'Type is required'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
-  biddingType: z.enum(['ANONYMOUS', 'OPEN']).optional(),
-  minimumVendors: z.number().int().min(1).optional(),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });
 
 export type CreateRFQInput = z.infer<typeof createRFQInputSchema>;
 
 export const updateRFQInputSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(255).optional(),
+  title: z.string().min(1, 'Title is required').max(255),
   description: z.string().nullable().optional(),
-  estimatedBudget: z.number().min(0).nullable().optional(),
-  track: z.enum(RFQ_TRACKS).optional(),
-  bidDeadline: z.string().optional(),
-  biddingType: z.enum(['ANONYMOUS', 'OPEN']).optional(),
-  minimumVendors: z.number().int().min(1).optional(),
+  typeId: z.string().min(1, 'Type is required'),
+  bidDeadline: z.string().min(1, 'Bid deadline is required'),
+  deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });
 
 export type UpdateRFQInput = z.infer<typeof updateRFQInputSchema>;

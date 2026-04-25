@@ -61,6 +61,7 @@ import {
 import { formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteRFQMutation, useRFQListQuery, useRFQStatusesQuery } from '../hooks';
+import { useLookupsQuery } from '../hooks/lookup.hooks';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '../constants/rfq.constants';
 import type { ListRFQParams, RFQListItem } from '../schemas/rfq.schema';
 
@@ -147,6 +148,7 @@ export default function RFQListPage() {
 
   const { data, isLoading, isError, refetch } = useRFQListQuery(filters);
   const { data: statuses } = useRFQStatusesQuery();
+  const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const deleteMutation = useDeleteRFQMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
 
@@ -156,7 +158,10 @@ export default function RFQListPage() {
   const rawListData = data?.data ?? [];
   // Client-side track filter
   const listData = trackFilter
-    ? rawListData.filter((r) => r.track === trackFilter)
+    ? rawListData.filter((r) => {
+        const track = r.track || r.type?.label;
+        return track === trackFilter;
+      })
     : rawListData;
   const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
 
@@ -164,10 +169,14 @@ export default function RFQListPage() {
   const allRfqs = allData?.data ?? [];
   const kpis = useMemo(() => {
     const total = allRfqs.length;
-    const active = allRfqs.filter(
-      (r) => r.status?.name === 'PUBLISHED' || r.status?.name === 'EVALUATION',
-    ).length;
-    const awarded = allRfqs.filter((r) => r.status?.name === 'AWARDED').length;
+    const active = allRfqs.filter((r) => {
+      const s = typeof r.status === 'object' ? r.status?.name : r.status;
+      return s === 'PUBLISHED' || s === 'EVALUATION';
+    }).length;
+    const awarded = allRfqs.filter((r) => {
+      const s = typeof r.status === 'object' ? r.status?.name : r.status;
+      return s === 'AWARDED';
+    }).length;
     const totalBudget = allRfqs.reduce((sum, r) => sum + (r.estimatedBudget ?? 0), 0);
     return { total, active, awarded, totalBudget };
   }, [allRfqs]);
@@ -208,7 +217,7 @@ export default function RFQListPage() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Track" />,
         cell: ({ row }) => (
           <span className="text-xs font-semibold tracking-widest uppercase">
-            {row.original.track ? (RFQ_TRACK_LABELS[row.original.track] ?? row.original.track) : '—'}
+            {(row.original.track || row.original.type?.label) ? (RFQ_TRACK_LABELS[row.original.track || ''] ?? (row.original.track || row.original.type?.label)) : '—'}
           </span>
         ),
         meta: { headerClassName: 'min-w-[100px]' },
@@ -217,18 +226,21 @@ export default function RFQListPage() {
       {
         id: 'status',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
-        cell: ({ row }) =>
-          row.original.status ? (
+        cell: ({ row }) => {
+          const statusObj = typeof row.original.status === 'object' ? row.original.status : null;
+          const statusName = statusObj?.name || (typeof row.original.status === 'string' ? row.original.status : '');
+          return row.original.status ? (
             <Badge
-              variant={getRfqStatusVariant(row.original.status.name)}
+              variant={getRfqStatusVariant(statusName)}
               appearance="light"
               size="sm"
             >
-              {row.original.status.label}
+              {statusObj?.label || statusName}
             </Badge>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
-          ),
+          );
+        },
         meta: { headerClassName: 'min-w-[100px]' },
         enableSorting: false,
       },
@@ -299,7 +311,7 @@ export default function RFQListPage() {
               <DropdownMenuItem asChild>
                 <Link to={`${row.original.id}/edit`}>Edit</Link>
               </DropdownMenuItem>
-              {row.original.status?.name === 'DRAFT' && (
+              {(typeof row.original.status === 'object' ? row.original.status?.name : row.original.status) === 'DRAFT' && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -420,23 +432,29 @@ export default function RFQListPage() {
         <CardHeader>
           {/* Track tabs + search/filter in one row */}
           <div className="flex items-center gap-1">
-            {[
-              { value: undefined, label: 'All' },
-              { value: 'MATERIAL', label: 'Material' },
-              { value: 'FABRICATION', label: 'Fabrication' },
-              { value: 'INSTALLATION', label: 'Installation' },
-            ].map((tab) => (
+            <button
+              type="button"
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                trackFilter === undefined
+                  ? 'text-foreground border-b-2 border-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => updateParams({ track: undefined, page: undefined })}
+            >
+              All
+            </button>
+            {tradeCategories?.map((cat) => (
               <button
-                key={tab.label}
+                key={cat.id}
                 type="button"
                 className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-                  trackFilter === tab.value
+                  trackFilter === cat.label
                     ? 'text-foreground border-b-2 border-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                onClick={() => updateParams({ track: tab.value, page: undefined })}
+                onClick={() => updateParams({ track: cat.label, page: undefined })}
               >
-                {tab.label}
+                {cat.label}
               </button>
             ))}
           </div>
@@ -465,8 +483,8 @@ export default function RFQListPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  {statuses?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+                  {statuses?.map((s: any) => (
+                    <SelectItem key={s.id || s.name} value={s.id || ''}>
                       {s.label}
                     </SelectItem>
                   ))}

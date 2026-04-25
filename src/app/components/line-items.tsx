@@ -48,6 +48,7 @@ export interface LineItemFieldNames {
   costCodeId: string;
   quantity: string;
   unit: string;
+  unitId: string;
   unitPrice: string;
 }
 
@@ -89,6 +90,8 @@ export interface LineItemsProps {
   hideUnitPrice?: boolean;
   /** Hide the cost code column */
   hideCostCode?: boolean;
+  /** Unit options for the UnitCombobox */
+  unitOptions?: { value: string; label: string }[];
   /** Footer content rendered inside the card (e.g. receipt-style totals) */
   children?: ReactNode;
   /** Callback to add a new cost code — shows "+ Add" in cost code dropdown */
@@ -100,6 +103,7 @@ const DEFAULT_FIELD_NAMES: LineItemFieldNames = {
   costCodeId: 'costCodeId',
   quantity: 'quantity',
   unit: 'unit',
+  unitId: 'unitId',
   unitPrice: 'unitPrice',
 };
 
@@ -111,19 +115,24 @@ function UnitCombobox({
   value,
   onChange,
   invalid,
+  options = UNIT_OPTIONS,
 }: {
   value: string;
   onChange: (v: string) => void;
   invalid?: boolean;
+  options?: readonly { value: string; label: string }[] | { value: string; label: string }[];
 }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
 
-  const filtered = UNIT_OPTIONS.filter(
+  const filtered = options.filter(
     (u) =>
       u.value.toLowerCase().includes(search.toLowerCase()) ||
       u.label.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const selectedOption = options.find((u) => u.value === value);
+  const displayValue = selectedOption ? selectedOption.label : value;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -132,12 +141,12 @@ function UnitCombobox({
           type="button"
           aria-invalid={invalid}
           className={cn(
-            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] shadow-xs shadow-black/5 transition-shadow outline-none',
+            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] shadow-xs shadow-black/5 transition-shadow outline-none text-left',
             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             !value && 'text-muted-foreground',
           )}
         >
-          <span className="truncate">{value || 'Unit'}</span>
+          <span className="truncate">{displayValue || 'Unit'}</span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60 -me-0.5" />
         </button>
       </PopoverTrigger>
@@ -230,6 +239,7 @@ export function LineItems({
   showLineTotal = false,
   hideUnitPrice = false,
   hideCostCode = false,
+  unitOptions,
   children,
   onAddCostCode,
 }: LineItemsProps) {
@@ -338,6 +348,7 @@ export function LineItems({
                             value={f.value ?? ''}
                             onChange={f.onChange}
                             invalid={fieldState.invalid}
+                            options={unitOptions}
                           />
                           {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                         </div>

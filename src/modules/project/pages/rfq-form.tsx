@@ -31,22 +31,18 @@ import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import { FormSectionNav } from '@app/components/form-section-nav';
 import { LineItems } from '@app/components/line-items';
 import { filesApi } from '@modules/files/api/files.api';
-import { RFQ_FORM_SECTIONS, RFQ_TRACK_OPTIONS } from '../constants/rfq.constants';
+import { RFQ_FORM_SECTIONS } from '../constants/rfq.constants';
 import { useProjectFolderQuery } from '../hooks/use-project-folder';
 import {
-  useAddRFQDeliverableMutation,
+  useAddRFQAttachmentMutation,
   useCreateRFQMutation,
   useRFQDetailQuery,
-  useRemoveRFQDeliverableMutation,
-  useUpdateRFQDeliverableMutation,
-  useAddRFQAttachmentMutation,
   useUpdateRFQMutation,
-} from '../hooks';
+} from '../hooks/rfq.hooks';
+import { useLookupsQuery } from '../hooks/lookup.hooks';
 import {
   createRFQInputSchema,
   type CreateRFQInput,
-  type RFQDeliverable,
-  type RFQDeliverableInput,
 } from '../schemas/rfq.schema';
 
 /* ---- Random data for dev ---- */
@@ -102,7 +98,7 @@ function generateRandomRFQ() {
     return {
       description: item.description,
       quantity: randInt(item.qtyRange[0], item.qtyRange[1]),
-      unit: item.unit,
+      unitId: '',
     };
   });
 
@@ -112,7 +108,7 @@ function generateRandomRFQ() {
   return {
     title: pickRandom(RANDOM_RFQ_TITLES),
     description: '',
-    track: pickRandom(['MATERIAL', 'FABRICATION', 'INSTALLATION'] as const),
+    typeId: '',
     bidDeadline: deadline.toISOString().slice(0, 10),
     biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
     deliverables,
@@ -121,30 +117,7 @@ function generateRandomRFQ() {
 
 /* ---- Helpers ---- */
 
-function computeDeliverableDiff(
-  original: RFQDeliverable[],
-  current: RFQDeliverableInput[],
-) {
-  const toRemove = original.slice(current.length);
-  const toAdd = current.slice(original.length);
-  const toUpdate: { deliverableId: string; data: RFQDeliverableInput }[] = [];
 
-  for (let i = 0; i < Math.min(original.length, current.length); i++) {
-    const orig = original[i];
-    const curr = current[i];
-    if (
-      orig.description !== curr.description ||
-      (orig.specifications ?? '') !== (curr.specifications ?? '') ||
-      orig.quantity !== curr.quantity ||
-      orig.unit !== curr.unit ||
-      (orig.estimatedUnitPrice ?? undefined) !== curr.estimatedUnitPrice
-    ) {
-      toUpdate.push({ deliverableId: orig.id, data: curr });
-    }
-  }
-
-  return { toRemove, toAdd, toUpdate };
-}
 
 /* ---- Page ---- */
 
@@ -155,12 +128,11 @@ export default function RFQFormPage() {
 
   const { data: rfqDetail, isLoading: isLoadingDetail } = useRFQDetailQuery(rfqId ?? '');
   const { data: rfqFolderId } = useProjectFolderQuery(projectId || undefined, 'rfq');
+  const { data: rfqTypes } = useLookupsQuery('TRADE_CATEGORY');
+  const { data: units } = useLookupsQuery('UNIT');
 
   const createMutation = useCreateRFQMutation();
   const updateMutation = useUpdateRFQMutation();
-  const addDeliverableMutation = useAddRFQDeliverableMutation();
-  const updateDeliverableMutation = useUpdateRFQDeliverableMutation();
-  const removeDeliverableMutation = useRemoveRFQDeliverableMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -169,13 +141,10 @@ export default function RFQFormPage() {
     projectId,
     title: '',
     description: '',
-    estimatedBudget: undefined,
-    track: 'MATERIAL',
+    typeId: '',
     bidDeadline: '',
-    biddingType: 'ANONYMOUS',
-    minimumVendors: 1,
     deliverables: [
-      { description: '', quantity: 0, unit: '' },
+      { description: '', quantity: 0, unitId: '' },
     ],
   };
 
@@ -193,25 +162,22 @@ export default function RFQFormPage() {
       reset({
         projectId: rfqDetail.project?.id ?? projectId,
         title: rfqDetail.title,
-        description: rfqDetail.description ?? '',
-        estimatedBudget: rfqDetail.estimatedBudget ?? undefined,
-        track: rfqDetail.track ?? 'MATERIAL',
-        bidDeadline: rfqDetail.bidDeadline?.slice(0, 10) ?? '',
-        biddingType: (rfqDetail.biddingType as 'ANONYMOUS' | 'OPEN') ?? 'ANONYMOUS',
-        minimumVendors: rfqDetail.minimumVendors ?? 3,
+        description: rfqDetail.description || '',
+        typeId: rfqDetail.typeId || (rfqDetail.type as any)?.id || '',
+        bidDeadline: rfqDetail.bidDeadline ? new Date(rfqDetail.bidDeadline).toISOString().split('T')[0] : '',
         deliverables:
-          rfqDetail.deliverables.length > 0
+          rfqDetail.deliverables && rfqDetail.deliverables.length > 0
             ? rfqDetail.deliverables.map((d) => ({
-                description: d.description,
+                description: d.name || d.description || '',
                 specifications: d.specifications ?? '',
-                quantity: d.quantity,
-                unit: d.unit,
+                quantity: d.quantity ?? 0,
+                unitId: d.unitId ?? (typeof d.unit === 'object' ? d.unit?.id : '') ?? '',
                 estimatedUnitPrice: d.estimatedUnitPrice ?? undefined,
               }))
-            : [{ description: '', specifications: '', quantity: 0, unit: '' }],
+            : [{ description: '', specifications: '', quantity: 0, unitId: '' }],
       });
     }
-  }, [isEdit, rfqDetail, reset, projectId]);
+  }, [isEdit, rfqDetail, reset, projectId, rfqTypes]);
 
   const [activeSection, setActiveSection] = useState<string>('rfq-details');
   const [isSaving, setIsSaving] = useState(false);
@@ -228,47 +194,8 @@ export default function RFQFormPage() {
       try {
         await updateMutation.mutateAsync({
           id: rfqId,
-          data: {
-            title: formData.title,
-            description: formData.description || null,
-            estimatedBudget: formData.estimatedBudget ?? null,
-            track: formData.track,
-            bidDeadline: formData.bidDeadline,
-            biddingType: formData.biddingType,
-            minimumVendors: formData.minimumVendors,
-          },
+          data: formData,
         });
-
-        const originalItems = rfqDetail.deliverables ?? [];
-        const { toRemove, toAdd, toUpdate } = computeDeliverableDiff(
-          originalItems,
-          formData.deliverables,
-        );
-
-        const ops: Promise<unknown>[] = [
-          ...toRemove.map((item) =>
-            removeDeliverableMutation.mutateAsync({ rfqId, deliverableId: item.id }),
-          ),
-          ...toUpdate.map((item) =>
-            updateDeliverableMutation.mutateAsync({
-              rfqId,
-              deliverableId: item.deliverableId,
-              data: item.data,
-            }),
-          ),
-          ...toAdd.map((item) =>
-            addDeliverableMutation.mutateAsync({ rfqId, data: item }),
-          ),
-        ];
-
-        if (ops.length > 0) {
-          const results = await Promise.allSettled(ops);
-          const failures = results.filter((r) => r.status === 'rejected');
-          if (failures.length > 0) {
-            toast.error(`${failures.length} deliverable operation(s) failed.`);
-            return;
-          }
-        }
 
         // Upload new files
         if (selectedFiles.length > 0) {
@@ -312,7 +239,7 @@ export default function RFQFormPage() {
         });
         await addAttachmentMutation.mutateAsync({
           rfqId: targetRfqId,
-          data: { fileId: uploaded.id },
+          documentId: uploaded.id,
         });
       } catch {
         console.warn(`Failed to upload/attach file: ${file.name}`);
@@ -410,20 +337,20 @@ export default function RFQFormPage() {
                 />
 
                 <Controller
-                  name="track"
+                  name="typeId"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Track
+                        Track (Type)
                       </FieldLabel>
-                      <Select value={field.value ?? 'MATERIAL'} onValueChange={field.onChange}>
+                      <Select value={field.value ?? ''} onValueChange={field.onChange}>
                         <SelectTrigger aria-invalid={fieldState.invalid}>
-                          <SelectValue placeholder="Select track..." />
+                          <SelectValue placeholder={rfqDetail?.track || rfqDetail?.type?.label || "Select track..."} />
                         </SelectTrigger>
                         <SelectContent>
-                          {RFQ_TRACK_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
+                          {rfqTypes?.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
                               {opt.label}
                             </SelectItem>
                           ))}
@@ -489,9 +416,11 @@ export default function RFQFormPage() {
             append={append}
             remove={remove}
             costCodeOptions={[]}
+            unitOptions={units?.map(u => ({ value: u.id, label: u.label || u.name || u.id }))}
+            fieldNames={{ unit: 'unitId' }}
             hideCostCode
             hideUnitPrice
-            defaultItem={{ description: '', quantity: 0, unit: '' }}
+            defaultItem={{ description: '', quantity: 0, unitId: '' }}
             rootError={formState.errors.deliverables?.root}
             title="Deliverables"
             subtitle="At least one deliverable is required."

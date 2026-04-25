@@ -25,7 +25,7 @@ export function HeaderBreadcrumbs() {
     .filter((_, index) => index !== 0); // remove "app"
 
   // Build cumulative paths
-  const breadcrumbs = pathSegments.map((segment, index) => {
+  let breadcrumbs = pathSegments.map((segment, index) => {
     const path = '/' + ['app', ...pathSegments.slice(0, index + 1)].join('/');
 
     // Replace project ID with project name and link to overview
@@ -46,11 +46,21 @@ export function HeaderBreadcrumbs() {
     };
   });
 
+  // Filter out redundant overview if it's the last segment and follows the project name
+  if (breadcrumbs.length > 1) {
+    const last = breadcrumbs[breadcrumbs.length - 1];
+    const prev = breadcrumbs[breadcrumbs.length - 2];
+    if (last.label === 'Overview' && last.path === prev.path) {
+      breadcrumbs = breadcrumbs.slice(0, -1);
+      breadcrumbs[breadcrumbs.length - 1].isLast = true;
+    }
+  }
+
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {breadcrumbs.map((crumb, index) => (
-          <Fragment key={crumb.path}>
+          <Fragment key={`${crumb.path}-${index}`}>
             {index > 0 && <BreadcrumbSeparator />}
             <BreadcrumbItem>
               {crumb.isLast || index == 0 ? (

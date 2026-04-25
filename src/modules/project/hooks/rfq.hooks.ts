@@ -1,15 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { toastApiError } from '@app/lib/toast-api-error';
 import { rfqApi } from '@modules/project/api/rfq.api';
 import { rfqKeys } from '@modules/project/constants/rfq.keys';
 import type {
-  AwardRFQInput,
-  CancelRFQInput,
   CreateRFQInput,
   ListRFQParams,
-  PublishRFQInput,
   RFQDeliverableInput,
   UpdateRFQInput,
   VoidAwardInput,
@@ -19,7 +17,7 @@ import type {
 
 export const useRFQListQuery = (params: ListRFQParams) =>
   useQuery({
-    queryKey: [...rfqKeys.list(params.projectId), params],
+    queryKey: [...rfqKeys.list(params.projectId || 'all'), params],
     queryFn: () => rfqApi.list(params),
     enabled: !!params.projectId,
   });
@@ -27,7 +25,13 @@ export const useRFQListQuery = (params: ListRFQParams) =>
 export const useRFQStatusesQuery = () =>
   useQuery({
     queryKey: rfqKeys.statuses(),
-    queryFn: () => rfqApi.listStatuses(),
+    queryFn: () => rfqApi.getStatuses(),
+  });
+
+export const useRFQTypesQuery = () =>
+  useQuery({
+    queryKey: [...rfqKeys.all, 'types'],
+    queryFn: () => rfqApi.getTypes(),
   });
 
 export const useRFQDetailQuery = (id: string) =>
@@ -130,22 +134,17 @@ export const useRemoveRFQDeliverableMutation = () => {
 
 /* ---- quote mutations ---- */
 
-export const useCreateQuoteMutation = () => {
+export const useSubmitQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      rfqId,
+      _rfqId,
       data,
     }: {
-      rfqId: string;
-      data: {
-        vendorId: string;
-        lineItems: { deliverableId: string; unitPrice: number; quantity: number; unit: string }[];
-        leadTimeDays?: number;
-        notes?: string;
-      };
-    }) => rfqApi.createQuote(rfqId, data),
-    onSuccess: (_, { rfqId }) => {
+      _rfqId: string;
+      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+    }) => rfqApi.submitQuote(data),
+    onSuccess: (_, { _rfqId: rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Quote submitted.');
@@ -154,28 +153,35 @@ export const useCreateQuoteMutation = () => {
   });
 };
 
-export const useUpdateQuoteMutation = () => {
+export const useEditQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      rfqId,
-      quoteId,
+      _rfqId,
       data,
     }: {
-      rfqId: string;
-      quoteId: string;
-      data: {
-        lineItems: { deliverableId: string; unitPrice: number; quantity: number; unit: string }[];
-        leadTimeDays?: number | null;
-        notes?: string | null;
-      };
-    }) => rfqApi.updateQuote(rfqId, quoteId, data),
-    onSuccess: (_, { rfqId }) => {
+      _rfqId: string;
+      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+    }) => rfqApi.editQuote(data),
+    onSuccess: (_, { _rfqId: rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Quote updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update quote.'),
+  });
+};
+
+export const useRemoveQuoteMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ _rfqId, id }: { _rfqId: string; id: string }) => rfqApi.removeQuote(id),
+    onSuccess: (_, { _rfqId: rfqId }) => {
+      qc.invalidateQueries({ queryKey: rfqKeys.all });
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+      toast.success('Quote removed.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to remove quote.'),
   });
 };
 
@@ -201,15 +207,13 @@ export const useDeclineInviteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      rfqId,
-      inviteId,
+      _rfqId,
       data,
     }: {
-      rfqId: string;
-      inviteId: string;
-      data: { declineReason?: string };
-    }) => rfqApi.declineInvite(rfqId, inviteId, data),
-    onSuccess: (_, { rfqId }) => {
+      _rfqId: string;
+      data: { id: string; declineReason?: string };
+    }) => rfqApi.declineInvite(data),
+    onSuccess: (_, { _rfqId: rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Invite declined.');
@@ -220,22 +224,30 @@ export const useDeclineInviteMutation = () => {
 
 /* ---- vendor invite mutations ---- */
 
-export const useInviteVendorsMutation = () => {
+export const useAddVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      rfqId,
-      data,
-    }: {
-      rfqId: string;
-      data: { vendorIds: string[]; sendInviteEmails?: boolean };
-    }) => rfqApi.inviteVendors(rfqId, data),
+    mutationFn: (data: { rfqId: string; vendorId: string }) =>
+      rfqApi.addVendor(data),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
-      toast.success('Vendors invited.');
+      toast.success('Vendor added.');
     },
-    onError: (err) => toastApiError(err, 'Failed to invite vendors.'),
+    onError: (err) => toastApiError(err, 'Failed to add vendor.'),
+  });
+};
+
+export const useRemoveVendorMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ quoteId }: { rfqId: string; quoteId: string }) => rfqApi.removeVendor(quoteId),
+    onSuccess: (_, { rfqId }) => {
+      qc.invalidateQueries({ queryKey: rfqKeys.all });
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+      toast.success('Vendor removed.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to remove vendor.'),
   });
 };
 
@@ -244,8 +256,8 @@ export const useInviteVendorsMutation = () => {
 export const usePublishRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PublishRFQInput }) => rfqApi.publish(id, data),
-    onSuccess: (_, { id }) => {
+    mutationFn: (id: string) => rfqApi.publish(id),
+    onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
       toast.success('RFQ published.');
@@ -257,7 +269,7 @@ export const usePublishRFQMutation = () => {
 export const useCancelRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CancelRFQInput }) => rfqApi.cancel(id, data),
+    mutationFn: ({ id, cancellationReason }: { id: string; cancellationReason?: string }) => rfqApi.cancel(id, cancellationReason),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
@@ -270,10 +282,10 @@ export const useCancelRFQMutation = () => {
 export const useAwardRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: AwardRFQInput }) => rfqApi.award(id, data),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({ quoteId }: { rfqId: string; quoteId: string }) => rfqApi.award(quoteId),
+    onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('RFQ awarded.');
     },
     onError: (err) => toastApiError(err, 'Failed to award RFQ.'),
@@ -302,7 +314,7 @@ export const useUnawardRFQMutation = () => {
       qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
       toast.success('Award removed.');
     },
-    onError: (err) => toastApiError(err, 'Failed to unaward.'),
+    onError: (err) => toastApiError(err, 'Failed to remove award.'),
   });
 };
 
@@ -311,8 +323,8 @@ export const useUnawardRFQMutation = () => {
 export const useAddRFQAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ rfqId, data }: { rfqId: string; data: { fileId: string } }) =>
-      rfqApi.addAttachment(rfqId, data),
+    mutationFn: (data: { rfqId: string; documentId: string }) =>
+      rfqApi.addAttachment(data),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Attachment added.');
@@ -325,7 +337,7 @@ export const useRemoveRFQAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ rfqId, attachmentId }: { rfqId: string; attachmentId: string }) =>
-      rfqApi.removeAttachment(rfqId, attachmentId),
+      rfqApi.removeAttachment(attachmentId),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Attachment removed.');
@@ -358,18 +370,20 @@ export const useAddQuoteAttachmentMutation = () => {
 
 export const useGeneratePOMutation = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+
   return useMutation({
-    mutationFn: ({
-      rfqId,
-      data,
-    }: {
-      rfqId: string;
-      data: { vendorInviteId: string; taxPercent?: number; paymentTerms?: string; notes?: string };
-    }) => rfqApi.generatePO(rfqId, data),
-    onSuccess: (_, { rfqId }) => {
+    mutationFn: (rfqId: string) => rfqApi.generatePO(rfqId),
+    onSuccess: (data: any, rfqId) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Purchase Order created.');
+
+      const poId = data?.id;
+      if (poId && projectId) {
+        navigate(`/app/project/${projectId}/purchase-orders/${poId}`);
+      }
     },
     onError: (err) => toastApiError(err, 'Failed to create Purchase Order.'),
   });

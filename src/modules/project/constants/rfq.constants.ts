@@ -29,12 +29,16 @@ export const RFQ_TRACK_OPTIONS = [
   { value: 'MATERIAL', label: 'Material' },
   { value: 'FABRICATION', label: 'Fabrication' },
   { value: 'INSTALLATION', label: 'Installation' },
+  { value: 'LABOR', label: 'Labor' },
+  { value: 'EQUIPMENT', label: 'Equipment' },
 ] as const;
 
 export const RFQ_TRACK_LABELS: Record<string, string> = {
   MATERIAL: 'Material',
   FABRICATION: 'Fabrication',
   INSTALLATION: 'Installation',
+  LABOR: 'Labor',
+  EQUIPMENT: 'Equipment',
 };
 
 export const RFQ_FORM_SECTIONS = [

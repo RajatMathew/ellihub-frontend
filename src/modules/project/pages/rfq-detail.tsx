@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import {
   Calendar,
@@ -6,6 +7,7 @@ import {
   ChevronDown,
   Clock,
   DollarSign,
+  Eye,
   FileText,
   Mail,
   MoreHorizontal,
@@ -17,9 +19,10 @@ import {
   Send,
   ShieldAlert,
   Trash2,
-  Trophy,
+   Trophy,
   Upload,
   Users,
+  X,
   XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -69,29 +72,35 @@ import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/fil
 import { DetailSidebar } from '@modules/directory/components';
 import { InfoRow } from '@modules/project/components/info-row';
 import { useVendorsQuery } from '@modules/directory/hooks/vendors.hooks';
-import { BIDDING_TYPE_LABELS, getRfqStatusVariant } from '../constants/rfq.constants';
+import {
+  BIDDING_TYPE_LABELS,
+  RFQ_TRACK_LABELS,
+  getRfqStatusVariant,
+} from '../constants/rfq.constants';
 import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import {
-  useAddQuoteAttachmentMutation,
   useAddRFQAttachmentMutation,
   useAwardRFQMutation,
   useBidComparisonQuery,
   useCancelRFQMutation,
-  useChangeRFQStatusMutation,
-  useCreateQuoteMutation,
   useDeclineInviteMutation,
   useDeleteRFQMutation,
   useGeneratePOMutation,
-  useInviteVendorsMutation,
+  useAddVendorMutation,
   usePublishRFQMutation,
   useRFQDetailQuery,
   useRFQStatusesQuery,
+  useRemoveQuoteMutation,
   useRemoveRFQAttachmentMutation,
+  useRemoveVendorMutation,
+  useSubmitQuoteMutation,
   useUnawardRFQMutation,
-  useUpdateQuoteMutation,
+  useUpdateRFQMutation,
+  useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
+  useEditQuoteMutation as useUpdateVendorQuoteMutation,
   useVoidAwardMutation,
-  useActivityLogQuery,
-} from '../hooks';
+} from '../hooks/rfq.hooks';
+import { useActivityLogQuery } from '@modules/directory/hooks/activity.hooks';
 import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
 import { useMemo } from 'react';
 import { History } from 'lucide-react';
@@ -166,13 +175,14 @@ export default function RFQDetailPage() {
   const unawardMutation = useUnawardRFQMutation();
   const generatePOMutation = useGeneratePOMutation();
   const deleteMutation = useDeleteRFQMutation();
-  const inviteVendorsMutation = useInviteVendorsMutation();
-  const createQuoteMutation = useCreateQuoteMutation();
-  const updateQuoteMutation = useUpdateQuoteMutation();
-  const changeStatusMutation = useChangeRFQStatusMutation();
+  const addVendorMutation = useAddVendorMutation();
+  const removeVendorMutation = useRemoveVendorMutation();
+  const submitQuoteMutation = useSubmitQuoteMutation();
+  const updateQuoteMutation = useUpdateVendorQuoteMutation();
+  const removeQuoteMutation = useRemoveQuoteMutation();
+  const updateStatusMutation = useUpdateRFQStatusMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
-  const addQuoteAttachmentMutation = useAddQuoteAttachmentMutation();
   const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
@@ -194,11 +204,14 @@ export default function RFQDetailPage() {
 
   // Upload / edit quotation dialog
   const [quoteOpen, setQuoteOpen] = useState(false);
-  const [quoteVendorId, setQuoteVendorId] = useState('');
+  const [, setQuoteVendorId] = useState<string>('');
+  const [quoteInviteId, setQuoteInviteId] = useState<string>('');
   const [quoteAmount, setQuoteAmount] = useState<number | ''>('');
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
+  const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -217,7 +230,11 @@ export default function RFQDetailPage() {
 
   // Bid comparison dialog
   const [comparisonOpen, setComparisonOpen] = useState(false);
-  const { data: bidComparison } = useBidComparisonQuery(rfqId, comparisonOpen);
+  const {
+    data: bidComparison,
+    isLoading: isComparisonLoading,
+    isError: isComparisonError,
+  } = useBidComparisonQuery(rfqId, comparisonOpen);
 
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'rfq',
@@ -229,7 +246,7 @@ export default function RFQDetailPage() {
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     if (!activityData?.data) return [];
-    return activityData.data.map((log) => {
+    return activityData.data.map((log: any) => {
       const action = log.action.toLowerCase();
       let icon = <Clock className="size-4" />;
       let color = "border-muted-foreground/20 bg-muted/30";
@@ -267,7 +284,8 @@ export default function RFQDetailPage() {
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const vendors = vendorsData?.data ?? [];
 
-  const statusName = rfq?.status?.name ?? '';
+  const statusObj = typeof rfq?.status === 'object' ? rfq.status : null;
+  const statusName = statusObj?.name ?? (typeof rfq?.status === 'string' ? rfq.status : '');
   const isDraft = statusName === 'DRAFT';
   const isPublished = statusName === 'PUBLISHED';
   const isEvaluation = statusName === 'EVALUATION';
@@ -279,12 +297,11 @@ export default function RFQDetailPage() {
     cancelMutation.isPending ||
     awardMutation.isPending ||
     voidMutation.isPending ||
-    inviteVendorsMutation.isPending ||
-    createQuoteMutation.isPending ||
-    updateQuoteMutation.isPending ||
+    addVendorMutation.isPending ||
+    submitQuoteMutation.isPending ||
     unawardMutation.isPending ||
     generatePOMutation.isPending ||
-    changeStatusMutation.isPending ||
+    updateStatusMutation.isPending ||
     addAttachmentMutation.isPending ||
     removeAttachmentMutation.isPending;
 
@@ -316,7 +333,7 @@ export default function RFQDetailPage() {
   const highestQuote = quoteGrandTotals.length > 0 ? Math.max(...quoteGrandTotals) : null;
 
   const deliverablesTotal = deliverables.reduce(
-    (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * d.quantity),
+    (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * (d.quantity ?? 0)),
     0,
   );
 
@@ -329,17 +346,23 @@ export default function RFQDetailPage() {
   // IDs of vendors already invited
   const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
 
-  function openQuoteDialog(vendorId: string, existingQuoteId?: string) {
+  function openQuoteDialog(inviteId: string, vendorId: string, existingQuoteId?: string, viewOnly = false) {
+    setQuoteInviteId(inviteId);
     setQuoteVendorId(vendorId);
     setEditingQuoteId(existingQuoteId ?? null);
+    setIsQuoteViewOnly(viewOnly);
     // Pre-fill if editing existing quote
     if (existingQuoteId) {
       const eq = quotes.find((q) => q.id === existingQuoteId);
       setQuoteAmount(eq?.grandTotal ?? eq?.totalAmount ?? '');
-      setQuoteLeadTime(eq?.notes ?? '');
+      // Use leadTimeDays if available (numeric), fallback to notes but strip non-numeric
+      const lt = eq?.leadTimeDays?.toString() || eq?.notes?.replace(/[^0-9]/g, '') || '';
+      setQuoteLeadTime(lt);
+      setExistingAttachments((eq?.attachments as any[]) ?? []);
     } else {
       setQuoteAmount('');
       setQuoteLeadTime('');
+      setExistingAttachments([]);
     }
     setQuoteOpen(true);
   }
@@ -347,10 +370,13 @@ export default function RFQDetailPage() {
   function resetQuoteDialog() {
     setQuoteOpen(false);
     setQuoteVendorId('');
+    setQuoteInviteId('');
     setQuoteAmount('');
     setQuoteLeadTime('');
     setEditingQuoteId(null);
+    setIsQuoteViewOnly(false);
     setQuoteFile(null);
+    setExistingAttachments([]);
   }
 
   function handleAwardFromTable(quoteId: string) {
@@ -377,20 +403,20 @@ export default function RFQDetailPage() {
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
               {rfq.status && rfqStatuses && rfqStatuses.length > 0 ? (
                 <Select
-                  value={rfq.status.id}
+                  value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
                   onValueChange={(statusId) => {
-                    if (statusId !== rfq.status?.id) {
-                      changeStatusMutation.mutate({ id: rfqId, statusId });
+                    if (statusId !== (statusObj?.id || rfq.status)) {
+                      updateStatusMutation.mutate({ id: rfqId!, statusId });
                     }
                   }}
                 >
-                  <SelectTrigger className="h-7 w-auto gap-1.5 border-0 px-2 text-xs font-medium shadow-none">
-                    <Badge variant={getRfqStatusVariant(rfq.status.name)} appearance="light" size="sm">
-                      {rfq.status.label}
+                  <SelectTrigger className="h-8 min-w-[100px] bg-transparent border-none p-0 focus:ring-0">
+                    <Badge variant={getRfqStatusVariant(statusName)} appearance="light" size="sm">
+                      {statusObj?.label || statusName}
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    {rfqStatuses.map((s) => (
+                    {rfqStatuses.map((s: any) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.label}
                       </SelectItem>
@@ -398,8 +424,8 @@ export default function RFQDetailPage() {
                   </SelectContent>
                 </Select>
               ) : rfq.status ? (
-                <Badge variant={getRfqStatusVariant(rfq.status.name)} appearance="light" size="sm">
-                  {rfq.status.label}
+                <Badge variant={getRfqStatusVariant(statusName)} appearance="light" size="sm">
+                  {statusObj?.label || statusName}
                 </Badge>
               ) : null}
               {rfq.rfqNumber && (
@@ -490,7 +516,7 @@ export default function RFQDetailPage() {
               icon={<ShieldAlert className="size-6 text-muted-foreground" />}
               bgClass="bg-muted/50"
               label="Bidding Type"
-              value={BIDDING_TYPE_LABELS[rfq.biddingType] ?? rfq.biddingType}
+              value={((rfq.biddingType && BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ?? rfq.biddingType) || ''}
             />
             <StatsCard
               icon={<Users className="size-6 text-primary" />}
@@ -570,7 +596,7 @@ export default function RFQDetailPage() {
                         const hasQuote = !!inv.hasSubmittedQuote;
                         const vendorQuote = vendor ? quoteByVendor.get(vendor.id) : null;
                         const grandTotal = vendorQuote?.grandTotal;
-                        const isVendorAwarded = !!vendorQuote?.isAwarded;
+                        const isVendorAwarded = !!vendorQuote?.isAwarded || rfq.awardedVendorId === vendor?.id;
                         const vendorPO = rfq.purchaseOrders?.find((po) => po.vendorId === vendor?.id);
                         const leadTimeNotes = vendorQuote?.notes;
 
@@ -607,14 +633,20 @@ export default function RFQDetailPage() {
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start" className="w-44">
+                                    {hasQuote && vendorQuote && vendor && (
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)}>
+                                        <Eye className="size-4" />
+                                        View Quote
+                                      </DropdownMenuItem>
+                                    )}
                                     {!isVendorAwarded && !hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(vendor.id)}>
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id)}>
                                         <Upload className="size-4" />
                                         Upload Quote
                                       </DropdownMenuItem>
                                     )}
                                     {!isVendorAwarded && hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(vendor.id, vendorQuote.id)}>
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id)}>
                                         <Pencil className="size-4" />
                                         Edit Quote
                                       </DropdownMenuItem>
@@ -623,6 +655,18 @@ export default function RFQDetailPage() {
                                       <DropdownMenuItem onClick={() => handleAwardFromTable(vendorQuote.id)}>
                                         <Trophy className="size-4" />
                                         Award
+                                      </DropdownMenuItem>
+                                    )}
+                                    {(hasQuote || isVendorAwarded || (!declined && !isVendorAwarded)) && <DropdownMenuSeparator />}
+                                    {!isVendorAwarded && hasQuote && vendorQuote && (
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          removeQuoteMutation.mutate({ rfqId, id: vendorQuote.id });
+                                        }}
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Remove Quote
                                       </DropdownMenuItem>
                                     )}
                                     {isVendorAwarded && (
@@ -634,23 +678,30 @@ export default function RFQDetailPage() {
                                         Unaward
                                       </DropdownMenuItem>
                                     )}
+                                    {!isVendorAwarded && (
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          removeVendorMutation.mutate({ rfqId, quoteId: inv.id });
+                                        }}
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Remove Vendor
+                                      </DropdownMenuItem>
+                                    )}
                                     {!declined && !isVendorAwarded && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          variant="destructive"
-                                          onClick={() => {
-                                            declineInviteMutation.mutate({
-                                              rfqId,
-                                              inviteId: inv.id,
-                                              data: {},
-                                            });
-                                          }}
-                                        >
-                                          <XCircle className="size-4" />
-                                          Decline
-                                        </DropdownMenuItem>
-                                      </>
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          declineInviteMutation.mutate({
+                                            rfqId,
+                                            data: { id: inv.id },
+                                          });
+                                        }}
+                                      >
+                                        <XCircle className="size-4" />
+                                        Decline
+                                      </DropdownMenuItem>
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -671,14 +722,20 @@ export default function RFQDetailPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44">
+                                    {hasQuote && vendorQuote && vendor && (
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)}>
+                                        <Eye className="size-4" />
+                                        View Quote
+                                      </DropdownMenuItem>
+                                    )}
                                     {!hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(vendor.id)}>
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id)}>
                                         <Upload className="size-4" />
                                         Upload Quote
                                       </DropdownMenuItem>
                                     )}
                                     {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(vendor.id, vendorQuote.id)}>
+                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id)}>
                                         <Pencil className="size-4" />
                                         Edit Quote
                                       </DropdownMenuItem>
@@ -692,7 +749,7 @@ export default function RFQDetailPage() {
                                     {isVendorAwarded && !vendorPO && (
                                       <DropdownMenuItem
                                         onClick={() => {
-                                          generatePOMutation.mutate({ rfqId, data: { vendorInviteId: inv.id } });
+                                          generatePOMutation.mutate(rfqId);
                                         }}
                                       >
                                         <FileText className="size-4" />
@@ -707,31 +764,51 @@ export default function RFQDetailPage() {
                                         </Link>
                                       </DropdownMenuItem>
                                     )}
+                                    <DropdownMenuSeparator />
+                                    {hasQuote && vendorQuote && !isVendorAwarded && (
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          removeQuoteMutation.mutate({ rfqId, id: vendorQuote.id });
+                                        }}
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Remove Quote
+                                      </DropdownMenuItem>
+                                    )}
                                     {isVendorAwarded && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          variant="destructive"
-                                          onClick={() => handleUnaward()}
-                                        >
-                                          <XCircle className="size-4" />
-                                          Unaward
-                                        </DropdownMenuItem>
-                                      </>
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => handleUnaward()}
+                                      >
+                                        <XCircle className="size-4" />
+                                        Unaward
+                                      </DropdownMenuItem>
+                                    )}
+                                    {!isVendorAwarded && (
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          removeVendorMutation.mutate({ rfqId, quoteId: inv.id });
+                                        }}
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Remove Vendor
+                                      </DropdownMenuItem>
                                     )}
                                     {!declined && !isVendorAwarded && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          variant="destructive"
-                                          onClick={() => {
-                                            declineInviteMutation.mutate({ rfqId, inviteId: inv.id, data: {} });
-                                          }}
-                                        >
-                                          <XCircle className="size-4" />
-                                          Decline
-                                        </DropdownMenuItem>
-                                      </>
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onClick={() => {
+                                          declineInviteMutation.mutate({
+                                            rfqId,
+                                            data: { id: inv.id },
+                                          });
+                                        }}
+                                      >
+                                        <XCircle className="size-4" />
+                                        Decline
+                                      </DropdownMenuItem>
                                     )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -798,7 +875,12 @@ export default function RFQDetailPage() {
                           mode="icon"
                           size="sm"
                           disabled={removeAttachmentMutation.isPending}
-                          onClick={() => removeAttachmentMutation.mutate({ rfqId, attachmentId: att.id })}
+                          onClick={() => {
+                            removeAttachmentMutation.mutate({
+                              rfqId: rfqId!,
+                              attachmentId: att.id,
+                            });
+                          }}
                         >
                           <Trash2 className="size-3.5 text-destructive" />
                         </Button>
@@ -823,7 +905,7 @@ export default function RFQDetailPage() {
               onSubmit={async (payload) => {
                 try {
                   const fileItem = await uploadFileMutation.mutateAsync(payload);
-                  await addAttachmentMutation.mutateAsync({ rfqId, data: { fileId: fileItem.id } });
+                  await addAttachmentMutation.mutateAsync({ rfqId, documentId: fileItem.id });
                 } finally {
                   setUploadOpen(false);
                 }
@@ -852,20 +934,24 @@ export default function RFQDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {deliverables.map((d, idx) => (
-                          <tr key={d.id} className="border-b last:border-0">
-                            <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
-                            <td className="py-2.5 pr-3">
-                              <div className="font-medium">{d.description}</div>
-                              {d.specifications && (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {d.specifications}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
-                            <td className="py-2.5">{d.unit}</td>
-                          </tr>
+                      {deliverables.map((d, index) => (
+                        <tr key={d.id} className="border-b last:border-0 border-muted/20">
+                          <td className="py-2.5 pr-3 text-xs font-medium text-muted-foreground w-8">
+                            {d.sequenceNumber ?? index + 1}
+                          </td>
+                          <td className="py-2.5 pr-3">
+                            <div className="text-sm font-medium">
+                              {d.name || d.description || '—'}
+                            </div>
+                            {d.specifications && (
+                              <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                {d.specifications}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
+                          <td className="py-2.5">{typeof d.unit === 'object' ? d.unit?.label : d.unit}</td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -929,9 +1015,12 @@ export default function RFQDetailPage() {
                       ? `${rfq.project.name}${rfq.project.jobNumber ? ` (${rfq.project.jobNumber})` : ''}`
                       : '—'}
                   </InfoRow>
-                  <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline)}</InfoRow>
+                  <InfoRow label="Track">
+                    {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '—'}
+                  </InfoRow>
+                  <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
                   <InfoRow label="Bidding Type">
-                    {BIDDING_TYPE_LABELS[rfq.biddingType] ?? rfq.biddingType}
+                    {(rfq.biddingType && BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ?? rfq.biddingType}
                   </InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
@@ -1066,13 +1155,23 @@ export default function RFQDetailPage() {
               )}
               <div>
                 <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Due Date</div>
-                <div className="font-medium">{formatDate(rfq.bidDeadline)}</div>
+                <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
               </div>
             </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-x-auto overflow-y-auto mt-4">
-            {bidComparison ? (
+            {isComparisonLoading ? (
+              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+                <div className="size-8 rounded-full border-2 border-t-primary border-muted-foreground/10 animate-spin mb-4" />
+                <p className="text-sm">Loading comparison...</p>
+              </div>
+            ) : isComparisonError ? (
+              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+                <ShieldAlert className="size-10 text-destructive/40 mb-4" />
+                <p className="text-sm text-destructive">Failed to load comparison data</p>
+              </div>
+            ) : bidComparison ? (
               <div className="flex gap-4 min-w-max pb-4">
                 {/* Show all invites — vendors with quotes, without quotes, and declined */}
                 {invites.map((inv) => {
@@ -1163,8 +1262,8 @@ export default function RFQDetailPage() {
                 })}
               </div>
             ) : (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-sm text-muted-foreground">Loading comparison...</div>
+              <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+                No comparison data available
               </div>
             )}
           </div>
@@ -1180,7 +1279,7 @@ export default function RFQDetailPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <FileText className="size-5 text-primary" />
-              <DialogTitle>{editingQuoteId ? 'Edit Quotation' : 'Upload Quotation'}</DialogTitle>
+              <DialogTitle>{isQuoteViewOnly ? 'View Quotation' : editingQuoteId ? 'Edit Quotation' : 'Upload Quotation'}</DialogTitle>
             </div>
           </DialogHeader>
           <div className="space-y-4">
@@ -1196,6 +1295,7 @@ export default function RFQDetailPage() {
                   min={0}
                   placeholder="0.00"
                   value={quoteAmount}
+                  disabled={isQuoteViewOnly}
                   onChange={(e) =>
                     setQuoteAmount(e.target.value === '' ? '' : e.target.valueAsNumber)
                   }
@@ -1214,6 +1314,7 @@ export default function RFQDetailPage() {
                   step={1}
                   placeholder="e.g. 30"
                   value={quoteLeadTime}
+                  disabled={isQuoteViewOnly}
                   onChange={(e) => setQuoteLeadTime(e.target.value.replace(/[^0-9]/g, ''))}
                   onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }}
                   autoComplete="off"
@@ -1225,104 +1326,124 @@ export default function RFQDetailPage() {
               <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                 Quote Document
               </FieldLabel>
-              <FileDropZone
-                value={quoteFile}
-                onChange={setQuoteFile}
-                accept=".pdf,.xlsx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              />
+              {!isQuoteViewOnly && (
+                <FileDropZone
+                  value={quoteFile}
+                  onChange={setQuoteFile}
+                  accept=".pdf,.xlsx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                />
+              )}
             </Field>
+
+            {existingAttachments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+                  Current Attachments
+                </p>
+                {existingAttachments.map((att) => (
+                  <div key={att.id} className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{att.document?.name || att.name || 'Document'}</span>
+                    </div>
+                    {!isQuoteViewOnly && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        mode="icon"
+                        className="size-7 hover:text-destructive"
+                        onClick={() => setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    )}
+                    {isQuoteViewOnly && (att.document || att.documentId) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        mode="icon"
+                        className="size-7"
+                        onClick={() => {
+                          const doc = att.document || { id: att.documentId, name: att.name };
+                          downloadFile.mutate(doc as any);
+                        }}
+                      >
+                        <Upload className="size-4 rotate-180" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={resetQuoteDialog}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!quoteAmount || quoteAmount <= 0 || createQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending}
-              onClick={async () => {
-                if (!quoteAmount || quoteAmount <= 0 || deliverables.length === 0) return;
+            {isQuoteViewOnly ? (
+              <Button onClick={resetQuoteDialog}>Close</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={resetQuoteDialog}>
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!quoteAmount || quoteAmount <= 0 || submitQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending}
+                  onClick={async () => {
+                    if (!quoteAmount || quoteAmount <= 0) return;
 
-                const totalQty = deliverables.reduce((s, d) => s + (d.quantity || 1), 0);
-                const perUnitPrice = totalQty > 0 ? quoteAmount / totalQty : quoteAmount;
-                const items = deliverables.map((d) => ({
-                  deliverableId: d.id,
-                  unitPrice: perUnitPrice,
-                  quantity: d.quantity || 1,
-                  unit: d.unit || 'EA',
-                }));
-
-                const leadTimeDays = quoteLeadTime
-                  ? parseInt(quoteLeadTime, 10) || undefined
-                  : undefined;
-
-                const attachFileToQuote = async (quoteId: string) => {
-                  if (quoteFile && rfqFolderQuery.data) {
                     try {
-                      const dotIdx = quoteFile.name.lastIndexOf('.');
-                      const docName = dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
-                      const fileItem = await uploadFileMutation.mutateAsync({
-                        file: quoteFile,
-                        data: {
-                          name: docName,
-                          parentId: rfqFolderQuery.data,
-                          mimeType: quoteFile.type || undefined,
-                          size: quoteFile.size,
-                        },
-                      });
-                      addQuoteAttachmentMutation.mutate({
-                        rfqId,
-                        quoteId,
-                        data: { fileId: fileItem.id },
-                      });
-                    } catch {
-                      // Quote was created but file upload failed — user can retry
-                    }
-                  }
-                };
+                      let fileIds: string[] = [];
+                      if (quoteFile && rfqFolderQuery.data) {
+                        const dotIdx = quoteFile.name.lastIndexOf('.');
+                        const docName = dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
+                        const fileItem = await uploadFileMutation.mutateAsync({
+                          file: quoteFile,
+                          data: {
+                            name: docName,
+                            parentId: rfqFolderQuery.data,
+                            mimeType: quoteFile.type || undefined,
+                            size: quoteFile.size,
+                          },
+                        });
+                        fileIds = [fileItem.id];
+                      }
 
-                if (editingQuoteId) {
-                  updateQuoteMutation.mutate(
-                    {
-                      rfqId,
-                      quoteId: editingQuoteId,
-                      data: {
-                        lineItems: items,
-                        leadTimeDays: leadTimeDays ?? null,
-                        notes: quoteLeadTime || null,
-                      },
-                    },
-                    {
-                      onSuccess: () => {
-                        attachFileToQuote(editingQuoteId);
-                        resetQuoteDialog();
-                      },
-                    },
-                  );
-                } else {
-                  createQuoteMutation.mutate(
-                    {
-                      rfqId,
-                      data: {
-                        vendorId: quoteVendorId,
-                        lineItems: items,
-                        leadTimeDays,
-                        notes: quoteLeadTime || undefined,
-                      },
-                    },
-                    {
-                      onSuccess: (result: any) => {
-                        const newQuoteId = result?.id;
-                        if (newQuoteId) attachFileToQuote(newQuoteId);
-                        resetQuoteDialog();
-                      },
-                    },
-                  );
-                }
-              }}
-            >
-              {createQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending
-                ? 'Saving...'
-                : editingQuoteId ? 'Update Quote' : 'Submit Quote'}
-            </Button>
+                      const existingIds = existingAttachments.map((a) => a.documentId || a.id);
+                      const allFileIds = [...existingIds, ...fileIds];
+
+                      if (editingQuoteId) {
+                        await updateQuoteMutation.mutateAsync({
+                          rfqId,
+                          data: {
+                            id: quoteInviteId,
+                            quotedAmount: quoteAmount,
+                            leadTime: quoteLeadTime || undefined,
+                            attachments: allFileIds,
+                          },
+                        });
+                      } else {
+                        await submitQuoteMutation.mutateAsync({
+                          rfqId,
+                          data: {
+                            id: quoteInviteId,
+                            quotedAmount: quoteAmount,
+                            leadTime: quoteLeadTime || undefined,
+                            attachments: allFileIds,
+                          },
+                        });
+                      }
+                      resetQuoteDialog();
+                    } catch {
+                      // errors handled by mutations
+                    }
+                  }}
+                >
+                  {submitQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending
+                    ? 'Uploading...'
+                    : editingQuoteId
+                    ? 'Save Changes'
+                    : 'Upload Quote'}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1372,15 +1493,23 @@ export default function RFQDetailPage() {
               Cancel
             </Button>
             <Button
-              disabled={inviteVendorIds.length === 0 || inviteVendorsMutation.isPending}
-              onClick={() => {
-                inviteVendorsMutation.mutate(
-                  { rfqId, data: { vendorIds: inviteVendorIds, sendInviteEmails: true } },
-                  { onSuccess: () => { setInviteOpen(false); setInviteVendorIds([]); } },
-                );
+              disabled={inviteVendorIds.length === 0 || addVendorMutation.isPending}
+              onClick={async () => {
+                try {
+                  await Promise.all(
+                    inviteVendorIds.map((vendorId) =>
+                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId }),
+                    )
+                  );
+                  setInviteOpen(false);
+                  setInviteVendorIds([]);
+                  toast.success('Vendors added successfully.');
+                } catch {
+                  // error toast already shown by mutation
+                }
               }}
             >
-              {inviteVendorsMutation.isPending ? 'Inviting...' : 'Invite'}
+              {addVendorMutation.isPending ? 'Adding...' : 'Add'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1428,11 +1557,25 @@ export default function RFQDetailPage() {
             </Button>
             <Button
               disabled={selectedVendorIds.length < (rfq.minimumVendors ?? 3) || isActionPending}
-              onClick={() => {
-                publishMutation.mutate(
-                  { id: rfqId, data: { vendorIds: selectedVendorIds, sendInviteEmails: true } },
-                  { onSuccess: () => { setPublishOpen(false); setSelectedVendorIds([]); } },
-                );
+              onClick={async () => {
+                try {
+                  // 1. Publish first
+                  await publishMutation.mutateAsync(rfqId!);
+
+                  // 2. Then add vendors (only after published)
+                  if (selectedVendorIds.length > 0) {
+                    await Promise.all(
+                      selectedVendorIds.map((vendorId) =>
+                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId }),
+                      ),
+                    );
+                  }
+
+                  setPublishOpen(false);
+                  setSelectedVendorIds([]);
+                } catch {
+                  // handled
+                }
               }}
             >
               {publishMutation.isPending ? 'Publishing...' : 'Publish & Invite'}
@@ -1467,7 +1610,7 @@ export default function RFQDetailPage() {
               disabled={cancelReason.length < 1 || isActionPending}
               onClick={() => {
                 cancelMutation.mutate(
-                  { id: rfqId, data: { cancellationReason: cancelReason } },
+                  { id: rfqId, cancellationReason: cancelReason },
                   { onSuccess: () => { setCancelOpen(false); setCancelReason(''); } },
                 );
               }}
@@ -1575,12 +1718,8 @@ export default function RFQDetailPage() {
                   if (!selectedQuote) continue;
                   try {
                     await awardMutation.mutateAsync({
-                      id: rfqId,
-                      data: {
-                        awardedQuoteId: qId,
-                        awardedVendorId: selectedQuote.vendor?.id ?? '',
-                        awardedAmount: selectedQuote.grandTotal ?? 0,
-                      },
+                      rfqId,
+                      quoteId: qId,
                     });
                   } catch {
                     break;
