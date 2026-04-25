@@ -26,7 +26,7 @@ model Lookup {
   contacts               Contact[]
   vendors                Vendor[]
   generalContractors     GeneralContractor[]
-  departmentEmployees    DepartmentEmployee[]
+  employeeRoles          Employee[]
   paidTimeOffs           PaidTimeOff[]
   projectStages          Project[]               @relation("project_stage")
   projectDivisions       Project[]               @relation("project_division")

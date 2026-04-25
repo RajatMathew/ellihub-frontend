@@ -201,7 +201,7 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/DepartmentEmployee" } } }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Employee" } } }
                                     ]
                                 }
                             }
@@ -246,16 +246,6 @@
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
-            "DepartmentEmployee": {
-                "type": "object",
-                "properties": {
-                    "employeeId": { "type": "string" },
-                    "departmentId": { "type": "string" },
-                    "roleId": { "type": "string" },
-                    "employee": { "$ref": "#/components/schemas/Employee" },
-                    "role": { "type": "object", "description": "Lookup row representing the role" }
-                }
-            },
             "DepartmentWithEmployees": {
                 "allOf": [
                     { "$ref": "#/components/schemas/Department" },
@@ -264,7 +254,7 @@
                         "properties": {
                             "employees": {
                                 "type": "array",
-                                "items": { "$ref": "#/components/schemas/DepartmentEmployee" }
+                                "items": { "$ref": "#/components/schemas/Employee" }
                             }
                         }
                     }

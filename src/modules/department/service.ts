@@ -127,30 +127,30 @@ export const DepartmentService = {
         const role = await prisma.lookup.findUnique({ where: { id: roleId } });
         if (!role) throw new NotFoundError('Role not found');
 
-        const existing = await prisma.departmentEmployee.findUnique({
-            where: { employeeId_departmentId: { employeeId, departmentId } },
-        });
-        if (existing) {
-            throw new ConflictError('Employee is already assigned to this department');
+        if (employee.departmentId === departmentId && employee.roleId === roleId) {
+            throw new ConflictError(
+                'Employee is already assigned to this department with this role'
+            );
         }
 
-        return await prisma.departmentEmployee.create({
-            data: { departmentId, employeeId, roleId },
+        return await prisma.employee.update({
+            where: { id: employeeId },
+            data: { departmentId, roleId },
+            include: { department: true, role: true },
         });
     },
 
     removeEmployee: async (request: DepartmentRemoveEmployeeRequest): Promise<void> => {
         const { departmentId, employeeId } = request;
 
-        const existing = await prisma.departmentEmployee.findUnique({
-            where: { employeeId_departmentId: { employeeId, departmentId } },
-        });
-        if (!existing) {
+        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+        if (!employee || employee.departmentId !== departmentId) {
             throw new NotFoundError('Employee is not assigned to this department');
         }
 
-        await prisma.departmentEmployee.delete({
-            where: { employeeId_departmentId: { employeeId, departmentId } },
+        await prisma.employee.update({
+            where: { id: employeeId },
+            data: { departmentId: null, roleId: null },
         });
     },
 };

@@ -6,9 +6,7 @@ import { checkDeletedAt } from '@utils/soft-delete';
 export const ptoInclude = {
     type: true,
     employee: {
-        include: {
-            departments: { include: { department: true, role: true } },
-        },
+        include: { department: true, role: true },
     },
 } as const;
 
