@@ -19,4 +19,5 @@ export enum LookupType {
     TRADE_CATEGORY = 'TRADE_CATEGORY',
     UNIT = 'UNIT',
     PTO_TYPE = 'PTO_TYPE',
+    SCO_CHANGE_TYPE = 'SCO_CHANGE_TYPE',
 }

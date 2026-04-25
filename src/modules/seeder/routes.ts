@@ -7,6 +7,7 @@ import { seedProfessionalRoles } from '../../../scripts/seed-professional-roles'
 import { seedProjectStages } from '../../../scripts/seed-project-stages';
 import { seedPtoTypes } from '../../../scripts/seed-pto-types';
 import { seedRootFolder } from '../../../scripts/seed-root-folder';
+import { seedScoChangeTypes } from '../../../scripts/seed-sco-change-types';
 import { seedTradeCategories } from '../../../scripts/seed-trade-categories';
 import { seedUnits } from '../../../scripts/seed-units';
 import { seedUser } from '../../../scripts/seed-user';
@@ -24,6 +25,7 @@ const SEEDERS: Array<{ name: string; run: () => Promise<void> }> = [
     { name: 'trade-categories', run: seedTradeCategories },
     { name: 'units', run: seedUnits },
     { name: 'pto-types', run: seedPtoTypes },
+    { name: 'sco-change-types', run: seedScoChangeTypes },
 ];
 
 const runAllSeeders = async (): Promise<void> => {
