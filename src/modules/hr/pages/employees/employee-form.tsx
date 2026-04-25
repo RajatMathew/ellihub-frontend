@@ -20,7 +20,9 @@ import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { Separator } from '@app/components/ui/separator';
 import { Switch } from '@app/components/ui/switch';
+import { SearchableSelect } from '@app/components/ui/searchable-select';
 
+import { useLookupsQuery } from '@modules/project/hooks/lookup.hooks';
 import {
   useCreateEmployeeMutation,
   useEmployeeDetailQuery,
@@ -40,6 +42,7 @@ export default function EmployeeFormPage() {
   const isEdit = !!id;
 
   const { data: employee, isLoading: isLoadingDetail } = useEmployeeDetailQuery(id ?? '');
+  const { data: roles } = useLookupsQuery('PROFESSIONAL_ROLE');
   const createMutation = useCreateEmployeeMutation();
   const updateMutation = useUpdateEmployeeMutation();
 
@@ -328,6 +331,28 @@ export default function EmployeeFormPage() {
                   )}
                 />
               )}
+
+              <Controller
+                name="roleId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-[10px] font-bold tracking-widest uppercase">
+                      Professional Role
+                    </FieldLabel>
+                    <SearchableSelect
+                      options={(roles ?? []).map((r) => ({
+                        value: r.id,
+                        label: r.label || r.name || 'Unknown',
+                      }))}
+                      value={field.value ?? ''}
+                      onValueChange={(val) => field.onChange(val || '')}
+                      placeholder="Select role..."
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
             </div>
           </CardContent>
         </Card>

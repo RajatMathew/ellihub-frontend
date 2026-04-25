@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Trash2,
   User,
+  FileText,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -45,9 +46,12 @@ import {
   useDeleteEmployeeMutation,
   useEmployeeDetailQuery,
   useEmployeeProjectsQuery,
+  useAddEmployeeDocumentMutation,
+  useRemoveEmployeeDocumentMutation,
 } from '../../hooks/employees.hooks';
 import { useActivityLogQuery } from '@modules/directory/hooks';
 import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
+import { DocumentAddDialog } from '../../components/employees/document-add-dialog';
 
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -56,9 +60,12 @@ export default function EmployeeDetailPage() {
   const { data: employee, isLoading } = useEmployeeDetailQuery(id ?? '');
   const { data: projects, isLoading: isLoadingProjects } = useEmployeeProjectsQuery(id ?? '');
   const deleteMutation = useDeleteEmployeeMutation();
+  const addDocumentMutation = useAddEmployeeDocumentMutation();
+  const removeDocumentMutation = useRemoveEmployeeDocumentMutation();
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [addDocOpen, setAddDocOpen] = useState(false);
 
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'employee',
@@ -193,6 +200,7 @@ export default function EmployeeDetailPage() {
             <TabsList variant="line">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="projects">Projects</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="history">Activity History</TabsTrigger>
             </TabsList>
 
@@ -318,6 +326,75 @@ export default function EmployeeDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            <TabsContent value="documents">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between w-full">
+                    <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                      Employee Documents
+                    </span>
+                    <Button 
+                      size="xs" 
+                      variant="primary" 
+                      className="h-7 text-[10px] uppercase tracking-wider"
+                      disabled={addDocumentMutation.isPending}
+                      onClick={() => setAddDocOpen(true)}
+                    >
+                      <PlusCircle className="size-3" />
+                      Add Document
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {employee.documents && employee.documents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {employee.documents.map((doc: any) => (
+                        <div
+                          key={doc.id}
+                          className="p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between group"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="size-9 rounded bg-background border flex items-center justify-center">
+                              <FileText className="size-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-medium truncate">{doc.name}</span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                                {doc.type || 'PDF Document'}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            mode="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                            disabled={removeDocumentMutation.isPending}
+                            onClick={() => {
+                              if (id) {
+                                removeDocumentMutation.mutate({
+                                  employeeId: id,
+                                  fileId: doc.id,
+                                });
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center">
+                      <FileText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
+                        No documents linked yet.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="history">
               <Card>
@@ -421,6 +498,12 @@ export default function EmployeeDetailPage() {
         }}
         variant="destructive"
         isPending={deleteMutation.isPending}
+      />
+
+      <DocumentAddDialog
+        open={addDocOpen}
+        onOpenChange={setAddDocOpen}
+        employeeId={employee.id}
       />
     </div>
   );

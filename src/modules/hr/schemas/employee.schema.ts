@@ -20,6 +20,13 @@ export const employeeSchema = z.object({
     id: z.string(),
     name: z.string(),
   }).optional().nullable(),
+  status: z.string().optional().nullable(),
+  documents: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    url: z.string().optional(),
+    type: z.string().optional(),
+  })).optional().default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -49,14 +56,13 @@ export const createEmployeeInputSchema = z.object({
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   emergencyContactRelation: z.string().optional(),
-  roleId: z.string().optional(),
+  roleId: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
   createAccount: z.boolean().default(true),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeInputSchema>;
 
-// Input schema for update
-export const updateEmployeeInputSchema = createEmployeeInputSchema.omit({ createAccount: true, roleId: true }).extend({
+export const updateEmployeeInputSchema = createEmployeeInputSchema.omit({ createAccount: true }).extend({
   id: z.string(),
 });
 

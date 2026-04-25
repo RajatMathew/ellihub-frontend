@@ -17,6 +17,7 @@ const DirectoryGC = lazy(() => import('@modules/directory/routes/gc.route'));
 const DirectoryVendors = lazy(() => import('@modules/directory/routes/vendors.route'));
 const HrEmployees = lazy(() => import('@modules/hr/routes/employees.route'));
 const HrDepartments = lazy(() => import('@modules/hr/routes/departments.route'));
+const HrPTO = lazy(() => import('@modules/hr/routes/pto.route'));
 const FilesRoutes = lazy(() => import('@modules/files/routes/files.route'));
 const ProjectsRoutes = lazy(() => import('@modules/project/routes/projects.route'));
 
@@ -85,6 +86,11 @@ export const routeTree: RouteDef[] = [
         path: 'hr/departments/*',
         component: HrDepartments,
         title: 'Departments',
+      },
+      {
+        path: 'hr/pto/*',
+        component: HrPTO,
+        title: 'Time Off',
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files' },
       {

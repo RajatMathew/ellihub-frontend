@@ -76,3 +76,33 @@ export const useDeleteEmployeeMutation = () => {
     },
   });
 };
+
+export const useAddEmployeeDocumentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ employeeId, fileId, expiresOn }: { employeeId: string; fileId: string; expiresOn?: string }) =>
+      employeesApi.addDocument(employeeId, fileId, expiresOn),
+    onSuccess: (_, { employeeId }) => {
+      queryClient.invalidateQueries({ queryKey: employeesKeys.detail(employeeId) });
+      toast.success('Document linked successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to link document');
+    },
+  });
+};
+
+export const useRemoveEmployeeDocumentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ employeeId, fileId }: { employeeId: string; fileId: string }) =>
+      employeesApi.removeDocument(employeeId, fileId),
+    onSuccess: (_, { employeeId }) => {
+      queryClient.invalidateQueries({ queryKey: employeesKeys.detail(employeeId) });
+      toast.success('Document unlinked successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to unlink document');
+    },
+  });
+};

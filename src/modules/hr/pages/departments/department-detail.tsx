@@ -46,6 +46,7 @@ import {
 } from '../../hooks/departments.hooks';
 import { useActivityLogQuery } from '@modules/directory/hooks';
 import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
+import { getInitials } from '@app/lib/helpers';
 
 export default function DepartmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -223,45 +224,51 @@ export default function DepartmentDetailPage() {
                 <CardContent>
                   {employees.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {employees.map((emp) => (
-                        <div
-                          key={emp.id}
-                          className="p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-all group"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                              {emp.fullName.split(' ').map(n => n[0]).join('')}
+                      {employees.map((item: any) => {
+                        const emp = item.employee || {};
+                        const role = item.role || {};
+                        const displayName = emp.fullName || emp.name || 'Unknown Employee';
+                        
+                        return (
+                          <div
+                            key={item.id || item.employeeId}
+                            className="p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-all group"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20">
+                                {getInitials(displayName, 2)}
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="xs" mode="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreHorizontal className="size-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => removeEmployeeMutation.mutate({ departmentId: department.id, employeeId: emp.id })}>
+                                    <UserMinus className="size-3.5 mr-2" />
+                                    Remove from Department
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="xs" mode="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <MoreHorizontal className="size-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => removeEmployeeMutation.mutate({ departmentId: department.id, employeeId: emp.id })}>
-                                  <UserMinus className="size-3.5 mr-2" />
-                                  Remove from Department
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="space-y-1">
+                              <div className="text-sm font-semibold uppercase tracking-tight text-foreground truncate">
+                                {displayName}
+                              </div>
+                              <div className="text-xs text-muted-foreground font-medium uppercase tracking-widest truncate">
+                                {role.label || role.name || 'Standard Role'}
+                              </div>
+                            </div>
+                            {emp.email && (
+                              <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
+                                <Mail className="size-3" />
+                                <span className="truncate">{emp.email}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="space-y-1">
-                            <div className="text-sm font-semibold uppercase tracking-tight text-foreground truncate">
-                              {emp.fullName}
-                            </div>
-                            <div className="text-xs text-muted-foreground font-medium uppercase tracking-widest truncate">
-                              {emp.role?.name || 'Standard Role'}
-                            </div>
-                          </div>
-                          {emp.email && (
-                            <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
-                              <Mail className="size-3" />
-                              <span className="truncate">{emp.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2 py-12 text-center">

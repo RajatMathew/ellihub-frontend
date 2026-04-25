@@ -14,6 +14,7 @@ import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
 
 import { useAssignEmployeeMutation } from '../../hooks/departments.hooks';
+import { useLookupsQuery } from '@modules/project/hooks/lookup.hooks';
 
 interface EmployeeAssignDialogProps {
   open: boolean;
@@ -27,9 +28,10 @@ export function EmployeeAssignDialog({
   departmentId,
 }: EmployeeAssignDialogProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('standard'); // Default role
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
   const { data: employeesData } = useEmployeesQuery({ size: 1000 });
+  const { data: rolesData } = useLookupsQuery('PROFESSIONAL_ROLE');
   const assignMutation = useAssignEmployeeMutation();
 
   const handleAssign = async () => {
@@ -38,16 +40,22 @@ export function EmployeeAssignDialog({
     await assignMutation.mutateAsync({
       departmentId,
       employeeId: selectedEmployeeId,
-      roleId: selectedRoleId,
+      roleId: selectedRoleId || undefined,
     });
 
     onOpenChange(false);
     setSelectedEmployeeId('');
+    setSelectedRoleId('');
   };
 
   const employeeOptions = (employeesData?.data ?? []).map((emp: any) => ({
     value: emp.id,
     label: emp.fullName || emp.name,
+  }));
+
+  const roleOptions = (rolesData ?? []).map((role) => ({
+    value: role.id,
+    label: role.label || role.name || 'Unknown Role',
   }));
 
   return (
@@ -80,11 +88,7 @@ export function EmployeeAssignDialog({
               Role (Optional)
             </FieldLabel>
             <SearchableSelect
-              options={[
-                { value: 'standard', label: 'Standard Member' },
-                { value: 'manager', label: 'Department Manager' },
-                { value: 'lead', label: 'Department Lead' },
-              ]}
+              options={roleOptions}
               value={selectedRoleId}
               onValueChange={(value) => setSelectedRoleId(value ?? '')}
               placeholder="Select a role..."

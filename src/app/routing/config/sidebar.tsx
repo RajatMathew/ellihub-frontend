@@ -33,6 +33,7 @@ export const mainSidebarMenu: MenuConfig = [
     children: [
       { title: 'Employees', path: '../hr/employees' },
       { title: 'Departments', path: '../hr/departments' },
+      { title: 'Time Off', path: '../hr/pto' },
     ],
   },
   { type: 'separator' },

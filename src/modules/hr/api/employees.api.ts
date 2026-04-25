@@ -39,5 +39,13 @@ export const employeesApi = {
   async getProjects(id: string): Promise<EmployeeProject[]> {
     const res = await api.get(`${BASE}/${id}/projects`);
     return res.data?.data ?? res.data ?? [];
+  },
+
+  async addDocument(employeeId: string, fileId: string, expiresOn?: string): Promise<void> {
+    await api.patch(`${BASE}/document/add`, { employeeId, fileId, expiresOn });
+  },
+
+  async removeDocument(employeeId: string, fileId: string): Promise<void> {
+    await api.patch(`${BASE}/document/remove`, { employeeId, fileId });
   }
 };

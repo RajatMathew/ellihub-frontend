@@ -90,9 +90,12 @@ export function timeAgo(date: Date | string): string {
   return `${Math.floor(diff / 31536000)} year${Math.floor(diff / 31536000) > 1 ? 's' : ''} ago`;
 }
 
-export function formatDate(input: Date | string | number): string {
+export function formatDate(
+  input: Date | string | number,
+  options?: Intl.DateTimeFormatOptions
+): string {
   const date = new Date(input);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('en-US', options || {
     month: 'long',
     day: 'numeric',
     year: 'numeric',

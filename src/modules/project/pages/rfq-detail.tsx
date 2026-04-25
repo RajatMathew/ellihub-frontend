@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   DollarSign,
   Eye,
   FileText,
+  History,
   Mail,
   MoreHorizontal,
   PanelRightOpen,
@@ -19,13 +20,14 @@ import {
   Send,
   ShieldAlert,
   Trash2,
-   Trophy,
+  Trophy,
   Upload,
   Users,
   X,
   XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   Toolbar,
@@ -38,8 +40,6 @@ import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
 import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
-import { Field, FieldLabel } from '@app/components/ui/field';
-import { Input, InputWrapper } from '@app/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -54,61 +54,62 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@app/components/ui/select';
+import { Field, FieldLabel } from '@app/components/ui/field';
+import { FileDropZone } from '@app/components/ui/file-drop-zone';
+import { Input, InputWrapper } from '@app/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { StatsCard } from '@app/components/ui/stats-card';
 import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
-
-import { useQuery } from '@tanstack/react-query';
-import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
-import { filesApi } from '@modules/files/api/files.api';
-import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
+import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
 import { DetailSidebar } from '@modules/directory/components';
-import { InfoRow } from '@modules/project/components/info-row';
+import { useActivityLogQuery } from '@modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@modules/directory/hooks/vendors.hooks';
+import { filesApi } from '@modules/files/api/files.api';
+import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
+import { InfoRow } from '@modules/project/components/info-row';
+
 import {
   BIDDING_TYPE_LABELS,
-  RFQ_TRACK_LABELS,
   getRfqStatusVariant,
+  RFQ_TRACK_LABELS,
 } from '../constants/rfq.constants';
-import { FileDropZone } from '@app/components/ui/file-drop-zone';
 import {
   useAddRFQAttachmentMutation,
+  useAddVendorMutation,
   useAwardRFQMutation,
   useBidComparisonQuery,
   useCancelRFQMutation,
   useDeclineInviteMutation,
   useDeleteRFQMutation,
   useGeneratePOMutation,
-  useAddVendorMutation,
   usePublishRFQMutation,
-  useRFQDetailQuery,
-  useRFQStatusesQuery,
   useRemoveQuoteMutation,
   useRemoveRFQAttachmentMutation,
   useRemoveVendorMutation,
+  useRFQDetailQuery,
+  useRFQStatusesQuery,
   useSubmitQuoteMutation,
   useUnawardRFQMutation,
-  useUpdateRFQMutation,
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
   useVoidAwardMutation,
 } from '../hooks/rfq.hooks';
-import { useActivityLogQuery } from '@modules/directory/hooks/activity.hooks';
-import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
-import { useMemo } from 'react';
-import { History } from 'lucide-react';
 import { useProjectFolderQuery } from '../hooks/use-project-folder';
 
 /* ---- Quote Document Preview ---- */
 
-function QuoteDocPreview({ documentId, name, mimeType }: { documentId: string; name: string; mimeType?: string }) {
+function QuoteDocPreview({
+  documentId,
+  name,
+  mimeType,
+}: {
+  documentId: string;
+  name: string;
+  mimeType?: string;
+}) {
   const { data: url, isLoading } = useQuery({
     queryKey: ['file-preview', documentId],
     queryFn: () => filesApi.getDownloadLink(documentId),
@@ -249,30 +250,41 @@ export default function RFQDetailPage() {
     return activityData.data.map((log: any) => {
       const action = log.action.toLowerCase();
       let icon = <Clock className="size-4" />;
-      let color = "border-muted-foreground/20 bg-muted/30";
+      let color = 'border-muted-foreground/20 bg-muted/30';
 
       if (action.includes('create') || action.includes('publish')) {
         icon = <PlusCircle className="size-4 text-primary" />;
-        color = "border-primary/20 bg-primary/5";
+        color = 'border-primary/20 bg-primary/5';
       } else if (action.includes('update')) {
         icon = <Pencil className="size-4 text-info" />;
-        color = "border-info/20 bg-info/5";
+        color = 'border-info/20 bg-info/5';
       } else if (action.includes('award')) {
         icon = <Trophy className="size-4 text-warning" />;
-        color = "border-warning/20 bg-warning/5";
-      } else if (action.includes('delete') || action.includes('cancel') || action.includes('void')) {
+        color = 'border-warning/20 bg-warning/5';
+      } else if (
+        action.includes('delete') ||
+        action.includes('cancel') ||
+        action.includes('void')
+      ) {
         icon = <Trash2 className="size-4 text-destructive" />;
-        color = "border-destructive/20 bg-destructive/5";
+        color = 'border-destructive/20 bg-destructive/5';
       } else if (action.includes('invite') || action.includes('quote')) {
         icon = <CheckCircle2 className="size-4 text-success" />;
-        color = "border-success/20 bg-success/5";
+        color = 'border-success/20 bg-success/5';
       }
 
       return {
         id: log.id,
         user: log.user?.name || 'System',
         action: log.description,
-        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        timestamp: log.createdAt
+          ? new Date(log.createdAt).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '—',
         avatar: log.user?.image || undefined,
         icon,
         color,
@@ -326,15 +338,13 @@ export default function RFQDetailPage() {
   const quotes = rfq.quotes ?? [];
   const attachments = rfq.attachments ?? [];
 
-  const quoteGrandTotals = quotes
-    .map((q) => q.grandTotal)
-    .filter((v): v is number => v != null);
+  const quoteGrandTotals = quotes.map((q) => q.grandTotal).filter((v): v is number => v != null);
   const lowestQuote = quoteGrandTotals.length > 0 ? Math.min(...quoteGrandTotals) : null;
   const highestQuote = quoteGrandTotals.length > 0 ? Math.max(...quoteGrandTotals) : null;
 
   const deliverablesTotal = deliverables.reduce(
     (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * (d.quantity ?? 0)),
-    0,
+    0
   );
 
   // Build a map of vendorId → quote
@@ -346,7 +356,12 @@ export default function RFQDetailPage() {
   // IDs of vendors already invited
   const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
 
-  function openQuoteDialog(inviteId: string, vendorId: string, existingQuoteId?: string, viewOnly = false) {
+  function openQuoteDialog(
+    inviteId: string,
+    vendorId: string,
+    existingQuoteId?: string,
+    viewOnly = false
+  ) {
     setQuoteInviteId(inviteId);
     setQuoteVendorId(vendorId);
     setEditingQuoteId(existingQuoteId ?? null);
@@ -467,7 +482,10 @@ export default function RFQDetailPage() {
                   {(isPublished || isEvaluation) && (
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={() => { setCancelReason(''); setCancelOpen(true); }}
+                      onClick={() => {
+                        setCancelReason('');
+                        setCancelOpen(true);
+                      }}
                     >
                       Cancel RFQ
                     </DropdownMenuItem>
@@ -475,7 +493,10 @@ export default function RFQDetailPage() {
                   {isAwarded && (
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={() => { setVoidReason(''); setVoidOpen(true); }}
+                      onClick={() => {
+                        setVoidReason('');
+                        setVoidOpen(true);
+                      }}
                     >
                       Void Award
                     </DropdownMenuItem>
@@ -483,10 +504,7 @@ export default function RFQDetailPage() {
                   {isDraft && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setDeleteOpen(true)}
-                      >
+                      <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                         <Trash2 className="size-4" />
                         Delete
                       </DropdownMenuItem>
@@ -516,7 +534,12 @@ export default function RFQDetailPage() {
               icon={<ShieldAlert className="size-6 text-muted-foreground" />}
               bgClass="bg-muted/50"
               label="Bidding Type"
-              value={((rfq.biddingType && BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ?? rfq.biddingType) || ''}
+              value={
+                ((rfq.biddingType &&
+                  BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
+                  rfq.biddingType) ||
+                ''
+              }
             />
             <StatsCard
               icon={<Users className="size-6 text-primary" />}
@@ -569,7 +592,10 @@ export default function RFQDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { setInviteVendorIds([]); setInviteOpen(true); }}
+                  onClick={() => {
+                    setInviteVendorIds([]);
+                    setInviteOpen(true);
+                  }}
                 >
                   <Plus className="size-4" />
                   Invite Vendor
@@ -582,10 +608,18 @@ export default function RFQDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Vendor</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Status</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Quote Amount</th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Lead Time</th>
+                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          Vendor
+                        </th>
+                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          Status
+                        </th>
+                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
+                          Quote Amount
+                        </th>
+                        <th className="pb-2 pr-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          Lead Time
+                        </th>
                         <th className="pb-2 w-10"></th>
                       </tr>
                     </thead>
@@ -596,8 +630,11 @@ export default function RFQDetailPage() {
                         const hasQuote = !!inv.hasSubmittedQuote;
                         const vendorQuote = vendor ? quoteByVendor.get(vendor.id) : null;
                         const grandTotal = vendorQuote?.grandTotal;
-                        const isVendorAwarded = !!vendorQuote?.isAwarded || rfq.awardedVendorId === vendor?.id;
-                        const vendorPO = rfq.purchaseOrders?.find((po) => po.vendorId === vendor?.id);
+                        const isVendorAwarded =
+                          !!vendorQuote?.isAwarded || rfq.awardedVendorId === vendor?.id;
+                        const vendorPO = rfq.purchaseOrders?.find(
+                          (po) => po.vendorId === vendor?.id
+                        );
                         const leadTimeNotes = vendorQuote?.notes;
 
                         return (
@@ -611,53 +648,86 @@ export default function RFQDetailPage() {
                             <td className="py-2.5 pr-4">
                               {isTerminal ? (
                                 declined ? (
-                                  <Badge variant="destructive" appearance="light" size="sm">Declined</Badge>
+                                  <Badge variant="destructive" appearance="light" size="sm">
+                                    Declined
+                                  </Badge>
                                 ) : hasQuote ? (
-                                  <Badge variant="primary" appearance="light" size="sm">Quoted</Badge>
+                                  <Badge variant="primary" appearance="light" size="sm">
+                                    Quoted
+                                  </Badge>
                                 ) : (
-                                  <Badge variant="secondary" appearance="light" size="sm">Waiting</Badge>
+                                  <Badge variant="secondary" appearance="light" size="sm">
+                                    Waiting
+                                  </Badge>
                                 )
                               ) : (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <button type="button" className="cursor-pointer">
                                       {isVendorAwarded ? (
-                                        <Badge variant="success" appearance="light" size="sm">Awarded <ChevronDown className="ml-0.5 size-3 inline" /></Badge>
+                                        <Badge variant="success" appearance="light" size="sm">
+                                          Awarded <ChevronDown className="ml-0.5 size-3 inline" />
+                                        </Badge>
                                       ) : declined ? (
-                                        <Badge variant="destructive" appearance="light" size="sm">Declined <ChevronDown className="ml-0.5 size-3 inline" /></Badge>
+                                        <Badge variant="destructive" appearance="light" size="sm">
+                                          Declined <ChevronDown className="ml-0.5 size-3 inline" />
+                                        </Badge>
                                       ) : hasQuote ? (
-                                        <Badge variant="primary" appearance="light" size="sm">Quoted <ChevronDown className="ml-0.5 size-3 inline" /></Badge>
+                                        <Badge variant="primary" appearance="light" size="sm">
+                                          Quoted <ChevronDown className="ml-0.5 size-3 inline" />
+                                        </Badge>
                                       ) : (
-                                        <Badge variant="secondary" appearance="light" size="sm">Waiting <ChevronDown className="ml-0.5 size-3 inline" /></Badge>
+                                        <Badge variant="secondary" appearance="light" size="sm">
+                                          Waiting <ChevronDown className="ml-0.5 size-3 inline" />
+                                        </Badge>
                                       )}
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start" className="w-44">
                                     {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)}>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)
+                                        }
+                                      >
                                         <Eye className="size-4" />
                                         View Quote
                                       </DropdownMenuItem>
                                     )}
                                     {!isVendorAwarded && !hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id)}>
+                                      <DropdownMenuItem
+                                        onClick={() => openQuoteDialog(inv.id, vendor.id)}
+                                      >
                                         <Upload className="size-4" />
                                         Upload Quote
                                       </DropdownMenuItem>
                                     )}
                                     {!isVendorAwarded && hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id)}>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id)
+                                        }
+                                      >
                                         <Pencil className="size-4" />
                                         Edit Quote
                                       </DropdownMenuItem>
                                     )}
-                                    {!isVendorAwarded && hasQuote && vendorQuote && grandTotal != null && grandTotal > 0 && (isPublished || isEvaluation || isAwarded) && (
-                                      <DropdownMenuItem onClick={() => handleAwardFromTable(vendorQuote.id)}>
-                                        <Trophy className="size-4" />
-                                        Award
-                                      </DropdownMenuItem>
-                                    )}
-                                    {(hasQuote || isVendorAwarded || (!declined && !isVendorAwarded)) && <DropdownMenuSeparator />}
+                                    {!isVendorAwarded &&
+                                      hasQuote &&
+                                      vendorQuote &&
+                                      grandTotal != null &&
+                                      grandTotal > 0 &&
+                                      (isPublished || isEvaluation || isAwarded) && (
+                                        <DropdownMenuItem
+                                          onClick={() => handleAwardFromTable(vendorQuote.id)}
+                                        >
+                                          <Trophy className="size-4" />
+                                          Award
+                                        </DropdownMenuItem>
+                                      )}
+                                    {(hasQuote ||
+                                      isVendorAwarded ||
+                                      (!declined && !isVendorAwarded)) && <DropdownMenuSeparator />}
                                     {!isVendorAwarded && hasQuote && vendorQuote && (
                                       <DropdownMenuItem
                                         variant="destructive"
@@ -717,35 +787,56 @@ export default function RFQDetailPage() {
                               {!isTerminal && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" mode="icon" className="size-7">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      mode="icon"
+                                      className="size-7"
+                                    >
                                       <MoreHorizontal className="size-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-44">
                                     {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)}>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)
+                                        }
+                                      >
                                         <Eye className="size-4" />
                                         View Quote
                                       </DropdownMenuItem>
                                     )}
                                     {!hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id)}>
+                                      <DropdownMenuItem
+                                        onClick={() => openQuoteDialog(inv.id, vendor.id)}
+                                      >
                                         <Upload className="size-4" />
                                         Upload Quote
                                       </DropdownMenuItem>
                                     )}
                                     {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem onClick={() => openQuoteDialog(inv.id, vendor.id, vendorQuote.id)}>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id)
+                                        }
+                                      >
                                         <Pencil className="size-4" />
                                         Edit Quote
                                       </DropdownMenuItem>
                                     )}
-                                    {!isVendorAwarded && hasQuote && vendorQuote && grandTotal != null && grandTotal > 0 && (
-                                      <DropdownMenuItem onClick={() => handleAwardFromTable(vendorQuote.id)}>
-                                        <Trophy className="size-4" />
-                                        Award
-                                      </DropdownMenuItem>
-                                    )}
+                                    {!isVendorAwarded &&
+                                      hasQuote &&
+                                      vendorQuote &&
+                                      grandTotal != null &&
+                                      grandTotal > 0 && (
+                                        <DropdownMenuItem
+                                          onClick={() => handleAwardFromTable(vendorQuote.id)}
+                                        >
+                                          <Trophy className="size-4" />
+                                          Award
+                                        </DropdownMenuItem>
+                                      )}
                                     {isVendorAwarded && !vendorPO && (
                                       <DropdownMenuItem
                                         onClick={() => {
@@ -927,10 +1018,18 @@ export default function RFQDetailPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">
+                          #
+                        </th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          Description
+                        </th>
+                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">
+                          Qty
+                        </th>
+                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                          Unit
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -950,7 +1049,9 @@ export default function RFQDetailPage() {
                             )}
                           </td>
                           <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
-                          <td className="py-2.5">{typeof d.unit === 'object' ? d.unit?.label : d.unit}</td>
+                          <td className="py-2.5">
+                            {typeof d.unit === 'object' ? d.unit?.label : d.unit}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -974,7 +1075,9 @@ export default function RFQDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{rfq.description}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  {rfq.description}
+                </p>
               </CardContent>
             </Card>
           )}
@@ -995,7 +1098,9 @@ export default function RFQDetailPage() {
               ) : (
                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                   <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold">No activity recorded yet.</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold">
+                    No activity recorded yet.
+                  </p>
                 </div>
               )}
             </div>
@@ -1020,7 +1125,9 @@ export default function RFQDetailPage() {
                   </InfoRow>
                   <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
                   <InfoRow label="Bidding Type">
-                    {(rfq.biddingType && BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ?? rfq.biddingType}
+                    {(rfq.biddingType &&
+                      BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
+                      rfq.biddingType}
                   </InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
@@ -1056,9 +1163,7 @@ export default function RFQDetailPage() {
                     </>
                   )}
                   {isAwarded && rfq.awardedVendor && (
-                    <InfoRow label="Awarded Vendor">
-                      {rfq.awardedVendor.name}
-                    </InfoRow>
+                    <InfoRow label="Awarded Vendor">{rfq.awardedVendor.name}</InfoRow>
                   )}
                 </CardContent>
               </Card>
@@ -1096,9 +1201,7 @@ export default function RFQDetailPage() {
                       <div>
                         <div className="text-xs text-muted-foreground">Awarded</div>
                         <div className="text-sm font-medium">
-                          {rfq.awardedVendor
-                            ? rfq.awardedVendor.name
-                            : 'Vendor awarded'}
+                          {rfq.awardedVendor ? rfq.awardedVendor.name : 'Vendor awarded'}
                         </div>
                       </div>
                     </div>
@@ -1122,9 +1225,7 @@ export default function RFQDetailPage() {
                       <div>
                         <div className="text-xs text-muted-foreground">Voided</div>
                         {rfq.voidReason && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {rfq.voidReason}
-                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{rfq.voidReason}</p>
                         )}
                       </div>
                     </div>
@@ -1143,18 +1244,24 @@ export default function RFQDetailPage() {
             <div>
               <DialogTitle className="text-lg">Bid Comparison</DialogTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Comparing {bidComparison?.quotes.length ?? 0} quote{(bidComparison?.quotes.length ?? 0) !== 1 ? 's' : ''} from {invites.length} vendor{invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
+                Comparing {bidComparison?.quotes.length ?? 0} quote
+                {(bidComparison?.quotes.length ?? 0) !== 1 ? 's' : ''} from {invites.length} vendor
+                {invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
               </p>
             </div>
             <div className="flex items-center gap-6 text-sm">
               {rfq.createdAt && (
                 <div>
-                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Issue Date</div>
+                  <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Issue Date
+                  </div>
                   <div className="font-medium">{formatDate(rfq.createdAt)}</div>
                 </div>
               )}
               <div>
-                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Due Date</div>
+                <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  Due Date
+                </div>
                 <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
               </div>
             </div>
@@ -1230,9 +1337,16 @@ export default function RFQDetailPage() {
                         </div>
                         {hasQuote && bcQuote ? (
                           (() => {
-                            const isBcQuoteAwarded = quotes.find((q) => q.id === bcQuote.quoteId)?.isAwarded;
+                            const isBcQuoteAwarded = quotes.find(
+                              (q) => q.id === bcQuote.quoteId
+                            )?.isAwarded;
                             return isBcQuoteAwarded ? (
-                              <Badge variant="success" appearance="light" size="sm" className="shrink-0">
+                              <Badge
+                                variant="success"
+                                appearance="light"
+                                size="sm"
+                                className="shrink-0"
+                              >
                                 Awarded
                               </Badge>
                             ) : (
@@ -1254,7 +1368,9 @@ export default function RFQDetailPage() {
                             Award Bid
                           </Button>
                         ) : declined ? (
-                          <span className="text-xs text-destructive font-medium shrink-0">Declined</span>
+                          <span className="text-xs text-destructive font-medium shrink-0">
+                            Declined
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -1273,13 +1389,21 @@ export default function RFQDetailPage() {
       {/* ---- Upload / Edit Quotation dialog ---- */}
       <Dialog
         open={quoteOpen}
-        onOpenChange={(open) => { if (!open) resetQuoteDialog(); }}
+        onOpenChange={(open) => {
+          if (!open) resetQuoteDialog();
+        }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <FileText className="size-5 text-primary" />
-              <DialogTitle>{isQuoteViewOnly ? 'View Quotation' : editingQuoteId ? 'Edit Quotation' : 'Upload Quotation'}</DialogTitle>
+              <DialogTitle>
+                {isQuoteViewOnly
+                  ? 'View Quotation'
+                  : editingQuoteId
+                    ? 'Edit Quotation'
+                    : 'Upload Quotation'}
+              </DialogTitle>
             </div>
           </DialogHeader>
           <div className="space-y-4">
@@ -1316,7 +1440,9 @@ export default function RFQDetailPage() {
                   value={quoteLeadTime}
                   disabled={isQuoteViewOnly}
                   onChange={(e) => setQuoteLeadTime(e.target.value.replace(/[^0-9]/g, ''))}
-                  onKeyDown={(e) => { if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault(); }}
+                  onKeyDown={(e) => {
+                    if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+                  }}
                   autoComplete="off"
                 />
               </InputWrapper>
@@ -1341,10 +1467,15 @@ export default function RFQDetailPage() {
                   Current Attachments
                 </p>
                 {existingAttachments.map((att) => (
-                  <div key={att.id} className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
+                  <div
+                    key={att.id}
+                    className="flex items-center justify-between p-2 rounded-md border bg-muted/50"
+                  >
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="size-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate">{att.document?.name || att.name || 'Document'}</span>
+                      <span className="text-sm truncate">
+                        {att.document?.name || att.name || 'Document'}
+                      </span>
                     </div>
                     {!isQuoteViewOnly && (
                       <Button
@@ -1352,7 +1483,9 @@ export default function RFQDetailPage() {
                         size="sm"
                         mode="icon"
                         className="size-7 hover:text-destructive"
-                        onClick={() => setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))}
+                        onClick={() =>
+                          setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                        }
                       >
                         <X className="size-4" />
                       </Button>
@@ -1385,7 +1518,13 @@ export default function RFQDetailPage() {
                   Cancel
                 </Button>
                 <Button
-                  disabled={!quoteAmount || quoteAmount <= 0 || submitQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending}
+                  disabled={
+                    !quoteAmount ||
+                    quoteAmount <= 0 ||
+                    submitQuoteMutation.isPending ||
+                    updateQuoteMutation.isPending ||
+                    uploadFileMutation.isPending
+                  }
                   onClick={async () => {
                     if (!quoteAmount || quoteAmount <= 0) return;
 
@@ -1393,7 +1532,8 @@ export default function RFQDetailPage() {
                       let fileIds: string[] = [];
                       if (quoteFile && rfqFolderQuery.data) {
                         const dotIdx = quoteFile.name.lastIndexOf('.');
-                        const docName = dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
+                        const docName =
+                          dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
                         const fileItem = await uploadFileMutation.mutateAsync({
                           file: quoteFile,
                           data: {
@@ -1436,11 +1576,13 @@ export default function RFQDetailPage() {
                     }
                   }}
                 >
-                  {submitQuoteMutation.isPending || updateQuoteMutation.isPending || uploadFileMutation.isPending
+                  {submitQuoteMutation.isPending ||
+                  updateQuoteMutation.isPending ||
+                  uploadFileMutation.isPending
                     ? 'Uploading...'
                     : editingQuoteId
-                    ? 'Save Changes'
-                    : 'Upload Quote'}
+                      ? 'Save Changes'
+                      : 'Upload Quote'}
                 </Button>
               </>
             )}
@@ -1449,7 +1591,15 @@ export default function RFQDetailPage() {
       </Dialog>
 
       {/* ---- Invite vendors dialog ---- */}
-      <Dialog open={inviteOpen} onOpenChange={(open) => { if (!open) { setInviteOpen(false); setInviteVendorIds([]); } }}>
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInviteOpen(false);
+            setInviteVendorIds([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Invite Vendors</DialogTitle>
@@ -1462,7 +1612,10 @@ export default function RFQDetailPage() {
               {vendors
                 .filter((v) => !alreadyInvitedIds.has(v.id))
                 .map((v) => (
-                  <label key={v.id} className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5">
+                  <label
+                    key={v.id}
+                    className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
+                  >
                     <input
                       type="checkbox"
                       className="accent-primary"
@@ -1484,12 +1637,16 @@ export default function RFQDetailPage() {
                 </p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {inviteVendorIds.length} selected
-            </p>
+            <p className="text-xs text-muted-foreground">{inviteVendorIds.length} selected</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setInviteOpen(false); setInviteVendorIds([]); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInviteOpen(false);
+                setInviteVendorIds([]);
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1498,7 +1655,7 @@ export default function RFQDetailPage() {
                 try {
                   await Promise.all(
                     inviteVendorIds.map((vendorId) =>
-                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId }),
+                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
                     )
                   );
                   setInviteOpen(false);
@@ -1516,18 +1673,30 @@ export default function RFQDetailPage() {
       </Dialog>
 
       {/* ---- Publish dialog ---- */}
-      <Dialog open={publishOpen} onOpenChange={(open) => { if (!open) { setPublishOpen(false); setSelectedVendorIds([]); } }}>
+      <Dialog
+        open={publishOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPublishOpen(false);
+            setSelectedVendorIds([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Publish RFQ</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 3} vendor(s).
+              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 3}{' '}
+              vendor(s).
             </p>
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
               {vendors.map((v) => (
-                <label key={v.id} className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5">
+                <label
+                  key={v.id}
+                  className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
+                >
                   <input
                     type="checkbox"
                     className="accent-primary"
@@ -1552,7 +1721,13 @@ export default function RFQDetailPage() {
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setPublishOpen(false); setSelectedVendorIds([]); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPublishOpen(false);
+                setSelectedVendorIds([]);
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1566,8 +1741,8 @@ export default function RFQDetailPage() {
                   if (selectedVendorIds.length > 0) {
                     await Promise.all(
                       selectedVendorIds.map((vendorId) =>
-                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId }),
-                      ),
+                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
+                      )
                     );
                   }
 
@@ -1585,7 +1760,15 @@ export default function RFQDetailPage() {
       </Dialog>
 
       {/* ---- Cancel dialog ---- */}
-      <Dialog open={cancelOpen} onOpenChange={(open) => { if (!open) { setCancelOpen(false); setCancelReason(''); } }}>
+      <Dialog
+        open={cancelOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelOpen(false);
+            setCancelReason('');
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel RFQ</DialogTitle>
@@ -1602,7 +1785,13 @@ export default function RFQDetailPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCancelOpen(false); setCancelReason(''); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelOpen(false);
+                setCancelReason('');
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1611,7 +1800,12 @@ export default function RFQDetailPage() {
               onClick={() => {
                 cancelMutation.mutate(
                   { id: rfqId, cancellationReason: cancelReason },
-                  { onSuccess: () => { setCancelOpen(false); setCancelReason(''); } },
+                  {
+                    onSuccess: () => {
+                      setCancelOpen(false);
+                      setCancelReason('');
+                    },
+                  }
                 );
               }}
             >
@@ -1622,14 +1816,23 @@ export default function RFQDetailPage() {
       </Dialog>
 
       {/* ---- Void award dialog ---- */}
-      <Dialog open={voidOpen} onOpenChange={(open) => { if (!open) { setVoidOpen(false); setVoidReason(''); } }}>
+      <Dialog
+        open={voidOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVoidOpen(false);
+            setVoidReason('');
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Void Award</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Provide a reason for voiding the award on <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
+              Provide a reason for voiding the award on{' '}
+              <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
             </p>
             <Textarea
               placeholder="Void reason..."
@@ -1639,7 +1842,13 @@ export default function RFQDetailPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setVoidOpen(false); setVoidReason(''); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVoidOpen(false);
+                setVoidReason('');
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1648,7 +1857,12 @@ export default function RFQDetailPage() {
               onClick={() => {
                 voidMutation.mutate(
                   { id: rfqId, data: { voidReason } },
-                  { onSuccess: () => { setVoidOpen(false); setVoidReason(''); } },
+                  {
+                    onSuccess: () => {
+                      setVoidOpen(false);
+                      setVoidReason('');
+                    },
+                  }
                 );
               }}
             >
@@ -1659,7 +1873,15 @@ export default function RFQDetailPage() {
       </Dialog>
 
       {/* ---- Award dialog ---- */}
-      <Dialog open={awardOpen} onOpenChange={(open) => { if (!open) { setAwardOpen(false); setAwardQuoteIds([]); } }}>
+      <Dialog
+        open={awardOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAwardOpen(false);
+            setAwardQuoteIds([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Award RFQ</DialogTitle>
@@ -1684,9 +1906,7 @@ export default function RFQDetailPage() {
                       disabled={currentlyAwarded}
                       onChange={() => {
                         setAwardQuoteIds((prev) =>
-                          prev.includes(q.id)
-                            ? prev.filter((id) => id !== q.id)
-                            : [...prev, q.id],
+                          prev.includes(q.id) ? prev.filter((id) => id !== q.id) : [...prev, q.id]
                         );
                       }}
                     />
@@ -1694,7 +1914,9 @@ export default function RFQDetailPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{q.vendor?.name ?? 'Unknown Vendor'}</span>
                         {currentlyAwarded && (
-                          <Badge variant="success" appearance="light" size="sm">Awarded</Badge>
+                          <Badge variant="success" appearance="light" size="sm">
+                            Awarded
+                          </Badge>
                         )}
                       </div>
                       <div className="text-muted-foreground">
@@ -1707,7 +1929,13 @@ export default function RFQDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setAwardOpen(false); setAwardQuoteIds([]); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAwardOpen(false);
+                setAwardQuoteIds([]);
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1742,8 +1970,8 @@ export default function RFQDetailPage() {
         title="Delete RFQ"
         description={
           <>
-            This will permanently delete{' '}
-            <strong>{rfq.rfqNumber ?? rfq.title}</strong>. This cannot be undone.
+            This will permanently delete <strong>{rfq.rfqNumber ?? rfq.title}</strong>. This cannot
+            be undone.
           </>
         }
         confirmLabel="Delete"
@@ -1758,4 +1986,3 @@ export default function RFQDetailPage() {
     </div>
   );
 }
-

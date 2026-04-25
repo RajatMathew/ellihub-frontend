@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { toastApiError } from '@app/lib/toast-api-error';
 import { rfqApi } from '@modules/project/api/rfq.api';
@@ -138,13 +138,12 @@ export const useSubmitQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      _rfqId,
       data,
     }: {
-      _rfqId: string;
+      rfqId: string;
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.submitQuote(data),
-    onSuccess: (_, { _rfqId: rfqId }) => {
+    onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Quote submitted.');
@@ -157,13 +156,12 @@ export const useEditQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      _rfqId,
       data,
     }: {
-      _rfqId: string;
+      rfqId: string;
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.editQuote(data),
-    onSuccess: (_, { _rfqId: rfqId }) => {
+    onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Quote updated.');
@@ -175,8 +173,8 @@ export const useEditQuoteMutation = () => {
 export const useRemoveQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ _rfqId, id }: { _rfqId: string; id: string }) => rfqApi.removeQuote(id),
-    onSuccess: (_, { _rfqId: rfqId }) => {
+    mutationFn: ({ id }: { rfqId: string; id: string }) => rfqApi.removeQuote(id),
+    onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Quote removed.');
@@ -207,13 +205,12 @@ export const useDeclineInviteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
-      _rfqId,
       data,
     }: {
-      _rfqId: string;
+      rfqId: string;
       data: { id: string; declineReason?: string };
     }) => rfqApi.declineInvite(data),
-    onSuccess: (_, { _rfqId: rfqId }) => {
+    onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Invite declined.');
@@ -227,8 +224,7 @@ export const useDeclineInviteMutation = () => {
 export const useAddVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { rfqId: string; vendorId: string }) =>
-      rfqApi.addVendor(data),
+    mutationFn: (data: { rfqId: string; vendorId: string }) => rfqApi.addVendor(data),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
@@ -269,7 +265,8 @@ export const usePublishRFQMutation = () => {
 export const useCancelRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, cancellationReason }: { id: string; cancellationReason?: string }) => rfqApi.cancel(id, cancellationReason),
+    mutationFn: ({ id, cancellationReason }: { id: string; cancellationReason?: string }) =>
+      rfqApi.cancel(id, cancellationReason),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.all });
       qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
@@ -323,8 +320,7 @@ export const useUnawardRFQMutation = () => {
 export const useAddRFQAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { rfqId: string; documentId: string }) =>
-      rfqApi.addAttachment(data),
+    mutationFn: (data: { rfqId: string; documentId: string }) => rfqApi.addAttachment(data),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
       toast.success('Attachment added.');
@@ -336,7 +332,7 @@ export const useAddRFQAttachmentMutation = () => {
 export const useRemoveRFQAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ rfqId, attachmentId }: { rfqId: string; attachmentId: string }) =>
+    mutationFn: ({ attachmentId }: { rfqId: string; attachmentId: string }) =>
       rfqApi.removeAttachment(attachmentId),
     onSuccess: (_, { rfqId }) => {
       qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });

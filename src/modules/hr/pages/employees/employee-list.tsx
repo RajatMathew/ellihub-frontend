@@ -9,9 +9,7 @@ import {
 } from '@tanstack/react-table';
 import {
   AlertCircle,
-  Mail,
   MoreHorizontal,
-  Phone,
   Plus,
   RefreshCcw,
   Search,
@@ -52,7 +50,7 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
-import { parsePageParam, parseSizeParam } from '@app/lib/helpers';
+import { formatDate, getInitials, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import { useDeleteEmployeeMutation, useEmployeesQuery } from '../../hooks/employees.hooks';
 import type { Employee, ListEmployeesParams } from '../../schemas/employee.schema';
@@ -127,35 +125,36 @@ export default function EmployeeListPage() {
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
 
+
   const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
       {
         accessorKey: 'name',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Employee Name" />,
+        size: 200,
+        header: ({ column }) => (
+          <DataGridColumnHeader column={column} title="Employee Name" />
+        ),
         cell: ({ row }) => (
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-              {row.original.name.split(' ').map(n => n[0]).join('')}
+          <div className="flex items-center gap-4">
+            <div className="size-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs ring-2 ring-background">
+              {getInitials(row.original.name, 2)}
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col justify-center">
               <Link
                 to={row.original.id}
-                className="text-sm font-semibold text-foreground uppercase tracking-tight hover:text-primary transition-colors"
+                className="text-sm font-bold text-foreground hover:text-primary transition-colors leading-none"
               >
                 {row.original.name}
               </Link>
-              <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest leading-none">
-                {row.original.role?.name || 'Standard Employee'}
-              </div>
             </div>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[250px]',
+          headerClassName: 'min-w-[200px]',
           skeleton: (
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-full" />
-              <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-4">
+              <Skeleton className="size-10 rounded-full" />
+              <div className="flex flex-col gap-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-3 w-24" />
               </div>
@@ -164,97 +163,130 @@ export default function EmployeeListPage() {
         },
       },
       {
-        accessorKey: 'email',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
+        accessorKey: 'department.name',
+        size: 160,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Department" />,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-            <Mail className="size-3.5" />
-            <span className="truncate max-w-[200px]">{row.original.email}</span>
+          <div className="flex items-center">
+             <div className="text-[11px] font-bold uppercase tracking-widest text-foreground/80 bg-muted/50 px-2 py-0.5 rounded border border-border/50 whitespace-nowrap">
+               {row.original.department?.name || 'Unassigned'}
+             </div>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[200px]',
-          skeleton: <Skeleton className="h-4 w-40" />,
+          headerClassName: 'min-w-[160px]',
+          skeleton: <Skeleton className="h-5 w-24 rounded" />,
+        },
+      },
+      {
+        accessorKey: 'email',
+        size: 320,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
+        cell: ({ row }) => (
+          <div className="flex items-center text-sm text-muted-foreground font-medium whitespace-nowrap">
+            <a href={`mailto:${row.original.email}`} className="hover:text-primary transition-colors">
+              {row.original.email}
+            </a>
+          </div>
+        ),
+        meta: {
+          headerClassName: 'min-w-[320px]',
+          skeleton: <Skeleton className="h-4 w-56" />,
         },
       },
       {
         accessorKey: 'phoneNumber',
+        size: 160,
         header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-            <Phone className="size-3.5" />
+          <div className="flex items-center text-sm text-muted-foreground font-medium whitespace-nowrap">
             <span>{row.original.phoneNumber || '—'}</span>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[150px]',
+          headerClassName: 'min-w-[160px]',
           skeleton: <Skeleton className="h-4 w-28" />,
         },
       },
       {
-        accessorKey: 'department.name',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Department" />,
-        cell: ({ row }) => (
-          <div className="text-sm font-medium uppercase tracking-wide">
-            {row.original.department?.name || '—'}
-          </div>
-        ),
+        accessorKey: 'status',
+        size: 100,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
+        cell: ({ row }) => {
+          const status = row.original.status || 'ACTIVE';
+          const isActive = status === 'ACTIVE';
+          return (
+            <div className="flex items-center">
+              <div className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
+                isActive 
+                  ? 'bg-success/10 text-success border-success/20' 
+                  : 'bg-muted text-muted-foreground border-muted-foreground/20'
+              }`}>
+                {status}
+              </div>
+            </div>
+          );
+        },
         meta: {
-          headerClassName: 'min-w-[150px]',
-          skeleton: <Skeleton className="h-4 w-20" />,
+          headerClassName: 'w-[100px]',
+          skeleton: <Skeleton className="h-5 w-16 rounded" />,
         },
       },
       {
         accessorKey: 'startDate',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Start Date" />,
+        size: 140,
+        header: ({ column }) => <DataGridColumnHeader column={column} className="justify-end" title="Start Date" />,
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.startDate ? new Date(row.original.startDate).toLocaleDateString() : '—'}
-          </span>
+          <div className="text-sm text-muted-foreground font-medium whitespace-nowrap text-end pr-2">
+            {row.original.startDate ? formatDate(row.original.startDate) : '—'}
+          </div>
         ),
         meta: {
-          headerClassName: 'w-[150px]',
-          skeleton: <Skeleton className="h-4 w-20" />,
+          headerClassName: 'w-[140px]',
+          skeleton: <div className="flex justify-end pr-2"><Skeleton className="h-4 w-24" /></div>,
         },
       },
       {
         id: 'actions',
+        size: 60,
         header: () => null,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                mode="icon"
-                size="sm"
-                className="size-7"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem asChild>
-                <Link to={row.original.id}>View Details</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to={`${row.original.id}/edit`}>Edit Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}
-              >
-                <UserMinus className="size-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex justify-end pr-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  mode="icon"
+                  size="sm"
+                  className="size-8 hover:bg-muted"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to={row.original.id}>View Full Details</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={`${row.original.id}/edit`}>Edit Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}
+                >
+                  <UserMinus className="size-4 mr-2" />
+                  Delete Employee
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ),
         meta: {
-          headerClassName: 'w-[60px]',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
+          headerClassName: 'w-[60px] text-end pr-4',
+          skeleton: <div className="flex justify-end pr-2"><Skeleton className="size-8 rounded-md" /></div>,
         },
         enableSorting: false,
       },
@@ -395,6 +427,12 @@ export default function EmployeeListPage() {
                 </Button>
               </div>
             }
+            tableLayout={{
+              cellBorder: false,
+              rowBorder: true,
+              headerBackground: true,
+              width: 'fixed',
+            }}
           >
             <CardTable>
               <DataGridTable />

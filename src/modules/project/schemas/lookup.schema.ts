@@ -34,6 +34,7 @@ export const lookupTypeSchema = z.enum([
   'PROFESSIONAL_ROLE',
   'PAYMENT_METHOD',
   'UNIT_OF_MEASURE',
+  'PTO_TYPE',
 ]);
 
 export type LookupType = z.infer<typeof lookupTypeSchema>;
