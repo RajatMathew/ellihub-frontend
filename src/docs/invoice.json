@@ -295,6 +295,11 @@
                     "taxRate": { "type": "string", "nullable": true },
                     "notes": { "type": "string", "nullable": true },
                     "relatedSCOIds": { "type": "array", "items": { "type": "string" } },
+                    "relatedSCOs": {
+                        "type": "array",
+                        "description": "Hydrated SubChangeOrder objects for the IDs in relatedSCOIds. Populated by GET /invoice/{id}; may be omitted on list endpoints.",
+                        "items": { "$ref": "#/components/schemas/SubChangeOrder" }
+                    },
                     "paidDate": { "type": "string", "format": "date-time", "nullable": true },
                     "paymentReference": { "type": "string", "nullable": true },
                     "paymentMethodId": { "type": "string", "nullable": true },

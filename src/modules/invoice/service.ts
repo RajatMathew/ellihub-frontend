@@ -31,7 +31,7 @@ export const InvoiceService = {
         });
     },
 
-    getInvoice: async (id: string): Promise<Invoice> => {
+    getInvoice: async (id: string) => {
         const invoice = await prisma.invoice.findUnique({
             where: { id },
             include: {
@@ -44,7 +44,23 @@ export const InvoiceService = {
         });
         if (!invoice) throw new NotFoundError('Invoice not found');
         checkDeletedAt(invoice);
-        return invoice;
+
+        const relatedSCOs = invoice.relatedSCOIds.length
+            ? await prisma.subChangeOrder.findMany({
+                  where: { id: { in: invoice.relatedSCOIds }, deletedAt: null },
+                  include: {
+                      changeType: true,
+                      lineItems: {
+                          where: { deletedAt: null },
+                          orderBy: { sequenceNumber: 'asc' },
+                          include: { unit: true },
+                      },
+                      attachments: { include: { document: true } },
+                  },
+              })
+            : [];
+
+        return { ...invoice, relatedSCOs };
     },
 
     getInvoices: async (params: PaginationParams): Promise<{ data: Invoice[]; count: number }> => {
