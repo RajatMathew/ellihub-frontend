@@ -42,7 +42,7 @@ export const ScoService = {
                 lineItems: {
                     where: { deletedAt: null },
                     orderBy: { sequenceNumber: 'asc' },
-                    include: { unit: true, category: true },
+                    include: { unit: true },
                 },
                 attachments: { include: { document: true } },
             },
@@ -120,15 +120,10 @@ export const ScoService = {
         }
 
         const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
-        const categoryIds = [...new Set(lineItems.map((li) => li.categoryId))];
-        const lookupIds = [...new Set([...unitIds, ...categoryIds])];
-        const lookups = await prisma.lookup.findMany({ where: { id: { in: lookupIds } } });
+        const lookups = await prisma.lookup.findMany({ where: { id: { in: unitIds } } });
         const lookupSet = new Set(lookups.map((l) => l.id));
         if (unitIds.some((id) => !lookupSet.has(id))) {
             throw new NotFoundError('One or more line item units not found');
-        }
-        if (categoryIds.some((id) => !lookupSet.has(id))) {
-            throw new NotFoundError('One or more line item categories not found');
         }
 
         const costCodeIds = [
@@ -179,7 +174,6 @@ export const ScoService = {
                     unitId: li.unitId,
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],
-                    categoryId: li.categoryId,
                     costCodeId: li.costCodeId ?? null,
                 })),
             });
@@ -237,15 +231,10 @@ export const ScoService = {
         }
 
         const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
-        const categoryIds = [...new Set(lineItems.map((li) => li.categoryId))];
-        const lookupIds = [...new Set([...unitIds, ...categoryIds])];
-        const lookups = await prisma.lookup.findMany({ where: { id: { in: lookupIds } } });
+        const lookups = await prisma.lookup.findMany({ where: { id: { in: unitIds } } });
         const lookupSet = new Set(lookups.map((l) => l.id));
         if (unitIds.some((uid) => !lookupSet.has(uid))) {
             throw new NotFoundError('One or more line item units not found');
-        }
-        if (categoryIds.some((cid) => !lookupSet.has(cid))) {
-            throw new NotFoundError('One or more line item categories not found');
         }
 
         const costCodeIds = [
@@ -291,7 +280,6 @@ export const ScoService = {
                     unitId: li.unitId,
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],
-                    categoryId: li.categoryId,
                     costCodeId: li.costCodeId ?? null,
                 })),
             });

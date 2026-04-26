@@ -5,7 +5,6 @@ export const SCOLineItemSchema = z.object({
     qty: z.number().positive(),
     unitId: z.ulid(),
     unitPrice: z.number().nonnegative(),
-    categoryId: z.ulid(),
     costCodeId: z.ulid().optional().nullable(),
 });
 

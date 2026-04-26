@@ -35,7 +35,6 @@ model Lookup {
   purchaseOrders         PurchaseOrder[]         @relation("POTradeCategory")
   purchaseOrderLineItems PurchaseOrderLineItem[] @relation("POLineItemUnit")
   subCOLineItemUnits      SubCOLineItem[]        @relation("SCOLineItemUnit")
-  subCOLineItemCategories SubCOLineItem[]        @relation("SCOLineItemCategory")
   subChangeOrders         SubChangeOrder[]       @relation("SCOChangeType")
   invoicePaymentMethods   Invoice[]              @relation("InvoicePaymentMethod")
 
