@@ -10,23 +10,39 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@app/components/ui/breadcrumb';
+import { useBreadcrumbLabels } from '@app/hooks/use-breadcrumb-label';
 import { useProjectDetailQuery } from '@modules/project/hooks';
+
+const ROUTE_LABELS: Record<string, string> = {
+  'sub-change-order': 'Sub Change Order',
+};
 
 export function HeaderBreadcrumbs() {
   const location = useLocation();
-  const { projectId } = useParams<{ projectId?: string }>();
-
-  const { data: project } = useProjectDetailQuery(projectId ?? '');
+  const params = useParams<{ projectId?: string }>();
+  const breadcrumbLabels = useBreadcrumbLabels();
 
   // Split path & remove empty + first "app"
   const pathSegments = location.pathname
     .split('/')
     .filter(Boolean)
     .filter((_, index) => index !== 0); // remove "app"
+  const projectId = params.projectId ?? pathSegments[pathSegments.indexOf('project') + 1];
+
+  const { data: project } = useProjectDetailQuery(projectId ?? '');
 
   // Build cumulative paths
   let breadcrumbs = pathSegments.map((segment, index) => {
     const path = '/' + ['app', ...pathSegments.slice(0, index + 1)].join('/');
+    const dynamicLabel = breadcrumbLabels[path];
+
+    if (dynamicLabel) {
+      return {
+        label: dynamicLabel,
+        path,
+        isLast: index === pathSegments.length - 1,
+      };
+    }
 
     // Replace project ID with project name and link to overview
     if (projectId && segment === projectId) {
@@ -38,9 +54,11 @@ export function HeaderBreadcrumbs() {
     }
 
     return {
-      label: decodeURIComponent(segment)
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      label:
+        ROUTE_LABELS[segment] ??
+        decodeURIComponent(segment)
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
       path,
       isLast: index === pathSegments.length - 1,
     };

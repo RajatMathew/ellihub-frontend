@@ -12,12 +12,20 @@ export const activityApi = {
     const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
     if (params?.size != null) query.size = params.size;
-    if (params?.sortBy) query.sortBy = params.sortBy;
-    if (params?.sortOrder) query.sortOrder = params.sortOrder;
-    if (params?.entityType) query.entityType = params.entityType;
-    if (params?.entityId) query.entityId = params.entityId;
 
-    const res = await api.get(BASE, { params: query });
+    const endpoint =
+      params?.entityType && params?.entityId
+        ? `${BASE}/entity/${params.entityType}/${params.entityId}`
+        : BASE;
+
+    if (!params?.entityType || !params?.entityId) {
+      if (params?.sortBy) query.sortBy = params.sortBy;
+      if (params?.sortOrder) query.sortOrder = params.sortOrder;
+      if (params?.entityType) query.entityType = params.entityType;
+      if (params?.entityId) query.entityId = params.entityId;
+    }
+
+    const res = await api.get(endpoint, { params: query });
     const raw = {
       data: res.data?.data ?? res.data ?? [],
       pagination: res.data?.pagination ?? {

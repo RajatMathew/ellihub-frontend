@@ -44,7 +44,7 @@ function toastApiError(error: unknown, fallback: string) {
 
 export const useInvoiceListQuery = (params: ListInvoiceParams) =>
   useQuery({
-    queryKey: [...invoiceKeys.list(params.projectId), params],
+    queryKey: [...invoiceKeys.list(params.projectId ?? 'all'), params],
     queryFn: () => invoiceApi.list(params),
     enabled: !!params.projectId,
   });
@@ -54,6 +54,13 @@ export const useInvoiceDetailQuery = (id: string) =>
     queryKey: invoiceKeys.detail(id),
     queryFn: () => invoiceApi.getById(id),
     enabled: !!id,
+  });
+
+export const useInvoicesByPurchaseOrderQuery = (poId: string) =>
+  useQuery({
+    queryKey: invoiceKeys.byPurchaseOrder(poId),
+    queryFn: () => invoiceApi.listByPurchaseOrder(poId),
+    enabled: !!poId,
   });
 
 export const useInvoiceStatusesQuery = () =>
@@ -139,6 +146,19 @@ export const useMarkPaidInvoiceMutation = () => {
       toast.success('Invoice marked as paid.');
     },
     onError: (err) => toastApiError(err, 'Failed to mark invoice as paid.'),
+  });
+};
+
+export const useMarkUnpaidInvoiceMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => invoiceApi.markUnpaid(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: invoiceKeys.all });
+      qc.invalidateQueries({ queryKey: invoiceKeys.detail(id) });
+      toast.success('Invoice marked as unpaid.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to mark invoice as unpaid.'),
   });
 };
 

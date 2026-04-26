@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, FileText, Mail, Phone, User, X } from 'lucide-react';
+import { Check, FileText, X } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -31,26 +31,25 @@ import {
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
 import { Textarea } from '@app/components/ui/textarea';
+import { useBreadcrumbLabel } from '@app/hooks/use-breadcrumb-label';
 import { formatCurrency } from '@app/lib/helpers';
 import { toast } from 'sonner';
 import { useCostCodesQuery } from '@modules/catalog/hooks';
-import { useContactsQuery, useVendorsQuery } from '@modules/directory/hooks';
+import { useVendorsQuery } from '@modules/directory/hooks';
 import { filesApi } from '@modules/files/api/files.api';
 import {
   PAYMENT_TERMS_OPTIONS,
   PO_FORM_SECTIONS,
-  TRADE_CATEGORY_OPTIONS,
 } from '@modules/purchase-orders/constants/po.constants';
 import poMockData from '@modules/purchase-orders/mock/po-create.mock.json';
 import { useAddPOAttachmentMutation } from '@modules/purchase-orders/hooks/po-attachment.hooks';
 import {
-  useAddPOLineItemMutation,
   useCreatePOMutation,
   usePODetailQuery,
-  useRemovePOLineItemMutation,
   useUpdatePOMutation,
 } from '@modules/purchase-orders/hooks/po.hooks';
 import { useRFQListQuery } from '@modules/project/hooks';
+import { useLookupsQuery } from '@modules/project/hooks/lookup.hooks';
 import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
 import {
   createPOInputSchema,
@@ -65,32 +64,36 @@ export function POFormPage() {
   const navigate = useNavigate();
 
   const { data: existingPO, isLoading: isLoadingPO } = usePODetailQuery(poId ?? '');
+  useBreadcrumbLabel(
+    projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
+    existingPO?.poNumber ?? undefined,
+  );
   const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
-  const { data: contactsData } = useContactsQuery({ size: 1000 });
   const { data: costCodesData } = useCostCodesQuery();
   const { data: rfqsData } = useRFQListQuery({ projectId, size: 100 });
+  const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
+  const { data: units } = useLookupsQuery('UNIT');
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
 
   const createMutation = useCreatePOMutation();
   const updateMutation = useUpdatePOMutation();
-  const addLineItemMutation = useAddPOLineItemMutation();
-  const removeLineItemMutation = useRemovePOLineItemMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
 
   const vendorOptions = (vendorsData?.data ?? []).map((v) => ({
     value: v.id,
     label: v.name,
   }));
-  const contacts = contactsData?.data ?? [];
-  const contactOptions = contacts.map((c) => ({
-    value: c.id,
-    label: c.fullName,
-  }));
-  const contactsById = new Map(contacts.map((c) => [c.id, c]));
-
   const costCodeOptions = (costCodesData?.data ?? []).map((cc) => ({
     value: cc.id,
     label: `${cc.code} - ${cc.name}`,
+  }));
+  const tradeCategoryOptions = (tradeCategories ?? []).map((category) => ({
+    value: category.id,
+    label: category.label ?? category.name ?? category.id,
+  }));
+  const unitOptions = (units ?? []).map((unit) => ({
+    value: unit.id,
+    label: unit.label ?? unit.name ?? unit.id,
   }));
   const rfqOptions = (rfqsData?.data ?? []).map((r) => ({
     value: r.id,
@@ -101,60 +104,83 @@ export function POFormPage() {
     projectId,
     vendorId: '',
     rfqId: undefined,
-    tradeCategory: 'MATERIAL',
+    tradeCategoryId: '',
     description: '',
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
     leadTime: '',
-    issueDate: new Date().toISOString().slice(0, 10),
     expectedDate: '',
     shipToAddress: '',
+    address: '',
     markupAmount: 0,
     taxPercent: 0,
     paymentTerms: 'NET_30',
     retainagePercent: 10,
     notes: '',
-    vendorNotes: '',
-    lineItems: [{ description: '', quantity: 1, unit: 'EA', unitPrice: 0 }],
+    lineItems: [{ description: '', quantity: 1, unitId: '', unitPrice: 0 }],
   };
 
-  const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
+  const { control, handleSubmit, formState, reset, watch } = useForm<CreatePOInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(createPOInputSchema) as any,
     defaultValues: isEditMode && existingPO ? {
       projectId: existingPO.projectId,
       vendorId: existingPO.vendorId,
       rfqId: existingPO.rfqId ?? undefined,
-      tradeCategory: existingPO.tradeCategory,
+      tradeCategoryId: existingPO.tradeCategoryId ?? '',
       description: existingPO.description ?? '',
-      contactName: existingPO.contactName ?? '',
-      contactEmail: existingPO.contactEmail ?? '',
-      contactPhone: existingPO.contactPhone ?? '',
       leadTime: existingPO.leadTime ?? '',
-      issueDate: existingPO.issueDate?.split('T')[0] ?? '',
       expectedDate: existingPO.expectedDate?.split('T')[0] ?? '',
       shipToAddress: existingPO.shipToAddress ?? '',
+      address: existingPO.address ?? '',
       markupAmount: Number(existingPO.markupAmount ?? 0),
       taxPercent: Number(existingPO.taxPercent) || 0,
-      paymentTerms: existingPO.paymentTerms,
+      paymentTerms: existingPO.paymentTerms ?? 'NET_30',
       retainagePercent: Number(existingPO.retainagePercent) || 10,
       notes: existingPO.notes ?? '',
-      vendorNotes: existingPO.vendorNotes ?? '',
       lineItems: existingPO.lineItems.length > 0
         ? existingPO.lineItems.map((li) => ({
             description: li.description,
             quantity: Number(li.quantity),
-            unit: li.unit,
+            unitId: li.unitId ?? '',
             unitPrice: Number(li.unitPrice),
             costCodeId: li.costCodeId ?? undefined,
             notes: li.notes ?? undefined,
           }))
-        : [{ description: '', quantity: 1, unit: 'EA', unitPrice: 0 }],
+        : [{ description: '', quantity: 1, unitId: '', unitPrice: 0 }],
     } : createDefaults,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
+
+  useEffect(() => {
+    if (!isEditMode || !existingPO) return;
+    reset({
+      projectId: existingPO.projectId,
+      vendorId: existingPO.vendorId,
+      rfqId: existingPO.rfqId ?? undefined,
+      tradeCategoryId: existingPO.tradeCategoryId ?? '',
+      description: existingPO.description ?? '',
+      leadTime: existingPO.leadTime ?? '',
+      expectedDate: existingPO.expectedDate?.split('T')[0] ?? '',
+      shipToAddress: existingPO.shipToAddress ?? '',
+      address: existingPO.address ?? '',
+      markupAmount: Number(existingPO.markupAmount ?? 0),
+      taxPercent: Number(existingPO.taxPercent) || 0,
+      paymentTerms: existingPO.paymentTerms ?? 'NET_30',
+      retainagePercent: Number(existingPO.retainagePercent) || 10,
+      notes: existingPO.notes ?? '',
+      lineItems:
+        existingPO.lineItems.length > 0
+          ? existingPO.lineItems.map((li) => ({
+              description: li.description,
+              quantity: Number(li.quantity),
+              unitId: li.unitId ?? '',
+              unitPrice: Number(li.unitPrice),
+              costCodeId: li.costCodeId ?? undefined,
+              notes: li.notes ?? undefined,
+            }))
+          : [{ description: '', quantity: 1, unitId: '', unitPrice: 0 }],
+    });
+  }, [existingPO, isEditMode, reset]);
 
   const watchedLineItems = watch('lineItems');
   const subtotal = (watchedLineItems ?? []).reduce(
@@ -183,7 +209,7 @@ export function POFormPage() {
         });
         await addAttachmentMutation.mutateAsync({
           poId: targetPoId,
-          data: { fileId: uploaded.id },
+          data: { documentId: uploaded.id },
         });
       } catch {
         console.warn(`Failed to upload/attach file: ${file.name}`);
@@ -193,41 +219,34 @@ export function POFormPage() {
 
   const onSubmit = async (formData: CreatePOInput) => {
     // Clean empty strings to undefined so backend doesn't reject them
-    const { lineItems, ...rest } = formData;
+    const {
+      lineItems,
+      ...rest
+    } = formData;
     const cleaned = {
       ...rest,
       rfqId: rest.rfqId || undefined,
       description: rest.description || undefined,
-      contactName: rest.contactName || undefined,
-      contactEmail: rest.contactEmail || undefined,
-      contactPhone: rest.contactPhone || undefined,
       leadTime: rest.leadTime || undefined,
-      issueDate: rest.issueDate || undefined,
       expectedDate: rest.expectedDate || undefined,
       shipToAddress: rest.shipToAddress || undefined,
+      address: rest.address || undefined,
       notes: rest.notes || undefined,
-      vendorNotes: rest.vendorNotes || undefined,
       markupAmount: rest.markupAmount || undefined,
-      lineItems,
+      taxPercent: rest.taxPercent ?? undefined,
+      retainagePercent: rest.retainagePercent ?? undefined,
+      lineItems: lineItems.map((item) => ({
+        ...item,
+        costCodeId: item.costCodeId || undefined,
+        notes: item.notes || undefined,
+      })),
     };
 
     if (isEditMode && poId && existingPO) {
       setIsSaving(true);
       try {
-        // 1. Update basic PO fields (strip lineItems and immutable fields)
-        const { lineItems: currentLineItems, vendorId: _vi, projectId: _pi, ...poFields } = cleaned;
-        await updateMutation.mutateAsync({ id: poId, data: poFields as any });
+        await updateMutation.mutateAsync({ id: poId, data: cleaned });
 
-        // 2. Sync line items: add all current, then remove all originals
-        const originalItems = existingPO.lineItems ?? [];
-        for (const li of currentLineItems) {
-          await addLineItemMutation.mutateAsync({ poId, data: li });
-        }
-        for (const item of originalItems) {
-          await removeLineItemMutation.mutateAsync({ poId, lineItemId: item.id });
-        }
-
-        // 3. Upload files
         if (selectedFiles.length > 0) {
           if (poFolderId) {
             await uploadFilesAndAttach(poId, poFolderId, selectedFiles);
@@ -302,9 +321,12 @@ export function POFormPage() {
                     projectId,
                     vendorId: randomVendor,
                     paymentTerms: (d.paymentTerms ?? 'NET_30') as CreatePOInput['paymentTerms'],
-                    tradeCategory: (d.tradeCategory ?? 'MATERIAL') as CreatePOInput['tradeCategory'],
+                    tradeCategoryId:
+                      tradeCategoryOptions[Math.floor(Math.random() * tradeCategoryOptions.length)]
+                        ?.value ?? '',
                     lineItems: d.lineItems.map((item) => ({
                       ...item,
+                      unitId: unitOptions[Math.floor(Math.random() * unitOptions.length)]?.value ?? '',
                       costCodeId: costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ?? undefined,
                     })),
                   });
@@ -369,7 +391,7 @@ export function POFormPage() {
                 />
 
                 <Controller
-                  name="tradeCategory"
+                  name="tradeCategoryId"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
@@ -381,7 +403,7 @@ export function POFormPage() {
                           <SelectValue placeholder="Select trade..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {TRADE_CATEGORY_OPTIONS.map((opt) => (
+                          {tradeCategoryOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -435,24 +457,8 @@ export function POFormPage() {
                 )}
               />
 
-              {/* Issue Date + Expected Date */}
+              {/* Expected Date */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="issueDate"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Issue Date
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
                 <Controller
                   name="expectedDate"
                   control={control}
@@ -469,94 +475,7 @@ export function POFormPage() {
                 />
               </div>
 
-              {/* Contact — pick from directory */}
-              <Field>
-                <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                  Contact
-                </FieldLabel>
-                <SearchableSelect
-                  options={contactOptions}
-                  value={null}
-                  onValueChange={(contactId) => {
-                    if (!contactId) return;
-                    const contact = contactsById.get(contactId);
-                    if (!contact) return;
-                    setValue('contactName', contact.fullName, { shouldDirty: true });
-                    setValue('contactEmail', contact.email?.[0]?.email ?? '', { shouldDirty: true });
-                    setValue('contactPhone', contact.phoneNumber?.[0]?.number ?? '', { shouldDirty: true });
-                  }}
-                  placeholder="Search contacts..."
-                  searchPlaceholder="Search by name..."
-                  emptyMessage="No contacts found."
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Select a contact to auto-fill the fields below, or enter manually.
-                </p>
-              </Field>
-
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                <Controller
-                  name="contactName"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contact Name
-                      </FieldLabel>
-                      <InputWrapper>
-                        <User className="size-4" />
-                        <Input {...field} placeholder="John Smith" autoComplete="off" />
-                      </InputWrapper>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="contactEmail"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contact Email
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Mail className="size-4" />
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="john@vendor.com"
-                          autoComplete="off"
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="contactPhone"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Contact Phone
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Phone className="size-4" />
-                        <Input
-                          {...field}
-                          type="tel"
-                          placeholder="(555) 000-0000"
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
-                    </Field>
-                  )}
-                />
-              </div>
-
-              {/* Lead Time + Ship To */}
+              {/* Lead Time + Addresses */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
                   name="leadTime"
@@ -583,17 +502,17 @@ export function POFormPage() {
                 />
 
                 <Controller
-                  name="shipToAddress"
+                  name="address"
                   control={control}
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Ship To Address
+                        Address
                       </FieldLabel>
                       <InputWrapper>
                         <Input
                           {...field}
-                          placeholder="123 Job Site Rd, City ST 00000"
+                          placeholder="Vendor or billing address"
                           autoComplete="off"
                         />
                       </InputWrapper>
@@ -602,7 +521,26 @@ export function POFormPage() {
                 />
               </div>
 
-              {/* Notes + Vendor Notes */}
+              <Controller
+                name="shipToAddress"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Ship To Address
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="123 Job Site Rd, City ST 00000"
+                        autoComplete="off"
+                      />
+                    </InputWrapper>
+                  </Field>
+                )}
+              />
+
+              {/* Notes */}
               <Controller
                 name="notes"
                 control={control}
@@ -612,19 +550,6 @@ export function POFormPage() {
                       Internal Notes
                     </FieldLabel>
                     <Textarea {...field} placeholder="Internal notes..." rows={2} />
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="vendorNotes"
-                control={control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Vendor Notes
-                    </FieldLabel>
-                    <Textarea {...field} placeholder="Notes visible to vendor..." rows={2} />
                   </Field>
                 )}
               />
@@ -727,6 +652,9 @@ export function POFormPage() {
             append={append}
             remove={remove}
             costCodeOptions={costCodeOptions}
+            fieldNames={{ unit: 'unitId' }}
+            unitOptions={unitOptions}
+            defaultItem={{ description: '', quantity: 1, unitId: '', unitPrice: 0 }}
             rootError={formState.errors.lineItems?.root}
             showLineTotal
           >

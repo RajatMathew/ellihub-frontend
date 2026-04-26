@@ -1,22 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  AlertTriangle,
   Calendar,
   CheckCircle2,
-  DollarSign,
+  CreditCard,
   Download,
   FileText,
   MoreHorizontal,
   PanelRightOpen,
-  Clock,
   Pencil,
+  Receipt,
+  RefreshCcw,
   Trash2,
   Upload,
   XCircle,
 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   Toolbar,
@@ -25,6 +28,7 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@app/components/toolbar/toolbar';
+import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
 import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
@@ -39,12 +43,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
 import { Input, InputWrapper } from '@app/components/ui/input';
-import { Checkbox } from '@app/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -53,153 +55,167 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Separator } from '@app/components/ui/separator';
+import { StatsCard } from '@app/components/ui/stats-card';
 import { Textarea } from '@app/components/ui/textarea';
+import { useBreadcrumbLabel } from '@app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@app/lib/helpers';
-
+import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
+import { DetailSidebar } from '@modules/directory/components';
 import { UploadFileDialog } from '@modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@modules/files/hooks/files.hooks';
-import { useCostCodesQuery } from '@modules/catalog/hooks';
 import { InfoRow } from '@modules/project/components/info-row';
+import { useLookupsQuery } from '@modules/project/hooks/lookup.hooks';
 import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
-import { useAddInvoiceAttachmentMutation, useRemoveInvoiceAttachmentMutation } from '../hooks/invoice-attachment.hooks';
+
 import {
-  INVOICE_STATUS_COLORS,
-  PAYMENT_METHOD_OPTIONS,
-} from '@modules/project/constants/invoice.constants';
-import { DetailSidebar } from '@modules/directory/components';
-import {
-  useApproveInvoiceMutation,
-  useDeleteInvoiceMutation,
+  useActivityLogQuery,
   useDisputeInvoiceMutation,
   useInvoiceDetailQuery,
   useMarkPaidInvoiceMutation,
-  useRejectInvoiceMutation,
+  useMarkUnpaidInvoiceMutation,
   useResolveDisputeInvoiceMutation,
-  useActivityLogQuery,
 } from '../hooks';
-import { ActivityFeed, type ActivityItem } from '@core/ui/components/sections/activity-feed';
-import { useMemo } from 'react';
-import { History, PlusCircle } from 'lucide-react';
+import {
+  useAddInvoiceAttachmentMutation,
+  useRemoveInvoiceAttachmentMutation,
+} from '../hooks/invoice-attachment.hooks';
 import {
   invoiceMarkPaidInputSchema,
   type InvoiceMarkPaidInput,
 } from '../schemas/invoice.schema';
 
-/* ---- Page ---- */
+type InvoiceAttachment = {
+  id: string;
+  documentId?: string | null;
+  document?: {
+    id: string;
+    name?: string | null;
+    displayName?: string | null;
+    mimeType?: string | null;
+    size?: number | null;
+  } | null;
+};
+
+function money(value: unknown) {
+  const numeric = Number(value ?? 0);
+  return formatCurrency(Number.isFinite(numeric) ? numeric : 0);
+}
+
+function dateOrDash(value: string | null | undefined) {
+  return value ? formatDate(value) : '-';
+}
+
+function fileSizeLabel(value: number | null | undefined) {
+  if (!value) return null;
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(value / 1024).toFixed(1)} KB`;
+}
+
+function DetailField({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`min-w-0 ${className ?? ''}`}>
+      <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="break-words text-sm font-semibold text-foreground">{children ?? '-'}</div>
+    </div>
+  );
+}
 
 export function InvoiceDetailPage() {
-  const { projectId = '', invoiceId = '' } = useParams<{ projectId: string; invoiceId: string }>();
-  const navigate = useNavigate();
+  const { projectId = '', invoiceId = '' } = useParams<{
+    projectId: string;
+    invoiceId: string;
+  }>();
 
   const { data: invoice, isLoading } = useInvoiceDetailQuery(invoiceId);
-  const { data: costCodesData } = useCostCodesQuery();
-  const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
+  useBreadcrumbLabel(
+    projectId && invoiceId ? `/app/project/${projectId}/invoices/${invoiceId}` : undefined,
+    invoice?.invoiceNumber ?? undefined,
+  );
 
-  const approveMutation = useApproveInvoiceMutation();
-  const rejectMutation = useRejectInvoiceMutation();
+  const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
+  const { data: paymentMethods } = useLookupsQuery('PAYMENT_METHOD');
+  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+    entityType: 'invoice',
+    entityId: invoiceId,
+    size: 50,
+  });
+
   const markPaidMutation = useMarkPaidInvoiceMutation();
+  const markUnpaidMutation = useMarkUnpaidInvoiceMutation();
   const disputeMutation = useDisputeInvoiceMutation();
   const resolveDisputeMutation = useResolveDisputeInvoiceMutation();
-  const deleteMutation = useDeleteInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
   const removeAttachmentMutation = useRemoveInvoiceAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
-  const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
-  );
-  const attachments = (invoice?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
-
-  const [uploadOpen, setUploadOpen] = useState(false);
-
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [approveOpen, setApproveOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [markUnpaidOpen, setMarkUnpaidOpen] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [resolveOpen, setResolveOpen] = useState(false);
 
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
-    entityType: 'invoice',
-    entityId: invoiceId,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    size: 50,
+  const markPaidForm = useForm<InvoiceMarkPaidInput>({
+    resolver: zodResolver(invoiceMarkPaidInputSchema),
+    defaultValues: {
+      paidDate: new Date().toISOString().slice(0, 10),
+      paymentMethodId: '',
+      paymentReference: '',
+      paymentNotes: '',
+    },
   });
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     if (!activityData?.data) return [];
     return activityData.data.map((log) => {
       const action = log.action.toLowerCase();
-      let icon = <Clock className="size-4" />;
-      let color = "border-muted-foreground/20 bg-muted/30";
+      let icon = <Receipt className="size-4" />;
+      let color = 'border-muted-foreground/20 bg-muted/30';
 
       if (action.includes('create')) {
-        icon = <PlusCircle className="size-4 text-primary" />;
-        color = "border-primary/20 bg-primary/5";
-      } else if (action.includes('update')) {
-        icon = <Pencil className="size-4 text-info" />;
-        color = "border-info/20 bg-info/5";
-      } else if (action.includes('approve') || action.includes('paid') || action.includes('resolve')) {
+        icon = <Receipt className="size-4 text-primary" />;
+        color = 'border-primary/20 bg-primary/5';
+      } else if (action.includes('paid') || action.includes('resolve')) {
         icon = <CheckCircle2 className="size-4 text-success" />;
-        color = "border-success/20 bg-success/5";
-      } else if (action.includes('delete') || action.includes('reject')) {
-        icon = <Trash2 className="size-4 text-destructive" />;
-        color = "border-destructive/20 bg-destructive/5";
+        color = 'border-success/20 bg-success/5';
       } else if (action.includes('dispute')) {
-        icon = <XCircle className="size-4 text-warning" />;
-        color = "border-warning/20 bg-warning/5";
+        icon = <AlertTriangle className="size-4 text-warning" />;
+        color = 'border-warning/20 bg-warning/5';
+      } else if (action.includes('remove') || action.includes('delete')) {
+        icon = <Trash2 className="size-4 text-destructive" />;
+        color = 'border-destructive/20 bg-destructive/5';
       }
 
       return {
         id: log.id,
         user: log.user?.name || 'System',
         action: log.description,
-        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+        timestamp: log.createdAt
+          ? new Date(log.createdAt).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '-',
         avatar: log.user?.image || undefined,
         icon,
         color,
       };
     });
   }, [activityData]);
-
-  // Reject dialog state
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-
-  // Mark paid dialog state
-  const [markPaidOpen, setMarkPaidOpen] = useState(false);
-  const markPaidForm = useForm<InvoiceMarkPaidInput>({
-    resolver: zodResolver(invoiceMarkPaidInputSchema),
-    defaultValues: {
-      paidAmount: 0,
-      paidDate: new Date().toISOString().slice(0, 10),
-      paymentMethod: undefined,
-      paymentReference: '',
-      notes: '',
-    },
-  });
-
-  // Dispute dialog state
-  const [disputeOpen, setDisputeOpen] = useState(false);
-  const [disputeReason, setDisputeReason] = useState('');
-  const [disputeNotifyVendor, setDisputeNotifyVendor] = useState(false);
-
-  // Resolve dispute dialog state
-  const [resolveDisputeOpen, setResolveDisputeOpen] = useState(false);
-  const [resolution, setResolution] = useState('');
-
-  const statusName = invoice?.status?.name ?? '';
-  const isPending = statusName === 'PENDING';
-  const isApproved = statusName === 'APPROVED';
-  const isPaid = invoice?.isPaid === true;
-  const isRejected = statusName === 'REJECTED';
-  const isDisputed = invoice?.isDisputed === true;
-
-  const isActionPending =
-    approveMutation.isPending ||
-    rejectMutation.isPending ||
-    markPaidMutation.isPending ||
-    disputeMutation.isPending ||
-    resolveDisputeMutation.isPending;
 
   if (isLoading) {
     return (
@@ -217,9 +233,27 @@ export function InvoiceDetailPage() {
     );
   }
 
+  const attachments = (invoice.attachments ?? []) as InvoiceAttachment[];
+  const isPaid = invoice.isPaid === true;
+  const isDisputed = invoice.isDisputed === true;
+  const totalAmount = Number(invoice.totalAmount ?? 0);
+  const taxAmount = Number(invoice.taxAmount ?? 0);
+  const subtotal = Math.max(0, totalAmount - taxAmount);
+  const isPastDue = !isPaid && !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
+  const paymentMethodLabel =
+    invoice.paymentMethod?.label ??
+    invoice.paymentMethod?.name ??
+    paymentMethods?.find((method) => method.id === invoice.paymentMethodId)?.label ??
+    paymentMethods?.find((method) => method.id === invoice.paymentMethodId)?.name ??
+    '-';
+  const isActionPending =
+    markPaidMutation.isPending ||
+    markUnpaidMutation.isPending ||
+    disputeMutation.isPending ||
+    resolveDisputeMutation.isPending;
+
   return (
-    <div className="container-fluid py-7.5">
-      {/* ---- Toolbar ---- */}
+    <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
@@ -228,58 +262,83 @@ export function InvoiceDetailPage() {
                 Invoices
               </Link>
             </div>
-            <div className="flex items-center gap-3">
-              <ToolbarPageTitle>
-                {invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : 'Invoice'}
-              </ToolbarPageTitle>
-              {invoice.status && (
-                <div className="flex items-center gap-1.5">
-                  <span className={`size-2 rounded-full ${INVOICE_STATUS_COLORS[invoice.status.name] ?? 'bg-muted-foreground'}`} />
-                  <span className="text-sm text-muted-foreground">{invoice.status.label}</span>
-                </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ToolbarPageTitle>{invoice.invoiceNumber ?? 'Invoice'}</ToolbarPageTitle>
+              <Badge
+                variant={isPaid ? 'success' : 'warning'}
+                appearance="outline"
+                size="sm"
+              >
+                {isPaid ? 'Paid' : 'Unpaid'}
+              </Badge>
+              {isDisputed && (
+                <Badge variant="destructive" appearance="outline" size="sm">
+                  Disputed
+                </Badge>
+              )}
+              {isPastDue && (
+                <Badge variant="destructive" appearance="outline" size="sm">
+                  Past Due
+                </Badge>
               )}
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {/* Workflow actions */}
-            {isPending && (
-              <>
-                <Button size="sm" onClick={() => setApproveOpen(true)}>
-                  Approve
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => { setRejectOpen(true); setRejectReason(''); }}>
-                  Reject
-                </Button>
-              </>
-            )}
-            {isApproved && !isPaid && (
-              <Button size="sm" onClick={() => {
-                markPaidForm.reset({
-                  paidAmount: invoice.totalAmount ?? 0,
-                  paidDate: new Date().toISOString().slice(0, 10),
-                  paymentMethod: undefined,
-                  paymentReference: '',
-                  notes: '',
-                });
-                setMarkPaidOpen(true);
-              }}>
-                <DollarSign className="size-4" />
-                Mark as Paid
+            {!isPaid && (
+              <Button
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => {
+                  markPaidForm.reset({
+                    paidDate: new Date().toISOString().slice(0, 10),
+                    paymentMethodId: '',
+                    paymentReference: '',
+                    paymentNotes: '',
+                  });
+                  setMarkPaidOpen(true);
+                }}
+              >
+                <CheckCircle2 className="size-4" />
+                Mark Paid
               </Button>
             )}
-            {!isPaid && !isRejected && !isDisputed && (
-              <Button variant="outline" size="sm" onClick={() => { setDisputeOpen(true); setDisputeReason(''); setDisputeNotifyVendor(false); }}>
+            {isPaid && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => setMarkUnpaidOpen(true)}
+              >
+                <RefreshCcw className="size-4" />
+                Mark Unpaid
+              </Button>
+            )}
+            {!isDisputed && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => {
+                  setDisputeReason('');
+                  setDisputeOpen(true);
+                }}
+              >
+                <AlertTriangle className="size-4" />
                 Dispute
               </Button>
             )}
             {isDisputed && (
-              <Button size="sm" onClick={() => { setResolveDisputeOpen(true); setResolution(''); }}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isActionPending}
+                onClick={() => setResolveOpen(true)}
+              >
+                <XCircle className="size-4" />
                 Resolve Dispute
               </Button>
             )}
-
-            {/* Edit + more menu */}
-            {isPending && (
+            {!isPaid && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -293,8 +352,8 @@ export function InvoiceDetailPage() {
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                {isPending && (
+              <DropdownMenuContent align="end" className="w-44">
+                {!isPaid && (
                   <DropdownMenuItem asChild>
                     <Link to="edit">
                       <Pencil className="size-4" />
@@ -302,17 +361,11 @@ export function InvoiceDetailPage() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {isPending && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => setDeleteOpen(true)}
-                    >
-                      <Trash2 className="size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
+                {!isPaid && invoiceFolderId && (
+                  <DropdownMenuItem onClick={() => setUploadOpen(true)}>
+                    <Upload className="size-4" />
+                    Upload Document
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -326,297 +379,327 @@ export function InvoiceDetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      {/* ---- Main layout ---- */}
-      <div className="flex gap-6 pt-5">
-        {/* Left column */}
-        <div className="flex-1 min-w-0 space-y-5">
-          {/* Invoice Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Invoice Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {invoice.invoiceNumber && <InfoRow label="Invoice #">{invoice.invoiceNumber}</InfoRow>}
-              <InfoRow label="Vendor">{invoice.vendor?.name ?? '—'}</InfoRow>
-              <InfoRow label="Invoice Date">{invoice.invoiceDate ? formatDate(invoice.invoiceDate) : '—'}</InfoRow>
-              <InfoRow label="Due Date">
-                <span className={invoice.isPastDue ? 'text-destructive font-medium' : ''}>
-                  {invoice.dueDate ? formatDate(invoice.dueDate) : '—'}
-                  {invoice.isPastDue && ` (${invoice.daysOverdue ?? 0} days overdue)`}
-                </span>
-              </InfoRow>
-              <InfoRow label="Type">{invoice.invoiceType ?? '—'}</InfoRow>
-              <InfoRow label="Category">{invoice.category ?? '—'}</InfoRow>
-              {invoice.purchaseOrder && (
-                <InfoRow label="Purchase Order">{invoice.purchaseOrder.poNumber}</InfoRow>
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+        <StatsCard
+          icon={<Receipt className="size-5 text-primary" />}
+          bgClass="bg-primary/10"
+          label="Invoice Total"
+          value={money(totalAmount)}
+          description="Submitted amount"
+        />
+        <StatsCard
+          icon={<Receipt className="size-5 text-muted-foreground" />}
+          bgClass="bg-muted/60"
+          label="Subtotal"
+          value={money(subtotal)}
+          description="Before tax"
+        />
+        <StatsCard
+          icon={<Receipt className="size-5 text-info" />}
+          bgClass="bg-info/10"
+          label="Tax"
+          value={money(taxAmount)}
+          description={`${invoice.taxRate ?? 0}%`}
+        />
+        <StatsCard
+          icon={<CreditCard className="size-5 text-success" />}
+          bgClass="bg-success/10"
+          label="Payment"
+          value={isPaid ? 'Paid' : 'Unpaid'}
+          description={invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No payment recorded'}
+        />
+        <StatsCard
+          icon={<Calendar className="size-5 text-warning" />}
+          bgClass="bg-warning/10"
+          label="Due Date"
+          value={dateOrDash(invoice.dueDate)}
+          description={isPastDue ? 'Past due' : 'Payment due'}
+        />
+      </div>
+
+      {isDisputed && invoice.disputeReason && (
+        <div className="mt-8 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-destructive">
+            <AlertTriangle className="size-4" />
+            Dispute Reason
+          </div>
+          <p className="text-sm text-foreground">{invoice.disputeReason}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-5 pt-5 xl:flex-row">
+        <div className="min-w-0 flex-1">
+          <div className="grid min-w-0 grid-cols-1 gap-5 min-[1800px]:grid-cols-5">
+            <div className="min-w-0 space-y-5 min-[1800px]:col-span-3">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Invoice Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <DetailField label="Invoice #">{invoice.invoiceNumber}</DetailField>
+                    <DetailField label="Invoice Date">{dateOrDash(invoice.invoiceDate)}</DetailField>
+                    <DetailField label="Due Date">{dateOrDash(invoice.dueDate)}</DetailField>
+                    <DetailField label="Vendor">{invoice.vendor?.name ?? '-'}</DetailField>
+                    <DetailField label="Project">{invoice.project?.name ?? '-'}</DetailField>
+                    <DetailField label="Related SCOs">
+                      {invoice.relatedSCOIds.length > 0
+                        ? `${invoice.relatedSCOIds.length} linked`
+                        : '-'}
+                    </DetailField>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {invoice.notes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Notes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="whitespace-pre-wrap text-sm text-foreground">{invoice.notes}</p>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Notes */}
-          {invoice.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-foreground whitespace-pre-wrap">{invoice.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Line Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Line Items ({invoice.lineItems.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {invoice.lineItems.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-8">#</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Description</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase w-[160px]">Cost Code</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Qty</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">Unit</th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Unit Price</th>
-                        <th className="pb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoice.lineItems.map((li, idx) => (
-                        <tr key={li.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-3 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-2.5 pr-3">
-                            <div className="font-medium">{li.description}</div>
-                          </td>
-                          <td className="py-2.5 pr-3 text-xs text-muted-foreground">
-                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}
-                          </td>
-                          <td className="py-2.5 pr-3 text-right tabular-nums">{li.qty}</td>
-                          <td className="py-2.5 pr-3">{li.unit}</td>
-                          <td className="py-2.5 pr-3 text-right tabular-nums">{formatCurrency(li.unitPrice)}</td>
-                          <td className="py-2.5 text-right font-medium tabular-nums">{formatCurrency(li.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={6} className="pt-3 text-right text-xs font-semibold tracking-widest text-muted-foreground uppercase">Total</td>
-                        <td className="pt-3 text-right font-semibold tabular-nums">{formatCurrency(invoice.totalAmount)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <FileText className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No line items.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Payment Info */}
-          {isPaid && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Payment Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <InfoRow label="Paid Amount">{formatCurrency(invoice.paidAmount ?? 0)}</InfoRow>
-                <InfoRow label="Paid Date">{invoice.paidDate ? formatDate(invoice.paidDate) : '—'}</InfoRow>
-                <InfoRow label="Payment Method">{invoice.paymentMethod ?? '—'}</InfoRow>
-                <InfoRow label="Payment Reference">{invoice.paymentReference ?? '—'}</InfoRow>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Dispute Info */}
-          {(isDisputed || invoice.disputeReason) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                  Dispute Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <InfoRow label="Dispute Reason">{invoice.disputeReason ?? '—'}</InfoRow>
-                {invoice.disputeDate && (
-                  <InfoRow label="Dispute Date">{formatDate(invoice.disputeDate)}</InfoRow>
-                )}
-                {invoice.disputeResolution && (
-                  <InfoRow label="Resolution">{invoice.disputeResolution}</InfoRow>
-                )}
-                {invoice.disputeResolvedDate && (
-                  <InfoRow label="Resolved Date">{formatDate(invoice.disputeResolvedDate)}</InfoRow>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Documents / Attachments */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Documents ({attachments.length})
-              </CardTitle>
-              {isPending && invoiceFolderId && (
-                <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
-                  <Upload className="size-4" />
-                  Upload
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {attachments.length > 0 ? (
-                <div className="space-y-2">
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="flex items-center justify-between rounded-lg border p-2.5"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="size-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate">
-                          {att.document?.name ?? 'Document'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {att.document?.id && (
-                          <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="sm"
-                            onClick={() => downloadFile.mutate(att.document!)}
+              <Card>
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Documents ({attachments.length})
+                  </CardTitle>
+                  {!isPaid && invoiceFolderId && (
+                    <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                      <Upload className="size-4" />
+                      Upload
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => {
+                        const document = attachment.document;
+                        return (
+                          <div
+                            key={attachment.id}
+                            className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
                           >
-                            <Download className="size-3.5" />
-                          </Button>
-                        )}
-                        {isPending && (
-                          <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="sm"
-                            onClick={() =>
-                              removeAttachmentMutation.mutate({ invoiceId, attachmentId: att.id })
-                            }
-                          >
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <FileText className="size-4 shrink-0 text-muted-foreground" />
+                              <div className="min-w-0">
+                                <span className="block truncate text-sm font-medium">
+                                  {document?.displayName ?? document?.name ?? 'Document'}
+                                </span>
+                                {fileSizeLabel(document?.size) && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {fileSizeLabel(document?.size)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
+                              {document?.id && (
+                                <Button
+                                  variant="ghost"
+                                  mode="icon"
+                                  size="sm"
+                                  onClick={() => downloadFile.mutate(document)}
+                                >
+                                  <Download className="size-3.5" />
+                                </Button>
+                              )}
+                              {!isPaid && (
+                                <Button
+                                  variant="ghost"
+                                  mode="icon"
+                                  size="sm"
+                                  disabled={attachments.length <= 1}
+                                  onClick={() => {
+                                    if (attachments.length <= 1) {
+                                      toast.error('At least one attachment is required.');
+                                      return;
+                                    }
+                                    removeAttachmentMutation.mutate({
+                                      invoiceId,
+                                      attachmentId: attachment.id,
+                                    });
+                                  }}
+                                >
+                                  <Trash2 className="size-3.5 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <FileText className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No documents attached.</p>
-                </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-6 text-center">
+                      <FileText className="size-8 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">No documents attached.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="min-w-0 space-y-5 min-[1800px]:col-span-2">
+              <Card>
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Purchase Order
+                  </CardTitle>
+                  {invoice.purchaseOrder?.id && (
+                    <Link
+                      to={`/app/project/${projectId}/purchase-orders/${invoice.purchaseOrder.id}`}
+                      className="text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                    >
+                      View PO
+                    </Link>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1">
+                    <DetailField label="PO Number">
+                      {invoice.purchaseOrder?.poNumber ?? invoice.purchaseOrderId ?? '-'}
+                    </DetailField>
+                    <DetailField label="PO Status">
+                      {invoice.purchaseOrder?.status ?? '-'}
+                    </DetailField>
+                    <DetailField label="PO Total">
+                      {invoice.purchaseOrder?.total ? money(invoice.purchaseOrder.total) : '-'}
+                    </DetailField>
+                    <DetailField label="Payment Terms">
+                      {invoice.purchaseOrder?.paymentTerms?.replace(/_/g, ' ') ?? '-'}
+                    </DetailField>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Related SCOs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {invoice.relatedSCOIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {invoice.relatedSCOIds.map((id) => (
+                        <Badge key={id} variant="secondary" appearance="outline" size="sm">
+                          {id}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No related SCOs.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {isPaid && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Payment Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <InfoRow label="Paid Date">{dateOrDash(invoice.paidDate)}</InfoRow>
+                    <InfoRow label="Payment Method">{paymentMethodLabel}</InfoRow>
+                    <InfoRow label="Reference">{invoice.paymentReference ?? '-'}</InfoRow>
+                    <InfoRow label="Notes">{invoice.paymentNotes ?? '-'}</InfoRow>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* ---- Right sidebar ---- */}
         <DetailSidebar
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activityChildren={
             <div className="p-4">
               {isActivityLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground uppercase tracking-widest">
+                <div className="py-6 text-center text-sm uppercase tracking-widest text-muted-foreground">
                   Loading activity...
                 </div>
               ) : activityItems.length > 0 ? (
                 <ActivityFeed items={activityItems} />
               ) : (
                 <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold">No activity recorded yet.</p>
+                  <Receipt className="size-8 text-muted-foreground/40" />
+                  <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    No activity recorded yet.
+                  </p>
                 </div>
               )}
             </div>
           }
         >
           <div className="space-y-6 pt-2">
-            {/* Financial Summary */}
             <div>
-              <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Financial Summary
               </div>
               <Card>
-                <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Total Amount">{formatCurrency(invoice.totalAmount)}</InfoRow>
-                  <InfoRow label="Tax Amount">{formatCurrency(invoice.taxAmount ?? 0)}</InfoRow>
-                  {invoice.taxRate != null && (
-                    <InfoRow label="Tax Rate">{invoice.taxRate}%</InfoRow>
-                  )}
-                  {invoice.netPaymentAmount != null && (
-                    <InfoRow label="Net Payment">{formatCurrency(invoice.netPaymentAmount)}</InfoRow>
-                  )}
-                  {invoice.paidAmount != null && (
-                    <>
-                      <Separator className="my-2" />
-                      <InfoRow label="Paid">{formatCurrency(invoice.paidAmount)}</InfoRow>
-                      <InfoRow label="Balance">{formatCurrency(invoice.totalAmount - (invoice.paidAmount ?? 0))}</InfoRow>
-                    </>
-                  )}
+                <CardContent className="space-y-1 p-4">
+                  <InfoRow label="Subtotal">{money(subtotal)}</InfoRow>
+                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>
+                    {money(taxAmount)}
+                  </InfoRow>
+                  <Separator className="my-2" />
+                  <InfoRow label="Total">
+                    <span className="font-semibold">{money(totalAmount)}</span>
+                  </InfoRow>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Timeline */}
             <div>
-              <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Timeline
               </div>
               <Card>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="space-y-3 p-4">
                   {invoice.createdAt && (
                     <div className="flex items-start gap-3">
-                      <Calendar className="size-4 text-muted-foreground mt-0.5" />
+                      <Calendar className="mt-0.5 size-4 text-muted-foreground" />
                       <div>
                         <div className="text-xs text-muted-foreground">Created</div>
                         <div className="text-sm font-medium">{formatDate(invoice.createdAt)}</div>
                       </div>
                     </div>
                   )}
-                  {invoice.approvedAt && (
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="size-4 text-success mt-0.5" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Approved</div>
-                        <div className="text-sm font-medium">{formatDate(invoice.approvedAt)}</div>
-                      </div>
-                    </div>
-                  )}
-                  {invoice.rejectionReason && (
-                    <div className="flex items-start gap-3">
-                      <XCircle className="size-4 text-destructive mt-0.5" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Rejected</div>
-                        <p className="text-xs text-muted-foreground mt-1">{invoice.rejectionReason}</p>
-                      </div>
-                    </div>
-                  )}
                   {invoice.paidDate && (
                     <div className="flex items-start gap-3">
-                      <DollarSign className="size-4 text-primary mt-0.5" />
+                      <CheckCircle2 className="mt-0.5 size-4 text-success" />
                       <div>
                         <div className="text-xs text-muted-foreground">Paid</div>
                         <div className="text-sm font-medium">{formatDate(invoice.paidDate)}</div>
+                      </div>
+                    </div>
+                  )}
+                  {invoice.disputedAt && (
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 size-4 text-warning" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Disputed</div>
+                        <div className="text-sm font-medium">{formatDate(invoice.disputedAt)}</div>
+                      </div>
+                    </div>
+                  )}
+                  {invoice.resolvedAt && (
+                    <div className="flex items-start gap-3">
+                      <XCircle className="mt-0.5 size-4 text-success" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Resolved</div>
+                        <div className="text-sm font-medium">{formatDate(invoice.resolvedAt)}</div>
                       </div>
                     </div>
                   )}
@@ -627,133 +710,55 @@ export function InvoiceDetailPage() {
         </DetailSidebar>
       </div>
 
-      {/* ---- Approve confirmation ---- */}
-      <ConfirmDialog
-        open={approveOpen}
-        onOpenChange={setApproveOpen}
-        title="Approve Invoice"
-        description={
-          <>
-            Are you sure you want to approve{' '}
-            <strong>{invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : 'this invoice'}</strong>
-            {' '}for <strong>{formatCurrency(invoice.totalAmount)}</strong>?
-          </>
-        }
-        confirmLabel="Approve"
-        onConfirm={() => {
-          approveMutation.mutate(invoiceId, {
-            onSuccess: () => setApproveOpen(false),
-          });
-        }}
-        isPending={approveMutation.isPending}
-      />
-
-      {/* ---- Reject dialog ---- */}
-      <Dialog open={rejectOpen} onOpenChange={(open) => { if (!open) { setRejectOpen(false); setRejectReason(''); } }}>
+      <Dialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Invoice</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Provide a reason for rejecting{' '}
-              <strong>{invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : 'this invoice'}</strong>.
-            </p>
-            <Textarea
-              placeholder="Reason (min 20 characters)..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-            />
-            {rejectReason.length > 0 && rejectReason.length < 20 && (
-              <p className="text-xs text-destructive">
-                Reason must be at least 20 characters ({20 - rejectReason.length} more needed).
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setRejectOpen(false); setRejectReason(''); }}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={rejectReason.length < 20 || isActionPending}
-              onClick={() => {
-                rejectMutation.mutate(
-                  { id: invoiceId, data: { reason: rejectReason } },
-                  { onSuccess: () => { setRejectOpen(false); setRejectReason(''); } },
-                );
-              }}
-            >
-              {rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Mark Paid dialog ---- */}
-      <Dialog open={markPaidOpen} onOpenChange={(open) => { if (!open) setMarkPaidOpen(false); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Mark Invoice as Paid</DialogTitle>
+            <DialogTitle>Mark Invoice Paid</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={markPaidForm.handleSubmit((data) => {
+            className="space-y-4"
+            onSubmit={markPaidForm.handleSubmit((values) => {
               markPaidMutation.mutate(
-                { id: invoiceId, data },
+                {
+                  id: invoiceId,
+                  data: values,
+                },
                 { onSuccess: () => setMarkPaidOpen(false) },
               );
             })}
-            className="space-y-4"
           >
-            <Controller
-              name="paidAmount"
-              control={markPaidForm.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">Paid Amount</FieldLabel>
-                  <InputWrapper>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      aria-invalid={fieldState.invalid}
-                    />
-                  </InputWrapper>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
             <Controller
               name="paidDate"
               control={markPaidForm.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">Payment Date</FieldLabel>
+                  <FieldLabel>Paid Date</FieldLabel>
                   <InputWrapper>
-                    <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                    <Input type="date" {...field} />
                   </InputWrapper>
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
             <Controller
-              name="paymentMethod"
+              name="paymentMethodId"
               control={markPaidForm.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">Payment Method</FieldLabel>
-                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Payment Method</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select method..." />
+                      <SelectValue placeholder="Select payment method..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {PAYMENT_METHOD_OPTIONS.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      {(paymentMethods ?? []).map((method) => (
+                        <SelectItem key={method.id} value={method.id}>
+                          {method.label ?? method.name ?? method.id}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
@@ -762,127 +767,100 @@ export function InvoiceDetailPage() {
               control={markPaidForm.control}
               render={({ field }) => (
                 <Field>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">Payment Reference</FieldLabel>
+                  <FieldLabel>Payment Reference</FieldLabel>
                   <InputWrapper>
-                    <Input {...field} placeholder="e.g. Check #1234" autoComplete="off" />
+                    <Input {...field} placeholder="Check, ACH, or wire reference" />
                   </InputWrapper>
                 </Field>
               )}
             />
             <Controller
-              name="notes"
+              name="paymentNotes"
               control={markPaidForm.control}
               render={({ field }) => (
                 <Field>
-                  <FieldLabel className="text-xs font-semibold tracking-widest uppercase">Notes</FieldLabel>
-                  <Textarea {...field} placeholder="Optional notes..." rows={3} />
+                  <FieldLabel>Payment Notes</FieldLabel>
+                  <Textarea {...field} rows={3} placeholder="Optional payment notes..." />
                 </Field>
               )}
             />
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setMarkPaidOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setMarkPaidOpen(false)}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={markPaidMutation.isPending}>
-                {markPaidMutation.isPending ? 'Saving...' : 'Mark as Paid'}
+                Mark Paid
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* ---- Dispute dialog ---- */}
-      <Dialog open={disputeOpen} onOpenChange={(open) => { if (!open) setDisputeOpen(false); }}>
+      <ConfirmDialog
+        open={markUnpaidOpen}
+        onOpenChange={setMarkUnpaidOpen}
+        title="Mark Invoice Unpaid"
+        description="This will clear payment date, method, reference, and notes."
+        confirmLabel="Mark Unpaid"
+        onConfirm={() =>
+          markUnpaidMutation.mutate(invoiceId, {
+            onSuccess: () => setMarkUnpaidOpen(false),
+          })
+        }
+        isPending={markUnpaidMutation.isPending}
+      />
+
+      <Dialog open={disputeOpen} onOpenChange={setDisputeOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Dispute Invoice</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Textarea
-              placeholder="Describe the dispute reason..."
-              value={disputeReason}
-              onChange={(e) => setDisputeReason(e.target.value)}
-              rows={4}
-            />
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="notify-vendor"
-                checked={disputeNotifyVendor}
-                onCheckedChange={(v) => setDisputeNotifyVendor(v === true)}
+            <Field>
+              <FieldLabel>Dispute Reason</FieldLabel>
+              <Textarea
+                value={disputeReason}
+                onChange={(event) => setDisputeReason(event.target.value)}
+                rows={4}
+                placeholder="Explain why this invoice is disputed..."
               />
-              <label htmlFor="notify-vendor" className="text-sm text-muted-foreground cursor-pointer">
-                Notify vendor
-              </label>
-            </div>
+            </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisputeOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDisputeOpen(false)}>
+              Cancel
+            </Button>
             <Button
-              disabled={!disputeReason || isActionPending}
-              onClick={() => {
+              variant="destructive"
+              disabled={disputeReason.trim().length === 0 || disputeMutation.isPending}
+              onClick={() =>
                 disputeMutation.mutate(
-                  { id: invoiceId, data: { disputeReason, notifyVendor: disputeNotifyVendor } },
+                  { id: invoiceId, data: { disputeReason: disputeReason.trim() } },
                   { onSuccess: () => setDisputeOpen(false) },
-                );
-              }}
+                )
+              }
             >
-              {disputeMutation.isPending ? 'Submitting...' : 'Submit Dispute'}
+              Dispute
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ---- Resolve Dispute dialog ---- */}
-      <Dialog open={resolveDisputeOpen} onOpenChange={(open) => { if (!open) setResolveDisputeOpen(false); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Resolve Dispute</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Describe the resolution..."
-              value={resolution}
-              onChange={(e) => setResolution(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResolveDisputeOpen(false)}>Cancel</Button>
-            <Button
-              disabled={!resolution || isActionPending}
-              onClick={() => {
-                resolveDisputeMutation.mutate(
-                  { id: invoiceId, data: { resolution } },
-                  { onSuccess: () => setResolveDisputeOpen(false) },
-                );
-              }}
-            >
-              {resolveDisputeMutation.isPending ? 'Resolving...' : 'Resolve'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Delete confirmation ---- */}
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Invoice"
-        description={
-          <>
-            This will permanently delete{' '}
-            <strong>{invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : 'this invoice'}</strong>. This cannot be undone.
-          </>
+        open={resolveOpen}
+        onOpenChange={setResolveOpen}
+        title="Resolve Dispute"
+        description="This will mark the invoice dispute as resolved."
+        confirmLabel="Resolve"
+        onConfirm={() =>
+          resolveDisputeMutation.mutate(
+            { id: invoiceId, data: { resolution: 'Resolved' } },
+            { onSuccess: () => setResolveOpen(false) },
+          )
         }
-        confirmLabel="Delete"
-        onConfirm={() => {
-          deleteMutation.mutate(invoiceId, {
-            onSuccess: () => navigate('..', { relative: 'path' }),
-          });
-        }}
-        variant="destructive"
-        isPending={deleteMutation.isPending}
+        isPending={resolveDisputeMutation.isPending}
       />
 
-      {/* ---- Upload file dialog ---- */}
       {invoiceFolderId && (
         <UploadFileDialog
           open={uploadOpen}
@@ -894,7 +872,7 @@ export function InvoiceDetailPage() {
               {
                 onSuccess: (uploaded) => {
                   addAttachmentMutation.mutate(
-                    { invoiceId, data: { fileId: uploaded.id } },
+                    { invoiceId, data: { documentId: uploaded.id } },
                     { onSuccess: () => setUploadOpen(false) },
                   );
                 },

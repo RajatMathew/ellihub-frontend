@@ -7,20 +7,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import {
-  AlertCircle,
-  ClipboardList,
-  DollarSign,
-  FileCheck,
-  FileClock,
-  Hash,
-  MoreHorizontal,
-  Plus,
-  RefreshCcw,
-  Search,
-  TrendingDown,
-  X,
-} from 'lucide-react';
+import { AlertCircle, ClipboardList, MoreHorizontal, Plus, RefreshCcw, Search, X } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -41,7 +28,6 @@ import {
   CardTable,
   CardToolbar,
 } from '@app/components/ui/card';
-import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
 import { DataGrid } from '@app/components/ui/data-grid';
 import { DataGridColumnHeader } from '@app/components/ui/data-grid-column-header';
 import { DataGridPagination } from '@app/components/ui/data-grid-pagination';
@@ -61,74 +47,68 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Skeleton } from '@app/components/ui/skeleton';
-import { StatsCard } from '@app/components/ui/stats-card';
 import { formatCurrency, formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
-
 import {
-  INITIATED_BY_LABELS,
-  INITIATED_BY_OPTIONS,
-  PRIORITY_BADGE_VARIANTS,
-  PRIORITY_LABELS,
   SCO_STATUS_BADGE_VARIANTS,
   SCO_STATUS_OPTIONS,
 } from '@modules/sco/constants/sco.constants';
-import {
-  useDeleteSCOMutation,
-  useSCOsQuery,
-  useSCOSummaryQuery,
-} from '@modules/sco/hooks/sco.hooks';
-import type { ListSCOsParams, SCOListItem } from '@modules/sco/schemas/sco.schema';
+import { useSCOChangeTypesQuery, useSCOsQuery } from '@modules/sco/hooks/sco.hooks';
+import type { ListSCOsParams, SCOListItem, SCOStatusName } from '@modules/sco/schemas/sco.schema';
 
-/* ---- Constants ---- */
-
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const SORT_BY_OPTIONS = ['scoNumber', 'amount', 'status', 'priority', 'initiatedBy', 'date', 'createdAt'] as const;
+const SORT_BY_OPTIONS = ['createdAt', 'scoNumber', 'amount', 'status', 'date'] as const;
 type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
-type SCOStatusFilter = 'DRAFT' | 'APPROVED' | 'REJECTED' | 'VOID';
-type InitiatedByFilter = 'VENDOR' | 'FIRM';
-
-/* ---- Helpers ---- */
-
-function isSortByField(v: string | null): v is SortByField {
-  return SORT_BY_OPTIONS.includes(v as SortByField);
+function isSortByField(value: string | null): value is SortByField {
+  return SORT_BY_OPTIONS.includes(value as SortByField);
 }
 
-function isValidSCOStatus(v: string | null): v is SCOStatusFilter {
-  return v === 'DRAFT' || v === 'APPROVED' || v === 'REJECTED' || v === 'VOID';
+function isValidSCOStatus(value: string | null): value is SCOStatusName {
+  return value === 'DRAFT' || value === 'APPROVED' || value === 'REJECTED' || value === 'VOID';
 }
 
-function isValidInitiatedBy(v: string | null): v is InitiatedByFilter {
-  return v === 'VENDOR' || v === 'FIRM';
+function formatOptionalDate(value: string | null | undefined) {
+  return value ? formatDate(value) : '-';
 }
 
-/* ---- Page ---- */
+function formatOptionalCurrency(value: string | number | null | undefined) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? formatCurrency(numeric) : '-';
+}
+
+function getChangeTypeLabel(sco: SCOListItem, fallback?: string) {
+  return (
+    sco.changeType?.label ??
+    sco.changeType?.name ??
+    sco.changeType?.code ??
+    fallback ??
+    '-'
+  );
+}
+
+function getPurchaseOrderLabel(sco: SCOListItem) {
+  return sco.purchaseOrder?.poNumber ?? sco.purchaseOrderId ?? '-';
+}
 
 export default function ProjectSCOs() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId = '' } = useParams<{ projectId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // URL state
   const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size'));
+  const size = parseSizeParam(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
-    : 'scoNumber';
+    : 'createdAt';
   const sortOrder: 'asc' | 'desc' =
-    searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
-  const statusFilter: SCOStatusFilter | undefined = isValidSCOStatus(searchParams.get('status'))
-    ? (searchParams.get('status') as SCOStatusFilter)
+    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+  const statusFilter: SCOStatusName | undefined = isValidSCOStatus(searchParams.get('status'))
+    ? (searchParams.get('status') as SCOStatusName)
     : undefined;
-  const initiatedByFilter: InitiatedByFilter | undefined = isValidInitiatedBy(
-    searchParams.get('initiatedBy'),
-  )
-    ? (searchParams.get('initiatedBy') as InitiatedByFilter)
-    : undefined;
-
-  // Search with debounce
+  const changeTypeFilter = searchParams.get('changeTypeId') || undefined;
   const searchQuery = searchParams.get('search') ?? '';
+
   const [searchInput, setSearchInput] = useState(searchQuery);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -136,15 +116,17 @@ export default function ProjectSCOs() {
     setSearchInput(searchQuery);
   }, [searchQuery]);
 
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
+
   const updateParams = useCallback(
     (patch: Record<string, string | undefined>) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        for (const [k, v] of Object.entries(patch)) {
-          if (v === undefined || v === '') {
-            next.delete(k);
+        for (const [key, value] of Object.entries(patch)) {
+          if (!value) {
+            next.delete(key);
           } else {
-            next.set(k, v);
+            next.set(key, value);
           }
         }
         return next;
@@ -164,32 +146,27 @@ export default function ProjectSCOs() {
     [updateParams],
   );
 
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
-
-  // API filters
   const filters: ListSCOsParams = {
     projectId,
     page,
     size,
     sortBy,
     sortOrder,
-    status: statusFilter,
-    initiatedBy: initiatedByFilter,
     search: searchQuery || undefined,
+    status: statusFilter,
+    changeTypeId: changeTypeFilter,
   };
 
-  const hasActiveFilters = !!searchQuery || !!statusFilter || !!initiatedByFilter;
-
+  const hasActiveFilters = !!searchQuery || !!statusFilter || !!changeTypeFilter;
   const { data, isLoading, isError, refetch } = useSCOsQuery(filters);
-  const { data: summary } = useSCOSummaryQuery(projectId ?? '');
-  const del = useDeleteSCOMutation();
-
-  // Delete confirmation
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const { data: changeTypes } = useSCOChangeTypesQuery();
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
-
+  const changeTypeLabelById = useMemo(
+    () => new Map((changeTypes ?? []).map((type) => [type.id, type.label ?? type.name ?? type.code ?? type.id])),
+    [changeTypes],
+  );
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
 
   const columns = useMemo<ColumnDef<SCOListItem>[]>(
@@ -198,20 +175,20 @@ export default function ProjectSCOs() {
         accessorKey: 'scoNumber',
         header: ({ column }) => <DataGridColumnHeader column={column} title="SCO #" />,
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <Link
               to={`${row.original.id}`}
               className="text-sm font-semibold text-foreground hover:text-primary"
             >
-              {row.original.scoNumber}
+              {row.original.scoNumber ?? '-'}
             </Link>
-            <span className="text-2sm text-muted-foreground line-clamp-1">
-              {row.original.title}
+            <span className="line-clamp-1 text-2sm text-muted-foreground">
+              {row.original.title ?? row.original.description ?? '-'}
             </span>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[150px]',
+          headerClassName: 'min-w-[190px]',
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -221,14 +198,68 @@ export default function ProjectSCOs() {
         },
       },
       {
-        id: 'vendor',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor" />,
+        id: 'purchaseOrder',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Purchase Order" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground">{row.original.vendor.name}</span>
+          <div className="flex flex-col gap-0.5">
+            <Link
+              to={
+                row.original.purchaseOrder?.id
+                  ? `/app/project/${projectId}/purchase-orders/${row.original.purchaseOrder.id}`
+                  : `${row.original.id}`
+              }
+              className="text-sm font-medium text-foreground hover:text-primary"
+            >
+              {getPurchaseOrderLabel(row.original)}
+            </Link>
+            {row.original.purchaseOrder?.status && (
+              <span className="text-2sm text-muted-foreground">
+                PO {row.original.purchaseOrder.status}
+              </span>
+            )}
+          </div>
         ),
         meta: {
-          headerClassName: 'min-w-[130px]',
-          skeleton: <Skeleton className="h-3.5 w-28" />,
+          headerClassName: 'min-w-[170px]',
+          skeleton: (
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          ),
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'changeTypeId',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Change Type" />,
+        cell: ({ row }) => (
+          <div className="flex flex-col items-start gap-1">
+            <Badge variant="primary" appearance="outline" size="sm">
+              {getChangeTypeLabel(
+                row.original,
+                row.original.changeTypeId
+                  ? changeTypeLabelById.get(row.original.changeTypeId)
+                  : undefined,
+              )}
+            </Badge>
+          </div>
+        ),
+        meta: {
+          headerClassName: 'min-w-[150px]',
+          skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'requestedBy',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Requested By" />,
+        cell: ({ row }) => (
+          <span className="text-sm text-foreground">{row.original.requestedBy ?? '-'}</span>
+        ),
+        meta: {
+          headerClassName: 'min-w-[140px]',
+          skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,
       },
@@ -236,16 +267,19 @@ export default function ProjectSCOs() {
         accessorKey: 'amount',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Amount" />,
         cell: ({ row }) => (
-          <span
-            className={`text-sm font-medium ${
-              row.original.amount < 0 ? 'text-destructive' : 'text-foreground'
-            }`}
-          >
-            {formatCurrency(row.original.amount)}
-          </span>
+          <div className="flex flex-col gap-0.5 text-right">
+            <span className="text-sm font-medium text-foreground">
+              {formatOptionalCurrency(row.original.amount)}
+            </span>
+            {Number(row.original.markupAmount ?? 0) !== 0 && (
+              <span className="text-2sm text-muted-foreground">
+                Markup {formatOptionalCurrency(row.original.markupAmount)}
+              </span>
+            )}
+          </div>
         ),
         meta: {
-          headerClassName: 'min-w-[100px] text-right',
+          headerClassName: 'min-w-[130px] text-right',
           cellClassName: 'text-right',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
@@ -255,101 +289,84 @@ export default function ProjectSCOs() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
         cell: ({ row }) => (
           <Badge
-            variant={SCO_STATUS_BADGE_VARIANTS[row.original.status.name] ?? 'primary'}
+            variant={SCO_STATUS_BADGE_VARIANTS[row.original.status] ?? 'primary'}
             appearance="outline"
             size="sm"
           >
-            {row.original.status.label}
+            {row.original.status}
           </Badge>
         ),
         meta: {
-          headerClassName: 'min-w-[90px]',
+          headerClassName: 'min-w-[110px]',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
         },
       },
       {
-        id: 'priority',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Priority" />,
-        cell: ({ row }) => (
-          <Badge
-            variant={PRIORITY_BADGE_VARIANTS[row.original.priority] ?? 'info'}
-            appearance="outline"
-            size="sm"
-          >
-            {PRIORITY_LABELS[row.original.priority] ?? row.original.priority}
-          </Badge>
-        ),
-        meta: {
-          headerClassName: 'min-w-[85px]',
-          skeleton: <Skeleton className="h-5 w-16 rounded-sm" />,
-        },
-      },
-      {
-        id: 'initiatedBy',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Initiated By" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground">
-            {INITIATED_BY_LABELS[row.original.initiatedBy] ?? row.original.initiatedBy}
-          </span>
-        ),
-        meta: {
-          headerClassName: 'min-w-[95px]',
-          skeleton: <Skeleton className="h-3.5 w-16" />,
-        },
-      },
-      {
-        accessorKey: 'date',
+        id: 'date',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Date" />,
         cell: ({ row }) => (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm text-foreground">
+              {formatOptionalDate(row.original.date)}
+            </span>
+            <span className="text-2sm text-muted-foreground">
+              {row.original.impactsSchedule ? 'Schedule impact' : 'No schedule impact'}
+            </span>
+            {row.original.scheduleImpactDays != null && row.original.scheduleImpactDays > 0 && (
+              <span className="text-2sm text-muted-foreground">
+                {row.original.scheduleImpactDays} day{row.original.scheduleImpactDays === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+        ),
+        meta: {
+          headerClassName: 'min-w-[150px]',
+          skeleton: <Skeleton className="h-3.5 w-24" />,
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Created" />,
+        cell: ({ row }) => (
           <span className="text-sm text-foreground">
-            {row.original.date ? formatDate(row.original.date) : '—'}
+            {formatOptionalDate(row.original.createdAt)}
           </span>
         ),
         meta: {
-          headerClassName: 'min-w-[100px]',
+          headerClassName: 'min-w-[130px]',
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
       },
       {
         id: 'actions',
         header: () => null,
-        cell: ({ row }) => {
-          const isDraft = row.original.status.name === 'DRAFT';
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  mode="icon"
-                  size="sm"
-                  className="size-7"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="size-4" />
-                  <span className="sr-only">Actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                mode="icon"
+                size="sm"
+                className="size-7"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem asChild>
+                <Link to={`${row.original.id}`}>View</Link>
+              </DropdownMenuItem>
+              {row.original.status === 'DRAFT' && (
                 <DropdownMenuItem asChild>
-                  <Link to={`${row.original.id}`}>View</Link>
+                  <Link to={`${row.original.id}/edit`}>Edit</Link>
                 </DropdownMenuItem>
-                {isDraft && (
-                  <DropdownMenuItem asChild>
-                    <Link to={`${row.original.id}/edit`}>Edit</Link>
-                  </DropdownMenuItem>
-                )}
-                {isDraft && (
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => setDeleteId(row.original.id)}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
         meta: {
           headerClassName: 'w-[60px]',
           skeleton: <Skeleton className="size-7 rounded-md" />,
@@ -357,7 +374,7 @@ export default function ProjectSCOs() {
         enableSorting: false,
       },
     ],
-    [],
+    [changeTypeLabelById, projectId],
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -377,7 +394,6 @@ export default function ProjectSCOs() {
     onPaginationChange: (updater) => {
       const prev = { pageIndex: page - 1, pageSize: size };
       const next = typeof updater === 'function' ? updater(prev) : updater;
-
       const patches: Record<string, string | undefined> = {};
 
       if (next.pageIndex + 1 !== page) {
@@ -392,32 +408,32 @@ export default function ProjectSCOs() {
     },
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const col = next[0];
+      const column = next[0];
 
-      if (!col) {
+      if (!column) {
         updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-      } else {
-        const newSortBy = isSortByField(col.id) ? col.id : 'scoNumber';
-        const newSortOrder = col.desc ? 'desc' : 'asc';
-        updateParams({
-          sortBy: newSortBy === 'scoNumber' ? undefined : newSortBy,
-          sortOrder: newSortOrder === 'asc' ? undefined : newSortOrder,
-          page: undefined,
-        });
+        return;
       }
+
+      const newSortBy = isSortByField(column.id) ? column.id : 'createdAt';
+      const newSortOrder = column.desc ? 'desc' : 'asc';
+      updateParams({
+        sortBy: newSortBy === 'createdAt' ? undefined : newSortBy,
+        sortOrder: newSortOrder === 'desc' ? undefined : newSortOrder,
+        page: undefined,
+      });
     },
   });
 
   return (
     <div className="container-fluid py-7.5">
-      {/* Toolbar */}
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
-            <ToolbarPageTitle>Subcontractor Change Orders</ToolbarPageTitle>
+            <ToolbarPageTitle>Sub Change Order</ToolbarPageTitle>
             <span className="text-sm text-muted-foreground">
               {hasActiveFilters
-                ? `Showing ${totalCount} result${totalCount !== 1 ? 's' : ''}`
+                ? `Showing ${totalCount} result${totalCount === 1 ? '' : 's'}`
                 : `All SCOs: ${totalCount}`}
             </span>
           </ToolbarHeading>
@@ -425,59 +441,21 @@ export default function ProjectSCOs() {
             <Button size="sm" asChild>
               <Link to="create">
                 <Plus className="size-4" />
-                Add SCO
+                Add Sub Change Order
               </Link>
             </Button>
           </ToolbarActions>
         </ToolbarWrapper>
       </Toolbar>
 
-      {/* KPI Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5 lg:mb-7.5">
-          <StatsCard
-            icon={<Hash className="size-5 text-primary" />}
-            bgClass="bg-primary/10"
-            label="Total SCOs"
-            value={summary.totalCount}
-          />
-          <StatsCard
-            icon={<FileCheck className="size-5 text-success" />}
-            bgClass="bg-success/10"
-            label="Approved Amount"
-            value={formatCurrency(summary.totalApprovedAmount)}
-          />
-          <StatsCard
-            icon={<FileClock className="size-5 text-warning" />}
-            bgClass="bg-warning/10"
-            label="Pending Amount"
-            value={formatCurrency(summary.totalPendingAmount)}
-          />
-          <StatsCard
-            icon={
-              summary.netMarginImpact < 0 ? (
-                <TrendingDown className="size-5 text-destructive" />
-              ) : (
-                <DollarSign className="size-5 text-info" />
-              )
-            }
-            bgClass={summary.netMarginImpact < 0 ? 'bg-destructive/10' : 'bg-info/10'}
-            label="Net Impact"
-            value={formatCurrency(summary.netMarginImpact)}
-          />
-        </div>
-      )}
-
-      {/* SCO Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {/* Status Tabs */}
-            <div className="flex items-center gap-0">
+      <Card className="overflow-hidden">
+        <CardHeader className="items-stretch sm:items-center">
+          <CardTitle className="w-full overflow-x-auto sm:w-auto">
+            <div className="inline-flex min-w-max items-center gap-0">
               <button
                 type="button"
                 onClick={() => updateParams({ status: undefined, page: undefined })}
-                className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
+                className={`border-b-2 px-4 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
                   !statusFilter
                     ? 'border-foreground text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -485,49 +463,49 @@ export default function ProjectSCOs() {
               >
                 All
               </button>
-              {SCO_STATUS_OPTIONS.map((opt) => (
+              {SCO_STATUS_OPTIONS.map((option) => (
                 <button
-                  key={opt.value}
+                  key={option.value}
                   type="button"
-                  onClick={() => updateParams({ status: opt.value, page: undefined })}
-                  className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
-                    statusFilter === opt.value
+                  onClick={() => updateParams({ status: option.value, page: undefined })}
+                  className={`border-b-2 px-4 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                    statusFilter === option.value
                       ? 'border-foreground text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {opt.label}
+                  {option.label}
                 </button>
               ))}
             </div>
           </CardTitle>
-          <CardToolbar>
-            <div className="flex items-center gap-2.5">
-              <InputWrapper variant="sm">
+          <CardToolbar className="w-full sm:w-auto">
+            <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+              <InputWrapper variant="sm" className="w-full sm:w-[220px]">
                 <Search className="size-4" />
                 <Input
                   placeholder="Search SCOs..."
                   value={searchInput}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(event) => handleSearchChange(event.target.value)}
                 />
               </InputWrapper>
               <Select
-                value={initiatedByFilter ?? 'all'}
+                value={changeTypeFilter ?? 'all'}
                 onValueChange={(value) =>
                   updateParams({
-                    initiatedBy: value === 'all' ? undefined : value,
+                    changeTypeId: value === 'all' ? undefined : value,
                     page: undefined,
                   })
                 }
               >
-                <SelectTrigger className="h-8 w-[150px] text-xs">
-                  <SelectValue placeholder="All Sources" />
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
+                  <SelectValue placeholder="All Change Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  {INITIATED_BY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  <SelectItem value="all">All Change Types</SelectItem>
+                  {(changeTypes ?? []).map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name ?? type.code ?? type.id}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -542,7 +520,7 @@ export default function ProjectSCOs() {
                     updateParams({
                       search: undefined,
                       status: undefined,
-                      initiatedBy: undefined,
+                      changeTypeId: undefined,
                       page: undefined,
                     });
                   }}
@@ -558,7 +536,7 @@ export default function ProjectSCOs() {
           <CardContent>
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <AlertCircle className="size-10 text-destructive/60" />
-              <p className="text-sm font-medium">Failed to load change orders</p>
+              <p className="text-sm font-medium">Failed to load sub change orders</p>
               <p className="text-xs text-muted-foreground">
                 Something went wrong. Please try again.
               </p>
@@ -576,16 +554,20 @@ export default function ProjectSCOs() {
             emptyMessage={
               <div className="flex flex-col items-center gap-2 py-8">
                 <ClipboardList className="size-10 text-muted-foreground/50" />
-                <p className="text-sm font-medium">No change orders yet</p>
+                <p className="text-sm font-medium">No sub change orders yet</p>
                 <p className="text-xs text-muted-foreground">
-                  Subcontractor change orders will appear here once created.
+                  Sub change orders will appear here once created.
                 </p>
               </div>
             }
             tableLayout={{
+              dense: true,
               cellBorder: false,
               rowBorder: true,
               headerBackground: true,
+            }}
+            tableClassNames={{
+              base: 'min-w-[980px]',
             }}
           >
             <CardTable className="overflow-x-auto">
@@ -597,26 +579,6 @@ export default function ProjectSCOs() {
           </DataGrid>
         )}
       </Card>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(open) => {
-          if (!open) setDeleteId(null);
-        }}
-        title="Delete Change Order"
-        description="Are you sure you want to delete this change order? This action cannot be undone."
-        confirmLabel="Delete"
-        variant="destructive"
-        isPending={del.isPending}
-        onConfirm={() => {
-          if (deleteId) {
-            del.mutate(deleteId, {
-              onSettled: () => setDeleteId(null),
-            });
-          }
-        }}
-      />
     </div>
   );
 }

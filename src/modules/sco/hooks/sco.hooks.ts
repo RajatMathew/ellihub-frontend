@@ -37,7 +37,7 @@ export const useSCOsQuery = (params?: ListSCOsParams) =>
   useQuery({
     queryKey: [...scoKeys.list(), params],
     queryFn: () => scoApi.list(params),
-    enabled: !!params?.projectId || !!params?.poId,
+    enabled: !!params?.projectId,
   });
 
 export const useSCOSummaryQuery = (projectId: string) =>
@@ -60,19 +60,14 @@ export const useSCODetailQuery = (id: string) =>
     enabled: !!id,
   });
 
-/* ---- mutations ---- */
-
-export const useDeleteSCOMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => scoApi.remove(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: scoKeys.all });
-      toast.success('SCO deleted.');
-    },
-    onError: (err) => toastApiError(err, 'Failed to delete SCO.'),
+export const useSCOsByPurchaseOrderQuery = (poId: string) =>
+  useQuery({
+    queryKey: scoKeys.byPurchaseOrder(poId),
+    queryFn: () => scoApi.listByPurchaseOrder(poId),
+    enabled: !!poId,
   });
-};
+
+/* ---- mutations ---- */
 
 export const useCreateSCOMutation = () => {
   const qc = useQueryClient();

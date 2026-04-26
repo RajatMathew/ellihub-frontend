@@ -20,7 +20,7 @@ const ProjectRoutes = () => {
       <Route path="prime-change-orders/*" element={<PCORoutes />} />
       <Route path="rfqs/*" element={<RFQRoutes />} />
       <Route path="invoices/*" element={<InvoiceRoutes />} />
-      <Route path="vendors/change-orders/*" element={<SCORoutes />} />
+      <Route path="sub-change-order/*" element={<SCORoutes />} />
       <Route path="/purchase-orders/*" element={<PORoutes />} />
     </Routes>
   );

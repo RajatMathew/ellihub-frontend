@@ -19,6 +19,7 @@ export const PAYMENT_TERMS_OPTIONS: { value: PaymentTerms; label: string }[] = [
 export const PO_STATUS_LABELS: Record<POStatusName, string> = {
   DRAFT: 'Draft',
   ISSUED: 'Issued',
+  DELIVERED: 'Delivered',
   PARTIALLY_PAID: 'Partially Paid',
   PAID: 'Paid',
   CANCELLED: 'Cancelled',
@@ -27,6 +28,7 @@ export const PO_STATUS_LABELS: Record<POStatusName, string> = {
 export const PO_STATUS_COLORS: Record<POStatusName, string> = {
   DRAFT: 'bg-muted-foreground',
   ISSUED: 'bg-primary',
+  DELIVERED: 'bg-success',
   PARTIALLY_PAID: 'bg-warning',
   PAID: 'bg-success',
   CANCELLED: 'bg-destructive',
@@ -38,6 +40,7 @@ export const PO_STATUS_BADGE_VARIANTS: Record<
 > = {
   DRAFT: 'primary',
   ISSUED: 'info',
+  DELIVERED: 'success',
   PARTIALLY_PAID: 'warning',
   PAID: 'success',
   CANCELLED: 'destructive',
@@ -65,8 +68,7 @@ export const TRADE_CATEGORY_BADGE_VARIANTS: Record<
 export const PO_STATUS_OPTIONS: { value: POStatusName; label: string }[] = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'ISSUED', label: 'Issued' },
-  { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
-  { value: 'PAID', label: 'Paid' },
+  { value: 'DELIVERED', label: 'Delivered' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 

@@ -14,42 +14,101 @@ export const scoStatusSchema = z
 
 export type SCOStatus = z.infer<typeof scoStatusSchema>;
 
+export const scoStatusNameSchema = z.enum(['DRAFT', 'APPROVED', 'REJECTED', 'VOID']);
+export type SCOStatusName = z.infer<typeof scoStatusNameSchema>;
+
+const scoProjectRefSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().nullable().optional(),
+    jobNumber: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const scoPurchaseOrderRefSchema = z
+  .object({
+    id: z.string(),
+    poNumber: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    total: z.string().nullable().optional(),
+    vendorId: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const scoLookupRefSchema = z
+  .object({
+    id: z.string().optional(),
+    label: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    code: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const scoListLineItemSchema = z
+  .object({
+    id: z.string(),
+    subCoId: z.string().nullable().optional(),
+    sequenceNumber: z.number().nullable().optional(),
+    description: z.string().nullable().optional(),
+    qty: z.coerce.number().nullable().optional(),
+    unitId: z.string().nullable().optional(),
+    unit: scoLookupRefSchema.nullable().optional(),
+    unitPrice: z.string().nullable().optional(),
+    amount: z.string().nullable().optional(),
+    categoryId: z.string().nullable().optional(),
+    category: scoLookupRefSchema.nullable().optional(),
+    costCodeId: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    deletedAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const scoListAttachmentSchema = z
+  .object({
+    id: z.string(),
+    scoId: z.string().nullable().optional(),
+    documentId: z.string().nullable().optional(),
+    document: z.unknown().optional(),
+    createdAt: z.string().optional(),
+  })
+  .passthrough();
+
 // --- List item ---
 
 export const scoListItemSchema = z
   .object({
     id: z.string(),
-    scoNumber: z.string(),
-    title: z.string(),
-    amount: z.coerce.number(),
-    status: scoStatusSchema,
+    scoNumber: z.string().nullable().optional(),
+    projectId: z.string(),
+    project: scoProjectRefSchema.nullable().optional(),
+    purchaseOrderId: z.string().nullable().optional(),
+    purchaseOrder: scoPurchaseOrderRefSchema.nullable().optional(),
     date: z.string().nullable().optional(),
-    initiatedBy: z.string(),
-    priority: z.string(),
-    purchaseOrder: z
-      .object({ id: z.string(), poNumber: z.string().nullable().optional() })
-      .passthrough(),
-    vendor: z.object({ id: z.string(), name: z.string() }).passthrough(),
-    changeType: z
-      .object({
-        id: z.string(),
-        name: z.string(),
-        code: z.string(),
-        color: z.string(),
-      })
-      .passthrough()
-      .nullable()
-      .optional(),
-    _count: z.object({ lineItems: z.number() }).optional(),
-    project: z
-      .object({
-        id: z.string(),
-        name: z.string(),
-        jobNumber: z.string().nullable().optional(),
-      })
-      .passthrough()
-      .optional(),
-    createdAt: z.string(),
+    title: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    amount: z.string().nullable().optional(),
+    status: scoStatusNameSchema,
+    createdBy: z.string().nullable().optional(),
+    markupAmount: z.coerce.number().nullable().optional(),
+    scheduleImpactDays: z.coerce.number().nullable().optional(),
+    requestedBy: z.string().nullable().optional(),
+    changeTypeId: z.string().nullable().optional(),
+    changeType: scoLookupRefSchema.nullable().optional(),
+    impactsSchedule: z.boolean().nullable().optional(),
+    approvedBy: z.string().nullable().optional(),
+    approvedAt: z.string().nullable().optional(),
+    rejectedBy: z.string().nullable().optional(),
+    rejectedAt: z.string().nullable().optional(),
+    rejectionReason: z.string().nullable().optional(),
+    voidedBy: z.string().nullable().optional(),
+    voidedAt: z.string().nullable().optional(),
+    voidReason: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    deletedAt: z.string().nullable().optional(),
+    lineItems: z.array(scoListLineItemSchema).optional().default([]),
+    attachments: z.array(scoListAttachmentSchema).optional().default([]),
   })
   .passthrough();
 
@@ -75,13 +134,8 @@ export type SCOPaginatedResponse = z.infer<typeof scoPaginatedResponseSchema>;
 
 export const listSCOsParamsSchema = z.object({
   projectId: z.string().optional(),
-  poId: z.string().optional(),
-  status: z.string().optional(),
-  vendorId: z.string().optional(),
-  initiatedBy: z.string().optional(),
-  changeType: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  status: scoStatusNameSchema.optional(),
+  changeTypeId: z.string().optional(),
   search: z.string().optional(),
   page: z.number().min(1).optional(),
   size: z.number().min(1).optional(),
@@ -131,10 +185,12 @@ export type SCOSummary = z.infer<typeof scoSummarySchema>;
 export const scoChangeTypeSchema = z
   .object({
     id: z.string(),
-    name: z.string(),
-    code: z.string(),
-    color: z.string(),
-    order: z.number(),
+    label: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    code: z.string().nullable().optional(),
+    color: z.string().nullable().optional(),
+    order: z.number().nullable().optional(),
+    type: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
   })
   .passthrough();
@@ -145,12 +201,10 @@ export type SCOChangeType = z.infer<typeof scoChangeTypeSchema>;
 
 export const scoLineItemInputSchema = z.object({
   description: z.string().min(1, 'Description is required'),
-  qty: z.number().min(0, 'Qty must be >= 0'),
-  unit: z.string().min(1, 'Unit is required'),
-  unitPrice: z.number(),
-  costCategory: z.string().optional(),
+  quantity: z.number().min(0, 'Quantity must be >= 0'),
+  unitId: z.string().min(1, 'Unit is required'),
+  unitPrice: z.number().min(0, 'Unit price must be >= 0'),
   costCodeId: z.string().optional(),
-  poLineItemId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -159,26 +213,16 @@ export type SCOLineItemInput = z.infer<typeof scoLineItemInputSchema>;
 // --- Create SCO input ---
 
 export const createSCOInputSchema = z.object({
-  purchaseOrderId: z.string().min(1, 'Purchase Order is required'),
+  projectId: z.string().min(1, 'Project is required'),
+  purchaseOrderId: z.string().min(1, 'Purchase order is required'),
+  date: z.string().min(1, 'Date is required'),
   title: z.string().min(1, 'Title is required').max(255),
-  amount: z.number(),
-  markupAmount: z.number().optional(),
-  initiatedBy: z.enum(['VENDOR', 'FIRM'], { required_error: 'Initiated By is required' }),
-  date: z.string().optional(),
-  reasonForChange: z.string().optional(),
-  detailedScope: z.string().optional(),
-  scheduleImpactDays: z.number().int().optional(),
-  changeType: z.string().optional(),
-  priority: z.string().optional(),
-  vendorContactName: z.string().max(255).optional(),
-  vendorContactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
-  vendorReferenceNumber: z.string().max(100).optional(),
-  linkedPCOId: z.string().optional(),
-  rfqId: z.string().optional(),
-  costCodeId: z.string().optional(),
-  taxPercent: z.number().min(0).max(100).optional(),
-  retainagePercent: z.number().min(0).max(100).optional(),
-  paymentTerms: z.string().optional(),
+  description: z.string().optional(),
+  markupAmount: z.number().min(0, 'Markup amount must be >= 0').optional(),
+  scheduleImpactDays: z.number().int().min(0, 'Schedule impact days must be >= 0').optional(),
+  requestedBy: z.string().optional(),
+  changeTypeId: z.string().min(1, 'Change type is required'),
+  impactsSchedule: z.boolean().optional(),
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
 
@@ -187,8 +231,7 @@ export type CreateSCOInput = z.infer<typeof createSCOInputSchema>;
 // --- Update SCO input ---
 
 export const updateSCOInputSchema = createSCOInputSchema
-  .omit({ purchaseOrderId: true, lineItems: true })
-  .partial();
+  .extend({ id: z.string().optional() });
 
 export type UpdateSCOInput = z.infer<typeof updateSCOInputSchema>;
 
@@ -198,12 +241,26 @@ export const scoLineItemSchema = z
   .object({
     id: z.string(),
     lineNumber: z.number().optional(),
+    sequenceNumber: z.number().optional(),
     description: z.string(),
-    unit: z.string(),
-    quantity: z.coerce.number(),
+    unit: z.preprocess(
+      (value) => {
+        if (typeof value === 'object' && value !== null) {
+          const ref = value as { label?: unknown; name?: unknown; id?: unknown };
+          return ref.label ?? ref.name ?? ref.id ?? undefined;
+        }
+        return value;
+      },
+      z.string().nullable().optional(),
+    ),
+    unitId: z.string().nullable().optional(),
+    quantity: z.coerce.number().optional(),
+    qty: z.coerce.number().optional(),
     unitPrice: z.coerce.number(),
     amount: z.coerce.number(),
     costCategory: z.string().nullable().optional(),
+    categoryId: z.string().nullable().optional(),
+    category: scoLookupRefSchema.nullable().optional(),
     costCodeId: z.string().nullable().optional(),
     poLineItemId: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
@@ -218,24 +275,32 @@ export const scoDetailSchema = z
   .object({
     id: z.string(),
     scoNumber: z.string(),
+    projectId: z.string().optional(),
     title: z.string(),
     date: z.string().nullable().optional(),
     amount: z.coerce.number(),
     status: scoStatusSchema.nullable().optional(),
     statusId: z.string().optional(),
-    initiatedBy: z.string(),
-    priority: z.string(),
+    description: z.string().nullable().optional(),
+    initiatedBy: z.string().optional(),
+    requestedBy: z.string().nullable().optional(),
+    priority: z.string().optional(),
     reasonForChange: z.string().nullable().optional(),
     detailedScope: z.string().nullable().optional(),
     scheduleImpactDays: z.number().nullable().optional(),
+    markupAmount: z.coerce.number().nullable().optional(),
+    changeTypeId: z.string().nullable().optional(),
+    impactsSchedule: z.boolean().nullable().optional(),
     vendorContactName: z.string().nullable().optional(),
     vendorContactEmail: z.string().nullable().optional(),
     vendorReferenceNumber: z.string().nullable().optional(),
     closeoutJustification: z.string().nullable().optional(),
     purchaseOrder: z
       .object({ id: z.string(), poNumber: z.string().nullable().optional() })
-      .passthrough(),
-    vendor: z.object({ id: z.string(), name: z.string() }).passthrough(),
+      .passthrough()
+      .optional(),
+    purchaseOrderId: z.string().nullable().optional(),
+    vendor: z.object({ id: z.string(), name: z.string() }).passthrough().optional(),
     project: z
       .object({
         id: z.string(),
@@ -245,7 +310,14 @@ export const scoDetailSchema = z
       .passthrough()
       .optional(),
     changeType: z
-      .object({ id: z.string(), name: z.string(), code: z.string(), color: z.string() })
+      .object({
+        id: z.string().optional(),
+        type: z.string().nullable().optional(),
+        label: z.string().nullable().optional(),
+        name: z.string().nullable().optional(),
+        code: z.string().nullable().optional(),
+        color: z.string().nullable().optional(),
+      })
       .passthrough()
       .nullable()
       .optional(),
@@ -277,7 +349,7 @@ export const scoDetailSchema = z
     retainagePercent: z.coerce.number().optional(),
     paymentTerms: z.string().optional(),
     lineItems: z.array(scoLineItemSchema).optional().default([]),
-    attachments: z.array(z.object({ id: z.string(), documentId: z.string() }).passthrough()).optional().default([]),
+    attachments: z.array(z.object({ id: z.string(), documentId: z.string().nullable().optional() }).passthrough()).optional().default([]),
     statusHistory: z
       .array(
         z.object({

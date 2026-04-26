@@ -47,17 +47,6 @@ export const useUpdatePOMutation = () => {
   });
 };
 
-export const useDeletePOMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => poApi.remove(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: poKeys.all });
-    },
-    onError: (err) => toastApiError(err, 'Failed to delete purchase order.'),
-  });
-};
-
 export const useIssuePOMutation = () => {
   const qc = useQueryClient();
   return useMutation({

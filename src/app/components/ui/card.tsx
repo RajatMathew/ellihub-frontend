@@ -25,7 +25,7 @@ const useCardContext = () => {
 };
 
 // Variants
-const cardVariants = cva('flex flex-col items-stretch text-card-foreground rounded-xl', {
+const cardVariants = cva('flex min-w-0 flex-col items-stretch text-card-foreground rounded-xl', {
   variants: {
     variant: {
       default: 'bg-card border border-border shadow-xs black/5',
@@ -39,7 +39,7 @@ const cardVariants = cva('flex flex-col items-stretch text-card-foreground round
 });
 
 const cardHeaderVariants = cva(
-  'flex items-center justify-between flex-wrap px-5 py-3  gap-2.5 w-full',
+  'flex min-w-0 items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
   {
     variants: {
       variant: {
@@ -54,7 +54,7 @@ const cardHeaderVariants = cva(
   }
 );
 
-const cardContentVariants = cva('grow p-5', {
+const cardContentVariants = cva('min-w-0 grow p-4 sm:p-5', {
   variants: {
     variant: {
       default: '',

@@ -8,7 +8,7 @@ import { scoKeys } from '../constants/sco.keys';
 export const useAddSCOAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ scoId, data }: { scoId: string; data: { fileId: string } }) =>
+    mutationFn: ({ scoId, data }: { scoId: string; data: { documentId: string } }) =>
       scoAttachmentApi.add(scoId, data),
     onSuccess: (_, { scoId }) => {
       qc.invalidateQueries({ queryKey: scoAttachmentKeys.list(scoId) });

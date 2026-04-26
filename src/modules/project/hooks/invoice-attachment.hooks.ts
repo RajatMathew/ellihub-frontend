@@ -8,7 +8,7 @@ import { invoiceKeys } from '@modules/project/constants/invoice.keys';
 export const useAddInvoiceAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ invoiceId, data }: { invoiceId: string; data: { fileId: string } }) =>
+    mutationFn: ({ invoiceId, data }: { invoiceId: string; data: { documentId: string } }) =>
       invoiceAttachmentApi.add(invoiceId, data),
     onSuccess: (_, { invoiceId }) => {
       qc.invalidateQueries({ queryKey: invoiceAttachmentKeys.list(invoiceId) });

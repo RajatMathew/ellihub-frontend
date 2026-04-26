@@ -19,9 +19,9 @@ export function DetailSidebar({
   if (!open) return null;
 
   return (
-    <div className="hidden w-80 shrink-0 lg:block">
+    <div className="w-full min-w-0 shrink-0 overflow-hidden xl:w-80">
       <Tabs defaultValue="details">
-        <div className="flex items-center justify-between">
+        <div className="flex min-w-0 items-center justify-between gap-2">
           <TabsList variant="line">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -37,9 +37,9 @@ export function DetailSidebar({
           </Button>
         </div>
 
-        <TabsContent value="details">{children}</TabsContent>
+        <TabsContent value="details" className="min-w-0 overflow-hidden">{children}</TabsContent>
 
-        <TabsContent value="activity">
+        <TabsContent value="activity" className="min-w-0 overflow-hidden">
           {activityChildren || (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Clock className="size-10 text-muted-foreground/40" />

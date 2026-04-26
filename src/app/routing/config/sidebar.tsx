@@ -81,7 +81,7 @@ export const projectSidebarMenu: MenuConfig = [
     children: [
       { title: 'RFQs', path: '../rfqs' },
       { title: 'Purchase Orders', path: '../purchase-orders' },
-      { title: 'Change Orders', path: '../vendors/change-orders' },
+        { title: 'Sub Change Order', path: '../sub-change-order' },
       { title: 'Invoices', path: '../invoices' },
     ],
   },

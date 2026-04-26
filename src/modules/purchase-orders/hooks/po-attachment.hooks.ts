@@ -8,7 +8,7 @@ import { poKeys } from '../constants/po.keys';
 export const useAddPOAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ poId, data }: { poId: string; data: { fileId: string } }) =>
+    mutationFn: ({ poId, data }: { poId: string; data: { documentId: string } }) =>
       poAttachmentApi.add(poId, data),
     onSuccess: (_, { poId }) => {
       qc.invalidateQueries({ queryKey: poAttachmentKeys.list(poId) });

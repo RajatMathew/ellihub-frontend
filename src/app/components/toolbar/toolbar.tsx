@@ -25,7 +25,7 @@ export const Toolbar = forwardRef<
 });
 
 function ToolbarActions({ children }: { children?: ReactNode }) {
-  return <div className="flex items-center gap-2.5">{children}</div>;
+  return <div className="flex max-w-full flex-wrap items-center gap-2.5">{children}</div>;
 }
 
 function ToolbarHeading({ children }: { children: ReactNode }) {
@@ -33,11 +33,11 @@ function ToolbarHeading({ children }: { children: ReactNode }) {
 }
 
 function ToolbarPageTitle({ children }: { children: ReactNode }) {
-  return <h1 className="text-xl font-medium leading-none text-foreground">{children}</h1>;
+  return <h1 className="break-words text-xl font-medium leading-tight text-foreground">{children}</h1>;
 }
 
 function ToolbarWrapper({ children }: { children?: ReactNode }) {
-  return <div className="flex items-center flex-wrap justify-between gap-2.5">{children}</div>;
+  return <div className="flex min-w-0 flex-wrap items-start justify-between gap-2.5">{children}</div>;
 }
 
 export { ToolbarActions, ToolbarHeading, ToolbarPageTitle, ToolbarWrapper };

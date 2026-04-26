@@ -17,11 +17,11 @@ export function usePOCalculations({ pos }: UsePOCalculationsOptions) {
     }
 
     // Filter out cancelled POs
-    const activePOs = pos.filter((po) => po.status?.name !== 'CANCELLED');
+    const activePOs = pos.filter((po) => po.status !== 'CANCELLED');
 
     // Calculate total committed from active POs
     const totalPOCommitted = activePOs.reduce(
-      (sum, po) => sum + (parseFloat(po.totalCommitment || po.total) || 0),
+      (sum, po) => sum + (parseFloat(po.total ?? '0') || 0),
       0
     );
 

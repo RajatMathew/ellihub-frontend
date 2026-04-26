@@ -9,7 +9,6 @@ import {
 } from '@tanstack/react-table';
 import {
   AlertCircle,
-  AlertTriangle,
   ClipboardList,
   MoreHorizontal,
   Plus,
@@ -47,6 +46,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@app/components/ui/dialog';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import {
   Select,
@@ -56,32 +62,36 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Skeleton } from '@app/components/ui/skeleton';
+import { Textarea } from '@app/components/ui/textarea';
 import { formatCurrency, formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
 import {
   PO_STATUS_BADGE_VARIANTS,
+  PO_STATUS_LABELS,
   PO_STATUS_OPTIONS,
-  TRADE_CATEGORY_BADGE_VARIANTS,
-  TRADE_CATEGORY_LABELS,
-  TRADE_CATEGORY_OPTIONS,
 } from '@modules/purchase-orders/constants/po.constants';
-import {
-  useDeletePOMutation,
-  usePOsQuery,
-} from '@modules/purchase-orders/hooks/po.hooks';
+import { useCancelPOMutation, usePOsQuery } from '@modules/purchase-orders/hooks/po.hooks';
 import type {
   ListPOsParams,
   POListItem,
   POStatusName,
-  TradeCategory,
 } from '@modules/purchase-orders/schemas/po.schema';
+import { useVendorsQuery } from '@modules/directory/hooks';
+import { useLookupsQuery } from '../hooks/lookup.hooks';
 
 /* ---- Constants ---- */
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const SORT_BY_OPTIONS = ['issueDate', 'total', 'status', 'createdAt'] as const;
+const SORT_BY_OPTIONS = [
+  'poNumber',
+  'expectedDate',
+  'deliveryDate',
+  'total',
+  'status',
+  'createdAt',
+] as const;
 type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
 /* ---- Helpers ---- */
@@ -94,45 +104,55 @@ function isValidPOStatus(v: string | null): v is POStatusName {
   return (
     v === 'DRAFT' ||
     v === 'ISSUED' ||
-    v === 'PARTIALLY_PAID' ||
-    v === 'PAID' ||
+    v === 'DELIVERED' ||
     v === 'CANCELLED'
   );
 }
 
-function isValidTradeCategory(v: string | null): v is TradeCategory {
-  return (
-    v === 'MATERIAL' ||
-    v === 'FABRICATION' ||
-    v === 'INSTALLATION' ||
-    v === 'LABOR' ||
-    v === 'EQUIPMENT'
-  );
+function formatOptionalDate(value?: string | null): string {
+  return value ? formatDate(value) : '—';
+}
+
+function formatPaymentTerms(value?: string | null): string {
+  return value ? value.replaceAll('_', ' ') : '—';
+}
+
+function formatOptionalCurrency(value?: string | null): string {
+  return value ? formatCurrency(value) : '—';
+}
+
+function getVendorName(po: POListItem): string {
+  return po.vendor?.name || '—';
+}
+
+function getReadableRfq(po: POListItem): string | null {
+  return po.rfq?.rfqNumber || po.rfq?.title || null;
+}
+
+function getTradeCategoryLabel(po: POListItem, fallback?: string): string {
+  return po.tradeCategory?.label ?? po.tradeCategory?.name ?? fallback ?? '—';
 }
 
 /* ---- Page ---- */
 
 export default function ProjectPOs() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId = '' } = useParams<{ projectId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read state from URL
   const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size'));
+  const size = parseSizeParam(searchParams.get('size'), DEFAULT_PAGE_SIZE);
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
-    : 'issueDate';
+    : 'createdAt';
   const sortOrder: 'asc' | 'desc' =
     searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
   const statusFilter: POStatusName | undefined = isValidPOStatus(searchParams.get('status'))
     ? (searchParams.get('status') as POStatusName)
     : undefined;
-  const tradeCategoryFilter: TradeCategory | undefined = isValidTradeCategory(
-    searchParams.get('tradeCategory'),
-  )
-    ? (searchParams.get('tradeCategory') as TradeCategory)
-    : undefined;
-  const overdueFilter = searchParams.get('overdue') === 'true' ? ('true' as const) : undefined;
+  const tradeCategoryFilter = searchParams.get('tradeCategoryId') ?? undefined;
+  const vendorFilter = searchParams.get('vendorId') ?? undefined;
+  const rfqFilter = searchParams.get('rfqId') ?? undefined;
 
   // Local search input tracks typing; debounce syncs to URL
   const searchQuery = searchParams.get('search') ?? '';
@@ -180,19 +200,30 @@ export default function ProjectPOs() {
     size,
     sortBy,
     sortOrder,
+    search: searchQuery || undefined,
     status: statusFilter,
-    tradeCategory: tradeCategoryFilter,
-    overdue: overdueFilter,
+    tradeCategoryId: tradeCategoryFilter,
+    vendorId: vendorFilter,
+    rfqId: rfqFilter,
   };
 
   const hasActiveFilters =
-    !!searchQuery || !!statusFilter || !!tradeCategoryFilter || !!overdueFilter;
+    !!searchQuery || !!statusFilter || !!tradeCategoryFilter || !!vendorFilter || !!rfqFilter;
 
   const { data, isLoading, isError, refetch } = usePOsQuery(filters);
-  const del = useDeletePOMutation();
-
+  const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
+  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000, sortBy: 'name' });
+  const cancelMutation = useCancelPOMutation();
+  const [cancelTarget, setCancelTarget] = useState<POListItem | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
+  const hasReadableRfq = listData.some((po) => !!getReadableRfq(po));
+  const vendorOptions = vendorsData?.data ?? [];
+  const tradeCategoryLabelById = useMemo(
+    () => new Map((tradeCategories ?? []).map((cat) => [cat.id, cat.label ?? cat.name ?? cat.id])),
+    [tradeCategories],
+  );
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
 
@@ -207,10 +238,10 @@ export default function ProjectPOs() {
               to={`${row.original.id}`}
               className="text-sm font-semibold text-foreground hover:text-primary"
             >
-              {row.original.poNumber ?? 'Draft'}
+              {row.original.poNumber ?? '—'}
             </Link>
             <span className="text-2sm text-muted-foreground line-clamp-1">
-              {row.original.description}
+              {row.original.description ?? '—'}
             </span>
           </div>
         ),
@@ -223,31 +254,66 @@ export default function ProjectPOs() {
             </div>
           ),
         },
-        enableSorting: false,
       },
       {
-        id: 'vendor',
+        accessorKey: 'vendorId',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground">{row.original.vendor.name}</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground line-clamp-1">
+              {getVendorName(row.original)}
+            </span>
+            {row.original.vendor?.paymentTerms && (
+              <span className="text-2sm text-muted-foreground">
+                {formatPaymentTerms(row.original.vendor.paymentTerms)}
+              </span>
+            )}
+          </div>
         ),
         meta: {
-          headerClassName: 'min-w-[160px]',
+          headerClassName: 'min-w-[150px]',
           skeleton: <Skeleton className="h-3.5 w-28" />,
         },
         enableSorting: false,
       },
       {
-        id: 'tradeCategory',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Trade" />,
+        accessorKey: 'rfqId',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="RFQ" />,
         cell: ({ row }) => (
-          <Badge
-            variant={TRADE_CATEGORY_BADGE_VARIANTS[row.original.tradeCategory] ?? 'primary'}
-            appearance="outline"
-            size="sm"
-          >
-            {TRADE_CATEGORY_LABELS[row.original.tradeCategory] ?? row.original.tradeCategory}
-          </Badge>
+          row.original.rfqId ? (
+            <Link
+              to={`/app/project/${projectId}/rfqs/${row.original.rfqId}`}
+              className="font-mono text-xs text-foreground hover:text-primary"
+              title={row.original.rfqId}
+            >
+              {getReadableRfq(row.original)}
+            </Link>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )
+        ),
+        meta: {
+          headerClassName: 'min-w-[100px]',
+          skeleton: <Skeleton className="h-3.5 w-20" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'tradeCategoryId',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Trade Category" />,
+        cell: ({ row }) => (
+          row.original.tradeCategory || row.original.tradeCategoryId ? (
+            <Badge variant="primary" appearance="outline" size="sm">
+              {getTradeCategoryLabel(
+                row.original,
+                row.original.tradeCategoryId
+                  ? tradeCategoryLabelById.get(row.original.tradeCategoryId)
+                  : undefined,
+              )}
+            </Badge>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )
         ),
         meta: {
           headerClassName: 'min-w-[120px]',
@@ -259,7 +325,7 @@ export default function ProjectPOs() {
         id: 'status',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          const statusName = row.original.status.name as POStatusName;
+          const statusName = row.original.status;
           return (
             <div className="flex items-center gap-2">
               <Badge
@@ -267,11 +333,8 @@ export default function ProjectPOs() {
                 appearance="outline"
                 size="sm"
               >
-                {row.original.status.label}
+                {PO_STATUS_LABELS[statusName] ?? statusName}
               </Badge>
-              {row.original.isOverdue && (
-                <AlertTriangle className="size-3.5 text-destructive" />
-              )}
             </div>
           );
         },
@@ -287,21 +350,25 @@ export default function ProjectPOs() {
       },
       {
         accessorKey: 'total',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Total" />,
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Amount" />,
         cell: ({ row }) => (
           <div className="flex flex-col gap-0.5 text-right">
             <span className="text-sm font-medium text-foreground">
-              {formatCurrency(row.original.total)}
+              {formatOptionalCurrency(row.original.total)}
             </span>
-            {row.original.totalCommitment !== row.original.total && (
-              <span className="text-2sm text-muted-foreground">
-                Committed: {formatCurrency(row.original.totalCommitment)}
-              </span>
-            )}
+            <span className="text-2sm text-muted-foreground">
+              Subtotal {formatOptionalCurrency(row.original.subtotal)}
+            </span>
+            <span className="text-2sm text-muted-foreground">
+              Tax {formatOptionalCurrency(row.original.taxAmount)}
+            </span>
+            <span className="text-2sm text-muted-foreground">
+              {formatPaymentTerms(row.original.paymentTerms)}
+            </span>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[130px] text-right',
+          headerClassName: 'min-w-[150px] text-right',
           cellClassName: 'text-right',
           skeleton: (
             <div className="flex flex-col items-end gap-1">
@@ -312,11 +379,35 @@ export default function ProjectPOs() {
         },
       },
       {
-        accessorKey: 'issueDate',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Issue Date" />,
+        id: 'timeline',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Timeline" />,
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm text-foreground">
+              Expected: {formatOptionalDate(row.original.expectedDate)}
+            </span>
+            <span className="text-2sm text-muted-foreground">
+              Delivered: {formatOptionalDate(row.original.deliveryDate)}
+            </span>
+          </div>
+        ),
+        meta: {
+          headerClassName: 'min-w-[180px]',
+          skeleton: (
+            <div className="flex flex-col gap-1">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ),
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'createdAt',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Created" />,
         cell: ({ row }) => (
           <span className="text-sm text-foreground">
-            {row.original.issueDate ? formatDate(row.original.issueDate) : '—'}
+            {formatOptionalDate(row.original.createdAt)}
           </span>
         ),
         meta: {
@@ -328,7 +419,6 @@ export default function ProjectPOs() {
         id: 'actions',
         header: () => null,
         cell: ({ row }) => {
-          const isDraft = row.original.status.name === 'DRAFT';
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -347,17 +437,20 @@ export default function ProjectPOs() {
                 <DropdownMenuItem asChild>
                   <Link to={`${row.original.id}`}>View</Link>
                 </DropdownMenuItem>
-                {isDraft && (
+                {row.original.status === 'DRAFT' && (
                   <DropdownMenuItem asChild>
                     <Link to={`${row.original.id}/edit`}>Edit</Link>
                   </DropdownMenuItem>
                 )}
-                {isDraft && (
+                {row.original.status !== 'CANCELLED' && (
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
-                    onClick={() => del.mutate(row.original.id)}
+                    onClick={() => {
+                      setCancelTarget(row.original);
+                      setCancelReason('');
+                    }}
                   >
-                    Delete
+                    Cancel
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -371,7 +464,7 @@ export default function ProjectPOs() {
         enableSorting: false,
       },
     ],
-    [del],
+    [projectId, tradeCategoryLabelById],
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -383,6 +476,9 @@ export default function ProjectPOs() {
     state: {
       pagination: { pageIndex: page - 1, pageSize: size },
       sorting,
+      columnVisibility: {
+        rfqId: hasReadableRfq,
+      },
     },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -411,10 +507,10 @@ export default function ProjectPOs() {
       if (!col) {
         updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
       } else {
-        const newSortBy = isSortByField(col.id) ? col.id : 'issueDate';
+        const newSortBy = isSortByField(col.id) ? col.id : 'createdAt';
         const newSortOrder = col.desc ? 'desc' : 'asc';
         updateParams({
-          sortBy: newSortBy === 'issueDate' ? undefined : newSortBy,
+          sortBy: newSortBy === 'createdAt' ? undefined : newSortBy,
           sortOrder: newSortOrder === 'desc' ? undefined : newSortOrder,
           page: undefined,
         });
@@ -423,6 +519,7 @@ export default function ProjectPOs() {
   });
 
   return (
+    <>
     <div className="container-fluid py-7.5">
       {/* Toolbar */}
       <Toolbar>
@@ -447,16 +544,16 @@ export default function ProjectPOs() {
       </Toolbar>
 
       {/* PO Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="items-stretch sm:items-center">
+          <CardTitle className="w-full overflow-x-auto sm:w-auto">
             {/* Status Tabs */}
-            <div className="flex items-center gap-0">
+            <div className="inline-flex min-w-max items-center gap-0">
               <button
                 type="button"
-                onClick={() => updateParams({ status: undefined, overdue: undefined, page: undefined })}
+                onClick={() => updateParams({ status: undefined, page: undefined })}
                 className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
-                  !statusFilter && !overdueFilter
+                  !statusFilter
                     ? 'border-foreground text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
@@ -468,7 +565,7 @@ export default function ProjectPOs() {
                   key={opt.value}
                   type="button"
                   onClick={() =>
-                    updateParams({ status: opt.value, overdue: undefined, page: undefined })
+                    updateParams({ status: opt.value, page: undefined })
                   }
                   className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
                     statusFilter === opt.value
@@ -479,31 +576,11 @@ export default function ProjectPOs() {
                   {opt.label}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() =>
-                  updateParams({
-                    overdue: overdueFilter ? undefined : 'true',
-                    status: undefined,
-                    page: undefined,
-                  })
-                }
-                className={`px-4 py-2 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors ${
-                  overdueFilter
-                    ? 'border-destructive text-destructive'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <span className="flex items-center gap-1">
-                  <AlertTriangle className="size-3" />
-                  Overdue
-                </span>
-              </button>
             </div>
           </CardTitle>
-          <CardToolbar>
-            <div className="flex items-center gap-2.5">
-              <InputWrapper variant="sm">
+          <CardToolbar className="w-full sm:w-auto">
+            <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+              <InputWrapper variant="sm" className="w-full sm:w-[220px]">
                 <Search className="size-4" />
                 <Input
                   placeholder="Search POs..."
@@ -512,22 +589,43 @@ export default function ProjectPOs() {
                 />
               </InputWrapper>
               <Select
-                value={tradeCategoryFilter ?? 'all'}
+                value={vendorFilter ?? 'all'}
                 onValueChange={(value) =>
                   updateParams({
-                    tradeCategory: value === 'all' ? undefined : value,
+                    vendorId: value === 'all' ? undefined : value,
                     page: undefined,
                   })
                 }
               >
-                <SelectTrigger className="h-8 w-[150px] text-xs">
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
+                  <SelectValue placeholder="All Vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendorOptions.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={tradeCategoryFilter ?? 'all'}
+                onValueChange={(value) =>
+                  updateParams({
+                    tradeCategoryId: value === 'all' ? undefined : value,
+                    page: undefined,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 w-full text-xs sm:w-[150px]">
                   <SelectValue placeholder="All Trades" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Trades</SelectItem>
-                  {TRADE_CATEGORY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {tradeCategories?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label ?? opt.name ?? opt.id}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -542,8 +640,9 @@ export default function ProjectPOs() {
                     updateParams({
                       search: undefined,
                       status: undefined,
-                      tradeCategory: undefined,
-                      overdue: undefined,
+                      tradeCategoryId: undefined,
+                      vendorId: undefined,
+                      rfqId: undefined,
                       page: undefined,
                     });
                   }}
@@ -584,12 +683,16 @@ export default function ProjectPOs() {
               </div>
             }
             tableLayout={{
+              dense: true,
               cellBorder: false,
               rowBorder: true,
               headerBackground: true,
             }}
+            tableClassNames={{
+              base: 'min-w-[760px]',
+            }}
           >
-            <CardTable>
+            <CardTable className="overflow-x-auto">
               <DataGridTable />
             </CardTable>
             <CardFooter>
@@ -599,5 +702,65 @@ export default function ProjectPOs() {
         )}
       </Card>
     </div>
+    <Dialog
+      open={!!cancelTarget}
+      onOpenChange={(open) => {
+        if (!open) {
+          setCancelTarget(null);
+          setCancelReason('');
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cancel Purchase Order</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Provide a reason for cancelling{' '}
+            <strong>{cancelTarget?.poNumber ?? 'this PO'}</strong>.
+          </p>
+          <Textarea
+            placeholder="Reason for cancellation..."
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            rows={4}
+          />
+          {cancelReason.trim().length === 0 && (
+            <p className="text-xs text-destructive">Cancellation reason is required.</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCancelTarget(null);
+              setCancelReason('');
+            }}
+          >
+            Back
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={!cancelTarget || cancelReason.trim().length === 0 || cancelMutation.isPending}
+            onClick={() => {
+              if (!cancelTarget) return;
+              cancelMutation.mutate(
+                { id: cancelTarget.id, reason: cancelReason.trim() },
+                {
+                  onSuccess: () => {
+                    setCancelTarget(null);
+                    setCancelReason('');
+                  },
+                },
+              );
+            }}
+          >
+            {cancelMutation.isPending ? 'Cancelling...' : 'Cancel PO'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

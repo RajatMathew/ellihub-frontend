@@ -3,6 +3,7 @@ import { z } from 'zod';
 import api from '@app/api';
 import {
   invoiceDetailSchema,
+  invoiceListItemSchema,
   invoicePaginatedResponseSchema,
   invoiceStatusSchema,
   invoiceSummarySchema,
@@ -10,6 +11,7 @@ import {
   type InvoiceDetail,
   type InvoiceDisputeInput,
   type InvoiceLineItemInput,
+  type InvoiceListItem,
   type InvoiceMarkPaidInput,
   type InvoicePaginatedResponse,
   type InvoiceRejectInput,
@@ -27,21 +29,15 @@ export const invoiceApi = {
 
   async list(params: ListInvoiceParams): Promise<InvoicePaginatedResponse> {
     const query: Record<string, string | number | boolean> = {};
-    query.projectId = params.projectId;
+    if (params.projectId) query.projectId = params.projectId;
     if (params.page != null) query.page = params.page;
     if (params.size != null) query.size = params.size;
     if (params.sortBy) query.sortBy = params.sortBy;
     if (params.sortOrder) query.sortOrder = params.sortOrder;
     if (params.search) query.search = params.search;
-    if (params.status) query.status = params.status;
-    if (params.invoiceType) query.invoiceType = params.invoiceType;
-    if (params.category) query.category = params.category;
     if (params.vendorId) query.vendorId = params.vendorId;
+    if (params.purchaseOrderId) query.purchaseOrderId = params.purchaseOrderId;
     if (params.isPaid != null) query.isPaid = params.isPaid;
-    if (params.isDisputed != null) query.isDisputed = params.isDisputed;
-    if (params.isOverdue != null) query.isOverdue = params.isOverdue;
-    if (params.startDate) query.startDate = params.startDate;
-    if (params.endDate) query.endDate = params.endDate;
 
     const res = await api.get(BASE, { params: query });
     const body = res.data;
@@ -88,28 +84,19 @@ export const invoiceApi = {
     return result.data;
   },
 
-  async create(data: CreateInvoiceInput): Promise<InvoiceDetail> {
-    // Strip empty/falsy optional fields
-    const payload: Record<string, unknown> = {
-      invoiceNumber: data.invoiceNumber,
-      invoiceDate: data.invoiceDate,
-      totalAmount: data.totalAmount,
-    };
-    if (data.poId) payload.poId = data.poId;
-    if (data.projectId) payload.projectId = data.projectId;
-    if (data.vendorId) payload.vendorId = data.vendorId;
-    if (data.dueDate) payload.dueDate = data.dueDate;
-    if (data.invoiceType) payload.invoiceType = data.invoiceType;
-    if (data.category) payload.category = data.category;
-    if (data.notes) payload.notes = data.notes;
-    if (data.invoiceDocumentId) payload.invoiceDocumentId = data.invoiceDocumentId;
-    if (data.retainagePercent != null && data.retainagePercent > 0)
-      payload.retainagePercent = data.retainagePercent;
-    if (data.taxAmount != null && data.taxAmount > 0) payload.taxAmount = data.taxAmount;
-    if (data.taxRate != null && data.taxRate > 0) payload.taxRate = data.taxRate;
-    if (data.lineItems && data.lineItems.length > 0) payload.lineItems = data.lineItems;
+  async listByPurchaseOrder(poId: string): Promise<InvoiceListItem[]> {
+    const res = await api.get(`${BASE}/by-po/${poId}`);
+    const raw = res.data?.data ?? res.data ?? [];
+    const result = z.array(invoiceListItemSchema).safeParse(raw);
+    if (!result.success) {
+      console.error('[invoiceApi.listByPurchaseOrder] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
 
-    const res = await api.post(BASE, payload);
+  async create(data: CreateInvoiceInput): Promise<InvoiceDetail> {
+    const res = await api.post(BASE, data);
     const raw = res.data?.data ?? res.data;
     const result = invoiceDetailSchema.safeParse(raw);
     if (!result.success) {
@@ -120,7 +107,7 @@ export const invoiceApi = {
   },
 
   async update(id: string, data: UpdateInvoiceInput): Promise<InvoiceDetail> {
-    const res = await api.put(`${BASE}/${id}`, data);
+    const res = await api.put(BASE, { ...data, id });
     const raw = res.data?.data ?? res.data;
     const result = invoiceDetailSchema.safeParse(raw);
     if (!result.success) {
@@ -159,36 +146,23 @@ export const invoiceApi = {
   },
 
   async markPaid(id: string, data: InvoiceMarkPaidInput): Promise<InvoiceDetail> {
-    const res = await api.post(`${BASE}/${id}/mark-paid`, data);
-    const raw = res.data?.data ?? res.data;
-    const result = invoiceDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[invoiceApi.markPaid] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    await api.patch(`${BASE}/mark-paid`, { id, ...data });
+    return this.getById(id);
+  },
+
+  async markUnpaid(id: string): Promise<InvoiceDetail> {
+    await api.patch(`${BASE}/mark-unpaid`, { id });
+    return this.getById(id);
   },
 
   async dispute(id: string, data: InvoiceDisputeInput): Promise<InvoiceDetail> {
-    const res = await api.post(`${BASE}/${id}/dispute`, data);
-    const raw = res.data?.data ?? res.data;
-    const result = invoiceDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[invoiceApi.dispute] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    await api.patch(`${BASE}/dispute`, { id, disputeReason: data.disputeReason });
+    return this.getById(id);
   },
 
-  async resolveDispute(id: string, data: InvoiceResolveDisputeInput): Promise<InvoiceDetail> {
-    const res = await api.post(`${BASE}/${id}/resolve-dispute`, data);
-    const raw = res.data?.data ?? res.data;
-    const result = invoiceDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[invoiceApi.resolveDispute] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+  async resolveDispute(id: string, _data?: InvoiceResolveDisputeInput): Promise<InvoiceDetail> {
+    await api.patch(`${BASE}/resolve-dispute`, { id });
+    return this.getById(id);
   },
 
   /* ---- line items ---- */

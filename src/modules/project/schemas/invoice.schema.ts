@@ -39,18 +39,27 @@ export type InvoiceLineItem = z.infer<typeof invoiceLineItemSchema>;
 export const invoiceListItemSchema = z
   .object({
     id: z.string(),
+    projectId: z.string().nullable().optional(),
+    vendorId: z.string().nullable().optional(),
+    purchaseOrderId: z.string().nullable().optional(),
     invoiceNumber: z.string().nullable().optional(),
     invoiceDate: z.string().nullable().optional(),
     dueDate: z.string().nullable().optional(),
     totalAmount: z.coerce.number(),
-    status: invoiceStatusSchema.nullable().optional(),
-    invoiceType: z.string().nullable().optional(),
+    taxAmount: z.coerce.number().nullable().optional(),
+    taxRate: z.coerce.number().nullable().optional(),
     isPaid: z.boolean().optional(),
     isDisputed: z.boolean().optional(),
-    paidAmount: z.coerce.number().nullable().optional(),
-    retainageAmount: z.coerce.number().optional(),
-    retainagePercent: z.coerce.number().optional(),
-    netPaymentAmount: z.coerce.number().optional(),
+    paidDate: z.string().nullable().optional(),
+    paymentReference: z.string().nullable().optional(),
+    paymentMethodId: z.string().nullable().optional(),
+    paymentMethod: z.unknown().optional(),
+    paymentNotes: z.string().nullable().optional(),
+    disputeReason: z.string().nullable().optional(),
+    disputedAt: z.string().nullable().optional(),
+    resolvedAt: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    relatedSCOIds: z.array(z.string()).optional().default([]),
     vendor: z
       .object({ id: z.string(), name: z.string() })
       .passthrough()
@@ -61,10 +70,10 @@ export const invoiceListItemSchema = z
       .passthrough()
       .nullable()
       .optional(),
-    daysOverdue: z.number().optional(),
-    isPastDue: z.boolean().optional(),
-    agingBucket: z.string().nullable().optional(),
+    attachments: z.array(z.unknown()).optional().default([]),
     createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    deletedAt: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -75,6 +84,9 @@ export type InvoiceListItem = z.infer<typeof invoiceListItemSchema>;
 export const invoiceDetailSchema = z
   .object({
     id: z.string(),
+    projectId: z.string().nullable().optional(),
+    vendorId: z.string().nullable().optional(),
+    purchaseOrderId: z.string().nullable().optional(),
     invoiceNumber: z.string().nullable().optional(),
     invoiceDate: z.string().nullable().optional(),
     dueDate: z.string().nullable().optional(),
@@ -91,16 +103,29 @@ export const invoiceDetailSchema = z
     netPaymentAmount: z.coerce.number().optional(),
     taxAmount: z.coerce.number().nullable().optional(),
     taxRate: z.coerce.number().nullable().optional(),
+    relatedSCOIds: z.array(z.string()).optional().default([]),
     paidAmount: z.coerce.number().nullable().optional(),
     paidDate: z.string().nullable().optional(),
     paymentReference: z.string().nullable().optional(),
-    paymentMethod: z.string().nullable().optional(),
+    paymentMethodId: z.string().nullable().optional(),
+    paymentMethod: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().nullable().optional(),
+        label: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    paymentNotes: z.string().nullable().optional(),
     disputeReason: z.string().nullable().optional(),
     disputeDate: z.string().nullable().optional(),
     disputeResolution: z.string().nullable().optional(),
     disputeResolvedDate: z.string().nullable().optional(),
     rejectionReason: z.string().nullable().optional(),
     invoiceDocumentId: z.string().nullable().optional(),
+    disputedAt: z.string().nullable().optional(),
+    resolvedAt: z.string().nullable().optional(),
     vendor: z
       .object({ id: z.string(), name: z.string() })
       .passthrough()
@@ -110,10 +135,10 @@ export const invoiceDetailSchema = z
       .object({
         id: z.string(),
         poNumber: z.string(),
-        total: z.coerce.number().optional(),
-        totalCommitment: z.coerce.number().optional(),
-        retainagePercent: z.coerce.number().optional(),
+        vendorId: z.string().nullable().optional(),
+        status: z.string().nullable().optional(),
         paymentTerms: z.string().nullable().optional(),
+        total: z.coerce.number().optional(),
       })
       .passthrough()
       .nullable()
@@ -200,21 +225,15 @@ export type InvoiceSummary = z.infer<typeof invoiceSummarySchema>;
 /* ---- List query params ---- */
 
 export const listInvoiceParamsSchema = z.object({
-  projectId: z.string(),
+  projectId: z.string().optional(),
   page: z.number().min(1).optional(),
   size: z.number().min(1).optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
   search: z.string().optional(),
-  status: z.string().optional(),
-  invoiceType: z.string().optional(),
-  category: z.string().optional(),
   vendorId: z.string().optional(),
+  purchaseOrderId: z.string().optional(),
   isPaid: z.boolean().optional(),
-  isDisputed: z.boolean().optional(),
-  isOverdue: z.boolean().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
 });
 
 export type ListInvoiceParams = z.infer<typeof listInvoiceParamsSchema>;
@@ -233,38 +252,25 @@ export const invoiceLineItemInputSchema = z.object({
 export type InvoiceLineItemInput = z.infer<typeof invoiceLineItemInputSchema>;
 
 export const createInvoiceInputSchema = z.object({
-  poId: z.string().optional(),
-  projectId: z.string().optional(),
-  vendorId: z.string().optional(),
+  projectId: z.string().min(1, 'Project is required'),
+  vendorId: z.string().min(1, 'Vendor is required'),
+  purchaseOrderId: z.string().min(1, 'Purchase order is required'),
   invoiceNumber: z.string().min(1, 'Invoice number is required'),
   invoiceDate: z.string().min(1, 'Invoice date is required'),
-  dueDate: z.string().optional(),
-  totalAmount: z.number().gt(0, 'Total amount must be > 0'),
-  invoiceType: z.enum(['PRELIMINARY', 'FINAL', 'REVISION']).optional(),
-  category: z.enum(['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'PROFESSIONAL_SERVICES', 'OTHER']).optional(),
-  notes: z.string().optional(),
-  invoiceDocumentId: z.string().optional(),
-  retainagePercent: z.number().min(0).max(100).optional(),
-  taxAmount: z.number().min(0).optional(),
-  taxRate: z.number().min(0).max(100).optional(),
-  lineItems: z.array(invoiceLineItemInputSchema).optional(),
+  dueDate: z.string().min(1, 'Due date is required'),
+  totalAmount: z.number().min(0, 'Total amount must be >= 0'),
+  taxAmount: z.number().min(0, 'Tax amount must be >= 0'),
+  taxRate: z.number().min(0, 'Tax rate must be >= 0'),
+  notes: z.string(),
+  relatedSCOIds: z.array(z.string()),
+  attachments: z.array(z.string()),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
 
-export const updateInvoiceInputSchema = z.object({
-  invoiceNumber: z.string().optional(),
-  invoiceDate: z.string().optional(),
-  dueDate: z.string().optional(),
-  totalAmount: z.number().gt(0).optional(),
-  invoiceType: z.enum(['PRELIMINARY', 'FINAL', 'REVISION']).optional(),
-  category: z.enum(['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'PROFESSIONAL_SERVICES', 'OTHER']).nullable().optional(),
-  notes: z.string().nullable().optional(),
-  invoiceDocumentId: z.string().optional(),
-  retainagePercent: z.number().min(0).max(100).optional(),
-  taxAmount: z.number().min(0).nullable().optional(),
-  taxRate: z.number().min(0).max(100).nullable().optional(),
-});
+export const updateInvoiceInputSchema = createInvoiceInputSchema
+  .omit({ attachments: true })
+  .extend({ id: z.string().optional() });
 
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
 
@@ -275,11 +281,10 @@ export const invoiceRejectInputSchema = z.object({
 export type InvoiceRejectInput = z.infer<typeof invoiceRejectInputSchema>;
 
 export const invoiceMarkPaidInputSchema = z.object({
-  paidAmount: z.number().gt(0, 'Amount must be > 0'),
   paidDate: z.string().min(1, 'Payment date is required'),
-  paymentMethod: z.enum(['CHECK', 'ACH', 'WIRE', 'CREDIT_CARD', 'OTHER']).optional(),
+  paymentMethodId: z.string().min(1, 'Payment method is required'),
   paymentReference: z.string().optional(),
-  notes: z.string().optional(),
+  paymentNotes: z.string().optional(),
 });
 
 export type InvoiceMarkPaidInput = z.infer<typeof invoiceMarkPaidInputSchema>;

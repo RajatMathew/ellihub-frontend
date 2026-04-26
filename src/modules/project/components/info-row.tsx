@@ -24,17 +24,17 @@ export function InfoRow({
   };
 
   return (
-    <div className={cn('flex items-center justify-between', className)}>
+    <div className={cn('flex min-w-0 items-start justify-between gap-3', className)}>
       <span
         className={cn(
-          'text-[13px] font-semibold',
+          'min-w-0 shrink-0 text-[13px] font-semibold',
           labelVariantClasses[labelVariant],
           labelClassName
         )}
       >
         {label}
       </span>
-      <span className={cn('text-[13px] font-bold text-end', valueClassName)}>{children}</span>
+      <span className={cn('min-w-0 break-words text-end text-[13px] font-bold', valueClassName)}>{children}</span>
     </div>
   );
 }

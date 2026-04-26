@@ -23,19 +23,19 @@ export function StatsCard({ icon, bgClass, label, value, description, active, on
       )}
       onClick={onClick}
     >
-      <CardContent className="flex items-center gap-4 py-4">
+      <CardContent className="flex min-w-0 items-center gap-3 py-4 sm:gap-4">
         <div
-          className={`flex items-center justify-center size-12 rounded-lg ${bgClass}`}
+          className={`flex size-10 shrink-0 items-center justify-center rounded-lg sm:size-12 ${bgClass}`}
         >
           {icon}
         </div>
-        <div className="space-y-0.5">
-          <div className="text-2xl font-semibold leading-none text-foreground">
+        <div className="min-w-0 space-y-0.5">
+          <div className="break-words text-xl font-semibold leading-tight text-foreground sm:text-2xl">
             {value}
           </div>
-          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="break-words text-sm text-muted-foreground">{label}</div>
           {description && (
-            <div className="text-xs text-muted-foreground">{description}</div>
+            <div className="break-words text-xs text-muted-foreground">{description}</div>
           )}
         </div>
       </CardContent>

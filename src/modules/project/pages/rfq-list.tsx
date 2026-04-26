@@ -10,6 +10,7 @@ import {
 import {
   AlertCircle,
   ClipboardList,
+  FilePlus2,
   MoreHorizontal,
   Plus,
   RefreshCcw,
@@ -60,7 +61,12 @@ import {
 } from '@app/components/toolbar/toolbar';
 import { formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 
-import { useDeleteRFQMutation, useRFQListQuery, useRFQStatusesQuery } from '../hooks';
+import {
+  useDeleteRFQMutation,
+  useGeneratePOMutation,
+  useRFQListQuery,
+  useRFQStatusesQuery,
+} from '../hooks';
 import { useLookupsQuery } from '../hooks/lookup.hooks';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '../constants/rfq.constants';
 import type { ListRFQParams, RFQListItem } from '../schemas/rfq.schema';
@@ -75,6 +81,10 @@ type SortByField = (typeof SORT_BY_OPTIONS)[number];
 
 function isSortByField(v: string | null): v is SortByField {
   return SORT_BY_OPTIONS.includes(v as SortByField);
+}
+
+function getStatusName(rfq: RFQListItem): string {
+  return typeof rfq.status === 'object' ? rfq.status?.name ?? '' : rfq.status ?? '';
 }
 
 /* ---- Page ---- */
@@ -150,7 +160,9 @@ export default function RFQListPage() {
   const { data: statuses } = useRFQStatusesQuery();
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const deleteMutation = useDeleteRFQMutation();
+  const generatePOMutation = useGeneratePOMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
+  const [createPOTarget, setCreatePOTarget] = useState<RFQListItem | null>(null);
 
   // Fetch all RFQs for this project (unfiltered) to compute KPIs
   const { data: allData } = useRFQListQuery({ projectId, size: 100 });
@@ -170,13 +182,10 @@ export default function RFQListPage() {
   const kpis = useMemo(() => {
     const total = allRfqs.length;
     const active = allRfqs.filter((r) => {
-      const s = typeof r.status === 'object' ? r.status?.name : r.status;
+      const s = getStatusName(r);
       return s === 'PUBLISHED' || s === 'EVALUATION';
     }).length;
-    const awarded = allRfqs.filter((r) => {
-      const s = typeof r.status === 'object' ? r.status?.name : r.status;
-      return s === 'AWARDED';
-    }).length;
+    const awarded = allRfqs.filter((r) => getStatusName(r) === 'AWARDED').length;
     const totalBudget = allRfqs.reduce((sum, r) => sum + (r.estimatedBudget ?? 0), 0);
     return { total, active, awarded, totalBudget };
   }, [allRfqs]);
@@ -290,41 +299,53 @@ export default function RFQListPage() {
       {
         id: 'actions',
         header: () => null,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                mode="icon"
-                size="sm"
-                className="size-7"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem asChild>
-                <Link to={`${row.original.id}`}>View</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to={`${row.original.id}/edit`}>Edit</Link>
-              </DropdownMenuItem>
-              {(typeof row.original.status === 'object' ? row.original.status?.name : row.original.status) === 'DRAFT' && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => setDeleteTarget(row.original)}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
+        cell: ({ row }) => {
+          const statusName = getStatusName(row.original);
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  mode="icon"
+                  size="sm"
+                  className="size-7"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to={`${row.original.id}`}>View</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={`${row.original.id}/edit`}>Edit</Link>
+                </DropdownMenuItem>
+                {statusName === 'AWARDED' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setCreatePOTarget(row.original)}>
+                      <FilePlus2 className="size-4" />
+                      Create PO from RFQ
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {statusName === 'DRAFT' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => setDeleteTarget(row.original)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
         meta: { headerClassName: 'w-[60px]' },
         enableSorting: false,
       },
@@ -578,6 +599,29 @@ export default function RFQListPage() {
         }}
         variant="destructive"
         isPending={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!createPOTarget}
+        onOpenChange={(open) => {
+          if (!open) setCreatePOTarget(null);
+        }}
+        title="Create PO from RFQ"
+        description={
+          <>
+            Create a purchase order from awarded RFQ{' '}
+            <strong>{createPOTarget?.rfqNumber ?? createPOTarget?.title}</strong>?
+          </>
+        }
+        confirmLabel="Create PO"
+        onConfirm={() => {
+          if (createPOTarget) {
+            generatePOMutation.mutate(createPOTarget.id, {
+              onSuccess: () => setCreatePOTarget(null),
+            });
+          }
+        }}
+        isPending={generatePOMutation.isPending}
       />
     </div>
   );

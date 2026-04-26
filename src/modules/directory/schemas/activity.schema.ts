@@ -8,6 +8,7 @@ export const activityLogItemSchema = z.object({
   description: z.string(),
   metadata: z.record(z.any()).optional().nullable(),
   note: z.string().optional().nullable(),
+  affectedEntityIds: z.array(z.string()).optional().default([]),
   userId: z.string().optional().nullable(),
   createdAt: z.string(),
   user: z.object({

@@ -10,11 +10,39 @@ import {
 } from '../schemas/po.schema';
 
 const BASE = '/po';
+const LIST_BASE = '/purchase-order';
+
+function normalizePODetail(item: any) {
+  if (!item) return item;
+
+  const status =
+    typeof item.status === 'string'
+      ? { id: item.status, name: item.status, label: item.status, color: item.status }
+      : item.status;
+
+  const tradeCategoryRef =
+    item.tradeCategory ??
+    (item.tradeCategoryId ? { id: item.tradeCategoryId, label: item.tradeCategoryId } : undefined);
+  const tradeCategoryLabel = tradeCategoryRef?.label ?? tradeCategoryRef?.name;
+  const tradeCategory = ['MATERIAL', 'FABRICATION', 'INSTALLATION', 'LABOR', 'EQUIPMENT'].includes(
+    tradeCategoryLabel,
+  )
+    ? tradeCategoryLabel
+    : undefined;
+
+  return {
+    ...item,
+    status,
+    tradeCategory,
+    tradeCategoryLabel: tradeCategoryLabel ?? tradeCategoryRef?.id,
+    tradeCategoryId: item.tradeCategoryId ?? tradeCategoryRef?.id,
+  };
+}
 
 export const poApi = {
   async get(id: string): Promise<PODetail> {
-    const res = await api.get(`${BASE}/${id}`);
-    const raw = res.data?.data ?? res.data;
+    const res = await api.get(`${LIST_BASE}/${id}`);
+    const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[poApi.get] Zod parse error:', result.error.issues);
@@ -24,14 +52,9 @@ export const poApi = {
   },
 
   async issue(id: string, data?: { emailVendor?: boolean }): Promise<PODetail> {
-    const res = await api.post(`${BASE}/${id}/issue`, data ?? {});
-    const raw = res.data?.data ?? res.data;
-    const result = poDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[poApi.issue] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    void data;
+    await api.patch(`${LIST_BASE}/set-issued`, { id });
+    return this.get(id);
   },
 
   async cancel(
@@ -43,28 +66,19 @@ export const poApi = {
       confirmSCOs?: boolean;
     },
   ): Promise<PODetail> {
-    const res = await api.post(`${BASE}/${id}/cancel`, data);
-    const raw = res.data?.data ?? res.data;
-    const result = poDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[poApi.cancel] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    await api.patch(`${LIST_BASE}/set-cancelled`, {
+      id,
+      cancellationReason: data.reason,
+    });
+    return this.get(id);
   },
 
   async recordDelivery(
     id: string,
     data: { deliveryDate: string; notes?: string },
   ): Promise<PODetail> {
-    const res = await api.post(`${BASE}/${id}/record-delivery`, data);
-    const raw = res.data?.data ?? res.data;
-    const result = poDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[poApi.recordDelivery] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    await api.patch(`${LIST_BASE}/set-delivered`, { id, deliveryDate: data.deliveryDate });
+    return this.get(id);
   },
 
   async list(params?: ListPOsParams): Promise<POPaginatedResponse> {
@@ -73,15 +87,17 @@ export const poApi = {
     if (params?.size != null) query.size = params.size;
     if (params?.sortBy) query.sortBy = params.sortBy;
     if (params?.sortOrder) query.sortOrder = params.sortOrder;
+    if (params?.search) query.search = params.search;
     if (params?.projectId) query.projectId = params.projectId;
     if (params?.status) query.status = params.status;
-    if (params?.tradeCategory) query.tradeCategory = params.tradeCategory;
+    if (params?.tradeCategoryId) query.tradeCategoryId = params.tradeCategoryId;
     if (params?.vendorId) query.vendorId = params.vendorId;
+    if (params?.rfqId) query.rfqId = params.rfqId;
     if (params?.startDate) query.startDate = params.startDate;
     if (params?.endDate) query.endDate = params.endDate;
     if (params?.overdue) query.overdue = params.overdue;
 
-    const res = await api.get(BASE, { params: query });
+    const res = await api.get(LIST_BASE, { params: query });
     const raw = {
       data: res.data?.data ?? res.data ?? [],
       pagination: res.data?.pagination ?? {
@@ -103,8 +119,8 @@ export const poApi = {
   },
 
   async create(data: CreatePOInput): Promise<PODetail> {
-    const res = await api.post(BASE, data);
-    const raw = res.data?.data ?? res.data;
+    const res = await api.post(LIST_BASE, data);
+    const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[poApi.create] Zod parse error:', result.error.issues);
@@ -115,8 +131,8 @@ export const poApi = {
   },
 
   async getById(id: string): Promise<PODetail> {
-    const res = await api.get(`${BASE}/${id}`);
-    const raw = res.data?.data ?? res.data;
+    const res = await api.get(`${LIST_BASE}/${id}`);
+    const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[poApi.getById] Zod parse error:', result.error.issues);
@@ -126,8 +142,8 @@ export const poApi = {
   },
 
   async update(id: string, data: Partial<CreatePOInput>): Promise<PODetail> {
-    const res = await api.put(`${BASE}/${id}`, data);
-    const raw = res.data?.data ?? res.data;
+    const res = await api.put(LIST_BASE, { ...data, id });
+    const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
       console.error('[poApi.update] Zod parse error:', result.error.issues);
@@ -136,19 +152,9 @@ export const poApi = {
     return result.data;
   },
 
-  async remove(id: string): Promise<void> {
-    await api.delete(`${BASE}/${id}`);
-  },
-
   async revertToDraft(id: string): Promise<PODetail> {
-    const res = await api.post(`${BASE}/${id}/revert-to-draft`);
-    const raw = res.data?.data ?? res.data;
-    const result = poDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[poApi.revertToDraft] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    await api.patch(`${LIST_BASE}/set-draft`, { id });
+    return this.get(id);
   },
 
   /* ---- line items ---- */
