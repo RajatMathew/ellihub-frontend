@@ -34,6 +34,35 @@ export const invoiceLineItemSchema = z
 
 export type InvoiceLineItem = z.infer<typeof invoiceLineItemSchema>;
 
+export const invoiceRelatedSCOSchema = z
+  .object({
+    id: z.string(),
+    scoNumber: z.string().nullable().optional(),
+    date: z.string().nullable().optional(),
+    title: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    amount: z.coerce.number().nullable().optional(),
+    status: z.string().nullable().optional(),
+    requestedBy: z.string().nullable().optional(),
+    changeType: z
+      .object({
+        id: z.string().optional(),
+        label: z.string().nullable().optional(),
+        name: z.string().nullable().optional(),
+        type: z.string().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    impactsSchedule: z.boolean().nullable().optional(),
+    scheduleImpactDays: z.coerce.number().nullable().optional(),
+    lineItems: z.array(z.unknown()).optional().default([]),
+    attachments: z.array(z.unknown()).optional().default([]),
+  })
+  .passthrough();
+
+export type InvoiceRelatedSCO = z.infer<typeof invoiceRelatedSCOSchema>;
+
 /* ---- List item (from GET /invoices) ---- */
 
 export const invoiceListItemSchema = z
@@ -104,6 +133,7 @@ export const invoiceDetailSchema = z
     taxAmount: z.coerce.number().nullable().optional(),
     taxRate: z.coerce.number().nullable().optional(),
     relatedSCOIds: z.array(z.string()).optional().default([]),
+    relatedSCOs: z.array(invoiceRelatedSCOSchema).optional().default([]),
     paidAmount: z.coerce.number().nullable().optional(),
     paidDate: z.string().nullable().optional(),
     paymentReference: z.string().nullable().optional(),

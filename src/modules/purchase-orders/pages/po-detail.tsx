@@ -91,34 +91,6 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
-/* ---- Placeholder table component ---- */
-
-function PlaceholderTable({
-  title,
-  icon,
-  description,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  description: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <div className="text-muted-foreground/40">{icon}</div>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 /* ---- Detail field (label above, value below) ---- */
 
 function DetailField({
@@ -421,8 +393,8 @@ export function PODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="flex gap-6 pt-5">
-        <div className="flex-1 min-w-0 space-y-5">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 2xl:flex-row 2xl:items-start">
+        <div className="min-w-0 flex-1 space-y-5">
       {/* ---- Overdue alert ---- */}
       {isOverdue && (
         <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -451,7 +423,7 @@ export function PODetailPage() {
       )}
 
       {/* ---- Stat cards ---- */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
         <StatsCard
           icon={<DollarSign className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -618,7 +590,70 @@ export function PODetailPage() {
                 </CardHeader>
                 <CardContent>
                   {po.lineItems && po.lineItems.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 md:hidden">
+                      {po.lineItems.map((li) => (
+                        <div key={li.id} className="rounded-lg border p-3">
+                          <div className="flex min-w-0 items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                                Line {li.lineNumber}
+                              </div>
+                              <div className="mt-1 break-words text-sm font-semibold text-foreground">
+                                {li.description}
+                              </div>
+                              {li.notes && (
+                                <div className="mt-1 break-words text-xs text-muted-foreground">
+                                  {li.notes}
+                                </div>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                              {formatCurrency(parseFloat(li.amount ?? '0'))}
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <div className="text-muted-foreground">Qty</div>
+                              <div className="font-medium tabular-nums">{li.quantity}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Unit</div>
+                              <div className="font-medium">{li.unit ?? '—'}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Unit Price</div>
+                              <div className="font-medium tabular-nums">
+                                {formatCurrency(parseFloat(li.unitPrice ?? '0'))}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Cost Code</div>
+                              <div className="break-words font-medium">
+                                {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '—' : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                        <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
+                        {Number(po.markupAmount ?? 0) !== 0 && (
+                          <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
+                        )}
+                        {taxAmount > 0 && (
+                          <InfoRow label={`Tax (${po.taxPercent}%)`}>
+                            {formatCurrency(taxAmount)}
+                          </InfoRow>
+                        )}
+                        <Separator className="my-2" />
+                        <InfoRow label="Total">
+                          <span className="font-semibold">{formatCurrency(poTotal)}</span>
+                        </InfoRow>
+                      </div>
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
                       <table className="min-w-[720px] w-full text-sm">
                         <thead>
                           <tr className="border-b text-left">
@@ -718,6 +753,7 @@ export function PODetailPage() {
                         </tfoot>
                       </table>
                     </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center gap-2 py-6 text-center">
                       <FileText className="size-8 text-muted-foreground/40" />
@@ -793,11 +829,7 @@ export function PODetailPage() {
                 </CardContent>
               </Card>
 
-              <PlaceholderTable
-                title="PO Payment History"
-                icon={<DollarSign className="size-8" />}
-                description="Payment history will appear here once the payment module is implemented."
-              />
+              {/* Hidden until backend exposes purchase-order payment history in the API response. */}
 
               <Card>
                 <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1134,7 +1166,7 @@ export function PODetailPage() {
                   {po.rfqId && (
                     <InfoRow label="Linked RFQ">{readableRfq}</InfoRow>
                   )}
-                  <InfoRow label="Revision">{`Rev. ${(po as { revisionNumber?: number }).revisionNumber ?? 1}`}</InfoRow>
+                  {/* Hidden until /purchase-order/{id} includes revisionNumber. */}
                   <InfoRow label="Project">{po.project?.name ?? '—'}</InfoRow>
                 </CardContent>
               </Card>

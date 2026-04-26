@@ -57,12 +57,7 @@ import { InfoRow } from '@modules/project/components/info-row';
 import { useProjectFolderQuery } from '@modules/project/hooks/use-project-folder';
 import { usePODetailQuery } from '@modules/purchase-orders/hooks/po.hooks';
 import { useAddSCOAttachmentMutation, useRemoveSCOAttachmentMutation } from '@modules/sco/hooks/sco-attachment.hooks';
-import {
-  INITIATED_BY_LABELS,
-  PRIORITY_LABELS,
-  SCO_STATUS_COLORS,
-  getSCOPriorityVariant,
-} from '@modules/sco/constants/sco.constants';
+import { SCO_STATUS_COLORS } from '@modules/sco/constants/sco.constants';
 import {
   useApproveSCOMutation,
   useRejectSCOMutation,
@@ -433,9 +428,9 @@ export function SCODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="flex gap-6 pt-5">
-        <div className="flex-1 min-w-0 space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 2xl:flex-row 2xl:items-start">
+        <div className="min-w-0 flex-1 space-y-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
         <StatsCard
           icon={<DollarSign className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -505,29 +500,15 @@ export function SCODetailPage() {
                   '—'
                 )}
               </InfoRow>
-              <InfoRow label="Priority">
-                {sco.priority ? (
-                  <Badge
-                    variant={getSCOPriorityVariant(sco.priority)}
-                    appearance="light"
-                    size="sm"
-                  >
-                    {PRIORITY_LABELS[sco.priority] ?? sco.priority}
-                  </Badge>
-                ) : (
-                  '—'
-                )}
-              </InfoRow>
-              <InfoRow label="Initiated By">
-                {sco.initiatedBy ? INITIATED_BY_LABELS[sco.initiatedBy] ?? sco.initiatedBy : '—'}
-              </InfoRow>
+              {/* Hidden until /sub-change-order/{id} includes priority. */}
+              {/* Hidden until /sub-change-order/{id} includes initiatedBy. */}
               <InfoRow label="Purchase Order">
                 {purchaseOrderLabel}
               </InfoRow>
               <InfoRow label="Vendor">{purchaseOrderVendor}</InfoRow>
-              <InfoRow label="Vendor Contact">{sco.vendorContactName ?? '—'}</InfoRow>
-              <InfoRow label="Vendor Email">{sco.vendorContactEmail ?? '—'}</InfoRow>
-              <InfoRow label="Vendor Ref #">{sco.vendorReferenceNumber ?? '—'}</InfoRow>
+              {/* Hidden until /sub-change-order/{id} includes vendorContactName. */}
+              {/* Hidden until /sub-change-order/{id} includes vendorContactEmail. */}
+              {/* Hidden until /sub-change-order/{id} includes vendorReferenceNumber. */}
               {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
                 <InfoRow label="Schedule Impact">
                   {sco.scheduleImpactDays} day{sco.scheduleImpactDays !== 1 ? 's' : ''}
@@ -624,7 +605,7 @@ export function SCODetailPage() {
           </Card>
 
           {/* Description */}
-          {(sco.description || sco.reasonForChange || sco.detailedScope) && (
+          {sco.description && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
@@ -637,26 +618,8 @@ export function SCODetailPage() {
                     {sco.description}
                   </p>
                 )}
-                {sco.reasonForChange && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                      Reason for Change
-                    </h4>
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
-                      {sco.reasonForChange}
-                    </p>
-                  </div>
-                )}
-                {sco.detailedScope && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-1">
-                      Detailed Scope
-                    </h4>
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
-                      {sco.detailedScope}
-                    </p>
-                  </div>
-                )}
+                {/* Hidden until /sub-change-order/{id} includes reasonForChange. */}
+                {/* Hidden until /sub-change-order/{id} includes detailedScope. */}
               </CardContent>
             </Card>
           )}
@@ -670,7 +633,68 @@ export function SCODetailPage() {
             </CardHeader>
             <CardContent>
               {sco.lineItems.length > 0 ? (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 md:hidden">
+                  {sco.lineItems.map((li, idx) => (
+                    <div key={li.id} className="rounded-lg border p-3">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                            Line {idx + 1}
+                          </div>
+                          <div className="mt-1 break-words text-sm font-semibold text-foreground">
+                            {li.description}
+                          </div>
+                          {li.notes && (
+                            <div className="mt-1 break-words text-xs text-muted-foreground">
+                              {li.notes}
+                            </div>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                          {money(li.amount)}
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Qty</div>
+                          <div className="font-medium tabular-nums">
+                            {li.quantity ?? li.qty ?? '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Unit</div>
+                          <div className="font-medium">{lookupLabel(li.unit ?? li.unitId)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Unit Price</div>
+                          <div className="font-medium tabular-nums">{money(li.unitPrice)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Cost Code</div>
+                          <div className="break-words font-medium">
+                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '-' : '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
+                    {Number(sco.markupAmount ?? 0) !== 0 && (
+                      <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
+                    )}
+                    {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                    <Separator className="my-2" />
+                    <InfoRow label="Total">
+                      <span className="font-semibold">
+                        {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
+                      </span>
+                    </InfoRow>
+                  </div>
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                   <table className="min-w-[720px] w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
@@ -732,26 +756,17 @@ export function SCODetailPage() {
                           {formatCurrency(sco.amount)}
                         </td>
                       </tr>
-                      {Number((sco as any).markupAmount ?? 0) !== 0 && (
+                      {Number(sco.markupAmount ?? 0) !== 0 && (
                         <tr>
                           <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
                             Markup
                           </td>
                           <td className="pt-1 text-right tabular-nums text-sm">
-                            {formatCurrency(Number((sco as any).markupAmount))}
+                            {money(sco.markupAmount)}
                           </td>
                         </tr>
                       )}
-                      {Number((sco as any).taxAmount ?? 0) !== 0 && (
-                        <tr>
-                          <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                            Tax ({(sco as any).taxPercent ?? 0}%)
-                          </td>
-                          <td className="pt-1 text-right tabular-nums text-sm">
-                            {formatCurrency(Number((sco as any).taxAmount))}
-                          </td>
-                        </tr>
-                      )}
+                      {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                       <tr className="border-t">
                         <td
                           colSpan={6}
@@ -760,12 +775,13 @@ export function SCODetailPage() {
                           Total
                         </td>
                         <td className="pt-2 text-right font-semibold tabular-nums">
-                          {formatCurrency(sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0))}
+                          {formatCurrency(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
                         </td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
                   <FileText className="size-8 text-muted-foreground/40" />
@@ -866,31 +882,19 @@ export function SCODetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Subtotal">{formatCurrency(sco.amount)}</InfoRow>
-                  {Number((sco as any).markupAmount ?? 0) !== 0 && (
-                    <InfoRow label="Markup">{formatCurrency(Number((sco as any).markupAmount))}</InfoRow>
+                  <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
+                  {Number(sco.markupAmount ?? 0) !== 0 && (
+                    <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
                   )}
-                  {Number((sco as any).taxAmount ?? 0) !== 0 && (
-                    <InfoRow label={`Tax (${(sco as any).taxPercent ?? 0}%)`}>
-                      {formatCurrency(Number((sco as any).taxAmount))}
-                    </InfoRow>
-                  )}
+                  {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">
-                      {formatCurrency(sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0))}
+                      {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
                     </span>
                   </InfoRow>
-                  {Number((sco as any).retainagePercent ?? 0) > 0 && (
-                    <InfoRow label={`Retainage (${(sco as any).retainagePercent}%)`}>
-                      {formatCurrency((sco.amount + Number((sco as any).markupAmount ?? 0) + Number((sco as any).taxAmount ?? 0)) * Number((sco as any).retainagePercent) / 100)}
-                    </InfoRow>
-                  )}
-                  {(sco as any).paymentTerms && (
-                    <InfoRow label="Payment Terms">
-                      {String((sco as any).paymentTerms).replace(/_/g, ' ')}
-                    </InfoRow>
-                  )}
+                  {/* Hidden until /sub-change-order/{id} includes retainagePercent. */}
+                  {/* Hidden until /sub-change-order/{id} includes paymentTerms. */}
                   <Separator className="my-2" />
                   <InfoRow label="Purchase Order">
                     {purchaseOrderLabel}
@@ -1074,3 +1078,4 @@ export function SCODetailPage() {
     </div>
   );
 }
+

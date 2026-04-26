@@ -111,6 +111,30 @@ function fileSizeLabel(value: number | null | undefined) {
   return `${(value / 1024).toFixed(1)} KB`;
 }
 
+function lookupLabel(value: unknown) {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const label = record.label ?? record.name ?? record.type;
+    return typeof label === 'string' ? label : null;
+  }
+  return null;
+}
+
+function relatedSCOBadgeVariant(status: string | null | undefined) {
+  switch (status) {
+    case 'APPROVED':
+      return 'success';
+    case 'REJECTED':
+    case 'VOID':
+      return 'destructive';
+    case 'DRAFT':
+    default:
+      return 'secondary';
+  }
+}
+
 function DetailField({
   label,
   children,
@@ -234,6 +258,8 @@ export function InvoiceDetailPage() {
   }
 
   const attachments = (invoice.attachments ?? []) as InvoiceAttachment[];
+  const relatedSCOs = invoice.relatedSCOs ?? [];
+  const relatedSCOCount = relatedSCOs.length || invoice.relatedSCOIds.length;
   const isPaid = invoice.isPaid === true;
   const isDisputed = invoice.isDisputed === true;
   const totalAmount = Number(invoice.totalAmount ?? 0);
@@ -379,9 +405,9 @@ export function InvoiceDetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="flex gap-6 pt-5">
-        <div className="flex-1 min-w-0 space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 2xl:flex-row 2xl:items-start">
+        <div className="min-w-0 flex-1 space-y-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
         <StatsCard
           icon={<Receipt className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -445,9 +471,7 @@ export function InvoiceDetailPage() {
                     <DetailField label="Vendor">{invoice.vendor?.name ?? '-'}</DetailField>
                     <DetailField label="Project">{invoice.project?.name ?? '-'}</DetailField>
                     <DetailField label="Related SCOs">
-                      {invoice.relatedSCOIds.length > 0
-                        ? `${invoice.relatedSCOIds.length} linked`
-                        : '-'}
+                      {relatedSCOCount > 0 ? `${relatedSCOCount} linked` : '-'}
                     </DetailField>
                   </div>
                 </CardContent>
@@ -587,12 +611,78 @@ export function InvoiceDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {invoice.relatedSCOIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                  {relatedSCOs.length > 0 ? (
+                    <div className="space-y-2">
+                      {relatedSCOs.map((sco) => {
+                        const changeTypeLabel = lookupLabel(sco.changeType);
+                        const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
+
+                        return (
+                          <Link
+                            key={sco.id}
+                            to={`/app/project/${projectId}/sub-change-order/${sco.id}`}
+                            className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
+                          >
+                            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="break-words text-sm font-semibold text-foreground">
+                                    {sco.scoNumber ?? 'Sub Change Order'}
+                                  </span>
+                                  {sco.status && (
+                                    <Badge
+                                      variant={relatedSCOBadgeVariant(sco.status)}
+                                      appearance="outline"
+                                      size="sm"
+                                    >
+                                      {sco.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {sco.title && (
+                                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                    {sco.title}
+                                  </div>
+                                )}
+                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                  {sco.date && <span>{formatDate(sco.date)}</span>}
+                                  {changeTypeLabel && <span>{changeTypeLabel}</span>}
+                                  {sco.requestedBy && <span>Requested by {sco.requestedBy}</span>}
+                                  <span>{sco.lineItems.length} line items</span>
+                                  <span>{sco.attachments.length} attachments</span>
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-left sm:text-right">
+                                <div className="text-sm font-semibold tabular-nums text-foreground">
+                                  {money(sco.amount)}
+                                </div>
+                                {sco.impactsSchedule && (
+                                  <div className="mt-1 text-xs text-warning">
+                                    {scheduleImpactDays > 0
+                                      ? `${scheduleImpactDays} day schedule impact`
+                                      : 'Schedule impact'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : invoice.relatedSCOIds.length > 0 ? (
+                    <div className="space-y-2">
                       {invoice.relatedSCOIds.map((id) => (
-                        <Badge key={id} variant="secondary" appearance="outline" size="sm">
-                          {id}
-                        </Badge>
+                        <div key={id} className="rounded-lg border p-3">
+                          <div className="text-sm font-semibold text-foreground">
+                            Related SCO
+                          </div>
+                          <div className="mt-1 break-all text-xs text-muted-foreground">
+                            {id}
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Details unavailable in this response.
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
