@@ -198,7 +198,11 @@
                     "costCode",
                     "costCodeCategory",
                     "professionalRole",
-                    "project"
+                    "project",
+                    "rfq",
+                    "purchaseOrder",
+                    "subChangeOrder",
+                    "invoice"
                 ]
             },
             "ActivityAction": {
