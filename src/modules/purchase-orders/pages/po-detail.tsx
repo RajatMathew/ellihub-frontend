@@ -421,9 +421,11 @@ export function PODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
+      <div className="flex gap-6 pt-5">
+        <div className="flex-1 min-w-0 space-y-5">
       {/* ---- Overdue alert ---- */}
       {isOverdue && (
-        <div className="mt-8 flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <ShieldAlert className="size-4 text-destructive" />
@@ -449,7 +451,7 @@ export function PODetailPage() {
       )}
 
       {/* ---- Stat cards ---- */}
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           icon={<DollarSign className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -489,7 +491,7 @@ export function PODetailPage() {
 
       {/* ---- Cancelled reason banner ---- */}
       {isCancelled && (po as { cancellationReason?: string | null }).cancellationReason && (
-        <div className="mt-5 rounded-lg border border-muted bg-muted/30 px-5 py-4">
+        <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
           <div className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">
             Cancellation Reason
           </div>
@@ -499,10 +501,6 @@ export function PODetailPage() {
         </div>
       )}
 
-      {/* ---- Main layout ---- */}
-      <div className="flex flex-col gap-5 pt-5 xl:flex-row">
-        {/* ---- Left + center content ---- */}
-        <div className="min-w-0 flex-1">
           <div className="grid min-w-0 grid-cols-1 gap-5 min-[1800px]:grid-cols-5">
             {/* Left column: Vendor info + Line items */}
             <div className="min-w-0 space-y-5 min-[1800px]:col-span-3">

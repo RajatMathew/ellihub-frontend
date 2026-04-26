@@ -7,6 +7,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { AlertCircle, FileText, MoreHorizontal, Plus, RefreshCcw, Search, X } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
@@ -38,9 +39,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
+import {
+  InfiniteSearchSelect,
+  type InfiniteSearchSelectOption,
+} from '@app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import { Skeleton } from '@app/components/ui/skeleton';
 import { formatCurrency, formatDate, parsePageParam, parseSizeParam } from '@app/lib/helpers';
+import { vendorsApi } from '@modules/directory/api/vendors.api';
+import { poApi } from '@modules/purchase-orders/api/po.api';
+import type { POListItem } from '@modules/purchase-orders/schemas/po.schema';
 
 import { useInvoiceListQuery } from '../hooks';
 import type { InvoiceListItem, ListInvoiceParams } from '../schemas/invoice.schema';
@@ -75,7 +83,7 @@ export function InvoiceListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+  const size = parseSizeParam(searchParams.get('size'), DEFAULT_PAGE_SIZE);
   const searchQuery = searchParams.get('search') ?? '';
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
@@ -88,7 +96,11 @@ export function InvoiceListPage() {
   const paidFilter = paidParam === 'true' ? true : paidParam === 'false' ? false : undefined;
 
   const [searchInput, setSearchInput] = useState(searchQuery);
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [poSearch, setPoSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
+  const debouncedPOSearch = useDebouncedValue(poSearch.trim(), 250);
 
   useEffect(() => {
     setSearchInput(searchQuery);
@@ -140,9 +152,42 @@ export function InvoiceListPage() {
     !!searchQuery || !!vendorFilter || !!purchaseOrderFilter || paidFilter !== undefined;
 
   const { data, isLoading, isError, refetch } = useInvoiceListQuery(filters);
-  const listData = data?.data ?? [];
+  const listData = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.pagination?.totalItems ?? 0;
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
+
+  const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
+    if (!vendorFilter) return undefined;
+    const invoice = listData.find((item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter);
+    return {
+      value: vendorFilter,
+      label: invoice?.vendor?.name ?? vendorFilter,
+    };
+  }, [listData, vendorFilter]);
+
+  const selectedPOOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
+    if (!purchaseOrderFilter) return undefined;
+    const invoice = listData.find(
+      (item) =>
+        item.purchaseOrderId === purchaseOrderFilter ||
+        item.purchaseOrder?.id === purchaseOrderFilter,
+    );
+    return {
+      value: purchaseOrderFilter,
+      label: invoice?.purchaseOrder?.poNumber ?? purchaseOrderFilter,
+      description: invoice?.vendor?.name ?? undefined,
+    };
+  }, [listData, purchaseOrderFilter]);
+
+  const vendorPicker = useVendorFilterOptions({
+    search: debouncedVendorSearch,
+    selectedOption: selectedVendorOption,
+  });
+  const purchaseOrderPicker = usePurchaseOrderFilterOptions({
+    projectId,
+    search: debouncedPOSearch,
+    selectedOption: selectedPOOption,
+  });
 
   const columns = useMemo<ColumnDef<InvoiceListItem>[]>(
     () => [
@@ -470,6 +515,46 @@ export function InvoiceListPage() {
                   onChange={(event) => handleSearchChange(event.target.value)}
                 />
               </InputWrapper>
+              <div className="w-full sm:w-[210px]">
+                <InfiniteSearchSelect
+                  options={vendorPicker.options}
+                  value={vendorFilter ?? null}
+                  onValueChange={(value) =>
+                    updateParams({ vendorId: value ?? undefined, page: undefined })
+                  }
+                  search={vendorSearch}
+                  onSearchChange={setVendorSearch}
+                  isLoading={vendorPicker.isLoading}
+                  isFetchingNextPage={vendorPicker.isFetchingNextPage}
+                  hasNextPage={vendorPicker.hasNextPage}
+                  onFetchNextPage={() => vendorPicker.fetchNextPage()}
+                  placeholder="All Vendors"
+                  searchPlaceholder="Search vendors..."
+                  emptyMessage="No vendors found."
+                  triggerClassName="h-8 text-xs"
+                  placeholderClassName="text-foreground"
+                />
+              </div>
+              <div className="w-full sm:w-[230px]">
+                <InfiniteSearchSelect
+                  options={purchaseOrderPicker.options}
+                  value={purchaseOrderFilter ?? null}
+                  onValueChange={(value) =>
+                    updateParams({ purchaseOrderId: value ?? undefined, page: undefined })
+                  }
+                  search={poSearch}
+                  onSearchChange={setPoSearch}
+                  isLoading={purchaseOrderPicker.isLoading}
+                  isFetchingNextPage={purchaseOrderPicker.isFetchingNextPage}
+                  hasNextPage={purchaseOrderPicker.hasNextPage}
+                  onFetchNextPage={() => purchaseOrderPicker.fetchNextPage()}
+                  placeholder="All Purchase Orders"
+                  searchPlaceholder="Search purchase orders..."
+                  emptyMessage="No purchase orders found."
+                  triggerClassName="h-8 text-xs"
+                  placeholderClassName="text-foreground"
+                />
+              </div>
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -477,6 +562,8 @@ export function InvoiceListPage() {
                   className="h-8 text-xs"
                   onClick={() => {
                     setSearchInput('');
+                    setVendorSearch('');
+                    setPoSearch('');
                     updateParams({
                       search: undefined,
                       vendorId: undefined,
@@ -542,4 +629,119 @@ export function InvoiceListPage() {
       </Card>
     </div>
   );
+}
+
+function useDebouncedValue(value: string, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debounced;
+}
+
+function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {
+  return {
+    value: po.id,
+    label: po.poNumber ?? po.id,
+    description: [po.vendor?.name, po.total ? formatCurrency(Number(po.total)) : undefined]
+      .filter(Boolean)
+      .join(' - '),
+  };
+}
+
+function useVendorFilterOptions({
+  search,
+  selectedOption,
+}: {
+  search: string;
+  selectedOption?: InfiniteSearchSelectOption;
+}) {
+  const query = useInfiniteQuery({
+    queryKey: ['vendors', 'invoice-filter-picker', search],
+    queryFn: ({ pageParam }) =>
+      vendorsApi.list({
+        search: search || undefined,
+        page: pageParam,
+        limit: 25,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+  });
+
+  const options = useMemo(() => {
+    const next =
+      query.data?.pages.flatMap((page) =>
+        page.data.map((vendor) => ({
+          value: vendor.id,
+          label: vendor.name,
+          description: vendor.email ?? vendor.phone ?? undefined,
+        })),
+      ) ?? [];
+
+    if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
+      return [selectedOption, ...next];
+    }
+
+    return next;
+  }, [query.data?.pages, selectedOption]);
+
+  return {
+    options,
+    isLoading: query.isLoading,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: !!query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+  };
+}
+
+function usePurchaseOrderFilterOptions({
+  projectId,
+  search,
+  selectedOption,
+}: {
+  projectId: string;
+  search: string;
+  selectedOption?: InfiniteSearchSelectOption;
+}) {
+  const query = useInfiniteQuery({
+    queryKey: ['purchase-orders', 'invoice-filter-picker', projectId, search],
+    queryFn: ({ pageParam }) =>
+      poApi.list({
+        projectId,
+        search: search || undefined,
+        page: pageParam,
+        size: 25,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+    enabled: !!projectId,
+  });
+
+  const options = useMemo(() => {
+    const next =
+      query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
+
+    if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
+      return [selectedOption, ...next];
+    }
+
+    return next;
+  }, [query.data?.pages, selectedOption]);
+
+  return {
+    options,
+    isLoading: query.isLoading,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: !!query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+  };
 }

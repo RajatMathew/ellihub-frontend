@@ -97,7 +97,7 @@ export default function ProjectSCOs() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size')) || DEFAULT_PAGE_SIZE;
+  const size = parseSizeParam(searchParams.get('size'), DEFAULT_PAGE_SIZE);
   const sortBy: SortByField = isSortByField(searchParams.get('sortBy'))
     ? (searchParams.get('sortBy') as SortByField)
     : 'createdAt';
@@ -505,7 +505,7 @@ export default function ProjectSCOs() {
                   <SelectItem value="all">All Change Types</SelectItem>
                   {(changeTypes ?? []).map((type) => (
                     <SelectItem key={type.id} value={type.id}>
-                      {type.name ?? type.code ?? type.id}
+                      {type.label ?? type.name ?? type.code ?? type.id}
                     </SelectItem>
                   ))}
                 </SelectContent>

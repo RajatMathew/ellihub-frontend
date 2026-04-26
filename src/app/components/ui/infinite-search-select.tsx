@@ -12,6 +12,7 @@ import {
   CommandList,
 } from '@app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import { cn } from '@app/lib/utils';
 
 export type InfiniteSearchSelectOption = {
   value: string;
@@ -34,6 +35,9 @@ type InfiniteSearchSelectProps = {
   searchPlaceholder?: string;
   emptyMessage?: string;
   loadingMessage?: string;
+  triggerClassName?: string;
+  contentClassName?: string;
+  placeholderClassName?: string;
 };
 
 export function InfiniteSearchSelect({
@@ -51,6 +55,9 @@ export function InfiniteSearchSelect({
   searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
   loadingMessage = 'Loading...',
+  triggerClassName,
+  contentClassName,
+  placeholderClassName,
 }: InfiniteSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -72,16 +79,24 @@ export function InfiniteSearchSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            triggerClassName,
+          )}
         >
-          <span className={selectedOption ? 'truncate' : 'truncate text-muted-foreground'}>
+          <span
+            className={cn(
+              'truncate',
+              selectedOption ? undefined : placeholderClassName ?? 'text-muted-foreground',
+            )}
+          >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60 -me-0.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="overflow-hidden p-0"
+        className={cn('overflow-hidden p-0', contentClassName)}
         align="start"
         sideOffset={4}
         style={triggerWidth > 0 ? { width: triggerWidth } : undefined}

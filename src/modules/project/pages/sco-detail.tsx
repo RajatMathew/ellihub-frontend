@@ -433,7 +433,9 @@ export function SCODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="flex gap-6 pt-5">
+        <div className="flex-1 min-w-0 space-y-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           icon={<DollarSign className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -472,7 +474,7 @@ export function SCODetailPage() {
       </div>
 
       {hasReasonBanner && (
-        <div className="mt-5 rounded-lg border border-muted bg-muted/30 px-5 py-4">
+        <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             <AlertTriangle className="size-4" />
             {isRejected ? 'Rejection Reason' : 'Void Reason'}
@@ -483,10 +485,6 @@ export function SCODetailPage() {
         </div>
       )}
 
-      {/* ---- Main layout ---- */}
-      <div className="flex flex-col gap-5 pt-5 xl:flex-row">
-        {/* Left column */}
-        <div className="min-w-0 flex-1 space-y-5">
           {/* General Info */}
           <Card>
             <CardHeader>

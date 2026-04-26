@@ -379,7 +379,9 @@ export function InvoiceDetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="flex gap-6 pt-5">
+        <div className="flex-1 min-w-0 space-y-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           icon={<Receipt className="size-5 text-primary" />}
           bgClass="bg-primary/10"
@@ -418,7 +420,7 @@ export function InvoiceDetailPage() {
       </div>
 
       {isDisputed && invoice.disputeReason && (
-        <div className="mt-8 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-destructive">
             <AlertTriangle className="size-4" />
             Dispute Reason
@@ -427,8 +429,6 @@ export function InvoiceDetailPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-5 pt-5 xl:flex-row">
-        <div className="min-w-0 flex-1">
           <div className="grid min-w-0 grid-cols-1 gap-5 min-[1800px]:grid-cols-5">
             <div className="min-w-0 space-y-5 min-[1800px]:col-span-3">
               <Card>

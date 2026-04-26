@@ -7,6 +7,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   ClipboardList,
@@ -53,6 +54,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@app/components/ui/dialog';
+import {
+  InfiniteSearchSelect,
+  type InfiniteSearchSelectOption,
+} from '@app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@app/components/ui/input';
 import {
   Select,
@@ -76,7 +81,7 @@ import type {
   POListItem,
   POStatusName,
 } from '@modules/purchase-orders/schemas/po.schema';
-import { useVendorsQuery } from '@modules/directory/hooks';
+import { vendorsApi } from '@modules/directory/api/vendors.api';
 import { useLookupsQuery } from '../hooks/lookup.hooks';
 
 /* ---- Constants ---- */
@@ -157,7 +162,9 @@ export default function ProjectPOs() {
   // Local search input tracks typing; debounce syncs to URL
   const searchQuery = searchParams.get('search') ?? '';
   const [searchInput, setSearchInput] = useState(searchQuery);
+  const [vendorSearch, setVendorSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
 
   useEffect(() => {
     setSearchInput(searchQuery);
@@ -212,18 +219,28 @@ export default function ProjectPOs() {
 
   const { data, isLoading, isError, refetch } = usePOsQuery(filters);
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
-  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000, sortBy: 'name' });
   const cancelMutation = useCancelPOMutation();
   const [cancelTarget, setCancelTarget] = useState<POListItem | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const listData = data?.data ?? [];
+  const listData = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasReadableRfq = listData.some((po) => !!getReadableRfq(po));
-  const vendorOptions = vendorsData?.data ?? [];
   const tradeCategoryLabelById = useMemo(
     () => new Map((tradeCategories ?? []).map((cat) => [cat.id, cat.label ?? cat.name ?? cat.id])),
     [tradeCategories],
   );
+  const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
+    if (!vendorFilter) return undefined;
+    const po = listData.find((item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter);
+    return {
+      value: vendorFilter,
+      label: po?.vendor?.name ?? vendorFilter,
+    };
+  }, [listData, vendorFilter]);
+  const vendorPicker = useVendorFilterOptions({
+    search: debouncedVendorSearch,
+    selectedOption: selectedVendorOption,
+  });
 
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
 
@@ -588,27 +605,26 @@ export default function ProjectPOs() {
                   onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </InputWrapper>
-              <Select
-                value={vendorFilter ?? 'all'}
-                onValueChange={(value) =>
-                  updateParams({
-                    vendorId: value === 'all' ? undefined : value,
-                    page: undefined,
-                  })
-                }
-              >
-                <SelectTrigger className="h-8 w-full text-xs sm:w-[180px]">
-                  <SelectValue placeholder="All Vendors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vendors</SelectItem>
-                  {vendorOptions.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-full sm:w-[180px]">
+                <InfiniteSearchSelect
+                  options={vendorPicker.options}
+                  value={vendorFilter ?? null}
+                  onValueChange={(value) =>
+                    updateParams({ vendorId: value ?? undefined, page: undefined })
+                  }
+                  search={vendorSearch}
+                  onSearchChange={setVendorSearch}
+                  isLoading={vendorPicker.isLoading}
+                  isFetchingNextPage={vendorPicker.isFetchingNextPage}
+                  hasNextPage={vendorPicker.hasNextPage}
+                  onFetchNextPage={() => vendorPicker.fetchNextPage()}
+                  placeholder="All Vendors"
+                  searchPlaceholder="Search vendors..."
+                  emptyMessage="No vendors found."
+                  triggerClassName="h-8 text-xs"
+                  placeholderClassName="text-foreground"
+                />
+              </div>
               <Select
                 value={tradeCategoryFilter ?? 'all'}
                 onValueChange={(value) =>
@@ -637,6 +653,7 @@ export default function ProjectPOs() {
                   className="h-8 text-xs"
                   onClick={() => {
                     setSearchInput('');
+                    setVendorSearch('');
                     updateParams({
                       search: undefined,
                       status: undefined,
@@ -763,4 +780,63 @@ export default function ProjectPOs() {
     </Dialog>
     </>
   );
+}
+
+function useDebouncedValue(value: string, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debounced;
+}
+
+function useVendorFilterOptions({
+  search,
+  selectedOption,
+}: {
+  search: string;
+  selectedOption?: InfiniteSearchSelectOption;
+}) {
+  const query = useInfiniteQuery({
+    queryKey: ['vendors', 'purchase-order-filter-picker', search],
+    queryFn: ({ pageParam }) =>
+      vendorsApi.list({
+        search: search || undefined,
+        page: pageParam,
+        limit: 25,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+  });
+
+  const options = useMemo(() => {
+    const next =
+      query.data?.pages.flatMap((page) =>
+        page.data.map((vendor) => ({
+          value: vendor.id,
+          label: vendor.name,
+          description: vendor.email ?? vendor.phone ?? undefined,
+        })),
+      ) ?? [];
+
+    if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
+      return [selectedOption, ...next];
+    }
+
+    return next;
+  }, [query.data?.pages, selectedOption]);
+
+  return {
+    options,
+    isLoading: query.isLoading,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: !!query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+  };
 }
