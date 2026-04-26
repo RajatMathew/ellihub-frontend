@@ -2,7 +2,7 @@ import z from 'zod';
 
 export const SCOLineItemSchema = z.object({
     description: z.string().min(1).optional().nullable(),
-    qty: z.number().positive(),
+    quantity: z.number().positive(),
     unitId: z.ulid(),
     unitPrice: z.number().nonnegative(),
     costCodeId: z.ulid().optional().nullable(),

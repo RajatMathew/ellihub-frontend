@@ -139,7 +139,7 @@ export const ScoService = {
         }
 
         const lineAmounts = lineItems.map((li) =>
-            new Prisma.Decimal(li.qty).times(new Prisma.Decimal(li.unitPrice))
+            new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice))
         );
         const amount = lineAmounts.reduce((sum, v) => sum.plus(v), new Prisma.Decimal(0));
 
@@ -170,7 +170,7 @@ export const ScoService = {
                     subCoId: sco.id,
                     sequenceNumber: i + 1,
                     description: li.description ?? null,
-                    qty: li.qty,
+                    quantity: li.quantity,
                     unitId: li.unitId,
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],
@@ -250,7 +250,7 @@ export const ScoService = {
         }
 
         const lineAmounts = lineItems.map((li) =>
-            new Prisma.Decimal(li.qty).times(new Prisma.Decimal(li.unitPrice))
+            new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice))
         );
         const amount = lineAmounts.reduce((sum, v) => sum.plus(v), new Prisma.Decimal(0));
 
@@ -276,7 +276,7 @@ export const ScoService = {
                     subCoId: id,
                     sequenceNumber: i + 1,
                     description: li.description ?? null,
-                    qty: li.qty,
+                    quantity: li.quantity,
                     unitId: li.unitId,
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],

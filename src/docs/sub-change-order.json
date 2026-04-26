@@ -193,10 +193,10 @@
             "SCOStatus": { "type": "string", "enum": ["DRAFT", "APPROVED", "REJECTED", "VOID"] },
             "SCOLineItemInput": {
                 "type": "object",
-                "required": ["qty", "unitId", "unitPrice"],
+                "required": ["quantity", "unitId", "unitPrice"],
                 "properties": {
                     "description": { "type": "string", "nullable": true },
-                    "qty": { "type": "number" },
+                    "quantity": { "type": "number" },
                     "unitId": { "type": "string" },
                     "unitPrice": { "type": "number" },
                     "costCodeId": { "type": "string", "nullable": true }
@@ -254,7 +254,7 @@
                     "subCoId": { "type": "string" },
                     "sequenceNumber": { "type": "integer" },
                     "description": { "type": "string", "nullable": true },
-                    "qty": { "type": "number" },
+                    "quantity": { "type": "number" },
                     "unitId": { "type": "string" },
                     "unit": { "type": "object", "description": "Lookup row for the unit" },
                     "unitPrice": { "type": "string" },

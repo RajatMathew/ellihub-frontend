@@ -186,7 +186,7 @@ model SubCOLineItem {
     subCoId        String         @map("subCoid")
     sequenceNumber Int
     description    String?
-    qty            Float
+    quantity       Float
     unit           Lookup         @relation("SCOLineItemUnit", fields: [unitId], references: [id])
     unitId         String
     unitPrice      Decimal        @db.Decimal(10, 2)
