@@ -5,6 +5,7 @@ import v1 from '@api/V1';
 import { errorHandler } from '@handler/error';
 import { swaggerUI } from '@hono/swagger-ui';
 import { cors_config } from '@lib/cors';
+import { startScheduler } from '@lib/scheduler';
 import { performanceMiddleware } from '@middleware';
 import { NotFoundError } from '@utils';
 import { Hono } from 'hono';
@@ -35,6 +36,8 @@ app.get('/api-doc.json', (c) => {
 app.get('/api-docs', swaggerUI({ url: '/api-doc.json' }));
 
 app.route('/api/v1', v1);
+
+startScheduler();
 
 app.use(
     '/*',

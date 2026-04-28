@@ -1,199 +1,124 @@
 model Vendor {
-  id           String       @id
-  name         String
-  type         VendorType
-  categoryTags String[]
-  taxId        String?
-  status       VendorStatus
-  address      String?
-  email        String?
-  phone        String?
-  website      String?
-  paymentTerms PaymentTerms @default(NET_30)
-  notes        String?
+    id           String       @id
+    name         String
+    type         Lookup?      @relation(fields: [typeId], references: [id])
+    typeId       String?
+    categoryTags String[]
+    taxId        String?
+    status       VendorStatus
+    address      String?
+    email        String?
+    phone        String?
+    website      String?
+    fax          String?
+    paymentTerms PaymentTerms @default(NET_30)
+    notes        String?
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
 
-  rfqs             RFQ[]
-  quotes           VendorQuote[]
-  vendorInvites    RFQVendorInvite[]
-  purchaseOrders   PurchaseOrder[]
-  purchaseOrderCOs PurchaseOrderCO[]
-  invoices         Invoice[]
-  contactLinks     ContactVendor[]
+    contacts        Contact[]
+    documents       VendorDocument[]
+    rfqs            RFQ[]
+    rfqvendorQuotes RFQVendorQuote[]
+    purchaseOrders  PurchaseOrder[]
+    invoices        Invoice[]
 
-  @@index([name])
-  @@index([status])
-  @@index([type])
+    @@index([name])
+    @@index([status])
 }
 
-enum PaymentTerms {
-  NET_15
-  NET_30
-  NET_45
-  NET_60
-  NET_90
-  DUE_ON_RECEIPT
-}
+model VendorDocument {
+    id       String @id
+    fileId   String
+    file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+    vendorId String
+    vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
-enum VendorType {
-  MATERIAL
-  FABRICATION
-  INSTALLATION
+    expiresOn DateTime? @db.Date
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([vendorId, fileId])
+    @@index([fileId])
 }
 
 enum VendorStatus {
-  ACTIVE
-  INACTIVE
-  BLACKLISTED
-  PROSPECT
-}
-
-model GCType {
-  id          String  @id
-  name        String  @unique
-  code        String  @unique
-  description String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  generalContractors GeneralContractor[]
-
-  @@index([name])
-  @@index([code])
+    ACTIVE
+    INACTIVE
 }
 
 model GeneralContractor {
-  id               String       @id
-  name             String
-  gcTypeId         String
-  gcType           GCType       @relation(fields: [gcTypeId], references: [id])
-  status           GCStatus     @default(ACTIVE)
-  address          String?
-  email            String?
-  phone            String?
-  website          String?
-  paymentTerms     PaymentTerms @default(NET_30)
-  retainagePercent Float        @default(10.0)
+    id               String       @id
+    name             String
+    gcTypeId         String
+    gcType           Lookup       @relation(fields: [gcTypeId], references: [id])
+    status           GCStatus     @default(ACTIVE)
+    address          String?
+    email            String?
+    phone            String?
+    website          String?
+    fax              String?
+    paymentTerms     PaymentTerms @default(NET_30)
+    retainagePercent Float        @default(10.0)
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
 
-  projects     Project[]
-  contactLinks ContactGC[]
+    contacts  Contact[]
+    documents GCDocument[]
+    projects  Project[]
 
-  @@index([name])
-  @@index([status])
-  @@index([gcTypeId])
-  @@index([deletedAt])
+    @@index([name])
+    @@index([status])
+    @@index([gcTypeId])
+    @@index([deletedAt])
 }
 
 enum GCStatus {
-  ACTIVE
-  PROSPECTING
-  INACTIVE
-  BLACKLISTED
+    ACTIVE
+    INACTIVE
 }
 
-model ProfessionalRole {
-  id   String @id
-  name String @unique
+model GCDocument {
+    id     String            @id
+    gcId   String
+    gc     GeneralContractor @relation(fields: [gcId], references: [id], onDelete: Cascade)
+    fileId String
+    file   File              @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+    expiresOn DateTime? @db.Date
 
-  contacts Contact[]
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([gcId, fileId])
+    @@index([fileId])
 }
 
 model Contact {
-  id                 String            @id
-  fullName           String
-  professionalRoleId String?
-  professionalRole   ProfessionalRole? @relation(fields: [professionalRoleId], references: [id])
-  email              Json?
-  phoneNumber        Json?
-  tags               String[]
+    id                 String   @id
+    fullName           String
+    professionalRoleId String?
+    professionalRole   Lookup?  @relation(fields: [professionalRoleId], references: [id])
+    email              String?
+    phoneNumber        String?
+    tags               String[]
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+    vendorId            String?
+    vendor              Vendor?            @relation(fields: [vendorId], references: [id])
+    generalContractorId String?
+    generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
 
-  vendorLinks       ContactVendor[]
-  gcLinks           ContactGC[]
-  primeChangeOrders PrimeChangeOrder[]
-  purchaseOrders    PurchaseOrder[]
+    deletedAt DateTime?
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
 
-  @@index([fullName])
-  @@index([deletedAt])
-}
-
-model ContactVendor {
-  id        String  @id
-  contactId String
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  vendorId  String
-  vendor    Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  isPrimary Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([contactId, vendorId])
-}
-
-model ContactGC {
-  id                  String            @id
-  contactId           String
-  contact             Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  generalContractorId String
-  generalContractor   GeneralContractor @relation(fields: [generalContractorId], references: [id], onDelete: Cascade)
-  isPrimary           Boolean           @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([contactId, generalContractorId])
-}
-
-model CostCodeCategory {
-  id          String    @id
-  name        String
-  description String?
-  tenantId    String    @default("default")
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  costCodes CostCode[]
-
-  @@index([deletedAt])
-  @@index([tenantId])
-}
-
-model CostCode {
-  id                 String           @id
-  name               String
-  code               String
-  tenantId           String           @default("default")
-  description        String           @default("")
-  costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
-  costCodeCategoryId String
-
-  primeChangeOrders PrimeChangeOrder[]
-  purchaseOrderCOs  PurchaseOrderCO[]
-  rfqs              RFQ[]
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([code, tenantId])
-  @@index([code])
-  @@index([deletedAt])
-  @@index([tenantId])
+    @@index([fullName])
+    @@index([deletedAt])
+    @@index([vendorId])
+    @@index([generalContractorId])
 }

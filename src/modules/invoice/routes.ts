@@ -1,224 +1,131 @@
 import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
-import { Context, Hono } from 'hono';
+import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import invoiceStatusRoutes from './invoice-status.routes';
 import {
-    DisputeSchema,
+    AddInvoiceAttachmentSchema,
+    DisputeInvoiceSchema,
     InvoiceCreateSchema,
-    InvoiceLineItemCreateSchema,
-    InvoiceLineItemUpdateSchema,
-    InvoiceRejectSchema,
     InvoiceUpdateSchema,
-    MarkPaidSchema,
-    ResolveDisputeSchema,
+    MarkInvoicePaidSchema,
+    MarkInvoiceUnpaidSchema,
+    RemoveInvoiceAttachmentSchema,
+    ResolveInvoiceDisputeSchema,
 } from './models';
-import { InvoiceService } from './services';
+import { InvoiceService } from './service';
 
 const app = new Hono();
 
-// Mount lookup table sub-routes
-app.route('/statuses', invoiceStatusRoutes);
-
-// --- List Invoices ---
-
 app.get(
     '/',
-    requirePermission({ project: ['view-all'] }),
-    paginationMiddleware({
-        defaultSize: 25,
-        defaultSortBy: 'invoiceDate',
-        defaultSortOrder: 'desc',
-    }),
-    async (c: Context) => {
+    requirePermission({ invoice: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c) => {
         const pagination = c.get('pagination');
-        const query = c.req.query();
-
-        const {
-            projectId,
-            status,
-            vendorId,
-            poId,
-            invoiceType,
-            category,
-            startDate,
-            endDate,
-            isPaid,
-            isDisputed,
-            isOverdue,
-        } = query;
-
-        pagination.filter = {
-            ...pagination.filter,
-            ...(projectId && { projectId }),
-            ...(status && { status }),
-            ...(vendorId && { vendorId }),
-            ...(poId && { poId }),
-            ...(invoiceType && { invoiceType }),
-            ...(category && { category }),
-            ...(startDate && { startDate }),
-            ...(endDate && { endDate }),
-            ...(isPaid && { isPaid }),
-            ...(isDisputed && { isDisputed }),
-            ...(isOverdue && { isOverdue }),
-        };
-
-        const { data, count } = await InvoiceService.listInvoices(pagination);
+        const { data, count } = await InvoiceService.getInvoices(pagination);
         return success(c, data, 200, 'OK', count);
     }
 );
 
-// --- Create Invoice ---
-
-app.post(
-    '/',
-    requirePermission({ project: ['create'] }),
-    zValidator('json', InvoiceCreateSchema),
-    async (c) => {
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const invoice = await InvoiceService.createInvoice(data, userId);
-        return success(c, invoice, 201);
-    }
-);
-
-// --- Static routes (before :id) ---
-
-app.get(
-    '/approval-queue',
-    requirePermission({ project: ['view-all'] }),
-    paginationMiddleware({
-        defaultSize: 25,
-        defaultSortBy: 'dueDate',
-        defaultSortOrder: 'asc',
-    }),
-    async (c: Context) => {
-        const pagination = c.get('pagination');
-        const { data, count } = await InvoiceService.listApprovalQueue(pagination);
-        return success(c, data, 200, 'OK', count);
-    }
-);
-
-// --- Workflow ---
-
-app.post('/:id/approve', requirePermission({ project: ['update'] }), async (c) => {
-    const id = c.req.param('id');
-    const userId = c.get('user')!.id;
-    const invoice = await InvoiceService.approveInvoice(id, userId);
-    return success(c, invoice);
+app.get('/by-po/:poId', requirePermission({ invoice: ['read'] }), async (c) => {
+    const poId = c.req.param('poId');
+    const invoices = await InvoiceService.getInvoicesByPo(poId);
+    return success(c, invoices);
 });
 
-app.post(
-    '/:id/reject',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', InvoiceRejectSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const invoice = await InvoiceService.rejectInvoice(id, data, userId);
-        return success(c, invoice);
-    }
-);
-
-app.post(
-    '/:id/mark-paid',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', MarkPaidSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const result = await InvoiceService.markPaid(id, data, userId);
-        return success(c, result);
-    }
-);
-
-// --- Dispute ---
-
-app.post(
-    '/:id/dispute',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', DisputeSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const invoice = await InvoiceService.disputeInvoice(id, data);
-        return success(c, invoice);
-    }
-);
-
-app.post(
-    '/:id/resolve-dispute',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', ResolveDisputeSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const invoice = await InvoiceService.resolveDispute(id, data);
-        return success(c, invoice);
-    }
-);
-
-// --- Line Items ---
-
-app.post(
-    '/:id/line-items',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', InvoiceLineItemCreateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const result = await InvoiceService.addLineItem(id, data);
-        return success(c, result, 201);
-    }
-);
-
-app.put(
-    '/:id/line-items/:lineItemId',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', InvoiceLineItemUpdateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const lineItemId = c.req.param('lineItemId');
-        const data = c.req.valid('json');
-        const result = await InvoiceService.updateLineItem(id, lineItemId, data);
-        return success(c, result);
-    }
-);
-
-app.delete('/:id/line-items/:lineItemId', requirePermission({ project: ['update'] }), async (c) => {
-    const id = c.req.param('id');
-    const lineItemId = c.req.param('lineItemId');
-    await InvoiceService.removeLineItem(id, lineItemId);
-    return success(c, null, 200, 'Line item removed');
-});
-
-// --- Invoice Detail (must be after all static sub-routes) ---
-
-app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
+app.get('/:id', requirePermission({ invoice: ['read'] }), async (c) => {
     const id = c.req.param('id');
     const invoice = await InvoiceService.getInvoice(id);
     return success(c, invoice);
 });
 
+app.post(
+    '/',
+    requirePermission({ invoice: ['create'] }),
+    zValidator('json', InvoiceCreateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.createInvoice(data, c.get('user')!.id);
+        return success(c, invoice, 201);
+    }
+);
+
 app.put(
-    '/:id',
-    requirePermission({ project: ['update'] }),
+    '/',
+    requirePermission({ invoice: ['update'] }),
     zValidator('json', InvoiceUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const invoice = await InvoiceService.updateInvoice(id, data);
+        const invoice = await InvoiceService.updateInvoice(data, c.get('user')!.id);
         return success(c, invoice);
     }
 );
 
-app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
-    const id = c.req.param('id');
-    await InvoiceService.deleteInvoice(id);
-    return success(c, null, 200, 'Invoice deleted');
-});
+app.patch(
+    '/mark-paid',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', MarkInvoicePaidSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.markPaid(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/mark-unpaid',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', MarkInvoiceUnpaidSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.markUnpaid(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/dispute',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', DisputeInvoiceSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.disputeInvoice(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/resolve-dispute',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', ResolveInvoiceDisputeSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const invoice = await InvoiceService.resolveDispute(data, c.get('user')!.id);
+        return success(c, invoice);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', AddInvoiceAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await InvoiceService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ invoice: ['update'] }),
+    zValidator('json', RemoveInvoiceAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await InvoiceService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
 
 export default app;

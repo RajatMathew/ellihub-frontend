@@ -1,52 +1,37 @@
-import { PrismaClient } from '@db/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { prisma } from '@lib/prisma';
+import { LookupType } from '@modules/lookup/models';
 import { ulid } from 'ulid';
 
-const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+const stages = ['INSTALLATION', 'FABRICATION', 'SUBMITTALS', 'BUYOUT', 'CLOSEOUT', 'PUNCHLIST'];
 
-const stages = [
-    { name: 'Installation', code: 'INSTALLATION', color: 'blue' },
-    { name: 'Fabrication', code: 'FABRICATION', color: 'purple' },
-    { name: 'Submittals', code: 'SUBMITTALS', color: 'yellow' },
-    { name: 'Buyout', code: 'BUYOUT', color: 'orange' },
-    { name: 'Closeout', code: 'CLOSEOUT', color: 'green' },
-    { name: 'Punchlist', code: 'PUNCHLIST', color: 'red' },
-];
+export const seedProjectStages = async () => {
+    console.log('Seeding project stages...');
 
-async function seed() {
-    console.log('Seeding project stages...\n');
-
-    for (const stage of stages) {
-        const existing = await prisma.projectStage.findFirst({
-            where: { code: stage.code },
+    for (const label of stages) {
+        const existing = await prisma.lookup.findUnique({
+            where: { type_label: { type: LookupType.PROJECT_STAGE, label } },
         });
 
         if (existing) {
-            console.log(`  Already exists: ${stage.name} (${existing.id})`);
-            continue;
+            console.log(`Already exists: ${label} (${existing.id})`);
+        } else {
+            const result = await prisma.lookup.create({
+                data: {
+                    id: ulid(),
+                    type: LookupType.PROJECT_STAGE,
+                    label,
+                },
+            });
+            console.log(`Created: ${result.label} (${result.id})`);
         }
-
-        const created = await prisma.projectStage.create({
-            data: {
-                id: ulid(),
-                ...stage,
-            },
-        });
-
-        console.log(`  Created: ${created.name} [${created.code}] (${created.id})`);
     }
 
-    console.log('\nProject stage seed complete!');
-}
+    console.log('\nSeed complete!');
+};
 
-seed()
-    .catch((e) => {
+if (process.argv[1]?.endsWith('seed-project-stages.ts')) {
+    seedProjectStages().catch((e) => {
         console.error('Seed failed:', e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}

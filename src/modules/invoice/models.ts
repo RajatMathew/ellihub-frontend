@@ -1,125 +1,66 @@
-import { z } from 'zod';
+import z from 'zod';
 
-// --- Enums ---
-
-export const InvoiceTypeEnum = z.enum(['PRELIMINARY', 'FINAL', 'REVISION']);
-export const InvoiceCategoryEnum = z.enum([
-    'MATERIALS',
-    'LABOR',
-    'EQUIPMENT',
-    'SUBCONTRACTOR',
-    'PROFESSIONAL_SERVICES',
-    'OTHER',
-]);
-export const PaymentMethodEnum = z.enum(['CHECK', 'ACH', 'WIRE', 'CREDIT_CARD', 'OTHER']);
-
-// --- Line Items ---
-
-export const InvoiceLineItemCreateSchema = z.object({
-    poLineItemId: z.string().min(1).optional(),
-    description: z.string().min(1),
-    qty: z.number().positive(),
-    unit: z.string().min(1),
-    unitPrice: z.number().min(0),
-    costCodeId: z.string().min(1).optional(),
+export const InvoiceCreateSchema = z.object({
+    projectId: z.ulid(),
+    vendorId: z.ulid(),
+    purchaseOrderId: z.ulid().optional().nullable(),
+    invoiceNumber: z.string().min(1),
+    invoiceDate: z.iso.date(),
+    dueDate: z.iso.date(),
+    totalAmount: z.number().nonnegative(),
+    taxAmount: z.number().nonnegative().optional().nullable(),
+    taxRate: z.number().nonnegative().optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    relatedSCOIds: z.array(z.ulid()).default([]),
+    attachments: z.array(z.ulid()).min(1, 'At least one attachment is required'),
 });
-
-export type InvoiceLineItemCreateRequest = z.infer<typeof InvoiceLineItemCreateSchema>;
-
-export const InvoiceLineItemUpdateSchema = z
-    .object({
-        poLineItemId: z.string().min(1).optional().nullable(),
-        description: z.string().min(1),
-        qty: z.number().positive(),
-        unit: z.string().min(1),
-        unitPrice: z.number().min(0),
-        costCodeId: z.string().min(1).optional().nullable(),
-    })
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: 'At least one field is required',
-    });
-
-export type InvoiceLineItemUpdateRequest = z.infer<typeof InvoiceLineItemUpdateSchema>;
-
-// --- Invoice CRUD ---
-
-export const InvoiceCreateSchema = z
-    .object({
-        poId: z.string().min(1).optional(),
-        projectId: z.string().min(1).optional(),
-        vendorId: z.string().min(1).optional(),
-        invoiceNumber: z.string().min(1).max(100),
-        invoiceDate: z.coerce.date(),
-        dueDate: z.coerce.date().optional(),
-        totalAmount: z.number().positive(),
-        invoiceType: InvoiceTypeEnum.optional(),
-        category: InvoiceCategoryEnum.optional(),
-        notes: z.string().optional(),
-        invoiceDocumentId: z.string().min(1).optional(),
-        retainagePercent: z.number().min(0).max(100).optional(),
-        taxAmount: z.number().min(0).optional(),
-        taxRate: z.number().min(0).max(100).optional(),
-        relatedSCOIds: z.array(z.string().min(1)).optional(),
-        lineItems: z.array(InvoiceLineItemCreateSchema).optional(),
-    })
-    .refine((data) => data.poId || (data.projectId && data.vendorId), {
-        message: 'Either poId or both projectId and vendorId are required',
-    });
 
 export type InvoiceCreateRequest = z.infer<typeof InvoiceCreateSchema>;
 
-export const InvoiceUpdateSchema = z
-    .object({
-        invoiceNumber: z.string().min(1).max(100),
-        invoiceDate: z.coerce.date(),
-        dueDate: z.coerce.date(),
-        totalAmount: z.number().positive(),
-        invoiceType: InvoiceTypeEnum,
-        category: InvoiceCategoryEnum.nullable(),
-        notes: z.string().nullable(),
-        invoiceDocumentId: z.string().min(1),
-        retainagePercent: z.number().min(0).max(100),
-        taxAmount: z.number().min(0).nullable(),
-        taxRate: z.number().min(0).max(100).nullable(),
-        relatedSCOIds: z.array(z.string().min(1)),
-    })
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: 'At least one field is required',
-    });
+export const InvoiceUpdateSchema = InvoiceCreateSchema.omit({ attachments: true }).extend({
+    id: z.ulid(),
+});
 
 export type InvoiceUpdateRequest = z.infer<typeof InvoiceUpdateSchema>;
 
-// --- Workflow ---
-
-export const InvoiceRejectSchema = z.object({
-    reason: z.string().min(20),
+export const AddInvoiceAttachmentSchema = z.object({
+    invoiceId: z.ulid(),
+    documentId: z.ulid(),
 });
 
-export type InvoiceRejectRequest = z.infer<typeof InvoiceRejectSchema>;
+export type AddInvoiceAttachmentRequest = z.infer<typeof AddInvoiceAttachmentSchema>;
 
-export const MarkPaidSchema = z.object({
-    paidAmount: z.number().positive(),
-    paidDate: z.coerce.date(),
-    paymentReference: z.string().max(100).optional(),
-    paymentMethod: PaymentMethodEnum.optional(),
-    notes: z.string().optional(),
+export const RemoveInvoiceAttachmentSchema = z.object({
+    id: z.ulid(),
 });
 
-export type MarkPaidRequest = z.infer<typeof MarkPaidSchema>;
+export type RemoveInvoiceAttachmentRequest = z.infer<typeof RemoveInvoiceAttachmentSchema>;
 
-// --- Dispute ---
+export const MarkInvoicePaidSchema = z.object({
+    id: z.ulid(),
+    paidDate: z.iso.date(),
+    paymentMethodId: z.ulid(),
+    paymentReference: z.string().min(1).optional().nullable(),
+    paymentNotes: z.string().min(1).optional().nullable(),
+});
 
-export const DisputeSchema = z.object({
+export type MarkInvoicePaidRequest = z.infer<typeof MarkInvoicePaidSchema>;
+
+export const MarkInvoiceUnpaidSchema = z.object({
+    id: z.ulid(),
+});
+
+export type MarkInvoiceUnpaidRequest = z.infer<typeof MarkInvoiceUnpaidSchema>;
+
+export const DisputeInvoiceSchema = z.object({
+    id: z.ulid(),
     disputeReason: z.string().min(1),
-    notifyVendor: z.boolean().optional(),
 });
 
-export type DisputeRequest = z.infer<typeof DisputeSchema>;
+export type DisputeInvoiceRequest = z.infer<typeof DisputeInvoiceSchema>;
 
-export const ResolveDisputeSchema = z.object({
-    resolution: z.string().min(1),
+export const ResolveInvoiceDisputeSchema = z.object({
+    id: z.ulid(),
 });
 
-export type ResolveDisputeRequest = z.infer<typeof ResolveDisputeSchema>;
+export type ResolveInvoiceDisputeRequest = z.infer<typeof ResolveInvoiceDisputeSchema>;

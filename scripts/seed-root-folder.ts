@@ -29,13 +29,19 @@ export const seedRootFolder = async () => {
         console.log('Created root folder.');
     } else console.log('Root folder already exists');
 
-    const rootSubFolders = ['projects', 'employees', 'gc'];
+    const rootSubFolders = [
+        { name: 'projects', displayName: 'Projects' },
+        { name: 'employees', displayName: 'Employees' },
+        { name: 'gc', displayName: 'General Contractors' },
+        { name: 'vendor', displayName: 'Vendors' },
+        { name: 'temp', displayName: 'Temp' },
+    ];
 
     for (const folder of rootSubFolders) {
         const subFolder = await prisma.file.findFirst({
             where: {
                 name: {
-                    equals: folder,
+                    equals: folder.name,
                     mode: 'insensitive',
                 },
                 parentId: rootFolder?.id,
@@ -48,16 +54,22 @@ export const seedRootFolder = async () => {
                 data: {
                     id: ulid(),
                     createdBy: adminUser!.id,
-                    name: folder,
+                    name: folder.name,
+                    displayName: folder.displayName,
                     parentId: rootFolder?.id!,
                     type: 'FOLDER',
                     isDeletable: false,
                 },
             });
 
-            console.log(`Created ${folder} folder`);
-        } else console.log(`${folder} already exists`);
+            console.log(`Created ${folder.name} folder`);
+        } else console.log(`${folder.name} already exists`);
     }
 };
 
-seedRootFolder();
+if (process.argv[1]?.endsWith('seed-root-folder.ts')) {
+    seedRootFolder().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

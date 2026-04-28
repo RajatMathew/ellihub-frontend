@@ -1,15 +1,19 @@
 import { auth } from '@lib/auth';
+import { activityLogRoutes } from '@modules/activity-log';
 import { contactRoutes } from '@modules/contact';
 import { costCodeRoutes } from '@modules/cost-code';
+import { departmentRoutes } from '@modules/department';
+import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
-import { generalContractorRoutes } from '@modules/general-contractor';
-import { employeeRoutes } from '@modules/hr/employee';
+import { gcRoutes } from '@modules/gc';
 import { invoiceRoutes } from '@modules/invoice';
-import { pcoRoutes } from '@modules/pco';
+import { lookupRoutes } from '@modules/lookup';
 import { poRoutes } from '@modules/po';
 import { projectRoutes } from '@modules/project';
+import { ptoRoutes } from '@modules/pto';
 import { rfqRoutes } from '@modules/rfq';
 import { scoRoutes } from '@modules/sco';
+import { seederRoutes } from '@modules/seeder';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
 import { Hono } from 'hono';
@@ -21,20 +25,25 @@ app.on(['POST', 'GET'], '/auth/*', (c) => {
     return auth.handler(c.req.raw);
 });
 
+app.route('/seed', seederRoutes);
+
 app.use('/*', authMiddleware);
 
-app.route('/contacts', contactRoutes);
 app.route('/cost-code', costCodeRoutes);
-app.route('/general-contractors', generalContractorRoutes);
-app.route('/invoices', invoiceRoutes);
-app.route('/pcos', pcoRoutes);
-app.route('/pos', poRoutes);
-app.route('/projects', projectRoutes);
-app.route('/rfqs', rfqRoutes);
-app.route('/scos', scoRoutes);
-app.route('/vendors', vendorRoutes);
 app.route('/users', userRoutes);
 app.route('/file', fileRoutes);
 app.route('/hr/employee', employeeRoutes);
+app.route('/hr/department', departmentRoutes);
+app.route('/hr/pto', ptoRoutes);
+app.route('/lookup', lookupRoutes);
+app.route('/vendor', vendorRoutes);
+app.route('/gc', gcRoutes);
+app.route('/contact', contactRoutes);
+app.route('/activity-log', activityLogRoutes);
+app.route('/project', projectRoutes);
+app.route('/rfq', rfqRoutes);
+app.route('/purchase-order', poRoutes);
+app.route('/sub-change-order', scoRoutes);
+app.route('/invoice', invoiceRoutes);
 
 export default app;

@@ -1,120 +1,70 @@
 import z from 'zod';
 
-// --- Enums ---
-
-export const SCOChangeTypeEnum = z.enum([
-    'UNFORESEEN_CONDITIONS',
-    'DESIGN_CHANGE',
-    'QUANTITY_ADJUSTMENT',
-    'MATERIAL_SUBSTITUTION',
-    'LABOR_ADJUSTMENT',
-    'EQUIPMENT_RENTAL',
-    'CREDIT',
-    'BACKCHARGE',
-    'SCHEDULE_ACCELERATION',
-    'OTHER',
-]);
-
-export const SCOInitiatedByEnum = z.enum(['VENDOR', 'FIRM']);
-
-export const CostCategoryEnum = z.enum([
-    'MATERIALS',
-    'LABOR',
-    'EQUIPMENT',
-    'SUBCONTRACTOR',
-    'OTHER',
-]);
-
-export const ChangeOrderPriorityEnum = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']);
-
-// --- Line Items ---
-
-export const SCOLineItemCreateSchema = z.object({
-    description: z.string().min(1),
-    qty: z.number(),
-    unit: z.string().min(1),
-    unitPrice: z.number(),
-    poLineItemId: z.string().optional(),
-    costCategory: CostCategoryEnum.optional(),
-    costCodeId: z.string().optional(),
-    notes: z.string().optional(),
+export const SCOLineItemSchema = z.object({
+    description: z.string().min(1).optional().nullable(),
+    quantity: z.number().positive(),
+    unitId: z.ulid(),
+    unitPrice: z.number().nonnegative(),
+    costCodeId: z.ulid().optional().nullable(),
 });
 
-export type SCOLineItemCreateRequest = z.infer<typeof SCOLineItemCreateSchema>;
+export type SCOLineItemInput = z.infer<typeof SCOLineItemSchema>;
 
-export const SCOLineItemUpdateSchema = z
-    .object({
-        description: z.string().min(1),
-        qty: z.number(),
-        unit: z.string().min(1),
-        unitPrice: z.number(),
-        poLineItemId: z.string().optional().nullable(),
-        costCategory: CostCategoryEnum.optional().nullable(),
-        costCodeId: z.string().optional().nullable(),
-        notes: z.string().optional().nullable(),
-    })
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: 'At least one field is required',
-    });
-
-export type SCOLineItemUpdateRequest = z.infer<typeof SCOLineItemUpdateSchema>;
-
-// --- SCO CRUD ---
-
-export const SCOCreateSchema = z.object({
-    purchaseOrderId: z.string().min(1),
-    date: z.coerce.date().optional(),
-    title: z.string().min(1).max(255),
-    reasonForChange: z.string().optional(),
-    detailedScope: z.string().optional(),
-    amount: z.number(),
-    scheduleImpactDays: z.number().int().optional(),
-    changeType: SCOChangeTypeEnum.optional(),
-    initiatedBy: SCOInitiatedByEnum,
-    priority: ChangeOrderPriorityEnum.optional(),
-    vendorContactName: z.string().max(255).optional(),
-    vendorContactEmail: z.string().email().optional(),
-    vendorReferenceNumber: z.string().max(100).optional(),
-    linkedPCOId: z.string().optional(),
-    rfqId: z.string().optional(),
-    costCodeId: z.string().optional(),
-    lineItems: z.array(SCOLineItemCreateSchema).min(1),
+export const ScoCreateSchema = z.object({
+    projectId: z.ulid(),
+    purchaseOrderId: z.ulid(),
+    date: z.iso.date(),
+    title: z.string().min(1),
+    description: z.string().min(1).optional().nullable(),
+    markupAmount: z.number().nonnegative().optional().nullable(),
+    scheduleImpactDays: z.number().int().optional().nullable(),
+    requestedBy: z.string().min(1).optional().nullable(),
+    changeTypeId: z.ulid().optional().nullable(),
+    impactsSchedule: z.boolean().optional(),
+    lineItems: z.array(SCOLineItemSchema).min(1, 'At least one line item is required'),
 });
 
-export type SCOCreateRequest = z.infer<typeof SCOCreateSchema>;
+export type ScoCreateRequest = z.infer<typeof ScoCreateSchema>;
 
-export const SCOUpdateSchema = z
-    .object({
-        title: z.string().min(1).max(255),
-        reasonForChange: z.string().nullable(),
-        detailedScope: z.string().nullable(),
-        amount: z.number(),
-        scheduleImpactDays: z.number().int().nullable(),
-        changeType: SCOChangeTypeEnum.nullable(),
-        initiatedBy: SCOInitiatedByEnum,
-        priority: ChangeOrderPriorityEnum,
-        vendorContactName: z.string().max(255).nullable(),
-        vendorContactEmail: z.string().email().nullable(),
-        vendorReferenceNumber: z.string().max(100).nullable(),
-        linkedPCOId: z.string().nullable(),
-        rfqId: z.string().nullable(),
-        costCodeId: z.string().nullable(),
-    })
-    .partial();
+export const ScoUpdateSchema = ScoCreateSchema.extend({ id: z.ulid() });
 
-export type SCOUpdateRequest = z.infer<typeof SCOUpdateSchema>;
+export type ScoUpdateRequest = z.infer<typeof ScoUpdateSchema>;
 
-// --- Workflow ---
-
-export const RejectSchema = z.object({
-    reason: z.string().min(20),
+export const SetScoDraftSchema = z.object({
+    id: z.ulid(),
 });
 
-export type RejectRequest = z.infer<typeof RejectSchema>;
+export type SetScoDraftRequest = z.infer<typeof SetScoDraftSchema>;
 
-export const VoidSchema = z.object({
-    reason: z.string().min(1),
+export const SetScoApprovedSchema = z.object({
+    id: z.ulid(),
 });
 
-export type VoidRequest = z.infer<typeof VoidSchema>;
+export type SetScoApprovedRequest = z.infer<typeof SetScoApprovedSchema>;
+
+export const SetScoRejectedSchema = z.object({
+    id: z.ulid(),
+    rejectionReason: z.string().min(1),
+});
+
+export type SetScoRejectedRequest = z.infer<typeof SetScoRejectedSchema>;
+
+export const SetScoVoidSchema = z.object({
+    id: z.ulid(),
+    voidReason: z.string().min(1),
+});
+
+export type SetScoVoidRequest = z.infer<typeof SetScoVoidSchema>;
+
+export const AddScoAttachmentSchema = z.object({
+    scoId: z.ulid(),
+    documentId: z.ulid(),
+});
+
+export type AddScoAttachmentRequest = z.infer<typeof AddScoAttachmentSchema>;
+
+export const RemoveScoAttachmentSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveScoAttachmentRequest = z.infer<typeof RemoveScoAttachmentSchema>;

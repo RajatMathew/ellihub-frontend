@@ -1,51 +1,37 @@
-import { PrismaClient } from '@db/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { prisma } from '@lib/prisma';
+import { LookupType } from '@modules/lookup/models';
 import { ulid } from 'ulid';
 
-const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+const gcTypes = ['SCA', 'Civil', 'Institutional', 'Public / State', 'Public', 'Private'];
 
-const gcTypes = [
-    { name: 'SCA', code: 'SCA', description: 'School Construction Authority' },
-    { name: 'Civil', code: 'CIVIL', description: 'Civil / infrastructure projects' },
-    { name: 'Institutional', code: 'INSTITUTIONAL', description: 'Government and institutional buildings' },
-    { name: 'Public / State', code: 'PUBLIC_STATE', description: 'Public and state-funded projects' },
-    { name: 'Private', code: 'PRIVATE', description: 'Private sector general contractors' },
-];
+export const seedGcTypes = async () => {
+    console.log('Seeding GC types...');
 
-async function seed() {
-    console.log('Seeding GC types...\n');
-
-    for (const gcType of gcTypes) {
-        const existing = await prisma.gCType.findFirst({
-            where: { code: gcType.code },
+    for (const label of gcTypes) {
+        const existing = await prisma.lookup.findUnique({
+            where: { type_label: { type: LookupType.GC_TYPE, label } },
         });
 
         if (existing) {
-            console.log(`  Already exists: ${gcType.name} (${existing.id})`);
-            continue;
+            console.log(`Already exists: ${label} (${existing.id})`);
+        } else {
+            const result = await prisma.lookup.create({
+                data: {
+                    id: ulid(),
+                    type: LookupType.GC_TYPE,
+                    label,
+                },
+            });
+            console.log(`Created: ${result.label} (${result.id})`);
         }
-
-        const created = await prisma.gCType.create({
-            data: {
-                id: ulid(),
-                ...gcType,
-            },
-        });
-
-        console.log(`  Created: ${created.name} [${created.code}] (${created.id})`);
     }
 
-    console.log('\nGC type seed complete!');
-}
+    console.log('\nSeed complete!');
+};
 
-seed()
-    .catch((e) => {
+if (process.argv[1]?.endsWith('seed-gc-types.ts')) {
+    seedGcTypes().catch((e) => {
         console.error('Seed failed:', e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}

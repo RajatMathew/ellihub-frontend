@@ -65,32 +65,13 @@
         }
     },
     "tags": [
-        { "name": "Auth", "description": "Authentication (Better-Auth)" },
-        { "name": "Users", "description": "User management" },
-        { "name": "Contacts", "description": "Contact management" },
-        { "name": "Professional Roles", "description": "Manage professional roles for contacts" },
-        { "name": "Vendors", "description": "Vendor management" },
-        { "name": "Vendor Contacts", "description": "Manage vendor-contact links" },
-        { "name": "General Contractors", "description": "General contractor management" },
-        { "name": "GC Types", "description": "Manage general contractor types" },
+        { "name": "Auth", "description": "Authentication (Better Auth)" },
+        { "name": "Users", "description": "User and role management" },
         { "name": "Cost Code Categories", "description": "Manage cost code categories" },
         { "name": "Cost Codes", "description": "Manage cost codes" },
         { "name": "File", "description": "File and folder management (S3)" },
-        { "name": "Project Statuses", "description": "Manage project status lookup values" },
-        { "name": "Project Stages", "description": "Manage project stage lookup values" },
-        { "name": "Purchase Orders", "description": "Purchase order lifecycle, line items, payments, and delivery tracking" },
-        { "name": "RFQs", "description": "Request for Quotation management, vendor invitations, quotes, and bid comparison" },
-        { "name": "Sub Change Orders", "description": "Subcontractor Change Order management, approval workflow, and margin comparison" },
-        { "name": "Prime Change Orders", "description": "Prime Change Order (PCO) management and status transitions" },
-        { "name": "Invoices", "description": "Invoice management, approval workflow, disputes, and aging reports" },
         { "name": "Employees", "description": "Employee management and project assignments" },
-        { "name": "Change Order Statuses", "description": "Manage change order status lookup values (shared by PCO and SCO)" },
-        { "name": "PCO Change Types", "description": "Manage PCO change type categories" },
-        { "name": "SCO Change Types", "description": "Manage SCO change type categories" },
-        { "name": "RFQ Statuses", "description": "Manage RFQ status lookup values" },
-        { "name": "Quote Statuses", "description": "Manage quote status lookup values" },
-        { "name": "PO Statuses", "description": "Manage purchase order status lookup values" },
-        { "name": "Invoice Statuses", "description": "Manage invoice status lookup values" },
-        { "name": "Addendum Change Types", "description": "Manage RFQ addendum change type categories" }
+        { "name": "Departments", "description": "Department management and employee assignments" },
+        { "name": "Lookup", "description": "Generic lookup values (categories, tags, statuses, etc.)" }
     ]
 }

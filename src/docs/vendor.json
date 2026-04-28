@@ -1,69 +1,18 @@
 {
     "paths": {
-        "/vendors": {
-            "post": {
-                "tags": ["Vendors"],
-                "summary": "Create a vendor",
-                "operationId": "createVendor",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/VendorCreateRequest" },
-                            "example": {
-                                "name": "Acme Steel Supply",
-                                "type": "MATERIAL",
-                                "categoryTags": ["steel", "structural"],
-                                "taxId": "12-3456789",
-                                "status": "ACTIVE",
-                                "address": "100 Industrial Blvd, Houston TX 77001",
-                                "email": "info@acmesteel.com",
-                                "phone": "+1-555-0001",
-                                "website": "https://acmesteel.com",
-                                "paymentTerms": "NET_30",
-                                "notes": "Preferred steel supplier",
-                                "contacts": []
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Vendor created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/Vendor" }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
+        "/vendor": {
             "get": {
                 "tags": ["Vendors"],
                 "summary": "List vendors (paginated)",
-                "operationId": "getVendors",
+                "operationId": "listVendors",
                 "parameters": [
-                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by name, email, or phone" },
-                    { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["MATERIAL", "FABRICATION", "INSTALLATION"] }, "description": "Filter by vendor type" },
-                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "BLACKLISTED", "PROSPECT"] }, "description": "Filter by status" },
-                    { "name": "categoryTag", "in": "query", "schema": { "type": "string" }, "description": "Filter by category tag" },
-                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
-                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "enum": ["name", "type", "status", "createdAt", "updatedAt"], "default": "name" } },
-                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } }
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "name" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by vendor name" },
+                    { "name": "typeId", "in": "query", "schema": { "type": "string" }, "description": "Filter by vendor type lookup ULID" },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] } }
                 ],
                 "responses": {
                     "200": {
@@ -76,10 +25,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": { "$ref": "#/components/schemas/VendorListItem" }
-                                                },
+                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/Vendor" } },
                                                 "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
                                             }
                                         }
@@ -89,60 +35,44 @@
                         }
                     },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "403": { "description": "Insufficient permissions (requires vendor:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
-            }
-        },
-        "/vendors/{id}": {
-            "get": {
+            },
+            "post": {
                 "tags": ["Vendors"],
-                "summary": "Get a vendor by ID",
-                "operationId": "getVendor",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
+                "summary": "Create a vendor",
+                "operationId": "createVendor",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VendorCreateRequest" } } }
+                },
                 "responses": {
-                    "200": {
-                        "description": "Vendor details with contact links",
+                    "201": {
+                        "description": "Vendor created",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/Vendor" }
-                                            }
-                                        }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Vendor" } } }
                                     ]
                                 }
                             }
                         }
                     },
+                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "403": { "description": "Insufficient permissions (requires vendor:create)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Vendor type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             },
             "put": {
                 "tags": ["Vendors"],
-                "summary": "Update a vendor",
+                "summary": "Update a vendor (full replace)",
                 "operationId": "updateVendor",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
                 "requestBody": {
                     "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/VendorUpdateRequest" },
-                            "example": {
-                                "name": "Acme Steel Supply LLC",
-                                "paymentTerms": "NET_45",
-                                "notes": "Updated terms after contract renewal"
-                            }
-                        }
-                    }
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VendorUpdateRequest" } } }
                 },
                 "responses": {
                     "200": {
@@ -152,12 +82,7 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/Vendor" }
-                                            }
-                                        }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Vendor" } } }
                                     ]
                                 }
                             }
@@ -165,267 +90,212 @@
                     },
                     "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires vendor:update)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Vendor or vendor type not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/vendor/{id}": {
+            "get": {
+                "tags": ["Vendors"],
+                "summary": "Get a vendor by ID",
+                "operationId": "getVendor",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Vendor ULID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Vendor details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Vendor" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "404": { "description": "Vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             },
             "delete": {
                 "tags": ["Vendors"],
-                "summary": "Delete a vendor (sets status to INACTIVE)",
+                "summary": "Delete a vendor (soft delete)",
                 "operationId": "deleteVendor",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Vendor ULID" }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Vendor deactivated",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "200": { "description": "Vendor deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
                     "404": { "description": "Vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/vendors/{id}/contacts": {
-            "post": {
-                "tags": ["Vendor Contacts"],
-                "summary": "Add a contact to a vendor",
-                "operationId": "addVendorContact",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Vendor ID" }
-                ],
+        "/vendor/document/add": {
+            "patch": {
+                "tags": ["Vendors"],
+                "summary": "Link a document (file) to a vendor",
+                "operationId": "addDocumentToVendor",
                 "requestBody": {
                     "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/VendorContactAddRequest" },
-                            "example": {
-                                "contactId": "01JMSEEDCONTACT000001",
-                                "isPrimary": true
-                            }
-                        }
-                    }
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddVendorDocumentRequest" } } }
                 },
                 "responses": {
-                    "201": {
-                        "description": "Contact linked to vendor",
+                    "200": {
+                        "description": "Document linked",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/ContactVendorLink" }
-                                            }
-                                        }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/VendorDocument" } } }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Vendor or contact not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Contact already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Vendor or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Document already linked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/vendors/{id}/contacts/{contactId}": {
-            "put": {
-                "tags": ["Vendor Contacts"],
-                "summary": "Update a contact link (isPrimary)",
-                "operationId": "updateVendorContact",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Vendor ID" },
-                    { "name": "contactId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID" }
-                ],
+        "/vendor/document/update": {
+            "patch": {
+                "tags": ["Vendors"],
+                "summary": "Update a vendor document (e.g. expiry)",
+                "operationId": "updateVendorDocument",
                 "requestBody": {
                     "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/VendorContactUpdateRequest" },
-                            "example": { "isPrimary": true }
-                        }
-                    }
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateVendorDocumentRequest" } } }
                 },
                 "responses": {
                     "200": {
-                        "description": "Contact link updated",
+                        "description": "Document updated",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": { "$ref": "#/components/schemas/ContactVendorLink" }
-                                            }
-                                        }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/VendorDocument" } } }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Contact link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Vendor document not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
-            },
-            "delete": {
-                "tags": ["Vendor Contacts"],
-                "summary": "Remove a contact from a vendor",
-                "operationId": "removeVendorContact",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Vendor ID" },
-                    { "name": "contactId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Contact ID" }
-                ],
+            }
+        },
+        "/vendor/document/remove": {
+            "patch": {
+                "tags": ["Vendors"],
+                "summary": "Unlink a document from a vendor",
+                "operationId": "removeDocumentFromVendor",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveVendorDocumentRequest" } } }
+                },
                 "responses": {
-                    "200": {
-                        "description": "Contact unlinked from vendor",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-                            }
-                        }
-                    },
-                    "404": { "description": "Contact link not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "200": { "description": "Document unlinked", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Vendor document not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         }
     },
     "components": {
         "schemas": {
-            "VendorCreateRequest": {
-                "type": "object",
-                "required": ["name", "type"],
-                "properties": {
-                    "name": { "type": "string", "minLength": 1 },
-                    "type": { "type": "string", "enum": ["MATERIAL", "FABRICATION", "INSTALLATION"] },
-                    "categoryTags": { "type": "array", "items": { "type": "string" }, "default": [] },
-                    "taxId": { "type": "string" },
-                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "BLACKLISTED", "PROSPECT"], "default": "ACTIVE" },
-                    "address": { "type": "string" },
-                    "email": { "type": "string", "format": "email" },
-                    "phone": { "type": "string" },
-                    "website": { "type": "string" },
-                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "default": "NET_30" },
-                    "notes": { "type": "string" },
-                    "contacts": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "required": ["contactId"],
-                            "properties": {
-                                "contactId": { "type": "string" },
-                                "isPrimary": { "type": "boolean", "default": false }
-                            }
-                        },
-                        "default": []
-                    }
-                }
-            },
-            "VendorUpdateRequest": {
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string", "minLength": 1 },
-                    "type": { "type": "string", "enum": ["MATERIAL", "FABRICATION", "INSTALLATION"] },
-                    "categoryTags": { "type": "array", "items": { "type": "string" } },
-                    "taxId": { "type": "string", "nullable": true },
-                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "BLACKLISTED", "PROSPECT"] },
-                    "address": { "type": "string", "nullable": true },
-                    "email": { "type": "string", "format": "email", "nullable": true },
-                    "phone": { "type": "string", "nullable": true },
-                    "website": { "type": "string", "nullable": true },
-                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
-                    "notes": { "type": "string", "nullable": true }
-                }
-            },
-            "VendorContactAddRequest": {
-                "type": "object",
-                "required": ["contactId"],
-                "properties": {
-                    "contactId": { "type": "string" },
-                    "isPrimary": { "type": "boolean", "default": false }
-                }
-            },
-            "VendorContactUpdateRequest": {
-                "type": "object",
-                "required": ["isPrimary"],
-                "properties": {
-                    "isPrimary": { "type": "boolean" }
-                }
-            },
             "Vendor": {
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string" },
+                    "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
-                    "type": { "type": "string", "enum": ["MATERIAL", "FABRICATION", "INSTALLATION"] },
+                    "typeId": { "type": "string", "nullable": true },
+                    "type": { "description": "Lookup row for the vendor type; included on get/list responses", "nullable": true },
+                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] },
                     "categoryTags": { "type": "array", "items": { "type": "string" } },
                     "taxId": { "type": "string", "nullable": true },
-                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "BLACKLISTED", "PROSPECT"] },
                     "address": { "type": "string", "nullable": true },
-                    "email": { "type": "string", "nullable": true },
+                    "email": { "type": "string", "format": "email", "nullable": true },
                     "phone": { "type": "string", "nullable": true },
-                    "website": { "type": "string", "nullable": true },
+                    "website": { "type": "string", "format": "uri", "nullable": true },
+                    "fax": { "type": "string", "nullable": true },
                     "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
                     "notes": { "type": "string", "nullable": true },
-                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" },
-                    "contactLinks": {
+                    "contacts": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/ContactVendorLink" }
-                    }
-                }
-            },
-            "VendorListItem": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "name": { "type": "string" },
-                    "type": { "type": "string" },
-                    "categoryTags": { "type": "array", "items": { "type": "string" } },
-                    "taxId": { "type": "string", "nullable": true },
-                    "status": { "type": "string" },
-                    "address": { "type": "string", "nullable": true },
-                    "email": { "type": "string", "nullable": true },
-                    "phone": { "type": "string", "nullable": true },
-                    "website": { "type": "string", "nullable": true },
-                    "paymentTerms": { "type": "string" },
-                    "notes": { "type": "string", "nullable": true },
+                        "description": "Contacts belonging to this vendor; included on get/list responses",
+                        "items": { "$ref": "#/components/schemas/Contact" }
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
-                    "_count": {
-                        "type": "object",
-                        "properties": {
-                            "contactLinks": { "type": "integer" }
-                        }
-                    }
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
-            "ContactVendorLink": {
+            "VendorDocument": {
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string" },
-                    "contactId": { "type": "string" },
+                    "id": { "type": "string", "description": "ULID" },
                     "vendorId": { "type": "string" },
-                    "isPrimary": { "type": "boolean" },
+                    "fileId": { "type": "string" },
+                    "expiresOn": { "type": "string", "format": "date", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" },
-                    "contact": { "$ref": "#/components/schemas/ContactSummary" }
+                    "updatedAt": { "type": "string", "format": "date-time" }
                 }
             },
-            "ContactSummary": {
+            "VendorCreateRequest": {
                 "type": "object",
+                "required": ["name", "status"],
                 "properties": {
-                    "id": { "type": "string" },
-                    "fullName": { "type": "string" },
-                    "email": { "type": "object", "nullable": true },
-                    "phoneNumber": { "type": "object", "nullable": true },
-                    "tags": { "type": "array", "items": { "type": "string" } }
+                    "name": { "type": "string", "minLength": 2 },
+                    "typeId": { "type": "string", "nullable": true, "description": "Vendor type lookup ULID" },
+                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] },
+                    "categoryTags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                    "taxId": { "type": "string", "nullable": true },
+                    "address": { "type": "string", "nullable": true },
+                    "email": { "type": "string", "format": "email", "nullable": true },
+                    "phone": { "type": "string", "nullable": true },
+                    "website": { "type": "string", "format": "uri", "nullable": true },
+                    "fax": { "type": "string", "nullable": true },
+                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "default": "NET_30" },
+                    "notes": { "type": "string", "nullable": true }
+                }
+            },
+            "VendorUpdateRequest": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/VendorCreateRequest" },
+                    {
+                        "type": "object",
+                        "required": ["id"],
+                        "properties": { "id": { "type": "string", "description": "Vendor ULID" } }
+                    }
+                ]
+            },
+            "AddVendorDocumentRequest": {
+                "type": "object",
+                "required": ["vendorId", "fileId"],
+                "properties": {
+                    "vendorId": { "type": "string", "description": "ULID" },
+                    "fileId": { "type": "string", "description": "ULID" },
+                    "expiresOn": { "type": "string", "format": "date", "nullable": true }
+                }
+            },
+            "UpdateVendorDocumentRequest": {
+                "type": "object",
+                "required": ["vendorId", "fileId"],
+                "properties": {
+                    "vendorId": { "type": "string", "description": "ULID" },
+                    "fileId": { "type": "string", "description": "ULID" },
+                    "expiresOn": { "type": "string", "format": "date", "nullable": true }
+                }
+            },
+            "RemoveVendorDocumentRequest": {
+                "type": "object",
+                "required": ["vendorId", "fileId"],
+                "properties": {
+                    "vendorId": { "type": "string", "description": "ULID" },
+                    "fileId": { "type": "string", "description": "ULID" }
                 }
             }
         }

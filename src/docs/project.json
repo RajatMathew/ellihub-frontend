@@ -1,346 +1,21 @@
 {
     "paths": {
-        "/projects/statuses": {
-            "get": {
-                "tags": ["Project Statuses"],
-                "summary": "List all project statuses",
-                "operationId": "listProjectStatuses",
-                "responses": {
-                    "200": {
-                        "description": "List of project statuses",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectStatus" } } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized" }
-                }
-            },
-            "post": {
-                "tags": ["Project Statuses"],
-                "summary": "Create a project status",
-                "operationId": "createProjectStatus",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectStatusCreateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Status created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStatus" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error" },
-                    "401": { "description": "Unauthorized" },
-                    "409": { "description": "Name or order already exists" }
-                }
-            }
-        },
-        "/projects/statuses/{id}": {
-            "put": {
-                "tags": ["Project Statuses"],
-                "summary": "Update a project status",
-                "operationId": "updateProjectStatus",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectStatusUpdateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Status updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStatus" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error" },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "Status not found" },
-                    "409": { "description": "Name or order already exists" }
-                }
-            },
-            "delete": {
-                "tags": ["Project Statuses"],
-                "summary": "Soft-delete a project status",
-                "operationId": "deleteProjectStatus",
-                "description": "Cannot delete default status or one referenced by projects.",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "responses": {
-                    "200": { "description": "Status deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "Status not found" },
-                    "409": { "description": "Cannot delete: is default or has projects" }
-                }
-            }
-        },
-        "/projects/stages": {
-            "get": {
-                "tags": ["Project Stages"],
-                "summary": "List all project stages",
-                "operationId": "listProjectStages",
-                "responses": {
-                    "200": {
-                        "description": "List of project stages",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectStage" } } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": { "description": "Unauthorized" }
-                }
-            },
-            "post": {
-                "tags": ["Project Stages"],
-                "summary": "Create a project stage",
-                "operationId": "createProjectStage",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectStageCreateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Stage created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStage" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error" },
-                    "401": { "description": "Unauthorized" },
-                    "409": { "description": "Name or code already exists" }
-                }
-            }
-        },
-        "/projects/stages/{id}": {
-            "put": {
-                "tags": ["Project Stages"],
-                "summary": "Update a project stage",
-                "operationId": "updateProjectStage",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectStageUpdateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Stage updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "properties": { "data": { "$ref": "#/components/schemas/ProjectStage" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error" },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "Stage not found" },
-                    "409": { "description": "Name or code already exists" }
-                }
-            },
-            "delete": {
-                "tags": ["Project Stages"],
-                "summary": "Delete a project stage",
-                "operationId": "deleteProjectStage",
-                "description": "Cannot delete a stage referenced by projects.",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-                ],
-                "responses": {
-                    "200": { "description": "Stage deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "Stage not found" },
-                    "409": { "description": "Cannot delete: has projects" }
-                }
-            }
-        },
-        "/projects": {
-            "post": {
-                "tags": ["Projects"],
-                "summary": "Create a project (optionally with prime contract)",
-                "operationId": "createProject",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectCreateRequest" },
-                            "examples": {
-                                "sca-full": {
-                                    "summary": "SCA school project with contract",
-                                    "value": {
-                                        "name": "P.S. 234K Auditorium Renovation",
-                                        "description": "Complete auditorium renovation including new millwork, acoustic panels, stage flooring, and ADA-compliant seating.",
-                                        "contractNumber": "SCA-2026-0891",
-                                        "stageId": "01KJF5VWB4PDYMT18KSG7QR80S",
-                                        "division": "SCA",
-                                        "gcId": "01JMSEEDGCONT000000001",
-                                        "leadPMId": "01KJF5VW2E6986BNF3YK7PW2M1",
-                                        "streetAddress": "525 West 44th Street",
-                                        "city": "New York",
-                                        "state": "NY",
-                                        "zipCode": "10036",
-                                        "effectiveStartDate": "2026-04-15T00:00:00.000Z",
-                                        "effectiveEndDate": "2027-02-28T00:00:00.000Z",
-                                        "contract": {
-                                            "contractValue": 1485000
-                                        }
-                                    }
-                                },
-                                "ddc-full": {
-                                    "summary": "DDC library project with contract",
-                                    "value": {
-                                        "name": "Brooklyn Central Library HVAC Upgrade",
-                                        "description": "Full HVAC system replacement across 3 floors. Includes ductwork fabrication, rooftop unit installation, controls integration, and TAB.",
-                                        "contractNumber": "DDC-2026-1204",
-                                        "stageId": "01KJF5VWBEMH9YXCWD7M7YANN2",
-                                        "division": "DDC",
-                                        "statusId": "01KJF5VW6STB8P61EX77CK1MD9",
-                                        "gcId": "01KJF5VHMB8XRMCQBCZ5MSBFV5",
-                                        "leadPMId": "01KJF5VW21WYEFF1R3EGP8ZF27",
-                                        "streetAddress": "10 Grand Army Plaza",
-                                        "city": "Brooklyn",
-                                        "state": "NY",
-                                        "zipCode": "11238",
-                                        "effectiveStartDate": "2026-03-01T00:00:00.000Z",
-                                        "effectiveEndDate": "2027-01-15T00:00:00.000Z",
-                                        "contract": {
-                                            "contractValue": 2340000
-                                        }
-                                    }
-                                },
-                                "without-contract": {
-                                    "summary": "Bidding phase — no contract yet",
-                                    "value": {
-                                        "name": "Success Academy Charter School Fit-Out",
-                                        "description": "Interior fit-out for new charter school location. Classrooms, cafeteria, gymnasium.",
-                                        "stageId": "01KJF5VWBQVRE1KCBQTQ98C4BS",
-                                        "division": "INSTITUTIONAL",
-                                        "gcId": "01KJF5VHN75DMN8KQ3N7JHKH60",
-                                        "leadPMId": "01KJF5VW2AY7A4ZE7296NJCR1Y",
-                                        "streetAddress": "1180 Reverend James A. Polite Avenue",
-                                        "city": "Bronx",
-                                        "state": "NY",
-                                        "zipCode": "10459"
-                                    }
-                                },
-                                "minimal-with-lead": {
-                                    "summary": "Minimal fields with lead PM",
-                                    "value": {
-                                        "name": "Queens DSNY Garage Renovation",
-                                        "description": "Garage door replacements and concrete slab repair for DSNY facility.",
-                                        "stageId": "01KJF5VWBMAGZE9ZS4RDGAE90C",
-                                        "division": "DDC",
-                                        "gcId": "01JMSEEDGCONT000000001",
-                                        "leadPMId": "01KJF5VW2E6986BNF3YK7PW2M1"
-                                    }
-                                },
-                                "minimal-without-employee": {
-                                    "summary": "Minimal fields — no lead PM assigned",
-                                    "value": {
-                                        "name": "Bronx Community Center Roof Replacement",
-                                        "description": "Full roof tear-off and replacement with TPO membrane system.",
-                                        "stageId": "01KJF5VWBMAGZE9ZS4RDGAE90C",
-                                        "division": "DDC",
-                                        "gcId": "01JMSEEDGCONT000000001"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Project created (with optional prime contract), team assignment, and file folders",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectDetail" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Validation error or no default status configured", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "GC, Employee, Stage, or Status not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Job number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
+        "/project": {
             "get": {
                 "tags": ["Projects"],
                 "summary": "List projects (paginated)",
                 "operationId": "listProjects",
                 "parameters": [
-                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by name, jobNumber, contractNumber (case-insensitive)", "example": "JFK" },
-                    { "name": "statusId", "in": "query", "schema": { "type": "string" }, "description": "Filter by status — BIDDING: 01KJF5VW65VGF3GC9JBHXQPDBE, NEGOTIATION: 01KJF5VW6G9ZARAQHT96CQYJ46, AWARDED: 01KJF5VW6PTMD5RRK6XXM4E84W, ACTIVE: 01KJF5VW6STB8P61EX77CK1MD9, ON_HOLD: 01KJF5VW6X6K7FXH8DSHQD98AQ, COMPLETED: 01KJF5VW70Z4QSS5WP81XS8WJ6, CANCELLED: 01KJF5VW72JHN91BQ1ZH7BS05Q" },
-                    { "name": "division", "in": "query", "schema": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] }, "description": "Filter by division" },
-                    { "name": "stageId", "in": "query", "schema": { "type": "string" }, "description": "Filter by stage — INSTALLATION: 01KJF5VWB4PDYMT18KSG7QR80S, FABRICATION: 01KJF5VWBEMH9YXCWD7M7YANN2, SUBMITTALS: 01KJF5VWBMAGZE9ZS4RDGAE90C, BUYOUT: 01KJF5VWBQVRE1KCBQTQ98C4BS, CLOSEOUT: 01KJF5VWBV52WYG4NWGXKM6DR5, PUNCHLIST: 01KJF5VWC0DEN4XF4W4R95WMQH" },
-                    { "name": "gcId", "in": "query", "schema": { "type": "string" }, "description": "Filter by GC — BuildCorp: 01JMSEEDGCONT000000001, Turner: 01KJF5VHKV1KD5STADZ1HGHFS9, Skanska: 01KJF5VHMB8XRMCQBCZ5MSBFV5, SCA District 1: 01KJF5VHMJJGPKN06Z9Y5NF24M, Hensel Phelps: 01KJF5VHMP6ERP45KDA5T58RAE, Granite: 01KJF5VHMXP9J30S3NCZJ647JA" },
-                    { "name": "leadPMId", "in": "query", "schema": { "type": "string" }, "description": "Filter by Lead PM (create employees first via /employees endpoint)" },
-                    { "name": "year", "in": "query", "schema": { "type": "integer" }, "description": "Filter by year (projects overlapping this year)", "example": 2026 },
-                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
-                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 }, "description": "Items per page (max 100)" },
-                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" }, "description": "Sort field (name, jobNumber, createdAt)" },
-                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }, "description": "Sort direction" }
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by name, description, jobNumber, contractNumber, city, state" },
+                    { "name": "stageId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "divisionId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "gcId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "leadPMId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] } }
                 ],
                 "responses": {
                     "200": {
@@ -353,7 +28,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectListItem" } },
+                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } },
                                                 "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
                                             }
                                         }
@@ -362,216 +37,81 @@
                             }
                         }
                     },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires project:view-all)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
-            }
-        },
-        "/projects/{id}/overview": {
-            "get": {
+            },
+            "post": {
                 "tags": ["Projects"],
-                "summary": "Get project overview (dashboard KPIs)",
-                "operationId": "getProjectOverview",
-                "description": "Returns a lightweight summary for the project overview page: contract value/type, team count, PM name, schedule entries count, division, stage, status, and all contract dates.",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
-                ],
+                "summary": "Create a project",
+                "operationId": "createProject",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectCreateRequest" } } }
+                },
                 "responses": {
-                    "200": {
-                        "description": "Project overview data",
+                    "201": {
+                        "description": "Project created",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        {
-                                            "properties": {
-                                                "data": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "id": { "type": "string" },
-                                                        "name": { "type": "string" },
-                                                        "jobNumber": { "type": "string", "nullable": true },
-                                                        "contractValue": { "type": "number", "nullable": true, "description": "Prime contract value" },
-                                                        "contractType": { "type": "string", "nullable": true, "description": "e.g. Lump Sum" },
-                                                        "teamMembersCount": { "type": "integer" },
-                                                        "pmName": { "type": "string", "nullable": true, "description": "Lead PM name" },
-                                                        "scheduleEntriesCount": { "type": "integer" },
-                                                        "effectiveStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                                                        "effectiveEndDate": { "type": "string", "format": "date-time", "nullable": true },
-                                                        "division": { "type": "string", "description": "e.g. SCA, DDC, CIVIL" },
-                                                        "stage": { "type": "string", "nullable": true, "description": "e.g. Installation" },
-                                                        "status": { "type": "object", "properties": { "name": { "type": "string" }, "label": { "type": "string" }, "color": { "type": "string" } } },
-                                                        "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                                                        "estimatedCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
-                                                        "actualStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                                                        "actualCompletionDate": { "type": "string", "format": "date-time", "nullable": true }
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
                                     ]
                                 }
                             }
                         }
                     },
-                    "401": { "description": "Unauthorized" },
-                    "404": { "description": "Project not found" }
+                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Stage / division / GC / lead PM not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Job number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "put": {
+                "tags": ["Projects"],
+                "summary": "Update a project (full replace, status excluded)",
+                "operationId": "updateProject",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectUpdateRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project / referenced entity not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Job number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/projects/{id}": {
+        "/project/{id}": {
             "get": {
                 "tags": ["Projects"],
-                "summary": "Get project detail with all relations",
+                "summary": "Get a project by ID",
                 "operationId": "getProject",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID (ULID) — use an ID from the list endpoint" }
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ULID" }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Project detail with stage, status, GC, lead PM, prime contract, team, and schedule",
-                        "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectDetail" } } }] } } }
-                    },
-                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "put": {
-                "tags": ["Projects"],
-                "summary": "Update project (partial)",
-                "operationId": "updateProject",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID — use an ID from the list endpoint" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ProjectUpdateRequest" },
-                            "examples": {
-                                "change-status-to-active": {
-                                    "summary": "Move project to Active status",
-                                    "value": {
-                                        "statusId": "01KJF5VW6STB8P61EX77CK1MD9"
-                                    }
-                                },
-                                "advance-stage": {
-                                    "summary": "Advance to Fabrication stage",
-                                    "value": {
-                                        "stageId": "01KJF5VWBEMH9YXCWD7M7YANN2"
-                                    }
-                                },
-                                "update-address": {
-                                    "summary": "Update project address",
-                                    "value": {
-                                        "streetAddress": "530 West 44th Street",
-                                        "city": "New York",
-                                        "state": "NY",
-                                        "zipCode": "10036"
-                                    }
-                                },
-                                "put-on-hold": {
-                                    "summary": "Put project on hold",
-                                    "value": {
-                                        "statusId": "01KJF5VW6X6K7FXH8DSHQD98AQ"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": { "description": "Updated project with all relations", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectDetail" } } }] } } } },
-                    "404": { "description": "Project, GC, Employee, Stage, or Status not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "delete": {
-                "tags": ["Projects"],
-                "summary": "Soft delete a project",
-                "operationId": "deleteProject",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID — use an ID from the list endpoint" }
-                ],
-                "responses": {
-                    "200": { "description": "Soft deleted (sets deletedAt, excluded from list)", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "null" } } }] } } } },
-                    "404": { "description": "Not found or already deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/projects/{id}/contract": {
-            "get": {
-                "tags": ["Projects — Contract"],
-                "summary": "Get prime contract",
-                "operationId": "getPrimeContract",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Prime contract details",
+                        "description": "Project details",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": { "description": "Project or contract not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "put": {
-                "tags": ["Projects — Contract"],
-                "summary": "Create or update prime contract",
-                "description": "Upserts the prime contract for a project. If estimatedStartDate or estimatedCompletionDate are provided, creates baseline schedule entries and recalculates project effective dates (baseline + active PCO deltas).",
-                "operationId": "upsertPrimeContract",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/PrimeContractUpsertRequest" },
-                            "examples": {
-                                "minimal": {
-                                    "summary": "Add contract — value only",
-                                    "value": { "contractValue": 1500000 }
-                                },
-                                "full": {
-                                    "summary": "Full contract with dates (auto-creates schedule baselines)",
-                                    "value": {
-                                        "contractValue": 2340000,
-                                        "contractType": "Lump Sum",
-                                        "retainagePercent": 10,
-                                        "targetBudgetPercent": 85,
-                                        "paymentTerms": "NET_30",
-                                        "estimatedStartDate": "2026-04-01",
-                                        "estimatedCompletionDate": "2027-03-31"
-                                    }
-                                },
-                                "update-dates": {
-                                    "summary": "Update completion date (recalculates with active PCO deltas)",
-                                    "value": {
-                                        "contractValue": 2340000,
-                                        "estimatedCompletionDate": "2027-06-30"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Contract created or updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
                                     ]
                                 }
                             }
@@ -581,105 +121,26 @@
                 }
             }
         },
-        "/projects/{id}/contract/attachments": {
+        "/project/assigned/{employeeId}": {
             "get": {
-                "tags": ["Projects — Contract"],
-                "summary": "List contract attachments",
-                "description": "Returns all attachments for the project's prime contract. Upload files first via POST /file/upload, then attach them here.",
-                "operationId": "listContractAttachments",
+                "tags": ["Projects"],
+                "summary": "List projects assigned to an employee (paginated)",
+                "operationId": "listAssignedProjects",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
+                    { "name": "employeeId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Employee ULID" },
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" } },
+                    { "name": "stageId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "divisionId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "gcId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] } }
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of contract attachments",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ContractAttachment" } } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": { "description": "Project or contract not found" }
-                }
-            },
-            "post": {
-                "tags": ["Projects — Contract"],
-                "summary": "Add contract attachment",
-                "description": "Attach a previously uploaded file to the prime contract. Use POST /file/upload first to obtain a file ID.",
-                "operationId": "addContractAttachment",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ContractAttachmentCreateRequest" }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Attachment created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ContractAttachment" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": { "description": "Project, contract, or file not found" }
-                }
-            }
-        },
-        "/projects/{id}/contract/attachments/{attachmentId}": {
-            "delete": {
-                "tags": ["Projects — Contract"],
-                "summary": "Remove contract attachment",
-                "description": "Removes an attachment from the prime contract. Hard delete — the file itself is NOT deleted.",
-                "operationId": "removeContractAttachment",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "attachmentId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Attachment ID" }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment removed",
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-                            }
-                        }
-                    },
-                    "404": { "description": "Project, contract, or attachment not found" }
-                }
-            }
-        },
-        "/projects/{id}/schedule": {
-            "get": {
-                "tags": ["Projects — Schedule"],
-                "summary": "List schedule entries (paginated)",
-                "description": "Returns all active (non-deleted) schedule entries for this project. Schedule entries are the date register — they track contract baselines, delays, CO impacts, and re-baselines. Project effectiveStartDate/effectiveEndDate are derived from the latest entries.",
-                "operationId": "listScheduleEntries",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
-                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Items per page (max 100)" },
-                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "date" }, "description": "Sort field (date, createdAt)" },
-                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }, "description": "Sort direction" }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Paginated schedule entries",
+                        "description": "Paginated list of assigned projects",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -688,7 +149,7 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/ScheduleEntry" } },
+                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } },
                                                 "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
                                             }
                                         }
@@ -696,153 +157,27 @@
                                 }
                             }
                         }
-                    },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "post": {
-                "tags": ["Projects — Schedule"],
-                "summary": "Create a schedule entry",
-                "description": "Creates a new schedule entry and recalculates Project effectiveStartDate/effectiveEndDate from all active entries. The latest adjustedStartDate becomes effectiveStartDate, the latest adjustedFinishDate becomes effectiveEndDate.",
-                "operationId": "createScheduleEntry",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ScheduleEntryCreateRequest" },
-                            "examples": {
-                                "contract-start": {
-                                    "summary": "Contract baseline — start date",
-                                    "value": {
-                                        "date": "2026-03-01",
-                                        "description": "Contract baseline — estimated start",
-                                        "adjustedStartDate": "2026-03-01"
-                                    }
-                                },
-                                "contract-completion": {
-                                    "summary": "Contract baseline — completion date",
-                                    "value": {
-                                        "date": "2026-03-01",
-                                        "description": "Contract baseline — estimated completion",
-                                        "adjustedFinishDate": "2026-12-31"
-                                    }
-                                },
-                                "delay": {
-                                    "summary": "Rain delay pushing end date",
-                                    "value": {
-                                        "date": "2026-06-15",
-                                        "description": "2 weeks heavy rain delay",
-                                        "adjustedFinishDate": "2027-01-14",
-                                        "notes": "Site flooded, no work possible Jun 1-14"
-                                    }
-                                },
-                                "with-file": {
-                                    "summary": "Schedule upload with attached file",
-                                    "value": {
-                                        "date": "2026-03-15",
-                                        "description": "Initial project schedule uploaded",
-                                        "adjustedStartDate": "2026-04-01",
-                                        "adjustedFinishDate": "2026-11-15",
-                                        "fileId": "USE_A_FILE_ID_FROM_GET_/file"
-                                    }
-                                }
-                            }
-                        }
                     }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Schedule entry created, project dates recalculated",
-                        "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ScheduleEntry" } } }] } } }
-                    },
-                    "404": { "description": "Project or File not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/projects/{id}/schedule/{entryId}": {
-            "put": {
-                "tags": ["Projects — Schedule"],
-                "summary": "Update a schedule entry (partial)",
-                "description": "Partially updates a schedule entry and recalculates project dates. Set adjustedStartDate/adjustedFinishDate/fileId to null to clear them.",
-                "operationId": "updateScheduleEntry",
+        "/project/{id}/set-active": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Set project status to ACTIVE",
+                "operationId": "setProjectActive",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "entryId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Schedule entry ID" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ScheduleEntryUpdateRequest" },
-                            "examples": {
-                                "revise-finish": {
-                                    "summary": "Revise adjusted finish date",
-                                    "value": {
-                                        "adjustedFinishDate": "2027-01-07",
-                                        "notes": "Revised: only 1 week actual delay"
-                                    }
-                                },
-                                "clear-file": {
-                                    "summary": "Remove attached file",
-                                    "value": {
-                                        "fileId": null
-                                    }
-                                },
-                                "update-description": {
-                                    "summary": "Update description and notes",
-                                    "value": {
-                                        "description": "Updated project schedule v2",
-                                        "notes": "Reflects scope change from CO #1"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Schedule entry updated, project dates recalculated",
-                        "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ScheduleEntry" } } }] } } }
-                    },
-                    "400": { "description": "At least one field is required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Project, entry, or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            },
-            "delete": {
-                "tags": ["Projects — Schedule"],
-                "summary": "Soft delete a schedule entry",
-                "description": "Soft-deletes the schedule entry and recalculates project dates. If the deleted entry had the latest adjustedFinishDate, the project end date will fall back to the next most recent entry.",
-                "operationId": "deleteScheduleEntry",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "entryId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Schedule entry ID" }
-                ],
-                "responses": {
-                    "200": { "description": "Schedule entry soft-deleted, project dates recalculated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "null" } } }] } } } },
-                    "404": { "description": "Project or entry not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
-            }
-        },
-        "/projects/{id}/team": {
-            "get": {
-                "tags": ["Projects — Team"],
-                "summary": "Get project team (lead PM + team members)",
-                "operationId": "getProjectTeam",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID — use an ID from the list endpoint" }
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Team with lead PM and members",
+                        "description": "Project updated",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectTeam" } } }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
                                     ]
                                 }
                             }
@@ -850,401 +185,416 @@
                     },
                     "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
-            },
-            "post": {
-                "tags": ["Projects — Team"],
-                "summary": "Add or restore a team member (upsert)",
-                "description": "Adds an employee to the project team. If the employee was previously removed (soft-deleted), their assignment is restored. If they already exist and are active, their role is updated. Cannot add the current lead PM as a team member.",
-                "operationId": "addTeamMember",
-                "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID — use an ID from the list endpoint" }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/TeamMemberRequest" },
-                            "examples": {
-                                "accountant": {
-                                    "summary": "Add project accountant",
-                                    "value": {
-                                        "employeeId": "01KJF5VW2E6986BNF3YK7PW2M1",
-                                        "role": "Accountant"
-                                    }
-                                },
-                                "no-role": {
-                                    "summary": "Add member without specific role",
-                                    "value": {
-                                        "employeeId": "01KJF5VW2E6986BNF3YK7PW2M1"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Team member added, restored, or updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/TeamMember" } } }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": { "description": "Employee is already the lead PM", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Project or Employee not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
-                }
             }
         },
-        "/projects/{id}/team/{employeeId}/promote": {
-            "put": {
-                "tags": ["Projects — Team"],
-                "summary": "Promote a team member to lead PM",
-                "description": "Atomically promotes a team member to lead PM. Removes their team assignment, updates Project.leadPMId, and optionally demotes the old PM to a team member with role 'Former Lead PM'. By default keepOldPM=true.",
-                "operationId": "promoteTeamMember",
+        "/project/{id}/set-inactive": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Set project status to INACTIVE",
+                "operationId": "setProjectInactive",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "employeeId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Employee ID to promote" },
-                    { "name": "keepOldPM", "in": "query", "schema": { "type": "string", "enum": ["true", "false"], "default": "true" }, "description": "Keep old lead PM as a team member (role: 'Former Lead PM'). Defaults to true." }
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Team member promoted — returns full project detail with updated team",
+                        "description": "Project updated",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectDetail" } } }
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found or team member not found on this project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },
-        "/projects/{id}/team/{employeeId}": {
-            "delete": {
-                "tags": ["Projects — Team"],
-                "summary": "Remove a team member (soft delete)",
-                "description": "Soft-deletes the team member assignment (sets deletedAt). The member can be re-added later via POST which will restore them.",
-                "operationId": "removeTeamMember",
+        "/project/{id}/set-closed": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Set project status to CLOSED",
+                "operationId": "setProjectClosed",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ID" },
-                    { "name": "employeeId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Employee ID to remove" }
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
                 ],
                 "responses": {
-                    "200": { "description": "Team member soft-deleted", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "type": "null" } } }] } } } },
-                    "404": { "description": "Team member not found on this project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "200": {
+                        "description": "Project updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/{id}/set-completed": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Set project status to COMPLETED",
+                "operationId": "setProjectCompleted",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/team-member/add": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Add a team member to a project",
+                "operationId": "addProjectTeamMember",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddTeamMemberRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Team member added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectTeamMember" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project or employee not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Employee already a team member", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/team-member/remove": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Remove a team member from a project",
+                "operationId": "removeProjectTeamMember",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveTeamMemberRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Team member removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Team member not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/schedule/add": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Add a schedule entry to a project",
+                "operationId": "addProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Schedule added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/schedule/update": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Update a schedule entry",
+                "operationId": "updateProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Schedule updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Schedule or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/schedule/remove": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Remove a schedule entry (soft delete)",
+                "operationId": "removeProjectSchedule",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveScheduleRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Schedule removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Schedule not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/project/prime-contract/add": {
+            "patch": {
+                "tags": ["Projects"],
+                "summary": "Attach a prime contract file to a project",
+                "operationId": "addProjectPrimeContract",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddPrimeContractRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Prime contract added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "Project or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Prime contract already exists for this project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         }
     },
     "components": {
         "schemas": {
-            "ProjectStageObject": {
+            "Project": {
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string" },
-                    "name": { "type": "string", "example": "Submittals" },
-                    "code": { "type": "string", "example": "SUBMITTALS" },
-                    "color": { "type": "string", "example": "yellow" }
-                }
-            },
-            "ProjectStatus": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "name": { "type": "string", "example": "ACTIVE" },
-                    "label": { "type": "string", "example": "Active" },
-                    "color": { "type": "string", "example": "green" },
-                    "order": { "type": "integer", "example": 4 }
-                }
-            },
-            "PrimeContractSummary": {
-                "type": "object",
-                "nullable": true,
-                "properties": {
-                    "contractValue": { "type": "number", "example": 1485000 }
-                }
-            },
-            "PrimeContract": {
-                "type": "object",
-                "nullable": true,
-                "properties": {
-                    "id": { "type": "string" },
-                    "projectId": { "type": "string" },
-                    "contractValue": { "type": "number", "example": 1485000 },
-                    "contractType": { "type": "string", "nullable": true },
-                    "retainagePercent": { "type": "number", "nullable": true },
-                    "targetBudgetPercent": { "type": "number", "nullable": true },
-                    "paymentTerms": { "type": "string", "nullable": true, "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
-                    "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "estimatedCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "actualStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "actualCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "executedContractDocId": { "type": "string", "nullable": true },
-                    "deletedAt": { "type": "string", "nullable": true },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "PrimeContractUpsertRequest": {
-                "type": "object",
-                "required": ["contractValue"],
-                "properties": {
-                    "contractValue": { "type": "number", "exclusiveMinimum": 0 },
-                    "contractType": { "type": "string", "maxLength": 100, "description": "e.g. Lump Sum, GMP, T&M, Cost Plus" },
-                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100 },
-                    "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100 },
-                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
-                    "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true, "description": "Creates a baseline schedule entry when provided" },
-                    "estimatedCompletionDate": { "type": "string", "format": "date-time", "nullable": true, "description": "Creates a baseline schedule entry when provided" },
-                    "actualStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "actualCompletionDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "executedContractDocId": { "type": "string", "nullable": true, "description": "File ID of the executed contract document" }
-                }
-            },
-            "ContractAttachment": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "primeContractId": { "type": "string" },
-                    "documentId": { "type": "string" },
-                    "document": {
-                        "type": "object",
-                        "properties": {
-                            "id": { "type": "string" },
-                            "name": { "type": "string" }
-                        }
-                    },
-                    "createdAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "ContractAttachmentCreateRequest": {
-                "type": "object",
-                "required": ["fileId"],
-                "properties": {
-                    "fileId": { "type": "string", "minLength": 1, "description": "File ID from POST /file/upload" }
-                }
-            },
-            "ProjectListItem": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "name": { "type": "string" },
-                    "jobNumber": { "type": "string", "nullable": true },
-                    "contractNumber": { "type": "string", "nullable": true },
-                    "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
-                    "stageId": { "type": "string" },
-                    "stage": { "$ref": "#/components/schemas/ProjectStageObject" },
-                    "description": { "type": "string" },
-                    "status": { "$ref": "#/components/schemas/ProjectStatus" },
-                    "streetAddress": { "type": "string", "nullable": true },
-                    "city": { "type": "string", "nullable": true },
-                    "state": { "type": "string", "nullable": true },
-                    "effectiveStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "effectiveEndDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "gc": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
-                    "leadPM": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" } } },
-                    "primeContract": { "$ref": "#/components/schemas/PrimeContractSummary" },
-                    "createdAt": { "type": "string", "format": "date-time" }
-                }
-            },
-            "ProjectDetail": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
+                    "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
                     "description": { "type": "string" },
                     "jobNumber": { "type": "string", "nullable": true },
                     "contractNumber": { "type": "string", "nullable": true },
-                    "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
                     "stageId": { "type": "string" },
-                    "stage": { "$ref": "#/components/schemas/ProjectStageObject" },
-                    "statusId": { "type": "string" },
-                    "status": { "$ref": "#/components/schemas/ProjectStatus" },
+                    "divisionId": { "type": "string" },
+                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] },
                     "streetAddress": { "type": "string", "nullable": true },
                     "city": { "type": "string", "nullable": true },
                     "state": { "type": "string", "nullable": true },
                     "zipCode": { "type": "string", "nullable": true },
-                    "effectiveStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "effectiveEndDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "estimatedEndDate": { "type": "string", "format": "date-time", "nullable": true },
                     "gcId": { "type": "string" },
-                    "gc": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string", "nullable": true }, "phone": { "type": "string", "nullable": true } } },
-                    "leadPMId": { "type": "string" },
-                    "leadPM": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" }, "phoneNumber": { "type": "string" } } },
-                    "primeContract": { "$ref": "#/components/schemas/PrimeContract" },
-                    "projectScheduleEntries": { "type": "array", "items": { "$ref": "#/components/schemas/ScheduleEntry" } },
-                    "teamMembers": { "type": "array", "items": { "$ref": "#/components/schemas/TeamMember" } },
-                    "deletedAt": { "type": "string", "nullable": true },
+                    "leadPMId": { "type": "string", "nullable": true },
+                    "contractValue": { "type": "number" },
+                    "contractType": { "type": "string", "nullable": true },
+                    "retainagePercent": { "type": "number", "nullable": true },
+                    "targetBudgetPercent": { "type": "number", "nullable": true },
+                    "taxRate": { "type": "number", "nullable": true },
+                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
+                    "startDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "completedDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "closedDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "setInactiveDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "tcoDate": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
-            "ProjectCreateRequest": {
-                "type": "object",
-                "required": ["name", "description", "stageId", "division", "gcId"],
-                "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 255 },
-                    "description": { "type": "string", "minLength": 1 },
-                    "jobNumber": { "type": "string", "description": "Auto-generated YYYY-### if not provided" },
-                    "contractNumber": { "type": "string", "maxLength": 100 },
-                    "stageId": { "type": "string", "description": "INSTALLATION=01KJF5VWB4PDYMT18KSG7QR80S, FABRICATION=01KJF5VWBEMH9YXCWD7M7YANN2, SUBMITTALS=01KJF5VWBMAGZE9ZS4RDGAE90C, BUYOUT=01KJF5VWBQVRE1KCBQTQ98C4BS, CLOSEOUT=01KJF5VWBV52WYG4NWGXKM6DR5, PUNCHLIST=01KJF5VWC0DEN4XF4W4R95WMQH" },
-                    "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
-                    "statusId": { "type": "string", "description": "Defaults to BIDDING if omitted. BIDDING=01KJF5VW65VGF3GC9JBHXQPDBE, ACTIVE=01KJF5VW6STB8P61EX77CK1MD9, AWARDED=01KJF5VW6PTMD5RRK6XXM4E84W" },
-                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJF5VHKV1KD5STADZ1HGHFS9, Skanska=01KJF5VHMB8XRMCQBCZ5MSBFV5, SCA District 1=01KJF5VHMJJGPKN06Z9Y5NF24M, Hensel Phelps=01KJF5VHMP6ERP45KDA5T58RAE, Granite=01KJF5VHMXP9J30S3NCZJ647JA" },
-                    "leadPMId": { "type": "string", "description": "Employee ID — create employees via /employees endpoint first" },
-                    "streetAddress": { "type": "string" },
-                    "city": { "type": "string" },
-                    "state": { "type": "string", "maxLength": 2 },
-                    "zipCode": { "type": "string" },
-                    "effectiveStartDate": { "type": "string", "format": "date-time" },
-                    "effectiveEndDate": { "type": "string", "format": "date-time" },
-                    "contract": {
-                        "type": "object",
-                        "description": "Optional — omit to create project without a prime contract (bidding phase)",
-                        "required": ["contractValue"],
-                        "properties": {
-                            "contractValue": { "type": "number", "exclusiveMinimum": 0 }
-                        }
-                    }
-                }
-            },
-            "ProjectUpdateRequest": {
-                "type": "object",
-                "description": "All fields optional (partial update). jobNumber, effectiveStartDate, effectiveEndDate, and contract are NOT updatable via this endpoint.",
-                "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 255 },
-                    "description": { "type": "string", "minLength": 1 },
-                    "contractNumber": { "type": "string", "maxLength": 100 },
-                    "stageId": { "type": "string", "description": "INSTALLATION=01KJF5VWB4PDYMT18KSG7QR80S, FABRICATION=01KJF5VWBEMH9YXCWD7M7YANN2, SUBMITTALS=01KJF5VWBMAGZE9ZS4RDGAE90C, BUYOUT=01KJF5VWBQVRE1KCBQTQ98C4BS, CLOSEOUT=01KJF5VWBV52WYG4NWGXKM6DR5, PUNCHLIST=01KJF5VWC0DEN4XF4W4R95WMQH" },
-                    "division": { "type": "string", "enum": ["SCA", "DDC", "CIVIL", "INSTITUTIONAL"] },
-                    "statusId": { "type": "string", "description": "BIDDING=01KJF5VW65VGF3GC9JBHXQPDBE, NEGOTIATION=01KJF5VW6G9ZARAQHT96CQYJ46, AWARDED=01KJF5VW6PTMD5RRK6XXM4E84W, ACTIVE=01KJF5VW6STB8P61EX77CK1MD9, ON_HOLD=01KJF5VW6X6K7FXH8DSHQD98AQ, COMPLETED=01KJF5VW70Z4QSS5WP81XS8WJ6, CANCELLED=01KJF5VW72JHN91BQ1ZH7BS05Q" },
-                    "gcId": { "type": "string", "description": "BuildCorp=01JMSEEDGCONT000000001, Turner=01KJF5VHKV1KD5STADZ1HGHFS9, Skanska=01KJF5VHMB8XRMCQBCZ5MSBFV5" },
-                    "leadPMId": { "type": "string", "description": "Employee ID" },
-                    "streetAddress": { "type": "string" },
-                    "city": { "type": "string" },
-                    "state": { "type": "string", "maxLength": 2 },
-                    "zipCode": { "type": "string" }
-                }
-            },
-            "TeamMemberRequest": {
-                "type": "object",
-                "required": ["employeeId"],
-                "properties": {
-                    "employeeId": { "type": "string", "description": "Employee ID" },
-                    "role": { "type": "string", "maxLength": 100, "description": "Optional role. e.g. Accountant, Site Superintendent, Safety Manager, Estimator" }
-                }
-            },
-            "ProjectTeam": {
-                "type": "object",
-                "properties": {
-                    "leadPM": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" } } },
-                    "teamMembers": { "type": "array", "items": { "$ref": "#/components/schemas/TeamMember" } }
-                }
-            },
-            "TeamMember": {
+            "ProjectTeamMember": {
                 "type": "object",
                 "properties": {
                     "projectId": { "type": "string" },
                     "employeeId": { "type": "string" },
                     "role": { "type": "string" },
-                    "employee": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" } } },
-                    "deletedAt": { "type": "string", "nullable": true },
-                    "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
+                    "isLead": { "type": "boolean" }
                 }
             },
-            "ScheduleEntry": {
+            "PrimeContract": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "fileId": { "type": "string" },
+                    "uploadedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "ProjectCreateRequest": {
+                "type": "object",
+                "required": ["name", "description", "stageId", "divisionId", "status", "gcId", "contractValue"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 2 },
+                    "description": { "type": "string", "minLength": 1 },
+                    "jobNumber": { "type": "string", "nullable": true, "description": "Auto-generated as YYYY-### if omitted" },
+                    "contractNumber": { "type": "string", "nullable": true },
+                    "stageId": { "type": "string", "description": "Lookup ULID" },
+                    "divisionId": { "type": "string", "description": "Lookup ULID" },
+                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] },
+                    "streetAddress": { "type": "string", "nullable": true },
+                    "city": { "type": "string", "nullable": true },
+                    "state": { "type": "string", "nullable": true },
+                    "zipCode": { "type": "string", "nullable": true },
+                    "estimatedStartDate": { "type": "string", "format": "date", "nullable": true },
+                    "estimatedEndDate": { "type": "string", "format": "date", "nullable": true },
+                    "gcId": { "type": "string" },
+                    "leadPMId": { "type": "string", "nullable": true },
+                    "contractValue": { "type": "number", "minimum": 0 },
+                    "contractType": { "type": "string", "nullable": true },
+                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                    "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                    "taxRate": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
+                    "setInactiveDate": { "type": "string", "format": "date", "nullable": true },
+                    "tcoDate": { "type": "string", "format": "date", "nullable": true }
+                }
+            },
+            "ProjectUpdateRequest": {
+                "allOf": [
+                    {
+                        "type": "object",
+                        "required": ["id", "name", "description", "stageId", "divisionId", "gcId", "contractValue"],
+                        "properties": {
+                            "id": { "type": "string", "description": "Project ULID" },
+                            "name": { "type": "string", "minLength": 2 },
+                            "description": { "type": "string", "minLength": 1 },
+                            "jobNumber": { "type": "string", "nullable": true },
+                            "contractNumber": { "type": "string", "nullable": true },
+                            "stageId": { "type": "string" },
+                            "divisionId": { "type": "string" },
+                            "streetAddress": { "type": "string", "nullable": true },
+                            "city": { "type": "string", "nullable": true },
+                            "state": { "type": "string", "nullable": true },
+                            "zipCode": { "type": "string", "nullable": true },
+                            "estimatedStartDate": { "type": "string", "format": "date", "nullable": true },
+                            "estimatedEndDate": { "type": "string", "format": "date", "nullable": true },
+                            "gcId": { "type": "string" },
+                            "leadPMId": { "type": "string", "nullable": true },
+                            "contractValue": { "type": "number", "minimum": 0 },
+                            "contractType": { "type": "string", "nullable": true },
+                            "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                            "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                            "taxRate": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                            "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
+                            "setInactiveDate": { "type": "string", "format": "date", "nullable": true },
+                            "tcoDate": { "type": "string", "format": "date", "nullable": true }
+                        }
+                    }
+                ]
+            },
+            "AddTeamMemberRequest": {
+                "type": "object",
+                "required": ["projectId", "employeeId", "role"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "employeeId": { "type": "string" },
+                    "role": { "type": "string", "minLength": 1 },
+                    "isLead": { "type": "boolean", "default": false }
+                }
+            },
+            "RemoveTeamMemberRequest": {
+                "type": "object",
+                "required": ["projectId", "employeeId"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "employeeId": { "type": "string" }
+                }
+            },
+            "ProjectSchedule": {
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
                     "projectId": { "type": "string" },
                     "date": { "type": "string", "format": "date-time" },
                     "description": { "type": "string" },
-                    "adjustedStartDate": { "type": "string", "format": "date-time", "nullable": true },
                     "adjustedFinishDate": { "type": "string", "format": "date-time", "nullable": true },
                     "notes": { "type": "string", "nullable": true },
                     "fileId": { "type": "string", "nullable": true },
-                    "file": { "type": "object", "nullable": true, "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
-                    "changeOrderId": { "type": "string", "nullable": true, "description": "Set automatically when entry is created from a change order" },
-                    "deletedAt": { "type": "string", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
-                    "updatedAt": { "type": "string", "format": "date-time" }
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
-            "ScheduleEntryCreateRequest": {
+            "AddScheduleRequest": {
                 "type": "object",
-                "required": ["date", "description"],
+                "required": ["projectId", "date", "description"],
                 "properties": {
-                    "date": { "type": "string", "format": "date-time", "description": "When this event/adjustment occurred" },
-                    "description": { "type": "string", "minLength": 1, "maxLength": 500 },
-                    "adjustedStartDate": { "type": "string", "format": "date-time", "description": "New projected start date (updates Project.effectiveStartDate)" },
-                    "adjustedFinishDate": { "type": "string", "format": "date-time", "description": "New projected completion date (updates Project.effectiveEndDate)" },
-                    "notes": { "type": "string", "maxLength": 2000 },
-                    "fileId": { "type": "string", "description": "Attach a schedule document (File ID)" }
-                }
-            },
-            "ScheduleEntryUpdateRequest": {
-                "type": "object",
-                "description": "All fields optional (partial update). At least one field required. Set nullable fields to null to clear them.",
-                "properties": {
-                    "date": { "type": "string", "format": "date-time" },
-                    "description": { "type": "string", "minLength": 1, "maxLength": 500 },
-                    "adjustedStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "adjustedFinishDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "notes": { "type": "string", "maxLength": 2000, "nullable": true },
+                    "projectId": { "type": "string" },
+                    "date": { "type": "string", "format": "date" },
+                    "description": { "type": "string", "minLength": 1 },
+                    "adjustedFinishDate": { "type": "string", "format": "date", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
                     "fileId": { "type": "string", "nullable": true }
                 }
             },
-            "ProjectStatusCreateRequest": {
+            "UpdateScheduleRequest": {
                 "type": "object",
-                "required": ["name", "label", "color", "order"],
+                "required": ["id", "date", "description"],
                 "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "label": { "type": "string", "minLength": 1, "maxLength": 100 },
-                    "color": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "order": { "type": "integer", "minimum": 1 },
-                    "isDefault": { "type": "boolean" }
+                    "id": { "type": "string", "description": "Schedule ULID" },
+                    "date": { "type": "string", "format": "date" },
+                    "description": { "type": "string", "minLength": 1 },
+                    "adjustedFinishDate": { "type": "string", "format": "date", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "fileId": { "type": "string", "nullable": true }
                 }
             },
-            "ProjectStatusUpdateRequest": {
+            "RemoveScheduleRequest": {
                 "type": "object",
-                "description": "All fields optional (partial update).",
+                "required": ["id"],
                 "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "label": { "type": "string", "minLength": 1, "maxLength": 100 },
-                    "color": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "order": { "type": "integer", "minimum": 1 },
-                    "isDefault": { "type": "boolean" }
+                    "id": { "type": "string", "description": "Schedule ULID" }
                 }
             },
-            "ProjectStageCreateRequest": {
+            "AddPrimeContractRequest": {
                 "type": "object",
-                "required": ["name", "code", "color"],
+                "required": ["projectId", "fileId"],
                 "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
-                    "code": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "description": { "type": "string" },
-                    "color": { "type": "string", "minLength": 1, "maxLength": 50 }
-                }
-            },
-            "ProjectStageUpdateRequest": {
-                "type": "object",
-                "description": "All fields optional (partial update).",
-                "properties": {
-                    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
-                    "code": { "type": "string", "minLength": 1, "maxLength": 50 },
-                    "description": { "type": "string", "nullable": true },
-                    "color": { "type": "string", "minLength": 1, "maxLength": 50 }
+                    "projectId": { "type": "string" },
+                    "fileId": { "type": "string" }
                 }
             }
         }

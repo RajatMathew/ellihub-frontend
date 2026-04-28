@@ -131,7 +131,7 @@
                                     },
                                     "data": {
                                         "type": "string",
-                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID\", \"size\": 1024, \"mimeType\": \"application/pdf\"}"
+                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID (optional)\", \"displayName\": \"My File (optional)\", \"size\": 1024, \"mimeType\": \"application/pdf\"}. If parentId is omitted, file is placed in the temp folder."
                                     }
                                 }
                             }
@@ -649,7 +649,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "enum": ["INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                            "enum": ["INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT", "SCHEDULE"]
                         },
                         "description": "Protected folder type"
                     }
@@ -701,6 +701,7 @@
                 "properties": {
                     "id": { "type": "string", "description": "ULID" },
                     "name": { "type": "string" },
+                    "displayName": { "type": "string", "nullable": true, "description": "Optional display name" },
                     "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
                     "parentId": { "type": "string", "nullable": true, "description": "Parent folder ULID (null for root)" },
                     "objectId": { "type": "string", "nullable": true, "description": "S3 object key (files only)" },
@@ -709,15 +710,25 @@
                     "protectedFolderType": {
                         "type": "string",
                         "nullable": true,
-                        "enum": ["PROJECT_ROOT", "INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT"]
+                        "enum": ["PROJECT_ROOT", "INVOICE", "RFQ", "PURCHASE_ORDER", "PURCHASE_ORDER_CO", "PRIME_CO", "PRIME_CONTRACT", "SCHEDULE"]
                     },
                     "isDeletable": { "type": "boolean" },
                     "private": { "type": "boolean" },
                     "createdBy": { "type": "string" },
+                    "createdByUser": { "$ref": "#/components/schemas/UserBrief", "description": "Included on get/list responses" },
                     "deletedBy": { "type": "string", "nullable": true },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "UserBrief": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "image": { "type": "string", "nullable": true }
                 }
             },
             "FolderWithChildren": {
@@ -773,11 +784,12 @@
             },
             "FileUploadData": {
                 "type": "object",
-                "required": ["name", "parentId", "size"],
-                "description": "Metadata sent as JSON string in the 'data' form field",
+                "required": ["name", "size"],
+                "description": "Metadata sent as JSON string in the 'data' form field. If parentId is omitted, file is uploaded to the temp folder.",
                 "properties": {
                     "name": { "type": "string", "minLength": 1 },
-                    "parentId": { "type": "string", "description": "Parent folder ULID" },
+                    "displayName": { "type": "string", "minLength": 1, "description": "Optional display name" },
+                    "parentId": { "type": "string", "description": "Parent folder ULID (optional — defaults to temp folder)" },
                     "size": { "type": "integer", "description": "File size in bytes" },
                     "mimeType": { "type": "string", "description": "MIME type (optional)" }
                 }

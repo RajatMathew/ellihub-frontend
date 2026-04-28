@@ -7,10 +7,9 @@ export const CostCodeCategoryCreateSchema = z.object({
 
 export type CostCodeCategoryCreateRequest = z.infer<typeof CostCodeCategoryCreateSchema>;
 
-export const CostCodeCategoryUpdateSchema = z.object({
-    name: z.string().min(2),
-    description: z.string().optional().nullable(),
-}).partial();
+export const CostCodeCategoryUpdateSchema = CostCodeCategoryCreateSchema.partial().extend({
+    id: z.ulid(),
+});
 
 export type CostCodeCategoryUpdateRequest = z.infer<typeof CostCodeCategoryUpdateSchema>;
 
@@ -23,12 +22,7 @@ export const CostCodeCreateSchema = z.object({
 
 export type CostCodeCreateRequest = z.infer<typeof CostCodeCreateSchema>;
 
-export const CostCodeUpdateSchema = z.object({
-    name: z.string().min(2),
-    code: z.string().min(2),
-    costCodeCategoryId: z.ulid(),
-    description: z.string().min(1),
-}).partial();
+export const CostCodeUpdateSchema = CostCodeCreateSchema.partial().extend({ id: z.ulid() });
 
 export type CostCodeUpdateRequest = z.infer<typeof CostCodeUpdateSchema>;
 

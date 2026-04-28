@@ -1,105 +1,68 @@
 import z from 'zod';
 
-const EmailItemSchema = z.object({
-    email: z.string().email(),
-    label: z.string().min(1),
-});
-
-const PhoneItemSchema = z.object({
-    phone: z.string().min(1),
-    label: z.string().min(1),
-});
-
-const VendorLinkItemSchema = z.object({
-    vendorId: z.string().ulid(),
-    isPrimary: z.boolean().optional().default(false),
-});
-
-const GCLinkItemSchema = z.object({
-    generalContractorId: z.string().ulid(),
-    isPrimary: z.boolean().optional().default(false),
-});
+const exclusiveVendorOrGc = {
+    check: (data: { vendorId?: string | null; generalContractorId?: string | null }) =>
+        !(data.vendorId && data.generalContractorId),
+    message: 'A contact can be linked to a vendor OR a GC, not both',
+};
 
 export const ContactCreateSchema = z
     .object({
-        fullName: z.string().min(1),
-        professionalRoleId: z.string().ulid().optional(),
-        email: EmailItemSchema.optional(),
-        phoneNumber: PhoneItemSchema.optional(),
-        tags: z.array(z.string()).optional().default([]),
-        vendorLinks: z.array(VendorLinkItemSchema).optional().default([]),
-        gcLinks: z.array(GCLinkItemSchema).optional().default([]),
+        fullName: z.string().min(2),
+        professionalRoleId: z.ulid().optional().nullable(),
+        email: z.email(),
+        phoneNumber: z.string().min(1).optional().nullable(),
+        tags: z.array(z.string().min(1)).optional(),
+        vendorId: z.ulid().optional().nullable(),
+        generalContractorId: z.ulid().optional().nullable(),
     })
-    .refine((data) => data.email || data.phoneNumber, {
-        message: 'At least one email or phone number is required',
-    });
+    .refine(exclusiveVendorOrGc.check, { message: exclusiveVendorOrGc.message });
 
 export type ContactCreateRequest = z.infer<typeof ContactCreateSchema>;
 
-export const ContactUpdateSchema = z.object({
-    fullName: z.string().min(1),
-    professionalRoleId: z.string().ulid().nullable(),
-    email: EmailItemSchema.nullable(),
-    phoneNumber: PhoneItemSchema.nullable(),
-    tags: z.array(z.string()),
-}).partial();
+export const ContactUpdateSchema = z
+    .object({
+        id: z.ulid(),
+        fullName: z.string().min(2),
+        professionalRoleId: z.ulid().optional().nullable(),
+        email: z.email(),
+        phoneNumber: z.string().min(1).optional().nullable(),
+        tags: z.array(z.string().min(1)).optional(),
+        vendorId: z.ulid().optional().nullable(),
+        generalContractorId: z.ulid().optional().nullable(),
+    })
+    .refine(exclusiveVendorOrGc.check, { message: exclusiveVendorOrGc.message });
 
 export type ContactUpdateRequest = z.infer<typeof ContactUpdateSchema>;
 
-export const ContactQuerySchema = z.object({
-    search: z.string().optional(),
-    professionalRoleId: z.string().ulid().optional(),
-    vendorId: z.string().ulid().optional(),
-    generalContractorId: z.string().ulid().optional(),
-    page: z.coerce.number().int().positive().optional(),
-    size: z.coerce.number().int().positive().max(100).optional(),
-    sortBy: z.enum(['fullName', 'createdAt', 'updatedAt']).optional(),
-    sortOrder: z.enum(['asc', 'desc']).optional(),
+export const AddTagToContactSchema = z.object({
+    contactId: z.ulid(),
+    tag: z.string().min(1),
 });
 
-export type ContactQueryParams = z.infer<typeof ContactQuerySchema>;
+export type AddTagToContactRequest = z.infer<typeof AddTagToContactSchema>;
 
-// ProfessionalRole schemas
-export const ProfessionalRoleCreateSchema = z.object({
-    name: z.string().min(1),
+export const RemoveTagFromContactSchema = z.object({
+    contactId: z.ulid(),
+    tag: z.string().min(1),
 });
 
-export type ProfessionalRoleCreateRequest = z.infer<typeof ProfessionalRoleCreateSchema>;
+export type RemoveTagFromContactRequest = z.infer<typeof RemoveTagFromContactSchema>;
 
-export const ProfessionalRoleUpdateSchema = z.object({
-    name: z.string().min(1),
-}).partial();
+export const LinkContactSchema = z
+    .object({
+        contactId: z.ulid(),
+        vendorId: z.ulid().optional(),
+        generalContractorId: z.ulid().optional(),
+    })
+    .refine((d) => Boolean(d.vendorId) !== Boolean(d.generalContractorId), {
+        message: 'Provide exactly one of vendorId or generalContractorId',
+    });
 
-export type ProfessionalRoleUpdateRequest = z.infer<typeof ProfessionalRoleUpdateSchema>;
+export type LinkContactRequest = z.infer<typeof LinkContactSchema>;
 
-// Vendor link schemas
-export const VendorLinkCreateSchema = z.object({
-    vendorId: z.string().ulid(),
-    isPrimary: z.boolean().optional().default(false),
+export const UnlinkContactSchema = z.object({
+    contactId: z.ulid(),
 });
 
-export type VendorLinkCreateRequest = z.infer<typeof VendorLinkCreateSchema>;
-
-// GC link schemas
-export const GCLinkCreateSchema = z.object({
-    generalContractorId: z.string().ulid(),
-    isPrimary: z.boolean().optional().default(false),
-});
-
-export type GCLinkCreateRequest = z.infer<typeof GCLinkCreateSchema>;
-
-// Sub-resource schemas
-export const PhoneAddSchema = z.object({
-    phone: z.string().min(1),
-    label: z.string().min(1),
-});
-
-export type PhoneAddRequest = z.infer<typeof PhoneAddSchema>;
-
-export const EmailAddSchema = z.object({
-    email: z.string().email(),
-    label: z.string().min(1),
-});
-
-export type EmailAddRequest = z.infer<typeof EmailAddSchema>;
-
+export type UnlinkContactRequest = z.infer<typeof UnlinkContactSchema>;

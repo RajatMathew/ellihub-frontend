@@ -1,8 +1,9 @@
 import { CostCode, CostCodeCategory } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { checkDeletedAt } from '@modules/common/utils';
+import { ActivityLogService } from '@modules/activity-log';
 import { ConflictError, NotFoundError } from '@utils';
+import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
@@ -12,41 +13,59 @@ import {
     CostCodeUpdateRequest,
 } from './models';
 
-const TENANT_ID = 'default';
-
 export const CostCodeService = {
     createCostCodeCategory: async (
-        request: CostCodeCategoryCreateRequest
+        request: CostCodeCategoryCreateRequest,
+        userId: string
     ): Promise<CostCodeCategory> => {
-        return await prisma.costCodeCategory.create({
+        const created = await prisma.costCodeCategory.create({
             data: {
                 ...request,
-                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: created.id,
+            action: 'create',
+            description: `Created cost code category ${created.name}`,
+        });
+
+        return created;
     },
 
     updateCostCodeCategory: async (
-        id: string,
-        request: CostCodeCategoryUpdateRequest
+        request: CostCodeCategoryUpdateRequest,
+        userId: string
     ): Promise<CostCodeCategory> => {
+        const { id, ...data } = request;
+
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
         checkDeletedAt(costCodeCategory);
 
-        return await prisma.costCodeCategory.update({
+        const updated = await prisma.costCodeCategory.update({
             where: { id },
-            data: {
-                ...request,
-            },
+            data,
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: updated.id,
+            action: 'update',
+            description: `Updated cost code category ${updated.name}`,
+        });
+
+        return updated;
     },
 
     getCostCodeCategory: async (id: string): Promise<CostCodeCategory> => {
@@ -54,7 +73,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
@@ -67,17 +86,16 @@ export const CostCodeService = {
         return await prisma.costCodeCategory.findMany({
             where: {
                 deletedAt: null,
-                tenantId: TENANT_ID,
             },
         });
     },
 
-    deleteCostCodeCategory: async (id: string): Promise<void> => {
+    deleteCostCodeCategory: async (id: string, userId: string): Promise<void> => {
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
@@ -89,24 +107,31 @@ export const CostCodeService = {
                 deletedAt: new Date(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCodeCategory',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted cost code category ${costCodeCategory.name}`,
+        });
     },
 
-    createCostCode: async (request: CostCodeCreateRequest): Promise<CostCode> => {
+    createCostCode: async (request: CostCodeCreateRequest, userId: string): Promise<CostCode> => {
         const costCodeCategory = await prisma.costCodeCategory.findUnique({
             where: { id: request.costCodeCategoryId },
         });
 
-        if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+        if (!costCodeCategory) {
             throw new NotFoundError('Cost code category not found');
         }
 
         checkDeletedAt(costCodeCategory);
 
-        // Check code uniqueness within tenant (excluding soft-deleted)
+        // Check code uniqueness (excluding soft-deleted)
         const existing = await prisma.costCode.findFirst({
             where: {
                 code: request.code,
-                tenantId: TENANT_ID,
                 deletedAt: null,
             },
         });
@@ -115,36 +140,45 @@ export const CostCodeService = {
             throw new ConflictError('A cost code with this code already exists');
         }
 
-        return await prisma.costCode.create({
+        const created = await prisma.costCode.create({
             data: {
                 ...request,
-                tenantId: TENANT_ID,
                 id: ulid(),
             },
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: created.id,
+            action: 'create',
+            description: `Created cost code ${created.code} — ${created.name}`,
+            affectedEntityIds: [created.costCodeCategoryId],
+        });
+
+        return created;
     },
 
-    updateCostCode: async (
-        id: string,
-        request: CostCodeUpdateRequest
-    ): Promise<CostCode> => {
+    updateCostCode: async (request: CostCodeUpdateRequest, userId: string): Promise<CostCode> => {
+        const { id, ...data } = request;
+
         const costCode = await prisma.costCode.findUnique({
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
         checkDeletedAt(costCode);
 
         // If costCodeCategoryId is being updated, validate it
-        if (request.costCodeCategoryId) {
+        if (data.costCodeCategoryId) {
             const costCodeCategory = await prisma.costCodeCategory.findUnique({
-                where: { id: request.costCodeCategoryId },
+                where: { id: data.costCodeCategoryId },
             });
 
-            if (!costCodeCategory || costCodeCategory.tenantId !== TENANT_ID) {
+            if (!costCodeCategory) {
                 throw new NotFoundError('Cost code category not found');
             }
 
@@ -152,11 +186,10 @@ export const CostCodeService = {
         }
 
         // Check code uniqueness if code is being updated
-        if (request.code) {
+        if (data.code) {
             const existing = await prisma.costCode.findFirst({
                 where: {
-                    code: request.code,
-                    tenantId: TENANT_ID,
+                    code: data.code,
                     deletedAt: null,
                     NOT: { id },
                 },
@@ -167,12 +200,26 @@ export const CostCodeService = {
             }
         }
 
-        return await prisma.costCode.update({
+        const updated = await prisma.costCode.update({
             where: { id },
-            data: {
-                ...request,
-            },
+            data,
         });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: updated.id,
+            action: 'update',
+            description: `Updated cost code ${updated.code} — ${updated.name}`,
+            affectedEntityIds: [
+                updated.costCodeCategoryId,
+                ...(costCode.costCodeCategoryId !== updated.costCodeCategoryId
+                    ? [costCode.costCodeCategoryId]
+                    : []),
+            ],
+        });
+
+        return updated;
     },
 
     getCostCode: async (id: string): Promise<CostCode> => {
@@ -180,7 +227,7 @@ export const CostCodeService = {
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
@@ -195,12 +242,11 @@ export const CostCodeService = {
         data: CostCode[];
         count: number;
     }> => {
-        const { filter, skip, take, sortBy, sortOrder } = params;
-        const { search, costCodeCategoryId, ...restFilter } = filter || {};
+        const { filter, skip, take, sortBy, sortOrder, search } = params;
+        const { costCodeCategoryId, ...restFilter } = filter || {};
 
         const whereClause = {
             deletedAt: null,
-            tenantId: TENANT_ID,
             ...restFilter,
             ...(costCodeCategoryId && { costCodeCategoryId }),
             ...(search && {
@@ -224,18 +270,21 @@ export const CostCodeService = {
                 orderBy: {
                     [sortBy as keyof CostCode]: sortOrder,
                 },
+                include: {
+                    costCodeCategory: true,
+                },
             }),
         ]);
 
         return { data, count };
     },
 
-    deleteCostCode: async (id: string): Promise<void> => {
+    deleteCostCode: async (id: string, userId: string): Promise<void> => {
         const costCode = await prisma.costCode.findUnique({
             where: { id },
         });
 
-        if (!costCode || costCode.tenantId !== TENANT_ID) {
+        if (!costCode) {
             throw new NotFoundError('Cost code not found');
         }
 
@@ -246,6 +295,15 @@ export const CostCodeService = {
             data: {
                 deletedAt: new Date(),
             },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'costCode',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted cost code ${costCode.code} — ${costCode.name}`,
+            affectedEntityIds: [costCode.costCodeCategoryId],
         });
     },
 };

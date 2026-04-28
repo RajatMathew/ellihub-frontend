@@ -1,208 +1,131 @@
 import { paginationMiddleware } from '@middleware';
-import { InvoiceService } from '@modules/invoice/services';
 import { success, zValidator } from '@utils';
-import { Context, Hono } from 'hono';
+import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
-    CancelSchema,
-    IssueSchema,
-    LineItemCreateSchema,
-    LineItemUpdateSchema,
-    POCreateSchema,
-    POUpdateSchema,
-    RecordDeliverySchema,
+    AddPoAttachmentSchema,
+    PoCreateSchema,
+    PoUpdateSchema,
+    RemovePoAttachmentSchema,
+    SetPoCancelledSchema,
+    SetPoDeliveredSchema,
+    SetPoDraftSchema,
+    SetPoIssuedSchema,
 } from './models';
-import poStatusRoutes from './po-status.routes';
-import { POService } from './services';
+import { PoService } from './service';
 
 const app = new Hono();
 
-// Mount lookup table sub-routes
-app.route('/statuses', poStatusRoutes);
-
-// --- PO CRUD ---
-
 app.get(
     '/',
-    requirePermission({ project: ['view-all'] }),
-    paginationMiddleware({
-        defaultSize: 25,
-        defaultSortBy: 'issueDate',
-        defaultSortOrder: 'desc',
-    }),
-    async (c: Context) => {
+    requirePermission({ purchaseOrder: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c) => {
         const pagination = c.get('pagination');
-        const query = c.req.query();
-
-        const { projectId, status, tradeCategory, vendorId, startDate, endDate, overdue } = query;
-        pagination.filter = {
-            ...pagination.filter,
-            ...(projectId && { projectId }),
-            ...(status && { status }),
-            ...(tradeCategory && { tradeCategory }),
-            ...(vendorId && { vendorId }),
-            ...(startDate && { startDate }),
-            ...(endDate && { endDate }),
-            ...(overdue && { overdue }),
-        };
-
-        const { data, count } = await POService.listPOs(pagination);
+        const { data, count } = await PoService.getPurchaseOrders(pagination);
         return success(c, data, 200, 'OK', count);
     }
 );
 
+app.get('/:id', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const po = await PoService.getPurchaseOrder(id);
+    return success(c, po);
+});
+
 app.post(
     '/',
-    requirePermission({ project: ['create'] }),
-    zValidator('json', POCreateSchema),
+    requirePermission({ purchaseOrder: ['create'] }),
+    zValidator('json', PoCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const po = await POService.createPO(data, userId);
+        const po = await PoService.createPurchaseOrder(data, c.get('user')!.id);
         return success(c, po, 201);
     }
 );
 
-// --- Summary routes (static paths before :id) ---
-
-app.get('/summary/project/:projectId', requirePermission({ project: ['view-all'] }), async (c) => {
-    const projectId = c.req.param('projectId');
-    const summary = await POService.getProjectPOSummary(projectId);
-    return success(c, summary);
-});
-
-app.get(
-    '/vendor/:vendorId',
-    requirePermission({ project: ['view-all'] }),
-    paginationMiddleware({
-        defaultSize: 25,
-        defaultSortBy: 'issueDate',
-        defaultSortOrder: 'desc',
-    }),
-    async (c: Context) => {
-        const vendorId = c.req.param('vendorId');
-        const pagination = c.get('pagination');
-        const query = c.req.query();
-
-        const { status, projectId } = query;
-        pagination.filter = {
-            ...pagination.filter,
-            ...(status && { status }),
-            ...(projectId && { projectId }),
-        };
-
-        const result = await POService.getVendorPOHistory(vendorId, pagination);
-        return success(c, result.data, 200, 'OK', result.count);
-    }
-);
-
-// --- Workflow routes (static paths before :id) ---
-
-app.post(
-    '/:id/issue',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', IssueSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const result = await POService.issuePO(id, data, userId);
-        return success(c, result);
-    }
-);
-
-app.post(
-    '/:id/cancel',
-    requirePermission({ project: ['delete'] }),
-    zValidator('json', CancelSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const po = await POService.cancelPO(id, data, userId);
-        return success(c, po);
-    }
-);
-
-app.post(
-    '/:id/record-delivery',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', RecordDeliverySchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const po = await POService.recordDelivery(id, data);
-        return success(c, po);
-    }
-);
-
-// --- Line Items ---
-
-app.post(
-    '/:id/line-items',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', LineItemCreateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const lineItem = await POService.addLineItem(id, data);
-        return success(c, lineItem, 201);
-    }
-);
-
 app.put(
-    '/:id/line-items/:lineItemId',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', LineItemUpdateSchema),
+    '/',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', PoUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
-        const lineItemId = c.req.param('lineItemId');
         const data = c.req.valid('json');
-        const lineItem = await POService.updateLineItem(id, lineItemId, data);
-        return success(c, lineItem);
-    }
-);
-
-app.delete('/:id/line-items/:lineItemId', requirePermission({ project: ['update'] }), async (c) => {
-    const id = c.req.param('id');
-    const lineItemId = c.req.param('lineItemId');
-    await POService.removeLineItem(id, lineItemId);
-    return success(c, null, 200, 'Line item removed');
-});
-
-// --- Invoices sub-resource ---
-
-app.get('/:id/invoices', requirePermission({ project: ['view-all'] }), async (c) => {
-    const poId = c.req.param('id');
-    const result = await InvoiceService.listPOInvoices(poId);
-    return success(c, result);
-});
-
-// --- PO Detail (must be after all static sub-routes) ---
-
-app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const po = await POService.getPO(id);
-    return success(c, po);
-});
-
-app.put(
-    '/:id',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', POUpdateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const po = await POService.updatePO(id, data);
+        const po = await PoService.updatePurchaseOrder(data, c.get('user')!.id);
         return success(c, po);
     }
 );
 
-app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
-    const id = c.req.param('id');
-    await POService.deletePO(id);
-    return success(c, null, 200, 'Purchase order deleted');
+app.post('/from-rfq/:rfqId', requirePermission({ purchaseOrder: ['create'] }), async (c) => {
+    const rfqId = c.req.param('rfqId');
+    const po = await PoService.createFromRfq(rfqId, c.get('user')!.id);
+    return success(c, po, 201);
 });
+
+app.patch(
+    '/set-draft',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoDraftSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setDraft(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-issued',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoIssuedSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setIssued(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-delivered',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoDeliveredSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setDelivered(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-cancelled',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoCancelledSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setCancelled(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', AddPoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await PoService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', RemovePoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await PoService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
 
 export default app;

@@ -1,11 +1,6 @@
-import { PrismaClient } from '@db/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { prisma } from '@lib/prisma';
+import { LookupType } from '@modules/lookup/models';
 import { ulid } from 'ulid';
-
-const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
 
 const roles = [
     'Project Manager',
@@ -19,35 +14,34 @@ const roles = [
     'Executive',
 ];
 
-async function seed() {
+export const seedProfessionalRoles = async () => {
     console.log('Seeding professional roles...');
 
-    for (const name of roles) {
-        const existing = await prisma.professionalRole.findFirst({
-            where: { name },
+    for (const label of roles) {
+        const existing = await prisma.lookup.findUnique({
+            where: { type_label: { type: LookupType.PROFESSIONAL_ROLE, label } },
         });
 
         if (existing) {
-            console.log(`  Already exists: ${name} (${existing.id})`);
+            console.log(`Already exists: ${label} (${existing.id})`);
         } else {
-            const result = await prisma.professionalRole.create({
+            const result = await prisma.lookup.create({
                 data: {
                     id: ulid(),
-                    name,
+                    type: LookupType.PROFESSIONAL_ROLE,
+                    label,
                 },
             });
-            console.log(`  Created: ${result.name} (${result.id})`);
+            console.log(`Created: ${result.label} (${result.id})`);
         }
     }
 
     console.log('\nSeed complete!');
-}
+};
 
-seed()
-    .catch((e) => {
+if (process.argv[1]?.endsWith('seed-professional-roles.ts')) {
+    seedProfessionalRoles().catch((e) => {
         console.error('Seed failed:', e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}

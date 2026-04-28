@@ -31,32 +31,27 @@ app.post(
     zValidator('json', CostCodeCategoryCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const category = await CostCodeService.createCostCodeCategory(data);
+        const category = await CostCodeService.createCostCodeCategory(data, c.get('user')!.id);
         return success(c, category, 201);
     }
 );
 
 app.put(
-    '/categories/:id',
+    '/categories',
     requirePermission({ costCodeGroup: ['update'] }),
     zValidator('json', CostCodeCategoryUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const category = await CostCodeService.updateCostCodeCategory(id, data);
+        const category = await CostCodeService.updateCostCodeCategory(data, c.get('user')!.id);
         return success(c, category);
     }
 );
 
-app.delete(
-    '/categories/:id',
-    requirePermission({ costCodeGroup: ['delete'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        await CostCodeService.deleteCostCodeCategory(id);
-        return success(c, null);
-    }
-);
+app.delete('/categories/:id', requirePermission({ costCodeGroup: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await CostCodeService.deleteCostCodeCategory(id, c.get('user')!.id);
+    return success(c, null);
+});
 
 // Cost Code Routes
 app.get(
@@ -82,31 +77,26 @@ app.post(
     zValidator('json', CostCodeCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const costCode = await CostCodeService.createCostCode(data);
+        const costCode = await CostCodeService.createCostCode(data, c.get('user')!.id);
         return success(c, costCode, 201);
     }
 );
 
 app.put(
-    '/:id',
+    '/',
     requirePermission({ costCode: ['update'] }),
     zValidator('json', CostCodeUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const costCode = await CostCodeService.updateCostCode(id, data);
+        const costCode = await CostCodeService.updateCostCode(data, c.get('user')!.id);
         return success(c, costCode);
     }
 );
 
-app.delete(
-    '/:id',
-    requirePermission({ costCode: ['delete'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        await CostCodeService.deleteCostCode(id);
-        return success(c, null);
-    }
-);
+app.delete('/:id', requirePermission({ costCode: ['delete'] }), async (c) => {
+    const id = c.req.param('id');
+    await CostCodeService.deleteCostCode(id, c.get('user')!.id);
+    return success(c, null);
+});
 
 export default app;

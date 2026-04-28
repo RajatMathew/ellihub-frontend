@@ -1,56 +1,48 @@
-import { PrismaClient } from '@db/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { prisma } from '@lib/prisma';
+import { LookupType } from '@modules/lookup/models';
 import { ulid } from 'ulid';
 
-const connectionString = `${process.env.DATABASE_URL}`;
-const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
-
 const changeTypes = [
-    { name: 'UNFORESEEN_CONDITIONS', code: 'UFC', description: 'Unforeseen site or field conditions', color: 'orange', order: 1 },
-    { name: 'DESIGN_CHANGE', code: 'DSC', description: 'Changes to design or specifications', color: 'blue', order: 2 },
-    { name: 'QUANTITY_ADJUSTMENT', code: 'QTY', description: 'Adjustment to quantities', color: 'purple', order: 3 },
-    { name: 'MATERIAL_SUBSTITUTION', code: 'MAT', description: 'Substitution of materials', color: 'teal', order: 4 },
-    { name: 'LABOR_ADJUSTMENT', code: 'LAB', description: 'Adjustment to labor scope or rates', color: 'yellow', order: 5 },
-    { name: 'EQUIPMENT_RENTAL', code: 'EQP', description: 'Equipment rental changes', color: 'amber', order: 6 },
-    { name: 'CREDIT', code: 'CRD', description: 'Credit or cost reduction', color: 'green', order: 7 },
-    { name: 'BACKCHARGE', code: 'BCK', description: 'Backcharge to vendor', color: 'red', order: 8 },
-    { name: 'SCHEDULE_ACCELERATION', code: 'ACC', description: 'Schedule acceleration costs', color: 'pink', order: 9 },
-    { name: 'OTHER', code: 'OTH', description: 'Other change type', color: 'gray', order: 10 },
+    'Unforeseen Conditions',
+    'Design Change',
+    'Quantity Adjustment',
+    'Material Substitution',
+    'Labor Adjustment',
+    'Equipment Rental',
+    'Credit',
+    'Backcharge',
+    'Schedule Acceleration',
+    'Other',
 ];
 
-async function seed() {
-    console.log('Seeding SCO change types...\n');
+export const seedScoChangeTypes = async () => {
+    console.log('Seeding SCO change types...');
 
-    for (const changeType of changeTypes) {
-        const existing = await prisma.sCOChangeType.findFirst({
-            where: { name: changeType.name },
+    for (const label of changeTypes) {
+        const existing = await prisma.lookup.findUnique({
+            where: { type_label: { type: LookupType.SCO_CHANGE_TYPE, label } },
         });
 
         if (existing) {
-            console.log(`  Already exists: ${changeType.name} (${existing.id})`);
-            continue;
+            console.log(`Already exists: ${label} (${existing.id})`);
+        } else {
+            const result = await prisma.lookup.create({
+                data: {
+                    id: ulid(),
+                    type: LookupType.SCO_CHANGE_TYPE,
+                    label,
+                },
+            });
+            console.log(`Created: ${result.label} (${result.id})`);
         }
-
-        const created = await prisma.sCOChangeType.create({
-            data: {
-                id: ulid(),
-                ...changeType,
-            },
-        });
-
-        console.log(`  Created: ${created.name} [${created.code}] (${created.id})`);
     }
 
-    console.log('\nSCO change type seed complete!');
-}
+    console.log('\nSeed complete!');
+};
 
-seed()
-    .catch((e) => {
+if (process.argv[1]?.endsWith('seed-sco-change-types.ts')) {
+    seedScoChangeTypes().catch((e) => {
         console.error('Seed failed:', e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}

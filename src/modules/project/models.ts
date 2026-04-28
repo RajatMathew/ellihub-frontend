@@ -1,103 +1,97 @@
 import z from 'zod';
 
+export const ProjectStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'CLOSED', 'COMPLETED']);
+
+export const PaymentTermsSchema = z.enum([
+    'NET_15',
+    'NET_30',
+    'NET_45',
+    'NET_60',
+    'NET_90',
+    'DUE_ON_RECEIPT',
+]);
+
 export const ProjectCreateSchema = z.object({
-    name: z.string().min(1).max(255),
+    name: z.string().min(2),
     description: z.string().min(1),
-    jobNumber: z.string().optional(),
-    contractNumber: z.string().max(100).optional(),
-    stageId: z.string().min(1),
-    division: z.enum(['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL']),
-    statusId: z.string().min(1).optional(),
-    gcId: z.string().min(1),
-    leadPMId: z.string().min(1).optional(),
-    streetAddress: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().max(2).optional(),
-    zipCode: z.string().optional(),
-    effectiveStartDate: z.coerce.date().optional(),
-    effectiveEndDate: z.coerce.date().optional(),
-    contract: z
-        .object({
-            contractValue: z.number().positive(),
-        })
-        .optional(),
+    jobNumber: z.string().min(1).optional().nullable(),
+    contractNumber: z.string().min(1).optional().nullable(),
+    stageId: z.ulid(),
+    divisionId: z.ulid(),
+    status: ProjectStatusSchema,
+    streetAddress: z.string().min(1).optional().nullable(),
+    city: z.string().min(1).optional().nullable(),
+    state: z.string().min(1).optional().nullable(),
+    zipCode: z.string().min(1).optional().nullable(),
+    estimatedStartDate: z.iso.date().optional().nullable(),
+    estimatedEndDate: z.iso.date().optional().nullable(),
+    gcId: z.ulid(),
+    leadPMId: z.ulid().optional().nullable(),
+    contractValue: z.number().min(0),
+    contractType: z.string().min(1).optional().nullable(),
+    retainagePercent: z.number().min(0).max(100).optional().nullable(),
+    targetBudgetPercent: z.number().min(0).max(100).optional().nullable(),
+    taxRate: z.number().min(0).max(100).optional().nullable(),
+    paymentTerms: PaymentTermsSchema.optional().nullable(),
+    setInactiveDate: z.iso.date().optional().nullable(),
+    tcoDate: z.iso.date().optional().nullable(),
 });
 
 export type ProjectCreateRequest = z.infer<typeof ProjectCreateSchema>;
 
-export const ProjectUpdateSchema = z
-    .object({
-        name: z.string().min(1).max(255),
-        description: z.string().min(1),
-        contractNumber: z.string().max(100),
-        stageId: z.string().min(1),
-        division: z.enum(['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL']),
-        statusId: z.string().min(1),
-        gcId: z.string().min(1),
-        leadPMId: z.string().min(1),
-        streetAddress: z.string(),
-        city: z.string(),
-        state: z.string().max(2),
-        zipCode: z.string(),
-    })
-    .partial();
+export const ProjectUpdateSchema = ProjectCreateSchema.omit({ status: true }).extend({
+    id: z.ulid(),
+});
 
 export type ProjectUpdateRequest = z.infer<typeof ProjectUpdateSchema>;
 
-export const TeamMemberSchema = z.object({
-    employeeId: z.string().min(1),
-    role: z.string().max(100).optional(),
+export const AddPrimeContractSchema = z.object({
+    projectId: z.ulid(),
+    fileId: z.ulid(),
 });
 
-export type TeamMemberRequest = z.infer<typeof TeamMemberSchema>;
+export type AddPrimeContractRequest = z.infer<typeof AddPrimeContractSchema>;
 
-export const ScheduleEntryCreateSchema = z.object({
-    date: z.coerce.date(),
-    description: z.string().min(1).max(500),
-    adjustedStartDate: z.coerce.date().optional(),
-    adjustedFinishDate: z.coerce.date().optional(),
-    notes: z.string().max(2000).optional(),
-    fileId: z.string().min(1).optional(),
+export const AddTeamMemberSchema = z.object({
+    projectId: z.ulid(),
+    employeeId: z.ulid(),
+    role: z.string().min(1),
+    isLead: z.boolean().default(false),
 });
 
-export type ScheduleEntryCreateRequest = z.infer<typeof ScheduleEntryCreateSchema>;
+export type AddTeamMemberRequest = z.infer<typeof AddTeamMemberSchema>;
 
-export const ScheduleEntryUpdateSchema = z
-    .object({
-        date: z.coerce.date(),
-        description: z.string().min(1).max(500),
-        adjustedStartDate: z.coerce.date().nullable(),
-        adjustedFinishDate: z.coerce.date().nullable(),
-        notes: z.string().max(2000).nullable(),
-        fileId: z.string().min(1).nullable(),
-    })
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: 'At least one field is required',
-    });
-
-export type ScheduleEntryUpdateRequest = z.infer<typeof ScheduleEntryUpdateSchema>;
-
-export const PrimeContractUpsertSchema = z.object({
-    contractValue: z.number().positive(),
-    contractType: z.string().max(100).optional(),
-
-    retainagePercent: z.number().min(0).max(100).optional(),
-    targetBudgetPercent: z.number().min(0).max(100).optional(),
-    paymentTerms: z
-        .enum(['NET_15', 'NET_30', 'NET_45', 'NET_60', 'NET_90', 'DUE_ON_RECEIPT'])
-        .optional(),
-    estimatedStartDate: z.coerce.date().nullable().optional(),
-    estimatedCompletionDate: z.coerce.date().nullable().optional(),
-    actualStartDate: z.coerce.date().nullable().optional(),
-    actualCompletionDate: z.coerce.date().nullable().optional(),
-    executedContractDocId: z.string().min(1).nullable().optional(),
+export const RemoveTeamMemberSchema = z.object({
+    projectId: z.ulid(),
+    employeeId: z.ulid(),
 });
 
-export type PrimeContractUpsertRequest = z.infer<typeof PrimeContractUpsertSchema>;
+export type RemoveTeamMemberRequest = z.infer<typeof RemoveTeamMemberSchema>;
 
-export const ContractAttachmentCreateSchema = z.object({
-    fileId: z.string().min(1),
+export const AddScheduleSchema = z.object({
+    projectId: z.ulid(),
+    date: z.iso.date(),
+    description: z.string().min(1),
+    adjustedFinishDate: z.iso.date().optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    fileId: z.ulid().optional().nullable(),
 });
 
-export type ContractAttachmentCreateRequest = z.infer<typeof ContractAttachmentCreateSchema>;
+export type AddScheduleRequest = z.infer<typeof AddScheduleSchema>;
+
+export const UpdateScheduleSchema = z.object({
+    id: z.ulid(),
+    date: z.iso.date(),
+    description: z.string().min(1),
+    adjustedFinishDate: z.iso.date().optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    fileId: z.ulid().optional().nullable(),
+});
+
+export type UpdateScheduleRequest = z.infer<typeof UpdateScheduleSchema>;
+
+export const RemoveScheduleSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveScheduleRequest = z.infer<typeof RemoveScheduleSchema>;

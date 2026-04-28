@@ -3,326 +3,195 @@ import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import { GeneratePOFromRFQSchema } from '../po/models';
-import { POService } from '../po/services';
-
-import addendumChangeTypeRoutes from './addendum-change-type.routes';
 import {
-    AddendumCreateSchema,
-    AwardSchema,
-    CancelSchema,
-    ChangeStatusSchema,
-    DeclineSchema,
-    DeliverableCreateSchema,
-    DeliverableUpdateSchema,
-    PublishSchema,
-    QuoteCreateSchema,
-    QuoteUpdateSchema,
-    RFQCreateSchema,
-    RFQUpdateSchema,
-    VendorInviteSchema,
-    VoidAwardSchema,
+    AddRfqAttachmentSchema,
+    AddVendorSchema,
+    AwardRfqSchema,
+    DeclineQuoteSchema,
+    EditQuoteSchema,
+    RemoveQuoteSchema,
+    RemoveRfqAttachmentSchema,
+    RemoveVendorSchema,
+    RfqCreateSchema,
+    RfqUpdateSchema,
+    SubmitQuoteSchema,
+    UnawardRfqSchema,
+    VoidRfqSchema,
 } from './models';
-import quoteStatusRoutes from './quote-status.routes';
-import rfqStatusRoutes from './rfq-status.routes';
-import { RFQService } from './services';
+import { RfqService } from './service';
 
 const app = new Hono();
 
-// Mount lookup table sub-routes
-app.route('/statuses', rfqStatusRoutes);
-app.route('/quote-statuses', quoteStatusRoutes);
-app.route('/addendum-change-types', addendumChangeTypeRoutes);
-
-// --- RFQ CRUD ---
-
 app.get(
     '/',
-    requirePermission({ project: ['view-all'] }),
-    paginationMiddleware({
-        defaultSize: 25,
-        defaultSortBy: 'createdAt',
-        defaultSortOrder: 'desc',
-    }),
+    requirePermission({ rfq: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
     async (c: Context) => {
         const pagination = c.get('pagination');
-        const query = c.req.query();
-
-        const { projectId, statusId, costCodeId, bidDeadlineAfter, bidDeadlineBefore } = query;
-        pagination.filter = {
-            ...pagination.filter,
-            ...(projectId && { projectId }),
-            ...(statusId && { statusId }),
-            ...(costCodeId && { costCodeId }),
-            ...(bidDeadlineAfter && { bidDeadlineAfter }),
-            ...(bidDeadlineBefore && { bidDeadlineBefore }),
-        };
-
-        const { data, count } = await RFQService.listRFQs(pagination);
+        const { data, count } = await RfqService.getRfqs(pagination);
         return success(c, data, 200, 'OK', count);
     }
 );
 
+app.get('/:id', requirePermission({ rfq: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RfqService.getRfq(id);
+    return success(c, rfq);
+});
+
 app.post(
     '/',
-    requirePermission({ project: ['create'] }),
-    zValidator('json', RFQCreateSchema),
+    requirePermission({ rfq: ['create'] }),
+    zValidator('json', RfqCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const rfq = await RFQService.createRFQ(data, userId);
+        const rfq = await RfqService.createRfq(data, c.get('user')!.id);
         return success(c, rfq, 201);
     }
 );
 
-// --- Workflow routes (static paths before :id) ---
-
-app.post(
-    '/:id/publish',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', PublishSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const rfq = await RFQService.publishRFQ(id, data, userId);
-        return success(c, rfq);
-    }
-);
-
-app.post(
-    '/:id/cancel',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', CancelSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const rfq = await RFQService.cancelRFQ(id, data, userId);
-        return success(c, rfq);
-    }
-);
-
-app.post(
-    '/:id/award',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', AwardSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const rfq = await RFQService.awardRFQ(id, data, userId);
-        return success(c, rfq);
-    }
-);
-
-app.post(
-    '/:id/void-award',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', VoidAwardSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const rfq = await RFQService.voidAward(id, data);
-        return success(c, rfq);
-    }
-);
-
-app.post('/:id/unaward', requirePermission({ project: ['update'] }), async (c) => {
-    const id = c.req.param('id');
-    const rfq = await RFQService.unawardRFQ(id);
-    return success(c, rfq);
-});
-
-// --- Manual status change ---
-
 app.put(
-    '/:id/status',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', ChangeStatusSchema),
+    '/',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RfqUpdateSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const rfq = await RFQService.changeRFQStatus(id, data);
+        const rfq = await RfqService.updateRfq(data, c.get('user')!.id);
         return success(c, rfq);
     }
 );
 
-// --- RFQ-to-PO Generation ---
-
-app.post(
-    '/:id/generate-po',
-    requirePermission({ project: ['create'] }),
-    zValidator('json', GeneratePOFromRFQSchema),
+app.patch(
+    '/vendor/add',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AddVendorSchema),
     async (c) => {
-        const rfqId = c.req.param('id');
         const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const po = await POService.generatePOFromRFQ(rfqId, data, userId);
-        return success(c, po, 201);
-    }
-);
-
-// --- Bid Comparison (static path before :id) ---
-
-app.get('/:id/bid-comparison', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const comparison = await RFQService.getBidComparison(id);
-    return success(c, comparison);
-});
-
-// --- Vendor Invitations ---
-
-app.post(
-    '/:id/invite-vendors',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', VendorInviteSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const invites = await RFQService.inviteVendors(id, data, userId);
-        return success(c, invites, 201);
-    }
-);
-
-app.get('/:id/invites', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const invites = await RFQService.listInvites(id);
-    return success(c, invites);
-});
-
-app.put(
-    '/:id/invites/:inviteId/decline',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', DeclineSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const inviteId = c.req.param('inviteId');
-        const data = c.req.valid('json');
-        const invite = await RFQService.declineInvite(id, inviteId, data);
-        return success(c, invite);
-    }
-);
-
-// --- Quotes ---
-
-app.post(
-    '/:id/quotes',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', QuoteCreateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const quote = await RFQService.createQuote(id, data, userId);
-        return success(c, quote, 201);
-    }
-);
-
-app.put(
-    '/:id/quotes/:quoteId',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', QuoteUpdateSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const quoteId = c.req.param('quoteId');
-        const data = c.req.valid('json');
-        const quote = await RFQService.updateQuote(id, quoteId, data);
+        const quote = await RfqService.addVendor(data, c.get('user')!.id);
         return success(c, quote);
     }
 );
 
-app.delete('/:id/quotes/:quoteId', requirePermission({ project: ['update'] }), async (c) => {
-    const id = c.req.param('id');
-    const quoteId = c.req.param('quoteId');
-    await RFQService.deleteQuote(id, quoteId);
-    return success(c, null, 200, 'Quote deleted');
-});
-
-// --- Deliverables ---
-
-app.post(
-    '/:id/deliverables',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', DeliverableCreateSchema),
+app.patch(
+    '/vendor/submit-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', SubmitQuoteSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const deliverable = await RFQService.addDeliverable(id, data);
-        return success(c, deliverable, 201);
+        const quote = await RfqService.submitQuote(data, c.get('user')!.id);
+        return success(c, quote);
     }
 );
 
-app.put(
-    '/:id/deliverables/:deliverableId',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', DeliverableUpdateSchema),
+app.patch(
+    '/vendor/decline-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', DeclineQuoteSchema),
     async (c) => {
-        const id = c.req.param('id');
-        const deliverableId = c.req.param('deliverableId');
         const data = c.req.valid('json');
-        const deliverable = await RFQService.updateDeliverable(id, deliverableId, data);
-        return success(c, deliverable);
+        const quote = await RfqService.declineQuote(data, c.get('user')!.id);
+        return success(c, quote);
     }
 );
 
-app.delete(
-    '/:id/deliverables/:deliverableId',
-    requirePermission({ project: ['update'] }),
+app.patch(
+    '/vendor/remove-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveQuoteSchema),
     async (c) => {
-        const id = c.req.param('id');
-        const deliverableId = c.req.param('deliverableId');
-        await RFQService.removeDeliverable(id, deliverableId);
-        return success(c, null, 200, 'Deliverable removed');
+        const data = c.req.valid('json');
+        const quote = await RfqService.removeQuote(data, c.get('user')!.id);
+        return success(c, quote);
     }
 );
 
-// --- Addendums ---
-
-app.post(
-    '/:id/addendums',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', AddendumCreateSchema),
+app.patch(
+    '/vendor/edit-quote',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', EditQuoteSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const userId = c.get('user')!.id;
-        const addendum = await RFQService.createAddendum(id, data, userId);
-        return success(c, addendum, 201);
+        const quote = await RfqService.editQuote(data, c.get('user')!.id);
+        return success(c, quote);
     }
 );
 
-app.get('/:id/addendums', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const addendums = await RFQService.listAddendums(id);
-    return success(c, addendums);
-});
-
-// --- RFQ Detail (must be after all static sub-routes) ---
-
-app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
-    const id = c.req.param('id');
-    const rfq = await RFQService.getRFQ(id);
-    return success(c, rfq);
-});
-
-app.put(
-    '/:id',
-    requirePermission({ project: ['update'] }),
-    zValidator('json', RFQUpdateSchema),
+app.patch(
+    '/vendor/remove',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveVendorSchema),
     async (c) => {
-        const id = c.req.param('id');
         const data = c.req.valid('json');
-        const rfq = await RFQService.updateRFQ(id, data);
+        await RfqService.removeVendor(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AddRfqAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await RfqService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', RemoveRfqAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await RfqService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+app.patch(
+    '/award',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', AwardRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.awardRfq(data, c.get('user')!.id);
         return success(c, rfq);
     }
 );
 
-app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
+app.patch(
+    '/un-award',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', UnawardRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.unawardRfq(data, c.get('user')!.id);
+        return success(c, rfq);
+    }
+);
+
+app.patch(
+    '/set-void',
+    requirePermission({ rfq: ['update'] }),
+    zValidator('json', VoidRfqSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const rfq = await RfqService.setVoid(data, c.get('user')!.id);
+        return success(c, rfq);
+    }
+);
+
+app.patch('/:id/set-draft', requirePermission({ rfq: ['update'] }), async (c) => {
     const id = c.req.param('id');
-    await RFQService.deleteRFQ(id);
-    return success(c, null, 200, 'RFQ deleted');
+    const rfq = await RfqService.setDraft(id, c.get('user')!.id);
+    return success(c, rfq);
+});
+
+app.patch('/:id/set-published', requirePermission({ rfq: ['update'] }), async (c) => {
+    const id = c.req.param('id');
+    const rfq = await RfqService.setPublished(id, c.get('user')!.id);
+    return success(c, rfq);
 });
 
 export default app;

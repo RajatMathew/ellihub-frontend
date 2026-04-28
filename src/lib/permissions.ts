@@ -6,7 +6,7 @@ export const statement = {
     user: ['manage-permissions'],
     role: ['list', 'create', 'update', 'delete'],
     project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
-    leave: ['approve', 'view'],
+    leave: ['create', 'approve', 'view'],
     costCodeGroup: ['create', 'update', 'delete', 'read'],
     costCode: ['create', 'update', 'delete', 'read'],
     contact: ['create', 'update', 'delete', 'read'],
@@ -14,6 +14,12 @@ export const statement = {
     generalContractor: ['create', 'update', 'delete', 'read'],
     gcType: ['create', 'update', 'delete', 'read'],
     vendor: ['create', 'update', 'delete', 'read'],
+    department: ['create', 'update', 'delete', 'read'],
+    activityLog: ['create', 'read'],
+    rfq: ['create', 'update', 'delete', 'read'],
+    purchaseOrder: ['create', 'update', 'delete', 'read'],
+    subChangeOrder: ['create', 'update', 'delete', 'read'],
+    invoice: ['create', 'update', 'delete', 'read'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -23,7 +29,7 @@ export const owner = ac.newRole({
     user: ['manage-permissions'],
     role: ['list', 'create', 'update', 'delete'],
     project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
-    leave: ['approve', 'view'],
+    leave: ['create', 'approve', 'view'],
     costCodeGroup: ['create', 'update', 'delete', 'read'],
     costCode: ['create', 'update', 'delete', 'read'],
     contact: ['create', 'update', 'delete', 'read'],
@@ -31,6 +37,12 @@ export const owner = ac.newRole({
     generalContractor: ['create', 'update', 'delete', 'read'],
     gcType: ['create', 'update', 'delete', 'read'],
     vendor: ['create', 'update', 'delete', 'read'],
+    department: ['create', 'update', 'delete', 'read'],
+    activityLog: ['create', 'read'],
+    rfq: ['create', 'update', 'delete', 'read'],
+    purchaseOrder: ['create', 'update', 'delete', 'read'],
+    subChangeOrder: ['create', 'update', 'delete', 'read'],
+    invoice: ['create', 'update', 'delete', 'read'],
 });
 
 // Export the type

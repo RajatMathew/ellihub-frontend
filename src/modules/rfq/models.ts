@@ -1,186 +1,107 @@
 import z from 'zod';
 
-// --- Enums for validation ---
+export const RfqStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'AWARDED', 'VOID']);
 
-export const BiddingTypeEnum = z.enum(['ANONYMOUS', 'OPEN']);
-
-// --- Deliverables ---
-
-export const DeliverableCreateSchema = z.object({
-    description: z.string().min(1),
-    specifications: z.string().optional(),
-    quantity: z.number().min(0).optional().default(0),
-    unit: z.string().optional().default(''),
-    costCodeId: z.string().optional(),
-    estimatedUnitPrice: z.number().positive().optional(),
-});
-
-export type DeliverableCreateRequest = z.infer<typeof DeliverableCreateSchema>;
-
-export const DeliverableUpdateSchema = z
-    .object({
-        description: z.string().min(1),
-        specifications: z.string().nullable(),
-        quantity: z.number().min(0),
-        unit: z.string(),
-        costCodeId: z.string().nullable(),
-        estimatedUnitPrice: z.number().positive().nullable(),
-    })
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: 'At least one field is required',
-    });
-
-export type DeliverableUpdateRequest = z.infer<typeof DeliverableUpdateSchema>;
-
-// --- RFQ CRUD ---
-
-export const RFQCreateSchema = z.object({
-    projectId: z.string().min(1),
-    title: z.string().min(1).max(255),
-    description: z.string().optional(),
-    costCodeId: z.string().optional(),
-    estimatedBudget: z.number().min(0).optional(),
-    bidDeadline: z.coerce.date(),
-    biddingType: BiddingTypeEnum.optional(),
-    minimumVendors: z.number().int().min(1).optional(),
-    deliverables: z.array(DeliverableCreateSchema).min(1),
-});
-
-export type RFQCreateRequest = z.infer<typeof RFQCreateSchema>;
-
-export const RFQUpdateSchema = z
-    .object({
-        title: z.string().min(1).max(255),
-        description: z.string().nullable(),
-        costCodeId: z.string().nullable(),
-        estimatedBudget: z.number().min(0).nullable(),
-        bidDeadline: z.coerce.date(),
-        biddingType: BiddingTypeEnum,
-        minimumVendors: z.number().int().min(1),
-    })
-    .partial();
-
-export type RFQUpdateRequest = z.infer<typeof RFQUpdateSchema>;
-
-// --- Vendor Invitations ---
-
-export const VendorInviteSchema = z.object({
-    vendorIds: z.array(z.string().min(1)).min(1),
-    sendInviteEmails: z.boolean().optional(),
-});
-
-export type VendorInviteRequest = z.infer<typeof VendorInviteSchema>;
-
-export const DeclineSchema = z.object({
-    declineReason: z.string().optional(),
-});
-
-export type DeclineRequest = z.infer<typeof DeclineSchema>;
-
-// --- Quotes ---
-
-export const QuoteLineItemSchema = z.object({
-    deliverableId: z.string().min(1),
-    unitPrice: z.number().positive(),
+export const RfqDeliverableSchema = z.object({
+    name: z.string().min(1),
+    unitId: z.ulid(),
     quantity: z.number().positive(),
-    unit: z.string().min(1),
-    notes: z.string().optional(),
-    alternateProposed: z.boolean().optional(),
-    alternateDescription: z.string().optional(),
+    costCodeId: z.ulid().optional().nullable(),
 });
 
-export const QuoteCreateSchema = z.object({
-    vendorId: z.string().min(1),
-    lineItems: z.array(QuoteLineItemSchema).min(1),
-    leadTimeDays: z.number().int().positive().optional(),
-    deliveryDate: z.coerce.date().optional(),
-    paymentTerms: z.string().optional(),
-    warrantyPeriod: z.string().optional(),
-    quoteValidDays: z.number().int().positive().optional(),
-    notes: z.string().optional(),
-    qualifications: z.string().optional(),
-    taxAmount: z.number().min(0).optional(),
-    submittedBy: z.string().optional(),
-    submittedByEmail: z.string().email().optional(),
-    submittedByPhone: z.string().optional(),
-    submittedAt: z.coerce.date().optional(),
+export type RfqDeliverableInput = z.infer<typeof RfqDeliverableSchema>;
+
+export const RfqCreateSchema = z.object({
+    projectId: z.ulid(),
+    title: z.string().min(1),
+    description: z.string().min(1).optional().nullable(),
+    bidDeadline: z.iso.date(),
+    typeId: z.ulid(),
+    deliverables: z.array(RfqDeliverableSchema).min(1, 'At least one deliverable is required'),
 });
 
-export type QuoteCreateRequest = z.infer<typeof QuoteCreateSchema>;
+export type RfqCreateRequest = z.infer<typeof RfqCreateSchema>;
 
-export const QuoteUpdateSchema = z
-    .object({
-        lineItems: z.array(QuoteLineItemSchema).min(1),
-        leadTimeDays: z.number().int().positive().nullable(),
-        deliveryDate: z.coerce.date().nullable(),
-        paymentTerms: z.string().nullable(),
-        warrantyPeriod: z.string().nullable(),
-        quoteValidDays: z.number().int().positive().nullable(),
-        notes: z.string().nullable(),
-        qualifications: z.string().nullable(),
-        taxAmount: z.number().min(0).nullable(),
-        submittedBy: z.string().nullable(),
-        submittedByEmail: z.string().email().nullable(),
-        submittedByPhone: z.string().nullable(),
-        submittedAt: z.coerce.date().nullable(),
-    })
-    .partial();
-
-export type QuoteUpdateRequest = z.infer<typeof QuoteUpdateSchema>;
-
-// --- Workflow ---
-
-export const PublishSchema = z.object({
-    vendorIds: z.array(z.string().min(1)).min(1),
-    sendInviteEmails: z.boolean().optional(),
+export const RfqUpdateSchema = z.object({
+    id: z.ulid(),
+    title: z.string().min(1),
+    description: z.string().min(1).optional().nullable(),
+    bidDeadline: z.iso.date(),
+    typeId: z.ulid(),
+    deliverables: z.array(RfqDeliverableSchema).min(1, 'At least one deliverable is required'),
 });
 
-export type PublishRequest = z.infer<typeof PublishSchema>;
+export type RfqUpdateRequest = z.infer<typeof RfqUpdateSchema>;
 
-export const CancelSchema = z.object({
+export const AddRfqAttachmentSchema = z.object({
+    rfqId: z.ulid(),
+    documentId: z.ulid(),
+});
+
+export type AddRfqAttachmentRequest = z.infer<typeof AddRfqAttachmentSchema>;
+
+export const RemoveRfqAttachmentSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveRfqAttachmentRequest = z.infer<typeof RemoveRfqAttachmentSchema>;
+
+export const AddVendorSchema = z.object({
+    rfqId: z.ulid(),
+    vendorId: z.ulid(),
+});
+
+export type AddVendorRequest = z.infer<typeof AddVendorSchema>;
+
+export const RemoveVendorSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveVendorRequest = z.infer<typeof RemoveVendorSchema>;
+
+export const SubmitQuoteSchema = z.object({
+    id: z.ulid(),
+    quotedAmount: z.number().nonnegative(),
+    leadTime: z.string().min(1).optional().nullable(),
+    attachments: z.array(z.ulid()).min(1, 'At least one attachment is required'),
+});
+
+export type SubmitQuoteRequest = z.infer<typeof SubmitQuoteSchema>;
+
+export const EditQuoteSchema = SubmitQuoteSchema.extend({
+    attachments: z.array(z.ulid()).default([]),
+});
+
+export type EditQuoteRequest = z.infer<typeof EditQuoteSchema>;
+
+export const RemoveQuoteSchema = z.object({
+    id: z.ulid(),
+});
+
+export type RemoveQuoteRequest = z.infer<typeof RemoveQuoteSchema>;
+
+export const DeclineQuoteSchema = z.object({
+    id: z.ulid(),
+    declineReason: z.string().min(1).optional().nullable(),
+});
+
+export type DeclineQuoteRequest = z.infer<typeof DeclineQuoteSchema>;
+
+export const VoidRfqSchema = z.object({
+    id: z.ulid(),
     cancellationReason: z.string().min(1),
 });
 
-export type CancelRequest = z.infer<typeof CancelSchema>;
+export type VoidRfqRequest = z.infer<typeof VoidRfqSchema>;
 
-export const AwardSchema = z.object({
-    awardedQuoteId: z.string().min(1),
-    awardedVendorId: z.string().min(1),
-    awardedAmount: z.number().positive(),
-    autoGeneratePO: z.boolean().optional(),
-    sendAwardEmail: z.boolean().optional(),
-    sendRegretEmails: z.boolean().optional(),
+export const AwardRfqSchema = z.object({
+    quoteId: z.ulid(),
 });
 
-export type AwardRequest = z.infer<typeof AwardSchema>;
+export type AwardRfqRequest = z.infer<typeof AwardRfqSchema>;
 
-export const VoidAwardSchema = z.object({
-    voidReason: z.string().min(1),
+export const UnawardRfqSchema = z.object({
+    id: z.ulid(),
 });
 
-export type VoidAwardRequest = z.infer<typeof VoidAwardSchema>;
-
-// --- Manual status change ---
-
-export const ChangeStatusSchema = z.object({
-    statusId: z.string().min(1),
-});
-
-export type ChangeStatusRequest = z.infer<typeof ChangeStatusSchema>;
-
-// --- Addendums ---
-
-export const AddendumCreateSchema = z.object({
-    title: z.string().min(1).max(255),
-    description: z.string().min(1),
-    changeTypeId: z.string().min(1),
-    changesDescription: z.string().min(1),
-    impactsDeadline: z.boolean().optional(),
-    newBidDeadline: z.coerce.date().optional(),
-    impactsScope: z.boolean().optional(),
-    impactsPricing: z.boolean().optional(),
-    requiresAcknowledgment: z.boolean().optional(),
-});
-
-export type AddendumCreateRequest = z.infer<typeof AddendumCreateSchema>;
+export type UnawardRfqRequest = z.infer<typeof UnawardRfqSchema>;

@@ -1,6 +1,7 @@
 model File {
-  id   String @id
-  name String
+  id          String  @id
+  name        String
+  displayName String?
 
   objectId String?
   mimeType String?
@@ -18,23 +19,31 @@ model File {
 
   private Boolean @default(false)
 
-  createdBy String
-  deletedBy String?
+  createdBy     String
+  createdByUser User   @relation(fields: [createdBy], references: [id], onDelete: Restrict)
 
-  primeContract              PrimeContract?
-  primeContractAttachment    PrimeContractAttachment?
-  scheduleEntry              ProjectScheduleEntry?
-  pcoAttachment              PCOAttachment?
-  poAttachment               POAttachment?
-  scoAttachment              SCOAttachment?
-  rfqAttachment              RFQAttachment?
-  quoteAttachment            QuoteAttachment?
-  invoiceAttachment          InvoiceAttachment?
-  invoice                    Invoice?
+  deletedBy String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  vendorDocuments   VendorDocument[]
+  gcDocuments       GCDocument[]
+  employeeDocuments EmployeeDocument[]
+  primeContracts    PrimeContract[]
+
+  projectSchedules ProjectSchedule[]
+
+  rfqattachments RFQAttachment[]
+
+  vendorQuoteAttachments VendorQuoteAttachment[]
+
+  poattachments POAttachment[]
+
+  scoattachments SCOAttachment[]
+
+  invoiceAttachments InvoiceAttachment[]
 }
 
 enum FileType {
@@ -50,6 +59,7 @@ enum ProtectedFolderType {
   PURCHASE_ORDER_CO
   PRIME_CO
   PRIME_CONTRACT
+  SCHEDULE
 }
 
 model FileAccess {

@@ -1,6 +1,6 @@
 import { auth } from '../src/lib/auth';
 
-async function seed() {
+export async function seedUser() {
     // Configuration - CHANGE THESE!
     const email = 'admin@elli.com';
     const password = 'password123';
@@ -44,4 +44,9 @@ async function seed() {
     }
 }
 
-seed();
+if (process.argv[1]?.endsWith('seed-user.ts')) {
+    seedUser().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}

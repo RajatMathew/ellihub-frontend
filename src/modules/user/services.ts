@@ -1,11 +1,11 @@
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { auth } from '@lib/auth';
 import { prisma as prismaClient } from '@lib/prisma';
-import { InternalServerError, NotFoundError } from '@utils';
+import { ConflictError, InternalServerError, NotFoundError } from '@utils';
 import { User } from 'better-auth';
 import { ulid } from 'ulid';
 
-import { RoleCreateRequest, UserCreateRequest } from './models';
+import { RoleCreateRequest, UserCreateRequest, UserUpdateRequest } from './models';
 
 export const UserService = {
     getUser: async (id: string) => {
@@ -29,27 +29,34 @@ export const UserService = {
 
     createUser: async (
         request: UserCreateRequest,
+        headers: Headers,
         tx?: TransactionClient,
         employeeId?: string,
         roleId?: string
     ): Promise<User> => {
         const prisma = tx || prismaClient;
 
-        const user = await prisma.user.create({
-            data: {
-                id: employeeId || ulid(),
+        const created = await auth.api.createUser({
+            body: {
                 email: request.email,
+                password: request.password,
                 name: request.name,
                 role: request.role,
-                profile: employeeId,
+                data: {
+                    id: employeeId || ulid(),
+                    profile: employeeId,
+                },
             },
+            headers,
         });
 
+        if (!created?.user) throw new InternalServerError('Failed to create user');
+        const user = created.user;
+
         if (employeeId && roleId) {
-            const org = await prisma.organization.findFirst({
-                where: {
-                    slug: 'default',
-                },
+            const org = await auth.api.getFullOrganization({
+                query: { organizationSlug: 'default' },
+                headers,
             });
 
             if (!org) throw new InternalServerError('No default org set.');
@@ -58,18 +65,37 @@ export const UserService = {
 
             if (!role) throw new NotFoundError('No role found with id: ' + roleId);
 
-            await prisma.member.create({
-                data: {
-                    id: ulid(),
+            await auth.api.addMember({
+                body: {
                     userId: user.id,
-                    role: role.role,
                     organizationId: org.id,
-                    createdAt: new Date(),
+                    // @ts-expect-error dynamic role from DB; better-auth's type narrows to statically declared roles only
+                    role: role.role,
                 },
+                headers,
             });
         }
 
         return user;
+    },
+
+    updateUser: async (request: UserUpdateRequest): Promise<User> => {
+        const { id, ...data } = request;
+
+        const user = await prismaClient.user.findUnique({ where: { id } });
+        if (!user) throw new NotFoundError('User not found');
+
+        if (data.email) {
+            const existing = await prismaClient.user.findFirst({
+                where: { email: data.email, NOT: { id } },
+            });
+            if (existing) throw new ConflictError('A user with this email already exists');
+        }
+
+        return await prismaClient.user.update({
+            where: { id },
+            data,
+        });
     },
 
     createOrgRole: async (request: RoleCreateRequest, headers: Headers) => {
