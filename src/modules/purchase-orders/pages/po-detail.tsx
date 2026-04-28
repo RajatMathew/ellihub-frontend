@@ -393,7 +393,7 @@ export function PODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="flex min-w-0 flex-col gap-6 pt-5 2xl:flex-row 2xl:items-start">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
       {/* ---- Overdue alert ---- */}
       {isOverdue && (

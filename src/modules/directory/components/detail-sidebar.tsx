@@ -19,7 +19,7 @@ export function DetailSidebar({
   if (!open) return null;
 
   return (
-    <div className="w-full min-w-0 shrink-0 overflow-hidden xl:w-80">
+    <div className="w-full min-w-0 shrink-0 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:overflow-y-auto xl:w-80">
       <Tabs defaultValue="details">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <TabsList variant="line">

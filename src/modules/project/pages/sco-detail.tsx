@@ -428,7 +428,7 @@ export function SCODetailPage() {
         </ToolbarWrapper>
       </Toolbar>
 
-      <div className="flex min-w-0 flex-col gap-6 pt-5 2xl:flex-row 2xl:items-start">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
         <StatsCard
