@@ -96,6 +96,7 @@ export default function ProjectForm() {
       description: '',
       jobNumber: '',
       contractNumber: '',
+      fieldwireProjectId: '',
       stageId: '',
       status: 'ACTIVE',
       divisionId: '',
@@ -129,6 +130,7 @@ export default function ProjectForm() {
         description: existingProject.description ?? '',
         jobNumber: existingProject.jobNumber ?? '',
         contractNumber: existingProject.contractNumber ?? '',
+        fieldwireProjectId: existingProject.fieldwireProjectId ?? '',
         stageId: existingProject.stageId,
         status: existingProject.status ?? 'ACTIVE',
         divisionId: existingProject.divisionId ?? '',
@@ -212,6 +214,7 @@ export default function ProjectForm() {
       description: 'Generic project description for testing purposes.',
       jobNumber: `P-2024-${randomId}`,
       contractNumber: `C-CON-${randomId}`,
+      fieldwireProjectId: '',
       stageId: stageOptions[Math.floor(Math.random() * stageOptions.length)]?.value || '',
       status:
         PROJECT_STATUS_OPTIONS[Math.floor(Math.random() * PROJECT_STATUS_OPTIONS.length)]?.value ||
@@ -246,6 +249,7 @@ export default function ProjectForm() {
           name: data.name,
           description: data.description,
           contractNumber: data.contractNumber || undefined,
+          fieldwireProjectId: data.fieldwireProjectId || null,
           stageId: data.stageId,
           status: data.status,
           divisionId: data.divisionId,
@@ -288,6 +292,7 @@ export default function ProjectForm() {
           description: data.description,
           jobNumber: data.jobNumber || undefined,
           contractNumber: data.contractNumber || undefined,
+          fieldwireProjectId: data.fieldwireProjectId || undefined,
           stageId: data.stageId,
           divisionId: data.divisionId,
           status: data.status,
@@ -452,7 +457,7 @@ export default function ProjectForm() {
 
             <Separator />
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
               <Controller
                 name="status"
                 control={control}
@@ -514,6 +519,27 @@ export default function ProjectForm() {
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
                         disabled={isEditMode}
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="fieldwireProjectId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Fieldwire Project ID
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="Fieldwire UUID"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

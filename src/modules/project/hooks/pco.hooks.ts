@@ -2,65 +2,77 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { toastApiError } from '@app/lib/toast-api-error';
-import { pcoApi } from '@modules/project/api/pco.api';
 import { pcoKeys } from '@modules/project/constants/pco.keys';
 import type {
-  ListPCOParams,
   CreatePCOInput,
-  UpdatePCOInput,
-  PCORejectInput,
-  PCOVoidInput,
+  ListPCOParams,
+  PCOApproveResponse,
+  PCOChangeType,
+  PCODetail,
+  PCOFinancialImpact,
   PCOLineItemInput,
+  PCOPaginatedResponse,
+  PCOPipeline,
+  PCORejectInput,
+  PCOStatus,
+  PCOVoidInput,
+  UpdatePCOInput,
 } from '@modules/project/schemas/pco.schema';
 
-/* ---- queries ---- */
+const removedLegacyPcoApi = async <T>(): Promise<T> => {
+  throw new Error('Legacy PCO API has been replaced by Prime Change Order Fieldwire sync.');
+};
+
+/* ---- legacy queries retained for unrouted PCO screens ---- */
 
 export const usePCOListQuery = (params: ListPCOParams) =>
-  useQuery({
+  useQuery<PCOPaginatedResponse>({
     queryKey: [...pcoKeys.list(params.projectId), params],
-    queryFn: () => pcoApi.list(params),
-    enabled: !!params.projectId,
+    queryFn: () => removedLegacyPcoApi<PCOPaginatedResponse>(),
+    enabled: false,
   });
 
 export const usePCOPipelineQuery = (projectId: string) =>
-  useQuery({
+  useQuery<PCOPipeline>({
     queryKey: pcoKeys.pipeline(projectId),
-    queryFn: () => pcoApi.pipeline(projectId),
-    enabled: !!projectId,
+    queryFn: () => removedLegacyPcoApi<PCOPipeline>(),
+    enabled: false,
   });
 
 export const usePCODetailQuery = (id: string) =>
-  useQuery({
+  useQuery<PCODetail>({
     queryKey: pcoKeys.detail(id),
-    queryFn: () => pcoApi.getById(id),
-    enabled: !!id,
+    queryFn: () => removedLegacyPcoApi<PCODetail>(),
+    enabled: false,
   });
 
 export const usePCOStatusesQuery = () =>
-  useQuery({
+  useQuery<PCOStatus[]>({
     queryKey: pcoKeys.statuses(),
-    queryFn: () => pcoApi.listStatuses(),
+    queryFn: () => removedLegacyPcoApi<PCOStatus[]>(),
+    enabled: false,
   });
 
 export const usePCOChangeTypesQuery = () =>
-  useQuery({
+  useQuery<PCOChangeType[]>({
     queryKey: pcoKeys.changeTypes(),
-    queryFn: () => pcoApi.listChangeTypes(),
+    queryFn: () => removedLegacyPcoApi<PCOChangeType[]>(),
+    enabled: false,
   });
 
 export const usePCOFinancialImpactQuery = (id: string) =>
-  useQuery({
+  useQuery<PCOFinancialImpact>({
     queryKey: pcoKeys.financialImpact(id),
-    queryFn: () => pcoApi.getFinancialImpact(id),
-    enabled: !!id,
+    queryFn: () => removedLegacyPcoApi<PCOFinancialImpact>(),
+    enabled: false,
   });
 
-/* ---- CRUD mutations ---- */
+/* ---- legacy mutations retained for unrouted PCO screens ---- */
 
 export const useCreatePCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreatePCOInput) => pcoApi.create(data),
+    mutationFn: (_data: CreatePCOInput) => removedLegacyPcoApi<PCODetail>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       toast.success('Change order created.');
@@ -72,7 +84,8 @@ export const useCreatePCOMutation = () => {
 export const useUpdatePCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdatePCOInput }) => pcoApi.update(id, data),
+    mutationFn: (_request: { id: string; data: UpdatePCOInput }) =>
+      removedLegacyPcoApi<PCODetail>(),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       qc.invalidateQueries({ queryKey: pcoKeys.detail(id) });
@@ -85,7 +98,7 @@ export const useUpdatePCOMutation = () => {
 export const useDeletePCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => pcoApi.remove(id),
+    mutationFn: (_id: string) => removedLegacyPcoApi<void>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       toast.success('Change order deleted.');
@@ -94,12 +107,10 @@ export const useDeletePCOMutation = () => {
   });
 };
 
-/* ---- workflow mutations ---- */
-
 export const useApprovePCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => pcoApi.approve(id),
+    mutationFn: (_id: string) => removedLegacyPcoApi<PCOApproveResponse>(),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       qc.invalidateQueries({ queryKey: pcoKeys.detail(id) });
@@ -112,7 +123,8 @@ export const useApprovePCOMutation = () => {
 export const useRejectPCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PCORejectInput }) => pcoApi.reject(id, data),
+    mutationFn: (_request: { id: string; data: PCORejectInput }) =>
+      removedLegacyPcoApi<PCODetail>(),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       qc.invalidateQueries({ queryKey: pcoKeys.detail(id) });
@@ -125,7 +137,8 @@ export const useRejectPCOMutation = () => {
 export const useVoidPCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PCOVoidInput }) => pcoApi.voidPCO(id, data),
+    mutationFn: (_request: { id: string; data: PCOVoidInput }) =>
+      removedLegacyPcoApi<PCODetail>(),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       qc.invalidateQueries({ queryKey: pcoKeys.detail(id) });
@@ -138,8 +151,10 @@ export const useVoidPCOMutation = () => {
 export const useTransitionPCOStatusMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { status: string; reason?: string; onBehalfOf?: string } }) =>
-      pcoApi.transitionStatus(id, data),
+    mutationFn: (_request: {
+      id: string;
+      data: { status: string; reason?: string; onBehalfOf?: string };
+    }) => removedLegacyPcoApi<PCODetail>(),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.all });
       qc.invalidateQueries({ queryKey: pcoKeys.detail(id) });
@@ -148,13 +163,11 @@ export const useTransitionPCOStatusMutation = () => {
   });
 };
 
-/* ---- line item mutations ---- */
-
 export const useAddPCOLineItemMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ pcoId, data }: { pcoId: string; data: PCOLineItemInput }) =>
-      pcoApi.addLineItem(pcoId, data),
+    mutationFn: (_request: { pcoId: string; data: PCOLineItemInput }) =>
+      removedLegacyPcoApi<unknown>(),
     onSuccess: (_, { pcoId }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.detail(pcoId) });
     },
@@ -165,15 +178,11 @@ export const useAddPCOLineItemMutation = () => {
 export const useUpdatePCOLineItemMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      pcoId,
-      lineItemId,
-      data,
-    }: {
+    mutationFn: (_request: {
       pcoId: string;
       lineItemId: string;
       data: PCOLineItemInput;
-    }) => pcoApi.updateLineItem(pcoId, lineItemId, data),
+    }) => removedLegacyPcoApi<unknown>(),
     onSuccess: (_, { pcoId }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.detail(pcoId) });
     },
@@ -184,8 +193,8 @@ export const useUpdatePCOLineItemMutation = () => {
 export const useRemovePCOLineItemMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ pcoId, lineItemId }: { pcoId: string; lineItemId: string }) =>
-      pcoApi.removeLineItem(pcoId, lineItemId),
+    mutationFn: (_request: { pcoId: string; lineItemId: string }) =>
+      removedLegacyPcoApi<void>(),
     onSuccess: (_, { pcoId }) => {
       qc.invalidateQueries({ queryKey: pcoKeys.detail(pcoId) });
     },

@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 
+import type { PrimeChangeOrderFinancialSummary } from '@modules/project/schemas/prime-change-order.schema';
 import type { PrimeContract } from '@modules/project/schemas/project-contract.schema';
-import type { PCOPipeline } from '@modules/project/schemas/pco.schema';
 
 import type { ProjectDetail } from '@modules/project/schemas/project.schema';
 
 interface ComputationInput {
   project: ProjectDetail | undefined;
   contract: PrimeContract | undefined;
-  pipeline: PCOPipeline | undefined;
+  primeChangeOrderSummary: PrimeChangeOrderFinancialSummary | undefined;
   totalPOCommitted: number;
   invoiceSummary: unknown;
 }
@@ -31,24 +31,26 @@ export interface PrimeContractComputations {
 export function usePrimeContractComputations({
   project,
   contract,
-  pipeline,
+  primeChangeOrderSummary,
   totalPOCommitted,
   invoiceSummary,
 }: ComputationInput): PrimeContractComputations {
   return useMemo(() => {
     // Prioritize project-level values (flattened backend)
-    const original = Number(project?.contractValue ?? contract?.contractValue ?? 0);
+    const original = Number(
+      primeChangeOrderSummary?.originalContractValue ??
+        project?.contractValue ??
+        contract?.contractValue ??
+        0
+    );
 
-    const approvedAmt = pipeline?.approved?.totalAmount ?? 0;
-    const executedAmt = pipeline?.executed?.totalAmount ?? 0;
-    const approvedCOs = approvedAmt + executedAmt;
-
+    const approvedCOs = Number(primeChangeOrderSummary?.approvedChangeOrdersTotal ?? 0);
     const contractSum = original + approvedCOs;
 
     const summary = invoiceSummary as Record<string, unknown> | null | undefined;
     const paidToDate = Number(summary?.totalPaid ?? 0) || 0;
 
-    const balanceDue = contractSum - paidToDate;
+    const balanceDue = contractSum;
 
     const retainagePercent = Number(
       project?.retainagePercent ?? contract?.retainagePercent ?? 0
@@ -76,5 +78,5 @@ export function usePrimeContractComputations({
       budgetRemaining,
       spentUtilization,
     };
-  }, [project, contract, pipeline, totalPOCommitted, invoiceSummary]);
+  }, [project, contract, primeChangeOrderSummary, totalPOCommitted, invoiceSummary]);
 }

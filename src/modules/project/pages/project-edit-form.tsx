@@ -109,6 +109,7 @@ function ProjectEditFormInner({
       description: project.description ?? '',
       jobNumber: project.jobNumber ?? '',
       contractNumber: project.contractNumber ?? '',
+      fieldwireProjectId: project.fieldwireProjectId ?? '',
       stageId: project.stageId,
       status: project.status ?? 'ACTIVE',
       divisionId: (project as any).divisionId ?? '',
@@ -157,6 +158,7 @@ function ProjectEditFormInner({
     const payload: UpdateProjectInput = {
       name: data.name,
       description: data.description,
+      fieldwireProjectId: data.fieldwireProjectId || null,
       stageId: data.stageId,
       divisionId: data.divisionId,
       gcId: data.gcId,
@@ -322,6 +324,27 @@ function ProjectEditFormInner({
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
                         disabled
+                      />
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="fieldwireProjectId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                      Fieldwire Project ID
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        placeholder="Fieldwire UUID"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

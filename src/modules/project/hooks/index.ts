@@ -4,6 +4,7 @@ export * from './project-stage.hooks';
 export * from './project-contract.hooks';
 export * from './project-team.hooks';
 export * from './project-schedule.hooks';
+export * from './prime-change-order.hooks';
 export * from './pco.hooks';
 export * from './pco-attachment.hooks';
 export * from './contract-attachment.hooks';

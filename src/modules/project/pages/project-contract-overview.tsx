@@ -29,13 +29,14 @@ import { usePrimeContractComputations } from '@modules/project/components/prime-
 import { ProjectToolbarHeader } from '@modules/project/components/project-toolbar-header';
 import {
   useDeleteProjectMutation,
+  usePrimeChangeOrderFinancialSummaryQuery,
+  usePrimeChangeOrdersQuery,
   useProjectContractQuery,
   useProjectDetailQuery,
   useProjectFolderQuery,
   useProjectScheduleQuery,
 } from '@modules/project/hooks';
 import { useContractAttachmentsQuery } from '@modules/project/hooks/contract-attachment.hooks';
-import { usePCOListQuery, usePCOPipelineQuery } from '@modules/project/hooks/pco.hooks';
 import { useEmployeeOptions } from '@modules/project/hooks/use-employee-options';
 import { usePOCalculations } from '@modules/project/hooks/use-po-calculations';
 import { useTeamMemberActions } from '@modules/project/hooks/use-team-member-actions';
@@ -50,11 +51,11 @@ export default function ProjectContractOverview() {
   /* ---- Queries ---- */
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
   const { data: contract } = useProjectContractQuery(projectId);
-  const { data: pipeline } = usePCOPipelineQuery(projectId);
-  const { data: pcoList } = usePCOListQuery({
+  const { data: primeChangeOrderSummary } = usePrimeChangeOrderFinancialSummaryQuery(projectId);
+  const { data: pcoList } = usePrimeChangeOrdersQuery({
     projectId,
     size: 5,
-    sortBy: 'createdAt',
+    sortBy: 'fieldwireUpdatedAt',
     sortOrder: 'desc',
   });
   const { data: allPOs } = usePOsQuery({ projectId, size: 1000 });
@@ -77,7 +78,7 @@ export default function ProjectContractOverview() {
   const computations = usePrimeContractComputations({
     project,
     contract,
-    pipeline,
+    primeChangeOrderSummary,
     totalPOCommitted,
     invoiceSummary: undefined, // payments deferred to accounting module
   });
@@ -154,7 +155,7 @@ export default function ProjectContractOverview() {
         <FinancialStatsBar
           computations={computations}
           contract={contract}
-          pipeline={pipeline}
+          primeChangeOrderSummary={primeChangeOrderSummary}
           totalPOCommitted={totalPOCommitted}
           activePOsCount={activePOsCount}
         />

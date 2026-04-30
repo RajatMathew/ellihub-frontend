@@ -8,9 +8,17 @@ interface FinancialSummarySimpleCardProps {
   computations: PrimeContractComputations;
 }
 
+const formatSignedCurrency = (value: number): string => {
+  if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
+  return `+${formatCurrency(value)}`;
+};
+
 export function FinancialSummarySimpleCard({
   computations,
 }: FinancialSummarySimpleCardProps) {
+  const approvedCOsValueClassName =
+    computations.approvedCOs < 0 ? 'text-destructive font-bold' : 'text-info font-bold';
+
   return (
     <Card className="min-h-[360px] flex flex-col">
       <CardHeader>
@@ -27,9 +35,9 @@ export function FinancialSummarySimpleCard({
             label="Approved COs"
             labelVariant="lighter"
             labelClassName="font-medium"
-            valueClassName="text-info font-bold"
+            valueClassName={approvedCOsValueClassName}
           >
-            +{formatCurrency(computations.approvedCOs)}
+            {formatSignedCurrency(computations.approvedCOs)}
           </InfoRow>
           <InfoRow
             label="Contract Sum"

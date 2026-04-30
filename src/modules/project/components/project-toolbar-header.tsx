@@ -53,6 +53,7 @@ export function ProjectToolbarHeader({
       description: project.description,
       jobNumber: project.jobNumber,
       contractNumber: project.contractNumber,
+      fieldwireProjectId: project.fieldwireProjectId ?? null,
       divisionId: project.divisionId,
       gcId: project.gcId,
       leadPMId: project.leadPMId,
