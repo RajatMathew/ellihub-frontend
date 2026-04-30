@@ -203,6 +203,7 @@
                     "statusName": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
                     "assigneeUserId": { "type": "integer", "nullable": true },
+                    "assignee": { "$ref": "#/components/schemas/PrimeChangeOrderAssignee", "nullable": true },
                     "externalAssigneeUserId": { "type": "integer", "nullable": true },
                     "scheduleImpact": { "type": "string", "nullable": true },
                     "scheduleImpactDays": { "type": "integer", "nullable": true },
@@ -212,6 +213,21 @@
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "PrimeChangeOrderAssignee": {
+                "type": "object",
+                "properties": {
+                    "fieldwireUserId": { "type": "integer" },
+                    "displayName": { "type": "string" },
+                    "firstName": { "type": "string" },
+                    "lastName": { "type": "string" },
+                    "email": { "type": "string" },
+                    "company": { "type": "string", "nullable": true },
+                    "jobTitle": { "type": "string", "nullable": true },
+                    "photoUrl": { "type": "string", "nullable": true },
+                    "role": { "type": "string", "nullable": true },
+                    "userDeletedAt": { "type": "string", "format": "date-time", "nullable": true }
                 }
             },
             "PrimeChangeOrderSyncRun": {

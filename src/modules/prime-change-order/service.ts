@@ -1,4 +1,8 @@
-import { PrimeChangeOrder, Prisma } from '@db/client';
+import {
+    FieldwireProjectUser as CachedFieldwireProjectUser,
+    PrimeChangeOrder,
+    Prisma,
+} from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -8,7 +12,10 @@ import { ulid } from 'ulid';
 import { ZodError } from 'zod';
 
 import { FieldwireClient } from './fieldwire-client';
-import { FieldwireChangeOrder } from './models';
+import {
+    FieldwireChangeOrder,
+    FieldwireProjectUser as FieldwireProjectUserResponse,
+} from './models';
 
 type SyncTrigger = 'MANUAL' | 'SCHEDULED';
 
@@ -26,7 +33,24 @@ type SyncResult = {
         status: 'SUCCESS';
         syncedAt: Date;
     };
-    data: PrimeChangeOrder[];
+    data: PrimeChangeOrderWithAssignee[];
+};
+
+type PrimeChangeOrderAssignee = {
+    fieldwireUserId: number;
+    displayName: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    company: string | null;
+    jobTitle: string | null;
+    photoUrl: string | null;
+    role: string | null;
+    userDeletedAt: Date | null;
+};
+
+type PrimeChangeOrderWithAssignee = PrimeChangeOrder & {
+    assignee: PrimeChangeOrderAssignee | null;
 };
 
 const primeChangeOrderStatuses = [
@@ -38,6 +62,8 @@ const primeChangeOrderStatuses = [
     'Rejected',
     'Void',
 ];
+
+const FIELDWIRE_PROJECT_USER_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const parseDate = (value: string, field: string): Date => {
     const date = new Date(value);
@@ -61,6 +87,60 @@ const parseNullableDecimal = (value: string | null): Prisma.Decimal | null => {
         throw new BadRequestError('Invalid Fieldwire total_cost');
     }
 };
+
+const getFieldwireUserDisplayName = (user: FieldwireProjectUserResponse): string => {
+    const name = [user.first_name, user.last_name].map((value) => value.trim()).filter(Boolean);
+    return name.length > 0 ? name.join(' ') : user.email;
+};
+
+const mapFieldwireProjectUser = (
+    user: FieldwireProjectUserResponse,
+    projectId: string,
+    fieldwireProjectId: string,
+    syncedAt: Date
+): Omit<Prisma.FieldwireProjectUserUncheckedCreateInput, 'id'> => ({
+    projectId,
+    fieldwireProjectId,
+    fieldwireUserId: user.id,
+    accountId: user.account_id,
+    email: user.email,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    displayName: getFieldwireUserDisplayName(user),
+    company: user.company,
+    jobTitle: user.job_title,
+    phoneNumber: user.phone_number,
+    photoUrl: user.photo_url,
+    role: user.role,
+    isAdmin: user.is_admin,
+    isApproved: user.is_approved,
+    userDeletedAt: parseNullableDate(user.user_deleted_at, 'user_deleted_at'),
+    fieldwireCreatedAt: parseDate(user.created_at, 'user.created_at'),
+    fieldwireUpdatedAt: parseDate(user.updated_at, 'user.updated_at'),
+    lastSyncedAt: syncedAt,
+});
+
+const mapAssignee = (user: CachedFieldwireProjectUser): PrimeChangeOrderAssignee => ({
+    fieldwireUserId: user.fieldwireUserId,
+    displayName: user.displayName,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    company: user.company,
+    jobTitle: user.jobTitle,
+    photoUrl: user.photoUrl,
+    role: user.role,
+    userDeletedAt: user.userDeletedAt,
+});
+
+const getAssigneeUserIds = (orders: Array<Pick<PrimeChangeOrder, 'assigneeUserId'>>) =>
+    Array.from(
+        new Set(
+            orders
+                .map((order) => order.assigneeUserId)
+                .filter((id): id is number => typeof id === 'number')
+        )
+    );
 
 const getErrorMessage = (error: unknown) => {
     if (error instanceof ZodError) return 'Invalid Fieldwire response';
@@ -129,6 +209,123 @@ const mapChangeOrder = (
     };
 };
 
+const cacheFieldwireProjectUsers = async (
+    projectId: string,
+    fieldwireProjectId: string,
+    users: FieldwireProjectUserResponse[],
+    syncedAt: Date
+) => {
+    if (users.length === 0) return;
+
+    await prisma.$transaction(
+        users.map((user) => {
+            const data = mapFieldwireProjectUser(user, projectId, fieldwireProjectId, syncedAt);
+
+            return prisma.fieldwireProjectUser.upsert({
+                where: {
+                    projectId_fieldwireUserId: {
+                        projectId,
+                        fieldwireUserId: user.id,
+                    },
+                },
+                create: {
+                    id: ulid(),
+                    ...data,
+                },
+                update: data,
+            });
+        })
+    );
+};
+
+const ensureFieldwireProjectUserCache = async ({
+    projectId,
+    fieldwireProjectId,
+    fieldwireUserIds,
+    accessToken,
+    throwOnError = false,
+}: {
+    projectId: string;
+    fieldwireProjectId: string | null;
+    fieldwireUserIds: number[];
+    accessToken?: string;
+    throwOnError?: boolean;
+}) => {
+    if (!fieldwireProjectId || fieldwireUserIds.length === 0) return;
+
+    try {
+        const uniqueUserIds = Array.from(new Set(fieldwireUserIds));
+        const cachedUsers = await prisma.fieldwireProjectUser.findMany({
+            where: {
+                projectId,
+                fieldwireUserId: { in: uniqueUserIds },
+            },
+            select: {
+                fieldwireUserId: true,
+                lastSyncedAt: true,
+            },
+        });
+
+        const cachedByUserId = new Map(
+            cachedUsers.map((user) => [user.fieldwireUserId, user.lastSyncedAt])
+        );
+        const staleBefore = new Date(Date.now() - FIELDWIRE_PROJECT_USER_CACHE_TTL_MS);
+        const shouldRefresh = uniqueUserIds.some((fieldwireUserId) => {
+            const lastSyncedAt = cachedByUserId.get(fieldwireUserId);
+            return !lastSyncedAt || lastSyncedAt < staleBefore;
+        });
+
+        if (!shouldRefresh) return;
+
+        const syncedAt = new Date();
+        const users = await FieldwireClient.getProjectUsers(fieldwireProjectId, accessToken);
+        await cacheFieldwireProjectUsers(projectId, fieldwireProjectId, users, syncedAt);
+    } catch (error) {
+        if (throwOnError) throw error;
+        console.error(
+            `[prime-change-order] failed to refresh Fieldwire project users for project ${projectId}:`,
+            error
+        );
+    }
+};
+
+const enrichChangeOrdersWithAssignees = async (
+    orders: PrimeChangeOrder[],
+    projectId: string
+): Promise<PrimeChangeOrderWithAssignee[]> => {
+    const withoutAssignees = () => orders.map((order) => ({ ...order, assignee: null }));
+
+    const assigneeUserIds = getAssigneeUserIds(orders);
+    if (assigneeUserIds.length === 0) {
+        return withoutAssignees();
+    }
+
+    try {
+        const assignees = await prisma.fieldwireProjectUser.findMany({
+            where: {
+                projectId,
+                fieldwireUserId: { in: assigneeUserIds },
+            },
+        });
+        const assigneeByUserId = new Map(
+            assignees.map((assignee) => [assignee.fieldwireUserId, mapAssignee(assignee)])
+        );
+
+        return orders.map((order) => ({
+            ...order,
+            assignee: order.assigneeUserId
+                ? (assigneeByUserId.get(order.assigneeUserId) ?? null)
+                : null,
+        }));
+    } catch (error) {
+        console.error(
+            `[prime-change-order] failed to enrich assignees for project ${projectId}:`,
+            error
+        );
+        return withoutAssignees();
+    }
+};
+
 const emptySyncStatus = {
     lastSyncedAt: null,
     lastSyncStatus: null,
@@ -143,7 +340,7 @@ export const PrimeChangeOrderService = {
     getByProject: async (
         projectId: string,
         params: PaginationParams
-    ): Promise<{ data: PrimeChangeOrder[]; count: number }> => {
+    ): Promise<{ data: PrimeChangeOrderWithAssignee[]; count: number }> => {
         const project = await prisma.project.findUnique({ where: { id: projectId } });
         if (!project) throw new NotFoundError('Project not found');
         checkDeletedAt(project);
@@ -191,7 +388,13 @@ export const PrimeChangeOrderService = {
             }),
         ]);
 
-        return { data, count };
+        await ensureFieldwireProjectUserCache({
+            projectId,
+            fieldwireProjectId: project.fieldwireProjectId,
+            fieldwireUserIds: getAssigneeUserIds(data),
+        });
+
+        return { data: await enrichChangeOrdersWithAssignees(data, projectId), count };
     },
 
     getSyncStatus: async (projectId: string) => {
@@ -335,9 +538,19 @@ export const PrimeChangeOrderService = {
 
         try {
             const syncedAt = new Date();
+            const accessToken = await FieldwireClient.getAccessToken();
             const fieldwireChangeOrders = await FieldwireClient.getChangeOrders(
-                project.fieldwireProjectId
+                project.fieldwireProjectId,
+                accessToken
             );
+            await ensureFieldwireProjectUserCache({
+                projectId,
+                fieldwireProjectId: project.fieldwireProjectId,
+                fieldwireUserIds: fieldwireChangeOrders
+                    .map((order) => order.assignee_user_id)
+                    .filter((id): id is number => typeof id === 'number'),
+                accessToken,
+            });
             const changedIds: string[] = [];
             const counts: SyncCounts = {
                 totalReceived: fieldwireChangeOrders.length,
