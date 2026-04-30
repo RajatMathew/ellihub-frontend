@@ -9,6 +9,7 @@ import { gcRoutes } from '@modules/gc';
 import { invoiceRoutes } from '@modules/invoice';
 import { lookupRoutes } from '@modules/lookup';
 import { poRoutes } from '@modules/po';
+import { primeChangeOrderRoutes } from '@modules/prime-change-order';
 import { projectRoutes } from '@modules/project';
 import { ptoRoutes } from '@modules/pto';
 import { rfqRoutes } from '@modules/rfq';
@@ -43,6 +44,7 @@ app.route('/activity-log', activityLogRoutes);
 app.route('/project', projectRoutes);
 app.route('/rfq', rfqRoutes);
 app.route('/purchase-order', poRoutes);
+app.route('/prime-change-order', primeChangeOrderRoutes);
 app.route('/sub-change-order', scoRoutes);
 app.route('/invoice', invoiceRoutes);
 

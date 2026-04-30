@@ -17,6 +17,7 @@ model User {
   profile                  String?
   createdFiles             File[]
   activityLogs             ActivityLog[]
+  primeChangeOrderSyncRuns PrimeChangeOrderSyncRun[]
 
   @@unique([email])
   @@map("user")

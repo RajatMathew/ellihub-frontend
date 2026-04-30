@@ -29,6 +29,7 @@ export const ProjectService = {
             estimatedEndDate,
             setInactiveDate,
             tcoDate,
+            fieldwireProjectId,
             ...rest
         } = request;
 
@@ -44,6 +45,11 @@ export const ProjectService = {
         if (leadPMId) {
             const leadPM = await prisma.employee.findUnique({ where: { id: leadPMId } });
             if (!leadPM) throw new NotFoundError('Lead PM not found');
+        }
+
+        if (fieldwireProjectId) {
+            const existing = await prisma.project.findUnique({ where: { fieldwireProjectId } });
+            if (existing) throw new ConflictError('Fieldwire project ID already exists');
         }
 
         return await prisma.$transaction(async (tx) => {
@@ -78,6 +84,7 @@ export const ProjectService = {
                     divisionId,
                     gcId,
                     leadPMId: leadPMId ?? null,
+                    fieldwireProjectId: fieldwireProjectId ?? null,
                     estimatedStartDate: estimatedStartDate ? new Date(estimatedStartDate) : null,
                     estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate) : null,
                     setInactiveDate: setInactiveDate ? new Date(setInactiveDate) : null,
@@ -196,6 +203,7 @@ export const ProjectService = {
             setInactiveDate,
             tcoDate,
             jobNumber,
+            fieldwireProjectId,
             ...rest
         } = request;
 
@@ -224,6 +232,11 @@ export const ProjectService = {
             if (existing) throw new ConflictError('Job number already exists');
         }
 
+        if (fieldwireProjectId && fieldwireProjectId !== project.fieldwireProjectId) {
+            const existing = await prisma.project.findUnique({ where: { fieldwireProjectId } });
+            if (existing) throw new ConflictError('Fieldwire project ID already exists');
+        }
+
         return await prisma.$transaction(async (tx) => {
             const updated = await tx.project.update({
                 where: { id },
@@ -234,6 +247,7 @@ export const ProjectService = {
                     divisionId,
                     gcId,
                     leadPMId: leadPMId ?? null,
+                    fieldwireProjectId: fieldwireProjectId ?? null,
                     estimatedStartDate: estimatedStartDate ? new Date(estimatedStartDate) : null,
                     estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate) : null,
                     setInactiveDate: setInactiveDate ? new Date(setInactiveDate) : null,

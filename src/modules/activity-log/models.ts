@@ -13,6 +13,7 @@ export const ActivityEntityTypeSchema = z.enum([
     'project',
     'rfq',
     'purchaseOrder',
+    'primeChangeOrder',
     'subChangeOrder',
     'invoice',
 ]);
