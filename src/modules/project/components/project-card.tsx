@@ -11,11 +11,25 @@ const formatSignedCurrency = (value: number): string => {
   return formatCurrency(0);
 };
 
+const getUtilizationColor = (utilization: number): string => {
+  if (utilization > 90) return 'bg-red-500';
+  if (utilization > 70) return 'bg-amber-500';
+  return 'bg-emerald-500';
+};
+
 export function ProjectCard({ project }: { project: ProjectListItem }) {
   const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
   const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
   const revisedContractValue =
     project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
+  const totalPOCommitted = project.totalPOCommitted ?? 0;
+  const targetBudgetPercent = project.targetBudgetPercent ?? 100;
+  const budgetLimit =
+    project.budgetLimit ?? revisedContractValue * (targetBudgetPercent / 100);
+  const spendUtilization =
+    project.spendUtilization ?? (budgetLimit > 0 ? (totalPOCommitted / budgetLimit) * 100 : 0);
+  const progressValue = Math.min(Math.max(spendUtilization, 0), 100);
+  const spendUtilizationLabel = `${Math.round(spendUtilization)}%`;
   const approvedChangeOrdersValueClassName =
     approvedChangeOrdersTotal < 0
       ? 'text-destructive'
@@ -59,9 +73,20 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
           </div>
 
           {/* Row 4: Progress bar */}
-          <div className="flex items-center gap-2">
-            <Progress value={0} className="flex-1" indicatorClassName="bg-success" />
-            <span className="text-xs text-muted-foreground shrink-0">0%</span>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[0.625rem] uppercase text-muted-foreground leading-none">
+                Spend Utilization
+              </span>
+              <span className="text-xs font-semibold text-muted-foreground shrink-0">
+                {spendUtilizationLabel}
+              </span>
+            </div>
+            <Progress
+              value={progressValue}
+              className="h-2 flex-1"
+              indicatorClassName={getUtilizationColor(spendUtilization)}
+            />
           </div>
         </CardContent>
       </Card>
