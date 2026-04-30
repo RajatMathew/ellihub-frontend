@@ -12,6 +12,7 @@ import { poRoutes } from '@modules/po';
 import { primeChangeOrderRoutes } from '@modules/prime-change-order';
 import { projectRoutes } from '@modules/project';
 import { ptoRoutes } from '@modules/pto';
+import { revisionRoutes } from '@modules/revision';
 import { rfqRoutes } from '@modules/rfq';
 import { scoRoutes } from '@modules/sco';
 import { seederRoutes } from '@modules/seeder';
@@ -47,5 +48,6 @@ app.route('/purchase-order', poRoutes);
 app.route('/prime-change-order', primeChangeOrderRoutes);
 app.route('/sub-change-order', scoRoutes);
 app.route('/invoice', invoiceRoutes);
+app.route('/revision', revisionRoutes);
 
 export default app;

@@ -3,6 +3,7 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -160,6 +161,8 @@ export const RfqService = {
         }
 
         return await prisma.$transaction(async (tx) => {
+            await RevisionService.create(tx, { entityType: 'RFQ', entityId: id, userId });
+
             const updated = await tx.rFQ.update({
                 where: { id },
                 data: {
