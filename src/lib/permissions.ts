@@ -18,6 +18,7 @@ export const statement = {
     activityLog: ['create', 'read'],
     rfq: ['create', 'update', 'delete', 'read'],
     purchaseOrder: ['create', 'update', 'delete', 'read'],
+    primeChangeOrder: ['read', 'sync'],
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
 } as const;
@@ -41,6 +42,7 @@ export const owner = ac.newRole({
     activityLog: ['create', 'read'],
     rfq: ['create', 'update', 'delete', 'read'],
     purchaseOrder: ['create', 'update', 'delete', 'read'],
+    primeChangeOrder: ['read', 'sync'],
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
 });

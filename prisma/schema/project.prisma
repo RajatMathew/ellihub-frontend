@@ -4,6 +4,7 @@ model Project {
     description    String
     jobNumber      String? @unique
     contractNumber String?
+    fieldwireProjectId String? @unique
 
     stage      Lookup        @relation(fields: [stageId], references: [id], name: "project_stage")
     stageId    String
@@ -44,6 +45,9 @@ model Project {
     teamMembers      ProjectTeamMember[]
     primeContract    PrimeContract[]
     projectSchedules ProjectSchedule[]
+    primeChangeOrders PrimeChangeOrder[]
+    primeChangeOrderSyncStatus PrimeChangeOrderSyncStatus?
+    primeChangeOrderSyncRuns PrimeChangeOrderSyncRun[]
 
     rfqs            RFQ[]
     purchaseOrders  PurchaseOrder[]
@@ -54,6 +58,7 @@ model Project {
     @@index([status])
     @@index([gcId])
     @@index([leadPMId])
+    @@index([fieldwireProjectId])
 }
 
 enum ProjectStatus {

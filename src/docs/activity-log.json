@@ -201,6 +201,7 @@
                     "project",
                     "rfq",
                     "purchaseOrder",
+                    "primeChangeOrder",
                     "subChangeOrder",
                     "invoice"
                 ]

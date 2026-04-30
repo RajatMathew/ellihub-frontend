@@ -11,6 +11,7 @@ export type ActivityEntityType =
     | 'project'
     | 'rfq'
     | 'purchaseOrder'
+    | 'primeChangeOrder'
     | 'subChangeOrder'
     | 'invoice';
 

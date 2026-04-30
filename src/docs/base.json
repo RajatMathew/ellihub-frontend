@@ -72,6 +72,7 @@
         { "name": "File", "description": "File and folder management (S3)" },
         { "name": "Employees", "description": "Employee management and project assignments" },
         { "name": "Departments", "description": "Department management and employee assignments" },
-        { "name": "Lookup", "description": "Generic lookup values (categories, tags, statuses, etc.)" }
+        { "name": "Lookup", "description": "Generic lookup values (categories, tags, statuses, etc.)" },
+        { "name": "Prime Change Orders", "description": "Fieldwire-synced project Prime Change Orders" }
     ]
 }
