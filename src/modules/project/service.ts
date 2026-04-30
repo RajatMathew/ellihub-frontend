@@ -22,41 +22,86 @@ type ProjectListFinancialFields = {
     approvedChangeOrdersCount: number;
     approvedChangeOrdersTotal: number;
     revisedContractValue: number;
+    totalPOCommitted: number;
+    activePOsCount: number;
+    budgetLimit: number;
+    budgetRemaining: number;
+    spendUtilization: number;
 };
 
 type ProjectWithListFinancials<T> = T & ProjectListFinancialFields;
 
-const addProjectListFinancials = async <T extends Pick<Project, 'id' | 'contractValue'>>(
+const getGroupedCount = (count: unknown): number => {
+    if (typeof count === 'number') return count;
+    if (!count || typeof count !== 'object' || !('_all' in count)) return 0;
+
+    return Number((count as { _all?: number })._all ?? 0);
+};
+
+const addProjectListFinancials = async <
+    T extends Pick<Project, 'id' | 'contractValue' | 'targetBudgetPercent'>,
+>(
     projects: T[]
 ): Promise<Array<ProjectWithListFinancials<T>>> => {
     if (projects.length === 0) return [];
+    const projectIds = projects.map((project) => project.id);
 
-    const totals = await prisma.primeChangeOrder.groupBy({
-        by: ['projectId'],
-        where: {
-            projectId: { in: projects.map((project) => project.id) },
-            deletedAt: null,
-            statusName: 'Approved',
-            totalCost: { not: null },
-        },
-        _count: { _all: true },
-        _sum: { totalCost: true },
-    });
+    const [changeOrderTotals, purchaseOrderTotals] = await prisma.$transaction([
+        prisma.primeChangeOrder.groupBy({
+            by: ['projectId'],
+            orderBy: { projectId: 'asc' },
+            where: {
+                projectId: { in: projectIds },
+                deletedAt: null,
+                statusName: 'Approved',
+                totalCost: { not: null },
+            },
+            _count: { _all: true },
+            _sum: { totalCost: true },
+        }),
+        prisma.purchaseOrder.groupBy({
+            by: ['projectId'],
+            orderBy: { projectId: 'asc' },
+            where: {
+                projectId: { in: projectIds },
+                deletedAt: null,
+                status: { not: 'CANCELLED' },
+            },
+            _count: { _all: true },
+            _sum: { total: true },
+        }),
+    ]);
 
-    const totalsByProjectId = new Map(totals.map((total) => [total.projectId, total]));
+    const changeOrderTotalsByProjectId = new Map(
+        changeOrderTotals.map((total) => [total.projectId, total])
+    );
+    const purchaseOrderTotalsByProjectId = new Map(
+        purchaseOrderTotals.map((total) => [total.projectId, total])
+    );
 
     return projects.map((project) => {
-        const approvedTotal = totalsByProjectId.get(project.id);
+        const approvedTotal = changeOrderTotalsByProjectId.get(project.id);
+        const purchaseOrderTotal = purchaseOrderTotalsByProjectId.get(project.id);
         const approvedChangeOrdersTotal = Number(
-            approvedTotal?._sum.totalCost ?? new Prisma.Decimal(0)
+            approvedTotal?._sum?.totalCost ?? new Prisma.Decimal(0)
         );
         const contractValue = Number(project.contractValue ?? new Prisma.Decimal(0));
+        const revisedContractValue = contractValue + approvedChangeOrdersTotal;
+        const totalPOCommitted = Number(purchaseOrderTotal?._sum?.total ?? new Prisma.Decimal(0));
+        const targetBudgetPercent = Number(project.targetBudgetPercent ?? 100);
+        const budgetLimit = revisedContractValue * (targetBudgetPercent / 100);
+        const spendUtilization = budgetLimit > 0 ? (totalPOCommitted / budgetLimit) * 100 : 0;
 
         return {
             ...project,
-            approvedChangeOrdersCount: approvedTotal?._count._all ?? 0,
+            approvedChangeOrdersCount: getGroupedCount(approvedTotal?._count),
             approvedChangeOrdersTotal,
-            revisedContractValue: contractValue + approvedChangeOrdersTotal,
+            revisedContractValue,
+            totalPOCommitted,
+            activePOsCount: getGroupedCount(purchaseOrderTotal?._count),
+            budgetLimit,
+            budgetRemaining: budgetLimit - totalPOCommitted,
+            spendUtilization,
         };
     });
 };
