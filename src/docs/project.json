@@ -431,6 +431,18 @@
                     "gcId": { "type": "string" },
                     "leadPMId": { "type": "string", "nullable": true },
                     "contractValue": { "type": "number" },
+                    "approvedChangeOrdersCount": {
+                        "type": "integer",
+                        "description": "Count of non-deleted approved Fieldwire Prime Change Orders for this project. Included in list responses."
+                    },
+                    "approvedChangeOrdersTotal": {
+                        "type": "number",
+                        "description": "Sum of non-deleted approved Fieldwire Prime Change Order total costs for this project. Included in list responses."
+                    },
+                    "revisedContractValue": {
+                        "type": "number",
+                        "description": "Original project contractValue plus approvedChangeOrdersTotal. Included in list responses."
+                    },
                     "contractType": { "type": "string", "nullable": true },
                     "retainagePercent": { "type": "number", "nullable": true },
                     "targetBudgetPercent": { "type": "number", "nullable": true },

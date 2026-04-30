@@ -1,4 +1,4 @@
-import { PrimeContract, Project, ProjectSchedule, ProjectTeamMember } from '@db/client';
+import { PrimeContract, Prisma, Project, ProjectSchedule, ProjectTeamMember } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -17,6 +17,49 @@ import {
     RemoveTeamMemberRequest,
     UpdateScheduleRequest,
 } from './models';
+
+type ProjectListFinancialFields = {
+    approvedChangeOrdersCount: number;
+    approvedChangeOrdersTotal: number;
+    revisedContractValue: number;
+};
+
+type ProjectWithListFinancials<T> = T & ProjectListFinancialFields;
+
+const addProjectListFinancials = async <T extends Pick<Project, 'id' | 'contractValue'>>(
+    projects: T[]
+): Promise<Array<ProjectWithListFinancials<T>>> => {
+    if (projects.length === 0) return [];
+
+    const totals = await prisma.primeChangeOrder.groupBy({
+        by: ['projectId'],
+        where: {
+            projectId: { in: projects.map((project) => project.id) },
+            deletedAt: null,
+            statusName: 'Approved',
+            totalCost: { not: null },
+        },
+        _count: { _all: true },
+        _sum: { totalCost: true },
+    });
+
+    const totalsByProjectId = new Map(totals.map((total) => [total.projectId, total]));
+
+    return projects.map((project) => {
+        const approvedTotal = totalsByProjectId.get(project.id);
+        const approvedChangeOrdersTotal = Number(
+            approvedTotal?._sum.totalCost ?? new Prisma.Decimal(0)
+        );
+        const contractValue = Number(project.contractValue ?? new Prisma.Decimal(0));
+
+        return {
+            ...project,
+            approvedChangeOrdersCount: approvedTotal?._count._all ?? 0,
+            approvedChangeOrdersTotal,
+            revisedContractValue: contractValue + approvedChangeOrdersTotal,
+        };
+    });
+};
 
 export const ProjectService = {
     createProject: async (request: ProjectCreateRequest, userId: string): Promise<Project> => {
@@ -188,7 +231,7 @@ export const ProjectService = {
             }),
         ]);
 
-        return { data, count };
+        return { data: await addProjectListFinancials(data), count };
     },
 
     updateProject: async (request: ProjectUpdateRequest, userId: string): Promise<Project> => {
@@ -671,6 +714,6 @@ export const ProjectService = {
             }),
         ]);
 
-        return { data, count };
+        return { data: await addProjectListFinancials(data), count };
     },
 };
