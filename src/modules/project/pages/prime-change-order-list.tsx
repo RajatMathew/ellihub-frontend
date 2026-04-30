@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  type ColumnDef,
-  type SortingState,
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
+  type ColumnDef,
+  type SortingState,
 } from '@tanstack/react-table';
-import {
-  AlertCircle,
-  DatabaseZap,
-  ExternalLink,
-  RefreshCcw,
-  Search,
-  X,
-} from 'lucide-react';
+import { AlertCircle, DatabaseZap, ExternalLink, RefreshCcw, Search, X } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import {
@@ -53,11 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@app/components/ui/select';
-import {
-  formatDateTime,
-  parsePageParam,
-  parseSizeParam,
-} from '@app/lib/helpers';
+import { formatDateTime, parsePageParam, parseSizeParam } from '@app/lib/helpers';
 import {
   PRIME_CHANGE_ORDER_STATUSES,
   type ListPrimeChangeOrderParams,
@@ -65,9 +54,9 @@ import {
 } from '@modules/project/schemas/prime-change-order.schema';
 
 import {
+  usePrimeChangeOrdersQuery,
   usePrimeChangeOrderStatusSummaryQuery,
   usePrimeChangeOrderSyncStatusQuery,
-  usePrimeChangeOrdersQuery,
   useSyncPrimeChangeOrdersMutation,
 } from '../hooks/prime-change-order.hooks';
 
@@ -170,7 +159,7 @@ export function PrimeChangeOrderListPage() {
         return next;
       });
     },
-    [setSearchParams],
+    [setSearchParams]
   );
 
   const handleSearchChange = useCallback(
@@ -181,7 +170,7 @@ export function PrimeChangeOrderListPage() {
         updateParams({ search: value || undefined, page: undefined });
       }, SEARCH_DEBOUNCE_MS);
     },
-    [updateParams],
+    [updateParams]
   );
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
@@ -198,11 +187,7 @@ export function PrimeChangeOrderListPage() {
     totalCostMax,
   };
 
-  const hasActiveFilters =
-    !!searchQuery ||
-    !!statusFilter ||
-    !!totalCostMin ||
-    !!totalCostMax;
+  const hasActiveFilters = !!searchQuery || !!statusFilter || !!totalCostMin || !!totalCostMax;
 
   const { data, isLoading, isError, refetch } = usePrimeChangeOrdersQuery(filters);
   const { data: statusSummary } = usePrimeChangeOrderStatusSummaryQuery(projectId);
@@ -217,7 +202,7 @@ export function PrimeChangeOrderListPage() {
   const sorting: SortingState = [{ id: sortBy, desc: sortOrder === 'desc' }];
   const statusSummaryByName = useMemo(
     () => new Map((statusSummary ?? []).map((item) => [item.statusName, item])),
-    [statusSummary],
+    [statusSummary]
   );
 
   const columns = useMemo<ColumnDef<PrimeChangeOrder>[]>(
@@ -309,6 +294,32 @@ export function PrimeChangeOrderListPage() {
         meta: { headerClassName: 'min-w-[130px]' },
       },
       {
+        id: 'assignee',
+        header: () => 'Assignee',
+        cell: ({ row }) => {
+          const assignee = row.original.assignee;
+
+          if (!assignee) {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+
+          return (
+            <div className="max-w-[220px] space-y-0.5">
+              <div className="truncate text-sm font-medium text-foreground">
+                {assignee.displayName}
+              </div>
+              {(assignee.company || assignee.jobTitle) && (
+                <div className="truncate text-xs text-muted-foreground">
+                  {assignee.company ?? assignee.jobTitle}
+                </div>
+              )}
+            </div>
+          );
+        },
+        meta: { headerClassName: 'min-w-[180px]' },
+        enableSorting: false,
+      },
+      {
         id: 'fieldwire',
         header: () => null,
         cell: ({ row }) => (
@@ -323,7 +334,7 @@ export function PrimeChangeOrderListPage() {
         enableSorting: false,
       },
     ],
-    [],
+    []
   );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -384,7 +395,7 @@ export function PrimeChangeOrderListPage() {
               <span className="text-sm text-muted-foreground">
                 {isMapped
                   ? `Fieldwire Project: ${syncStatus.fieldwireProjectId} | Last synced: ${formatOptionalDateTime(
-                      syncStatus.syncStatus.lastSyncedAt,
+                      syncStatus.syncStatus.lastSyncedAt
                     )}`
                   : 'No Fieldwire project mapped'}
               </span>
@@ -412,9 +423,7 @@ export function PrimeChangeOrderListPage() {
                 onClick={() => syncMutation.mutate(projectId)}
                 disabled={syncDisabled}
               >
-                <RefreshCcw
-                  className={`size-4 ${syncMutation.isPending ? 'animate-spin' : ''}`}
-                />
+                <RefreshCcw className={`size-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
                 Sync Fieldwire
               </Button>
             </ToolbarActions>
@@ -580,7 +589,9 @@ export function PrimeChangeOrderListPage() {
               <div className="flex flex-col items-center gap-3 py-12 text-center">
                 <AlertCircle className="size-10 text-destructive/60" />
                 <p className="text-sm font-medium">Failed to load change orders</p>
-                <p className="text-xs text-muted-foreground">Something went wrong. Please try again.</p>
+                <p className="text-xs text-muted-foreground">
+                  Something went wrong. Please try again.
+                </p>
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
                   <RefreshCcw className="size-3.5" />
                   Retry

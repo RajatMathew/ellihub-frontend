@@ -15,6 +15,21 @@ export const SCHEDULE_IMPACT_OPTIONS = ['yes', 'no', 'maybe'] as const;
 export const primeChangeOrderStatusSchema = z.enum(PRIME_CHANGE_ORDER_STATUSES);
 export const scheduleImpactSchema = z.enum(SCHEDULE_IMPACT_OPTIONS);
 
+export const primeChangeOrderAssigneeSchema = z
+  .object({
+    fieldwireUserId: z.number(),
+    displayName: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    email: z.string(),
+    company: z.string().nullable().optional(),
+    jobTitle: z.string().nullable().optional(),
+    photoUrl: z.string().nullable().optional(),
+    role: z.string().nullable().optional(),
+    userDeletedAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 export const primeChangeOrderSchema = z
   .object({
     id: z.string(),
@@ -37,6 +52,7 @@ export const primeChangeOrderSchema = z
     statusName: primeChangeOrderStatusSchema.or(z.string()),
     description: z.string().nullable().optional(),
     assigneeUserId: z.number().nullable().optional(),
+    assignee: primeChangeOrderAssigneeSchema.nullable().optional(),
     externalAssigneeUserId: z.number().nullable().optional(),
     scheduleImpact: scheduleImpactSchema.or(z.string()).nullable().optional(),
     scheduleImpactDays: z.number().nullable().optional(),
@@ -129,9 +145,7 @@ export const primeChangeOrderStatusSummaryItemSchema = z.object({
   totalCost: z.coerce.number(),
 });
 
-export const primeChangeOrderStatusSummarySchema = z.array(
-  primeChangeOrderStatusSummaryItemSchema,
-);
+export const primeChangeOrderStatusSummarySchema = z.array(primeChangeOrderStatusSummaryItemSchema);
 
 export type PrimeChangeOrderStatusSummaryItem = z.infer<
   typeof primeChangeOrderStatusSummaryItemSchema
