@@ -34,6 +34,13 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Completed',
 };
 
+const getProjectContractSum = (project: ProjectListItem): number => {
+  const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
+  const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
+
+  return project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
+};
+
 export function ProjectStatusSummary({
   projects,
   activeStatusId,
@@ -61,7 +68,7 @@ export function ProjectStatusSummary({
       }
 
       const existing = map.get(id);
-      const value = project.contractValue ?? 0;
+      const value = getProjectContractSum(project);
 
       if (existing) {
         existing.total += value;

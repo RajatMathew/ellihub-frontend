@@ -5,8 +5,23 @@ import { Progress } from '@app/components/ui/progress';
 import { formatCurrency } from '@app/lib/helpers';
 import type { ProjectListItem } from '@modules/project/schemas/project.schema';
 
+const formatSignedCurrency = (value: number): string => {
+  if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
+  if (value > 0) return `+${formatCurrency(value)}`;
+  return formatCurrency(0);
+};
+
 export function ProjectCard({ project }: { project: ProjectListItem }) {
-  const contractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
+  const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
+  const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
+  const revisedContractValue =
+    project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
+  const approvedChangeOrdersValueClassName =
+    approvedChangeOrdersTotal < 0
+      ? 'text-destructive'
+      : approvedChangeOrdersTotal > 0
+        ? 'text-emerald-600 dark:text-emerald-500'
+        : 'text-muted-foreground';
 
   return (
     <Link to={`/app/project/${project.id}/overview`} className="block h-full">
@@ -29,15 +44,17 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
           <div className="flex items-end justify-between gap-2 mt-auto">
             <div>
               <p className="text-[0.625rem] uppercase text-muted-foreground leading-none mb-1">
-                Total Cost
+                Contract Sum
               </p>
-              <p className="text-sm font-semibold">{formatCurrency(contractValue)}</p>
+              <p className="text-sm font-semibold">{formatCurrency(revisedContractValue)}</p>
             </div>
             <div className="text-right">
               <p className="text-[0.625rem] uppercase text-muted-foreground leading-none mb-1">
-                Balance
+                Approved COs
               </p>
-              <p className="text-sm font-semibold text-destructive">{formatCurrency(0)}</p>
+              <p className={`text-sm font-semibold ${approvedChangeOrdersValueClassName}`}>
+                {formatSignedCurrency(approvedChangeOrdersTotal)}
+              </p>
             </div>
           </div>
 
