@@ -42,3 +42,36 @@ export const FieldwireChangeOrderSchema = z.object({
 export const FieldwireChangeOrdersSchema = z.array(FieldwireChangeOrderSchema);
 
 export type FieldwireChangeOrder = z.infer<typeof FieldwireChangeOrderSchema>;
+
+export const FieldwireProjectUserSchema = z
+    .object({
+        id: z.number().int(),
+        account_id: z.number().int().nullable().optional().default(null),
+        company: z.string().nullable().optional().default(null),
+        email: z.string().min(1),
+        first_name: z
+            .string()
+            .nullable()
+            .optional()
+            .transform((value) => value ?? ''),
+        last_name: z
+            .string()
+            .nullable()
+            .optional()
+            .transform((value) => value ?? ''),
+        job_title: z.string().nullable().optional().default(null),
+        phone_number: z.string().nullable().optional().default(null),
+        photo_url: z.string().nullable().optional().default(null),
+        role: z.string().nullable().optional().default(null),
+        is_admin: z.boolean().nullable().optional().default(null),
+        is_approved: z.boolean().nullable().optional().default(null),
+        user_deleted_at: z.string().min(1).nullable().optional().default(null),
+        project_id: z.uuid(),
+        created_at: z.string().min(1),
+        updated_at: z.string().min(1),
+    })
+    .passthrough();
+
+export const FieldwireProjectUsersSchema = z.array(FieldwireProjectUserSchema);
+
+export type FieldwireProjectUser = z.infer<typeof FieldwireProjectUserSchema>;
