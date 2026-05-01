@@ -1,14 +1,13 @@
-import { Check } from 'lucide-react';
-
-import { Button } from '@app/components/ui/button';
-import { Input } from '@app/components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
+} from '@/app/components/ui/select';
+import { Check } from 'lucide-react';
 
 interface LabelOption {
   value: string;
@@ -42,7 +41,7 @@ export function InlineAddForm({
 }: InlineAddFormProps) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Input
           placeholder={placeholder}
           type={inputType}
@@ -52,7 +51,7 @@ export function InlineAddForm({
           aria-invalid={!!error}
         />
         <Select value={labelValue} onValueChange={onLabelChange}>
-          <SelectTrigger className="h-8 w-28 text-xs">
+          <SelectTrigger className="h-8 w-full text-xs sm:w-28">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -67,9 +66,11 @@ export function InlineAddForm({
           variant="outline"
           size="sm"
           mode="icon"
-          className="size-8"
+          className="size-8 self-end sm:self-auto"
           onClick={onSubmit}
           disabled={!value.trim() || isPending}
+          type="button"
+          aria-label="Add item"
         >
           <Check className="size-4" />
         </Button>

@@ -1,9 +1,9 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   activityLogPaginatedResponseSchema,
   type ActivityLogPaginatedResponse,
   type ListActivityLogParams,
-} from '../schemas/activity.schema';
+} from '@/modules/directory/schemas/activity.schema';
 
 const BASE = '/activity-log';
 

@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 
-import { ContactDetailPage, ContactFormPage, ContactsListPage } from '../pages';
+import { ContactDetailPage, ContactFormPage, ContactsListPage } from '@/modules/directory/pages';
 
 const ContactsRoutes = () => {
   return (

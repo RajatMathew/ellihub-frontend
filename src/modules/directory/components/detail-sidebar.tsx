@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { Button } from '@/app/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Clock, PanelRightClose } from 'lucide-react';
-
-import { Button } from '@app/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@app/components/ui/tabs';
 
 export function DetailSidebar({
   open,
@@ -19,7 +18,7 @@ export function DetailSidebar({
   if (!open) return null;
 
   return (
-    <div className="w-full min-w-0 shrink-0 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:overflow-y-auto xl:w-80">
+    <div className="w-full min-w-0 shrink-0 overflow-hidden xl:sticky xl:top-4 xl:max-h-screen xl:w-80 xl:overflow-y-auto">
       <Tabs defaultValue="details">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <TabsList variant="line">
@@ -32,12 +31,15 @@ export function DetailSidebar({
             mode="icon"
             className="size-7"
             onClick={onClose}
+            aria-label="Close details panel"
           >
             <PanelRightClose className="size-3.5" />
           </Button>
         </div>
 
-        <TabsContent value="details" className="min-w-0 overflow-hidden">{children}</TabsContent>
+        <TabsContent value="details" className="min-w-0 overflow-hidden">
+          {children}
+        </TabsContent>
 
         <TabsContent value="activity" className="min-w-0 overflow-hidden">
           {activityChildren || (

@@ -1,15 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
-import { vendorsApi } from '@modules/directory/api/vendors.api';
-import { vendorsKeys } from '@modules/directory/constants/vendors.keys';
+import { toastApiError } from '@/app/lib/toast-api-error';
+import { vendorsApi } from '@/modules/directory/api/vendors.api';
+import { vendorsKeys } from '@/modules/directory/constants/vendors.keys';
 import type {
   CreateVendorContactInput,
   CreateVendorInput,
   ListVendorsParams,
   UpdateVendorContactInput,
   UpdateVendorInput,
-} from '@modules/directory/schemas/vendor.schema';
+} from '@/modules/directory/schemas/vendor.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
 
@@ -41,10 +40,7 @@ export const useCreateVendorMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to create vendor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to create vendor.'),
   });
 };
 
@@ -57,10 +53,7 @@ export const useUpdateVendorMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: vendorsKeys.detail(id) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to update vendor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to update vendor.'),
   });
 };
 
@@ -71,10 +64,7 @@ export const useDeleteVendorMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to archive vendor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to archive vendor.'),
   });
 };
 
@@ -89,10 +79,7 @@ export const useAddVendorContactMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: vendorsKeys.detail(id) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to add vendor contact.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to add vendor contact.'),
   });
 };
 
@@ -112,10 +99,7 @@ export const useUpdateVendorContactMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: vendorsKeys.detail(id) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to update vendor contact.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to update vendor contact.'),
   });
 };
 
@@ -128,9 +112,6 @@ export const useDeleteVendorContactMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: vendorsKeys.detail(id) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to remove vendor contact.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to remove vendor contact.'),
   });
 };

@@ -1,36 +1,37 @@
-import { useEffect } from 'react';
+import { useEffect, type BaseSyntheticEvent } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-
+} from '@/app/components/ui/select';
 import {
   VENDOR_STATUS_OPTIONS,
   VENDOR_TYPE_OPTIONS,
-} from '../constants/vendors.constants';
-import { useCreateVendorMutation, useVendorTypesQuery } from '../hooks';
+} from '@/modules/directory/constants/vendors.constants';
+import {
+  useCreateVendorMutation,
+  useVendorTypesQuery,
+} from '@/modules/directory/hooks/vendors.hooks';
 import {
   quickCreateVendorSchema,
   type QuickCreateVendorValues,
   type VendorTypeObject,
-} from '../schemas/vendor.schema';
+} from '@/modules/directory/schemas/vendor.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 
 export function QuickCreateVendorDialog({
   open,
@@ -66,7 +67,7 @@ export function QuickCreateVendorDialog({
     onOpenChange(next);
   };
 
-  const onSubmit = async (data: QuickCreateVendorValues, e?: React.BaseSyntheticEvent) => {
+  const onSubmit = async (data: QuickCreateVendorValues, e?: BaseSyntheticEvent) => {
     e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       name: data.name,
@@ -81,20 +82,17 @@ export function QuickCreateVendorDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-bold tracking-[0.05em] uppercase">
+          <DialogTitle className="text-sm font-bold uppercase tracking-wider">
             New Vendor
           </DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Controller
             name="name"
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Vendor Name
                 </FieldLabel>
                 <Input
@@ -113,7 +111,7 @@ export function QuickCreateVendorDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Vendor Type
                 </FieldLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
@@ -125,7 +123,10 @@ export function QuickCreateVendorDialog({
                       ? apiTypes.map((t) => ({ value: t.id, label: t.label }))
                       : VENDOR_TYPE_OPTIONS
                     ).map((opt) => {
-                      const val = typeof opt.value === 'string' ? opt.value : (opt.value as VendorTypeObject).id;
+                      const val =
+                        typeof opt.value === 'string'
+                          ? opt.value
+                          : (opt.value as VendorTypeObject).id;
                       return (
                         <SelectItem key={val} value={val}>
                           {opt.label}
@@ -144,7 +145,7 @@ export function QuickCreateVendorDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Status
                 </FieldLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
@@ -169,7 +170,7 @@ export function QuickCreateVendorDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
+              className="h-8 rounded-sm px-3 text-sm font-semibold"
             >
               Cancel
             </Button>
@@ -177,7 +178,7 @@ export function QuickCreateVendorDialog({
               type="submit"
               variant="primary"
               disabled={createMutation.isPending}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
+              className="h-8 rounded-sm px-3 text-sm font-semibold"
             >
               {createMutation.isPending ? 'Creating...' : 'Create Vendor'}
             </Button>

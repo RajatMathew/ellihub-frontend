@@ -1,0 +1,106 @@
+import { useMemo } from 'react';
+
+import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import {
+  VendorActionsCell,
+  VendorComplianceCell,
+  VendorContactCell,
+  VendorEmptyValueCell,
+  VendorNameCell,
+  VendorTypeCell,
+} from '@/modules/directory/components/vendors/vendor-list-column-cells';
+import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
+import { type ColumnDef } from '@tanstack/react-table';
+
+interface UseVendorListColumnsOptions {
+  typeLabels: Map<string, string>;
+  onDelete: (id: string) => void;
+}
+
+export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColumnsOptions) {
+  return useMemo<ColumnDef<Vendor>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor Name" />,
+        cell: ({ row }) => <VendorNameCell vendor={row.original} />,
+        meta: {
+          headerClassName: 'min-w-64',
+          skeleton: (
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ),
+        },
+      },
+      {
+        id: 'type',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
+        cell: ({ row }) => <VendorTypeCell vendor={row.original} typeLabels={typeLabels} />,
+        meta: {
+          headerClassName: 'min-w-40',
+          skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'contact',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Contact" />,
+        cell: ({ row }) => <VendorContactCell vendor={row.original} />,
+        meta: {
+          headerClassName: 'min-w-56',
+          skeleton: (
+            <div className="flex flex-col gap-1">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          ),
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'compliance',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Compliance" />,
+        cell: () => <VendorComplianceCell />,
+        meta: {
+          headerClassName: 'min-w-36',
+          skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'totalCommitted',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Total Committed" />,
+        cell: () => <VendorEmptyValueCell />,
+        meta: {
+          headerClassName: 'min-w-44',
+          skeleton: <Skeleton className="h-3.5 w-20" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'balance',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Balance" />,
+        cell: () => <VendorEmptyValueCell />,
+        meta: {
+          headerClassName: 'min-w-32',
+          skeleton: <Skeleton className="h-3.5 w-16" />,
+        },
+        enableSorting: false,
+      },
+      {
+        id: 'actions',
+        header: () => null,
+        cell: ({ row }) => <VendorActionsCell vendor={row.original} onDelete={onDelete} />,
+        meta: {
+          headerClassName: 'w-16',
+          skeleton: <Skeleton className="size-7 rounded-md" />,
+        },
+        enableSorting: false,
+      },
+    ],
+    [onDelete, typeLabels]
+  );
+}

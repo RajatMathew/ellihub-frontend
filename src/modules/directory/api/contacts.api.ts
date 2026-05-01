@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import api from '@app/api';
+import api from '@/app/api';
 import {
   contactPaginatedResponseSchema,
   contactSchema,
@@ -13,7 +13,7 @@ import {
   type ListContactsParams,
   type ProfessionalRole,
   type UpdateContactInput,
-} from '@modules/directory/schemas/contact.schema';
+} from '@/modules/directory/schemas/contact.schema';
 
 const BASE = '/contact';
 
@@ -34,17 +34,17 @@ export const contactsApi = {
     if (Object.keys(filter).length > 0) query.filter = JSON.stringify(filter);
 
     const res = await api.get(BASE, { params: query });
-  return contactPaginatedResponseSchema.parse({
-    data: res.data?.data ?? res.data ?? [],
-    pagination: res.data?.pagination ?? {
-      currentPage: 1,
-      totalPages: 1,
-      hasNextPage: false,
-      hasPreviousPage: false,
-      totalItems: (res.data?.data ?? res.data ?? []).length,
-      itemsPerPage: (res.data?.data ?? res.data ?? []).length || 10,
-    },
-  });
+    return contactPaginatedResponseSchema.parse({
+      data: res.data?.data ?? res.data ?? [],
+      pagination: res.data?.pagination ?? {
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+        totalItems: (res.data?.data ?? res.data ?? []).length,
+        itemsPerPage: (res.data?.data ?? res.data ?? []).length || 10,
+      },
+    });
   },
 
   async getById(id: string): Promise<Contact> {

@@ -1,31 +1,32 @@
-import { useEffect } from 'react';
+import { useEffect, type BaseSyntheticEvent } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-
-import { useCreateContactMutation, useProfessionalRolesQuery } from '../hooks';
+} from '@/app/components/ui/select';
+import {
+  useCreateContactMutation,
+  useProfessionalRolesQuery,
+} from '@/modules/directory/hooks/contacts.hooks';
 import {
   quickCreateContactSchema,
   type QuickCreateContactValues,
-} from '../schemas/contact.schema';
+} from '@/modules/directory/schemas/contact.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 
 export function QuickCreateContactDialog({
   open,
@@ -60,7 +61,7 @@ export function QuickCreateContactDialog({
     onOpenChange(next);
   };
 
-  const onSubmit = async (data: QuickCreateContactValues, e?: React.BaseSyntheticEvent) => {
+  const onSubmit = async (data: QuickCreateContactValues, e?: BaseSyntheticEvent) => {
     e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       fullName: data.fullName,
@@ -76,20 +77,17 @@ export function QuickCreateContactDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-bold tracking-[0.05em] uppercase">
+          <DialogTitle className="text-sm font-bold uppercase tracking-wider">
             New Contact
           </DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Controller
             name="fullName"
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Full Name
                 </FieldLabel>
                 <Input
@@ -108,7 +106,7 @@ export function QuickCreateContactDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Professional Role
                 </FieldLabel>
                 <Select
@@ -136,7 +134,7 @@ export function QuickCreateContactDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid || !!formState.errors.email}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Email
                 </FieldLabel>
                 <Input
@@ -159,14 +157,12 @@ export function QuickCreateContactDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase">
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Phone
                 </FieldLabel>
                 <Input
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(e.target.value.replace(/[^+\d\s\-().]/g, ''))
-                  }
+                  onChange={(e) => field.onChange(e.target.value.replace(/[^+\d\s\-().]/g, ''))}
                   type="tel"
                   placeholder="(555) 000-0000"
                   autoComplete="off"
@@ -182,7 +178,7 @@ export function QuickCreateContactDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
+              className="h-8 rounded-sm px-3 text-sm font-semibold"
             >
               Cancel
             </Button>
@@ -190,7 +186,7 @@ export function QuickCreateContactDialog({
               type="submit"
               variant="primary"
               disabled={createMutation.isPending}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
+              className="h-8 rounded-sm px-3 text-sm font-semibold"
             >
               {createMutation.isPending ? 'Creating...' : 'Create Contact'}
             </Button>

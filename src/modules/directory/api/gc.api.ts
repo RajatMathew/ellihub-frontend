@@ -1,6 +1,4 @@
-import { z } from 'zod';
-
-import api from '@app/api';
+import api from '@/app/api';
 import {
   gcPaginatedResponseSchema,
   gcStatsSchema,
@@ -14,7 +12,8 @@ import {
   type GeneralContractorDetail,
   type ListGCsParams,
   type UpdateGCInput,
-} from '@modules/directory/schemas/gc.schema';
+} from '@/modules/directory/schemas/gc.schema';
+import { z } from 'zod';
 
 const BASE = '/gc';
 

@@ -1,0 +1,173 @@
+import { useMemo, useState } from 'react';
+
+import type {
+  ContactAssociationType,
+  ContactGCAssociation,
+  ContactVendorAssociation,
+  DirectorySelectOption,
+  PendingContactAssociation,
+  PendingContactUnlink,
+} from '@/modules/directory/components/contacts/form/contact-form.types';
+import type { Contact } from '@/modules/directory/schemas/contact.schema';
+
+interface UseContactAssociationsArgs {
+  contact: Contact | undefined;
+  isEdit: boolean;
+  vendorOptions: DirectorySelectOption[];
+  gcOptions: DirectorySelectOption[];
+}
+
+export function useContactAssociations({
+  contact,
+  isEdit,
+  vendorOptions,
+  gcOptions,
+}: UseContactAssociationsArgs) {
+  const [vendorLinks, setVendorLinks] = useState<ContactVendorAssociation[]>(() =>
+    buildVendorLinks(isEdit ? contact : undefined)
+  );
+  const [gcLinks, setGCLinks] = useState<ContactGCAssociation[]>(() =>
+    buildGCLinks(isEdit ? contact : undefined)
+  );
+  const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
+  const [pendingAssociation, setPendingAssociation] = useState<PendingContactAssociation | null>(
+    null
+  );
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [pendingUnlink, setPendingUnlink] = useState<PendingContactUnlink | null>(null);
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
+
+  const currentAssociation = useMemo(() => {
+    const vendorLink = vendorLinks[0];
+    if (vendorLink) {
+      return {
+        id: vendorLink.vendorId,
+        name:
+          vendorOptions.find((option) => option.value === vendorLink.vendorId)?.label ??
+          'Current Vendor',
+        type: 'VENDOR' as const,
+      };
+    }
+
+    const gcLink = gcLinks[0];
+    if (gcLink) {
+      return {
+        id: gcLink.generalContractorId,
+        name:
+          gcOptions.find((option) => option.value === gcLink.generalContractorId)?.label ??
+          'Current GC',
+        type: 'GC' as const,
+      };
+    }
+
+    return null;
+  }, [gcLinks, gcOptions, vendorLinks, vendorOptions]);
+
+  const primaryVendorId =
+    vendorLinks.find((link) => link.isPrimary)?.vendorId ?? vendorLinks[0]?.vendorId;
+  const primaryGCId =
+    gcLinks.find((link) => link.isPrimary)?.generalContractorId ?? gcLinks[0]?.generalContractorId;
+
+  const replaceAssociation = (next: PendingContactAssociation) => {
+    setVendorLinks(next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true }] : []);
+    setGCLinks(next.type === 'GC' ? [{ generalContractorId: next.id, isPrimary: true }] : []);
+  };
+
+  const handleAddAssociation = (id: string, type: ContactAssociationType) => {
+    if (currentAssociation) {
+      if (currentAssociation.id === id && currentAssociation.type === type) return;
+      setPendingAssociation({ id, type });
+      setShowReplaceConfirm(true);
+      return;
+    }
+
+    replaceAssociation({ id, type });
+  };
+
+  const confirmReplace = () => {
+    if (!pendingAssociation) return;
+    replaceAssociation(pendingAssociation);
+    setPendingAssociation(null);
+    setShowReplaceConfirm(false);
+  };
+
+  const handleUnlinkClick = (index: number, type: ContactAssociationType, name: string) => {
+    setPendingUnlink({ index, type, name });
+    setShowUnlinkConfirm(true);
+  };
+
+  const confirmUnlink = () => {
+    if (!pendingUnlink) return;
+
+    if (pendingUnlink.type === 'VENDOR') {
+      setVendorLinks((prev) => prev.filter((_, index) => index !== pendingUnlink.index));
+    } else {
+      setGCLinks((prev) => prev.filter((_, index) => index !== pendingUnlink.index));
+    }
+
+    setPendingUnlink(null);
+    setShowUnlinkConfirm(false);
+  };
+
+  const handleVendorCreated = (vendor: { id: string; name: string }) => {
+    handleAddAssociation(vendor.id, 'VENDOR');
+  };
+
+  return {
+    vendorLinks,
+    gcLinks,
+    vendorDialogOpen,
+    setVendorDialogOpen,
+    pendingAssociation,
+    showReplaceConfirm,
+    setShowReplaceConfirm,
+    pendingUnlink,
+    showUnlinkConfirm,
+    setShowUnlinkConfirm,
+    currentAssociation,
+    primaryVendorId,
+    primaryGCId,
+    setVendorLinks,
+    setGCLinks,
+    handleAddAssociation,
+    handleUnlinkClick,
+    confirmReplace,
+    confirmUnlink,
+    handleVendorCreated,
+  };
+}
+
+function buildVendorLinks(contact?: Contact): ContactVendorAssociation[] {
+  if (!contact) return [];
+
+  const links = contact.vendorLinks.map((link) => ({
+    vendorId: link.vendorId,
+    isPrimary: link.isPrimary,
+  }));
+
+  if (contact.vendorId && !links.some((link) => link.vendorId === contact.vendorId)) {
+    links.push({ vendorId: contact.vendorId, isPrimary: true });
+  }
+
+  return links;
+}
+
+function buildGCLinks(contact?: Contact): ContactGCAssociation[] {
+  if (!contact) return [];
+
+  const links = contact.gcLinks.map((link) => ({
+    generalContractorId: link.generalContractorId,
+    isPrimary: link.isPrimary,
+  }));
+
+  if (
+    contact.generalContractorId &&
+    !links.some((link) => link.generalContractorId === contact.generalContractorId)
+  ) {
+    links.push({ generalContractorId: contact.generalContractorId, isPrimary: true });
+  }
+
+  return links;
+}
+
+export type ContactAssociationsState = ReturnType<typeof useContactAssociations>;

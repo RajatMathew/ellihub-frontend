@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { contactsApi } from '@modules/directory/api/contacts.api';
-import { contactsKeys } from '@modules/directory/constants/contacts.keys';
+import { contactsApi } from '@/modules/directory/api/contacts.api';
+import { contactsKeys } from '@/modules/directory/constants/contacts.keys';
 import {
   contactFormSchema,
   type Contact,
@@ -14,7 +14,7 @@ import {
   type CreateContactInput,
   type UpdateContactInput,
   type ListContactsParams,
-} from '@modules/directory/schemas/contact.schema';
+} from '@/modules/directory/schemas/contact.schema';
 
 /* ---- contact queries ---- */
 

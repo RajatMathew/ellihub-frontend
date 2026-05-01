@@ -6,17 +6,20 @@ export const activityLogItemSchema = z.object({
   entityId: z.string(),
   action: z.string(),
   description: z.string(),
-  metadata: z.record(z.any()).optional().nullable(),
+  metadata: z.record(z.string(), z.unknown()).optional().nullable(),
   note: z.string().optional().nullable(),
   affectedEntityIds: z.array(z.string()).optional().default([]),
   userId: z.string().optional().nullable(),
   createdAt: z.string(),
-  user: z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string().optional().nullable(),
-    image: z.string().optional().nullable(),
-  }).optional().nullable(),
+  user: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string().optional().nullable(),
+      image: z.string().optional().nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const activityLogPaginatedResponseSchema = z.object({

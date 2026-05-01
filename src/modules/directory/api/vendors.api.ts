@@ -1,4 +1,4 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   vendorContactLinkSchema,
   vendorDetailSchema,
@@ -11,7 +11,7 @@ import {
   type VendorContactLink,
   type VendorDetail,
   type VendorPaginatedResponse,
-} from '@modules/directory/schemas/vendor.schema';
+} from '@/modules/directory/schemas/vendor.schema';
 
 const BASE = '/vendor';
 

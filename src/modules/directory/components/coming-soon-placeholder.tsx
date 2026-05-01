@@ -1,8 +1,10 @@
+import type { ComponentType } from 'react';
+
 export function ComingSoonPlaceholder({
   icon: Icon,
   title,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   title: string;
 }) {
   return (

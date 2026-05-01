@@ -1,14 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
-import { gcApi } from '@modules/directory/api/gc.api';
-import { gcKeys } from '@modules/directory/constants/gc.keys';
+import { toastApiError } from '@/app/lib/toast-api-error';
+import { gcApi } from '@/modules/directory/api/gc.api';
+import { gcKeys } from '@/modules/directory/constants/gc.keys';
 import type {
   AddGCContactLinkInput,
   CreateGCInput,
   ListGCsParams,
   UpdateGCInput,
-} from '@modules/directory/schemas/gc.schema';
+} from '@/modules/directory/schemas/gc.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
 
@@ -46,26 +45,19 @@ export const useCreateGCMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to create general contractor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to create general contractor.'),
   });
 };
 
 export const useUpdateGCMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateGCInput }) =>
-      gcApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateGCInput }) => gcApi.update(id, data),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to update general contractor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to update general contractor.'),
   });
 };
 
@@ -76,10 +68,7 @@ export const useDeleteGCMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to archive general contractor.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to archive general contractor.'),
   });
 };
 
@@ -94,10 +83,7 @@ export const useAddGCContactLinkMutation = () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to add contact link.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to add contact link.'),
   });
 };
 
@@ -110,9 +96,6 @@ export const useRemoveGCContactLinkMutation = () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(gcId) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to remove contact link.';
-      toast.error(msg);
-    },
+    onError: (error) => toastApiError(error, 'Failed to remove contact link.'),
   });
 };
