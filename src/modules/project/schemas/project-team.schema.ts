@@ -23,17 +23,3 @@ export const projectTeamAssignmentSchema = z
   .passthrough();
 
 export type ProjectTeamAssignment = z.infer<typeof projectTeamAssignmentSchema>;
-
-export const projectTeamResponseSchema = z.object({
-  leadPM: projectTeamAssignmentSchema.nullable(),
-  teamMembers: z.array(projectTeamAssignmentSchema),
-});
-
-export type ProjectTeamResponse = z.infer<typeof projectTeamResponseSchema>;
-
-export const addTeamMemberInputSchema = z.object({
-  employeeId: z.string().min(1, 'Employee is required'),
-  role: z.string().max(100).optional(),
-});
-
-export type AddTeamMemberInput = z.infer<typeof addTeamMemberInputSchema>;

@@ -1,5 +1,5 @@
 export * from './project-filter-tabs';
-export * from './project-detail-documents-card';
+export { ProjectDetailDocumentsCard } from './project-detail-documents-card';
 export * from './project-detail-field';
 export * from './project-form-documents-card';
 export * from './project-form-toolbar';

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import { Card, CardContent } from '@app/components/ui/card';
-import { Progress } from '@app/components/ui/progress';
-import { formatCurrency } from '@app/lib/helpers';
-import type { ProjectListItem } from '@modules/project/schemas/project.schema';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { Progress } from '@/app/components/ui/progress';
+import { formatCurrency } from '@/app/lib/helpers';
+import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 const formatSignedCurrency = (value: number): string => {
   if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
@@ -12,9 +12,9 @@ const formatSignedCurrency = (value: number): string => {
 };
 
 const getUtilizationColor = (utilization: number): string => {
-  if (utilization > 90) return 'bg-red-500';
-  if (utilization > 70) return 'bg-amber-500';
-  return 'bg-emerald-500';
+  if (utilization > 90) return 'bg-destructive';
+  if (utilization > 70) return 'bg-warning';
+  return 'bg-success';
 };
 
 export function ProjectCard({ project }: { project: ProjectListItem }) {

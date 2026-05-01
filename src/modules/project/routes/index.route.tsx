@@ -7,7 +7,7 @@ import PrimeChangeOrderRoutes from '@/modules/project/routes/prime-change-order/
 import RFQRoutes from '@/modules/project/routes/rfq/index.route';
 import SCORoutes from '@/modules/project/routes/sub-change-order/index.route';
 
-import ProjectEditForm from '../pages/project-edit-form';
+import ProjectEditForm from '@/modules/project/pages/project-edit-form';
 
 const ProjectRoutes = () => {
   return (

@@ -1,4 +1,4 @@
-import type { Division, ProjectStatusEnum } from '@modules/project/schemas/project.schema';
+import type { ProjectStatusEnum } from '@/modules/project/schemas/project.schema';
 
 export const PROJECT_STATUS_OPTIONS: { value: ProjectStatusEnum; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
@@ -11,10 +11,3 @@ export const PROJECT_FORM_SECTIONS = [
   { id: 'project-info', label: 'Project Info' },
   { id: 'contract', label: 'Contract' },
 ] as const;
-
-export const DIVISION_OPTIONS: { value: Division; label: string }[] = [
-  { value: 'SCA', label: 'SCA - Standard' },
-  { value: 'DDC', label: 'DDC' },
-  { value: 'CIVIL', label: 'Civil' },
-  { value: 'INSTITUTIONAL', label: 'Institutional' },
-];

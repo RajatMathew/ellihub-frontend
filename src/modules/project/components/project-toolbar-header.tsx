@@ -6,21 +6,25 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Avatar, AvatarFallback, AvatarImage } from '@app/components/ui/avatar';
-import { AvatarGroup, AvatarGroupItem } from '@app/components/ui/avatar-group';
-import { Badge } from '@app/components/ui/badge';
-import { Button } from '@app/components/ui/button';
+} from '@/app/components/toolbar/toolbar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
+import { AvatarGroup, AvatarGroupItem } from '@/app/components/ui/avatar-group';
+import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
-import { getContrastColor } from '@app/lib/helpers';
-import { DIVISION_LABELS } from '@modules/project/constants/project.constants';
-import { useProjectStagesQuery, useUpdateProjectMutation } from '@modules/project/hooks';
-import type { Division, ProjectDetail } from '@modules/project/schemas/project.schema';
+} from '@/app/components/ui/dropdown-menu';
+import { getContrastColor } from '@/app/lib/helpers';
+import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
+import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
+import type {
+  Division,
+  ProjectDetail,
+  UpdateProjectInput,
+} from '@/modules/project/schemas/project.schema';
 
 interface ProjectToolbarHeaderProps {
   title: string;
@@ -46,29 +50,30 @@ export function ProjectToolbarHeader({
       if (!dateStr) return undefined;
       return dateStr.split('T')[0];
     };
+    const optionalString = (value?: string | null) => value ?? undefined;
 
     // PUT /project is a full replace, so we must send all required fields
-    const fullPayload: any = {
+    const fullPayload: UpdateProjectInput = {
       name: project.name,
       description: project.description,
-      jobNumber: project.jobNumber,
-      contractNumber: project.contractNumber,
+      jobNumber: optionalString(project.jobNumber),
+      contractNumber: optionalString(project.contractNumber),
       fieldwireProjectId: project.fieldwireProjectId ?? null,
-      divisionId: project.divisionId,
-      gcId: project.gcId,
-      leadPMId: project.leadPMId,
+      divisionId: optionalString(project.divisionId),
+      gcId: optionalString(project.gcId),
+      leadPMId: optionalString(project.leadPMId),
       stageId: stageId,
-      status: project.status,
-      streetAddress: project.streetAddress,
-      city: project.city,
-      state: project.state,
-      zipCode: project.zipCode,
+      status: project.status ?? undefined,
+      streetAddress: optionalString(project.streetAddress),
+      city: optionalString(project.city),
+      state: optionalString(project.state),
+      zipCode: optionalString(project.zipCode),
       contractValue: project.contractValue,
-      contractType: project.primeContract?.contractType,
+      contractType: optionalString(project.primeContract?.contractType),
       retainagePercent: project.retainagePercent,
       targetBudgetPercent: project.targetBudgetPercent,
       taxRate: project.taxRate,
-      paymentTerms: project.primeContract?.paymentTerms,
+      paymentTerms: optionalString(project.primeContract?.paymentTerms),
       estimatedStartDate: formatDate(project.estimatedStartDate),
       estimatedEndDate: formatDate(project.estimatedEndDate),
       setInactiveDate: formatDate(project.setInactiveDate),

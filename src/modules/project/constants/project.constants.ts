@@ -1,30 +1,5 @@
-import type { Division, ProjectStatusEnum } from '../schemas/project.schema';
-import type { PaymentTerms } from '../schemas/project-contract.schema';
-
-export const PROJECT_STATUS_OPTIONS: { value: ProjectStatusEnum; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'INACTIVE', label: 'Inactive' },
-  { value: 'CLOSED', label: 'Closed' },
-  { value: 'COMPLETED', label: 'Completed' },
-];
-
-export const STAGE_COLOR_MAP: Record<string, string> = {
-  green: 'success',
-  blue: 'info',
-  red: 'destructive',
-  yellow: 'warning',
-  orange: 'warning',
-  purple: 'info',
-  gray: 'secondary',
-  grey: 'secondary',
-};
-
-export const DIVISION_OPTIONS: { value: Division; label: string }[] = [
-  { value: 'SCA', label: 'SCA' },
-  { value: 'DDC', label: 'DDC' },
-  { value: 'CIVIL', label: 'Civil' },
-  { value: 'INSTITUTIONAL', label: 'Institutional' },
-];
+import type { PaymentTerms } from '@/modules/project/schemas/project-contract.schema';
+import type { Division } from '@/modules/project/schemas/project.schema';
 
 export const DIVISION_LABELS: Record<Division, string> = {
   SCA: 'SCA',
@@ -41,19 +16,3 @@ export const PAYMENT_TERMS_OPTIONS: { value: PaymentTerms; label: string }[] = [
   { value: 'NET_90', label: 'Net 90' },
   { value: 'DUE_ON_RECEIPT', label: 'Due on Receipt' },
 ];
-
-export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
-  NET_15: 'Net 15',
-  NET_30: 'Net 30',
-  NET_45: 'Net 45',
-  NET_60: 'Net 60',
-  NET_90: 'Net 90',
-  DUE_ON_RECEIPT: 'Due on Receipt',
-};
-
-export const PROJECT_FORM_SECTIONS = [
-  { id: 'info', label: 'Info' },
-  { id: 'contract', label: 'Contract' },
-  { id: 'team', label: 'Team' },
-  { id: 'schedule', label: 'Schedule' },
-] as const;

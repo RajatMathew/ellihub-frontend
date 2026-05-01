@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ProjectListItem } from '@modules/project/schemas/project.schema';
+import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 import { ProjectCard } from './project-card';
 

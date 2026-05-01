@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { filesApi } from '@modules/files/api/files.api';
-import { filesKeys } from '@modules/files/constants/files.keys';
+import { filesApi } from '@/modules/files/api/files.api';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 
 /**
  * Traverses the file system to find a project's subfolder:

@@ -1,4 +1,4 @@
-import { cn } from '@app/lib/utils';
+import { cn } from '@/app/lib/utils';
 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i);

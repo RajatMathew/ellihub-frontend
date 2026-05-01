@@ -235,6 +235,7 @@ export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 export const updateProjectInputSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().min(1).optional(),
+  jobNumber: z.string().optional(),
   contractNumber: z.string().max(100).optional(),
   fieldwireProjectId: z.string().optional().nullable(),
   stageId: z.string().min(1).optional(),

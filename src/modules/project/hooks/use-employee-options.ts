@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import type { Employee } from '@app/api/employees.api';
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import type { Employee } from '@/app/api/employees.api';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface UseEmployeeOptionsParams {
   employees: Employee[] | undefined;

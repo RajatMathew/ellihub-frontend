@@ -8,13 +8,13 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Button } from '@app/components/ui/button';
-import { Skeleton } from '@app/components/ui/skeleton';
-import { ProjectDivisionBoard } from '@modules/project/components/project-division-board';
-import { ProjectStatusSummary } from '@modules/project/components/project-status-summary';
-import { ProjectYearTabs } from '@modules/project/components/project-year-tabs';
-import { useProjectsQuery } from '@modules/project/hooks';
+} from '@/app/components/toolbar/toolbar';
+import { Button } from '@/app/components/ui/button';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
+import { ProjectStatusSummary } from '@/modules/project/components/project-status-summary';
+import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
+import { useProjectsQuery } from '@/modules/project/hooks';
 
 const currentYear = new Date().getFullYear();
 

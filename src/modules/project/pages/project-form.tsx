@@ -6,38 +6,38 @@ import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-ho
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { FormSectionNav } from '@app/components/form-section-nav';
+import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Button } from '@app/components/ui/button';
-import { Card, CardContent } from '@app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { FileDropZone } from '@app/components/ui/file-drop-zone';
-import { Input, InputWrapper } from '@app/components/ui/input';
-import { SearchableSelect } from '@app/components/ui/searchable-select';
+} from '@/app/components/toolbar/toolbar';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { FileDropZone } from '@/app/components/ui/file-drop-zone';
+import { Input, InputWrapper } from '@/app/components/ui/input';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-import { Separator } from '@app/components/ui/separator';
-import { Textarea } from '@app/components/ui/textarea';
-import { useGCsQuery } from '@modules/directory/hooks';
-import { filesApi } from '@modules/files/api/files.api';
-import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
-import { contractAttachmentApi } from '@modules/project/api/contract-attachment.api';
+} from '@/app/components/ui/select';
+import { Separator } from '@/app/components/ui/separator';
+import { Textarea } from '@/app/components/ui/textarea';
+import { useGCsQuery } from '@/modules/directory/hooks';
+import { filesApi } from '@/modules/files/api/files.api';
+import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
+import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import {
   PROJECT_FORM_SECTIONS,
   PROJECT_STATUS_OPTIONS,
-} from '@modules/project/constants/project-form.constants';
-import { PAYMENT_TERMS_OPTIONS } from '@modules/project/constants/project.constants';
+} from '@/modules/project/constants/project-form.constants';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
   useCreateProjectMutation,
   useCreateScheduleEntryMutation,
@@ -50,12 +50,13 @@ import {
   useSetProjectCompletedMutation,
   useSetProjectInactiveMutation,
   useUpdateProjectMutation,
-} from '@modules/project/hooks';
+} from '@/modules/project/hooks';
 import {
   projectFormSchema,
   type CreateProjectInput,
   type ProjectFormValues,
-} from '@modules/project/schemas/project.schema';
+  type UpdateProjectInput,
+} from '@/modules/project/schemas/project.schema';
 
 const parseDateValue = (value: unknown): string =>
   typeof value === 'string' ? value.split('T')[0] : '';
@@ -150,8 +151,8 @@ export default function ProjectForm() {
         estimatedEndDate: parseDateValue(contract?.estimatedEndDate),
         setInactiveDate: parseDateValue(contract?.setInactiveDate),
         tcoDate: parseDateValue(contract?.tcoDate),
-        actualStartDate: parseDateValue((contract as any)?.actualStartDate),
-        actualCompletionDate: parseDateValue((contract as any)?.actualCompletionDate),
+        actualStartDate: parseDateValue(contract?.actualStartDate),
+        actualCompletionDate: parseDateValue(contract?.actualCompletionDate),
       });
     }
   }, [isEditMode, existingProject, existingContract, reset]);
@@ -245,7 +246,7 @@ export default function ProjectForm() {
 
       if (isEditMode && projectId) {
         // Update project fields
-        const updatePayload: any = {
+        const updatePayload: UpdateProjectInput = {
           name: data.name,
           description: data.description,
           contractNumber: data.contractNumber || undefined,

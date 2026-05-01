@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { projectApi } from '@modules/project/api/project.api';
-import { projectKeys } from '@modules/project/constants/project.keys';
+import { projectApi } from '@/modules/project/api/project.api';
+import { projectKeys } from '@/modules/project/constants/project.keys';
 import type {
   CreateProjectInput,
   ListProjectsParams,
   ProjectDetail,
   UpdateProjectInput,
-} from '@modules/project/schemas/project.schema';
+} from '@/modules/project/schemas/project.schema';
 
 /* ---- QUERY HOOKS ---- */
 
@@ -61,12 +61,10 @@ export const useUpdateProjectMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
       projectApi.update(id, data),
     onSuccess: (updated: ProjectDetail) => {
-      const next = typeof updated === 'object' && updated != null ? updated : {};
       // Merge update into cache to prevent UI flicker/disappearing nested fields
-      qc.setQueryData(projectKeys.detail(updated.id), (old: any) => ({
-        ...(old || {}),
-        ...next,
-      }));
+      qc.setQueryData<ProjectDetail | undefined>(projectKeys.detail(updated.id), (old) =>
+        old ? { ...old, ...updated } : updated,
+      );
       
       return Promise.all([
         qc.invalidateQueries({ queryKey: projectKeys.all }),
@@ -98,9 +96,6 @@ export const useSetProjectActiveMutation = () => {
     mutationFn: (id: string) => projectApi.setActive(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
-        ...(old || {}),
-      }));
       return Promise.all([
         qc.invalidateQueries({ queryKey: projectKeys.all }),
         qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
@@ -118,9 +113,6 @@ export const useSetProjectInactiveMutation = () => {
     mutationFn: (id: string) => projectApi.setInactive(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
-        ...(old || {}),
-      }));
       return Promise.all([
         qc.invalidateQueries({ queryKey: projectKeys.all }),
         qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
@@ -138,9 +130,6 @@ export const useSetProjectClosedMutation = () => {
     mutationFn: (id: string) => projectApi.setClosed(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
-        ...(old || {}),
-      }));
       return Promise.all([
         qc.invalidateQueries({ queryKey: projectKeys.all }),
         qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
@@ -158,9 +147,6 @@ export const useSetProjectCompletedMutation = () => {
     mutationFn: (id: string) => projectApi.setCompleted(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      qc.setQueryData(projectKeys.detail(id), (old: any) => ({
-        ...(old || {}),
-      }));
       return Promise.all([
         qc.invalidateQueries({ queryKey: projectKeys.all }),
         qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),

@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { lookupApi } from '../api/lookup.api';
+
+import { lookupApi } from '@/modules/project/api/lookup.api';
 
 export const lookupKeys = {
   all: ['lookup'] as const,
   lists: () => [...lookupKeys.all, 'list'] as const,
   list: (type: string) => [...lookupKeys.lists(), type] as const,
-  details: () => [...lookupKeys.all, 'detail'] as const,
-  detail: (id: string) => [...lookupKeys.details(), id] as const,
 };
 
 export const useLookupsQuery = (type?: string) =>

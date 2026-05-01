@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface UseFilteredTeamMembersParams {
   project: ProjectDetail;

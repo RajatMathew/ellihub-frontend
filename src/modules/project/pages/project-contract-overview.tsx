@@ -1,8 +1,5 @@
 import { useState } from 'react';
 
-import { EllipsisVertical, Pencil, Share2 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
@@ -31,7 +28,6 @@ import {
   useDeleteProjectMutation,
   usePrimeChangeOrderFinancialSummaryQuery,
   usePrimeChangeOrdersQuery,
-  useProjectContractQuery,
   useProjectDetailQuery,
   useProjectFolderQuery,
   useProjectScheduleQuery,
@@ -45,6 +41,8 @@ import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useEmployeeOptions } from '@/modules/project/hooks/use-employee-options';
 import { usePOCalculations } from '@/modules/project/hooks/use-po-calculations';
 import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
+import { EllipsisVertical, Pencil, Share2 } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProjectContractOverview() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -54,7 +52,6 @@ export default function ProjectContractOverview() {
 
   /* ---- Queries ---- */
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
-  const { data: contract } = useProjectContractQuery(projectId);
   const { data: primeChangeOrderSummary } = usePrimeChangeOrderFinancialSummaryQuery(projectId);
   const { data: pcoList } = usePrimeChangeOrdersQuery({
     projectId,
@@ -71,6 +68,7 @@ export default function ProjectContractOverview() {
     'prime contract'
   );
   const employeesQuery = useEmployeesQuery({ size: 1000 });
+  const contract = project?.primeContract ?? undefined;
 
   /* ---- Mutations ---- */
   const deleteMutation = useDeleteProjectMutation();

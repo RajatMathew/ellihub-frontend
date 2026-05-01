@@ -1,7 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 
-import ProjectForm from '@modules/project/pages/project-form';
-import ProjectList from '@modules/project/pages/project-list';
+import ProjectForm from '@/modules/project/pages/project-form';
+import ProjectList from '@/modules/project/pages/project-list';
 
 const ProjectRoutes = () => {
   return (

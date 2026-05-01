@@ -7,32 +7,35 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { FormSectionNav } from '@app/components/form-section-nav';
+import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Button } from '@app/components/ui/button';
-import { Card, CardContent } from '@app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input, InputWrapper } from '@app/components/ui/input';
-import { SearchableSelect } from '@app/components/ui/searchable-select';
+} from '@/app/components/toolbar/toolbar';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input, InputWrapper } from '@/app/components/ui/input';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-import { Separator } from '@app/components/ui/separator';
-import { Textarea } from '@app/components/ui/textarea';
-import { useGCsQuery } from '@modules/directory/hooks';
-import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
-import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
-import { PROJECT_FORM_SECTIONS, PROJECT_STATUS_OPTIONS } from '@modules/project/constants/project-form.constants';
+} from '@/app/components/ui/select';
+import { Separator } from '@/app/components/ui/separator';
+import { Textarea } from '@/app/components/ui/textarea';
+import { useGCsQuery } from '@/modules/directory/hooks';
+import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
+import { PageLoadingSkeleton } from '@/modules/project/components/page-loading-skeleton';
+import {
+  PROJECT_FORM_SECTIONS,
+  PROJECT_STATUS_OPTIONS,
+} from '@/modules/project/constants/project-form.constants';
 import {
   useDivisionsQuery,
   useProjectDetailQuery,
@@ -42,13 +45,13 @@ import {
   useSetProjectCompletedMutation,
   useSetProjectInactiveMutation,
   useUpdateProjectMutation,
-} from '@modules/project/hooks';
+} from '@/modules/project/hooks';
 import {
   projectFormSchema,
   type ProjectDetail,
   type ProjectFormValues,
   type UpdateProjectInput,
-} from '@modules/project/schemas/project.schema';
+} from '@/modules/project/schemas/project.schema';
 
 const parseDateValue = (value: unknown): string =>
   typeof value === 'string' ? value.split('T')[0] : '';
@@ -82,6 +85,8 @@ function ProjectEditFormInner({
   projectId: string;
   navigate: NavigateFunction;
 }) {
+  const primeContract = project.primeContract;
+
   /* ---- Queries ---- */
 
   const stagesQuery = useProjectStagesQuery();
@@ -112,25 +117,25 @@ function ProjectEditFormInner({
       fieldwireProjectId: project.fieldwireProjectId ?? '',
       stageId: project.stageId,
       status: project.status ?? 'ACTIVE',
-      divisionId: (project as any).divisionId ?? '',
+      divisionId: project.divisionId ?? '',
       gcId: project.gcId,
       leadPMId: project.leadPMId ?? '',
       streetAddress: project.streetAddress ?? '',
       city: project.city ?? '',
       state: project.state ?? '',
       zipCode: project.zipCode ?? '',
-      contractValue: project.contractValue ?? project.primeContract?.contractValue ?? 0,
-      contractType: (project as any).contractType ?? (project.primeContract as any)?.contractType ?? '',
-      retainagePercent: project.retainagePercent ?? (project.primeContract as any)?.retainagePercent ?? 0,
-      targetBudgetPercent: project.targetBudgetPercent ?? (project.primeContract as any)?.targetBudgetPercent ?? 0,
-      taxRate: project.taxRate ?? (project.primeContract as any)?.taxRate ?? 0,
-      paymentTerms: (project as any).paymentTerms ?? (project.primeContract as any)?.paymentTerms ?? '',
-      estimatedStartDate: (project.estimatedStartDate || (project.primeContract as any)?.estimatedStartDate)?.slice(0, 10) ?? '',
-      estimatedEndDate: (project.estimatedEndDate || (project.primeContract as any)?.estimatedEndDate)?.slice(0, 10) ?? '',
-      actualStartDate: parseDateValue(project.primeContract?.actualStartDate),
-      actualCompletionDate: parseDateValue(project.primeContract?.actualCompletionDate),
-      setInactiveDate: (project.setInactiveDate || (project.primeContract as any)?.setInactiveDate)?.slice(0, 10) ?? '',
-      tcoDate: (project.tcoDate || (project.primeContract as any)?.tcoDate)?.slice(0, 10) ?? '',
+      contractValue: project.contractValue ?? primeContract?.contractValue ?? 0,
+      contractType: primeContract?.contractType ?? '',
+      retainagePercent: project.retainagePercent ?? primeContract?.retainagePercent ?? 0,
+      targetBudgetPercent: project.targetBudgetPercent ?? primeContract?.targetBudgetPercent ?? 0,
+      taxRate: project.taxRate ?? 0,
+      paymentTerms: primeContract?.paymentTerms ?? '',
+      estimatedStartDate: parseDateValue(project.estimatedStartDate ?? primeContract?.estimatedStartDate),
+      estimatedEndDate: parseDateValue(project.estimatedEndDate ?? primeContract?.estimatedCompletionDate),
+      actualStartDate: parseDateValue(primeContract?.actualStartDate),
+      actualCompletionDate: parseDateValue(primeContract?.actualCompletionDate),
+      setInactiveDate: parseDateValue(project.setInactiveDate),
+      tcoDate: parseDateValue(project.tcoDate),
     },
   });
 

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 
-import { Card, CardContent } from '@app/components/ui/card';
-import { formatCurrency } from '@app/lib/helpers';
-import { cn } from '@app/lib/utils';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 
-import type { ProjectListItem } from '@modules/project/schemas/project.schema';
+import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 interface StatusGroup {
   id: string;

@@ -19,17 +19,3 @@ export const projectStatusSchema = z
   .passthrough();
 
 export type ProjectStatus = z.infer<typeof projectStatusSchema>;
-
-export const createProjectStatusInputSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(50),
-  label: z.string().min(1, 'Label is required').max(100),
-  color: z.string().min(1, 'Color is required').max(50),
-  order: z.number().int().positive(),
-  isDefault: z.boolean().optional(),
-});
-
-export type CreateProjectStatusInput = z.infer<typeof createProjectStatusInputSchema>;
-
-export const updateProjectStatusInputSchema = createProjectStatusInputSchema.partial();
-
-export type UpdateProjectStatusInput = z.infer<typeof updateProjectStatusInputSchema>;

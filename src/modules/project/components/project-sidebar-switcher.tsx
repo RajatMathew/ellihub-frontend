@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { ChevronsUpDown } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Command,
   CommandCheck,
@@ -11,10 +11,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@app/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
-import { useProjectNavigation } from '@app/hooks/use-project-hook';
-import { useProjectsQuery } from '@modules/project/hooks';
+} from '@/app/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
+import { useProjectNavigation } from '@/app/hooks/use-project-hook';
+import { useProjectsQuery } from '@/modules/project/hooks';
 
 export function ProjectSidebarSwitcher() {
   const [open, setOpen] = useState(false);
