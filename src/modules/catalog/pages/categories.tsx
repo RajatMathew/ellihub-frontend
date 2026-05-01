@@ -3,15 +3,10 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { CategoriesTableCard } from '@/modules/catalog/components/categories-table-card';
 import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
 import {
@@ -86,27 +81,24 @@ export function CostCodeCategoriesListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <ToolbarPageTitle>Cost Code Categories</ToolbarPageTitle>
-            <span className="text-sm text-muted-foreground selection:font-medium">
-              Total: {categories.length}
-            </span>
-          </ToolbarHeading>
-          <ToolbarActions>
+      <ResourcePageHeader
+        title="Cost Code Categories"
+        totalCount={categories.length}
+        hasActiveFilters={!!search}
+        description={isLoading ? <Skeleton className="h-4 w-28" /> : undefined}
+        actions={
+          <>
             <Button size="sm" variant="outline" asChild>
               <Link to="/app/catalog/cost-codes">
                 Back to Cost Codes
               </Link>
             </Button>
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="size-4" />
-              Add Category
-            </Button>
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+          </>
+        }
+        addLabel="Add Category"
+        addIcon={<Plus className="size-4" />}
+        onAdd={openCreate}
+      />
 
       <CategoriesTableCard
         categories={filteredCategories}

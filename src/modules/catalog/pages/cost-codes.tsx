@@ -66,7 +66,7 @@ export function CostCodesListPage() {
     [updateSearchParam]
   );
 
-  const { data, isLoading, isError, refetch } = useCostCodesQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useCostCodesQuery({
     page,
     size,
     sortBy: 'name',
@@ -74,7 +74,8 @@ export function CostCodesListPage() {
     search: searchQuery || undefined,
     costCodeCategoryId: categoryFilter,
   });
-  const { data: categories = [] } = useCostCodeCategoriesQuery();
+  const { data: categories = [], isLoading: isCategoriesLoading } =
+    useCostCodeCategoriesQuery();
   const deleteMutation = useDeleteCostCodeMutation();
   const createMutation = useCreateCostCodeMutation();
   const updateMutation = useUpdateCostCodeMutation();
@@ -93,6 +94,10 @@ export function CostCodesListPage() {
   const listData = data?.data ?? [];
   const totalCount = data?.count ?? 0;
   const hasActiveFilters = !!searchQuery || !!categoryFilter;
+  const isStatsLoading =
+    isFetching ||
+    isCategoriesLoading ||
+    categoryCountQueries.some((query) => query.isLoading);
 
   const columns = useCostCodeColumns({
     onEdit: setEditingCostCode,
@@ -131,6 +136,7 @@ export function CostCodesListPage() {
       <CostCodesPageHeader
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
+        isLoading={isFetching && !data}
         onCreate={() => setCreateModalOpen(true)}
       />
 
@@ -138,6 +144,7 @@ export function CostCodesListPage() {
         totalCount={totalCount}
         categories={categories}
         categoryCountQueries={categoryCountQueries}
+        isLoading={isStatsLoading}
         className="mb-5 lg:mb-7.5"
       />
 
@@ -147,6 +154,7 @@ export function CostCodesListPage() {
         categoryFilter={categoryFilter}
         searchInput={searchInput}
         isLoading={isLoading}
+        isCategoriesLoading={isCategoriesLoading}
         isError={isError}
         totalCount={totalCount}
         onSearchChange={handleSearchChange}

@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom';
 
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
+import { Skeleton } from '@/app/components/ui/skeleton';
 
 interface CostCodesPageHeaderProps {
   totalCount: number;
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   onCreate: () => void;
 }
 
 export function CostCodesPageHeader({
   totalCount,
   hasActiveFilters,
+  isLoading,
   onCreate,
 }: CostCodesPageHeaderProps) {
   return (
@@ -20,6 +23,7 @@ export function CostCodesPageHeader({
       title="Cost Codes"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
+      description={isLoading ? <Skeleton className="h-4 w-28" /> : undefined}
       actions={
         <>
           <Button size="sm" variant="outline" asChild>

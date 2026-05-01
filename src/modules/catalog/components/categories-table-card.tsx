@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 
 interface CategoriesTableCardProps {
@@ -51,6 +52,9 @@ export function CategoriesTableCard({
             {row.original.name}
           </div>
         ),
+        meta: {
+          skeleton: <Skeleton className="h-4 w-40" />,
+        },
       },
       {
         accessorKey: 'description',
@@ -60,6 +64,9 @@ export function CategoriesTableCard({
             {row.original.description ?? '\u2014'}
           </div>
         ),
+        meta: {
+          skeleton: <Skeleton className="h-4 w-full max-w-80" />,
+        },
       },
       {
         id: 'actions',
@@ -88,6 +95,9 @@ export function CategoriesTableCard({
             </DropdownMenu>
           </div>
         ),
+        meta: {
+          skeleton: <Skeleton className="ms-auto h-7 w-7" />,
+        },
       },
     ],
     [onEdit, onDelete]
@@ -103,9 +113,13 @@ export function CategoriesTableCard({
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
-          All Categories ({categories.length})
-        </h2>
+        {isLoading ? (
+          <Skeleton className="h-4 w-40" />
+        ) : (
+          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
+            All Categories ({categories.length})
+          </h2>
+        )}
         <CardToolbar>
           <InputWrapper variant="sm">
             <Search className="size-4" />
