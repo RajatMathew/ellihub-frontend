@@ -31,6 +31,9 @@ type ProjectListFinancialFields = {
 
 type ProjectWithListFinancials<T> = T & ProjectListFinancialFields;
 
+type PrimeContractWithFile = Prisma.PrimeContractGetPayload<{ include: { file: true } }>;
+type ProjectScheduleWithFile = Prisma.ProjectScheduleGetPayload<{ include: { file: true } }>;
+
 const getGroupedCount = (count: unknown): number => {
     if (typeof count === 'number') return count;
     if (!count || typeof count !== 'object' || !('_all' in count)) return 0;
@@ -369,6 +372,18 @@ export const ProjectService = {
         });
     },
 
+    getProjectSchedules: async (projectId: string): Promise<ProjectScheduleWithFile[]> => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        return await prisma.projectSchedule.findMany({
+            where: { projectId, deletedAt: null },
+            orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+            include: { file: true },
+        });
+    },
+
     addSchedule: async (request: AddScheduleRequest, userId: string): Promise<ProjectSchedule> => {
         const { projectId, fileId, date, adjustedFinishDate, ...rest } = request;
 
@@ -623,6 +638,18 @@ export const ProjectService = {
             });
 
             return primeContract;
+        });
+    },
+
+    getProjectPrimeContracts: async (projectId: string): Promise<PrimeContractWithFile[]> => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        return await prisma.primeContract.findMany({
+            where: { projectId, file: { deletedAt: null } },
+            orderBy: { uploadedAt: 'desc' },
+            include: { file: true },
         });
     },
 

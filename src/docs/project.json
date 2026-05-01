@@ -6,16 +6,44 @@
                 "summary": "List projects (paginated)",
                 "operationId": "listProjects",
                 "parameters": [
-                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
-                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
-                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
-                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
-                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by name, description, jobNumber, contractNumber, city, state" },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by name, description, jobNumber, contractNumber, city, state"
+                    },
                     { "name": "stageId", "in": "query", "schema": { "type": "string" } },
                     { "name": "divisionId", "in": "query", "schema": { "type": "string" } },
                     { "name": "gcId", "in": "query", "schema": { "type": "string" } },
                     { "name": "leadPMId", "in": "query", "schema": { "type": "string" } },
-                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] } }
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"]
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -28,8 +56,15 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } },
-                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Project"
+                                                    }
+                                                },
+                                                "pagination": {
+                                                    "$ref": "#/components/schemas/PaginationInfo"
+                                                }
                                             }
                                         }
                                     ]
@@ -37,8 +72,22 @@
                             }
                         }
                     },
-                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "403": { "description": "Insufficient permissions (requires project:view-all)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:view-all)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             },
             "post": {
@@ -47,7 +96,11 @@
                 "operationId": "createProject",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectCreateRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectCreateRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "201": {
@@ -57,15 +110,41 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "404": { "description": "Stage / division / GC / lead PM not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Job number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Stage / division / GC / lead PM not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Job number already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             },
             "put": {
@@ -74,7 +153,11 @@
                 "operationId": "updateProject",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectUpdateRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ProjectUpdateRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -84,14 +167,33 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project / referenced entity not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Job number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project / referenced entity not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Job number already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -101,7 +203,13 @@
                 "summary": "Get a project by ID",
                 "operationId": "getProject",
                 "parameters": [
-                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Project ULID" }
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ULID"
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -111,13 +219,25 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -127,16 +247,45 @@
                 "summary": "List projects assigned to an employee (paginated)",
                 "operationId": "listAssignedProjects",
                 "parameters": [
-                    { "name": "employeeId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Employee ULID" },
-                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
-                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
-                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
-                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    {
+                        "name": "employeeId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Employee ULID"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 }
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "default": "createdAt" }
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+                    },
                     { "name": "search", "in": "query", "schema": { "type": "string" } },
                     { "name": "stageId", "in": "query", "schema": { "type": "string" } },
                     { "name": "divisionId", "in": "query", "schema": { "type": "string" } },
                     { "name": "gcId", "in": "query", "schema": { "type": "string" } },
-                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] } }
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"]
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -149,8 +298,15 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } },
-                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Project"
+                                                    }
+                                                },
+                                                "pagination": {
+                                                    "$ref": "#/components/schemas/PaginationInfo"
+                                                }
                                             }
                                         }
                                     ]
@@ -177,13 +333,25 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -203,13 +371,25 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -229,13 +409,25 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -255,13 +447,25 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Project" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Project" }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -272,7 +476,11 @@
                 "operationId": "addProjectTeamMember",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddTeamMemberRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddTeamMemberRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -282,14 +490,35 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectTeamMember" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/ProjectTeamMember"
+                                                }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project or employee not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Employee already a team member", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project or employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Employee already a team member",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -300,11 +529,78 @@
                 "operationId": "removeProjectTeamMember",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveTeamMemberRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveTeamMemberRequest" }
+                        }
+                    }
                 },
                 "responses": {
-                    "200": { "description": "Team member removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "404": { "description": "Team member not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "200": {
+                        "description": "Team member removed",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Team member not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/project/schedule/{projectId}": {
+            "get": {
+                "tags": ["Projects"],
+                "summary": "List schedule entries for a project",
+                "operationId": "listProjectSchedules",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ULID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project schedule entries returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ProjectSchedule"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -315,7 +611,11 @@
                 "operationId": "addProjectSchedule",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddScheduleRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddScheduleRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -325,14 +625,35 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/ProjectSchedule"
+                                                }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project or file not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "File already attached to a schedule",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -343,7 +664,11 @@
                 "operationId": "updateProjectSchedule",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateScheduleRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/UpdateScheduleRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -353,14 +678,35 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ProjectSchedule" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/ProjectSchedule"
+                                                }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Schedule or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "File already attached to a schedule", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Schedule or file not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "File already attached to a schedule",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -371,11 +717,78 @@
                 "operationId": "removeProjectSchedule",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveScheduleRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveScheduleRequest" }
+                        }
+                    }
                 },
                 "responses": {
-                    "200": { "description": "Schedule removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "404": { "description": "Schedule not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "200": {
+                        "description": "Schedule removed",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Schedule not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/project/prime-contract/{projectId}": {
+            "get": {
+                "tags": ["Projects"],
+                "summary": "List prime contract documents for a project",
+                "operationId": "listProjectPrimeContracts",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ULID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prime contract documents returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/PrimeContract"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -386,7 +799,11 @@
                 "operationId": "addProjectPrimeContract",
                 "requestBody": {
                     "required": true,
-                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddPrimeContractRequest" } } }
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddPrimeContractRequest" }
+                        }
+                    }
                 },
                 "responses": {
                     "200": {
@@ -396,14 +813,35 @@
                                 "schema": {
                                     "allOf": [
                                         { "$ref": "#/components/schemas/SuccessResponse" },
-                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PrimeContract" } } }
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/PrimeContract"
+                                                }
+                                            }
+                                        }
                                     ]
                                 }
                             }
                         }
                     },
-                    "404": { "description": "Project or file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-                    "409": { "description": "Prime contract already exists for this project", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "404": {
+                        "description": "Project or file not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Prime contract already exists for this project",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -421,13 +859,24 @@
                     "fieldwireProjectId": { "type": "string", "format": "uuid", "nullable": true },
                     "stageId": { "type": "string" },
                     "divisionId": { "type": "string" },
-                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] },
+                    "status": {
+                        "type": "string",
+                        "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"]
+                    },
                     "streetAddress": { "type": "string", "nullable": true },
                     "city": { "type": "string", "nullable": true },
                     "state": { "type": "string", "nullable": true },
                     "zipCode": { "type": "string", "nullable": true },
-                    "estimatedStartDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "estimatedEndDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "estimatedStartDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "estimatedEndDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "gcId": { "type": "string" },
                     "leadPMId": { "type": "string", "nullable": true },
                     "contractValue": { "type": "number" },
@@ -467,11 +916,26 @@
                     "retainagePercent": { "type": "number", "nullable": true },
                     "targetBudgetPercent": { "type": "number", "nullable": true },
                     "taxRate": { "type": "number", "nullable": true },
-                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
+                    "paymentTerms": {
+                        "type": "string",
+                        "enum": [
+                            "NET_15",
+                            "NET_30",
+                            "NET_45",
+                            "NET_60",
+                            "NET_90",
+                            "DUE_ON_RECEIPT"
+                        ],
+                        "nullable": true
+                    },
                     "startDate": { "type": "string", "format": "date-time", "nullable": true },
                     "completedDate": { "type": "string", "format": "date-time", "nullable": true },
                     "closedDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "setInactiveDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "setInactiveDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "tcoDate": { "type": "string", "format": "date-time", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
@@ -493,21 +957,40 @@
                     "id": { "type": "string" },
                     "projectId": { "type": "string" },
                     "fileId": { "type": "string" },
-                    "uploadedAt": { "type": "string", "format": "date-time" }
+                    "uploadedAt": { "type": "string", "format": "date-time" },
+                    "file": {
+                        "$ref": "#/components/schemas/FileItem",
+                        "description": "Included on list responses"
+                    }
                 }
             },
             "ProjectCreateRequest": {
                 "type": "object",
-                "required": ["name", "description", "stageId", "divisionId", "status", "gcId", "contractValue"],
+                "required": [
+                    "name",
+                    "description",
+                    "stageId",
+                    "divisionId",
+                    "status",
+                    "gcId",
+                    "contractValue"
+                ],
                 "properties": {
                     "name": { "type": "string", "minLength": 2 },
                     "description": { "type": "string", "minLength": 1 },
-                    "jobNumber": { "type": "string", "nullable": true, "description": "Auto-generated as YYYY-### if omitted" },
+                    "jobNumber": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Auto-generated as YYYY-### if omitted"
+                    },
                     "contractNumber": { "type": "string", "nullable": true },
                     "fieldwireProjectId": { "type": "string", "format": "uuid", "nullable": true },
                     "stageId": { "type": "string", "description": "Lookup ULID" },
                     "divisionId": { "type": "string", "description": "Lookup ULID" },
-                    "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"] },
+                    "status": {
+                        "type": "string",
+                        "enum": ["ACTIVE", "INACTIVE", "CLOSED", "COMPLETED"]
+                    },
                     "streetAddress": { "type": "string", "nullable": true },
                     "city": { "type": "string", "nullable": true },
                     "state": { "type": "string", "nullable": true },
@@ -518,10 +1001,31 @@
                     "leadPMId": { "type": "string", "nullable": true },
                     "contractValue": { "type": "number", "minimum": 0 },
                     "contractType": { "type": "string", "nullable": true },
-                    "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-                    "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
+                    "retainagePercent": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "nullable": true
+                    },
+                    "targetBudgetPercent": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "nullable": true
+                    },
                     "taxRate": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-                    "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
+                    "paymentTerms": {
+                        "type": "string",
+                        "enum": [
+                            "NET_15",
+                            "NET_30",
+                            "NET_45",
+                            "NET_60",
+                            "NET_90",
+                            "DUE_ON_RECEIPT"
+                        ],
+                        "nullable": true
+                    },
                     "setInactiveDate": { "type": "string", "format": "date", "nullable": true },
                     "tcoDate": { "type": "string", "format": "date", "nullable": true }
                 }
@@ -530,31 +1034,81 @@
                 "allOf": [
                     {
                         "type": "object",
-                        "required": ["id", "name", "description", "stageId", "divisionId", "gcId", "contractValue"],
+                        "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "stageId",
+                            "divisionId",
+                            "gcId",
+                            "contractValue"
+                        ],
                         "properties": {
                             "id": { "type": "string", "description": "Project ULID" },
                             "name": { "type": "string", "minLength": 2 },
                             "description": { "type": "string", "minLength": 1 },
                             "jobNumber": { "type": "string", "nullable": true },
                             "contractNumber": { "type": "string", "nullable": true },
-                            "fieldwireProjectId": { "type": "string", "format": "uuid", "nullable": true },
+                            "fieldwireProjectId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "nullable": true
+                            },
                             "stageId": { "type": "string" },
                             "divisionId": { "type": "string" },
                             "streetAddress": { "type": "string", "nullable": true },
                             "city": { "type": "string", "nullable": true },
                             "state": { "type": "string", "nullable": true },
                             "zipCode": { "type": "string", "nullable": true },
-                            "estimatedStartDate": { "type": "string", "format": "date", "nullable": true },
-                            "estimatedEndDate": { "type": "string", "format": "date", "nullable": true },
+                            "estimatedStartDate": {
+                                "type": "string",
+                                "format": "date",
+                                "nullable": true
+                            },
+                            "estimatedEndDate": {
+                                "type": "string",
+                                "format": "date",
+                                "nullable": true
+                            },
                             "gcId": { "type": "string" },
                             "leadPMId": { "type": "string", "nullable": true },
                             "contractValue": { "type": "number", "minimum": 0 },
                             "contractType": { "type": "string", "nullable": true },
-                            "retainagePercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-                            "targetBudgetPercent": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-                            "taxRate": { "type": "number", "minimum": 0, "maximum": 100, "nullable": true },
-                            "paymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"], "nullable": true },
-                            "setInactiveDate": { "type": "string", "format": "date", "nullable": true },
+                            "retainagePercent": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100,
+                                "nullable": true
+                            },
+                            "targetBudgetPercent": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100,
+                                "nullable": true
+                            },
+                            "taxRate": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100,
+                                "nullable": true
+                            },
+                            "paymentTerms": {
+                                "type": "string",
+                                "enum": [
+                                    "NET_15",
+                                    "NET_30",
+                                    "NET_45",
+                                    "NET_60",
+                                    "NET_90",
+                                    "DUE_ON_RECEIPT"
+                                ],
+                                "nullable": true
+                            },
+                            "setInactiveDate": {
+                                "type": "string",
+                                "format": "date",
+                                "nullable": true
+                            },
                             "tcoDate": { "type": "string", "format": "date", "nullable": true }
                         }
                     }
@@ -585,9 +1139,18 @@
                     "projectId": { "type": "string" },
                     "date": { "type": "string", "format": "date-time" },
                     "description": { "type": "string" },
-                    "adjustedFinishDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "adjustedFinishDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "notes": { "type": "string", "nullable": true },
                     "fileId": { "type": "string", "nullable": true },
+                    "file": {
+                        "$ref": "#/components/schemas/FileItem",
+                        "nullable": true,
+                        "description": "Included on list responses"
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
