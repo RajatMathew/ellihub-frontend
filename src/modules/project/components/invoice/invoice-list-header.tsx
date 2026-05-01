@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 
-import { ProjectSectionHeader } from '@/modules/project/components/shared';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 
 interface InvoiceListHeaderProps {
   hasActiveFilters: boolean;
@@ -9,7 +9,7 @@ interface InvoiceListHeaderProps {
 
 export function InvoiceListHeader({ hasActiveFilters, totalCount }: InvoiceListHeaderProps) {
   return (
-    <ProjectSectionHeader
+    <ResourcePageHeader
       title="Invoices"
       resultLabel="Invoices"
       totalCount={totalCount}

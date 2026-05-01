@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 
-import { ProjectSectionHeader } from '@/modules/project/components/shared';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 
 interface PurchaseOrderListHeaderProps {
   hasActiveFilters: boolean;
@@ -12,7 +12,7 @@ export function PurchaseOrderListHeader({
   totalCount,
 }: PurchaseOrderListHeaderProps) {
   return (
-    <ProjectSectionHeader
+    <ResourcePageHeader
       title="Purchase Orders"
       resultLabel="POs"
       totalCount={totalCount}

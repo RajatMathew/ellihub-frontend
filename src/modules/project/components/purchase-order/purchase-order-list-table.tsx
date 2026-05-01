@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { ClipboardList } from 'lucide-react';
 
-import { ProjectDataGridSection } from '@/modules/project/components/shared';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 
 interface PurchaseOrderListTableProps {
@@ -20,7 +20,7 @@ export function PurchaseOrderListTable({
   onRetry,
 }: PurchaseOrderListTableProps) {
   return (
-    <ProjectDataGridSection
+    <DataGridSection
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
+import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
 import {
   PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
@@ -33,13 +34,10 @@ export function usePrimeChangeOrderListParams() {
     searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
   const [searchInput, setSearchInput] = useState(searchQuery);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     setSearchInput(searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const updateParams = useCallback(
     (patch: PrimeChangeOrderListParamPatch) => {
@@ -58,15 +56,16 @@ export function usePrimeChangeOrderListParams() {
     [setSearchParams],
   );
 
+  const updateSearchParam = useDebouncedCallback((value: string) => {
+    updateParams({ search: value || undefined, page: undefined });
+  }, PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value);
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        updateParams({ search: value || undefined, page: undefined });
-      }, PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS);
+      updateSearchParam(value);
     },
-    [updateParams],
+    [updateSearchParam],
   );
 
   const clearFilters = useCallback(() => {

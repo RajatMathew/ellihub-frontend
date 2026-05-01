@@ -1,18 +1,12 @@
 import { type Table } from '@tanstack/react-table';
-import { AlertCircle, RefreshCcw, Search, Tag } from 'lucide-react';
+import { Search, Tag } from 'lucide-react';
 
-import { Button } from '@/app/components/ui/button';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import {
   Card,
-  CardContent,
-  CardFooter,
   CardHeader,
-  CardTable,
   CardToolbar,
 } from '@/app/components/ui/card';
-import { DataGrid } from '@/app/components/ui/data-grid';
-import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
-import { DataGridTable } from '@/app/components/ui/data-grid-table';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
@@ -81,42 +75,17 @@ export function CostCodesTableCard({
         </CardToolbar>
       </CardHeader>
 
-      {isError ? (
-        <CardContent>
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <AlertCircle className="size-10 text-destructive/60" />
-            <p className="text-sm font-medium">Failed to load cost codes</p>
-            <p className="text-xs text-muted-foreground">Something went wrong. Please try again.</p>
-            <Button variant="outline" size="sm" onClick={onRetry}>
-              <RefreshCcw className="size-3.5" />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      ) : (
-        <DataGrid
-          table={table}
-          recordCount={totalCount}
-          isLoading={isLoading}
-          emptyMessage={
-            <div className="flex flex-col items-center gap-2 py-8">
-              <Tag className="size-10 text-muted-foreground/50" />
-              <p className="text-sm font-medium">No cost codes found</p>
-              <p className="text-xs text-muted-foreground">
-                Click &quot;+ Add Cost Code&quot; to get started.
-              </p>
-            </div>
-          }
-          tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
-        >
-          <CardTable className="overflow-x-auto">
-            <DataGridTable />
-          </CardTable>
-          <CardFooter>
-            <DataGridPagination />
-          </CardFooter>
-        </DataGrid>
-      )}
+      <DataGridSection
+        table={table}
+        totalCount={totalCount}
+        isLoading={isLoading}
+        isError={isError}
+        errorTitle="Failed to load cost codes"
+        emptyIcon={<Tag className="size-10 text-muted-foreground/50" />}
+        emptyTitle="No cost codes found"
+        emptyDescription={'Click "+ Add Cost Code" to get started.'}
+        onRetry={onRetry}
+      />
     </Card>
   );
 }

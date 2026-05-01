@@ -9,40 +9,42 @@ import { DataGrid, type DataGridProps } from '@/app/components/ui/data-grid';
 import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/app/components/ui/data-grid-table';
 
-interface ProjectDataGridSectionProps<TData extends object> {
+interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
   totalCount: number;
   isLoading: boolean;
   isError: boolean;
   errorTitle: string;
+  errorDescription?: string;
   emptyIcon: ReactNode;
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
   onRetry: () => void;
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
 }
 
-export function ProjectDataGridSection<TData extends object>({
+export function DataGridSection<TData extends object>({
   table,
   totalCount,
   isLoading,
   isError,
   errorTitle,
+  errorDescription = 'Something went wrong. Please try again.',
   emptyIcon,
   emptyTitle,
   emptyDescription,
   onRetry,
   tableLayout,
   tableClassNames,
-}: ProjectDataGridSectionProps<TData>) {
+}: DataGridSectionProps<TData>) {
   if (isError) {
     return (
       <CardContent>
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <AlertCircle className="size-10 text-destructive/60" />
           <p className="text-sm font-medium">{errorTitle}</p>
-          <p className="text-xs text-muted-foreground">Something went wrong. Please try again.</p>
+          <p className="text-xs text-muted-foreground">{errorDescription}</p>
           <Button variant="outline" size="sm" onClick={onRetry}>
             <RefreshCcw className="size-3.5" />
             Retry
@@ -61,7 +63,9 @@ export function ProjectDataGridSection<TData extends object>({
         <div className="flex flex-col items-center gap-2 py-8">
           {emptyIcon}
           <p className="text-sm font-medium">{emptyTitle}</p>
-          <p className="text-xs text-muted-foreground">{emptyDescription}</p>
+          {emptyDescription && (
+            <p className="text-xs text-muted-foreground">{emptyDescription}</p>
+          )}
         </div>
       }
       tableLayout={{

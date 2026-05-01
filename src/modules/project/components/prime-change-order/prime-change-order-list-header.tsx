@@ -2,7 +2,7 @@ import { ExternalLink, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/app/components/ui/button';
-import { ProjectSectionHeader } from '@/modules/project/components/shared';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import {
   formatPrimeChangeOrderDateTime,
 } from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
@@ -30,7 +30,7 @@ export function PrimeChangeOrderListHeader({
   onSync,
 }: PrimeChangeOrderListHeaderProps) {
   return (
-    <ProjectSectionHeader
+    <ResourcePageHeader
       title="Prime Change Orders"
       resultLabel="Prime Change Orders"
       totalCount={totalCount}

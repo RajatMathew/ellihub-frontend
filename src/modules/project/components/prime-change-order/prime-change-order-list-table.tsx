@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { DatabaseZap } from 'lucide-react';
 
-import { ProjectDataGridSection } from '@/modules/project/components/shared';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 
 interface PrimeChangeOrderListTableProps {
@@ -20,7 +20,7 @@ export function PrimeChangeOrderListTable({
   onRetry,
 }: PrimeChangeOrderListTableProps) {
   return (
-    <ProjectDataGridSection
+    <DataGridSection
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}

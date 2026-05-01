@@ -16,7 +16,7 @@ import { ProjectListEmptyState } from '@/modules/project/components/project-list
 import { ProjectListLoading } from '@/modules/project/components/project-list-loading';
 import { ProjectStatusSummary } from '@/modules/project/components/project-status-summary';
 import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
-import { ProjectQueryErrorState } from '@/modules/project/components/shared';
+import { QueryErrorState } from '@/app/components/query-error-state';
 import { useProjectsQuery } from '@/modules/project/hooks';
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
@@ -112,7 +112,7 @@ export function ProjectList() {
       {isLoading ? (
         <ProjectListLoading />
       ) : isError ? (
-        <ProjectQueryErrorState
+        <QueryErrorState
           title="Unable to load projects"
           onRetry={() => void refetch()}
         />

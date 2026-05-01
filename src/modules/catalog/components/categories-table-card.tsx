@@ -4,16 +4,12 @@ import { getCoreRowModel, getPaginationRowModel, useReactTable, type ColumnDef }
 import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
 
 import { Button } from '@/app/components/ui/button';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import {
   Card,
-  CardFooter,
   CardHeader,
-  CardTable,
   CardToolbar,
 } from '@/app/components/ui/card';
-import { DataGrid } from '@/app/components/ui/data-grid';
-import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
-import { DataGridTable } from '@/app/components/ui/data-grid-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,42 +118,17 @@ export function CategoriesTableCard({
         </CardToolbar>
       </CardHeader>
 
-      {isError ? (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <div className="rounded-full bg-destructive/10 p-3">
-            <Tag className="size-6 text-destructive" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">Failed to load categories</p>
-            <p className="text-xs text-muted-foreground">
-              There was an error fetching the data. Please try again.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => refetch?.()}>
-            Try Again
-          </Button>
-        </div>
-      ) : (
-        <DataGrid
-          table={table}
-          recordCount={categories.length}
-          isLoading={isLoading}
-          emptyMessage={
-            <div className="flex flex-col items-center gap-2 py-8">
-              <Tag className="size-10 text-muted-foreground/50" />
-              <p className="text-sm font-medium">No categories found</p>
-            </div>
-          }
-          tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
-        >
-          <CardTable className="overflow-x-auto">
-            <DataGridTable />
-          </CardTable>
-          <CardFooter>
-            <DataGridPagination />
-          </CardFooter>
-        </DataGrid>
-      )}
+      <DataGridSection
+        table={table}
+        totalCount={categories.length}
+        isLoading={isLoading}
+        isError={Boolean(isError)}
+        errorTitle="Failed to load categories"
+        errorDescription="There was an error fetching the data. Please try again."
+        emptyIcon={<Tag className="size-10 text-muted-foreground/50" />}
+        emptyTitle="No categories found"
+        onRetry={() => refetch?.()}
+      />
     </Card>
   );
 }

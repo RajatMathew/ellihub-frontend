@@ -10,32 +10,37 @@ import {
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
 
-interface ProjectSectionHeaderProps {
+interface ResourcePageHeaderProps {
   title: string;
-  resultLabel: string;
   totalCount: number;
   hasActiveFilters: boolean;
+  resultLabel?: string;
   description?: ReactNode;
   actions?: ReactNode;
   addLabel?: string;
   addTo?: string;
   addIcon?: ReactNode;
+  onAdd?: () => void;
 }
 
-export function ProjectSectionHeader({
+export function ResourcePageHeader({
   title,
-  resultLabel,
   totalCount,
   hasActiveFilters,
+  resultLabel,
   description,
   actions,
   addLabel,
   addTo,
   addIcon,
-}: ProjectSectionHeaderProps) {
+  onAdd,
+}: ResourcePageHeaderProps) {
   const summary = hasActiveFilters
     ? `Showing ${totalCount} result${totalCount === 1 ? '' : 's'}`
-    : `All ${resultLabel}: ${totalCount}`;
+    : resultLabel
+      ? `All ${resultLabel}: ${totalCount}`
+      : `Total: ${totalCount}`;
+  const hasAddAction = addLabel && (addTo || onAdd);
 
   return (
     <Toolbar>
@@ -44,7 +49,7 @@ export function ProjectSectionHeader({
           <ToolbarPageTitle>{title}</ToolbarPageTitle>
           {description ?? <span className="text-sm text-muted-foreground">{summary}</span>}
         </ToolbarHeading>
-        {(actions || (addLabel && addTo)) && (
+        {(actions || hasAddAction) && (
           <ToolbarActions>
             {actions}
             {addLabel && addTo && (
@@ -53,6 +58,12 @@ export function ProjectSectionHeader({
                   {addIcon}
                   {addLabel}
                 </Link>
+              </Button>
+            )}
+            {addLabel && !addTo && onAdd && (
+              <Button size="sm" onClick={onAdd}>
+                {addIcon}
+                {addLabel}
               </Button>
             )}
           </ToolbarActions>

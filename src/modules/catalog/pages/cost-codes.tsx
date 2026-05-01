@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useQueries } from '@tanstack/react-query';
 import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
 
+import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
 import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
 import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
@@ -34,7 +35,6 @@ export function CostCodesListPage() {
   const categoryFilter = searchParams.get('categoryId') ?? undefined;
 
   const [searchInput, setSearchInput] = useState(searchQuery);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     setSearchInput(searchQuery);
@@ -54,18 +54,17 @@ export function CostCodesListPage() {
     [setSearchParams]
   );
 
+  const updateSearchParam = useDebouncedCallback((value: string) => {
+    updateParams({ search: value || undefined, page: undefined });
+  }, SEARCH_DEBOUNCE_MS);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value);
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        updateParams({ search: value || undefined, page: undefined });
-      }, SEARCH_DEBOUNCE_MS);
+      updateSearchParam(value);
     },
-    [updateParams]
+    [updateSearchParam]
   );
-
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const { data, isLoading, isError, refetch } = useCostCodesQuery({
     page,

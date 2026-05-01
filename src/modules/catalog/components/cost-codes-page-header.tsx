@@ -1,13 +1,7 @@
 import { Edit, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 
 interface CostCodesPageHeaderProps {
@@ -22,29 +16,23 @@ export function CostCodesPageHeader({
   onCreate,
 }: CostCodesPageHeaderProps) {
   return (
-    <Toolbar>
-      <ToolbarWrapper>
-        <ToolbarHeading>
-          <ToolbarPageTitle>Cost Codes</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">
-            {hasActiveFilters
-              ? `Showing ${totalCount} result${totalCount !== 1 ? 's' : ''}`
-              : `Total: ${totalCount}`}
-          </span>
-        </ToolbarHeading>
-        <ToolbarActions>
+    <ResourcePageHeader
+      title="Cost Codes"
+      totalCount={totalCount}
+      hasActiveFilters={hasActiveFilters}
+      actions={
+        <>
           <Button size="sm" variant="outline" asChild>
             <Link to="categories">
               <Edit className="size-4" />
               Categories
             </Link>
           </Button>
-          <Button size="sm" onClick={onCreate}>
-            <Plus className="size-4" />
-            Add Cost Code
-          </Button>
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+        </>
+      }
+      addLabel="Add Cost Code"
+      addIcon={<Plus className="size-4" />}
+      onAdd={onCreate}
+    />
   );
 }

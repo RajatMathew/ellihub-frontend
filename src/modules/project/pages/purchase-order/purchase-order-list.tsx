@@ -28,7 +28,7 @@ import {
   type PurchaseOrderListParamPatch,
 } from '@/modules/project/hooks/purchase-order';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useDebouncedValue } from '@/modules/project/hooks/shared';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import type {
   ListPOsParams,
   POListItem,

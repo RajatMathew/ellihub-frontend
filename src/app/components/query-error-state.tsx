@@ -3,24 +3,24 @@ import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
 
-interface ProjectQueryErrorStateProps {
+interface QueryErrorStateProps {
   title: string;
   description?: string;
   onRetry: () => void;
   className?: string;
 }
 
-export function ProjectQueryErrorState({
+export function QueryErrorState({
   title,
   description = 'Something went wrong. Please try again.',
   onRetry,
   className,
-}: ProjectQueryErrorStateProps) {
+}: QueryErrorStateProps) {
   return (
     <div
       className={cn(
         'flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-14 text-center',
-        className
+        className,
       )}
     >
       <AlertCircle className="mb-3 size-10 text-destructive/70" />

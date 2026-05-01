@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 
-import { ProjectSectionHeader } from '@/modules/project/components/shared';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 
 interface SubChangeOrderListHeaderProps {
   hasActiveFilters: boolean;
@@ -12,7 +12,7 @@ export function SubChangeOrderListHeader({
   totalCount,
 }: SubChangeOrderListHeaderProps) {
   return (
-    <ProjectSectionHeader
+    <ResourcePageHeader
       title="Sub Change Orders"
       resultLabel="SCOs"
       totalCount={totalCount}

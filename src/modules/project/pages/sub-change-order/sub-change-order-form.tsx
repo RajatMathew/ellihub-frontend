@@ -28,7 +28,7 @@ import {
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useDebouncedValue } from '@/modules/project/hooks/shared';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import {
   useAddSCOAttachmentMutation,
   useCreateSCOMutation,

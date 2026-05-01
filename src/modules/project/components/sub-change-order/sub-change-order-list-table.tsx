@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { ClipboardList } from 'lucide-react';
 
-import { ProjectDataGridSection } from '@/modules/project/components/shared';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 
 interface SubChangeOrderListTableProps {
@@ -20,7 +20,7 @@ export function SubChangeOrderListTable({
   onRetry,
 }: SubChangeOrderListTableProps) {
   return (
-    <ProjectDataGridSection
+    <DataGridSection
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}

@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 import { FileText } from 'lucide-react';
 
-import { ProjectDataGridSection } from '@/modules/project/components/shared';
+import { DataGridSection } from '@/app/components/data-grid-section';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
 
 interface InvoiceListTableProps {
@@ -20,7 +20,7 @@ export function InvoiceListTable({
   onRetry,
 }: InvoiceListTableProps) {
   return (
-    <ProjectDataGridSection
+    <DataGridSection
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}

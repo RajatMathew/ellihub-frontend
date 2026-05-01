@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
+import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
 import {
   INVOICE_DEFAULT_PAGE_SIZE,
@@ -9,7 +11,6 @@ import {
   isInvoiceSortByField,
   type InvoiceSortByField,
 } from '@/modules/project/constants/invoice';
-import { useDebouncedValue } from '@/modules/project/hooks/shared';
 
 export type InvoiceListParamPatch = Record<string, string | undefined>;
 
@@ -32,15 +33,12 @@ export function useInvoiceListParams() {
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [vendorSearch, setVendorSearch] = useState('');
   const [purchaseOrderSearch, setPurchaseOrderSearch] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
   const debouncedPurchaseOrderSearch = useDebouncedValue(purchaseOrderSearch.trim(), 250);
 
   useEffect(() => {
     setSearchInput(searchQuery);
   }, [searchQuery]);
-
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const updateParams = useCallback(
     (patch: InvoiceListParamPatch) => {
@@ -59,15 +57,16 @@ export function useInvoiceListParams() {
     [setSearchParams],
   );
 
+  const updateSearchParam = useDebouncedCallback((value: string) => {
+    updateParams({ search: value || undefined, page: undefined });
+  }, INVOICE_SEARCH_DEBOUNCE_MS);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value);
-      clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        updateParams({ search: value || undefined, page: undefined });
-      }, INVOICE_SEARCH_DEBOUNCE_MS);
+      updateSearchParam(value);
     },
-    [updateParams],
+    [updateSearchParam],
   );
 
   const clearFilters = useCallback(() => {

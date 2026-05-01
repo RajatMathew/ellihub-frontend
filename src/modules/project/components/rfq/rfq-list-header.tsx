@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 
-import { ProjectSectionHeader } from '@/modules/project/components/shared';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 
 interface RFQListHeaderProps {
   hasActiveFilters: boolean;
@@ -9,7 +9,7 @@ interface RFQListHeaderProps {
 
 export function RFQListHeader({ hasActiveFilters, totalCount }: RFQListHeaderProps) {
   return (
-    <ProjectSectionHeader
+    <ResourcePageHeader
       title="RFQs"
       resultLabel="RFQs"
       totalCount={totalCount}
