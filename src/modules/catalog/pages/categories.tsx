@@ -9,20 +9,20 @@ import {
   ToolbarHeading,
   ToolbarPageTitle,
   ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Button } from '@app/components/ui/button';
-import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
-import { CategoriesTableCard } from '@modules/catalog/components/categories-table-card';
-import { CategoryFormDialog } from '@modules/catalog/components/category-form-dialog';
+} from '@/app/components/toolbar/toolbar';
+import { Button } from '@/app/components/ui/button';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { CategoriesTableCard } from '@/modules/catalog/components/categories-table-card';
+import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
 import {
   useCostCodeCategoriesQuery,
   useCreateCostCodeCategoryMutation,
   useDeleteCostCodeCategoryMutation,
   useUpdateCostCodeCategoryMutation,
-} from '@modules/catalog/hooks';
-import type { CostCodeCategory } from '@modules/catalog/schemas/costcode-category.schema';
+} from '@/modules/catalog/hooks';
+import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 
-export default function CostCodeCategoriesListPage() {
+export function CostCodeCategoriesListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CostCodeCategory | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCodeCategory | null>(null);
@@ -148,3 +148,5 @@ export default function CostCodeCategoriesListPage() {
     </div>
   );
 }
+
+export default CostCodeCategoriesListPage;

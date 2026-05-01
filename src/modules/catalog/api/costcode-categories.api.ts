@@ -1,4 +1,4 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   costCodeCategoryCreateSchema,
   costCodeCategoryListSchema,
@@ -7,7 +7,7 @@ import {
   type CostCodeCategory,
   type CostCodeCategoryCreate,
   type CostCodeCategoryUpdate,
-} from '@modules/catalog/schemas/costcode-category.schema';
+} from '@/modules/catalog/schemas/costcode-category.schema';
 
 const BASE = '/cost-code/categories';
 

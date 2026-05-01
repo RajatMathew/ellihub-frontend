@@ -1,13 +1,12 @@
 import { Route, Routes } from 'react-router-dom';
 
-import { CostCodesListPage } from '../pages';
-import CostCodeCategoriesListPage from '../pages/categories';
+import { CostCodeCategoriesListPage, CostCodesListPage } from '@/modules/catalog/pages';
 
-export default function CatalogueModule() {
+export default function CatalogModuleRoutes() {
   return (
     <Routes>
       <Route path="categories/*" element={<CostCodeCategoriesListPage />} />
-      <Route index path="/" element={<CostCodesListPage />} />
+      <Route index element={<CostCodesListPage />} />
     </Routes>
   );
 }

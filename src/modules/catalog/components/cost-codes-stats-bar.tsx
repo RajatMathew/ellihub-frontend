@@ -1,8 +1,8 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { StatsBar, StatsBarItem } from '@app/components/ui/stats-bar';
-import type { CostCodeCategory } from '@modules/catalog/schemas/costcode-category.schema';
-import type { CostCode } from '@modules/catalog/schemas/costcode.schema';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
+import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
+import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 
 interface CostCodesStatsBarProps {
   totalCount: number;

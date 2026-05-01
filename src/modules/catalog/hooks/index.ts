@@ -3,21 +3,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { costCodeCategoriesApi } from '@modules/catalog/api/costcode-categories.api';
-import { costCodesApi } from '@modules/catalog/api/costcodes.api';
-import { costCodeCategoriesKeys } from '@modules/catalog/constants/costcode-categories.keys';
-import { costCodesKeys } from '@modules/catalog/constants/costcodes.keys';
+import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
+import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
+import { costCodeCategoriesKeys } from '@/modules/catalog/constants/costcode-categories.keys';
+import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import type {
   CostCodeCategoryCreate,
   CostCodeCategoryUpdate,
-} from '@modules/catalog/schemas/costcode-category.schema';
+} from '@/modules/catalog/schemas/costcode-category.schema';
 import {
   costCodeCreateSchema,
   costCodeSchema,
   type CostCode,
   type CostCodeCreate,
   type CostCodeFilters,
-} from '@modules/catalog/schemas/costcode.schema';
+} from '@/modules/catalog/schemas/costcode.schema';
 
 /* ---- category queries ---- */
 export const useCostCodeCategoriesQuery = () =>

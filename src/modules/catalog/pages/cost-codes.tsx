@@ -2,34 +2,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useQueries } from '@tanstack/react-query';
 import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
-import { Edit, Plus } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@app/components/toolbar/toolbar';
-import { Button } from '@app/components/ui/button';
-import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
-import { parsePageParam, parseSizeParam } from '@app/lib/helpers';
-
-import { costCodesApi } from '../api/costcodes.api';
-import { CostCodesStatsBar } from '../components/cost-codes-stats-bar';
-import { useCostCodeColumns } from '../components/cost-codes-columns';
-import { CostCodesTableCard } from '../components/cost-codes-table-card';
-import { CostCodeFormDialog } from '../components/costcode-form-dialog';
-import { costCodesKeys } from '../constants/costcodes.keys';
+import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
+import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
+import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
+import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
+import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
+import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
+import { CostCodesTableCard } from '@/modules/catalog/components/cost-codes-table-card';
+import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
+import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import {
   useCostCodeCategoriesQuery,
   useCostCodesQuery,
   useCreateCostCodeMutation,
   useDeleteCostCodeMutation,
   useUpdateCostCodeMutation,
-} from '../hooks';
-import type { CostCode, CostCodeCreate } from '../schemas/costcode.schema';
+} from '@/modules/catalog/hooks';
+import type { CostCode, CostCodeCreate } from '@/modules/catalog/schemas/costcode.schema';
 
 const DEFAULT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -76,7 +67,7 @@ export function CostCodesListPage() {
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
 
-  const { data, isLoading } = useCostCodesQuery({
+  const { data, isLoading, isError, refetch } = useCostCodesQuery({
     page,
     size,
     sortBy: 'name',
@@ -138,30 +129,11 @@ export function CostCodesListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <ToolbarPageTitle>Cost Codes</ToolbarPageTitle>
-            <span className="text-sm text-muted-foreground">
-              {hasActiveFilters
-                ? `Showing ${totalCount} result${totalCount !== 1 ? 's' : ''}`
-                : `Total: ${totalCount}`}
-            </span>
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="categories">
-                <Edit className="size-4" />
-                Categories
-              </Link>
-            </Button>
-            <Button size="sm" onClick={() => setCreateModalOpen(true)}>
-              <Plus className="size-4" />
-              Add Cost Code
-            </Button>
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+      <CostCodesPageHeader
+        totalCount={totalCount}
+        hasActiveFilters={hasActiveFilters}
+        onCreate={() => setCreateModalOpen(true)}
+      />
 
       <CostCodesStatsBar
         totalCount={totalCount}
@@ -176,9 +148,11 @@ export function CostCodesListPage() {
         categoryFilter={categoryFilter}
         searchInput={searchInput}
         isLoading={isLoading}
+        isError={isError}
         totalCount={totalCount}
         onSearchChange={handleSearchChange}
         onCategoryChange={(id) => updateParams({ categoryId: id, page: undefined })}
+        onRetry={() => void refetch()}
       />
 
       <CostCodeFormDialog
@@ -198,24 +172,15 @@ export function CostCodesListPage() {
         isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
 
-      <ConfirmDialog
-        open={!!deleteTarget}
+      <CostCodeDeleteDialog
+        costCode={deleteTarget}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Delete Cost Code"
-        description={
-          <>
-            This will permanently delete <strong>{deleteTarget?.name}</strong>. This cannot be
-            undone.
-          </>
-        }
-        confirmLabel="Delete"
         onConfirm={() => {
           if (deleteTarget)
             deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
         }}
-        variant="destructive"
         isPending={deleteMutation.isPending}
       />
     </div>

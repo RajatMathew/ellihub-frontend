@@ -1,6 +1,6 @@
 import { useContext, useEffect } from 'react';
 
-import { BreadcrumbLabelsContext } from '@app/contexts/breadcrumbs';
+import { BreadcrumbLabelsContext } from '@/app/contexts/breadcrumbs';
 
 export function useBreadcrumbLabel(path: string | undefined, label: string | undefined) {
   const context = useContext(BreadcrumbLabelsContext);

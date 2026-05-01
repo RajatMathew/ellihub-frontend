@@ -1,11 +1,11 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   costCodePaginatedResponseSchema,
   costCodeSchema,
   type CostCode,
   type CostCodeCreate,
   type CostCodeFilters,
-} from '@modules/catalog/schemas/costcode.schema';
+} from '@/modules/catalog/schemas/costcode.schema';
 
 const BASE = '/cost-code';
 

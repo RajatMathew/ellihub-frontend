@@ -3,17 +3,17 @@ import { useMemo } from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
 
-import { Button } from '@app/components/ui/button';
-import { DataGridColumnHeader } from '@app/components/ui/data-grid-column-header';
+import { Button } from '@/app/components/ui/button';
+import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
+} from '@/app/components/ui/dropdown-menu';
 
-import type { CostCode } from '../schemas/costcode.schema';
+import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 
 interface UseCostCodeColumnsOptions {
   onEdit: (row: CostCode) => void;
@@ -29,7 +29,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
         cell: ({ row }) => (
           <span className="text-sm font-medium text-foreground">{row.original.code}</span>
         ),
-        meta: { headerClassName: 'min-w-[100px]' },
+        meta: { headerClassName: 'min-w-24' },
       },
       {
         accessorKey: 'name',
@@ -39,7 +39,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
             {row.original.name}
           </span>
         ),
-        meta: { headerClassName: 'min-w-[200px]' },
+        meta: { headerClassName: 'min-w-48' },
       },
       {
         accessorKey: 'description',
@@ -47,7 +47,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">{row.original.description ?? '—'}</span>
         ),
-        meta: { headerClassName: 'min-w-[200px]' },
+        meta: { headerClassName: 'min-w-48' },
         enableSorting: false,
       },
       {
@@ -58,7 +58,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
             {row.original.costCodeCategory?.name ?? '—'}
           </span>
         ),
-        meta: { headerClassName: 'min-w-[120px]' },
+        meta: { headerClassName: 'min-w-32' },
         enableSorting: false,
       },
       {
@@ -88,7 +88,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
             </DropdownMenuContent>
           </DropdownMenu>
         ),
-        meta: { headerClassName: 'w-[60px]' },
+        meta: { headerClassName: 'w-16' },
         enableSorting: false,
       },
     ],

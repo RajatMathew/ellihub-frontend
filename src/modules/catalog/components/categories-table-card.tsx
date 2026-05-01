@@ -3,26 +3,26 @@ import { useMemo } from 'react';
 import { getCoreRowModel, getPaginationRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Card,
   CardFooter,
   CardHeader,
   CardTable,
   CardToolbar,
-} from '@app/components/ui/card';
-import { DataGrid } from '@app/components/ui/data-grid';
-import { DataGridPagination } from '@app/components/ui/data-grid-pagination';
-import { DataGridTable } from '@app/components/ui/data-grid-table';
+} from '@/app/components/ui/card';
+import { DataGrid } from '@/app/components/ui/data-grid';
+import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/app/components/ui/data-grid-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
-import { Input, InputWrapper } from '@app/components/ui/input';
-import type { CostCodeCategory } from '@modules/catalog/schemas/costcode-category.schema';
+} from '@/app/components/ui/dropdown-menu';
+import { Input, InputWrapper } from '@/app/components/ui/input';
+import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 
 interface CategoriesTableCardProps {
   categories: CostCodeCategory[];
@@ -51,7 +51,7 @@ export function CategoriesTableCard({
         accessorKey: 'name',
         header: 'Name',
         cell: ({ row }) => (
-          <div className="text-[13px] font-bold text-foreground">
+          <div className="text-sm font-bold text-foreground">
             {row.original.name}
           </div>
         ),
@@ -60,7 +60,7 @@ export function CategoriesTableCard({
         accessorKey: 'description',
         header: 'Description',
         cell: ({ row }) => (
-          <div className="text-[13px] text-muted-foreground line-clamp-1">
+          <div className="line-clamp-1 text-sm text-muted-foreground">
             {row.original.description ?? '\u2014'}
           </div>
         ),
@@ -150,7 +150,7 @@ export function CategoriesTableCard({
           }
           tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
         >
-          <CardTable>
+          <CardTable className="overflow-x-auto">
             <DataGridTable />
           </CardTable>
           <CardFooter>

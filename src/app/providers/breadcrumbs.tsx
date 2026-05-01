@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
-import { BreadcrumbLabelsContext } from '@app/contexts/breadcrumbs';
+import { BreadcrumbLabelsContext } from '@/app/contexts/breadcrumbs';
 
 export function BreadcrumbLabelsProvider({ children }: { children: ReactNode }) {
   const [labels, setLabels] = useState<Record<string, string>>({});

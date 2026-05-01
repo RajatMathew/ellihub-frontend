@@ -2,23 +2,23 @@ import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input } from '@/app/components/ui/input';
 import {
   costCodeCategoryCreateSchema,
   costCodeCategoryUpdateSchema,
   type CostCodeCategory,
   type CostCodeCategoryCreate,
   type CostCodeCategoryUpdate,
-} from '@modules/catalog/schemas/costcode-category.schema';
+} from '@/modules/catalog/schemas/costcode-category.schema';
 
 type CategoryFormValues = CostCodeCategoryCreate | CostCodeCategoryUpdate;
 

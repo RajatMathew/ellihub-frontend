@@ -9,9 +9,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@app/components/ui/breadcrumb';
-import { useBreadcrumbLabels } from '@app/hooks/use-breadcrumb-label';
-import { useProjectDetailQuery } from '@modules/project/hooks';
+} from '@/app/components/ui/breadcrumb';
+import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 
 const ROUTE_LABELS: Record<string, string> = {
   'sub-change-order': 'Sub Change Order',
@@ -27,7 +27,10 @@ export function HeaderBreadcrumbs() {
     .split('/')
     .filter(Boolean)
     .filter((_, index) => index !== 0); // remove "app"
-  const projectId = params.projectId ?? pathSegments[pathSegments.indexOf('project') + 1];
+  const projectSegmentIndex = pathSegments.indexOf('project');
+  const projectIdFromPath =
+    projectSegmentIndex >= 0 ? pathSegments[projectSegmentIndex + 1] : undefined;
+  const projectId = params.projectId ?? projectIdFromPath;
 
   const { data: project } = useProjectDetailQuery(projectId ?? '');
 
@@ -81,7 +84,7 @@ export function HeaderBreadcrumbs() {
           <Fragment key={`${crumb.path}-${index}`}>
             {index > 0 && <BreadcrumbSeparator />}
             <BreadcrumbItem>
-              {crumb.isLast || index == 0 ? (
+              {crumb.isLast || index === 0 ? (
                 <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
               ) : (
                 <BreadcrumbLink asChild>

@@ -1,25 +1,27 @@
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
+} from '@/app/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input } from '@/app/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-import { useCostCodeCategoriesQuery, useCostCodeForm } from '@modules/catalog/hooks';
-import type { CostCode, CostCodeCreate } from '@modules/catalog/schemas/costcode.schema';
+} from '@/app/components/ui/select';
+import { useCostCodeCategoriesQuery, useCostCodeForm } from '@/modules/catalog/hooks';
+import type { CostCode, CostCodeCreate } from '@/modules/catalog/schemas/costcode.schema';
+
+const FIELD_LABEL_CLASS = 'text-xs font-semibold tracking-wide text-muted-foreground uppercase';
 
 export function CostCodeFormDialog({
   open,
@@ -70,15 +72,12 @@ export function CostCodeFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-[13px] font-bold tracking-[0.05em] uppercase">
+          <DialogTitle className="text-sm font-bold tracking-wide uppercase">
             {isEditing ? 'Edit Cost Code' : 'New Cost Code'}
           </DialogTitle>
         </DialogHeader>
         <form
-          onSubmit={handleSubmit(
-            (data) => onSubmit(data as CostCodeCreate | CostCode),
-            () => {}
-          )}
+          onSubmit={handleSubmit((data) => onSubmit(data as CostCodeCreate | CostCode))}
           className="space-y-4"
         >
           {isEditing && (
@@ -93,12 +92,7 @@ export function CostCodeFormDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  htmlFor="costcode-name"
-                  className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase"
-                >
-                  Name
-                </FieldLabel>
+                <FieldLabel htmlFor="costcode-name" className={FIELD_LABEL_CLASS}>Name</FieldLabel>
                 <Input
                   {...field}
                   id="costcode-name"
@@ -116,12 +110,7 @@ export function CostCodeFormDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  htmlFor="costcode-code"
-                  className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase"
-                >
-                  Code
-                </FieldLabel>
+                <FieldLabel htmlFor="costcode-code" className={FIELD_LABEL_CLASS}>Code</FieldLabel>
                 <Input
                   {...field}
                   id="costcode-code"
@@ -139,10 +128,7 @@ export function CostCodeFormDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  htmlFor="costcode-category"
-                  className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase"
-                >
+                <FieldLabel htmlFor="costcode-category" className={FIELD_LABEL_CLASS}>
                   Category
                 </FieldLabel>
                 <Select
@@ -171,10 +157,7 @@ export function CostCodeFormDialog({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel
-                  htmlFor="costcode-description"
-                  className="text-[11px] font-semibold tracking-[0.05em] text-gray-500 uppercase"
-                >
+                <FieldLabel htmlFor="costcode-description" className={FIELD_LABEL_CLASS}>
                   Description
                 </FieldLabel>
                 <Input
@@ -191,20 +174,10 @@ export function CostCodeFormDialog({
           />
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isSubmitting}
-              className="h-8 rounded-sm px-3 text-[13px] font-semibold"
-            >
+            <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
