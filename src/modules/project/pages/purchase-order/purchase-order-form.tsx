@@ -180,7 +180,7 @@ export function POFormPage() {
           data: { documentId: uploaded.id },
         });
       } catch {
-        console.warn(`Failed to upload/attach file: ${file.name}`);
+        toast.error(`Failed to upload ${file.name}.`);
       }
     }
   }
@@ -244,7 +244,7 @@ export function POFormPage() {
 
   if (isEditMode && isLoadingPO) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
         <div className="text-sm text-muted-foreground">Loading purchase order...</div>
       </div>
     );
@@ -254,9 +254,11 @@ export function POFormPage() {
     <form
       key={isEditMode ? existingPO?.id ?? 'loading' : 'create'}
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))(event)
+        void handleSubmit(onSubmit, () =>
+          toast.error('Please fix the highlighted purchase order fields.'),
+        )(event)
       }
-      className="container-fluid py-7.5"
+      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
         backLabel="Purchase Orders"

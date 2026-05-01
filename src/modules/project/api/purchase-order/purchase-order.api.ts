@@ -58,7 +58,6 @@ export const poApi = {
     const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[poApi.get] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -124,8 +123,6 @@ export const poApi = {
     };
     const result = poPaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[poApi.list] Zod parse error:', result.error.issues);
-      console.error('[poApi.list] Raw response:', JSON.stringify(raw, null, 2));
       throw result.error;
     }
     return result.data;
@@ -136,8 +133,6 @@ export const poApi = {
     const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[poApi.create] Zod parse error:', result.error.issues);
-      console.error('[poApi.create] Raw response:', JSON.stringify(raw, null, 2));
       throw result.error;
     }
     return result.data;
@@ -148,7 +143,6 @@ export const poApi = {
     const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[poApi.getById] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -159,7 +153,6 @@ export const poApi = {
     const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[poApi.update] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

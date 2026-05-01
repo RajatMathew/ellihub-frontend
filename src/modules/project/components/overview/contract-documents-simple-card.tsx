@@ -1,33 +1,67 @@
-import { ArrowRight, FileText } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
-import { Button } from '@app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 
-import type { ContractAttachment } from '@modules/project/schemas/contract-attachment.schema';
+import { Button } from '@/app/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardToolbar,
+} from '@/app/components/ui/card';
+import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
+import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
+
+import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 
 interface ContractDocumentsSimpleCardProps {
-  projectId: string;
   documents: ContractAttachment[];
   isLoading?: boolean;
+  isAdding?: boolean;
+  isRemoving?: boolean;
+  parentFolderId?: string;
+  onAdd?: (fileId: string) => Promise<void> | void;
+  onRemove?: (attachmentId: string) => void;
 }
 
 export function ContractDocumentsSimpleCard({
-  projectId,
   documents,
   isLoading = false,
+  isAdding = false,
+  isRemoving = false,
+  parentFolderId,
+  onAdd,
+  onRemove,
 }: ContractDocumentsSimpleCardProps) {
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const uploadMutation = useUploadFileMutation();
+  const downloadFile = useDownloadFile();
+
+  const handleUploadSubmit = async (payload: { file: File; data: FileUploadInput }) => {
+    const fileItem = await uploadMutation.mutateAsync(payload);
+    await onAdd?.(fileItem.id);
+    setUploadOpen(false);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Contract Documents ({documents.length})
         </CardTitle>
-        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>
-          <Link to={`/app/project/${projectId}/contracts`}>
-            Manage <ArrowRight className="size-3 ml-1" />
-          </Link>
-        </Button>
+        <CardToolbar>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!onAdd || !parentFolderId || isAdding || uploadMutation.isPending}
+            onClick={() => setUploadOpen(true)}
+          >
+            <Plus className="size-4" />
+            Add
+          </Button>
+        </CardToolbar>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -39,14 +73,35 @@ export function ContractDocumentsSimpleCard({
         ) : documents.length > 0 ? (
           <div className="space-y-2">
             {documents.map((att) => (
-              <div
-                key={att.id}
-                className="flex items-center gap-3 rounded-lg border p-2.5"
-              >
+              <div key={att.id} className="flex items-center gap-3 rounded-lg border p-2.5">
                 <FileText className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium truncate">
-                  {att.document?.name ?? 'Document'}
-                </span>
+                <div className="min-w-0 flex-1">
+                  {att.document?.id ? (
+                    <button
+                      type="button"
+                      className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                      onClick={() => downloadFile.mutate(att.document!)}
+                    >
+                      {att.document.name ?? 'Document'}
+                    </button>
+                  ) : (
+                    <span className="block truncate text-sm font-medium">
+                      {att.document?.name ?? 'Document'}
+                    </span>
+                  )}
+                </div>
+                {onRemove && (
+                  <Button
+                    variant="ghost"
+                    mode="icon"
+                    size="sm"
+                    disabled={isRemoving}
+                    aria-label={`Remove ${att.document?.name ?? 'document'}`}
+                    onClick={() => onRemove(att.id)}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
@@ -56,14 +111,19 @@ export function ContractDocumentsSimpleCard({
             <p className="text-sm text-muted-foreground">
               No documents attached.
             </p>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/app/project/${projectId}/contracts`}>
-                Add Documents
-              </Link>
-            </Button>
           </div>
         )}
       </CardContent>
+
+      {parentFolderId && (
+        <UploadFileDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          parentId={parentFolderId}
+          onSubmit={(payload) => void handleUploadSubmit(payload)}
+          isSubmitting={uploadMutation.isPending || isAdding}
+        />
+      )}
     </Card>
   );
 }

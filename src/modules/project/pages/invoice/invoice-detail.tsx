@@ -45,6 +45,10 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
 import {
+  ProjectDetailDocumentsCard,
+  ProjectDetailField,
+} from '@/modules/project/components/shared';
+import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
   useInvoiceDetailQuery,
@@ -65,8 +69,6 @@ import {
   Calendar,
   CheckCircle2,
   CreditCard,
-  Download,
-  FileText,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
@@ -78,7 +80,6 @@ import {
 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 type InvoiceAttachment = {
   id: string;
@@ -129,25 +130,6 @@ function relatedSCOBadgeVariant(status: string | null | undefined) {
     default:
       return 'secondary';
   }
-}
-
-function DetailField({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`min-w-0 ${className ?? ''}`}>
-      <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div className="break-words text-sm font-semibold text-foreground">{children ?? '-'}</div>
-    </div>
-  );
 }
 
 export function InvoiceDetailPage() {
@@ -457,16 +439,18 @@ export function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <DetailField label="Invoice #">{invoice.invoiceNumber}</DetailField>
-                    <DetailField label="Invoice Date">
+                    <ProjectDetailField label="Invoice #">{invoice.invoiceNumber}</ProjectDetailField>
+                    <ProjectDetailField label="Invoice Date">
                       {dateOrDash(invoice.invoiceDate)}
-                    </DetailField>
-                    <DetailField label="Due Date">{dateOrDash(invoice.dueDate)}</DetailField>
-                    <DetailField label="Vendor">{invoice.vendor?.name ?? '-'}</DetailField>
-                    <DetailField label="Project">{invoice.project?.name ?? '-'}</DetailField>
-                    <DetailField label="Related SCOs">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Due Date">
+                      {dateOrDash(invoice.dueDate)}
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Vendor">{invoice.vendor?.name ?? '-'}</ProjectDetailField>
+                    <ProjectDetailField label="Project">{invoice.project?.name ?? '-'}</ProjectDetailField>
+                    <ProjectDetailField label="Related SCOs">
                       {relatedSCOCount > 0 ? `${relatedSCOCount} linked` : '-'}
-                    </DetailField>
+                    </ProjectDetailField>
                   </div>
                 </CardContent>
               </Card>
@@ -484,87 +468,22 @@ export function InvoiceDetailPage() {
                 </Card>
               )}
 
-              <Card>
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Documents ({attachments.length})
-                  </CardTitle>
-                  {!isPaid && invoiceFolderId && (
-                    <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
-                      <Upload className="size-4" />
-                      Upload
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {attachments.length > 0 ? (
-                    <div className="space-y-2">
-                      {attachments.map((attachment) => {
-                        const document = attachment.document;
-                        return (
-                          <div
-                            key={attachment.id}
-                            className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <FileText className="size-4 shrink-0 text-muted-foreground" />
-                              <div className="min-w-0">
-                                <span className="block truncate text-sm font-medium">
-                                  {document?.displayName ?? document?.name ?? 'Document'}
-                                </span>
-                                {fileSizeLabel(document?.size) && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {fileSizeLabel(document?.size)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                              {document?.id && (
-                                <Button
-                                  variant="ghost"
-                                  mode="icon"
-                                  size="sm"
-                                  aria-label={`Download ${document.displayName ?? document.name ?? 'document'}`}
-                                  onClick={() => downloadFile.mutate(document)}
-                                >
-                                  <Download className="size-3.5" />
-                                </Button>
-                              )}
-                              {!isPaid && (
-                                <Button
-                                  variant="ghost"
-                                  mode="icon"
-                                  size="sm"
-                                  aria-label={`Remove ${document?.displayName ?? document?.name ?? 'document'}`}
-                                  disabled={attachments.length <= 1}
-                                  onClick={() => {
-                                    if (attachments.length <= 1) {
-                                      toast.error('At least one attachment is required.');
-                                      return;
-                                    }
-                                    removeAttachmentMutation.mutate({
-                                      invoiceId,
-                                      attachmentId: attachment.id,
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="size-3.5 text-destructive" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <FileText className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">No documents attached.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <ProjectDetailDocumentsCard
+                documents={attachments}
+                canUpload={!isPaid && !!invoiceFolderId}
+                canRemove={!isPaid}
+                onUpload={() => setUploadOpen(true)}
+                onDownload={(document) => downloadFile.mutate(document)}
+                onRemove={(attachment) =>
+                  removeAttachmentMutation.mutate({
+                    invoiceId,
+                    attachmentId: attachment.id,
+                  })
+                }
+                getDescription={(attachment) => fileSizeLabel(attachment.document?.size) ?? undefined}
+                isRemoveDisabled={() => attachments.length <= 1}
+                getRemoveDisabledReason={() => 'At least one attachment is required.'}
+              />
             </div>
 
             <div className="min-w-0 space-y-5 min-[1800px]:col-span-2">
@@ -584,18 +503,18 @@ export function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1">
-                    <DetailField label="PO Number">
+                    <ProjectDetailField label="PO Number">
                       {invoice.purchaseOrder?.poNumber ?? invoice.purchaseOrderId ?? '-'}
-                    </DetailField>
-                    <DetailField label="PO Status">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="PO Status">
                       {invoice.purchaseOrder?.status ?? '-'}
-                    </DetailField>
-                    <DetailField label="PO Total">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="PO Total">
                       {invoice.purchaseOrder?.total ? money(invoice.purchaseOrder.total) : '-'}
-                    </DetailField>
-                    <DetailField label="Payment Terms">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Payment Terms">
                       {invoice.purchaseOrder?.paymentTerms?.replace(/_/g, ' ') ?? '-'}
-                    </DetailField>
+                    </ProjectDetailField>
                   </div>
                 </CardContent>
               </Card>

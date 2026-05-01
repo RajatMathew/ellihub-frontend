@@ -32,9 +32,10 @@ export function PurchaseOrderListTable({
       onRetry={onRetry}
       tableLayout={{
         dense: true,
+        width: 'auto',
       }}
       tableClassNames={{
-        base: 'min-w-max',
+        base: 'min-w-full',
       }}
     />
   );

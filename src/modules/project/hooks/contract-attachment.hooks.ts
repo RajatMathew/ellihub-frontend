@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { contractAttachmentApi } from '@modules/project/api/contract-attachment.api';
-import { contractAttachmentKeys } from '@modules/project/constants/contract-attachment.keys';
-import { projectContractKeys } from '@modules/project/constants/project-contract.keys';
+import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
+import { contractAttachmentKeys } from '@/modules/project/constants/contract-attachment.keys';
+import { projectContractKeys } from '@/modules/project/constants/project-contract.keys';
+import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 
 export const useContractAttachmentsQuery = (projectId: string) =>
   useQuery({
@@ -22,9 +23,11 @@ export const useAddContractAttachmentMutation = () => {
       projectId: string;
       data: { fileId: string };
     }) => contractAttachmentApi.add(projectId, data),
-    onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: contractAttachmentKeys.list(projectId) });
-      qc.invalidateQueries({ queryKey: projectContractKeys.detail(projectId) });
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(qc, [
+        contractAttachmentKeys.list(projectId),
+        projectContractKeys.detail(projectId),
+      ]);
     },
     onError: () => toast.error('Failed to add attachment.'),
   });
@@ -40,8 +43,8 @@ export const useRemoveContractAttachmentMutation = () => {
       projectId: string;
       attachmentId: string;
     }) => contractAttachmentApi.remove(projectId, attachmentId),
-    onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: contractAttachmentKeys.list(projectId) });
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(qc, [contractAttachmentKeys.list(projectId)]);
     },
     onError: () => toast.error('Failed to remove attachment.'),
   });

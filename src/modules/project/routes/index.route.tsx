@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import PrimeContracts from '@/modules/project/pages/prime-contracts';
 import ProjectContractOverview from '@/modules/project/pages/project-contract-overview';
 import InvoiceRoutes from '@/modules/project/routes/invoice/index.route';
 import PORoutes from '@/modules/project/routes/purchase-order/index.route';
@@ -16,7 +15,6 @@ const ProjectRoutes = () => {
       <Route index element={<Navigate to="overview" replace />} />
       <Route path="edit" element={<ProjectEditForm />} />
       <Route path="overview" element={<ProjectContractOverview />} />
-      <Route path="prime-contracts" element={<PrimeContracts />} />
       <Route path="prime-change-orders/*" element={<PrimeChangeOrderRoutes />} />
       <Route path="rfqs/*" element={<RFQRoutes />} />
       <Route path="invoices/*" element={<InvoiceRoutes />} />

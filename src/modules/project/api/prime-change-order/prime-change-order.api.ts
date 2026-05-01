@@ -50,8 +50,6 @@ export const primeChangeOrderApi = {
 
     const result = primeChangeOrderPaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[primeChangeOrderApi.list] Zod parse error:', result.error.issues);
-      console.error('[primeChangeOrderApi.list] Raw response:', JSON.stringify(raw, null, 2));
       throw result.error;
     }
 
@@ -63,7 +61,6 @@ export const primeChangeOrderApi = {
     const raw = res.data?.data ?? res.data ?? [];
     const result = primeChangeOrderStatusSummarySchema.safeParse(raw);
     if (!result.success) {
-      console.error('[primeChangeOrderApi.getStatusSummary] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -74,7 +71,6 @@ export const primeChangeOrderApi = {
     const raw = res.data?.data ?? res.data;
     const result = primeChangeOrderFinancialSummarySchema.safeParse(raw);
     if (!result.success) {
-      console.error('[primeChangeOrderApi.getFinancialSummary] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -85,7 +81,6 @@ export const primeChangeOrderApi = {
     const raw = res.data?.data ?? res.data;
     const result = primeChangeOrderSyncStatusResponseSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[primeChangeOrderApi.getSyncStatus] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -96,7 +91,6 @@ export const primeChangeOrderApi = {
     const raw = res.data?.data ?? res.data;
     const result = primeChangeOrderSyncResponseSchema.safeParse(raw);
     if (!result.success) {
-      console.error('[primeChangeOrderApi.sync] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

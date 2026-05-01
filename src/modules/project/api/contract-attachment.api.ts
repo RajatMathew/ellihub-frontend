@@ -1,9 +1,9 @@
-import api from '@app/api';
+import api from '@/app/api';
 
 import {
   contractAttachmentSchema,
   type ContractAttachment,
-} from '@modules/project/schemas/contract-attachment.schema';
+} from '@/modules/project/schemas/contract-attachment.schema';
 
 const BASE = '/project';
 
@@ -15,12 +15,11 @@ export const contractAttachmentApi = {
     return raw.map((item: unknown) => contractAttachmentSchema.parse(item));
   },
 
-  async add(
-    projectId: string,
-    data: { fileId: string },
-  ): Promise<ContractAttachment> {
-    const res = await api.post(`${BASE}/${projectId}/contract/attachments`, data);
-    return contractAttachmentSchema.parse(res.data?.data ?? res.data);
+  async add(projectId: string, data: { fileId: string }): Promise<void> {
+    await api.patch(`${BASE}/prime-contract/add`, {
+      projectId,
+      fileId: data.fileId,
+    });
   },
 
   async remove(projectId: string, attachmentId: string): Promise<void> {

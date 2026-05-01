@@ -3,16 +3,16 @@ import { useState } from 'react';
 import { EllipsisVertical, Pencil, Share2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { Button } from '@app/components/ui/button';
-import { ConfirmDialog } from '@app/components/ui/confirm-dialog';
+import { Button } from '@/app/components/ui/button';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
-import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
+} from '@/app/components/ui/dropdown-menu';
+import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -22,11 +22,11 @@ import {
   PaymentsPlaceholderCard,
   PrimeChangeOrdersCard,
   ProjectTeamDialog,
-} from '@modules/project/components/overview';
-import { PageLoadingSkeleton } from '@modules/project/components/page-loading-skeleton';
-import { ScheduleTrackerCard } from '@modules/project/components/prime-contract/schedule-tracker-card';
-import { usePrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
-import { ProjectToolbarHeader } from '@modules/project/components/project-toolbar-header';
+} from '@/modules/project/components/overview';
+import { PageLoadingSkeleton } from '@/modules/project/components/page-loading-skeleton';
+import { ScheduleTrackerCard } from '@/modules/project/components/prime-contract/schedule-tracker-card';
+import { usePrimeContractComputations } from '@/modules/project/components/prime-contract/use-prime-contract-computations';
+import { ProjectToolbarHeader } from '@/modules/project/components/project-toolbar-header';
 import {
   useDeleteProjectMutation,
   usePrimeChangeOrderFinancialSummaryQuery,
@@ -35,12 +35,16 @@ import {
   useProjectDetailQuery,
   useProjectFolderQuery,
   useProjectScheduleQuery,
-} from '@modules/project/hooks';
-import { useContractAttachmentsQuery } from '@modules/project/hooks/contract-attachment.hooks';
-import { useEmployeeOptions } from '@modules/project/hooks/use-employee-options';
-import { usePOCalculations } from '@modules/project/hooks/use-po-calculations';
-import { useTeamMemberActions } from '@modules/project/hooks/use-team-member-actions';
+} from '@/modules/project/hooks';
+import {
+  useAddContractAttachmentMutation,
+  useContractAttachmentsQuery,
+  useRemoveContractAttachmentMutation,
+} from '@/modules/project/hooks/contract-attachment.hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
+import { useEmployeeOptions } from '@/modules/project/hooks/use-employee-options';
+import { usePOCalculations } from '@/modules/project/hooks/use-po-calculations';
+import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
 
 export default function ProjectContractOverview() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -59,7 +63,8 @@ export default function ProjectContractOverview() {
     sortOrder: 'desc',
   });
   const { data: allPOs } = usePOsQuery({ projectId, size: 1000 });
-  const { data: attachments } = useContractAttachmentsQuery(projectId);
+  const { data: attachments, isLoading: isLoadingAttachments } =
+    useContractAttachmentsQuery(projectId);
   const { data: scheduleData, isLoading: isLoadingSchedule } = useProjectScheduleQuery(projectId);
   const { data: primeContractFolderId } = useProjectFolderQuery(
     projectId || undefined,
@@ -69,6 +74,8 @@ export default function ProjectContractOverview() {
 
   /* ---- Mutations ---- */
   const deleteMutation = useDeleteProjectMutation();
+  const addAttachmentMutation = useAddContractAttachmentMutation();
+  const removeAttachmentMutation = useRemoveContractAttachmentMutation();
 
   /* ---- Custom Hooks ---- */
   const { totalPOCommitted, activePOsCount } = usePOCalculations({
@@ -94,6 +101,12 @@ export default function ProjectContractOverview() {
   const handleDeleteProject = async () => {
     await deleteMutation.mutateAsync(projectId);
     navigate('/app/projects');
+  };
+  const handleAddContractDocument = async (fileId: string) => {
+    await addAttachmentMutation.mutateAsync({ projectId, data: { fileId } });
+  };
+  const handleRemoveContractDocument = (attachmentId: string) => {
+    removeAttachmentMutation.mutate({ projectId, attachmentId });
   };
 
   /* ---- Derived Data ---- */
@@ -173,7 +186,15 @@ export default function ProjectContractOverview() {
 
         {/* ---- Contract Documents + Payments + Recent Activity ---- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <ContractDocumentsSimpleCard projectId={projectId} documents={docs} isLoading={false} />
+          <ContractDocumentsSimpleCard
+            documents={docs}
+            isLoading={isLoadingAttachments}
+            parentFolderId={primeContractFolderId}
+            onAdd={handleAddContractDocument}
+            onRemove={handleRemoveContractDocument}
+            isAdding={addAttachmentMutation.isPending}
+            isRemoving={removeAttachmentMutation.isPending}
+          />
           <PaymentsPlaceholderCard />
           <PrimeChangeOrdersCard projectId={projectId} pcos={recentPCOs} isLoading={false} />
         </div>

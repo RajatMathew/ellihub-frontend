@@ -32,18 +32,3 @@ export const primeContractSchema = z
   .passthrough();
 
 export type PrimeContract = z.infer<typeof primeContractSchema>;
-
-export const upsertPrimeContractInputSchema = z.object({
-  contractValue: z.number().positive('Contract value must be positive'),
-  contractType: z.string().max(100).optional(),
-  retainagePercent: z.number().min(0).max(100).optional(),
-  targetBudgetPercent: z.number().min(0).max(100).optional(),
-  paymentTerms: paymentTermsSchema.optional(),
-  estimatedStartDate: z.string().nullable().optional(),
-  estimatedCompletionDate: z.string().nullable().optional(),
-  actualStartDate: z.string().nullable().optional(),
-  actualCompletionDate: z.string().nullable().optional(),
-  executedContractDocId: z.string().nullable().optional(),
-});
-
-export type UpsertPrimeContractInput = z.infer<typeof upsertPrimeContractInputSchema>;

@@ -1,10 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
+import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreateRFQInput,
   ListRFQParams,
@@ -12,6 +18,17 @@ import type {
   UpdateRFQInput,
   VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
+
+function invalidateRFQQueries(queryClient: QueryClient, rfqId?: string) {
+  return invalidateProjectQueries(
+    queryClient,
+    rfqId ? [rfqKeys.all, rfqKeys.detail(rfqId)] : [rfqKeys.all],
+  );
+}
+
+function invalidateRFQDetail(queryClient: QueryClient, rfqId: string) {
+  return invalidateProjectQueries(queryClient, [rfqKeys.detail(rfqId)]);
+}
 
 /* ---- queries ---- */
 
@@ -54,8 +71,8 @@ export const useCreateRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateRFQInput) => rfqApi.create(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
+    onSuccess: async () => {
+      await invalidateRFQQueries(qc);
       toast.success('RFQ created.');
     },
     onError: (err) => toastApiError(err, 'Failed to create RFQ.'),
@@ -66,9 +83,8 @@ export const useUpdateRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateRFQInput }) => rfqApi.update(id, data),
-    onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, { id }) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('RFQ updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update RFQ.'),
@@ -79,8 +95,8 @@ export const useDeleteRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => rfqApi.remove(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
+    onSuccess: async () => {
+      await invalidateRFQQueries(qc);
       toast.success('RFQ deleted.');
     },
     onError: (err) => toastApiError(err, 'Failed to delete RFQ.'),
@@ -94,8 +110,8 @@ export const useAddRFQDeliverableMutation = () => {
   return useMutation({
     mutationFn: ({ rfqId, data }: { rfqId: string; data: RFQDeliverableInput }) =>
       rfqApi.addDeliverable(rfqId, data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
     },
     onError: (err) => toastApiError(err, 'Failed to add deliverable.'),
   });
@@ -113,8 +129,8 @@ export const useUpdateRFQDeliverableMutation = () => {
       deliverableId: string;
       data: Partial<RFQDeliverableInput>;
     }) => rfqApi.updateDeliverable(rfqId, deliverableId, data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
     },
     onError: (err) => toastApiError(err, 'Failed to update deliverable.'),
   });
@@ -125,8 +141,8 @@ export const useRemoveRFQDeliverableMutation = () => {
   return useMutation({
     mutationFn: ({ rfqId, deliverableId }: { rfqId: string; deliverableId: string }) =>
       rfqApi.removeDeliverable(rfqId, deliverableId),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
     },
     onError: (err) => toastApiError(err, 'Failed to remove deliverable.'),
   });
@@ -143,9 +159,8 @@ export const useSubmitQuoteMutation = () => {
       rfqId: string;
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.submitQuote(data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Quote submitted.');
     },
     onError: (err) => toastApiError(err, 'Failed to submit quote.'),
@@ -161,9 +176,8 @@ export const useEditQuoteMutation = () => {
       rfqId: string;
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.editQuote(data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Quote updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update quote.'),
@@ -174,9 +188,8 @@ export const useRemoveQuoteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { rfqId: string; id: string }) => rfqApi.removeQuote(id),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Quote removed.');
     },
     onError: (err) => toastApiError(err, 'Failed to remove quote.'),
@@ -190,9 +203,8 @@ export const useChangeRFQStatusMutation = () => {
   return useMutation({
     mutationFn: ({ id, statusId }: { id: string; statusId: string }) =>
       rfqApi.changeStatus(id, statusId),
-    onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, { id }) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('Status updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update status.'),
@@ -210,9 +222,8 @@ export const useDeclineInviteMutation = () => {
       rfqId: string;
       data: { id: string; declineReason?: string };
     }) => rfqApi.declineInvite(data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Invite declined.');
     },
     onError: (err) => toastApiError(err, 'Failed to decline invite.'),
@@ -225,9 +236,8 @@ export const useAddVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { rfqId: string; vendorId: string }) => rfqApi.addVendor(data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Vendor added.');
     },
     onError: (err) => toastApiError(err, 'Failed to add vendor.'),
@@ -238,9 +248,8 @@ export const useRemoveVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ quoteId }: { rfqId: string; quoteId: string }) => rfqApi.removeVendor(quoteId),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Vendor removed.');
     },
     onError: (err) => toastApiError(err, 'Failed to remove vendor.'),
@@ -253,9 +262,8 @@ export const usePublishRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => rfqApi.publish(id),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, id) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('RFQ published.');
     },
     onError: (err) => toastApiError(err, 'Failed to publish RFQ.'),
@@ -267,9 +275,8 @@ export const useCancelRFQMutation = () => {
   return useMutation({
     mutationFn: ({ id, cancellationReason }: { id: string; cancellationReason?: string }) =>
       rfqApi.cancel(id, cancellationReason),
-    onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, { id }) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('RFQ cancelled.');
     },
     onError: (err) => toastApiError(err, 'Failed to cancel RFQ.'),
@@ -280,9 +287,8 @@ export const useAwardRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ quoteId }: { rfqId: string; quoteId: string }) => rfqApi.award(quoteId),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('RFQ awarded.');
     },
     onError: (err) => toastApiError(err, 'Failed to award RFQ.'),
@@ -293,9 +299,8 @@ export const useVoidAwardMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: VoidAwardInput }) => rfqApi.voidAward(id, data),
-    onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, { id }) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('Award voided.');
     },
     onError: (err) => toastApiError(err, 'Failed to void award.'),
@@ -306,9 +311,8 @@ export const useUnawardRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => rfqApi.unaward(id),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(id) });
+    onSuccess: async (_, id) => {
+      await invalidateRFQQueries(qc, id);
       toast.success('Award removed.');
     },
     onError: (err) => toastApiError(err, 'Failed to remove award.'),
@@ -321,8 +325,8 @@ export const useAddRFQAttachmentMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { rfqId: string; documentId: string }) => rfqApi.addAttachment(data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
       toast.success('Attachment added.');
     },
     onError: (err) => toastApiError(err, 'Failed to add attachment.'),
@@ -334,8 +338,8 @@ export const useRemoveRFQAttachmentMutation = () => {
   return useMutation({
     mutationFn: ({ attachmentId }: { rfqId: string; attachmentId: string }) =>
       rfqApi.removeAttachment(attachmentId),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
       toast.success('Attachment removed.');
     },
     onError: (err) => toastApiError(err, 'Failed to remove attachment.'),
@@ -356,8 +360,8 @@ export const useAddQuoteAttachmentMutation = () => {
       quoteId: string;
       data: { fileId: string };
     }) => rfqApi.addQuoteAttachment(rfqId, quoteId, data),
-    onSuccess: (_, { rfqId }) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateRFQDetail(qc, rfqId);
       toast.success('Quote document uploaded.');
     },
     onError: (err) => toastApiError(err, 'Failed to upload quote document.'),
@@ -371,9 +375,8 @@ export const useGeneratePOMutation = () => {
 
   return useMutation({
     mutationFn: (rfqId: string) => rfqApi.generatePO(rfqId),
-    onSuccess: (data, rfqId) => {
-      qc.invalidateQueries({ queryKey: rfqKeys.all });
-      qc.invalidateQueries({ queryKey: rfqKeys.detail(rfqId) });
+    onSuccess: async (data, rfqId) => {
+      await invalidateRFQQueries(qc, rfqId);
       toast.success('Purchase Order created.');
 
       const poId =

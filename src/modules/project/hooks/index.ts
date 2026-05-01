@@ -6,8 +6,6 @@ export * from './project-team.hooks';
 export * from './project-schedule.hooks';
 export * from './prime-change-order';
 export * from './sub-change-order';
-export * from './pco.hooks';
-export * from './pco-attachment.hooks';
 export * from './contract-attachment.hooks';
 export * from './rfq';
 export * from './invoice';

@@ -7,19 +7,14 @@ import {
   Clock,
   ClipboardList,
   DollarSign,
-  Download,
   ExternalLink,
-  FileText,
-  Link2,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
   PlusCircle,
   Receipt,
   ShieldAlert,
-  Trash2,
   Truck,
-  Upload,
   TrendingUp,
   XCircle,
   History,
@@ -63,7 +58,16 @@ import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
-import { PurchaseOrderCancelDialog } from '@/modules/project/components/purchase-order';
+import {
+  PurchaseOrderCancelDialog,
+  PurchaseOrderDetailLineItemsCard,
+  PurchaseOrderDetailLinkedInvoicesCard,
+  PurchaseOrderDetailLinkedSCOsCard,
+} from '@/modules/project/components/purchase-order';
+import {
+  ProjectDetailDocumentsCard,
+  ProjectDetailField,
+} from '@/modules/project/components/shared';
 import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
@@ -89,27 +93,6 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
   if (!expectedDate) return 0;
   const diff = Date.now() - new Date(expectedDate).getTime();
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-}
-
-/* ---- Detail field (label above, value below) ---- */
-
-function DetailField({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`min-w-0 ${className ?? ''}`}>
-      <div className="text-xs font-medium text-muted-foreground uppercase tracking-normal mb-1">
-        {label}
-      </div>
-      <div className="break-words text-sm font-semibold text-foreground">{children ?? '-'}</div>
-    </div>
-  );
 }
 
 /* ---- Page ---- */
@@ -146,7 +129,7 @@ export function PODetailPage() {
   const costCodeMap = new Map(
     (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
   );
-  const attachments = (po?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
+  const attachments = po?.attachments ?? [];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -228,7 +211,7 @@ export function PODetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
         <p className="text-sm text-muted-foreground">Loading purchase order...</p>
       </div>
     );
@@ -236,7 +219,7 @@ export function PODetailPage() {
 
   if (!po) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
         <p className="text-sm text-muted-foreground">Purchase order not found.</p>
       </div>
     );
@@ -357,7 +340,7 @@ export function PODetailPage() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon">
+                <Button variant="outline" size="sm" mode="icon" aria-label="Purchase order actions">
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -494,8 +477,8 @@ export function PODetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <DetailField label="Vendor">{po.vendor?.name}</DetailField>
-                    <DetailField label="Email">
+                    <ProjectDetailField label="Vendor">{po.vendor?.name}</ProjectDetailField>
+                    <ProjectDetailField label="Email">
                       {vendorEmail ? (
                         <a
                           href={`mailto:${vendorEmail}`}
@@ -506,15 +489,15 @@ export function PODetailPage() {
                       ) : (
                         '-'
                       )}
-                    </DetailField>
-                    <DetailField label="Phone">{vendorPhone}</DetailField>
-                    <DetailField label="Lead Time">{po.leadTime}</DetailField>
-                    <DetailField label="Payment Terms">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Phone">{vendorPhone}</ProjectDetailField>
+                    <ProjectDetailField label="Lead Time">{po.leadTime}</ProjectDetailField>
+                    <ProjectDetailField label="Payment Terms">
                       {po.paymentTerms?.replace(/_/g, ' ')}
-                    </DetailField>
-                    <DetailField label="Vendor Address" className="sm:col-span-2 lg:col-span-3">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Vendor Address" className="sm:col-span-2 lg:col-span-3">
                       {vendorAddress ?? '-'}
-                    </DetailField>
+                    </ProjectDetailField>
                   </div>
                 </CardContent>
               </Card>
@@ -551,447 +534,75 @@ export function PODetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <DetailField label="Trade">
+                    <ProjectDetailField label="Trade">
                       {tradeLabel ?? '-'}
-                    </DetailField>
-                    <DetailField label="Linked RFQ">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Linked RFQ">
                       {readableRfq ?? '-'}
-                    </DetailField>
-                    <DetailField label="Expected Date">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Expected Date">
                       {po.expectedDate ? formatDate(po.expectedDate) : '-'}
-                    </DetailField>
-                    <DetailField label="Address">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Address">
                       {po.address ?? '-'}
-                    </DetailField>
-                    <DetailField label="Ship To" className="lg:row-span-2">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Ship To" className="lg:row-span-2">
                       {po.shipToAddress ?? '-'}
-                    </DetailField>
-                    <DetailField label="Delivery Date">
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Delivery Date">
                       {po.deliveryDate ? formatDate(po.deliveryDate) : '-'}
-                    </DetailField>
+                    </ProjectDetailField>
                     {po.notes && (
                       <div className="pt-1 sm:col-span-2 lg:col-span-3">
                         <Separator className="mb-4" />
-                        <DetailField label="Notes">
+                        <ProjectDetailField label="Notes">
                           <span className="font-normal whitespace-pre-wrap">{po.notes}</span>
-                        </DetailField>
+                        </ProjectDetailField>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Line Items */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Line Items ({po.lineItems?.length ?? 0})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {po.lineItems && po.lineItems.length > 0 ? (
-                    <>
-                    <div className="space-y-3 md:hidden">
-                      {po.lineItems.map((li) => (
-                        <div key={li.id} className="rounded-lg border p-3">
-                          <div className="flex min-w-0 items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                                Line {li.lineNumber}
-                              </div>
-                              <div className="mt-1 break-words text-sm font-semibold text-foreground">
-                                {li.description}
-                              </div>
-                              {li.notes && (
-                                <div className="mt-1 break-words text-xs text-muted-foreground">
-                                  {li.notes}
-                                </div>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                              {formatCurrency(parseFloat(li.amount ?? '0'))}
-                            </div>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <div className="text-muted-foreground">Qty</div>
-                              <div className="font-medium tabular-nums">{li.quantity}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Unit</div>
-                              <div className="font-medium">{li.unit ?? '-'}</div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Unit Price</div>
-                              <div className="font-medium tabular-nums">
-                                {formatCurrency(parseFloat(li.unitPrice ?? '0'))}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-muted-foreground">Cost Code</div>
-                              <div className="break-words font-medium">
-                                {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '-' : '-'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                        <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                        {Number(po.markupAmount ?? 0) !== 0 && (
-                          <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
-                        )}
-                        {taxAmount > 0 && (
-                          <InfoRow label={`Tax (${po.taxPercent}%)`}>
-                            {formatCurrency(taxAmount)}
-                          </InfoRow>
-                        )}
-                        <Separator className="my-2" />
-                        <InfoRow label="Total">
-                          <span className="font-semibold">{formatCurrency(poTotal)}</span>
-                        </InfoRow>
-                      </div>
-                    </div>
-
-                    <div className="hidden overflow-x-auto md:block">
-                      <table className="min-w-max w-full text-sm">
-                        <thead>
-                          <tr className="border-b text-left">
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase w-8">
-                              #
-                            </th>
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                              Description
-                            </th>
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase w-40">
-                              Cost Code
-                            </th>
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                              Qty
-                            </th>
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                              Unit
-                            </th>
-                            <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                              Unit Price
-                            </th>
-                            <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                              Amount
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {po.lineItems.map((li) => (
-                            <tr key={li.id} className="border-b last:border-0">
-                              <td className="py-2.5 pr-3 text-muted-foreground">
-                                {li.lineNumber}
-                              </td>
-                              <td className="py-2.5 pr-3">
-                                <div className="font-medium">{li.description}</div>
-                                {li.notes && (
-                                  <div className="text-xs text-muted-foreground mt-0.5">
-                                    {li.notes}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-2.5 pr-3 text-xs text-muted-foreground">
-                                {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '-' : '-'}
-                              </td>
-                              <td className="py-2.5 pr-3 text-right tabular-nums">
-                                {li.quantity}
-                              </td>
-                              <td className="py-2.5 pr-3">{li.unit}</td>
-                              <td className="py-2.5 pr-3 text-right tabular-nums">
-                                {formatCurrency(parseFloat(li.unitPrice ?? '0'))}
-                              </td>
-                              <td className="py-2.5 text-right font-medium tabular-nums">
-                                {formatCurrency(parseFloat(li.amount ?? '0'))}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr>
-                            <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
-                              Subtotal
-                            </td>
-                            <td className="pt-3 text-right tabular-nums text-sm">
-                              {formatCurrency(subtotal)}
-                            </td>
-                          </tr>
-                          {Number(po.markupAmount ?? 0) !== 0 && (
-                            <tr>
-                              <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                                Markup
-                              </td>
-                              <td className="pt-1 text-right tabular-nums text-sm">
-                                {formatCurrency(Number(po.markupAmount))}
-                              </td>
-                            </tr>
-                          )}
-                          {taxAmount > 0 && (
-                            <tr>
-                              <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                                Tax ({po.taxPercent}%)
-                              </td>
-                              <td className="pt-1 text-right tabular-nums text-sm">
-                                {formatCurrency(taxAmount)}
-                              </td>
-                            </tr>
-                          )}
-                          <tr className="border-t">
-                            <td
-                              colSpan={6}
-                              className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase"
-                            >
-                              Total
-                            </td>
-                            <td className="pt-2 text-right font-semibold tabular-nums">
-                              {formatCurrency(poTotal)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <FileText className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">No line items.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <PurchaseOrderDetailLineItemsCard
+                lineItems={po.lineItems ?? []}
+                costCodeMap={costCodeMap}
+                subtotal={subtotal}
+                markupAmount={po.markupAmount}
+                taxAmount={taxAmount}
+                taxPercent={po.taxPercent}
+                total={poTotal}
+              />
             </div>
 
             {/* Right column: Placeholder sections */}
             <div className="min-w-0 space-y-5 2xl:col-span-2">
-              {/* Documents / Attachments */}
-              <Card>
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Documents ({attachments.length})
-                  </CardTitle>
-                  {canEdit && poFolderId && (
-                    <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
-                      <Upload className="size-4" />
-                      Upload
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {attachments.length > 0 ? (
-                    <div className="space-y-2">
-                      {attachments.map((att) => (
-                        <div
-                          key={att.id}
-                          className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <FileText className="size-4 text-muted-foreground shrink-0" />
-                            <span className="text-sm font-medium truncate">
-                              {att.document?.name ?? 'Document'}
-                            </span>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                            {att.document?.id && (
-                              <Button
-                                variant="ghost"
-                                mode="icon"
-                                size="sm"
-                                onClick={() => downloadFile.mutate(att.document!)}
-                              >
-                                <Download className="size-3.5" />
-                              </Button>
-                            )}
-                            {canEdit && (
-                              <Button
-                                variant="ghost"
-                                mode="icon"
-                                size="sm"
-                                onClick={() =>
-                                  removeAttachmentMutation.mutate({ poId, attachmentId: att.id })
-                                }
-                              >
-                                <Trash2 className="size-3.5 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <FileText className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">No documents attached.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <ProjectDetailDocumentsCard
+                documents={attachments}
+                canUpload={canEdit && !!poFolderId}
+                canRemove={canEdit}
+                onUpload={() => setUploadOpen(true)}
+                onDownload={(document) => downloadFile.mutate(document)}
+                onRemove={(attachment) =>
+                  removeAttachmentMutation.mutate({ poId, attachmentId: attachment.id })
+                }
+              />
 
               {/* Hidden until backend exposes purchase-order payment history in the API response. */}
 
-              <Card>
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Linked Invoices ({linkedInvoices.length})
-                  </CardTitle>
-                  {invoiceTotal > 0 && (
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {formatCurrency(invoiceTotal)}
-                    </span>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {isLinkedInvoicesLoading ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      Loading invoices...
-                    </div>
-                  ) : linkedInvoices.length > 0 ? (
-                    <div className="space-y-2">
-                      {linkedInvoices.map((invoice) => (
-                        <Link
-                          key={invoice.id}
-                          to={`/app/project/${projectId}/invoices/${invoice.id}`}
-                          className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
-                        >
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-sm">
-                                  {invoice.invoiceNumber ?? 'Invoice'}
-                                </span>
-                                {invoice.isDisputed && (
-                                  <Badge variant="destructive" appearance="light" size="sm">
-                                    Disputed
-                                  </Badge>
-                                )}
-                                <Badge
-                                  variant={invoice.isPaid ? 'success' : 'warning'}
-                                  appearance="light"
-                                  size="sm"
-                                >
-                                  {invoice.isPaid ? 'Paid' : 'Unpaid'}
-                                </Badge>
-                              </div>
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                <span>
-                                  Invoice: {invoice.invoiceDate ? formatDate(invoice.invoiceDate) : '-'}
-                                </span>
-                                <span>
-                                  Due: {invoice.dueDate ? formatDate(invoice.dueDate) : '-'}
-                                </span>
-                              </div>
-                              {invoice.relatedSCOIds.length > 0 && (
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {invoice.relatedSCOIds.length} related SCO
-                                  {invoice.relatedSCOIds.length === 1 ? '' : 's'}
-                                </div>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-left sm:text-right">
-                              <div className="font-semibold tabular-nums">
-                                {formatCurrency(invoice.totalAmount)}
-                              </div>
-                              {invoice.paidDate && (
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  Paid {formatDate(invoice.paidDate)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <Receipt className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">
-                        No invoices linked to this purchase order.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <PurchaseOrderDetailLinkedInvoicesCard
+                projectId={projectId}
+                invoices={linkedInvoices}
+                isLoading={isLinkedInvoicesLoading}
+                invoiceTotal={invoiceTotal}
+              />
 
-              <Card>
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Sub Change Orders ({linkedSCOs.length})
-                  </CardTitle>
-                  {scoTotal > 0 && (
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Approved {formatCurrency(scoTotal)}
-                    </span>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {isLinkedSCOsLoading ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      Loading change orders...
-                    </div>
-                  ) : linkedSCOs.length > 0 ? (
-                    <div className="space-y-2">
-                      {linkedSCOs.map((sco) => (
-                        <Link
-                          key={sco.id}
-                          to={`/app/project/${projectId}/sub-change-order/${sco.id}`}
-                          className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
-                        >
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium text-sm">
-                                  {sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
-                                </span>
-                                <Badge
-                                  variant={sco.status === 'APPROVED' ? 'success' : 'primary'}
-                                  appearance="light"
-                                  size="sm"
-                                >
-                                  {sco.status}
-                                </Badge>
-                              </div>
-                              {sco.title && (
-                                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                                  {sco.title}
-                                </div>
-                              )}
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                <span>{sco.date ? formatDate(sco.date) : '-'}</span>
-                                {sco.changeType && (
-                                  <span>
-                                    {'label' in sco.changeType && sco.changeType.label
-                                      ? sco.changeType.label
-                                      : 'Change Type'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0 text-left sm:text-right">
-                              <div className="font-semibold tabular-nums">
-                                {formatCurrency(Number(sco.amount ?? 0))}
-                              </div>
-                              {sco.impactsSchedule && (
-                                <div className="mt-1 text-xs text-warning">
-                                  Schedule impact
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                      <Link2 className="size-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">
-                        No sub change orders linked to this purchase order.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <PurchaseOrderDetailLinkedSCOsCard
+                projectId={projectId}
+                scos={linkedSCOs}
+                isLoading={isLinkedSCOsLoading}
+                approvedTotal={scoTotal}
+              />
             </div>
           </div>
         </div>

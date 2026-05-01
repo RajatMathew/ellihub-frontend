@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 
-import type { MenuConfig } from '@app/config/types';
-import { ProjectSidebarSwitcher } from '@modules/project/components/project-sidebar-switcher';
+import type { MenuConfig } from '@/app/config/types';
+import { ProjectSidebarSwitcher } from '@/modules/project/components/project-sidebar-switcher';
 
 const isDev = import.meta.env.DEV;
 
@@ -70,7 +70,6 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'GC',
     children: [
-      { title: 'Prime Contracts', path: '../prime-contracts' },
       { title: 'Prime Change Orders', path: '../prime-change-orders' },
     ],
   },
