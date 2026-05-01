@@ -1,5 +1,5 @@
-import api from '@app/api';
-import { invoiceApi } from './invoice.api';
+import api from '@/app/api';
+import { invoiceApi } from '@/modules/project/api/invoice';
 
 import {
   projectDetailSchema,
@@ -9,7 +9,7 @@ import {
   type ProjectDetail,
   type ProjectPaginatedResponse,
   type UpdateProjectInput,
-} from '@modules/project/schemas/project.schema';
+} from '@/modules/project/schemas/project.schema';
 
 const BASE = '/project';
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { POListItem } from '@modules/purchase-orders/schemas/po.schema';
+import type { POListItem } from '@/modules/project/schemas/purchase-order';
 
 interface UsePOCalculationsOptions {
   pos: POListItem[] | undefined;

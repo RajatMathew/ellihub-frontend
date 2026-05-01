@@ -1,0 +1,16 @@
+import { Route, Routes } from 'react-router-dom';
+
+import { RFQDetailPage, RFQFormPage, RFQListPage } from '@/modules/project/pages/rfq';
+
+const RFQRoutes = () => {
+  return (
+    <Routes>
+      <Route index element={<RFQListPage />} />
+      <Route path="create" element={<RFQFormPage />} />
+      <Route path=":rfqId" element={<RFQDetailPage />} />
+      <Route path=":rfqId/edit" element={<RFQFormPage />} />
+    </Routes>
+  );
+};
+
+export default RFQRoutes;

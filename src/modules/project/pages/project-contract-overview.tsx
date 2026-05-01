@@ -40,7 +40,7 @@ import { useContractAttachmentsQuery } from '@modules/project/hooks/contract-att
 import { useEmployeeOptions } from '@modules/project/hooks/use-employee-options';
 import { usePOCalculations } from '@modules/project/hooks/use-po-calculations';
 import { useTeamMemberActions } from '@modules/project/hooks/use-team-member-actions';
-import { usePOsQuery } from '@modules/purchase-orders/hooks/po.hooks';
+import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 
 export default function ProjectContractOverview() {
   const { projectId = '' } = useParams<{ projectId: string }>();

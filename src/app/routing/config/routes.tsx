@@ -29,8 +29,8 @@ const ProjectsRoutes = lazy(() => import('@modules/project/routes/projects.route
 // const RFQListPage = lazy(() => import('@modules/project/pages/rfq-list'));
 // const RFQFormPage = lazy(() => import('@modules/project/pages/rfq-form'));
 // const RFQDetailPage = lazy(() => import('@modules/project/pages/rfq-detail'));
-// const ProjectPOs = lazy(() => import('@modules/project/pages/purchase-orders'));
-// const ProjectSCOList = lazy(() => import('@modules/project/pages/subcontractor-change-orders'));
+// const ProjectPOs = lazy(() => import('@/modules/project/pages/purchase-order'));
+// const ProjectSCOList = lazy(() => import('@/modules/project/pages/sub-change-order'));
 // const ProjectInvoices = lazy(() => import('@modules/project/pages/invoices'));
 // const ProjectFiles = lazy(() => import('@modules/project/pages/files'));
 const ProjectRoutes = lazy(() => import('@modules/project/routes/index.route'));

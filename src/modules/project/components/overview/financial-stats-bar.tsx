@@ -1,7 +1,7 @@
 import { StatsBar, StatsBarItem } from '@app/components/ui/stats-bar';
 import { formatCurrency } from '@app/lib/helpers';
 import type { PrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
-import type { PrimeChangeOrderFinancialSummary } from '@modules/project/schemas/prime-change-order.schema';
+import type { PrimeChangeOrderFinancialSummary } from '@/modules/project/schemas/prime-change-order';
 import type { PrimeContract } from '@modules/project/schemas/project-contract.schema';
 
 interface FinancialStatsBarProps {

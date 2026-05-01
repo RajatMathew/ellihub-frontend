@@ -81,13 +81,14 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://elli-core-new.onrender.com',
+        target: 'https://elli-api-dev.zubble.co',
         changeOrigin: true,
       },
     },
   },
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, 'src'),
       '@app': path.resolve(__dirname, 'src/app'),
       '@core': path.resolve(__dirname, 'src/core'),
       '@modules': path.resolve(__dirname, 'src/modules'),
