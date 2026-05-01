@@ -40,6 +40,22 @@ app.get(
     }
 );
 
+app.get(
+    '/schedule/:projectId',
+    requirePermission({ project: ['view-all'] }),
+    async (c: Context) => {
+        const projectId = c.req.param('projectId');
+        const schedules = await ProjectService.getProjectSchedules(projectId);
+        return success(c, schedules);
+    }
+);
+
+app.get('/prime-contract/:projectId', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projectId = c.req.param('projectId');
+    const primeContracts = await ProjectService.getProjectPrimeContracts(projectId);
+    return success(c, primeContracts);
+});
+
 app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
     const id = c.req.param('id');
     const project = await ProjectService.getProject(id);
