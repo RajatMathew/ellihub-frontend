@@ -1,18 +1,18 @@
 import { Crown, EllipsisVertical, Mail, X } from 'lucide-react';
 
-import { Avatar, AvatarFallback } from '@app/components/ui/avatar';
-import { Badge } from '@app/components/ui/badge';
-import { Button } from '@app/components/ui/button';
+import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
+import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
+} from '@/app/components/ui/dropdown-menu';
 
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
-import type { ProjectTeamAssignment } from '@modules/project/schemas/project-team.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+import type { ProjectTeamAssignment } from '@/modules/project/schemas/project-team.schema';
 
 interface TeamMemberCardProps {
   member: ProjectTeamAssignment;

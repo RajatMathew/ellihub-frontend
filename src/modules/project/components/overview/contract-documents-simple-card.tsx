@@ -72,38 +72,41 @@ export function ContractDocumentsSimpleCard({
           </div>
         ) : documents.length > 0 ? (
           <div className="space-y-2">
-            {documents.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-                <FileText className="size-4 text-muted-foreground shrink-0" />
-                <div className="min-w-0 flex-1">
-                  {att.document?.id ? (
-                    <button
-                      type="button"
-                      className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                      onClick={() => downloadFile.mutate(att.document!)}
+            {documents.map((att) => {
+              const document = att.file ?? att.document;
+              const documentName = document?.displayName ?? document?.name ?? 'Document';
+
+              return (
+                <div key={att.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                  <FileText className="size-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    {document?.id ? (
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                        onClick={() => downloadFile.mutate(document)}
+                      >
+                        {documentName}
+                      </button>
+                    ) : (
+                      <span className="block truncate text-sm font-medium">{documentName}</span>
+                    )}
+                  </div>
+                  {onRemove && (
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="sm"
+                      disabled={isRemoving}
+                      aria-label={`Remove ${documentName}`}
+                      onClick={() => onRemove(att.id)}
                     >
-                      {att.document.name ?? 'Document'}
-                    </button>
-                  ) : (
-                    <span className="block truncate text-sm font-medium">
-                      {att.document?.name ?? 'Document'}
-                    </span>
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
                   )}
                 </div>
-                {onRemove && (
-                  <Button
-                    variant="ghost"
-                    mode="icon"
-                    size="sm"
-                    disabled={isRemoving}
-                    aria-label={`Remove ${att.document?.name ?? 'document'}`}
-                    onClick={() => onRemove(att.id)}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center">

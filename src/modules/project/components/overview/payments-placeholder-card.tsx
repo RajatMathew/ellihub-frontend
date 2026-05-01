@@ -1,6 +1,6 @@
 import { DollarSign } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 
 export function PaymentsPlaceholderCard() {
   return (

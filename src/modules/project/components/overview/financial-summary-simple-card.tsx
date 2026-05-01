@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
-import { formatCurrency } from '@app/lib/helpers';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatCurrency } from '@/app/lib/helpers';
 
-import { InfoRow } from '@modules/project/components/info-row';
-import type { PrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
+import { InfoRow } from '@/modules/project/components/info-row';
+import type { PrimeContractComputations } from '@/modules/project/components/overview/use-prime-contract-computations';
 
 interface FinancialSummarySimpleCardProps {
   computations: PrimeContractComputations;
@@ -20,7 +20,7 @@ export function FinancialSummarySimpleCard({
     computations.approvedCOs < 0 ? 'text-destructive font-bold' : 'text-info font-bold';
 
   return (
-    <Card className="min-h-[360px] flex flex-col">
+    <Card className="flex min-h-80 flex-col">
       <CardHeader>
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Financial Summary

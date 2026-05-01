@@ -322,10 +322,9 @@ export default function ProjectForm() {
       if (data.estimatedStartDate) {
         try {
           await createScheduleMutation.mutateAsync({
-            projectId: resultProjectId!,
+            projectId: resultProjectId,
             date: data.estimatedStartDate,
             description: 'Project scheduled start',
-            adjustedStartDate: data.estimatedStartDate,
             adjustedFinishDate: data.estimatedEndDate || undefined,
           });
         } catch {

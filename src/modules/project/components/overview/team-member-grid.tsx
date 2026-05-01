@@ -1,6 +1,6 @@
 import { TeamMemberCard, LeadPMCard } from './team-member-card';
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
-import type { ProjectTeamAssignment } from '@modules/project/schemas/project-team.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+import type { ProjectTeamAssignment } from '@/modules/project/schemas/project-team.schema';
 
 interface TeamMemberGridProps {
   leadPM: ProjectDetail['leadPM'];

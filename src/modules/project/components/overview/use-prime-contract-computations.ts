@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 
 import type { PrimeChangeOrderFinancialSummary } from '@/modules/project/schemas/prime-change-order';
-import type { PrimeContract } from '@modules/project/schemas/project-contract.schema';
-
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface ComputationInput {
   project: ProjectDetail | undefined;

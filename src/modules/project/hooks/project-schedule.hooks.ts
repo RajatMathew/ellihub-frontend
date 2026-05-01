@@ -1,71 +1,74 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { projectScheduleApi } from '@modules/project/api/project-schedule.api';
-import { projectScheduleKeys } from '@modules/project/constants/project-schedule.keys';
-import { projectKeys } from '@modules/project/constants/project.keys';
+import { projectScheduleApi } from '@/modules/project/api/project-schedule.api';
+import { projectScheduleKeys } from '@/modules/project/constants/project-schedule.keys';
+import { projectKeys } from '@/modules/project/constants/project.keys';
+import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
-  ListScheduleParams,
-} from '@modules/project/schemas/project-schedule.schema';
+  CreateScheduleEntryInput,
+  UpdateScheduleEntryInput,
+} from '@/modules/project/schemas/project-schedule.schema';
 
-export const useProjectScheduleQuery = (projectId: string, params?: ListScheduleParams) =>
+type UpdateScheduleEntryMutationInput = UpdateScheduleEntryInput & {
+  projectId: string;
+};
+
+export const useProjectScheduleQuery = (projectId: string) =>
   useQuery({
-    queryKey: [...projectScheduleKeys.list(projectId), params],
-    queryFn: () => projectScheduleApi.list(projectId, params),
+    queryKey: projectScheduleKeys.list(projectId),
+    queryFn: () => projectScheduleApi.list(projectId),
     enabled: !!projectId,
   });
 
 export const useCreateScheduleEntryMutation = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (data: {
-      projectId: string;
-      date: string;
-      description: string;
-      adjustedStartDate?: string;
-      adjustedFinishDate?: string;
-      notes?: string;
-      fileId?: string;
-    }) => projectScheduleApi.create(data),
-    onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: projectScheduleKeys.list(projectId) });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    mutationFn: (data: CreateScheduleEntryInput) => projectScheduleApi.create(data),
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(queryClient, [
+        projectScheduleKeys.list(projectId),
+        projectKeys.detail(projectId),
+      ]);
     },
     onError: () => toast.error('Failed to create schedule entry.'),
   });
 };
 
 export const useUpdateScheduleEntryMutation = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (data: {
-      id: string;
-      date?: string;
-      description?: string;
-      adjustedStartDate?: string;
-      adjustedFinishDate?: string;
-      notes?: string;
-      fileId?: string;
-      projectId?: string; // and this if needed for invalidation
-    }) => projectScheduleApi.update(data),
-    onSuccess: (_, variables) => {
-      if (variables.projectId) {
-        qc.invalidateQueries({ queryKey: projectScheduleKeys.list(variables.projectId) });
-        qc.invalidateQueries({ queryKey: projectKeys.detail(variables.projectId) });
-      }
+    mutationFn: (data: UpdateScheduleEntryMutationInput) =>
+      projectScheduleApi.update({
+        id: data.id,
+        date: data.date,
+        description: data.description,
+        adjustedFinishDate: data.adjustedFinishDate,
+        notes: data.notes,
+        fileId: data.fileId,
+      }),
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(queryClient, [
+        projectScheduleKeys.list(projectId),
+        projectKeys.detail(projectId),
+      ]);
     },
     onError: () => toast.error('Failed to update schedule entry.'),
   });
 };
 
 export const useDeleteScheduleEntryMutation = () => {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ projectId, id }: { projectId: string; id: string }) =>
-      projectScheduleApi.remove(projectId, id),
-    onSuccess: (_, { projectId }) => {
-      qc.invalidateQueries({ queryKey: projectScheduleKeys.list(projectId) });
-      qc.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    mutationFn: ({ id }: { projectId: string; id: string }) => projectScheduleApi.remove(id),
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(queryClient, [
+        projectScheduleKeys.list(projectId),
+        projectKeys.detail(projectId),
+      ]);
     },
     onError: () => toast.error('Failed to delete schedule entry.'),
   });

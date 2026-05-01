@@ -2,14 +2,14 @@ import { useState } from 'react';
 
 import { UserPlus } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 
 import { AddTeamMemberForm } from './add-team-member-form';
 import { EmptyTeamState } from './empty-team-state';
 import { TeamMemberGrid } from './team-member-grid';
-import { useFilteredTeamMembers } from '@modules/project/hooks/use-filtered-team-members';
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface EmployeeOption {
   value: string;

@@ -1,17 +1,22 @@
 import { z } from 'zod';
 
+export const contractAttachmentFileSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().nullable().optional(),
+    displayName: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 export const contractAttachmentSchema = z
   .object({
     id: z.string(),
+    projectId: z.string().optional(),
+    fileId: z.string().nullable().optional(),
+    uploadedAt: z.string().nullable().optional(),
+    file: contractAttachmentFileSchema.nullable().optional(),
     documentId: z.string().nullable().optional(),
-    document: z
-      .object({
-        id: z.string(),
-        name: z.string(),
-      })
-      .passthrough()
-      .nullable()
-      .optional(),
+    document: contractAttachmentFileSchema.nullable().optional(),
     createdAt: z.string().optional(),
   })
   .passthrough();

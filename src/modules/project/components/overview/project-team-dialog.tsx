@@ -2,20 +2,20 @@ import { useState } from 'react';
 
 import { UserPlus } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
+} from '@/app/components/ui/dialog';
 
 import { AddTeamMemberForm } from './add-team-member-form';
 import { EmptyTeamState } from './empty-team-state';
 import { TeamMemberGrid } from './team-member-grid';
-import { useFilteredTeamMembers } from '@modules/project/hooks/use-filtered-team-members';
-import type { ProjectDetail } from '@modules/project/schemas/project.schema';
+import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface EmployeeOption {
   value: string;

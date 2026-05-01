@@ -1,7 +1,7 @@
 import { UserPlus, X } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
-import { SearchableSelect } from '@app/components/ui/searchable-select';
+import { Button } from '@/app/components/ui/button';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 
 interface EmployeeOption {
   value: string;

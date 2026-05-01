@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
-import { Progress } from '@app/components/ui/progress';
-import { formatCurrency } from '@app/lib/helpers';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Progress } from '@/app/components/ui/progress';
+import { formatCurrency } from '@/app/lib/helpers';
 
 interface BudgetCardProps {
   totalSpent: number;
@@ -18,20 +18,19 @@ export function BudgetCard({
   const remaining = budgetLimit - totalSpent;
 
   const getUtilizationColor = (utilization: number) => {
-    if (utilization > 90) return 'bg-red-500';
-    if (utilization > 70) return 'bg-amber-500';
-    return 'bg-emerald-500';
+    if (utilization > 90) return 'bg-destructive';
+    if (utilization > 70) return 'bg-warning';
+    return 'bg-success';
   };
 
   return (
-    <Card className="min-h-[360px] flex flex-col">
+    <Card className="flex min-h-80 flex-col">
       <CardHeader>
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Budget
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col justify-between grow">
-        {/* Section 1: Total Spent */}
         <div>
           <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
             Total Spent
@@ -41,8 +40,7 @@ export function BudgetCard({
           </div>
         </div>
 
-        <div className='flex flex-col gap-4'>
-          {/* Section 2: Spent Utilization */}
+        <div className="flex flex-col gap-4">
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase leading-tight">
@@ -59,7 +57,6 @@ export function BudgetCard({
             />
           </div>
 
-          {/* Section 3: Remaining */}
           <div>
             <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
               Remaining
@@ -69,9 +66,6 @@ export function BudgetCard({
             </div>
           </div>
         </div>
-
-
-        {/* Section 4: Limit and Budget % */}
         <div className="flex items-center justify-between pt-4 border-t">
           <div>
             <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">

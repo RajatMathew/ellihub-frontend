@@ -1,8 +1,8 @@
-import { StatsBar, StatsBarItem } from '@app/components/ui/stats-bar';
-import { formatCurrency } from '@app/lib/helpers';
-import type { PrimeContractComputations } from '@modules/project/components/prime-contract/use-prime-contract-computations';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
+import { formatCurrency } from '@/app/lib/helpers';
+import type { PrimeContractComputations } from '@/modules/project/components/overview/use-prime-contract-computations';
 import type { PrimeChangeOrderFinancialSummary } from '@/modules/project/schemas/prime-change-order';
-import type { PrimeContract } from '@modules/project/schemas/project-contract.schema';
+import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
 
 interface FinancialStatsBarProps {
   computations: PrimeContractComputations;
@@ -28,9 +28,7 @@ export function FinancialStatsBar({
   const positiveApprovedCOs = primeChangeOrderSummary?.approvedChangeOrdersPositiveTotal ?? 0;
   const negativeApprovedCOs = primeChangeOrderSummary?.approvedChangeOrdersNegativeTotal ?? 0;
   const approvedCOsValueColor =
-    computations.approvedCOs < 0
-      ? 'text-destructive'
-      : 'text-emerald-600 dark:text-emerald-500';
+    computations.approvedCOs < 0 ? 'text-destructive' : 'text-success';
   const approvedCOsParts = [
     positiveApprovedCOs !== 0 ? formatSignedCurrency(positiveApprovedCOs) : '',
     negativeApprovedCOs !== 0 ? formatSignedCurrency(negativeApprovedCOs) : '',
@@ -54,7 +52,7 @@ export function FinancialStatsBar({
         label="Approved COs"
         value={formatSignedCurrency(computations.approvedCOs)}
         description={approvedCOsDescription}
-        dotColor="bg-emerald-500"
+        dotColor="bg-success"
         valueColor={approvedCOsValueColor}
         className="border-b md:border-b-0"
       />
@@ -70,8 +68,8 @@ export function FinancialStatsBar({
         label="Committed (POs)"
         value={formatCurrency(totalPOCommitted)}
         description={`${activePOsCount} active purchase orders`}
-        dotColor="bg-amber-500"
-        valueColor="text-amber-600 dark:text-amber-500"
+        dotColor="bg-warning"
+        valueColor="text-warning"
       />
     </StatsBar>
   );

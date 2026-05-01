@@ -1,10 +1,10 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { Badge } from '@app/components/ui/badge';
-import { Button } from '@app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/card';
-import { formatCurrency } from '@app/lib/helpers';
+import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatCurrency } from '@/app/lib/helpers';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 
 function getStatusVariant(status: string) {

@@ -9,7 +9,7 @@ const BASE = '/project';
 
 export const contractAttachmentApi = {
   async list(projectId: string): Promise<ContractAttachment[]> {
-    const res = await api.get(`${BASE}/${projectId}/contract/attachments`);
+    const res = await api.get(`${BASE}/prime-contract/${projectId}`);
     const raw = res.data?.data ?? res.data ?? [];
     if (!Array.isArray(raw)) return [];
     return raw.map((item: unknown) => contractAttachmentSchema.parse(item));

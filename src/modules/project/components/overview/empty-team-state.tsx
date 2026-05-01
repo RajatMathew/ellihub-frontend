@@ -1,6 +1,6 @@
 import { UserPlus, Users } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 
 interface EmptyTeamStateProps {
   onAddMember: () => void;
