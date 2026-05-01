@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { getContrastColor } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
 import type {
@@ -32,6 +32,57 @@ interface ProjectToolbarHeaderProps {
   children?: React.ReactNode;
   onTeamClick?: () => void;
 }
+
+const STATUS_META: Record<string, { label: string; badgeClassName: string }> = {
+  ACTIVE: {
+    label: 'Active',
+    badgeClassName: 'bg-success text-success-foreground',
+  },
+  INACTIVE: {
+    label: 'Inactive',
+    badgeClassName: 'bg-warning text-warning-foreground',
+  },
+  CLOSED: {
+    label: 'Closed',
+    badgeClassName: 'bg-muted text-muted-foreground',
+  },
+  COMPLETED: {
+    label: 'Completed',
+    badgeClassName: 'bg-primary text-primary-foreground',
+  },
+};
+
+const STAGE_DOT_CLASSES: Array<[string, string]> = [
+  ['SUBMITTAL', 'bg-primary'],
+  ['BUYOUT', 'bg-info'],
+  ['FABRICATION', 'bg-destructive'],
+  ['INSTALLATION', 'bg-primary'],
+  ['PUNCH', 'bg-warning'],
+  ['CLOSEOUT', 'bg-success'],
+];
+
+const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['status']) => {
+  if (!status) return undefined;
+
+  if (typeof status === 'string') {
+    return STATUS_META[status] ?? { label: status, badgeClassName: STATUS_META.COMPLETED.badgeClassName };
+  }
+
+  const statusKey = (status.name || status.label || status.id).toUpperCase();
+  const configuredStatus = STATUS_META[statusKey];
+
+  return {
+    label: status.label || status.name || configuredStatus?.label || 'N/A',
+    badgeClassName: configuredStatus?.badgeClassName ?? STATUS_META.COMPLETED.badgeClassName,
+  };
+};
+
+const getStageDotClassName = (stageName?: string | null) => {
+  const normalizedName = (stageName ?? '').toUpperCase();
+  const stageMatch = STAGE_DOT_CLASSES.find(([key]) => normalizedName.includes(key));
+
+  return stageMatch?.[1] ?? 'bg-muted-foreground';
+};
 
 export function ProjectToolbarHeader({
   title,
@@ -114,78 +165,33 @@ export function ProjectToolbarHeader({
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
             {(project?.status || project?.statusRef) && (
               (() => {
-                const status = project?.statusRef ?? project?.status;
-                const STATUS_COLORS: Record<string, string> = {
-                  ACTIVE: '#22c55e', // success
-                  INACTIVE: '#f59e0b', // warning
-                  CLOSED: '#71717a', // muted
-                  COMPLETED: '#3b82f6', // primary
-                };
-                const STATUS_LABELS: Record<string, string> = {
-                  ACTIVE: 'Active',
-                  INACTIVE: 'Inactive',
-                  CLOSED: 'Closed',
-                  COMPLETED: 'Completed',
-                };
-                
-                const color =
-                  typeof status === 'string'
-                    ? (STATUS_COLORS[status] || '#3b82f6')
-                    : status?.color || '#3b82f6';
-                  
-                const label =
-                  typeof status === 'string'
-                    ? (STATUS_LABELS[status] || status)
-                    : status?.label || status?.name || 'N/A';
+                const status = getStatusMeta(project?.statusRef ?? project?.status);
+
+                if (!status) return null;
 
                 return (
                   <Badge
-                    style={{
-                      backgroundColor: color,
-                      color: getContrastColor(color),
-                    }}
+                    className={status.badgeClassName}
                     size="sm"
                   >
-                    {label}
+                    {status.label}
                   </Badge>
                 );
               })()
             )}
             {project?.stage && stages && stages.length > 0 ? (
               (() => {
-                const STAGE_COLORS: Record<string, string> = {
-                  SUBMITTALS: '#6366f1',
-                  BUYOUT: '#8b5cf6',
-                  FABRICATION: '#ec4899',
-                  INSTALLATION: '#3b82f6',
-                  PUNCHLIST: '#f59e0b',
-                  CLOSEOUT: '#10b981',
-                };
                 const name = project.stage.name || project.stage.label || '';
-                const nameUpper = name.toUpperCase();
-                let color =
-                  typeof project.stage.color === 'string' ? project.stage.color : '#94a3b8';
-
-                if (!color) {
-                  for (const [key, c] of Object.entries(STAGE_COLORS)) {
-                    if (nameUpper.includes(key)) {
-                      color = c;
-                      break;
-                    }
-                  }
-                }
+                const dotClassName = getStageDotClassName(name);
                 
                 return (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                  >
-                        <span
-                          className="size-2 rounded-sm shrink-0"
-                          style={{ backgroundColor: color }}
-                        />
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        <span className={cn('size-2 rounded-sm shrink-0', dotClassName)} />
                         {name}
                         <ChevronDown className="size-3 text-muted-foreground" />
                       </button>
@@ -193,10 +199,12 @@ export function ProjectToolbarHeader({
                     <DropdownMenuContent align="start" className="w-48">
                       {stages.map((stage) => (
                         <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
-                        <span
-                          className="size-2.5 rounded-sm shrink-0"
-                          style={{ backgroundColor: typeof stage.color === 'string' ? stage.color : undefined }}
-                        />
+                          <span
+                            className={cn(
+                              'size-2.5 rounded-sm shrink-0',
+                              getStageDotClassName(stage.name)
+                            )}
+                          />
                           <span className="flex-1">{stage.name}</span>
                           {stage.id === project.stageId && (
                             <Check className="size-3.5 text-foreground" />
@@ -258,7 +266,7 @@ export function ProjectToolbarHeader({
                   <AvatarGroupItem key={member.id}>
                     <Avatar className="size-7 border-2 border-background">
                       <AvatarImage src="" alt={member.name} />
-                      <AvatarFallback className="text-[10px]">
+                      <AvatarFallback className="text-xs">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>

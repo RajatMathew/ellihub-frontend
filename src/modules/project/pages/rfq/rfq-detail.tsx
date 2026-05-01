@@ -38,9 +38,12 @@ import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/a
 import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
-import { filesApi } from '@/modules/files/api/files.api';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import {
+  useDownloadFile,
+  useFilePreviewQuery,
+  useUploadFileMutation,
+} from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
 import {
   RFQDetailAttachmentsCard,
@@ -75,7 +78,6 @@ import {
 } from '@/modules/project/hooks/rfq';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
-import { useQuery } from '@tanstack/react-query';
 import {
   Calendar,
   CheckCircle2,
@@ -111,12 +113,7 @@ function QuoteDocPreview({
   name: string;
   mimeType?: string;
 }) {
-  const { data: url, isLoading } = useQuery({
-    queryKey: ['file-preview', documentId],
-    queryFn: () => filesApi.getDownloadLink(documentId),
-    enabled: !!documentId,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: url, isLoading } = useFilePreviewQuery(documentId, !!documentId);
 
   if (isLoading) {
     return (

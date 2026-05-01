@@ -9,7 +9,7 @@ import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 interface StatusGroup {
   id: string;
   label: string;
-  color: string;
+  dotClassName: string;
   total: number;
   count: number;
 }
@@ -20,11 +20,11 @@ interface ProjectStatusSummaryProps {
   onStatusClick: (id: string | undefined) => void;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'var(--success)',
-  INACTIVE: 'var(--warning)',
-  CLOSED: 'var(--muted-foreground)',
-  COMPLETED: 'var(--primary)',
+const STATUS_DOT_CLASSES: Record<string, string> = {
+  ACTIVE: 'bg-success',
+  INACTIVE: 'bg-warning',
+  CLOSED: 'bg-muted-foreground',
+  COMPLETED: 'bg-primary',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -32,6 +32,10 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
   CLOSED: 'Closed',
   COMPLETED: 'Completed',
+};
+
+const getStatusDotClassName = (value: string): string => {
+  return STATUS_DOT_CLASSES[value.toUpperCase()] ?? 'bg-primary';
 };
 
 const getProjectContractSum = (project: ProjectListItem): number => {
@@ -55,16 +59,16 @@ export function ProjectStatusSummary({
       
       let id: string;
       let label: string;
-      let color: string;
+      let dotClassName: string;
 
       if (typeof status === 'string') {
         id = status;
         label = STATUS_LABELS[id] || id;
-        color = STATUS_COLORS[id] || 'var(--primary)';
+        dotClassName = getStatusDotClassName(id);
       } else {
         id = status.id;
         label = status.label || status.name || 'Unknown';
-        color = status.color || 'var(--primary)';
+        dotClassName = getStatusDotClassName(status.name ?? status.label ?? status.id);
       }
 
       const existing = map.get(id);
@@ -74,7 +78,7 @@ export function ProjectStatusSummary({
         existing.total += value;
         existing.count += 1;
       } else {
-        map.set(id, { id, label, color, total: value, count: 1 });
+        map.set(id, { id, label, dotClassName, total: value, count: 1 });
       }
     }
 
@@ -101,8 +105,7 @@ export function ProjectStatusSummary({
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span
-                    className="size-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: group.color }}
+                    className={cn('size-2.5 rounded-full shrink-0', group.dotClassName)}
                   />
                   <span className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
                     {group.label}
