@@ -29,7 +29,13 @@ export type PCOChangeType = z.infer<typeof pcoChangeTypeSchema>;
 
 /* ---- Line item (from detail / create response) ---- */
 
-export const PCO_LINE_ITEM_CATEGORIES = ['MATERIALS', 'LABOR', 'EQUIPMENT', 'SUBCONTRACTOR', 'OTHER'] as const;
+export const PCO_LINE_ITEM_CATEGORIES = [
+  'MATERIALS',
+  'LABOR',
+  'EQUIPMENT',
+  'SUBCONTRACTOR',
+  'OTHER',
+] as const;
 export type PCOLineItemCategory = (typeof PCO_LINE_ITEM_CATEGORIES)[number];
 
 export const pcoLineItemSchema = z
@@ -53,6 +59,23 @@ export const pcoLineItemSchema = z
 
 export type PCOLineItem = z.infer<typeof pcoLineItemSchema>;
 
+export const pcoAttachmentSchema = z
+  .object({
+    id: z.string(),
+    documentId: z.string().nullable().optional(),
+    document: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+  })
+  .passthrough();
+
+export type PCOAttachment = z.infer<typeof pcoAttachmentSchema>;
+
 /* ---- List item (from GET /pcos) ---- */
 
 export const pcoListItemSchema = z
@@ -72,11 +95,7 @@ export const pcoListItemSchema = z
       .nullable()
       .optional(),
     createdBy: z.string().nullable().optional(),
-    creator: z
-      .object({ id: z.string(), name: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    creator: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     _count: z.record(z.string(), z.number()).nullable().optional(),
     createdAt: z.string().optional(),
   })
@@ -108,11 +127,7 @@ export const pcoDetailSchema = z
     statusId: z.string().optional(),
     changeType: pcoChangeTypeSchema.nullable().optional(),
     changeTypeId: z.string().nullable().optional(),
-    contact: z
-      .object({ id: z.string(), fullName: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    contact: z.object({ id: z.string(), fullName: z.string() }).passthrough().nullable().optional(),
     contactId: z.string().nullable().optional(),
     costCode: z
       .object({ id: z.string(), name: z.string(), code: z.string() })
@@ -126,11 +141,7 @@ export const pcoDetailSchema = z
       .nullable()
       .optional(),
     createdBy: z.string().nullable().optional(),
-    creator: z
-      .object({ id: z.string(), name: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    creator: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     approvedBy: z.string().nullable().optional(),
     approvedAt: z.string().nullable().optional(),
     rejectedBy: z.string().nullable().optional(),
@@ -146,8 +157,8 @@ export const pcoDetailSchema = z
       .nullable()
       .optional(),
     lineItems: z.array(pcoLineItemSchema).optional().default([]),
-    attachments: z.array(z.any()).optional().default([]),
-    statusHistory: z.array(z.any()).optional().default([]),
+    attachments: z.array(pcoAttachmentSchema).optional().default([]),
+    statusHistory: z.array(z.unknown()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),

@@ -16,7 +16,13 @@ export type RFQStatus = z.infer<typeof rfqStatusSchema>;
 
 /* ---- List item (from GET /rfqs) ---- */
 
-export const RFQ_TRACKS = ['MATERIAL', 'FABRICATION', 'INSTALLATION', 'LABOR', 'EQUIPMENT'] as const;
+export const RFQ_TRACKS = [
+  'MATERIAL',
+  'FABRICATION',
+  'INSTALLATION',
+  'LABOR',
+  'EQUIPMENT',
+] as const;
 export type RFQTrack = (typeof RFQ_TRACKS)[number];
 
 export const rfqListItemSchema = z
@@ -49,7 +55,6 @@ export const rfqListItemSchema = z
   .passthrough();
 
 export type RFQListItem = z.infer<typeof rfqListItemSchema>;
-
 
 /* ---- Paginated list response ---- */
 
@@ -92,7 +97,10 @@ export const rfqDeliverableSchema = z
     description: z.string().nullable().optional(),
     specifications: z.string().nullable().optional(),
     quantity: z.coerce.number().nullable().optional(),
-    unit: z.union([z.string(), z.object({ id: z.string(), label: z.string() }).passthrough()]).nullable().optional(),
+    unit: z
+      .union([z.string(), z.object({ id: z.string(), label: z.string() }).passthrough()])
+      .nullable()
+      .optional(),
     unitId: z.string().nullable().optional(),
     costCodeId: z.string().nullable().optional(),
     estimatedUnitPrice: z.coerce.number().nullable().optional(),
@@ -239,21 +247,24 @@ export const rfqDetailSchema = z
     invites: z.array(rfqInviteSchema).optional().default([]),
     quotes: z.array(rfqQuoteSchema).optional().default([]),
     attachments: z.array(rfqAttachmentSchema).optional().default([]),
-    addendums: z.array(z.any()).optional().default([]),
+    addendums: z.array(z.unknown()).optional().default([]),
     purchaseOrders: z
       .array(
-        z.object({
-          id: z.string(),
-          poNumber: z.string().nullable().optional(),
-          vendorId: z.string().nullable().optional(),
-          awardedQuoteId: z.string().nullable().optional(),
-        }).passthrough(),
+        z
+          .object({
+            id: z.string(),
+            poNumber: z.string().nullable().optional(),
+            vendorId: z.string().nullable().optional(),
+            awardedQuoteId: z.string().nullable().optional(),
+          })
+          .passthrough()
       )
       .nullable()
       .optional()
       .default([]),
-    generatedPO: z.any().nullable().optional(),
+    generatedPO: z.unknown().nullable().optional(),
     awardedAmount: z.coerce.number().nullable().optional(),
+    awardedVendorId: z.string().nullable().optional(),
     awardedVendor: z
       .object({ id: z.string(), name: z.string().nullable().optional() })
       .passthrough()

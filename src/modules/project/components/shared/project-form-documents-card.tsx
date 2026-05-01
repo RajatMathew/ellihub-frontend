@@ -1,8 +1,7 @@
-import { FileText, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
+import { FileText, X } from 'lucide-react';
 
 interface ExistingProjectDocument {
   id: string;
@@ -71,6 +70,7 @@ export function ProjectFormDocumentsCard({
                   mode="icon"
                   size="sm"
                   type="button"
+                  aria-label={`Remove ${file.name}`}
                   className="self-end sm:self-auto"
                   onClick={() => onRemoveFile(index)}
                 >
@@ -87,7 +87,10 @@ export function ProjectFormDocumentsCard({
               Existing Documents
             </div>
             {existingDocuments.map((attachment) => (
-              <div key={attachment.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+              <div
+                key={attachment.id}
+                className="flex min-w-0 items-center gap-3 rounded-lg border p-2.5"
+              >
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
                 <span className="truncate text-sm font-medium">
                   {getDocumentName(attachment.document)}

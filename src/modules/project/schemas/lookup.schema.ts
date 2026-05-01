@@ -11,7 +11,7 @@ export const lookupSchema = z
     order: z.number().default(0),
     isDefault: z.boolean().default(false),
     isActive: z.boolean().default(true),
-    metadata: z.record(z.any()).nullable().optional(),
+    metadata: z.record(z.unknown()).nullable().optional(),
   })
   .passthrough();
 

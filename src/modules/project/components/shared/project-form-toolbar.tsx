@@ -1,8 +1,5 @@
 import type { ReactNode } from 'react';
 
-import { Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import {
   Toolbar,
   ToolbarActions,
@@ -11,6 +8,8 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ProjectFormToolbarProps {
   backLabel: string;
@@ -32,7 +31,7 @@ export function ProjectFormToolbar({
   return (
     <Toolbar sticky={false}>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
             <Link to=".." relative="path" className="hover:text-foreground">
               {backLabel}
@@ -41,7 +40,7 @@ export function ProjectFormToolbar({
           <ToolbarPageTitle>{title}</ToolbarPageTitle>
           <span className="text-sm text-muted-foreground">{description}</span>
         </ToolbarHeading>
-        <ToolbarActions>
+        <ToolbarActions className="flex-wrap">
           {extraActions}
           <Button variant="outline" size="sm" type="button" asChild>
             <Link to=".." relative="path">

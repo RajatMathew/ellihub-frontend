@@ -63,6 +63,26 @@ export const invoiceRelatedSCOSchema = z
 
 export type InvoiceRelatedSCO = z.infer<typeof invoiceRelatedSCOSchema>;
 
+export const invoiceAttachmentSchema = z
+  .object({
+    id: z.string(),
+    documentId: z.string().nullable().optional(),
+    document: z
+      .object({
+        id: z.string(),
+        name: z.string().nullable().optional(),
+        displayName: z.string().nullable().optional(),
+        mimeType: z.string().nullable().optional(),
+        size: z.coerce.number().nullable().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+  })
+  .passthrough();
+
+export type InvoiceAttachment = z.infer<typeof invoiceAttachmentSchema>;
+
 /* ---- List item (from GET /invoices) ---- */
 
 export const invoiceListItemSchema = z
@@ -89,17 +109,13 @@ export const invoiceListItemSchema = z
     resolvedAt: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
     relatedSCOIds: z.array(z.string()).optional().default([]),
-    vendor: z
-      .object({ id: z.string(), name: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    vendor: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     purchaseOrder: z
       .object({ id: z.string(), poNumber: z.string() })
       .passthrough()
       .nullable()
       .optional(),
-    attachments: z.array(z.unknown()).optional().default([]),
+    attachments: z.array(invoiceAttachmentSchema).optional().default([]),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
     deletedAt: z.string().nullable().optional(),
@@ -156,11 +172,7 @@ export const invoiceDetailSchema = z
     invoiceDocumentId: z.string().nullable().optional(),
     disputedAt: z.string().nullable().optional(),
     resolvedAt: z.string().nullable().optional(),
-    vendor: z
-      .object({ id: z.string(), name: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    vendor: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     purchaseOrder: z
       .object({
         id: z.string(),
@@ -189,7 +201,7 @@ export const invoiceDetailSchema = z
     daysOverdue: z.number().optional(),
     isPastDue: z.boolean().optional(),
     agingBucket: z.string().nullable().optional(),
-    attachments: z.array(z.any()).optional().default([]),
+    attachments: z.array(invoiceAttachmentSchema).optional().default([]),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
   })

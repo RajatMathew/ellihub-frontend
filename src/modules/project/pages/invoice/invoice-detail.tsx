@@ -1,26 +1,5 @@
 import { useMemo, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle2,
-  CreditCard,
-  Download,
-  FileText,
-  MoreHorizontal,
-  PanelRightOpen,
-  Pencil,
-  Receipt,
-  RefreshCcw,
-  Trash2,
-  Upload,
-  XCircle,
-} from 'lucide-react';
-import { Controller, useForm } from 'react-hook-form';
-import { Link, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import {
   Toolbar,
   ToolbarActions,
@@ -65,9 +44,6 @@ import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
-import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-
 import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
@@ -77,10 +53,32 @@ import {
   useRemoveInvoiceAttachmentMutation,
   useResolveDisputeInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
+import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
+import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import {
   invoiceMarkPaidInputSchema,
   type InvoiceMarkPaidInput,
 } from '@/modules/project/schemas/invoice';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  CreditCard,
+  Download,
+  FileText,
+  MoreHorizontal,
+  PanelRightOpen,
+  Pencil,
+  Receipt,
+  RefreshCcw,
+  Trash2,
+  Upload,
+  XCircle,
+} from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
+import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type InvoiceAttachment = {
   id: string;
@@ -161,7 +159,7 @@ export function InvoiceDetailPage() {
   const { data: invoice, isLoading } = useInvoiceDetailQuery(invoiceId);
   useBreadcrumbLabel(
     projectId && invoiceId ? `/app/project/${projectId}/invoices/${invoiceId}` : undefined,
-    invoice?.invoiceNumber ?? undefined,
+    invoice?.invoiceNumber ?? undefined
   );
 
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
@@ -288,11 +286,7 @@ export function InvoiceDetailPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ToolbarPageTitle>{invoice.invoiceNumber ?? 'Invoice'}</ToolbarPageTitle>
-              <Badge
-                variant={isPaid ? 'success' : 'warning'}
-                appearance="outline"
-                size="sm"
-              >
+              <Badge variant={isPaid ? 'success' : 'warning'} appearance="outline" size="sm">
                 {isPaid ? 'Paid' : 'Unpaid'}
               </Badge>
               {isDisputed && (
@@ -372,7 +366,7 @@ export function InvoiceDetailPage() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon">
+                <Button variant="outline" size="sm" mode="icon" aria-label="Invoice actions">
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -405,53 +399,53 @@ export function InvoiceDetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
-        <StatsCard
-          icon={<Receipt className="size-5 text-primary" />}
-          bgClass="bg-primary/10"
-          label="Invoice Total"
-          value={money(totalAmount)}
-          description="Submitted amount"
-        />
-        <StatsCard
-          icon={<Receipt className="size-5 text-muted-foreground" />}
-          bgClass="bg-muted/60"
-          label="Subtotal"
-          value={money(subtotal)}
-          description="Before tax"
-        />
-        <StatsCard
-          icon={<Receipt className="size-5 text-info" />}
-          bgClass="bg-info/10"
-          label="Tax"
-          value={money(taxAmount)}
-          description={`${invoice.taxRate ?? 0}%`}
-        />
-        <StatsCard
-          icon={<CreditCard className="size-5 text-success" />}
-          bgClass="bg-success/10"
-          label="Payment"
-          value={isPaid ? 'Paid' : 'Unpaid'}
-          description={invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No payment recorded'}
-        />
-        <StatsCard
-          icon={<Calendar className="size-5 text-warning" />}
-          bgClass="bg-warning/10"
-          label="Due Date"
-          value={dateOrDash(invoice.dueDate)}
-          description={isPastDue ? 'Past due' : 'Payment due'}
-        />
-      </div>
-
-      {isDisputed && invoice.disputeReason && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-destructive">
-            <AlertTriangle className="size-4" />
-            Dispute Reason
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-5">
+            <StatsCard
+              icon={<Receipt className="size-5 text-primary" />}
+              bgClass="bg-primary/10"
+              label="Invoice Total"
+              value={money(totalAmount)}
+              description="Submitted amount"
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="Subtotal"
+              value={money(subtotal)}
+              description="Before tax"
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-info" />}
+              bgClass="bg-info/10"
+              label="Tax"
+              value={money(taxAmount)}
+              description={`${invoice.taxRate ?? 0}%`}
+            />
+            <StatsCard
+              icon={<CreditCard className="size-5 text-success" />}
+              bgClass="bg-success/10"
+              label="Payment"
+              value={isPaid ? 'Paid' : 'Unpaid'}
+              description={invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No payment recorded'}
+            />
+            <StatsCard
+              icon={<Calendar className="size-5 text-warning" />}
+              bgClass="bg-warning/10"
+              label="Due Date"
+              value={dateOrDash(invoice.dueDate)}
+              description={isPastDue ? 'Past due' : 'Payment due'}
+            />
           </div>
-          <p className="text-sm text-foreground">{invoice.disputeReason}</p>
-        </div>
-      )}
+
+          {isDisputed && invoice.disputeReason && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-destructive">
+                <AlertTriangle className="size-4" />
+                Dispute Reason
+              </div>
+              <p className="text-sm text-foreground">{invoice.disputeReason}</p>
+            </div>
+          )}
 
           <div className="grid min-w-0 grid-cols-1 gap-5 min-[1800px]:grid-cols-5">
             <div className="min-w-0 space-y-5 min-[1800px]:col-span-3">
@@ -464,7 +458,9 @@ export function InvoiceDetailPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
                     <DetailField label="Invoice #">{invoice.invoiceNumber}</DetailField>
-                    <DetailField label="Invoice Date">{dateOrDash(invoice.invoiceDate)}</DetailField>
+                    <DetailField label="Invoice Date">
+                      {dateOrDash(invoice.invoiceDate)}
+                    </DetailField>
                     <DetailField label="Due Date">{dateOrDash(invoice.dueDate)}</DetailField>
                     <DetailField label="Vendor">{invoice.vendor?.name ?? '-'}</DetailField>
                     <DetailField label="Project">{invoice.project?.name ?? '-'}</DetailField>
@@ -529,6 +525,7 @@ export function InvoiceDetailPage() {
                                   variant="ghost"
                                   mode="icon"
                                   size="sm"
+                                  aria-label={`Download ${document.displayName ?? document.name ?? 'document'}`}
                                   onClick={() => downloadFile.mutate(document)}
                                 >
                                   <Download className="size-3.5" />
@@ -539,6 +536,7 @@ export function InvoiceDetailPage() {
                                   variant="ghost"
                                   mode="icon"
                                   size="sm"
+                                  aria-label={`Remove ${document?.displayName ?? document?.name ?? 'document'}`}
                                   disabled={attachments.length <= 1}
                                   onClick={() => {
                                     if (attachments.length <= 1) {
@@ -671,12 +669,8 @@ export function InvoiceDetailPage() {
                     <div className="space-y-2">
                       {invoice.relatedSCOIds.map((id) => (
                         <div key={id} className="rounded-lg border p-3">
-                          <div className="text-sm font-semibold text-foreground">
-                            Related SCO
-                          </div>
-                          <div className="mt-1 break-all text-xs text-muted-foreground">
-                            {id}
-                          </div>
+                          <div className="text-sm font-semibold text-foreground">Related SCO</div>
+                          <div className="mt-1 break-all text-xs text-muted-foreground">{id}</div>
                           <div className="mt-2 text-xs text-muted-foreground">
                             Details unavailable in this response.
                           </div>
@@ -738,9 +732,7 @@ export function InvoiceDetailPage() {
               <Card>
                 <CardContent className="space-y-1 p-4">
                   <InfoRow label="Subtotal">{money(subtotal)}</InfoRow>
-                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>
-                    {money(taxAmount)}
-                  </InfoRow>
+                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>{money(taxAmount)}</InfoRow>
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{money(totalAmount)}</span>
@@ -805,15 +797,17 @@ export function InvoiceDetailPage() {
           </DialogHeader>
           <form
             className="space-y-4"
-            onSubmit={markPaidForm.handleSubmit((values) => {
-              markPaidMutation.mutate(
-                {
-                  id: invoiceId,
-                  data: values,
-                },
-                { onSuccess: () => setMarkPaidOpen(false) },
-              );
-            })}
+            onSubmit={(event) =>
+              void markPaidForm.handleSubmit((values) => {
+                markPaidMutation.mutate(
+                  {
+                    id: invoiceId,
+                    data: values,
+                  },
+                  { onSuccess: () => setMarkPaidOpen(false) }
+                );
+              })(event)
+            }
           >
             <Controller
               name="paidDate"
@@ -924,7 +918,7 @@ export function InvoiceDetailPage() {
               onClick={() =>
                 disputeMutation.mutate(
                   { id: invoiceId, data: { disputeReason: disputeReason.trim() } },
-                  { onSuccess: () => setDisputeOpen(false) },
+                  { onSuccess: () => setDisputeOpen(false) }
                 )
               }
             >
@@ -943,7 +937,7 @@ export function InvoiceDetailPage() {
         onConfirm={() =>
           resolveDisputeMutation.mutate(
             { id: invoiceId, data: { resolution: 'Resolved' } },
-            { onSuccess: () => setResolveOpen(false) },
+            { onSuccess: () => setResolveOpen(false) }
           )
         }
         isPending={resolveDisputeMutation.isPending}
@@ -961,10 +955,10 @@ export function InvoiceDetailPage() {
                 onSuccess: (uploaded) => {
                   addAttachmentMutation.mutate(
                     { invoiceId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) },
+                    { onSuccess: () => setUploadOpen(false) }
                   );
                 },
-              },
+              }
             );
           }}
           isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}

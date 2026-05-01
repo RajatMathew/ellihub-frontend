@@ -1,30 +1,6 @@
 import { useMemo, useState } from 'react';
 
 import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle2,
-  ClipboardList,
-  Clock,
-  Download,
-  DollarSign,
-  ExternalLink,
-  FileText,
-  History,
-  Link2,
-  MoreHorizontal,
-  PanelRightOpen,
-  Pencil,
-  PlusCircle,
-  ShieldAlert,
-  Trash2,
-  TrendingUp,
-  Upload,
-  XCircle,
-} from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-
-import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
@@ -61,17 +37,40 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
+import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
   useAddSCOAttachmentMutation,
   useApproveSCOMutation,
-  useRemoveSCOAttachmentMutation,
   useRejectSCOMutation,
+  useRemoveSCOAttachmentMutation,
   useRevertSCOToDraftMutation,
   useSCODetailQuery,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  DollarSign,
+  Download,
+  ExternalLink,
+  FileText,
+  History,
+  Link2,
+  MoreHorizontal,
+  PanelRightOpen,
+  Pencil,
+  PlusCircle,
+  ShieldAlert,
+  Trash2,
+  TrendingUp,
+  Upload,
+  XCircle,
+} from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
 /* eslint-disable react-refresh/only-export-components -- constant workflow definition used by this page component */
 
@@ -91,9 +90,7 @@ export const WORKFLOW_ACTIONS: Record<string, WorkflowAction[]> = {
     { label: 'Approve', endpoint: 'approve', needsReason: false, primary: true },
     { label: 'Reject', endpoint: 'reject', needsReason: true, destructive: true },
   ],
-  APPROVED: [
-    { label: 'Void', endpoint: 'void', needsReason: true, destructive: true },
-  ],
+  APPROVED: [{ label: 'Void', endpoint: 'void', needsReason: true, destructive: true }],
   // REJECTED and VOID are terminal - no actions
 };
 
@@ -148,7 +145,7 @@ export function SCODetailPage() {
     usePODetailQuery(purchaseOrderId);
   useBreadcrumbLabel(
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
-    sco?.scoNumber ?? sco?.title ?? undefined,
+    sco?.scoNumber ?? sco?.title ?? undefined
   );
   const { data: costCodesData } = useCostCodesQuery();
   const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
@@ -163,9 +160,13 @@ export function SCODetailPage() {
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
   );
-  const attachments = (sco?.attachments ?? []) as { id: string; documentId?: string; document?: { id: string; name: string } }[];
+  const attachments = (sco?.attachments ?? []) as {
+    id: string;
+    documentId?: string;
+    document?: { id: string; name: string };
+  }[];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -185,27 +186,38 @@ export function SCODetailPage() {
     return activityData.data.map((log) => {
       const action = log.action.toLowerCase();
       let icon = <Clock className="size-4" />;
-      let color = "border-muted-foreground/20 bg-muted/30";
+      let color = 'border-muted-foreground/20 bg-muted/30';
 
       if (action.includes('create') || action.includes('draft')) {
         icon = <PlusCircle className="size-4 text-primary" />;
-        color = "border-primary/20 bg-primary/5";
+        color = 'border-primary/20 bg-primary/5';
       } else if (action.includes('update')) {
         icon = <Pencil className="size-4 text-info" />;
-        color = "border-info/20 bg-info/5";
+        color = 'border-info/20 bg-info/5';
       } else if (action.includes('approve') || action.includes('execute')) {
         icon = <CheckCircle2 className="size-4 text-success" />;
-        color = "border-success/20 bg-success/5";
-      } else if (action.includes('delete') || action.includes('reject') || action.includes('void')) {
+        color = 'border-success/20 bg-success/5';
+      } else if (
+        action.includes('delete') ||
+        action.includes('reject') ||
+        action.includes('void')
+      ) {
         icon = <Trash2 className="size-4 text-destructive" />;
-        color = "border-destructive/20 bg-destructive/5";
+        color = 'border-destructive/20 bg-destructive/5';
       }
 
       return {
         id: log.id,
         user: log.user?.name || 'System',
         action: log.description,
-        timestamp: log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-',
+        timestamp: log.createdAt
+          ? new Date(log.createdAt).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '-',
         avatar: log.user?.image || undefined,
         icon,
         color,
@@ -213,12 +225,9 @@ export function SCODetailPage() {
     });
   }, [activityData]);
 
-  const statusName =
-    typeof sco?.status === 'string' ? sco.status : sco?.status?.name ?? '';
+  const statusName = typeof sco?.status === 'string' ? sco.status : (sco?.status?.name ?? '');
   const statusLabel =
-    typeof sco?.status === 'string'
-      ? sco.status
-      : sco?.status?.label ?? statusName;
+    typeof sco?.status === 'string' ? sco.status : (sco?.status?.label ?? statusName);
   const isDraft = statusName === 'DRAFT';
   const isApproved = statusName === 'APPROVED';
   const isRejected = statusName === 'REJECTED';
@@ -229,7 +238,6 @@ export function SCODetailPage() {
   const canVoid = isApproved;
   const canRevert = !isDraft;
   const canEdit = isDraft;
-
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -253,7 +261,10 @@ export function SCODetailPage() {
   }
 
   const isActionPending =
-    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending || revertToDraftMutation.isPending;
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    voidMutation.isPending ||
+    revertToDraftMutation.isPending;
 
   if (isLoading) {
     return (
@@ -294,8 +305,14 @@ export function SCODetailPage() {
   const purchaseOrderTotal = Number(linkedPurchaseOrder?.total ?? 0);
   const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
   const purchaseOrderLabel = linkedPurchaseOrder?.poNumber ?? sco.purchaseOrderId ?? '-';
-  const purchaseOrderVendor = purchaseOrderDetail?.vendor?.name ?? embeddedPurchaseOrder?.vendor?.name ?? sco.vendor?.name ?? '-';
-  const purchaseOrderStatus = lookupLabel(purchaseOrderDetail?.status ?? embeddedPurchaseOrder?.status);
+  const purchaseOrderVendor =
+    purchaseOrderDetail?.vendor?.name ??
+    embeddedPurchaseOrder?.vendor?.name ??
+    sco.vendor?.name ??
+    '-';
+  const purchaseOrderStatus = lookupLabel(
+    purchaseOrderDetail?.status ?? embeddedPurchaseOrder?.status
+  );
   const purchaseOrderTradeCategory =
     purchaseOrderDetail?.tradeCategoryLabel ??
     lookupLabel(embeddedPurchaseOrder?.tradeCategory ?? embeddedPurchaseOrder?.tradeCategoryLabel);
@@ -310,8 +327,7 @@ export function SCODetailPage() {
     : '-';
   const purchaseOrderLineItemCount = purchaseOrderDetail?.lineItems?.length ?? 0;
   const purchaseOrderAttachmentCount = purchaseOrderDetail?.attachments?.length ?? 0;
-  const hasReasonBanner =
-    (isRejected && sco.rejectionReason) || (isVoid && sco.voidReason);
+  const hasReasonBanner = (isRejected && sco.rejectionReason) || (isVoid && sco.voidReason);
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
@@ -354,7 +370,9 @@ export function SCODetailPage() {
               <Button
                 size="sm"
                 disabled={isActionPending}
-                onClick={() => handleActionClick({ label: 'Approve', endpoint: 'approve', needsReason: false })}
+                onClick={() =>
+                  handleActionClick({ label: 'Approve', endpoint: 'approve', needsReason: false })
+                }
               >
                 <CheckCircle2 className="size-4" />
                 Approve
@@ -367,7 +385,14 @@ export function SCODetailPage() {
                 variant="destructive"
                 size="sm"
                 disabled={isActionPending}
-                onClick={() => handleActionClick({ label: 'Reject', endpoint: 'reject', needsReason: true, destructive: true })}
+                onClick={() =>
+                  handleActionClick({
+                    label: 'Reject',
+                    endpoint: 'reject',
+                    needsReason: true,
+                    destructive: true,
+                  })
+                }
               >
                 <XCircle className="size-4" />
                 Reject
@@ -380,7 +405,14 @@ export function SCODetailPage() {
                 variant="outline"
                 size="sm"
                 disabled={isActionPending}
-                onClick={() => handleActionClick({ label: 'Void', endpoint: 'void', needsReason: true, destructive: true })}
+                onClick={() =>
+                  handleActionClick({
+                    label: 'Void',
+                    endpoint: 'void',
+                    needsReason: true,
+                    destructive: true,
+                  })
+                }
               >
                 <ShieldAlert className="size-4" />
                 Void
@@ -400,7 +432,12 @@ export function SCODetailPage() {
             {/* More menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  mode="icon"
+                  aria-label="Sub change order actions"
+                >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -433,55 +470,55 @@ export function SCODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <StatsCard
-          icon={<DollarSign className="size-5 text-primary" />}
-          bgClass="bg-primary/10"
-          label="SCO Amount"
-          value={money(amount)}
-          description="Line item total"
-        />
-        <StatsCard
-          icon={<TrendingUp className="size-5 text-muted-foreground" />}
-          bgClass="bg-muted/60"
-          label="Markup"
-          value={money(markupAmount)}
-          description="Added markup"
-        />
-        <StatsCard
-          icon={<ClipboardList className="size-5 text-info" />}
-          bgClass="bg-info/10"
-          label="Total"
-          value={money(totalAmount)}
-          description="SCO total"
-        />
-        <StatsCard
-          icon={<Link2 className="size-5 text-success" />}
-          bgClass="bg-success/10"
-          label="Linked PO"
-          value={purchaseOrderLabel}
-          description={String(purchaseOrderStatus)}
-        />
-        <StatsCard
-          icon={<Calendar className="size-5 text-warning" />}
-          bgClass="bg-warning/10"
-          label="Schedule"
-          value={`${scheduleImpactDays} day${scheduleImpactDays === 1 ? '' : 's'}`}
-          description={sco.impactsSchedule ? 'Impacts schedule' : 'No schedule impact'}
-        />
-      </div>
-
-      {hasReasonBanner && (
-        <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-            <AlertTriangle className="size-4" />
-            {isRejected ? 'Rejection Reason' : 'Void Reason'}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            <StatsCard
+              icon={<DollarSign className="size-5 text-primary" />}
+              bgClass="bg-primary/10"
+              label="SCO Amount"
+              value={money(amount)}
+              description="Line item total"
+            />
+            <StatsCard
+              icon={<TrendingUp className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="Markup"
+              value={money(markupAmount)}
+              description="Added markup"
+            />
+            <StatsCard
+              icon={<ClipboardList className="size-5 text-info" />}
+              bgClass="bg-info/10"
+              label="Total"
+              value={money(totalAmount)}
+              description="SCO total"
+            />
+            <StatsCard
+              icon={<Link2 className="size-5 text-success" />}
+              bgClass="bg-success/10"
+              label="Linked PO"
+              value={purchaseOrderLabel}
+              description={String(purchaseOrderStatus)}
+            />
+            <StatsCard
+              icon={<Calendar className="size-5 text-warning" />}
+              bgClass="bg-warning/10"
+              label="Schedule"
+              value={`${scheduleImpactDays} day${scheduleImpactDays === 1 ? '' : 's'}`}
+              description={sco.impactsSchedule ? 'Impacts schedule' : 'No schedule impact'}
+            />
           </div>
-          <p className="text-sm text-foreground">
-            {isRejected ? sco.rejectionReason : sco.voidReason}
-          </p>
-        </div>
-      )}
+
+          {hasReasonBanner && (
+            <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                <AlertTriangle className="size-4" />
+                {isRejected ? 'Rejection Reason' : 'Void Reason'}
+              </div>
+              <p className="text-sm text-foreground">
+                {isRejected ? sco.rejectionReason : sco.voidReason}
+              </p>
+            </div>
+          )}
 
           {/* General Info */}
           <Card>
@@ -505,9 +542,7 @@ export function SCODetailPage() {
               </InfoRow>
               {/* Hidden until /sub-change-order/{id} includes priority. */}
               {/* Hidden until /sub-change-order/{id} includes initiatedBy. */}
-              <InfoRow label="Purchase Order">
-                {purchaseOrderLabel}
-              </InfoRow>
+              <InfoRow label="Purchase Order">{purchaseOrderLabel}</InfoRow>
               <InfoRow label="Vendor">{purchaseOrderVendor}</InfoRow>
               {/* Hidden until /sub-change-order/{id} includes vendorContactName. */}
               {/* Hidden until /sub-change-order/{id} includes vendorContactEmail. */}
@@ -591,9 +626,7 @@ export function SCODetailPage() {
                               <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
                             )}
                           </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
-                            {item.quantity}
-                          </td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums">{item.quantity}</td>
                           <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
                           <td className="py-2.5 text-right font-medium tabular-nums">
                             {money(item.amount)}
@@ -617,9 +650,7 @@ export function SCODetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {sco.description && (
-                  <p className="text-sm text-foreground whitespace-pre-wrap">
-                    {sco.description}
-                  </p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{sco.description}</p>
                 )}
                 {/* Hidden until /sub-change-order/{id} includes reasonForChange. */}
                 {/* Hidden until /sub-change-order/{id} includes detailedScope. */}
@@ -637,153 +668,158 @@ export function SCODetailPage() {
             <CardContent>
               {sco.lineItems.length > 0 ? (
                 <>
-                <div className="space-y-3 md:hidden">
-                  {sco.lineItems.map((li, idx) => (
-                    <div key={li.id} className="rounded-lg border p-3">
-                      <div className="flex min-w-0 items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                            Line {idx + 1}
-                          </div>
-                          <div className="mt-1 break-words text-sm font-semibold text-foreground">
-                            {li.description}
-                          </div>
-                          {li.notes && (
-                            <div className="mt-1 break-words text-xs text-muted-foreground">
-                              {li.notes}
+                  <div className="space-y-3 md:hidden">
+                    {sco.lineItems.map((li, idx) => (
+                      <div key={li.id} className="rounded-lg border p-3">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                              Line {idx + 1}
                             </div>
-                          )}
-                        </div>
-                        <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                          {money(li.amount)}
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <div className="text-muted-foreground">Qty</div>
-                          <div className="font-medium tabular-nums">
-                            {li.quantity ?? li.qty ?? '-'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Unit</div>
-                          <div className="font-medium">{lookupLabel(li.unit ?? li.unitId)}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Unit Price</div>
-                          <div className="font-medium tabular-nums">{money(li.unitPrice)}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Cost Code</div>
-                          <div className="break-words font-medium">
-                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '-' : '-'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                    <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                    {Number(sco.markupAmount ?? 0) !== 0 && (
-                      <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
-                    )}
-                    {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
-                    <Separator className="my-2" />
-                    <InfoRow label="Total">
-                      <span className="font-semibold">
-                        {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
-                      </span>
-                    </InfoRow>
-                  </div>
-                </div>
-
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="min-w-max w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          #
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Description
-                        </th>
-                        <th className="w-40 pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Cost Code
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Qty
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Unit
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Unit Price
-                        </th>
-                        <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Amount
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sco.lineItems.map((li, idx) => (
-                        <tr key={li.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
-                          <td className="py-2.5 pr-4">
-                            <div className="font-medium">{li.description}</div>
+                            <div className="mt-1 break-words text-sm font-semibold text-foreground">
+                              {li.description}
+                            </div>
                             {li.notes && (
-                              <div className="mt-1 text-xs text-muted-foreground">{li.notes}</div>
+                              <div className="mt-1 break-words text-xs text-muted-foreground">
+                                {li.notes}
+                              </div>
                             )}
-                          </td>
-                          <td className="py-2.5 pr-4 text-xs text-muted-foreground">
-                            {li.costCodeId ? costCodeMap.get(li.costCodeId) ?? '-' : '-'}
-                          </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
-                            {li.quantity ?? li.qty ?? '-'}
-                          </td>
-                          <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
-                            {money(li.unitPrice)}
-                          </td>
-                          <td className="py-2.5 text-right font-medium tabular-nums">
+                          </div>
+                          <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                             {money(li.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
-                          Subtotal
-                        </td>
-                        <td className="pt-3 text-right tabular-nums text-sm">
-                          {formatCurrency(sco.amount)}
-                        </td>
-                      </tr>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <div className="text-muted-foreground">Qty</div>
+                            <div className="font-medium tabular-nums">
+                              {li.quantity ?? li.qty ?? '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Unit</div>
+                            <div className="font-medium">{lookupLabel(li.unit ?? li.unitId)}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Unit Price</div>
+                            <div className="font-medium tabular-nums">{money(li.unitPrice)}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Cost Code</div>
+                            <div className="break-words font-medium">
+                              {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                      <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
                       {Number(sco.markupAmount ?? 0) !== 0 && (
-                        <tr>
-                          <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                            Markup
-                          </td>
-                          <td className="pt-1 text-right tabular-nums text-sm">
-                            {money(sco.markupAmount)}
-                          </td>
-                        </tr>
+                        <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
                       )}
                       {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
-                      <tr className="border-t">
-                        <td
-                          colSpan={6}
-                          className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase"
-                        >
-                          Total
-                        </td>
-                        <td className="pt-2 text-right font-semibold tabular-nums">
-                          {formatCurrency(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                      <Separator className="my-2" />
+                      <InfoRow label="Total">
+                        <span className="font-semibold">
+                          {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
+                        </span>
+                      </InfoRow>
+                    </div>
+                  </div>
+
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="min-w-max w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left">
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            #
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            Description
+                          </th>
+                          <th className="w-40 pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            Cost Code
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Qty
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            Unit
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Unit Price
+                          </th>
+                          <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Amount
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sco.lineItems.map((li, idx) => (
+                          <tr key={li.id} className="border-b last:border-0">
+                            <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
+                            <td className="py-2.5 pr-4">
+                              <div className="font-medium">{li.description}</div>
+                              {li.notes && (
+                                <div className="mt-1 text-xs text-muted-foreground">{li.notes}</div>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                              {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
+                            </td>
+                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                              {li.quantity ?? li.qty ?? '-'}
+                            </td>
+                            <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
+                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                              {money(li.unitPrice)}
+                            </td>
+                            <td className="py-2.5 text-right font-medium tabular-nums">
+                              {money(li.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
+                            Subtotal
+                          </td>
+                          <td className="pt-3 text-right tabular-nums text-sm">
+                            {formatCurrency(sco.amount)}
+                          </td>
+                        </tr>
+                        {Number(sco.markupAmount ?? 0) !== 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="pt-1 text-right text-xs text-muted-foreground"
+                            >
+                              Markup
+                            </td>
+                            <td className="pt-1 text-right tabular-nums text-sm">
+                              {money(sco.markupAmount)}
+                            </td>
+                          </tr>
+                        )}
+                        {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                        <tr className="border-t">
+                          <td
+                            colSpan={6}
+                            className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase"
+                          >
+                            Total
+                          </td>
+                          <td className="pt-2 text-right font-semibold tabular-nums">
+                            {formatCurrency(
+                              Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0)
+                            )}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
@@ -827,6 +863,7 @@ export function SCODetailPage() {
                             variant="ghost"
                             mode="icon"
                             size="sm"
+                            aria-label={`Download ${att.document?.name ?? 'document'}`}
                             onClick={() => downloadFile.mutate(att.document!)}
                           >
                             <Download className="size-3.5" />
@@ -837,7 +874,10 @@ export function SCODetailPage() {
                             variant="ghost"
                             mode="icon"
                             size="sm"
-                            onClick={() => removeAttachmentMutation.mutate({ scoId, attachmentId: att.id })}
+                            aria-label={`Remove ${att.document?.name ?? 'document'}`}
+                            onClick={() =>
+                              removeAttachmentMutation.mutate({ scoId, attachmentId: att.id })
+                            }
                           >
                             <Trash2 className="size-3.5 text-destructive" />
                           </Button>
@@ -871,7 +911,9 @@ export function SCODetailPage() {
               ) : (
                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                   <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-normal font-bold">No activity recorded yet.</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-normal font-bold">
+                    No activity recorded yet.
+                  </p>
                 </div>
               )}
             </div>
@@ -899,15 +941,11 @@ export function SCODetailPage() {
                   {/* Hidden until /sub-change-order/{id} includes retainagePercent. */}
                   {/* Hidden until /sub-change-order/{id} includes paymentTerms. */}
                   <Separator className="my-2" />
-                  <InfoRow label="Purchase Order">
-                    {purchaseOrderLabel}
-                  </InfoRow>
+                  <InfoRow label="Purchase Order">{purchaseOrderLabel}</InfoRow>
                   <InfoRow label="PO Total">
                     {purchaseOrderTotal ? money(purchaseOrderTotal) : '-'}
                   </InfoRow>
-                  <InfoRow label="PO Vendor">
-                    {purchaseOrderVendor}
-                  </InfoRow>
+                  <InfoRow label="PO Vendor">{purchaseOrderVendor}</InfoRow>
                 </CardContent>
               </Card>
             </div>
@@ -1069,10 +1107,10 @@ export function SCODetailPage() {
                 onSuccess: (uploaded) => {
                   addAttachmentMutation.mutate(
                     { scoId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) },
+                    { onSuccess: () => setUploadOpen(false) }
                   );
                 },
-              },
+              }
             );
           }}
           isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
@@ -1081,4 +1119,3 @@ export function SCODetailPage() {
     </div>
   );
 }
-

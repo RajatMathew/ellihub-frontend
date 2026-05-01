@@ -1,34 +1,5 @@
 import { useMemo, useState } from 'react';
 
-import { useQuery } from '@tanstack/react-query';
-import {
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
-  Clock,
-  DollarSign,
-  Eye,
-  FileText,
-  History,
-  Mail,
-  MoreHorizontal,
-  PanelRightOpen,
-  Paperclip,
-  Pencil,
-  Plus,
-  PlusCircle,
-  Send,
-  ShieldAlert,
-  Trash2,
-  Trophy,
-  Upload,
-  Users,
-  X,
-  XCircle,
-} from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import {
   Toolbar,
   ToolbarActions,
@@ -36,7 +7,6 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
-import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -62,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/componen
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { DetailSidebar } from '@/modules/directory/components';
@@ -71,7 +42,11 @@ import { filesApi } from '@/modules/files/api/files.api';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow } from '@/modules/project/components/info-row';
-
+import {
+  RFQDetailAttachmentsCard,
+  RFQDetailDeliverablesCard,
+  RFQDetailVendorsCard,
+} from '@/modules/project/components/rfq';
 import {
   BIDDING_TYPE_LABELS,
   getRfqStatusVariant,
@@ -100,6 +75,30 @@ import {
 } from '@/modules/project/hooks/rfq';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  DollarSign,
+  FileText,
+  History,
+  Mail,
+  PanelRightOpen,
+  Pencil,
+  PlusCircle,
+  Send,
+  ShieldAlert,
+  Trash2,
+  Trophy,
+  Upload,
+  Users,
+  X,
+  XCircle,
+} from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 /* ---- Quote Document Preview ---- */
 
@@ -172,7 +171,7 @@ export default function RFQDetailPage() {
   const { data: rfq, isLoading } = useRFQDetailQuery(rfqId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
-    rfq?.rfqNumber ?? undefined,
+    rfq?.rfqNumber ?? undefined
   );
 
   const publishMutation = usePublishRFQMutation();
@@ -353,12 +352,6 @@ export default function RFQDetailPage() {
     0
   );
 
-  // Build a map of vendorId → quote
-  const quoteByVendor = new Map<string, (typeof quotes)[number]>();
-  for (const q of quotes) {
-    if (q.vendor) quoteByVendor.set(q.vendor.id, q);
-  }
-
   // IDs of vendors already invited
   const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
 
@@ -410,7 +403,7 @@ export default function RFQDetailPage() {
   }
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>
@@ -420,7 +413,7 @@ export default function RFQDetailPage() {
                 Back to RFQs
               </Link>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
               {rfq.status && rfqStatuses && rfqStatuses.length > 0 ? (
                 <Select
@@ -440,7 +433,7 @@ export default function RFQDetailPage() {
                     {rfqStatuses
                       .filter(
                         (status): status is RFQStatus & { id: string } =>
-                          typeof status.id === 'string' && status.id.length > 0,
+                          typeof status.id === 'string' && status.id.length > 0
                       )
                       .map((status) => (
                         <SelectItem key={status.id} value={status.id}>
@@ -536,11 +529,11 @@ export default function RFQDetailPage() {
       </Toolbar>
 
       {/* ---- Two-column layout ---- */}
-      <div className="flex gap-6 pt-5">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         {/* Left column */}
-        <div className="flex-1 min-w-0 space-y-5">
+        <div className="min-w-0 flex-1 space-y-5">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard
               icon={<ShieldAlert className="size-6 text-muted-foreground" />}
               bgClass="bg-muted/50"
@@ -577,7 +570,7 @@ export default function RFQDetailPage() {
 
           {/* Quick Actions */}
           {!isDraft && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {quotes.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
                   <FileText className="size-4" />
@@ -593,411 +586,44 @@ export default function RFQDetailPage() {
             </div>
           )}
 
-          {/* Vendor Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                Vendors
-              </CardTitle>
-              {!isTerminal && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setInviteVendorIds([]);
-                    setInviteOpen(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Invite Vendor
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {invites.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Vendor
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Status
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Quote Amount
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Lead Time
-                        </th>
-                        <th className="pb-2 w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invites.map((inv) => {
-                        const vendor = inv.vendor;
-                        const declined = !!inv.declinedToQuote;
-                        const hasQuote = !!inv.hasSubmittedQuote;
-                        const vendorQuote = vendor ? quoteByVendor.get(vendor.id) : null;
-                        const grandTotal = vendorQuote?.grandTotal;
-                        const isVendorAwarded =
-                          !!vendorQuote?.isAwarded || rfq.awardedVendorId === vendor?.id;
-                        const vendorPO = rfq.purchaseOrders?.find(
-                          (po) => po.vendorId === vendor?.id
-                        );
-                        const leadTimeNotes = vendorQuote?.notes;
+          <RFQDetailVendorsCard
+            invites={invites}
+            quotes={quotes}
+            purchaseOrders={rfq.purchaseOrders}
+            awardedVendorId={rfq.awardedVendorId}
+            isTerminal={isTerminal}
+            isPublished={isPublished}
+            isEvaluation={isEvaluation}
+            isAwarded={isAwarded}
+            onInviteVendor={() => {
+              setInviteVendorIds([]);
+              setInviteOpen(true);
+            }}
+            onOpenQuote={openQuoteDialog}
+            onAwardQuote={handleAwardFromTable}
+            onUnaward={handleUnaward}
+            onGeneratePO={() => generatePOMutation.mutate(rfqId)}
+            onRemoveQuote={(quoteId) => removeQuoteMutation.mutate({ rfqId, id: quoteId })}
+            onRemoveVendor={(inviteId) => removeVendorMutation.mutate({ rfqId, quoteId: inviteId })}
+            onDeclineInvite={(inviteId) =>
+              declineInviteMutation.mutate({ rfqId, data: { id: inviteId } })
+            }
+          />
 
-                        return (
-                          <tr key={inv.id} className="border-b last:border-0">
-                            <td className="py-2.5 pr-4">
-                              <div className="font-medium">{vendor?.name ?? '—'}</div>
-                              {vendor?.email && (
-                                <div className="text-xs text-muted-foreground">{vendor.email}</div>
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4">
-                              {isTerminal ? (
-                                declined ? (
-                                  <Badge variant="destructive" appearance="light" size="sm">
-                                    Declined
-                                  </Badge>
-                                ) : hasQuote ? (
-                                  <Badge variant="primary" appearance="light" size="sm">
-                                    Quoted
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="secondary" appearance="light" size="sm">
-                                    Waiting
-                                  </Badge>
-                                )
-                              ) : (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button type="button" className="cursor-pointer">
-                                      {isVendorAwarded ? (
-                                        <Badge variant="success" appearance="light" size="sm">
-                                          Awarded <ChevronDown className="ml-0.5 size-3 inline" />
-                                        </Badge>
-                                      ) : declined ? (
-                                        <Badge variant="destructive" appearance="light" size="sm">
-                                          Declined <ChevronDown className="ml-0.5 size-3 inline" />
-                                        </Badge>
-                                      ) : hasQuote ? (
-                                        <Badge variant="primary" appearance="light" size="sm">
-                                          Quoted <ChevronDown className="ml-0.5 size-3 inline" />
-                                        </Badge>
-                                      ) : (
-                                        <Badge variant="secondary" appearance="light" size="sm">
-                                          Waiting <ChevronDown className="ml-0.5 size-3 inline" />
-                                        </Badge>
-                                      )}
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start" className="w-44">
-                                    {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)
-                                        }
-                                      >
-                                        <Eye className="size-4" />
-                                        View Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded && !hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() => openQuoteDialog(inv.id, vendor.id)}
-                                      >
-                                        <Upload className="size-4" />
-                                        Upload Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded && hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id)
-                                        }
-                                      >
-                                        <Pencil className="size-4" />
-                                        Edit Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded &&
-                                      hasQuote &&
-                                      vendorQuote &&
-                                      grandTotal != null &&
-                                      grandTotal > 0 &&
-                                      (isPublished || isEvaluation || isAwarded) && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleAwardFromTable(vendorQuote.id)}
-                                        >
-                                          <Trophy className="size-4" />
-                                          Award
-                                        </DropdownMenuItem>
-                                      )}
-                                    {(hasQuote ||
-                                      isVendorAwarded ||
-                                      (!declined && !isVendorAwarded)) && <DropdownMenuSeparator />}
-                                    {!isVendorAwarded && hasQuote && vendorQuote && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          removeQuoteMutation.mutate({ rfqId, id: vendorQuote.id });
-                                        }}
-                                      >
-                                        <Trash2 className="size-4" />
-                                        Remove Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => handleUnaward()}
-                                      >
-                                        <XCircle className="size-4" />
-                                        Unaward
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          removeVendorMutation.mutate({ rfqId, quoteId: inv.id });
-                                        }}
-                                      >
-                                        <Trash2 className="size-4" />
-                                        Remove Vendor
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!declined && !isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          declineInviteMutation.mutate({
-                                            rfqId,
-                                            data: { id: inv.id },
-                                          });
-                                        }}
-                                      >
-                                        <XCircle className="size-4" />
-                                        Decline
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {grandTotal != null ? formatCurrency(grandTotal) : '—'}
-                            </td>
-                            <td className="py-2.5 pr-4 text-muted-foreground text-sm">
-                              {leadTimeNotes || '—'}
-                            </td>
-                            <td className="py-2.5 text-right">
-                              {!isTerminal && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      mode="icon"
-                                      className="size-7"
-                                    >
-                                      <MoreHorizontal className="size-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-44">
-                                    {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id, true)
-                                        }
-                                      >
-                                        <Eye className="size-4" />
-                                        View Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!hasQuote && !declined && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() => openQuoteDialog(inv.id, vendor.id)}
-                                      >
-                                        <Upload className="size-4" />
-                                        Upload Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {hasQuote && vendorQuote && vendor && (
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          openQuoteDialog(inv.id, vendor.id, vendorQuote.id)
-                                        }
-                                      >
-                                        <Pencil className="size-4" />
-                                        Edit Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded &&
-                                      hasQuote &&
-                                      vendorQuote &&
-                                      grandTotal != null &&
-                                      grandTotal > 0 && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleAwardFromTable(vendorQuote.id)}
-                                        >
-                                          <Trophy className="size-4" />
-                                          Award
-                                        </DropdownMenuItem>
-                                      )}
-                                    {isVendorAwarded && !vendorPO && (
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          generatePOMutation.mutate(rfqId);
-                                        }}
-                                      >
-                                        <FileText className="size-4" />
-                                        Create PO
-                                      </DropdownMenuItem>
-                                    )}
-                                    {isVendorAwarded && vendorPO && (
-                                      <DropdownMenuItem asChild>
-                                        <Link to={`../../purchase-orders/${vendorPO.id}`}>
-                                          <FileText className="size-4" />
-                                          View PO
-                                        </Link>
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    {hasQuote && vendorQuote && !isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          removeQuoteMutation.mutate({ rfqId, id: vendorQuote.id });
-                                        }}
-                                      >
-                                        <Trash2 className="size-4" />
-                                        Remove Quote
-                                      </DropdownMenuItem>
-                                    )}
-                                    {isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => handleUnaward()}
-                                      >
-                                        <XCircle className="size-4" />
-                                        Unaward
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          removeVendorMutation.mutate({ rfqId, quoteId: inv.id });
-                                        }}
-                                      >
-                                        <Trash2 className="size-4" />
-                                        Remove Vendor
-                                      </DropdownMenuItem>
-                                    )}
-                                    {!declined && !isVendorAwarded && (
-                                      <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => {
-                                          declineInviteMutation.mutate({
-                                            rfqId,
-                                            data: { id: inv.id },
-                                          });
-                                        }}
-                                      >
-                                        <XCircle className="size-4" />
-                                        Decline
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <Users className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No vendors invited yet.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Attachments */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                Attachments ({attachments.length})
-              </CardTitle>
-              {!isTerminal && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!rfqFolderQuery.data}
-                  onClick={() => setUploadOpen(true)}
-                >
-                  <Upload className="size-4" />
-                  Add Attachment
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {attachments.length > 0 ? (
-                <div className="space-y-2">
-                  {attachments.map((att) => (
-                    <div key={att.id} className="flex items-center gap-3 rounded-lg border p-3">
-                      <Paperclip className="size-4 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        {att.document?.id ? (
-                          <button
-                            type="button"
-                            className="text-sm font-medium truncate text-primary hover:underline block max-w-full text-left"
-                            onClick={() => downloadFile.mutate(att.document!)}
-                          >
-                            {att.document.name ?? 'Untitled Document'}
-                          </button>
-                        ) : (
-                          <div className="text-sm font-medium truncate">
-                            {att.document?.name ?? 'File'}
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground shrink-0">Document</span>
-                      {!isTerminal && (
-                        <Button
-                          variant="ghost"
-                          mode="icon"
-                          size="sm"
-                          disabled={removeAttachmentMutation.isPending}
-                          onClick={() => {
-                            removeAttachmentMutation.mutate({
-                              rfqId: rfqId!,
-                              attachmentId: att.id,
-                            });
-                          }}
-                        >
-                          <Trash2 className="size-3.5 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <Paperclip className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No attachments.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <RFQDetailAttachmentsCard
+            attachments={attachments}
+            canEdit={!isTerminal}
+            canUpload={!!rfqFolderQuery.data}
+            isRemoving={removeAttachmentMutation.isPending}
+            onUpload={() => setUploadOpen(true)}
+            onDownload={(document) => downloadFile.mutate(document)}
+            onRemove={(attachmentId) => {
+              removeAttachmentMutation.mutate({
+                rfqId,
+                attachmentId,
+              });
+            }}
+          />
 
           {rfqFolderQuery.data && (
             <UploadFileDialog
@@ -1016,66 +642,7 @@ export default function RFQDetailPage() {
             />
           )}
 
-          {/* Required Deliverables */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                Required Deliverables ({deliverables.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {deliverables.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase w-8">
-                          #
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Description
-                        </th>
-                        <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Qty
-                        </th>
-                        <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Unit
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deliverables.map((d, index) => (
-                        <tr key={d.id} className="border-b last:border-0 border-muted/20">
-                          <td className="py-2.5 pr-3 text-xs font-medium text-muted-foreground w-8">
-                            {d.sequenceNumber ?? index + 1}
-                          </td>
-                          <td className="py-2.5 pr-3">
-                            <div className="text-sm font-medium">
-                              {d.name || d.description || '—'}
-                            </div>
-                            {d.specifications && (
-                              <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                {d.specifications}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 pr-3 text-right tabular-nums">{d.quantity}</td>
-                          <td className="py-2.5">
-                            {typeof d.unit === 'object' ? d.unit?.label : d.unit}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-6 text-center">
-                  <FileText className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No deliverables.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <RFQDetailDeliverablesCard deliverables={deliverables} />
 
           {/* Detailed Scope */}
           {rfq.description && (
@@ -1250,8 +817,8 @@ export default function RFQDetailPage() {
 
       {/* ---- Bid Comparison Dialog ---- */}
       <Dialog open={comparisonOpen} onOpenChange={setComparisonOpen}>
-        <DialogContent className="max-h-dvh max-w-7xl overflow-hidden flex flex-col">
-          <DialogHeader className="flex-row items-start justify-between gap-4">
+        <DialogContent className="flex max-h-dvh max-w-7xl flex-col overflow-hidden">
+          <DialogHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <DialogTitle className="text-lg">Bid Comparison</DialogTitle>
               <p className="text-xs text-muted-foreground mt-1">
@@ -1260,7 +827,7 @@ export default function RFQDetailPage() {
                 {invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
               </p>
             </div>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex flex-wrap items-center gap-4 text-sm sm:gap-6">
               {rfq.createdAt && (
                 <div>
                   <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
@@ -1278,7 +845,7 @@ export default function RFQDetailPage() {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-x-auto overflow-y-auto mt-4">
+          <div className="mt-4 flex-1 overflow-x-auto overflow-y-auto">
             {isComparisonLoading ? (
               <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
                 <div className="size-8 rounded-full border-2 border-t-primary border-muted-foreground/10 animate-spin mb-4" />
@@ -1290,7 +857,7 @@ export default function RFQDetailPage() {
                 <p className="text-sm text-destructive">Failed to load comparison data</p>
               </div>
             ) : bidComparison ? (
-              <div className="flex gap-4 min-w-max pb-4">
+              <div className="flex min-w-max gap-4 pb-4">
                 {/* Show all invites — vendors with quotes, without quotes, and declined */}
                 {invites.map((inv) => {
                   const vendor = inv.vendor;
@@ -1301,10 +868,10 @@ export default function RFQDetailPage() {
                   return (
                     <div
                       key={inv.id}
-                      className="w-72 shrink-0 rounded-lg border bg-card flex flex-col"
+                      className="flex w-72 shrink-0 flex-col rounded-lg border bg-card"
                     >
                       {/* Quote document area */}
-                      <div className="h-64 border-b bg-muted/30 flex items-center justify-center rounded-t-lg overflow-hidden">
+                      <div className="flex h-64 items-center justify-center overflow-hidden rounded-t-lg border-b bg-muted/30">
                         {hasQuote && bcQuote?.attachments?.length ? (
                           <QuoteDocPreview
                             documentId={bcQuote.attachments[0].document.id}
@@ -1493,6 +1060,7 @@ export default function RFQDetailPage() {
                         variant="ghost"
                         size="sm"
                         mode="icon"
+                        aria-label={`Remove ${att.document?.name || att.name || 'document'}`}
                         className="size-7 hover:text-destructive"
                         onClick={() =>
                           setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))
@@ -1506,11 +1074,14 @@ export default function RFQDetailPage() {
                         variant="ghost"
                         size="sm"
                         mode="icon"
+                        aria-label={`Download ${att.document?.name || att.name || 'document'}`}
                         className="size-7"
                         onClick={() => {
-                          const doc = att.document ?? (att.documentId
-                            ? { id: att.documentId, name: att.name ?? 'Document' }
-                            : null);
+                          const doc =
+                            att.document ??
+                            (att.documentId
+                              ? { id: att.documentId, name: att.name ?? 'Document' }
+                              : null);
                           if (doc) {
                             downloadFile.mutate(doc);
                           }

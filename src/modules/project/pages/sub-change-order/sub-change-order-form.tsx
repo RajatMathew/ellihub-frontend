@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
@@ -27,16 +20,10 @@ import { formatCurrency } from '@/app/lib/helpers';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
-import type { POListItem } from '@/modules/project/schemas/purchase-order';
-import {
-  ProjectFormDocumentsCard,
-  ProjectFormToolbar,
-} from '@/modules/project/components/shared';
-import {
-  SCO_FORM_SECTIONS,
-} from '@/modules/project/constants/sub-change-order';
+import { ProjectFormDocumentsCard, ProjectFormToolbar } from '@/modules/project/components/shared';
+import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
+import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import { useDebouncedValue } from '@/modules/project/hooks/shared';
 import {
   useAddSCOAttachmentMutation,
@@ -44,12 +31,19 @@ import {
   useSCODetailQuery,
   useUpdateSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
-import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
+import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import {
   createSCOInputSchema,
   type CreateSCOInput,
   type SCOLineItemInput,
 } from '@/modules/project/schemas/sub-change-order';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { Plus, Trash2 } from 'lucide-react';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const defaultLineItem: SCOLineItemInput = {
   description: '',
@@ -77,7 +71,7 @@ export function SCOFormPage() {
   const { data: scoDetail, isLoading: isLoadingDetail } = useSCODetailQuery(scoId ?? '');
   useBreadcrumbLabel(
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
-    scoDetail?.scoNumber ?? undefined,
+    scoDetail?.scoNumber ?? undefined
   );
 
   const { data: costCodesData } = useCostCodesQuery();
@@ -94,7 +88,10 @@ export function SCOFormPage() {
     selectedOption: selectedPurchaseOrderOption,
   });
   const { data: primeCoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
-  const { data: legacyScoFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order co');
+  const { data: legacyScoFolderId } = useProjectFolderQuery(
+    projectId || undefined,
+    'purchase order co'
+  );
   const uploadFolderId = primeCoFolderId ?? legacyScoFolderId;
 
   const createMutation = useCreateSCOMutation();
@@ -173,9 +170,9 @@ export function SCOFormPage() {
     () =>
       lineItemsForTotals.reduce(
         (sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitPrice),
-        0,
+        0
       ),
-    [lineItemsForTotals],
+    [lineItemsForTotals]
   );
   const total = subtotal + toNumber(watchedMarkup);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
@@ -223,9 +220,10 @@ export function SCOFormPage() {
 
     setIsSaving(true);
     try {
-      const saved = isEdit && scoId
-        ? await updateMutation.mutateAsync({ id: scoId, data: cleaned })
-        : await createMutation.mutateAsync(cleaned);
+      const saved =
+        isEdit && scoId
+          ? await updateMutation.mutateAsync({ id: scoId, data: cleaned })
+          : await createMutation.mutateAsync(cleaned);
 
       if (selectedFiles.length > 0) {
         if (uploadFolderId) {
@@ -252,9 +250,11 @@ export function SCOFormPage() {
   return (
     <form
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))(event)
+        void handleSubmit(onSubmit, () => {
+          toast.error('Please fix the highlighted sub change order fields.');
+        })(event)
       }
-      className="container-fluid py-7.5"
+      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
         backLabel="Sub Change Order"
@@ -422,11 +422,7 @@ export function SCOFormPage() {
                     <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                       Description
                     </FieldLabel>
-                    <Textarea
-                      {...field}
-                      placeholder="Describe the requested change..."
-                      rows={3}
-                    />
+                    <Textarea {...field} placeholder="Describe the requested change..." rows={3} />
                   </Field>
                 )}
               />
@@ -461,7 +457,9 @@ export function SCOFormPage() {
                           min={0}
                           step="0.01"
                           value={field.value ?? 0}
-                          onChange={(event) => field.onChange(toNonNegativeNumber(event.target.value))}
+                          onChange={(event) =>
+                            field.onChange(toNonNegativeNumber(event.target.value))
+                          }
                           aria-invalid={fieldState.invalid}
                         />
                       </InputWrapper>
@@ -538,6 +536,7 @@ export function SCOFormPage() {
                         variant="ghost"
                         size="sm"
                         mode="icon"
+                        aria-label={`Remove line item ${index + 1}`}
                         className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
                         disabled={fields.length <= 1}
                         onClick={() => remove(index)}
@@ -598,7 +597,9 @@ export function SCOFormPage() {
                               min={0}
                               step="0.01"
                               value={field.value ?? 0}
-                              onChange={(event) => field.onChange(toNonNegativeNumber(event.target.value))}
+                              onChange={(event) =>
+                                field.onChange(toNonNegativeNumber(event.target.value))
+                              }
                               aria-invalid={fieldState.invalid}
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -654,7 +655,7 @@ export function SCOFormPage() {
                         <div className="mt-1 text-sm font-semibold tabular-nums">
                           {formatCurrency(
                             toNumber(lineItemsForTotals[index]?.quantity) *
-                              toNumber(lineItemsForTotals[index]?.unitPrice),
+                              toNumber(lineItemsForTotals[index]?.unitPrice)
                           )}
                         </div>
                       </div>
@@ -680,28 +681,50 @@ export function SCOFormPage() {
                 <table className="w-full min-w-max">
                   <thead>
                     <tr className="border-b">
-                      <th className="w-8 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">#</th>
-                      <th className="pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">Description</th>
-                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">Cost Code</th>
-                      <th className="w-24 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">Quantity</th>
-                      <th className="w-28 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">Unit</th>
-                      <th className="w-32 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">Unit Price</th>
-                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">Notes</th>
-                      <th className="w-32 pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">Amount</th>
+                      <th className="w-8 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        #
+                      </th>
+                      <th className="pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Description
+                      </th>
+                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Cost Code
+                      </th>
+                      <th className="w-24 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Quantity
+                      </th>
+                      <th className="w-28 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Unit
+                      </th>
+                      <th className="w-32 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Unit Price
+                      </th>
+                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Notes
+                      </th>
+                      <th className="w-32 pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                        Amount
+                      </th>
                       <th className="w-8" />
                     </tr>
                   </thead>
                   <tbody>
                     {fields.map((item, index) => (
                       <tr key={item.id} className="border-b last:border-0 align-top">
-                        <td className="py-2.5 pr-3 pt-3.5 text-sm text-muted-foreground">{index + 1}</td>
+                        <td className="py-2.5 pr-3 pt-3.5 text-sm text-muted-foreground">
+                          {index + 1}
+                        </td>
                         <td className="py-2.5 pr-3">
                           <Controller
                             name={`lineItems.${index}.description`}
                             control={control}
                             render={({ field, fieldState }) => (
                               <div>
-                                <Input {...field} placeholder="Line item description" aria-invalid={fieldState.invalid} />
+                                <Input
+                                  {...field}
+                                  placeholder="Line item description"
+                                  aria-invalid={fieldState.invalid}
+                                />
                                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                               </div>
                             )}
@@ -734,7 +757,9 @@ export function SCOFormPage() {
                                   min={0}
                                   step="0.01"
                                   value={field.value ?? 0}
-                                  onChange={(event) => field.onChange(toNonNegativeNumber(event.target.value))}
+                                  onChange={(event) =>
+                                    field.onChange(toNonNegativeNumber(event.target.value))
+                                  }
                                   className="text-right"
                                   aria-invalid={fieldState.invalid}
                                 />
@@ -793,7 +818,7 @@ export function SCOFormPage() {
                         <td className="py-2.5 pt-3.5 text-right text-sm font-medium tabular-nums">
                           {formatCurrency(
                             toNumber(lineItemsForTotals[index]?.quantity) *
-                              toNumber(lineItemsForTotals[index]?.unitPrice),
+                              toNumber(lineItemsForTotals[index]?.unitPrice)
                           )}
                         </td>
                         <td className="py-2.5 pl-1 pt-3">
@@ -802,6 +827,7 @@ export function SCOFormPage() {
                             variant="ghost"
                             size="sm"
                             mode="icon"
+                            aria-label={`Remove line item ${index + 1}`}
                             className="size-8 text-muted-foreground hover:text-destructive"
                             disabled={fields.length <= 1}
                             onClick={() => remove(index)}
@@ -906,7 +932,8 @@ function usePurchaseOrderOptions({
   });
 
   const options = useMemo(() => {
-    const next = query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
+    const next =
+      query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
     if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
       return [selectedOption, ...next];
     }

@@ -1,10 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -17,25 +12,25 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { formatCurrency } from '@/app/lib/helpers';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
-import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
-import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
-
-import {
-  ProjectFormDocumentsCard,
-  ProjectFormToolbar,
-} from '@/modules/project/components/shared';
+import { ProjectFormDocumentsCard, ProjectFormToolbar } from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
 import {
-  useCreateInvoiceMutation,
   useAddInvoiceAttachmentMutation,
+  useCreateInvoiceMutation,
   useInvoiceDetailQuery,
   useUpdateInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
+import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
+import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import {
   createInvoiceInputSchema,
   type CreateInvoiceInput,
 } from '@/modules/project/schemas/invoice';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 function toDateInput(value: string | null | undefined) {
   return value ? value.slice(0, 10) : '';
@@ -50,7 +45,9 @@ export function InvoiceFormPage() {
   const navigate = useNavigate();
   const isEdit = !!invoiceId;
 
-  const { data: invoiceDetail, isLoading: isLoadingDetail } = useInvoiceDetailQuery(invoiceId ?? '');
+  const { data: invoiceDetail, isLoading: isLoadingDetail } = useInvoiceDetailQuery(
+    invoiceId ?? ''
+  );
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
 
@@ -84,7 +81,7 @@ export function InvoiceFormPage() {
         label: po.poNumber ?? po.id,
         description: po.vendor?.name ?? po.description ?? undefined,
       })),
-    [posData],
+    [posData]
   );
 
   const vendorOptions = useMemo(
@@ -93,7 +90,7 @@ export function InvoiceFormPage() {
         value: vendor.id,
         label: vendor.name,
       })),
-    [vendorsData],
+    [vendorsData]
   );
 
   const scoOptions = useMemo(
@@ -103,7 +100,7 @@ export function InvoiceFormPage() {
         label: sco.scoNumber ?? sco.title ?? sco.id,
         description: sco.title ?? sco.purchaseOrder?.poNumber ?? undefined,
       })),
-    [scosData],
+    [scosData]
   );
 
   const defaultValues: CreateInvoiceInput = {
@@ -126,8 +123,7 @@ export function InvoiceFormPage() {
       ? {
           projectId: invoiceDetail.projectId ?? invoiceDetail.project?.id ?? projectId,
           vendorId: invoiceDetail.vendorId ?? invoiceDetail.vendor?.id ?? '',
-          purchaseOrderId:
-            invoiceDetail.purchaseOrderId ?? invoiceDetail.purchaseOrder?.id ?? '',
+          purchaseOrderId: invoiceDetail.purchaseOrderId ?? invoiceDetail.purchaseOrder?.id ?? '',
           invoiceNumber: invoiceDetail.invoiceNumber ?? '',
           invoiceDate: toDateInput(invoiceDetail.invoiceDate),
           dueDate: toDateInput(invoiceDetail.dueDate),
@@ -140,12 +136,11 @@ export function InvoiceFormPage() {
         }
       : undefined;
 
-  const { control, handleSubmit, reset, setValue, watch } =
-    useForm<CreateInvoiceInput>({
-      resolver: zodResolver(createInvoiceInputSchema),
-      defaultValues,
-      values: editValues,
-    });
+  const { control, handleSubmit, reset, setValue, watch } = useForm<CreateInvoiceInput>({
+    resolver: zodResolver(createInvoiceInputSchema),
+    defaultValues,
+    values: editValues,
+  });
 
   const totalAmount = watch('totalAmount') ?? 0;
   const taxAmount = watch('taxAmount') ?? 0;
@@ -274,8 +269,12 @@ export function InvoiceFormPage() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, (errors) => console.warn('Validation errors:', errors))}
-      className="container-fluid py-7.5"
+      onSubmit={(event) =>
+        void handleSubmit(onSubmit, () => {
+          toast.error('Please fix the highlighted invoice fields.');
+        })(event)
+      }
+      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
         backLabel="Invoices"
@@ -505,9 +504,7 @@ export function InvoiceFormPage() {
               <div className="w-full max-w-sm rounded-lg border bg-muted/20 p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Total</span>
-                  <span className="font-semibold tabular-nums">
-                    {formatCurrency(totalAmount)}
-                  </span>
+                  <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tax</span>
