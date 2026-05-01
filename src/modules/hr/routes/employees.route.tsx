@@ -1,6 +1,5 @@
+import { EmployeeDetailPage, EmployeeFormPage, EmployeeListPage } from '@/modules/hr/pages';
 import { Route, Routes } from 'react-router-dom';
-
-import { EmployeeDetailPage, EmployeeFormPage, EmployeeListPage } from '../pages';
 
 const EmployeesRoutes = () => {
   return (

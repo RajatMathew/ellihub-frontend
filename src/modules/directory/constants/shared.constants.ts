@@ -1,4 +1,4 @@
-import type { PaymentTerms } from '../schemas/gc.schema';
+import type { PaymentTerms } from '@/modules/directory/schemas/gc.schema';
 
 export const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
   NET_15: 'Net 15',

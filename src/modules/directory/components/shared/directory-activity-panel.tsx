@@ -1,22 +1,22 @@
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
-import type { ContactActivityItem } from '@/modules/directory/components/contacts/detail/contact-detail.types';
+import type { DirectoryActivityItem } from '@/modules/directory/components/shared/directory-activity.types';
 import { AlertCircle, History, RefreshCcw } from 'lucide-react';
 
-interface ContactActivityPanelProps {
-  items: ContactActivityItem[];
+interface DirectoryActivityPanelProps {
+  items: DirectoryActivityItem[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
 }
 
-export function ContactActivityPanel({
+export function DirectoryActivityPanel({
   items,
   isLoading,
   isError,
   onRetry,
-}: ContactActivityPanelProps) {
+}: DirectoryActivityPanelProps) {
   if (isLoading) {
     return (
       <div className="space-y-4 p-4">

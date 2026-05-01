@@ -1,4 +1,4 @@
-import type { GCStatus } from '../schemas/gc.schema';
+import type { GCStatus } from '@/modules/directory/schemas/gc.schema';
 
 export const GC_FORM_SECTIONS = [
   { id: 'info', label: 'Info' },

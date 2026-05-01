@@ -1,13 +1,12 @@
+import { toastApiError } from '@/app/lib/toast-api-error';
+import { employeesApi } from '@/modules/hr/api/employees.api';
+import { employeesKeys } from '@/modules/hr/constants/employees.keys';
+import type {
+  CreateEmployeeInput,
+  ListEmployeesParams,
+  UpdateEmployeeInput,
+} from '@/modules/hr/schemas/employee.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
-import { employeesApi } from '../api/employees.api';
-import { employeesKeys } from '../constants/employees.keys';
-import type { 
-  CreateEmployeeInput, 
-  ListEmployeesParams, 
-  UpdateEmployeeInput 
-} from '../schemas/employee.schema';
 
 export const useEmployeesQuery = (params: ListEmployeesParams) => {
   return useQuery({
@@ -39,11 +38,9 @@ export const useCreateEmployeeMutation = () => {
     mutationFn: (input: CreateEmployeeInput) => employeesApi.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
-      toast.success('Employee created successfully');
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to create employee');
-    },
+    onError: (error) => toastApiError(error, 'Failed to create employee.'),
   });
 };
 
@@ -54,11 +51,8 @@ export const useUpdateEmployeeMutation = () => {
     mutationFn: (input: UpdateEmployeeInput) => employeesApi.update(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.all });
-      toast.success('Employee updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to update employee');
-    },
+    onError: (error) => toastApiError(error, 'Failed to update employee.'),
   });
 };
 
@@ -69,26 +63,28 @@ export const useDeleteEmployeeMutation = () => {
     mutationFn: (id: string) => employeesApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
-      toast.success('Employee deleted successfully');
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to delete employee');
-    },
+    onError: (error) => toastApiError(error, 'Failed to delete employee.'),
   });
 };
 
 export const useAddEmployeeDocumentMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ employeeId, fileId, expiresOn }: { employeeId: string; fileId: string; expiresOn?: string }) =>
-      employeesApi.addDocument(employeeId, fileId, expiresOn),
+    mutationFn: ({
+      employeeId,
+      fileId,
+      expiresOn,
+    }: {
+      employeeId: string;
+      fileId: string;
+      expiresOn?: string;
+    }) => employeesApi.addDocument(employeeId, fileId, expiresOn),
     onSuccess: (_, { employeeId }) => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.detail(employeeId) });
-      toast.success('Document linked successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to link document');
-    },
+    onError: (error) => toastApiError(error, 'Failed to link document.'),
   });
 };
 
@@ -99,10 +95,7 @@ export const useRemoveEmployeeDocumentMutation = () => {
       employeesApi.removeDocument(employeeId, fileId),
     onSuccess: (_, { employeeId }) => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.detail(employeeId) });
-      toast.success('Document unlinked successfully');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to unlink document');
-    },
+    onError: (error) => toastApiError(error, 'Failed to unlink document.'),
   });
 };

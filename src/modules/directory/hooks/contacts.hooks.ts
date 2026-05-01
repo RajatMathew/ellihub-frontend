@@ -1,20 +1,21 @@
+import { contactsApi } from '@/modules/directory/api/contacts.api';
+import { contactsKeys } from '@/modules/directory/constants/contacts.keys';
+import { gcKeys } from '@/modules/directory/constants/gc.keys';
+import { vendorsKeys } from '@/modules/directory/constants/vendors.keys';
+import {
+  contactFormSchema,
+  type Contact,
+  type ContactEmail,
+  type ContactFormValues,
+  type ContactPhone,
+  type CreateContactInput,
+  type ListContactsParams,
+  type UpdateContactInput,
+} from '@/modules/directory/schemas/contact.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-
-import { contactsApi } from '@/modules/directory/api/contacts.api';
-import { contactsKeys } from '@/modules/directory/constants/contacts.keys';
-import {
-  contactFormSchema,
-  type Contact,
-  type ContactPhone,
-  type ContactEmail,
-  type ContactFormValues,
-  type CreateContactInput,
-  type UpdateContactInput,
-  type ListContactsParams,
-} from '@/modules/directory/schemas/contact.schema';
 
 /* ---- contact queries ---- */
 
@@ -144,6 +145,8 @@ export const useLinkEntityMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
       qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
+      qc.invalidateQueries({ queryKey: vendorsKeys.all });
+      qc.invalidateQueries({ queryKey: gcKeys.all });
     },
     onError: () => toast.error('Failed to update entity link.'),
   });
@@ -157,6 +160,8 @@ export const useUnlinkEntityMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
       qc.invalidateQueries({ queryKey: contactsKeys.kpis() });
+      qc.invalidateQueries({ queryKey: vendorsKeys.all });
+      qc.invalidateQueries({ queryKey: gcKeys.all });
     },
     onError: () => toast.error('Failed to remove entity link.'),
   });
@@ -188,7 +193,7 @@ export const useAddGCLinkMutation = () => {
 /* ---- form hooks ---- */
 
 export const useContactForm = (
-  defaults?: Partial<Contact> | Partial<CreateContactInput> | Partial<ContactFormValues>,
+  defaults?: Partial<Contact> | Partial<CreateContactInput> | Partial<ContactFormValues>
 ) => {
   return useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),

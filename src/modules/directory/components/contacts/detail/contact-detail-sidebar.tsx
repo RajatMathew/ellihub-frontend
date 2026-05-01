@@ -7,10 +7,9 @@ import type {
   ContactEntityLink,
 } from '@/modules/directory/components/contacts/detail/contact-detail.types';
 import { DetailSidebar } from '@/modules/directory/components/detail-sidebar';
+import { DirectoryActivityPanel } from '@/modules/directory/components/shared';
 import { Building2, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-import { ContactActivityPanel } from './contact-activity-panel';
 
 interface ContactDetailSidebarProps {
   open: boolean;
@@ -36,7 +35,7 @@ export function ContactDetailSidebar({
       open={open}
       onClose={onClose}
       activityChildren={
-        <ContactActivityPanel
+        <DirectoryActivityPanel
           items={activityItems}
           isLoading={isActivityLoading}
           isError={isActivityError}

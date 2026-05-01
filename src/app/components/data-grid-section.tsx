@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
 
-import type { Table } from '@tanstack/react-table';
-import { AlertCircle, RefreshCcw } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardContent, CardFooter, CardTable } from '@/app/components/ui/card';
 import { DataGrid, type DataGridProps } from '@/app/components/ui/data-grid';
 import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/app/components/ui/data-grid-table';
+import type { Table } from '@tanstack/react-table';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
 
 interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
@@ -19,6 +18,7 @@ interface DataGridSectionProps<TData extends object> {
   emptyIcon: ReactNode;
   emptyTitle: string;
   emptyDescription?: string;
+  emptyAction?: ReactNode;
   onRetry: () => void;
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
@@ -34,6 +34,7 @@ export function DataGridSection<TData extends object>({
   emptyIcon,
   emptyTitle,
   emptyDescription,
+  emptyAction,
   onRetry,
   tableLayout,
   tableClassNames,
@@ -63,9 +64,8 @@ export function DataGridSection<TData extends object>({
         <div className="flex flex-col items-center gap-2 py-8">
           {emptyIcon}
           <p className="text-sm font-medium">{emptyTitle}</p>
-          {emptyDescription && (
-            <p className="text-xs text-muted-foreground">{emptyDescription}</p>
-          )}
+          {emptyDescription && <p className="text-xs text-muted-foreground">{emptyDescription}</p>}
+          {emptyAction}
         </div>
       }
       tableLayout={{

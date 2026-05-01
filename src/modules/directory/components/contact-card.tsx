@@ -1,8 +1,7 @@
+import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
+import { Badge } from '@/app/components/ui/badge';
+import { getInitials } from '@/app/lib/helpers';
 import { Mail, Phone } from 'lucide-react';
-
-import { Avatar, AvatarFallback } from '@app/components/ui/avatar';
-import { Badge } from '@app/components/ui/badge';
-import { getInitials } from '@app/lib/helpers';
 
 export function ContactCard({
   fullName,
@@ -16,17 +15,15 @@ export function ContactCard({
   isPrimary?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex min-w-0 items-start gap-3">
       <Avatar className="size-10">
         <AvatarFallback className="text-xs font-semibold">
           {getInitials(fullName, 2)}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            {fullName}
-          </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <span className="break-words text-sm font-semibold text-foreground">{fullName}</span>
           {isPrimary && (
             <Badge variant="success" appearance="light" size="sm">
               Primary
@@ -34,22 +31,22 @@ export function ContactCard({
           )}
         </div>
         {email && (
-          <div className="flex items-center gap-1.5 mt-1">
+          <div className="mt-1 flex min-w-0 items-center gap-1.5">
             <Mail className="size-3 text-muted-foreground" />
             <a
               href={`mailto:${email}`}
-              className="text-xs text-muted-foreground hover:text-primary truncate"
+              className="min-w-0 break-all text-xs text-muted-foreground hover:text-primary"
             >
               {email}
             </a>
           </div>
         )}
         {phone && (
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
             <Phone className="size-3 text-muted-foreground" />
             <a
               href={`tel:${phone}`}
-              className="text-xs text-muted-foreground hover:text-primary"
+              className="break-words text-xs text-muted-foreground hover:text-primary"
             >
               {phone}
             </a>

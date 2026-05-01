@@ -1,6 +1,5 @@
+import { VendorDetailPage, VendorFormPage, VendorListPage } from '@/modules/directory/pages';
 import { Route, Routes } from 'react-router-dom';
-
-import { VendorDetailPage, VendorFormPage, VendorListPage } from '../pages';
 
 const VendorRoutes = () => {
   return (

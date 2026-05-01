@@ -1,6 +1,5 @@
+import { GCDetailPage, GCFormPage, GCListPage } from '@/modules/directory/pages';
 import { Route, Routes } from 'react-router-dom';
-
-import { GCDetailPage, GCFormPage, GCListPage } from '../pages';
 
 const GCRoutes = () => {
   return (

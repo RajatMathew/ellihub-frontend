@@ -1,4 +1,4 @@
-import type { VendorStatus, VendorType } from '../schemas/vendor.schema';
+import type { VendorStatus, VendorType } from '@/modules/directory/schemas/vendor.schema';
 
 export const VENDOR_FORM_SECTIONS = [
   { id: 'info', label: 'Info' },
