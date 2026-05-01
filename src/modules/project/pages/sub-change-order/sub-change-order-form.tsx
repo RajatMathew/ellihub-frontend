@@ -20,7 +20,11 @@ import { formatCurrency } from '@/app/lib/helpers';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
-import { ProjectFormDocumentsCard, ProjectFormToolbar } from '@/modules/project/components/shared';
+import {
+  ProjectFormDocumentsCard,
+  ProjectFormPageLoading,
+  ProjectFormToolbar,
+} from '@/modules/project/components/shared';
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
@@ -240,11 +244,7 @@ export function SCOFormPage() {
   };
 
   if (isEdit && isLoadingDetail) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading change order...</div>
-      </div>
-    );
+    return <ProjectFormPageLoading sections={SCO_FORM_SECTIONS.length} />;
   }
 
   return (

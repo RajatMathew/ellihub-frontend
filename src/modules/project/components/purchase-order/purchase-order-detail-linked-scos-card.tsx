@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 
 interface PurchaseOrderDetailLinkedSCOsCardProps {
@@ -33,9 +34,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            Loading change orders...
-          </div>
+          <ProjectInlineListLoading rows={2} rowClassName="h-20" />
         ) : scos.length > 0 ? (
           <div className="space-y-2">
             {scos.map((sco) => (

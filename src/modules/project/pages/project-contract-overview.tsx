@@ -18,11 +18,11 @@ import {
   FinancialSummarySimpleCard,
   PaymentsPlaceholderCard,
   PrimeChangeOrdersCard,
+  ProjectOverviewLoading,
   ProjectTeamDialog,
   ScheduleTrackerCard,
   usePrimeContractComputations,
 } from '@/modules/project/components/overview';
-import { PageLoadingSkeleton } from '@/modules/project/components/page-loading-skeleton';
 import { ProjectToolbarHeader } from '@/modules/project/components/project-toolbar-header';
 import {
   useDeleteProjectMutation,
@@ -112,7 +112,7 @@ export default function ProjectContractOverview() {
   const docs = attachments ?? [];
 
   /* ---- Loading & Error States ---- */
-  if (isLoading) return <PageLoadingSkeleton />;
+  if (isLoading) return <ProjectOverviewLoading />;
 
   if (!project) {
     return (

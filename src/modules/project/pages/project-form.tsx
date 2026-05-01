@@ -33,6 +33,7 @@ import { useGCsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
+import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
   PROJECT_FORM_SECTIONS,
   PROJECT_STATUS_OPTIONS,
@@ -383,11 +384,7 @@ export default function ProjectForm() {
   };
 
   if (isEditMode && isLoadingProject) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading project...</div>
-      </div>
-    );
+    return <ProjectFormPageLoading sections={PROJECT_FORM_SECTIONS.length} />;
   }
 
   return (

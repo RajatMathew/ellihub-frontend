@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
 
-import { InfoRow } from '@/modules/project/components/info-row';
+import { InfoRow } from '@/modules/project/components/shared';
 import type { PrimeContractComputations } from '@/modules/project/components/overview/use-prime-contract-computations';
 
 interface FinancialSummarySimpleCardProps {

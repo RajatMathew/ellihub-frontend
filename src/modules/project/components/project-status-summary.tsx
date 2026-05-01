@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 interface StatusGroup {
@@ -56,14 +55,14 @@ export function ProjectStatusSummary({
     for (const project of projects) {
       const status = project.statusRef ?? project.status;
       if (!status) continue;
-      
+
       let id: string;
       let label: string;
       let dotClassName: string;
 
       if (typeof status === 'string') {
         id = status;
-        label = STATUS_LABELS[id] || id;
+        label = STATUS_LABELS[id] ?? id;
         dotClassName = getStatusDotClassName(id);
       } else {
         id = status.id;
@@ -86,28 +85,28 @@ export function ProjectStatusSummary({
   }, [projects]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {groups.map((group) => {
         const isActive = activeStatusId === group.id;
+
         return (
           <button
             key={group.id}
             type="button"
+            aria-pressed={isActive}
             onClick={() => onStatusClick(isActive ? undefined : group.id)}
-            className="text-left"
+            className="rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Card
               className={cn(
-                'transition-shadow cursor-pointer hover:shadow-md',
-                isActive && 'ring-2 ring-primary',
+                'cursor-pointer transition-shadow hover:shadow-md',
+                isActive && 'ring-2 ring-primary'
               )}
             >
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className={cn('size-2.5 rounded-full shrink-0', group.dotClassName)}
-                  />
-                  <span className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={cn('size-2.5 shrink-0 rounded-full', group.dotClassName)} />
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {group.label}
                   </span>
                 </div>

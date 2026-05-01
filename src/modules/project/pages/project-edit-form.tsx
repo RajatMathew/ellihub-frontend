@@ -31,7 +31,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useGCsQuery } from '@/modules/directory/hooks';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
-import { PageLoadingSkeleton } from '@/modules/project/components/page-loading-skeleton';
+import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
   PROJECT_FORM_SECTIONS,
   PROJECT_STATUS_OPTIONS,
@@ -62,7 +62,7 @@ export default function ProjectEditForm() {
 
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
 
-  if (isLoading) return <PageLoadingSkeleton />;
+  if (isLoading) return <ProjectFormPageLoading sections={PROJECT_FORM_SECTIONS.length} />;
   if (!project) {
     return (
       <div className="container-fluid py-7.5">

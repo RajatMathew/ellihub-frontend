@@ -34,7 +34,9 @@ export function InfoRow({
       >
         {label}
       </span>
-      <span className={cn('min-w-0 break-words text-end text-sm font-bold', valueClassName)}>{children}</span>
+      <span className={cn('min-w-0 break-words text-end text-sm font-bold', valueClassName)}>
+        {children}
+      </span>
     </div>
   );
 }

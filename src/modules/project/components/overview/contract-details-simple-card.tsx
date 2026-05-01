@@ -1,6 +1,6 @@
 import { Badge, type BadgeProps } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { InfoRow } from '@/modules/project/components/info-row';
+import { InfoRow } from '@/modules/project/components/shared';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 

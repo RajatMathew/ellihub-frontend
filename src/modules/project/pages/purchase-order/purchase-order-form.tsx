@@ -19,6 +19,7 @@ import {
 } from '@/modules/project/components/purchase-order';
 import {
   ProjectFormDocumentsCard,
+  ProjectFormPageLoading,
   ProjectFormToolbar,
 } from '@/modules/project/components/shared';
 import { PO_FORM_SECTIONS } from '@/modules/project/constants/purchase-order';
@@ -243,11 +244,7 @@ export function POFormPage() {
   };
 
   if (isEditMode && isLoadingPO) {
-    return (
-      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
-        <div className="text-sm text-muted-foreground">Loading purchase order...</div>
-      </div>
-    );
+    return <ProjectFormPageLoading sections={PO_FORM_SECTIONS.length} />;
   }
 
   return (

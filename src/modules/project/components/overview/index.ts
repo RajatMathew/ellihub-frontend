@@ -5,6 +5,7 @@ export { FinancialStatsBar } from './financial-stats-bar';
 export { FinancialSummarySimpleCard } from './financial-summary-simple-card';
 export { PaymentsPlaceholderCard } from './payments-placeholder-card';
 export { PrimeChangeOrdersCard } from './prime-change-orders-card';
+export { ProjectOverviewLoading } from './project-overview-loading';
 export { ProjectTeamDialog } from './project-team-dialog';
 export { ScheduleTrackerCard } from './schedule-tracker-card';
 export { usePrimeContractComputations } from './use-prime-contract-computations';

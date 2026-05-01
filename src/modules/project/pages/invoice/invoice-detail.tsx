@@ -43,8 +43,9 @@ import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import { InfoRow } from '@/modules/project/components/info-row';
 import {
+  InfoRow,
+  ProjectDetailPageLoading,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
 } from '@/modules/project/components/shared';
@@ -220,11 +221,7 @@ export function InvoiceDetailPage() {
   }, [activityData]);
 
   if (isLoading) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading invoice...</div>
-      </div>
-    );
+    return <ProjectDetailPageLoading />;
   }
 
   if (!invoice) {

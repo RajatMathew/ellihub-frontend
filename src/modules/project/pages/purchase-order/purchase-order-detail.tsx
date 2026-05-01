@@ -57,7 +57,6 @@ import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import { InfoRow } from '@/modules/project/components/info-row';
 import {
   PurchaseOrderCancelDialog,
   PurchaseOrderDetailLineItemsCard,
@@ -65,6 +64,8 @@ import {
   PurchaseOrderDetailLinkedSCOsCard,
 } from '@/modules/project/components/purchase-order';
 import {
+  InfoRow,
+  ProjectDetailPageLoading,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
 } from '@/modules/project/components/shared';
@@ -210,11 +211,7 @@ export function PODetailPage() {
     revertToDraftMutation.isPending;
 
   if (isLoading) {
-    return (
-      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
-        <p className="text-sm text-muted-foreground">Loading purchase order...</p>
-      </div>
-    );
+    return <ProjectDetailPageLoading statsCount={5} />;
   }
 
   if (!po) {

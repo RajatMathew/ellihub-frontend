@@ -44,7 +44,7 @@ import {
   useFilePreviewQuery,
   useUploadFileMutation,
 } from '@/modules/files/hooks/files.hooks';
-import { InfoRow } from '@/modules/project/components/info-row';
+import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
@@ -320,11 +320,7 @@ export default function RFQDetailPage() {
     removeAttachmentMutation.isPending;
 
   if (isLoading) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading RFQ...</div>
-      </div>
-    );
+    return <ProjectDetailPageLoading />;
   }
 
   if (!rfq) {

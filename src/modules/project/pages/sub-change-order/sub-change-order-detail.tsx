@@ -35,7 +35,7 @@ import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import { InfoRow } from '@/modules/project/components/info-row';
+import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -267,11 +267,7 @@ export function SCODetailPage() {
     revertToDraftMutation.isPending;
 
   if (isLoading) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading change order...</div>
-      </div>
-    );
+    return <ProjectDetailPageLoading statsCount={5} />;
   }
 
   if (!sco) {

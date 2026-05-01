@@ -5,6 +5,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
+import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 
 function getStatusVariant(status: string) {
@@ -41,11 +42,7 @@ export function PrimeChangeOrdersCard({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-muted rounded animate-pulse" />
-            ))}
-          </div>
+          <ProjectInlineListLoading rows={3} rowClassName="h-20" />
         ) : pcos.length > 0 ? (
           <div className="space-y-3">
             {pcos.map((pco) => (

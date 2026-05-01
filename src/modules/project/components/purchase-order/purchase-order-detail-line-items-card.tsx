@@ -3,7 +3,7 @@ import { FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency } from '@/app/lib/helpers';
-import { InfoRow } from '@/modules/project/components/info-row';
+import { InfoRow } from '@/modules/project/components/shared';
 import type { PODetail } from '@/modules/project/schemas/purchase-order';
 
 interface PurchaseOrderDetailLineItemsCardProps {

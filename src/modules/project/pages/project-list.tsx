@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { Plus } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
@@ -10,47 +11,51 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
+import { ProjectListEmptyState } from '@/modules/project/components/project-list-empty-state';
+import { ProjectListLoading } from '@/modules/project/components/project-list-loading';
 import { ProjectStatusSummary } from '@/modules/project/components/project-status-summary';
 import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
+import { ProjectQueryErrorState } from '@/modules/project/components/shared';
 import { useProjectsQuery } from '@/modules/project/hooks';
+import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 const currentYear = new Date().getFullYear();
 
-export default function ProjectList() {
+const getProjectYear = (project: ProjectListItem): number | null => {
+  return project.createdAt ? new Date(project.createdAt).getFullYear() : null;
+};
+
+const getProjectStatusId = (project: ProjectListItem): string | undefined => {
+  return project.statusRef?.id ?? project.status ?? undefined;
+};
+
+export function ProjectList() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const year = Number(searchParams.get('year')) || currentYear;
   const statusId = searchParams.get('statusId') ?? undefined;
 
-  const { data, isLoading } = useProjectsQuery({ 
-    size: 100, // Fetch more to allow client-side filtering
+  const { data, isLoading, isError, refetch } = useProjectsQuery({
+    size: 100,
     sortBy: 'createdAt',
     sortOrder: 'desc',
-    year: undefined, 
+    year: undefined,
   });
 
-  const projects = (data?.data ?? []).filter((p) => {
-    // Filter by year
-    if (year) {
-      const pYear = p.createdAt ? new Date(p.createdAt).getFullYear() : null;
-      if (pYear !== year) return false;
-    }
-    // Filter by status (we filter in JS so summary cards stay visible)
-    if (statusId) {
-      const pStatus = p.statusRef?.id ?? p.status;
-      if (pStatus !== statusId) return false;
-    }
-    return true;
-  });
+  const summaryProjects = useMemo(
+    () => (data?.data ?? []).filter((project) => getProjectYear(project) === year),
+    [data?.data, year]
+  );
+  const projects = useMemo(
+    () =>
+      summaryProjects.filter((project) => {
+        if (!statusId) return true;
 
-  // For the summary cards, we want the count for the whole year, regardless of status filter
-  const summaryProjects = (data?.data ?? []).filter((p) => {
-    if (!year) return true;
-    const pYear = p.createdAt ? new Date(p.createdAt).getFullYear() : null;
-    return pYear === year;
-  });
+        return getProjectStatusId(project) === statusId;
+      }),
+    [summaryProjects, statusId]
+  );
 
   const totalCount = summaryProjects.length;
 
@@ -83,7 +88,6 @@ export default function ProjectList() {
 
   return (
     <div className="container-fluid py-7.5">
-      {/* Header */}
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>
@@ -94,37 +98,25 @@ export default function ProjectList() {
           </ToolbarHeading>
           <ToolbarActions>
             <Button variant="primary" asChild>
-              <Link to="new">+ New Project</Link>
+              <Link to="new">
+                <Plus className="size-4" />
+                New Project
+              </Link>
             </Button>
           </ToolbarActions>
         </ToolbarWrapper>
 
-        {/* Year tabs */}
         <ProjectYearTabs activeYear={year} totalCount={totalCount} onYearChange={handleYearChange} />
       </Toolbar>
 
-      {/* Loading state */}
-      {isLoading && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-40 rounded-xl" />
-                <Skeleton className="h-40 rounded-xl" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      {!isLoading && (
+      {isLoading ? (
+        <ProjectListLoading />
+      ) : isError ? (
+        <ProjectQueryErrorState
+          title="Unable to load projects"
+          onRetry={() => void refetch()}
+        />
+      ) : (
         <>
           <ProjectStatusSummary
             projects={summaryProjects}
@@ -135,12 +127,12 @@ export default function ProjectList() {
           {projects.length > 0 ? (
             <ProjectDivisionBoard projects={projects} />
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="text-muted-foreground">No projects found for {year}.</p>
-            </div>
+            <ProjectListEmptyState year={year} />
           )}
         </>
       )}
     </div>
   );
 }
+
+export default ProjectList;

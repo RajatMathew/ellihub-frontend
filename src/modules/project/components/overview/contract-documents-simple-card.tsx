@@ -13,6 +13,7 @@ import {
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
+import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 
@@ -65,11 +66,7 @@ export function ContractDocumentsSimpleCard({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded animate-pulse" />
-            ))}
-          </div>
+          <ProjectInlineListLoading rows={2} />
         ) : documents.length > 0 ? (
           <div className="space-y-2">
             {documents.map((att) => {

@@ -4,59 +4,63 @@ import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 import { ProjectCard } from './project-card';
 
+const STANDARD_DIVISION_ORDER = ['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL'];
+
+const getDivisionLabel = (project: ProjectListItem): string => {
+  const division = project.division;
+
+  if (typeof division === 'string') return division;
+
+  return division?.label ?? division?.name ?? 'Unassigned';
+};
+
 export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[] }) {
-  // Dynamically determine columns based on divisions present in the data
   const divisionMap = useMemo(() => {
     const map = new Map<string, ProjectListItem[]>();
-    
-    // Initialize map with projects
-    projects.forEach(project => {
-      const div = project.division;
-      const label = typeof div === 'string' ? div : (div?.label || div?.name || 'Unassigned');
-      
-      const existing = map.get(label) || [];
+
+    for (const project of projects) {
+      const label = getDivisionLabel(project);
+      const existing = map.get(label) ?? [];
       map.set(label, [...existing, project]);
-    });
-    
+    }
+
     return map;
   }, [projects]);
 
-  // Sort columns: Standard ones first, then alphabetical
-  const STANDARD_COLS = ['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL'];
   const columns = Array.from(divisionMap.keys()).sort((a, b) => {
-    const ai = STANDARD_COLS.indexOf(a.toUpperCase());
-    const bi = STANDARD_COLS.indexOf(b.toUpperCase());
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
+    const aIndex = STANDARD_DIVISION_ORDER.indexOf(a.toUpperCase());
+    const bIndex = STANDARD_DIVISION_ORDER.indexOf(b.toUpperCase());
+
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+
     return a.localeCompare(b);
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-      {columns.map((divLabel) => {
-        const items = divisionMap.get(divLabel) || [];
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-4">
+      {columns.map((divisionLabel) => {
+        const items = divisionMap.get(divisionLabel) ?? [];
+
         return (
-          <div key={divLabel} className="flex flex-col gap-4">
-            {/* Column header */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold uppercase">{divLabel}</span>
-              <span className="text-xs text-muted-foreground">
+          <section key={divisionLabel} className="flex min-w-0 flex-col gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="min-w-0 truncate text-sm font-semibold uppercase">
+                {divisionLabel}
+              </h2>
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {items.length} Job{items.length !== 1 ? 's' : ''}
               </span>
             </div>
             <hr className="border-border" />
 
-            {/* Project cards */}
             <div className="flex flex-col gap-3">
               {items.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
-              {items.length === 0 && (
-                <p className="text-xs text-muted-foreground py-4 text-center">No projects</p>
-              )}
             </div>
-          </div>
+          </section>
         );
       })}
     </div>

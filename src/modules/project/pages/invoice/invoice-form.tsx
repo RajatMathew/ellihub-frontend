@@ -12,7 +12,11 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { formatCurrency } from '@/app/lib/helpers';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
-import { ProjectFormDocumentsCard, ProjectFormToolbar } from '@/modules/project/components/shared';
+import {
+  ProjectFormDocumentsCard,
+  ProjectFormPageLoading,
+  ProjectFormToolbar,
+} from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
 import {
   useAddInvoiceAttachmentMutation,
@@ -260,11 +264,7 @@ export function InvoiceFormPage() {
   }
 
   if (isEdit && isLoadingDetail) {
-    return (
-      <div className="container-fluid py-7.5">
-        <div className="text-sm text-muted-foreground">Loading invoice...</div>
-      </div>
-    );
+    return <ProjectFormPageLoading sections={INVOICE_FORM_SECTIONS.length} />;
   }
 
   return (

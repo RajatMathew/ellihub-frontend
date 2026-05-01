@@ -1,9 +1,9 @@
+import { ProjectInlineListLoading } from '@/modules/project/components/shared';
+
 export function ScheduleTrackerLoading() {
   return (
-    <div className="p-5 space-y-3">
-      {[1, 2].map((item) => (
-        <div key={item} className="h-8 bg-muted rounded animate-pulse" />
-      ))}
+    <div className="p-5">
+      <ProjectInlineListLoading rows={2} rowClassName="h-8" />
     </div>
   );
 }
