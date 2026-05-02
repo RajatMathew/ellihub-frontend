@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
-import { useSearchParams } from 'react-router-dom';
-
-import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
-import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
+import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
-  SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
-  SUB_CHANGE_ORDER_SEARCH_DEBOUNCE_MS,
   isSubChangeOrderSortByField,
   isValidSCOStatus,
+  SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+  SUB_CHANGE_ORDER_SEARCH_DEBOUNCE_MS,
   type SubChangeOrderSortByField,
 } from '@/modules/project/constants/sub-change-order';
 import type { SCOStatusName } from '@/modules/project/schemas/sub-change-order';
@@ -16,81 +13,34 @@ import type { SCOStatusName } from '@/modules/project/schemas/sub-change-order';
 export type SubChangeOrderListParamPatch = Record<string, string | undefined>;
 
 export function useSubChangeOrderListParams() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size'), SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE);
-  const sortBy: SubChangeOrderSortByField = isSubChangeOrderSortByField(
-    searchParams.get('sortBy'),
-  )
-    ? (searchParams.get('sortBy') as SubChangeOrderSortByField)
-    : 'createdAt';
-  const sortOrder: 'asc' | 'desc' =
-    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
-  const statusFilter: SCOStatusName | undefined = isValidSCOStatus(
-    searchParams.get('status'),
-  )
-    ? (searchParams.get('status') as SCOStatusName)
+  const listParams = useResourceListParams({
+    defaultPageSize: SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+    defaultSortBy: 'createdAt',
+    defaultSortOrder: 'desc',
+    searchDebounceMs: SUB_CHANGE_ORDER_SEARCH_DEBOUNCE_MS,
+    isSortBy: (value): value is SubChangeOrderSortByField =>
+      Boolean(value && isSubChangeOrderSortByField(value)),
+  });
+  const statusParam = listParams.searchParams.get('status');
+  const statusFilter: SCOStatusName | undefined = isValidSCOStatus(statusParam)
+    ? (statusParam as SCOStatusName)
     : undefined;
-  const changeTypeFilter = searchParams.get('changeTypeId') || undefined;
-  const searchQuery = searchParams.get('search') ?? '';
-
-  const [searchInput, setSearchInput] = useState(searchQuery);
-
-  useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
-
-  const updateParams = useCallback(
-    (patch: SubChangeOrderListParamPatch) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [key, value] of Object.entries(patch)) {
-          if (!value) {
-            next.delete(key);
-          } else {
-            next.set(key, value);
-          }
-        }
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
-
-  const updateSearchParam = useDebouncedCallback((value: string) => {
-    updateParams({ search: value || undefined, page: undefined });
-  }, SUB_CHANGE_ORDER_SEARCH_DEBOUNCE_MS);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      updateSearchParam(value);
-    },
-    [updateSearchParam],
-  );
+  const changeTypeFilter = listParams.searchParams.get('changeTypeId') || undefined;
 
   const clearFilters = useCallback(() => {
-    setSearchInput('');
-    updateParams({
+    listParams.setSearchInput('');
+    listParams.updateParams({
       search: undefined,
       status: undefined,
       changeTypeId: undefined,
       page: undefined,
     });
-  }, [updateParams]);
+  }, [listParams]);
 
   return {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
+    ...listParams,
     statusFilter,
     changeTypeFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
     clearFilters,
   };
 }

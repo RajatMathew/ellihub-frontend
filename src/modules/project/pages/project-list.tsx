@@ -1,8 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
-import { Plus } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
-
+import { QueryErrorState } from '@/app/components/query-error-state';
 import {
   Toolbar,
   ToolbarActions,
@@ -11,14 +9,16 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
 import { ProjectListEmptyState } from '@/modules/project/components/project-list-empty-state';
 import { ProjectListLoading } from '@/modules/project/components/project-list-loading';
 import { ProjectStatusSummary } from '@/modules/project/components/project-status-summary';
 import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
-import { QueryErrorState } from '@/app/components/query-error-state';
 import { useProjectsQuery } from '@/modules/project/hooks';
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
+import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const currentYear = new Date().getFullYear();
 
@@ -31,7 +31,7 @@ const getProjectStatusId = (project: ProjectListItem): string | undefined => {
 };
 
 export function ProjectList() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, updateParams } = useUrlParamPatch();
 
   const year = Number(searchParams.get('year')) || currentYear;
   const statusId = searchParams.get('statusId') ?? undefined;
@@ -61,29 +61,16 @@ export function ProjectList() {
 
   const handleYearChange = useCallback(
     (y: number) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('year', String(y));
-        next.delete('statusId');
-        return next;
-      });
+      updateParams({ year: String(y), statusId: undefined });
     },
-    [setSearchParams]
+    [updateParams]
   );
 
   const handleStatusClick = useCallback(
     (id: string | undefined) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (id) {
-          next.set('statusId', id);
-        } else {
-          next.delete('statusId');
-        }
-        return next;
-      });
+      updateParams({ statusId: id });
     },
-    [setSearchParams]
+    [updateParams]
   );
 
   return (
@@ -106,16 +93,17 @@ export function ProjectList() {
           </ToolbarActions>
         </ToolbarWrapper>
 
-        <ProjectYearTabs activeYear={year} totalCount={totalCount} onYearChange={handleYearChange} />
+        <ProjectYearTabs
+          activeYear={year}
+          totalCount={totalCount}
+          onYearChange={handleYearChange}
+        />
       </Toolbar>
 
       {isLoading ? (
         <ProjectListLoading />
       ) : isError ? (
-        <QueryErrorState
-          title="Unable to load projects"
-          onRetry={() => void refetch()}
-        />
+        <QueryErrorState title="Unable to load projects" onRetry={() => void refetch()} />
       ) : (
         <>
           <ProjectStatusSummary

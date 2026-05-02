@@ -1,6 +1,6 @@
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { ContactCard } from '@/modules/directory/components/contact-card';
-import { DetailSidebar } from '@/modules/directory/components/detail-sidebar';
 import {
   DirectoryActivityPanel,
   type DirectoryActivityItem,

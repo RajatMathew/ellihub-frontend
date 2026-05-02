@@ -1,3 +1,4 @@
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -6,7 +7,6 @@ import type {
   ContactActivityItem,
   ContactEntityLink,
 } from '@/modules/directory/components/contacts/detail/contact-detail.types';
-import { DetailSidebar } from '@/modules/directory/components/detail-sidebar';
 import { DirectoryActivityPanel } from '@/modules/directory/components/shared';
 import { Building2, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';

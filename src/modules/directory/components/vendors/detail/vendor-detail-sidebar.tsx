@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
-import { DetailSidebar } from '@/modules/directory/components/detail-sidebar';
 import {
   DirectoryActivityPanel,
   type DirectoryActivityItem,

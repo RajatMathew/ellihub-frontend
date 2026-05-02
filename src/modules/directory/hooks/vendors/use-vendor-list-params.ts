@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
-import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
-import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
+import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
   isValidVendorStatus,
   isVendorsSortByField,
@@ -10,81 +9,37 @@ import {
   type VendorsSortByField,
 } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import type { VendorStatus } from '@/modules/directory/schemas/vendor.schema';
-import { useSearchParams } from 'react-router-dom';
 
 export type VendorListParamPatch = Record<string, string | undefined>;
 
 export function useVendorListParams() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size'), VENDORS_DEFAULT_PAGE_SIZE);
-  const searchQuery = searchParams.get('search') ?? '';
-  const sortBy: VendorsSortByField = isVendorsSortByField(searchParams.get('sortBy'))
-    ? (searchParams.get('sortBy') as VendorsSortByField)
-    : 'name';
-  const sortOrder: 'asc' | 'desc' = searchParams.get('sortOrder') === 'desc' ? 'desc' : 'asc';
-  const typeFilter = searchParams.get('type') || undefined;
-  const statusFilter: VendorStatus | undefined = isValidVendorStatus(searchParams.get('status'))
-    ? (searchParams.get('status') as VendorStatus)
+  const listParams = useResourceListParams({
+    defaultPageSize: VENDORS_DEFAULT_PAGE_SIZE,
+    defaultSortBy: 'name',
+    defaultSortOrder: 'asc',
+    searchDebounceMs: VENDORS_SEARCH_DEBOUNCE_MS,
+    isSortBy: (value): value is VendorsSortByField => Boolean(value && isVendorsSortByField(value)),
+  });
+  const typeFilter = listParams.searchParams.get('type') || undefined;
+  const statusParam = listParams.searchParams.get('status');
+  const statusFilter: VendorStatus | undefined = isValidVendorStatus(statusParam)
+    ? (statusParam as VendorStatus)
     : undefined;
 
-  const [searchInput, setSearchInput] = useState(searchQuery);
-
-  useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
-
-  const updateParams = useCallback(
-    (patch: VendorListParamPatch) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [key, value] of Object.entries(patch)) {
-          if (!value) {
-            next.delete(key);
-          } else {
-            next.set(key, value);
-          }
-        }
-        return next;
-      });
-    },
-    [setSearchParams]
-  );
-
-  const updateSearchParam = useDebouncedCallback((value: string) => {
-    updateParams({ search: value || undefined, page: undefined });
-  }, VENDORS_SEARCH_DEBOUNCE_MS);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      updateSearchParam(value);
-    },
-    [updateSearchParam]
-  );
-
   const clearFilters = useCallback(() => {
-    setSearchInput('');
-    updateParams({
+    listParams.setSearchInput('');
+    listParams.updateParams({
       search: undefined,
       type: undefined,
       status: undefined,
       page: undefined,
     });
-  }, [updateParams]);
+  }, [listParams]);
 
   return {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
+    ...listParams,
     typeFilter,
     statusFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
     clearFilters,
   };
 }

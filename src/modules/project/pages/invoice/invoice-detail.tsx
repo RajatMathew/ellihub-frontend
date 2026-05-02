@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import {
   Toolbar,
   ToolbarActions,
@@ -39,15 +40,14 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import {
   InfoRow,
-  ProjectDetailPageLoading,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
+  ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
 import {
   useAddInvoiceAttachmentMutation,
@@ -436,15 +436,21 @@ export function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <ProjectDetailField label="Invoice #">{invoice.invoiceNumber}</ProjectDetailField>
+                    <ProjectDetailField label="Invoice #">
+                      {invoice.invoiceNumber}
+                    </ProjectDetailField>
                     <ProjectDetailField label="Invoice Date">
                       {dateOrDash(invoice.invoiceDate)}
                     </ProjectDetailField>
                     <ProjectDetailField label="Due Date">
                       {dateOrDash(invoice.dueDate)}
                     </ProjectDetailField>
-                    <ProjectDetailField label="Vendor">{invoice.vendor?.name ?? '-'}</ProjectDetailField>
-                    <ProjectDetailField label="Project">{invoice.project?.name ?? '-'}</ProjectDetailField>
+                    <ProjectDetailField label="Vendor">
+                      {invoice.vendor?.name ?? '-'}
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Project">
+                      {invoice.project?.name ?? '-'}
+                    </ProjectDetailField>
                     <ProjectDetailField label="Related SCOs">
                       {relatedSCOCount > 0 ? `${relatedSCOCount} linked` : '-'}
                     </ProjectDetailField>
@@ -477,7 +483,9 @@ export function InvoiceDetailPage() {
                     attachmentId: attachment.id,
                   })
                 }
-                getDescription={(attachment) => fileSizeLabel(attachment.document?.size) ?? undefined}
+                getDescription={(attachment) =>
+                  fileSizeLabel(attachment.document?.size) ?? undefined
+                }
                 isRemoveDisabled={() => attachments.length <= 1}
                 getRemoveDisabledReason={() => 'At least one attachment is required.'}
               />

@@ -1,4 +1,4 @@
-import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { ResourceDeleteDialog } from '@/app/components/resource-delete-dialog';
 import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 
 interface CostCodeDeleteDialogProps {
@@ -15,19 +15,15 @@ export function CostCodeDeleteDialog({
   onConfirm,
 }: CostCodeDeleteDialogProps) {
   return (
-    <ConfirmDialog
+    <ResourceDeleteDialog
       open={!!costCode}
       onOpenChange={onOpenChange}
       title="Delete Cost Code"
-      description={
-        <>
-          This will permanently delete <strong>{costCode?.name}</strong>. This cannot be undone.
-        </>
-      }
       confirmLabel="Delete"
       onConfirm={onConfirm}
-      variant="destructive"
       isPending={isPending}
-    />
+    >
+      This will permanently delete <strong>{costCode?.name}</strong>. This cannot be undone.
+    </ResourceDeleteDialog>
   );
 }

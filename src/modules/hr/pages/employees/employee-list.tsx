@@ -84,8 +84,7 @@ export default function EmployeeListPage() {
         onSearchChange={listParams.handleSearchChange}
         onClearSearch={() => {
           if (listParams.searchQuery) {
-            listParams.setSearchInput('');
-            listParams.updateParams({ search: undefined, page: undefined });
+            listParams.clearSearch();
             return;
           }
           void refetch();

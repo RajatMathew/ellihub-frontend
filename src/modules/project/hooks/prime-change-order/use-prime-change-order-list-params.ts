@@ -1,96 +1,44 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
-import { useSearchParams } from 'react-router-dom';
-
-import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
-import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
+import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
+  isPrimeChangeOrderSortByField,
   PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
   PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS,
-  isPrimeChangeOrderSortByField,
   type PrimeChangeOrderSortByField,
 } from '@/modules/project/constants/prime-change-order';
 
 export type PrimeChangeOrderListParamPatch = Record<string, string | undefined>;
 
 export function usePrimeChangeOrderListParams() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(
-    searchParams.get('size'),
-    PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
-  );
-  const searchQuery = searchParams.get('search') ?? '';
-  const statusFilter = searchParams.get('statusName') ?? undefined;
-  const totalCostMin = searchParams.get('totalCostMin') ?? undefined;
-  const totalCostMax = searchParams.get('totalCostMax') ?? undefined;
-  const sortBy: PrimeChangeOrderSortByField = isPrimeChangeOrderSortByField(
-    searchParams.get('sortBy'),
-  )
-    ? (searchParams.get('sortBy') as PrimeChangeOrderSortByField)
-    : 'fieldwireUpdatedAt';
-  const sortOrder: 'asc' | 'desc' =
-    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
-
-  const [searchInput, setSearchInput] = useState(searchQuery);
-
-  useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
-
-  const updateParams = useCallback(
-    (patch: PrimeChangeOrderListParamPatch) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [key, value] of Object.entries(patch)) {
-          if (!value) {
-            next.delete(key);
-          } else {
-            next.set(key, value);
-          }
-        }
-        return next;
-      });
-    },
-    [setSearchParams],
-  );
-
-  const updateSearchParam = useDebouncedCallback((value: string) => {
-    updateParams({ search: value || undefined, page: undefined });
-  }, PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      updateSearchParam(value);
-    },
-    [updateSearchParam],
-  );
+  const listParams = useResourceListParams({
+    defaultPageSize: PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+    defaultSortBy: 'fieldwireUpdatedAt',
+    defaultSortOrder: 'desc',
+    searchDebounceMs: PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS,
+    isSortBy: (value): value is PrimeChangeOrderSortByField =>
+      Boolean(value && isPrimeChangeOrderSortByField(value)),
+  });
+  const statusFilter = listParams.searchParams.get('statusName') ?? undefined;
+  const totalCostMin = listParams.searchParams.get('totalCostMin') ?? undefined;
+  const totalCostMax = listParams.searchParams.get('totalCostMax') ?? undefined;
 
   const clearFilters = useCallback(() => {
-    setSearchInput('');
-    updateParams({
+    listParams.setSearchInput('');
+    listParams.updateParams({
       search: undefined,
       statusName: undefined,
       totalCostMin: undefined,
       totalCostMax: undefined,
       page: undefined,
     });
-  }, [updateParams]);
+  }, [listParams]);
 
   return {
-    page,
-    size,
-    searchQuery,
+    ...listParams,
     statusFilter,
     totalCostMin,
     totalCostMax,
-    sortBy,
-    sortOrder,
-    searchInput,
-    updateParams,
-    handleSearchChange,
     clearFilters,
   };
 }

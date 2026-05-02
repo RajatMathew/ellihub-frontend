@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import {
   Toolbar,
   ToolbarActions,
@@ -31,7 +32,6 @@ import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
-import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';

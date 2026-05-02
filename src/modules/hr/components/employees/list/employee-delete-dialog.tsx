@@ -1,4 +1,4 @@
-import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { ResourceDeleteDialog } from '@/app/components/resource-delete-dialog';
 
 interface EmployeeDeleteDialogProps {
   target: { id: string; name: string } | null;
@@ -14,20 +14,16 @@ export function EmployeeDeleteDialog({
   onConfirm,
 }: EmployeeDeleteDialogProps) {
   return (
-    <ConfirmDialog
+    <ResourceDeleteDialog
       open={Boolean(target)}
       onOpenChange={onOpenChange}
       title="Delete Employee"
-      description={
-        <>
-          Are you sure you want to delete <strong>{target?.name}</strong>? This action will remove
-          the employee from all departments and projects.
-        </>
-      }
       confirmLabel="Delete"
       onConfirm={onConfirm}
-      variant="destructive"
       isPending={isPending}
-    />
+    >
+      Are you sure you want to delete <strong>{target?.name}</strong>? This action will remove the
+      employee from all departments and projects.
+    </ResourceDeleteDialog>
   );
 }

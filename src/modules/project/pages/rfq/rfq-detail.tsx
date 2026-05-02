@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import {
   Toolbar,
   ToolbarActions,
@@ -35,7 +36,6 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -44,12 +44,12 @@ import {
   useFilePreviewQuery,
   useUploadFileMutation,
 } from '@/modules/files/hooks/files.hooks';
-import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
 } from '@/modules/project/components/rfq';
+import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import {
   BIDDING_TYPE_LABELS,
   getRfqStatusVariant,

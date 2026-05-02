@@ -1,26 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  ClipboardList,
-  DollarSign,
-  ExternalLink,
-  MoreHorizontal,
-  PanelRightOpen,
-  Pencil,
-  PlusCircle,
-  Receipt,
-  ShieldAlert,
-  Truck,
-  TrendingUp,
-  XCircle,
-  History,
-} from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-
+import { DetailSidebar } from '@/app/components/detail-sidebar';
 import {
   Toolbar,
   ToolbarActions,
@@ -53,7 +33,6 @@ import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
-import { DetailSidebar } from '@/modules/directory/components';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
@@ -65,13 +44,16 @@ import {
 } from '@/modules/project/components/purchase-order';
 import {
   InfoRow,
-  ProjectDetailPageLoading,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
+  ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import {
+  PO_STATUS_COLORS,
+  TRADE_CATEGORY_BADGE_VARIANTS,
+  TRADE_CATEGORY_LABELS,
+} from '@/modules/project/constants/purchase-order';
 import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
 import {
   useAddPOAttachmentMutation,
   useCancelPOMutation,
@@ -81,12 +63,29 @@ import {
   useRemovePOAttachmentMutation,
   useRevertToDraftMutation,
 } from '@/modules/project/hooks/purchase-order';
-import {
-  PO_STATUS_COLORS,
-  TRADE_CATEGORY_BADGE_VARIANTS,
-  TRADE_CATEGORY_LABELS,
-} from '@/modules/project/constants/purchase-order';
+import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
+import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { POStatusName } from '@/modules/project/schemas/purchase-order';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  DollarSign,
+  ExternalLink,
+  History,
+  MoreHorizontal,
+  PanelRightOpen,
+  Pencil,
+  PlusCircle,
+  Receipt,
+  ShieldAlert,
+  TrendingUp,
+  Truck,
+  XCircle,
+} from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
 /* ---- helpers ---- */
 
@@ -113,7 +112,7 @@ export function PODetailPage() {
   });
   useBreadcrumbLabel(
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
-    po?.poNumber ?? undefined,
+    po?.poNumber ?? undefined
   );
   const { data: costCodesData } = useCostCodesQuery();
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
@@ -128,7 +127,7 @@ export function PODetailPage() {
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`]),
+    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
   );
   const attachments = po?.attachments ?? [];
 
@@ -141,9 +140,7 @@ export function PODetailPage() {
   const [cancelReason, setCancelReason] = useState('');
 
   const [deliveryOpen, setDeliveryOpen] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState(
-    () => new Date().toISOString().slice(0, 10),
-  );
+  const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     if (!activityData?.data) return [];
@@ -232,7 +229,7 @@ export function PODetailPage() {
     .reduce((sum, invoice) => sum + Number(invoice.totalAmount ?? 0), 0);
   const invoiceTotal = linkedInvoices.reduce(
     (sum, invoice) => sum + Number(invoice.totalAmount ?? 0),
-    0,
+    0
   );
   const balanceDue = Math.max(totalCommitment - amountPaid, 0);
   const subtotal = parseFloat(po.subtotal ?? '0');
@@ -261,14 +258,12 @@ export function PODetailPage() {
               </Link>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <ToolbarPageTitle>
-                {po.poNumber ?? 'Draft PO'}
-              </ToolbarPageTitle>
+              <ToolbarPageTitle>{po.poNumber ?? 'Draft PO'}</ToolbarPageTitle>
               {po.rfqId && (
-                    <Link
-                      to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
-                      className="text-xs text-primary hover:underline"
-                    >
+                <Link
+                  to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
+                  className="text-xs text-primary hover:underline"
+                >
                   {readableRfq}
                 </Link>
               )}
@@ -375,83 +370,81 @@ export function PODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-      {/* ---- Overdue alert ---- */}
-      {isOverdue && (
-        <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldAlert className="size-4 text-destructive" />
-              <span className="text-xs font-semibold tracking-normal text-destructive uppercase">
-                Purchase Alert
-              </span>
+          {/* ---- Overdue alert ---- */}
+          {isOverdue && (
+            <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldAlert className="size-4 text-destructive" />
+                  <span className="text-xs font-semibold tracking-normal text-destructive uppercase">
+                    Purchase Alert
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-destructive">Purchase Order is Overdue</p>
+                <p className="text-xs text-destructive/70 mt-0.5">
+                  Expected delivery was {po.expectedDate ? formatDate(po.expectedDate) : '-'}.
+                  Delivery has not been recorded.
+                </p>
+              </div>
+              <div className="shrink-0 text-left sm:pl-8 sm:text-right">
+                <div className="text-4xl font-bold text-destructive tabular-nums leading-none">
+                  {overdueDays}
+                </div>
+                <div className="text-xs text-destructive/70 mt-1">days overdue</div>
+              </div>
             </div>
-            <p className="text-sm font-semibold text-destructive">
-              Purchase Order is Overdue
-            </p>
-            <p className="text-xs text-destructive/70 mt-0.5">
-              Expected delivery was {po.expectedDate ? formatDate(po.expectedDate) : '-'}.
-              Delivery has not been recorded.
-            </p>
+          )}
+
+          {/* ---- Stat cards ---- */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            <StatsCard
+              icon={<DollarSign className="size-5 text-primary" />}
+              bgClass="bg-primary/10"
+              label="PO Total"
+              value={formatCurrency(poTotal)}
+              description="Base contract amount"
+            />
+            <StatsCard
+              icon={<TrendingUp className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="SCO Total"
+              value={scoTotal > 0 ? `+${formatCurrency(scoTotal)}` : formatCurrency(0)}
+              description="Approved change orders"
+            />
+            <StatsCard
+              icon={<ClipboardList className="size-5 text-info" />}
+              bgClass="bg-info/10"
+              label="Total Commitment"
+              value={formatCurrency(totalCommitment)}
+              description="PO + approved SCOs"
+            />
+            <StatsCard
+              icon={<CheckCircle2 className="size-5 text-success" />}
+              bgClass="bg-success/10"
+              label="Amount Paid"
+              value={formatCurrency(amountPaid)}
+              description="Via linked invoices"
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-warning" />}
+              bgClass="bg-warning/10"
+              label="Balance Due"
+              value={formatCurrency(balanceDue)}
+              description="Remaining balance"
+            />
           </div>
-          <div className="shrink-0 text-left sm:pl-8 sm:text-right">
-            <div className="text-4xl font-bold text-destructive tabular-nums leading-none">
-              {overdueDays}
+
+          {/* ---- Cancelled reason banner ---- */}
+          {isCancelled && (po as { cancellationReason?: string | null }).cancellationReason && (
+            <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
+              <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-1">
+                Cancellation Reason
+              </div>
+              <p className="text-sm text-foreground">
+                {(po as { cancellationReason?: string | null }).cancellationReason}
+              </p>
             </div>
-            <div className="text-xs text-destructive/70 mt-1">days overdue</div>
-          </div>
-        </div>
-      )}
-
-      {/* ---- Stat cards ---- */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <StatsCard
-          icon={<DollarSign className="size-5 text-primary" />}
-          bgClass="bg-primary/10"
-          label="PO Total"
-          value={formatCurrency(poTotal)}
-          description="Base contract amount"
-        />
-        <StatsCard
-          icon={<TrendingUp className="size-5 text-muted-foreground" />}
-          bgClass="bg-muted/60"
-          label="SCO Total"
-          value={scoTotal > 0 ? `+${formatCurrency(scoTotal)}` : formatCurrency(0)}
-          description="Approved change orders"
-        />
-        <StatsCard
-          icon={<ClipboardList className="size-5 text-info" />}
-          bgClass="bg-info/10"
-          label="Total Commitment"
-          value={formatCurrency(totalCommitment)}
-          description="PO + approved SCOs"
-        />
-        <StatsCard
-          icon={<CheckCircle2 className="size-5 text-success" />}
-          bgClass="bg-success/10"
-          label="Amount Paid"
-          value={formatCurrency(amountPaid)}
-          description="Via linked invoices"
-        />
-        <StatsCard
-          icon={<Receipt className="size-5 text-warning" />}
-          bgClass="bg-warning/10"
-          label="Balance Due"
-          value={formatCurrency(balanceDue)}
-          description="Remaining balance"
-        />
-      </div>
-
-      {/* ---- Cancelled reason banner ---- */}
-      {isCancelled && (po as { cancellationReason?: string | null }).cancellationReason && (
-        <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
-          <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-1">
-            Cancellation Reason
-          </div>
-          <p className="text-sm text-foreground">
-            {(po as { cancellationReason?: string | null }).cancellationReason}
-          </p>
-        </div>
-      )}
+          )}
 
           <div className="grid min-w-0 grid-cols-1 gap-5 2xl:grid-cols-5">
             {/* Left column: Vendor info + Line items */}
@@ -477,10 +470,7 @@ export function PODetailPage() {
                     <ProjectDetailField label="Vendor">{po.vendor?.name}</ProjectDetailField>
                     <ProjectDetailField label="Email">
                       {vendorEmail ? (
-                        <a
-                          href={`mailto:${vendorEmail}`}
-                          className="text-primary hover:underline"
-                        >
+                        <a href={`mailto:${vendorEmail}`} className="text-primary hover:underline">
                           {vendorEmail}
                         </a>
                       ) : (
@@ -492,7 +482,10 @@ export function PODetailPage() {
                     <ProjectDetailField label="Payment Terms">
                       {po.paymentTerms?.replace(/_/g, ' ')}
                     </ProjectDetailField>
-                    <ProjectDetailField label="Vendor Address" className="sm:col-span-2 lg:col-span-3">
+                    <ProjectDetailField
+                      label="Vendor Address"
+                      className="sm:col-span-2 lg:col-span-3"
+                    >
                       {vendorAddress ?? '-'}
                     </ProjectDetailField>
                   </div>
@@ -531,18 +524,12 @@ export function PODetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <ProjectDetailField label="Trade">
-                      {tradeLabel ?? '-'}
-                    </ProjectDetailField>
-                    <ProjectDetailField label="Linked RFQ">
-                      {readableRfq ?? '-'}
-                    </ProjectDetailField>
+                    <ProjectDetailField label="Trade">{tradeLabel ?? '-'}</ProjectDetailField>
+                    <ProjectDetailField label="Linked RFQ">{readableRfq ?? '-'}</ProjectDetailField>
                     <ProjectDetailField label="Expected Date">
                       {po.expectedDate ? formatDate(po.expectedDate) : '-'}
                     </ProjectDetailField>
-                    <ProjectDetailField label="Address">
-                      {po.address ?? '-'}
-                    </ProjectDetailField>
+                    <ProjectDetailField label="Address">{po.address ?? '-'}</ProjectDetailField>
                     <ProjectDetailField label="Ship To" className="lg:row-span-2">
                       {po.shipToAddress ?? '-'}
                     </ProjectDetailField>
@@ -640,9 +627,7 @@ export function PODetailPage() {
                     <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
                   )}
                   {taxAmount > 0 && (
-                    <InfoRow label={`Tax (${po.taxPercent}%)`}>
-                      {formatCurrency(taxAmount)}
-                    </InfoRow>
+                    <InfoRow label={`Tax (${po.taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
                   )}
                   <Separator className="my-1" />
                   <InfoRow label="Total">
@@ -657,9 +642,7 @@ export function PODetailPage() {
                     <>
                       <Separator className="my-2" />
                       <InfoRow label="SCO Total">+{formatCurrency(scoTotal)}</InfoRow>
-                      <InfoRow label="Total Commitment">
-                        {formatCurrency(totalCommitment)}
-                      </InfoRow>
+                      <InfoRow label="Total Commitment">{formatCurrency(totalCommitment)}</InfoRow>
                     </>
                   )}
                   {linkedInvoices.length > 0 && (
@@ -706,9 +689,7 @@ export function PODetailPage() {
                       <CheckCircle2 className="size-4 text-success mt-0.5 shrink-0" />
                       <div>
                         <div className="text-xs text-muted-foreground">Delivered</div>
-                        <div className="text-sm font-medium">
-                          {formatDate(po.deliveryDate)}
-                        </div>
+                        <div className="text-sm font-medium">{formatDate(po.deliveryDate)}</div>
                       </div>
                     </div>
                   )}
@@ -771,9 +752,7 @@ export function PODetailPage() {
                   <InfoRow label="Payment Terms">
                     {po.paymentTerms?.replace(/_/g, ' ') ?? '-'}
                   </InfoRow>
-                  {po.rfqId && (
-                    <InfoRow label="Linked RFQ">{readableRfq}</InfoRow>
-                  )}
+                  {po.rfqId && <InfoRow label="Linked RFQ">{readableRfq}</InfoRow>}
                   {/* Hidden until /purchase-order/{id} includes revisionNumber. */}
                   <InfoRow label="Project">{po.project?.name ?? '-'}</InfoRow>
                 </CardContent>
@@ -790,9 +769,8 @@ export function PODetailPage() {
         title="Issue Purchase Order"
         description={
           <>
-            Issue <strong>{po.poNumber ?? 'this PO'}</strong> to{' '}
-            <strong>{po.vendor?.name}</strong> for{' '}
-            <strong>{formatCurrency(poTotal)}</strong>?
+            Issue <strong>{po.poNumber ?? 'this PO'}</strong> to <strong>{po.vendor?.name}</strong>{' '}
+            for <strong>{formatCurrency(poTotal)}</strong>?
           </>
         }
         confirmLabel="Issue PO"
@@ -806,7 +784,7 @@ export function PODetailPage() {
                   // Budget warning is non-blocking - handled by toast in mutation
                 }
               },
-            },
+            }
           );
         }}
         isPending={issueMutation.isPending}
@@ -830,7 +808,7 @@ export function PODetailPage() {
                 setCancelOpen(false);
                 setCancelReason('');
               },
-            },
+            }
           );
         }}
       />
@@ -872,7 +850,7 @@ export function PODetailPage() {
               onClick={() => {
                 recordDeliveryMutation.mutate(
                   { id: poId, deliveryDate },
-                  { onSuccess: () => setDeliveryOpen(false) },
+                  { onSuccess: () => setDeliveryOpen(false) }
                 );
               }}
             >
@@ -895,10 +873,10 @@ export function PODetailPage() {
                 onSuccess: (uploaded) => {
                   addAttachmentMutation.mutate(
                     { poId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) },
+                    { onSuccess: () => setUploadOpen(false) }
                   );
                 },
-              },
+              }
             );
           }}
           isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
@@ -907,6 +885,3 @@ export function PODetailPage() {
     </div>
   );
 }
-
-
-

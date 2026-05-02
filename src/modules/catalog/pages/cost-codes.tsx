@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { useQueries } from '@tanstack/react-query';
-import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
-import { useSearchParams } from 'react-router-dom';
-
-import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
-import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
-import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
+import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
+import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
+import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
 import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
 import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
-import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
 import { CostCodesTableCard } from '@/modules/catalog/components/cost-codes-table-card';
 import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
 import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
@@ -21,50 +16,32 @@ import {
   useDeleteCostCodeMutation,
   useUpdateCostCodeMutation,
 } from '@/modules/catalog/hooks';
-import type { CostCode, CostCodeCreate } from '@/modules/catalog/schemas/costcode.schema';
+import type {
+  CostCode,
+  CostCodeCreate,
+  CostCodeFilters,
+} from '@/modules/catalog/schemas/costcode.schema';
+import { useQueries } from '@tanstack/react-query';
+import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 
 const DEFAULT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
+type CostCodeSortBy = NonNullable<CostCodeFilters['sortBy']>;
+
+const isCostCodeSortBy = (value: string | null): value is CostCodeSortBy => {
+  return value === 'name' || value === 'code';
+};
 
 export function CostCodesListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const page = parsePageParam(searchParams.get('page'));
-  const size = parseSizeParam(searchParams.get('size'), DEFAULT_PAGE_SIZE);
-  const searchQuery = searchParams.get('search') ?? '';
+  const { page, size, searchQuery, searchInput, searchParams, updateParams, handleSearchChange } =
+    useResourceListParams({
+      defaultPageSize: DEFAULT_PAGE_SIZE,
+      defaultSortBy: 'name',
+      defaultSortOrder: 'asc',
+      searchDebounceMs: SEARCH_DEBOUNCE_MS,
+      isSortBy: isCostCodeSortBy,
+    });
   const categoryFilter = searchParams.get('categoryId') ?? undefined;
-
-  const [searchInput, setSearchInput] = useState(searchQuery);
-
-  useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
-
-  const updateParams = useCallback(
-    (patch: Record<string, string | undefined>) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        for (const [k, v] of Object.entries(patch)) {
-          if (v === undefined || v === '') next.delete(k);
-          else next.set(k, v);
-        }
-        return next;
-      });
-    },
-    [setSearchParams]
-  );
-
-  const updateSearchParam = useDebouncedCallback((value: string) => {
-    updateParams({ search: value || undefined, page: undefined });
-  }, SEARCH_DEBOUNCE_MS);
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setSearchInput(value);
-      updateSearchParam(value);
-    },
-    [updateSearchParam]
-  );
 
   const { data, isLoading, isFetching, isError, refetch } = useCostCodesQuery({
     page,
@@ -74,8 +51,7 @@ export function CostCodesListPage() {
     search: searchQuery || undefined,
     costCodeCategoryId: categoryFilter,
   });
-  const { data: categories = [], isLoading: isCategoriesLoading } =
-    useCostCodeCategoriesQuery();
+  const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
   const deleteMutation = useDeleteCostCodeMutation();
   const createMutation = useCreateCostCodeMutation();
   const updateMutation = useUpdateCostCodeMutation();
@@ -95,9 +71,7 @@ export function CostCodesListPage() {
   const totalCount = data?.count ?? 0;
   const hasActiveFilters = !!searchQuery || !!categoryFilter;
   const isStatsLoading =
-    isFetching ||
-    isCategoriesLoading ||
-    categoryCountQueries.some((query) => query.isLoading);
+    isFetching || isCategoriesLoading || categoryCountQueries.some((query) => query.isLoading);
 
   const columns = useCostCodeColumns({
     onEdit: setEditingCostCode,
