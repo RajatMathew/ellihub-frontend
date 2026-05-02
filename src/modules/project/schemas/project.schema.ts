@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { primeContractSchema } from './project-contract.schema';
+import { paymentTermsSchema, primeContractSchema } from './project-contract.schema';
 import {
   type ProjectStatusEnum,
   projectStatusSchema,
@@ -38,6 +38,7 @@ export const projectListItemSchema = z
     status: ProjectStatusSchema.nullable().optional(),
     statusRef: projectStatusSchema.nullable().optional(),
     contractValue: z.coerce.number().optional(),
+    contractType: z.string().nullable().optional(),
     approvedChangeOrdersCount: z.coerce.number().optional(),
     approvedChangeOrdersTotal: z.coerce.number().optional(),
     revisedContractValue: z.coerce.number().optional(),
@@ -49,6 +50,7 @@ export const projectListItemSchema = z
     retainagePercent: z.coerce.number().optional(),
     targetBudgetPercent: z.coerce.number().optional(),
     taxRate: z.coerce.number().optional(),
+    paymentTerms: paymentTermsSchema.nullable().optional(),
     streetAddress: z.string().nullable().optional(),
     city: z.string().nullable().optional(),
     state: z.string().nullable().optional(),
@@ -94,9 +96,11 @@ export const projectDetailSchema = z
     gcId: z.string(),
     leadPMId: z.string().nullable().optional(),
     contractValue: z.coerce.number().optional(),
+    contractType: z.string().nullable().optional(),
     retainagePercent: z.coerce.number().optional(),
     targetBudgetPercent: z.coerce.number().optional(),
     taxRate: z.coerce.number().optional(),
+    paymentTerms: paymentTermsSchema.nullable().optional(),
     streetAddress: z.string().nullable().optional(),
     city: z.string().nullable().optional(),
     state: z.string().nullable().optional(),

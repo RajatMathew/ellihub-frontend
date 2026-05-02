@@ -1,14 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
 import { projectApi } from '@/modules/project/api/project.api';
+import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
 import { projectKeys } from '@/modules/project/constants/project.keys';
+import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreateProjectInput,
   ListProjectsParams,
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 /* ---- QUERY HOOKS ---- */
 
@@ -27,7 +28,7 @@ export const useProjectDetailQuery = (id: string) =>
 
 export const useInvoiceAgingQuery = (
   id: string,
-  params?: { asOfDate?: string; vendorId?: string },
+  params?: { asOfDate?: string; vendorId?: string }
 ) =>
   useQuery({
     queryKey: [...projectKeys.invoiceAging(id), params],
@@ -60,18 +61,18 @@ export const useUpdateProjectMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
       projectApi.update(id, data),
-    onSuccess: (updated: ProjectDetail) => {
-      // Merge update into cache to prevent UI flicker/disappearing nested fields
+    onSuccess: async (updated: ProjectDetail) => {
+      // Merge update into cache to prevent UI flicker/disappearing nested fields.
       qc.setQueryData<ProjectDetail | undefined>(projectKeys.detail(updated.id), (old) =>
-        old ? { ...old, ...updated } : updated,
+        old ? { ...old, ...updated } : updated
       );
-      
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: projectKeys.all }),
-        qc.invalidateQueries({ queryKey: projectKeys.detail(updated.id) }),
-      ]).then(() => {
-        toast.success('Project updated successfully.');
-      });
+
+      await invalidateProjectQueries(qc, [
+        projectKeys.list(),
+        projectKeys.detail(updated.id),
+        primeChangeOrderKeys.financialSummary(updated.id),
+      ]);
+      toast.success('Project updated successfully.');
     },
     onError: () => toast.error('Failed to update project.'),
   });
@@ -96,10 +97,7 @@ export const useSetProjectActiveMutation = () => {
     mutationFn: (id: string) => projectApi.setActive(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: projectKeys.all }),
-        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
-      ]).then(() => {
+      return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         toast.success('Project is now Active.');
       });
     },
@@ -113,10 +111,7 @@ export const useSetProjectInactiveMutation = () => {
     mutationFn: (id: string) => projectApi.setInactive(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: projectKeys.all }),
-        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
-      ]).then(() => {
+      return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         toast.success('Project is now Inactive.');
       });
     },
@@ -130,10 +125,7 @@ export const useSetProjectClosedMutation = () => {
     mutationFn: (id: string) => projectApi.setClosed(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: projectKeys.all }),
-        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
-      ]).then(() => {
+      return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         toast.success('Project closed successfully.');
       });
     },
@@ -147,10 +139,7 @@ export const useSetProjectCompletedMutation = () => {
     mutationFn: (id: string) => projectApi.setCompleted(id),
     onSuccess: (_updated, id) => {
       if (!id) return;
-      return Promise.all([
-        qc.invalidateQueries({ queryKey: projectKeys.all }),
-        qc.invalidateQueries({ queryKey: projectKeys.detail(id) }),
-      ]).then(() => {
+      return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         toast.success('Project marked as Completed.');
       });
     },
