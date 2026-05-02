@@ -1,9 +1,10 @@
 import { lazy } from 'react';
+
 import { Route, Routes } from 'react-router-dom';
 
-const PTOListPage = lazy(() => import('../pages/pto/pto-list'));
-const PTOFormPage = lazy(() => import('../pages/pto/pto-form'));
-const PTODetailPage = lazy(() => import('../pages/pto/pto-detail'));
+const PTOListPage = lazy(() => import('@/modules/hr/pages/pto/pto-list'));
+const PTOFormPage = lazy(() => import('@/modules/hr/pages/pto/pto-form'));
+const PTODetailPage = lazy(() => import('@/modules/hr/pages/pto/pto-detail'));
 
 export default function PTORoute() {
   return (

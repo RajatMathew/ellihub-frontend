@@ -6,25 +6,42 @@ export type PTOStatus = z.infer<typeof ptoStatusEnum>;
 export const ptoSchema = z.object({
   id: z.string(),
   employeeId: z.string(),
-  employee: z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string().optional().nullable(),
-    phoneNumber: z.string().optional().nullable(),
-    department: z.object({
+  employee: z
+    .object({
       id: z.string(),
       name: z.string(),
-    }).optional().nullable(),
-    role: z.object({
-      id: z.string(),
-      label: z.string(),
-    }).optional().nullable(),
-  }).optional().nullable(),
+      email: z.string().optional().nullable(),
+      phoneNumber: z.string().optional().nullable(),
+      department: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+        })
+        .optional()
+        .nullable(),
+      role: z
+        .object({
+          id: z.string(),
+          label: z.string().optional().nullable(),
+          name: z.string().optional().nullable(),
+        })
+        .passthrough()
+        .optional()
+        .nullable(),
+    })
+    .passthrough()
+    .optional()
+    .nullable(),
   typeId: z.string(),
-  type: z.object({
-    id: z.string(),
-    label: z.string(),
-  }).optional().nullable(),
+  type: z
+    .object({
+      id: z.string(),
+      label: z.string().optional().nullable(),
+      name: z.string().optional().nullable(),
+    })
+    .passthrough()
+    .optional()
+    .nullable(),
   startDate: z.string(),
   endDate: z.string(),
   reason: z.string().optional().nullable(),
@@ -39,10 +56,10 @@ export const ptoSchema = z.object({
 export type PTO = z.infer<typeof ptoSchema>;
 
 export const createPTOInputSchema = z.object({
-  employeeId: z.string(),
-  typeId: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
+  employeeId: z.string().min(1, 'Employee is required'),
+  typeId: z.string().min(1, 'PTO type is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
   reason: z.string().optional(),
 });
 
@@ -77,3 +94,13 @@ export const ptoPaginatedResponseSchema = z.object({
 });
 
 export type PTOPaginatedResponse = z.infer<typeof ptoPaginatedResponseSchema>;
+
+export const listPTOParamsSchema = z.object({
+  page: z.number().min(1).optional().default(1),
+  size: z.number().min(1).optional().default(10),
+  sortBy: z.string().optional().default('startDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  search: z.string().optional(),
+});
+
+export type ListPTOParams = z.infer<typeof listPTOParamsSchema>;

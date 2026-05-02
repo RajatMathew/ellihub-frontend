@@ -1,35 +1,54 @@
 import { z } from 'zod';
 
+export const employeeRoleSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().optional().nullable(),
+    label: z.string().optional().nullable(),
+    type: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+export const employeeDepartmentSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional().nullable(),
+  })
+  .passthrough();
+
 // Base employee schema matching the API response
-export const employeeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().email(),
-  phoneNumber: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  startDate: z.string().optional().nullable(),
-  emergencyContactName: z.string().optional().nullable(),
-  emergencyContactPhone: z.string().optional().nullable(),
-  emergencyContactRelation: z.string().optional().nullable(),
-  roleId: z.string().optional().nullable(),
-  role: z.object({
+export const employeeSchema = z
+  .object({
     id: z.string(),
     name: z.string(),
-  }).optional().nullable(),
-  department: z.object({
-    id: z.string(),
-    name: z.string(),
-  }).optional().nullable(),
-  status: z.string().optional().nullable(),
-  documents: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    url: z.string().optional(),
-    type: z.string().optional(),
-  })).optional().default([]),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
+    email: z.string().email(),
+    phoneNumber: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    startDate: z.string().optional().nullable(),
+    emergencyContactName: z.string().optional().nullable(),
+    emergencyContactPhone: z.string().optional().nullable(),
+    emergencyContactRelation: z.string().optional().nullable(),
+    departmentId: z.string().optional().nullable(),
+    roleId: z.string().optional().nullable(),
+    role: employeeRoleSchema.optional().nullable(),
+    department: employeeDepartmentSchema.optional().nullable(),
+    status: z.string().optional().nullable(),
+    documents: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          url: z.string().optional(),
+          type: z.string().optional(),
+        })
+      )
+      .optional()
+      .default([]),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
 
 export type Employee = z.infer<typeof employeeSchema>;
 
@@ -56,15 +75,21 @@ export const createEmployeeInputSchema = z.object({
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   emergencyContactRelation: z.string().optional(),
-  roleId: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  roleId: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((value) => (value === '' ? undefined : value)),
   createAccount: z.boolean().default(true),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeInputSchema>;
 
-export const updateEmployeeInputSchema = createEmployeeInputSchema.omit({ createAccount: true }).extend({
-  id: z.string(),
-});
+export const updateEmployeeInputSchema = createEmployeeInputSchema
+  .omit({ createAccount: true })
+  .extend({
+    id: z.string(),
+  });
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeInputSchema>;
 

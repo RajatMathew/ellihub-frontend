@@ -1,59 +1,51 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
-  ptoSchema,
   ptoPaginatedResponseSchema,
-  type PTO,
+  ptoSchema,
   type CreatePTOInput,
-  type UpdatePTOInput,
+  type ListPTOParams,
+  type PTO,
   type PTODecisionInput,
   type PTOPaginatedResponse,
-} from '../schemas/pto.schema';
+  type UpdatePTOInput,
+} from '@/modules/hr/schemas/pto.schema';
 
 const BASE = '/hr/pto';
 
 export const ptoApi = {
-  async list(params: { page?: number; size?: number; sortBy?: string; sortOrder?: 'asc' | 'desc'; search?: string }): Promise<PTOPaginatedResponse> {
+  async list(params: ListPTOParams): Promise<PTOPaginatedResponse> {
     const res = await api.get(BASE, { params });
-    const raw = res.data;
-    const result = ptoPaginatedResponseSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[ptoApi.list] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    const body = res.data?.data?.data ? res.data.data : res.data;
+    const pagination = body?.pagination ?? {};
+    const raw = {
+      data: body?.data ?? [],
+      pagination: {
+        currentPage: pagination.currentPage ?? params.page,
+        totalPages: pagination.totalPages ?? 1,
+        totalItems: pagination.totalItems ?? (Array.isArray(body?.data) ? body.data.length : 0),
+        hasNextPage: pagination.hasNextPage ?? false,
+        hasPreviousPage: pagination.hasPreviousPage ?? false,
+      },
+    };
+    return ptoPaginatedResponseSchema.parse(raw);
   },
 
   async getById(id: string): Promise<PTO> {
     const res = await api.get(`${BASE}/${id}`);
     const raw = res.data?.data ?? res.data;
-    const result = ptoSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[ptoApi.getById] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return ptoSchema.parse(raw);
   },
 
   async create(data: CreatePTOInput): Promise<PTO> {
     const res = await api.post(BASE, data);
     const raw = res.data?.data ?? res.data;
-    const result = ptoSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[ptoApi.create] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return ptoSchema.parse(raw);
   },
 
   async update(data: UpdatePTOInput): Promise<PTO> {
     const res = await api.put(BASE, data);
     const raw = res.data?.data ?? res.data;
-    const result = ptoSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[ptoApi.update] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return ptoSchema.parse(raw);
   },
 
   async delete(id: string): Promise<void> {

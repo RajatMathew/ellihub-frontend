@@ -1,15 +1,15 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   departmentDetailSchema,
   departmentPaginatedResponseSchema,
+  type AssignEmployeeInput,
   type CreateDepartmentInput,
-  type ListDepartmentsParams,
-  type UpdateDepartmentInput,
   type DepartmentDetail,
   type DepartmentPaginatedResponse,
-  type AssignEmployeeInput,
+  type ListDepartmentsParams,
   type RemoveEmployeeInput,
-} from '@modules/hr/schemas/department.schema';
+  type UpdateDepartmentInput,
+} from '@/modules/hr/schemas/department.schema';
 
 const BASE = '/hr/department';
 
@@ -23,56 +23,38 @@ export const departmentsApi = {
     if (params?.search) query.search = params.search;
 
     const res = await api.get(BASE, { params: query });
+    const pagination = res.data?.pagination ?? {};
     const raw = {
       data: res.data?.data ?? res.data ?? [],
-      pagination: res.data?.pagination ?? {
+      pagination: {
         currentPage: params?.page ?? 1,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPreviousPage: false,
-        totalItems: Array.isArray(res.data?.data) ? res.data.data.length : 0,
-        itemsPerPage: params?.size ?? 25,
+        totalPages: pagination.totalPages ?? 1,
+        hasNextPage: pagination.hasNextPage ?? false,
+        hasPreviousPage: pagination.hasPreviousPage ?? false,
+        totalItems:
+          pagination.totalItems ?? (Array.isArray(res.data?.data) ? res.data.data.length : 0),
+        itemsPerPage: pagination.itemsPerPage ?? pagination.pageSize ?? params?.size ?? 25,
       },
     };
-    const result = departmentPaginatedResponseSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[departmentsApi.list] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return departmentPaginatedResponseSchema.parse(raw);
   },
 
   async getById(id: string): Promise<DepartmentDetail> {
     const res = await api.get(`${BASE}/${id}`);
     const raw = res.data?.data ?? res.data;
-    const result = departmentDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.warn('[departmentsApi.getById] Partial Validation Failure:', result.error);
-      return raw as DepartmentDetail;
-    }
-    return result.data;
+    return departmentDetailSchema.parse(raw);
   },
 
   async create(data: CreateDepartmentInput): Promise<DepartmentDetail> {
     const res = await api.post(BASE, data);
     const raw = res.data?.data ?? res.data;
-    const result = departmentDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[departmentsApi.create] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return departmentDetailSchema.parse(raw);
   },
 
   async update(data: UpdateDepartmentInput): Promise<DepartmentDetail> {
     const res = await api.put(BASE, data);
     const raw = res.data?.data ?? res.data;
-    const result = departmentDetailSchema.safeParse(raw);
-    if (!result.success) {
-      console.error('[departmentsApi.update] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
+    return departmentDetailSchema.parse(raw);
   },
 
   async remove(id: string): Promise<void> {

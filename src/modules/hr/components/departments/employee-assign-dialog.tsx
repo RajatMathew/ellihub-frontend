@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,13 +8,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldLabel } from '@app/components/ui/field';
-import { SearchableSelect } from '@app/components/ui/searchable-select';
-import { useEmployeesQuery } from '@modules/hr/hooks/use-employees';
-
-import { useAssignEmployeeMutation } from '../../hooks/departments.hooks';
-import { useLookupsQuery } from '@modules/project/hooks/lookup.hooks';
+} from '@/app/components/ui/dialog';
+import { Field, FieldLabel } from '@/app/components/ui/field';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import { useAppLookupsQuery } from '@/app/hooks/use-lookup';
+import { useAssignEmployeeMutation } from '@/modules/hr/hooks/departments.hooks';
+import { useEmployeesQuery } from '@/modules/hr/hooks/employees.hooks';
+import type { Employee } from '@/modules/hr/schemas/employee.schema';
 
 interface EmployeeAssignDialogProps {
   open: boolean;
@@ -30,8 +30,13 @@ export function EmployeeAssignDialog({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
-  const { data: employeesData } = useEmployeesQuery({ size: 1000 });
-  const { data: rolesData } = useLookupsQuery('PROFESSIONAL_ROLE');
+  const { data: employeesData, isLoading: isEmployeesLoading } = useEmployeesQuery({
+    page: 1,
+    size: 1000,
+    sortBy: 'name',
+    sortOrder: 'asc',
+  });
+  const { data: rolesData, isLoading: isRolesLoading } = useAppLookupsQuery('PROFESSIONAL_ROLE');
   const assignMutation = useAssignEmployeeMutation();
 
   const handleAssign = async () => {
@@ -48,9 +53,9 @@ export function EmployeeAssignDialog({
     setSelectedRoleId('');
   };
 
-  const employeeOptions = (employeesData?.data ?? []).map((emp: any) => ({
-    value: emp.id,
-    label: emp.fullName || emp.name,
+  const employeeOptions = (employeesData?.data ?? []).map((employee: Employee) => ({
+    value: employee.id,
+    label: employee.name,
   }));
 
   const roleOptions = (rolesData ?? []).map((role) => ({
@@ -60,9 +65,9 @@ export function EmployeeAssignDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="uppercase tracking-widest text-sm font-bold">
+          <DialogTitle className="text-sm font-bold uppercase tracking-widest">
             Assign Employee
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -72,7 +77,7 @@ export function EmployeeAssignDialog({
 
         <div className="grid gap-4 py-4">
           <Field>
-            <FieldLabel className="text-[10px] font-bold uppercase tracking-widest">
+            <FieldLabel className="text-xs font-bold uppercase tracking-widest">
               Employee
             </FieldLabel>
             <SearchableSelect
@@ -80,11 +85,12 @@ export function EmployeeAssignDialog({
               value={selectedEmployeeId}
               onValueChange={(value) => setSelectedEmployeeId(value ?? '')}
               placeholder="Search employees..."
+              disabled={isEmployeesLoading}
             />
           </Field>
 
           <Field>
-            <FieldLabel className="text-[10px] font-bold uppercase tracking-widest">
+            <FieldLabel className="text-xs font-bold uppercase tracking-widest">
               Role (Optional)
             </FieldLabel>
             <SearchableSelect
@@ -92,6 +98,7 @@ export function EmployeeAssignDialog({
               value={selectedRoleId}
               onValueChange={(value) => setSelectedRoleId(value ?? '')}
               placeholder="Select a role..."
+              disabled={isRolesLoading}
             />
           </Field>
         </div>

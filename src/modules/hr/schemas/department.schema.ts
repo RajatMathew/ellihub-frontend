@@ -1,32 +1,56 @@
 import { z } from 'zod';
 
-export const departmentEmployeeSchema = z.object({
-  id: z.string(),
-  fullName: z.string(),
-  email: z.string().email().optional(),
-  role: z.object({
+export const departmentRoleSchema = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().optional().nullable(),
+    label: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+export const departmentEmployeeProfileSchema = z
+  .object({
     id: z.string(),
-    name: z.string(),
-  }).optional(),
-}).passthrough();
+    name: z.string().optional().nullable(),
+    fullName: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    role: departmentRoleSchema.optional().nullable(),
+  })
+  .passthrough();
+
+export const departmentEmployeeSchema = z
+  .object({
+    id: z.string().optional(),
+    employeeId: z.string().optional().nullable(),
+    name: z.string().optional().nullable(),
+    fullName: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    role: departmentRoleSchema.optional().nullable(),
+    employee: departmentEmployeeProfileSchema.optional().nullable(),
+  })
+  .passthrough();
 
 export type DepartmentEmployee = z.infer<typeof departmentEmployeeSchema>;
 
-export const departmentSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional().nullable(),
-  employeeCount: z.number().optional().default(0),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-  deletedAt: z.string().optional().nullable(),
-}).passthrough();
+export const departmentSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().min(1, 'Name is required'),
+    description: z.string().optional().nullable(),
+    employeeCount: z.number().optional().default(0),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    deletedAt: z.string().optional().nullable(),
+  })
+  .passthrough();
 
 export type Department = z.infer<typeof departmentSchema>;
 
-export const departmentDetailSchema = departmentSchema.extend({
-  employees: z.array(departmentEmployeeSchema).optional().default([]),
-}).passthrough();
+export const departmentDetailSchema = departmentSchema
+  .extend({
+    employees: z.array(departmentEmployeeSchema).optional().default([]),
+  })
+  .passthrough();
 
 export type DepartmentDetail = z.infer<typeof departmentDetailSchema>;
 

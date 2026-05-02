@@ -1,6 +1,5 @@
+import { DepartmentDetailPage, DepartmentFormPage, DepartmentListPage } from '@/modules/hr/pages';
 import { Route, Routes } from 'react-router-dom';
-
-import { DepartmentDetailPage, DepartmentFormPage, DepartmentListPage } from '../pages';
 
 const DepartmentsRoutes = () => {
   return (

@@ -1,14 +1,25 @@
+import { employeesApi } from '@/modules/hr/api/employees.api';
+import { employeesKeys } from '@/modules/hr/constants/employees.keys';
+import type { ListEmployeesParams } from '@/modules/hr/schemas/employee.schema';
 import { useQuery } from '@tanstack/react-query';
 
-import { employeesApi, type ListEmployeesParams } from '@app/api/employees.api';
+type EmployeeLookupParams = Partial<ListEmployeesParams>;
 
-const employeeKeys = {
-  all: ['employees'] as const,
-  list: () => [...employeeKeys.all, 'list'] as const,
+const DEFAULT_EMPLOYEE_LOOKUP_PARAMS: ListEmployeesParams = {
+  page: 1,
+  size: 25,
+  sortBy: 'name',
+  sortOrder: 'asc',
 };
 
-export const useEmployeesQuery = (params?: ListEmployeesParams) =>
-  useQuery({
-    queryKey: [...employeeKeys.list(), params],
-    queryFn: () => employeesApi.list(params),
+export const useEmployeesQuery = (params?: EmployeeLookupParams) => {
+  const normalizedParams: ListEmployeesParams = {
+    ...DEFAULT_EMPLOYEE_LOOKUP_PARAMS,
+    ...params,
+  };
+
+  return useQuery({
+    queryKey: employeesKeys.list(normalizedParams),
+    queryFn: () => employeesApi.list(normalizedParams),
   });
+};
