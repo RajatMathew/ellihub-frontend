@@ -2,7 +2,11 @@ import { BadRequestError } from '@utils';
 import axios from 'axios';
 import z from 'zod';
 
-import { FieldwireChangeOrdersSchema, FieldwireProjectUsersSchema } from './models';
+import {
+    FieldwireChangeOrdersSchema,
+    FieldwireProjectsSchema,
+    FieldwireProjectUsersSchema,
+} from './models';
 
 const FIELDWIRE_AUTH_URL = 'https://client-api.super.fieldwire.com/api_keys/jwt';
 const FIELDWIRE_API_BASE_URL = 'https://client-api.us.fieldwire.com/api/v3';
@@ -51,6 +55,20 @@ export const FieldwireClient = {
         );
 
         return FieldwireChangeOrdersSchema.parse(response.data);
+    },
+
+    getProjects: async (accessToken?: string) => {
+        const bearerToken = accessToken ?? (await FieldwireClient.getAccessToken());
+        const response = await axios.get(`${FIELDWIRE_API_BASE_URL}/account/projects`, {
+            headers: {
+                'Fieldwire-Filter': 'active',
+                'Fieldwire-Version': getFieldwireVersionDate(),
+                accept: 'application/json',
+                authorization: `Bearer ${bearerToken}`,
+            },
+        });
+
+        return FieldwireProjectsSchema.parse(response.data);
     },
 
     getProjectUsers: async (fieldwireProjectId: string, accessToken?: string) => {

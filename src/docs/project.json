@@ -197,6 +197,46 @@
                 }
             }
         },
+        "/project/fieldwire/projects": {
+            "get": {
+                "tags": ["Projects"],
+                "summary": "List active Fieldwire projects",
+                "operationId": "listFieldwireProjects",
+                "responses": {
+                    "200": {
+                        "description": "Active Fieldwire projects available for mapping",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/FieldwireProject"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Fieldwire API token is not configured",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/project/{id}": {
             "get": {
                 "tags": ["Projects"],
@@ -857,6 +897,7 @@
                     "jobNumber": { "type": "string", "nullable": true },
                     "contractNumber": { "type": "string", "nullable": true },
                     "fieldwireProjectId": { "type": "string", "format": "uuid", "nullable": true },
+                    "fieldwireProjectName": { "type": "string", "nullable": true },
                     "stageId": { "type": "string" },
                     "divisionId": { "type": "string" },
                     "status": {
@@ -951,6 +992,16 @@
                     "isLead": { "type": "boolean" }
                 }
             },
+            "FieldwireProject": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "name": { "type": "string" },
+                    "code": { "type": "string", "nullable": true },
+                    "address": { "type": "string", "nullable": true },
+                    "accountId": { "type": "integer" }
+                }
+            },
             "PrimeContract": {
                 "type": "object",
                 "properties": {
@@ -985,6 +1036,7 @@
                     },
                     "contractNumber": { "type": "string", "nullable": true },
                     "fieldwireProjectId": { "type": "string", "format": "uuid", "nullable": true },
+                    "fieldwireProjectName": { "type": "string", "nullable": true },
                     "stageId": { "type": "string", "description": "Lookup ULID" },
                     "divisionId": { "type": "string", "description": "Lookup ULID" },
                     "status": {
@@ -1054,6 +1106,7 @@
                                 "format": "uuid",
                                 "nullable": true
                             },
+                            "fieldwireProjectName": { "type": "string", "nullable": true },
                             "stageId": { "type": "string" },
                             "divisionId": { "type": "string" },
                             "streetAddress": { "type": "string", "nullable": true },

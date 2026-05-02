@@ -75,3 +75,23 @@ export const FieldwireProjectUserSchema = z
 export const FieldwireProjectUsersSchema = z.array(FieldwireProjectUserSchema);
 
 export type FieldwireProjectUser = z.infer<typeof FieldwireProjectUserSchema>;
+
+export const FieldwireProjectSchema = z
+    .object({
+        id: z.uuid(),
+        account_id: z.number().int(),
+        name: z.string().min(1),
+        code: z.string().nullable().optional().default(null),
+        address: z.string().nullable().optional().default(null),
+        color: z.string().nullable().optional().default(null),
+        owner_email: z.string().nullable().optional().default(null),
+        plan_name: z.string().nullable().optional().default(null),
+        archived_at: z.string().nullable().optional().default(null),
+        updated_at: z.string().min(1),
+        deleted_at: z.string().nullable().optional().default(null),
+    })
+    .passthrough();
+
+export const FieldwireProjectsSchema = z.array(FieldwireProjectSchema);
+
+export type FieldwireProject = z.infer<typeof FieldwireProjectSchema>;

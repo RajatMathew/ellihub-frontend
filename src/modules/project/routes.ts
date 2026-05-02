@@ -56,6 +56,11 @@ app.get('/prime-contract/:projectId', requirePermission({ project: ['view-all'] 
     return success(c, primeContracts);
 });
 
+app.get('/fieldwire/projects', requirePermission({ project: ['view-all'] }), async (c) => {
+    const projects = await ProjectService.getFieldwireProjects();
+    return success(c, projects);
+});
+
 app.get('/:id', requirePermission({ project: ['view-all'] }), async (c) => {
     const id = c.req.param('id');
     const project = await ProjectService.getProject(id);
