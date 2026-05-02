@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 import { paymentTermsSchema, primeContractSchema } from './project-contract.schema';
+import { projectScheduleEntrySchema } from './project-schedule.schema';
 import {
-  type ProjectStatusEnum,
   projectStatusSchema,
   ProjectStatusSchema,
+  type ProjectStatusEnum,
 } from './project-status.schema';
-import { projectScheduleEntrySchema } from './project-schedule.schema';
 import { projectTeamAssignmentSchema } from './project-team.schema';
 
 export const divisionSchema = z.enum(['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL']);
@@ -30,6 +30,7 @@ export const projectListItemSchema = z
     jobNumber: z.string().nullable().optional(),
     contractNumber: z.string().nullable().optional(),
     fieldwireProjectId: z.string().nullable().optional(),
+    fieldwireProjectName: z.string().nullable().optional(),
     divisionId: z.string().nullable().optional(),
     division: lookupRefSchema.nullable().optional(),
     stageId: z.string(),
@@ -58,11 +59,7 @@ export const projectListItemSchema = z
     estimatedEndDate: z.string().nullable().optional(),
     setInactiveDate: z.string().nullable().optional(),
     tcoDate: z.string().nullable().optional(),
-    gc: z
-      .object({ id: z.string(), name: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    gc: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     leadPM: z
       .object({ id: z.string(), name: z.string(), email: z.string().nullable().optional() })
       .passthrough()
@@ -87,6 +84,7 @@ export const projectDetailSchema = z
     jobNumber: z.string().nullable().optional(),
     contractNumber: z.string().nullable().optional(),
     fieldwireProjectId: z.string().nullable().optional(),
+    fieldwireProjectName: z.string().nullable().optional(),
     description: z.string(),
     stageId: z.string(),
     divisionId: z.string().nullable().optional(),
@@ -142,6 +140,17 @@ export const projectDetailSchema = z
 
 export type ProjectDetail = z.infer<typeof projectDetailSchema>;
 
+export const fieldwireProjectOptionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    code: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    accountId: z.coerce.number(),
+  })
+  .passthrough();
+
+export type FieldwireProjectOption = z.infer<typeof fieldwireProjectOptionSchema>;
 export const projectPaginatedResponseSchema = z.object({
   data: z.array(projectListItemSchema),
   pagination: z.object({
@@ -162,6 +171,7 @@ export const createProjectInputSchema = z.object({
   jobNumber: z.string().optional(),
   contractNumber: z.string().max(100).optional(),
   fieldwireProjectId: z.string().optional().nullable(),
+  fieldwireProjectName: z.string().optional().nullable(),
   stageId: z.string().min(1, 'Stage is required'),
   divisionId: z.string().min(1, 'Division is required'),
   status: ProjectStatusSchema.default('ACTIVE'),
@@ -209,6 +219,7 @@ export const projectFormSchema = z.object({
   jobNumber: z.string().optional(),
   contractNumber: z.string().optional(),
   fieldwireProjectId: z.string().optional().default(''),
+  fieldwireProjectName: z.string().optional().default(''),
   stageId: z.string().min(1, 'Project stage is required'),
   status: ProjectStatusSchema.default('ACTIVE'),
   divisionId: z.string().min(1, 'Division is required'),
@@ -242,6 +253,7 @@ export const updateProjectInputSchema = z.object({
   jobNumber: z.string().optional(),
   contractNumber: z.string().max(100).optional(),
   fieldwireProjectId: z.string().optional().nullable(),
+  fieldwireProjectName: z.string().optional().nullable(),
   stageId: z.string().min(1).optional(),
   divisionId: z.string().min(1).optional(),
   status: ProjectStatusSchema.optional(),

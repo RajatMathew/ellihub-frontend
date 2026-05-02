@@ -26,6 +26,13 @@ export const useProjectDetailQuery = (id: string) =>
     enabled: !!id,
   });
 
+export const useFieldwireProjectsQuery = () =>
+  useQuery({
+    queryKey: projectKeys.fieldwireProjects(),
+    queryFn: () => projectApi.listFieldwireProjects(),
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const useInvoiceAgingQuery = (
   id: string,
   params?: { asOfDate?: string; vendorId?: string }

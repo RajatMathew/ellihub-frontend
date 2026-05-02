@@ -1,10 +1,11 @@
 import api from '@/app/api';
 import { invoiceApi } from '@/modules/project/api/invoice';
-
 import {
+  fieldwireProjectOptionSchema,
   projectDetailSchema,
   projectPaginatedResponseSchema,
   type CreateProjectInput,
+  type FieldwireProjectOption,
   type ListProjectsParams,
   type ProjectDetail,
   type ProjectPaginatedResponse,
@@ -49,7 +50,10 @@ export const projectApi = {
     return result.data;
   },
 
-  async listAssigned(employeeId: string, params?: ListProjectsParams): Promise<ProjectPaginatedResponse> {
+  async listAssigned(
+    employeeId: string,
+    params?: ListProjectsParams
+  ): Promise<ProjectPaginatedResponse> {
     const query: Record<string, string | number> = {};
     if (params?.page != null) query.page = params.page;
     if (params?.size != null) query.size = params.size;
@@ -77,6 +81,18 @@ export const projectApi = {
     return projectDetailSchema.parse(raw);
   },
 
+  async listFieldwireProjects(): Promise<FieldwireProjectOption[]> {
+    const res = await api.get(`${BASE}/fieldwire/projects`);
+    const raw = res.data?.data ?? res.data ?? [];
+    const result = fieldwireProjectOptionSchema.array().safeParse(raw);
+
+    if (!result.success) {
+      console.error('[projectApi.listFieldwireProjects] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+
+    return result.data;
+  },
   async create(data: CreateProjectInput): Promise<ProjectDetail> {
     const res = await api.post(BASE, data);
     const raw = res.data?.data ?? res.data;
@@ -109,7 +125,7 @@ export const projectApi = {
 
   async getInvoiceAging(
     id: string,
-    params?: { asOfDate?: string; vendorId?: string },
+    params?: { asOfDate?: string; vendorId?: string }
   ): Promise<unknown> {
     const query: Record<string, string> = {};
     if (params?.asOfDate) query.asOfDate = params.asOfDate;

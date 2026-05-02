@@ -24,6 +24,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useGCsQuery } from '@/modules/directory/hooks';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
+import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
   PROJECT_FORM_SECTIONS,
@@ -115,6 +116,7 @@ function ProjectEditFormInner({
       jobNumber: project.jobNumber ?? '',
       contractNumber: project.contractNumber ?? '',
       fieldwireProjectId: project.fieldwireProjectId ?? '',
+      fieldwireProjectName: project.fieldwireProjectName ?? '',
       stageId: project.stageId,
       status: project.status ?? 'ACTIVE',
       divisionId: project.divisionId ?? '',
@@ -169,6 +171,7 @@ function ProjectEditFormInner({
       description: data.description,
       contractNumber: data.contractNumber || undefined,
       fieldwireProjectId: data.fieldwireProjectId || null,
+      fieldwireProjectName: data.fieldwireProjectId ? data.fieldwireProjectName || undefined : null,
       stageId: data.stageId,
       divisionId: data.divisionId,
       gcId: data.gcId,
@@ -343,23 +346,29 @@ function ProjectEditFormInner({
               />
 
               <Controller
-                name="fieldwireProjectId"
+                name="fieldwireProjectName"
                 control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Fieldwire Project ID
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="Fieldwire UUID"
-                        aria-invalid={fieldState.invalid}
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
+                render={({ field: nameField }) => (
+                  <Controller
+                    name="fieldwireProjectId"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                          Fieldwire Project
+                        </FieldLabel>
+                        <FieldwireProjectSelect
+                          value={field.value || null}
+                          currentName={nameField.value}
+                          onValueChange={(value, selectedProject) => {
+                            field.onChange(value ?? '');
+                            nameField.onChange(selectedProject?.name ?? '');
+                          }}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
                 )}
               />
             </div>

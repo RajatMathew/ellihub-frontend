@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, FileText, Sparkles, X } from 'lucide-react';
-import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
@@ -33,6 +27,7 @@ import { useGCsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
+import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
   PROJECT_FORM_SECTIONS,
@@ -58,6 +53,11 @@ import {
   type ProjectFormValues,
   type UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Check, FileText, Sparkles, X } from 'lucide-react';
+import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const parseDateValue = (value: unknown): string =>
   typeof value === 'string' ? value.split('T')[0] : '';
@@ -99,6 +99,7 @@ export default function ProjectForm() {
       jobNumber: '',
       contractNumber: '',
       fieldwireProjectId: '',
+      fieldwireProjectName: '',
       stageId: '',
       status: 'ACTIVE',
       divisionId: '',
@@ -127,12 +128,14 @@ export default function ProjectForm() {
   useEffect(() => {
     if (isEditMode && existingProject) {
       const contract = existingContract ?? existingProject.primeContract;
+      const nextFieldwireProjectName = existingProject.fieldwireProjectName ?? '';
       reset({
         name: existingProject.name,
         description: existingProject.description ?? '',
         jobNumber: existingProject.jobNumber ?? '',
         contractNumber: existingProject.contractNumber ?? '',
         fieldwireProjectId: existingProject.fieldwireProjectId ?? '',
+        fieldwireProjectName: nextFieldwireProjectName,
         stageId: existingProject.stageId,
         status: existingProject.status ?? 'ACTIVE',
         divisionId: existingProject.divisionId ?? '',
@@ -217,6 +220,7 @@ export default function ProjectForm() {
       jobNumber: `P-2024-${randomId}`,
       contractNumber: `C-CON-${randomId}`,
       fieldwireProjectId: '',
+      fieldwireProjectName: '',
       stageId: stageOptions[Math.floor(Math.random() * stageOptions.length)]?.value || '',
       status:
         PROJECT_STATUS_OPTIONS[Math.floor(Math.random() * PROJECT_STATUS_OPTIONS.length)]?.value ||
@@ -252,6 +256,9 @@ export default function ProjectForm() {
           description: data.description,
           contractNumber: data.contractNumber || undefined,
           fieldwireProjectId: data.fieldwireProjectId || null,
+          fieldwireProjectName: data.fieldwireProjectId
+            ? data.fieldwireProjectName || undefined
+            : null,
           stageId: data.stageId,
           status: data.status,
           divisionId: data.divisionId,
@@ -295,6 +302,9 @@ export default function ProjectForm() {
           jobNumber: data.jobNumber || undefined,
           contractNumber: data.contractNumber || undefined,
           fieldwireProjectId: data.fieldwireProjectId || undefined,
+          fieldwireProjectName: data.fieldwireProjectId
+            ? data.fieldwireProjectName || undefined
+            : undefined,
           stageId: data.stageId,
           divisionId: data.divisionId,
           status: data.status,
@@ -524,23 +534,29 @@ export default function ProjectForm() {
               />
 
               <Controller
-                name="fieldwireProjectId"
+                name="fieldwireProjectName"
                 control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Fieldwire Project ID
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        {...field}
-                        placeholder="Fieldwire UUID"
-                        aria-invalid={fieldState.invalid}
-                        autoComplete="off"
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
+                render={({ field: nameField }) => (
+                  <Controller
+                    name="fieldwireProjectId"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                          Fieldwire Project
+                        </FieldLabel>
+                        <FieldwireProjectSelect
+                          value={field.value || null}
+                          currentName={nameField.value}
+                          onValueChange={(value, selectedProject) => {
+                            field.onChange(value ?? '');
+                            nameField.onChange(selectedProject?.name ?? '');
+                          }}
+                        />
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    )}
+                  />
                 )}
               />
             </div>

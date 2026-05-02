@@ -1,18 +1,16 @@
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { Button } from '@/app/components/ui/button';
+import { formatPrimeChangeOrderDateTime } from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
+import type { PrimeChangeOrderSyncStatusResponse } from '@/modules/project/schemas/prime-change-order';
 import { ExternalLink, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-import { Button } from '@/app/components/ui/button';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
-import {
-  formatPrimeChangeOrderDateTime,
-} from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
-import type { PrimeChangeOrderSyncStatusResponse } from '@/modules/project/schemas/prime-change-order';
 
 interface PrimeChangeOrderListHeaderProps {
   projectId: string;
   totalCount: number;
   hasActiveFilters: boolean;
   isMapped: boolean;
+  fieldwireProjectName?: string | null;
   syncStatus?: PrimeChangeOrderSyncStatusResponse;
   isSyncDisabled: boolean;
   isSyncPending: boolean;
@@ -24,11 +22,14 @@ export function PrimeChangeOrderListHeader({
   totalCount,
   hasActiveFilters,
   isMapped,
+  fieldwireProjectName,
   syncStatus,
   isSyncDisabled,
   isSyncPending,
   onSync,
 }: PrimeChangeOrderListHeaderProps) {
+  const fieldwireProjectLabel = fieldwireProjectName || syncStatus?.fieldwireProjectId || '-';
+
   return (
     <ResourcePageHeader
       title="Prime Change Orders"
@@ -38,8 +39,8 @@ export function PrimeChangeOrderListHeader({
       description={
         <span className="text-sm text-muted-foreground">
           {isMapped
-            ? `Fieldwire Project: ${syncStatus?.fieldwireProjectId ?? '-'} | Last synced: ${formatPrimeChangeOrderDateTime(
-                syncStatus?.syncStatus.lastSyncedAt,
+            ? `Fieldwire Project: ${fieldwireProjectLabel} | Last synced: ${formatPrimeChangeOrderDateTime(
+                syncStatus?.syncStatus.lastSyncedAt
               )}`
             : 'No Fieldwire project mapped'}
         </span>
@@ -48,7 +49,7 @@ export function PrimeChangeOrderListHeader({
         <>
           {!isMapped && (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/app/project/${projectId}/edit`}>Add Fieldwire ID</Link>
+              <Link to={`/app/project/${projectId}/edit`}>Add Fieldwire Project</Link>
             </Button>
           )}
           {isMapped && syncStatus?.fieldwireProjectId && (

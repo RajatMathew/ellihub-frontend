@@ -1,15 +1,6 @@
 import { useMemo } from 'react';
 
 import {
-  type SortingState,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { AlertCircle } from 'lucide-react';
-import { useParams } from 'react-router-dom';
-
-import {
   Alert,
   AlertContent,
   AlertDescription,
@@ -26,9 +17,10 @@ import {
   usePrimeChangeOrderListColumns,
 } from '@/modules/project/components/prime-change-order';
 import {
-  PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
   isPrimeChangeOrderSortByField,
+  PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
 } from '@/modules/project/constants/prime-change-order';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   usePrimeChangeOrderListParams,
   usePrimeChangeOrdersQuery,
@@ -38,6 +30,14 @@ import {
   type PrimeChangeOrderListParamPatch,
 } from '@/modules/project/hooks/prime-change-order';
 import type { ListPrimeChangeOrderParams } from '@/modules/project/schemas/prime-change-order';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { AlertCircle } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 export function PrimeChangeOrderListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -70,6 +70,7 @@ export function PrimeChangeOrderListPage() {
 
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!totalCostMin || !!totalCostMax;
   const { data, isLoading, isError, refetch } = usePrimeChangeOrdersQuery(filters);
+  const { data: projectDetail } = useProjectDetailQuery(projectId);
   const { data: statusSummary } = usePrimeChangeOrderStatusSummaryQuery(projectId);
   const { data: syncStatus, isLoading: isLoadingSyncStatus } =
     usePrimeChangeOrderSyncStatusQuery(projectId);
@@ -80,7 +81,7 @@ export function PrimeChangeOrderListPage() {
   const syncDisabled = !isMapped || syncMutation.isPending || isLoadingSyncStatus;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
   const columns = usePrimeChangeOrderListColumns();
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -144,6 +145,7 @@ export function PrimeChangeOrderListPage() {
           totalCount={totalCount}
           hasActiveFilters={hasActiveFilters}
           isMapped={isMapped}
+          fieldwireProjectName={projectDetail?.fieldwireProjectName}
           syncStatus={syncStatus}
           isSyncDisabled={syncDisabled}
           isSyncPending={syncMutation.isPending}

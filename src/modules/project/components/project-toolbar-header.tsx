@@ -1,5 +1,3 @@
-import { Check, ChevronDown } from 'lucide-react';
-
 import {
   Toolbar,
   ToolbarActions,
@@ -25,6 +23,7 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
+import { Check, ChevronDown } from 'lucide-react';
 
 interface ProjectToolbarHeaderProps {
   title: string;
@@ -65,7 +64,9 @@ const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['statu
   if (!status) return undefined;
 
   if (typeof status === 'string') {
-    return STATUS_META[status] ?? { label: status, badgeClassName: STATUS_META.COMPLETED.badgeClassName };
+    return (
+      STATUS_META[status] ?? { label: status, badgeClassName: STATUS_META.COMPLETED.badgeClassName }
+    );
   }
 
   const statusKey = (status.name || status.label || status.id).toUpperCase();
@@ -95,7 +96,7 @@ export function ProjectToolbarHeader({
 
   const handleStageChange = (stageId: string) => {
     if (!project || stageId === project.stageId) return;
-    
+
     // Helper to format ISO date string to YYYY-MM-DD for backend
     const formatDate = (dateStr?: string | null) => {
       if (!dateStr) return undefined;
@@ -110,6 +111,7 @@ export function ProjectToolbarHeader({
       jobNumber: optionalString(project.jobNumber),
       contractNumber: optionalString(project.contractNumber),
       fieldwireProjectId: project.fieldwireProjectId ?? null,
+      fieldwireProjectName: project.fieldwireProjectName ?? null,
       divisionId: optionalString(project.divisionId),
       gcId: optionalString(project.gcId),
       leadPMId: optionalString(project.leadPMId),
@@ -163,27 +165,23 @@ export function ProjectToolbarHeader({
         <ToolbarHeading>
           <div className="flex items-center gap-3">
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
-            {(project?.status || project?.statusRef) && (
+            {(project?.status || project?.statusRef) &&
               (() => {
                 const status = getStatusMeta(project?.statusRef ?? project?.status);
 
                 if (!status) return null;
 
                 return (
-                  <Badge
-                    className={status.badgeClassName}
-                    size="sm"
-                  >
+                  <Badge className={status.badgeClassName} size="sm">
                     {status.label}
                   </Badge>
                 );
-              })()
-            )}
+              })()}
             {project?.stage && stages && stages.length > 0 ? (
               (() => {
                 const name = project.stage.name || project.stage.label || '';
                 const dotClassName = getStageDotClassName(name);
-                
+
                 return (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -198,7 +196,10 @@ export function ProjectToolbarHeader({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
                       {stages.map((stage) => (
-                        <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
+                        <DropdownMenuItem
+                          key={stage.id}
+                          onClick={() => handleStageChange(stage.id)}
+                        >
                           <span
                             className={cn(
                               'size-2.5 rounded-sm shrink-0',
@@ -235,9 +236,9 @@ export function ProjectToolbarHeader({
             {project?.division && (
               <span>
                 <span className="font-medium">Division:</span>{' '}
-                {typeof project.division === 'string' 
+                {typeof project.division === 'string'
                   ? (DIVISION_LABELS[project.division as Division] ?? project.division)
-                  : (project.division?.label || project.division?.name || 'N/A')}
+                  : project.division?.label || project.division?.name || 'N/A'}
               </span>
             )}
             {project?.gc && (
