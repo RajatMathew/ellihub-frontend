@@ -3,10 +3,15 @@ import { useMemo } from 'react';
 import { useFolderDetailQuery, useRootFolderQuery } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 
-export function useFilesFolderData(folderId: string | undefined) {
-  const { data: rootFolder, isLoading: isRootLoading, isError: isRootError } = useRootFolderQuery();
+export function useFilesFolderData(folderId: string | undefined, rootFolderId?: string) {
+  const shouldLoadGlobalRoot = !rootFolderId;
+  const {
+    data: rootFolder,
+    isLoading: isRootLoading,
+    isError: isRootError,
+  } = useRootFolderQuery(shouldLoadGlobalRoot);
 
-  const rootId = rootFolder?.id ?? '';
+  const rootId = rootFolderId ?? rootFolder?.id ?? '';
   const currentFolderId = folderId ?? rootId;
 
   const {
@@ -14,7 +19,7 @@ export function useFilesFolderData(folderId: string | undefined) {
     isLoading: isFolderLoading,
     isError: isFolderError,
     refetch,
-  } = useFolderDetailQuery(currentFolderId);
+  } = useFolderDetailQuery(currentFolderId, !!currentFolderId);
 
   const allChildren = useMemo<FileItem[]>(
     () => folderDetail?.children ?? [],
@@ -26,8 +31,8 @@ export function useFilesFolderData(folderId: string | undefined) {
     currentFolderId,
     folderDetail,
     allChildren,
-    isLoading: isRootLoading || (!!currentFolderId && isFolderLoading),
-    isError: isRootError || isFolderError,
+    isLoading: (shouldLoadGlobalRoot && isRootLoading) || (!!currentFolderId && isFolderLoading),
+    isError: (shouldLoadGlobalRoot && isRootError) || isFolderError,
     refetch,
   };
 }

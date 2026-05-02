@@ -10,17 +10,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const PREVIEW_STALE_TIME = 5 * 60 * 1000;
 
-export const useRootFolderQuery = () =>
+export const useRootFolderQuery = (enabled = true) =>
   useQuery({
     queryKey: filesKeys.root(),
     queryFn: () => filesApi.getRootFolder(),
+    enabled,
   });
 
-export const useFolderDetailQuery = (id: string) =>
+export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
   useQuery({
-    queryKey: filesKeys.folderDetail(id),
-    queryFn: () => filesApi.getFolderDetails(id),
-    enabled: !!id,
+    queryKey: filesKeys.folderDetail(id ?? ''),
+    queryFn: () => {
+      if (!id) throw new Error('Missing folder id');
+
+      return filesApi.getFolderDetails(id);
+    },
+    enabled: enabled && !!id,
   });
 
 export const useFilePreviewQuery = (fileId: string | undefined, enabled: boolean) =>

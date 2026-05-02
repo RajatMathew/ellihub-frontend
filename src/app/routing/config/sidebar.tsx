@@ -1,7 +1,6 @@
-import { ArrowLeft } from 'lucide-react';
-
 import type { MenuConfig } from '@/app/config/types';
 import { ProjectSidebarSwitcher } from '@/modules/project/components/project-sidebar-switcher';
+import { ArrowLeft } from 'lucide-react';
 
 const isDev = import.meta.env.DEV;
 
@@ -39,9 +38,7 @@ export const mainSidebarMenu: MenuConfig = [
   { type: 'separator' },
   {
     type: 'menu',
-    children: [
-      { title: 'Files', path: '../files' },
-    ],
+    children: [{ title: 'Files', path: '../files' }],
   },
   {
     type: 'separator',
@@ -63,15 +60,16 @@ export const projectSidebarMenu: MenuConfig = [
   { type: 'separator' },
   {
     type: 'menu',
-    children: [{ title: 'Overview', path: '../overview' }],
+    children: [
+      { title: 'Overview', path: '../overview' },
+      { title: 'Files', path: '../files' },
+    ],
   },
   { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'GC',
-    children: [
-      { title: 'Prime Change Orders', path: '../prime-change-orders' },
-    ],
+    children: [{ title: 'Prime Change Orders', path: '../prime-change-orders' }],
   },
   { type: 'separator' },
   {
@@ -80,13 +78,8 @@ export const projectSidebarMenu: MenuConfig = [
     children: [
       { title: 'RFQs', path: '../rfqs' },
       { title: 'Purchase Orders', path: '../purchase-orders' },
-        { title: 'Sub Change Order', path: '../sub-change-order' },
+      { title: 'Sub Change Order', path: '../sub-change-order' },
       { title: 'Invoices', path: '../invoices' },
     ],
   },
-  // { type: 'separator' },
-  // {
-  //   type: 'menu',
-  //   children: [{ title: 'Files', path: '../files' }],
-  // },
 ];

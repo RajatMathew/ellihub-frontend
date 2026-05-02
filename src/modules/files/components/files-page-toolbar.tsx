@@ -10,6 +10,7 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Download, FolderPlus, Search, Upload } from 'lucide-react';
 
 interface FilesPageToolbarProps {
+  title?: string;
   searchInput: string;
   canMutateFolder: boolean;
   canExport: boolean;
@@ -20,6 +21,7 @@ interface FilesPageToolbarProps {
 }
 
 export function FilesPageToolbar({
+  title = 'Files',
   searchInput,
   canMutateFolder,
   canExport,
@@ -32,7 +34,7 @@ export function FilesPageToolbar({
     <Toolbar>
       <ToolbarWrapper>
         <ToolbarHeading>
-          <ToolbarPageTitle>Files</ToolbarPageTitle>
+          <ToolbarPageTitle>{title}</ToolbarPageTitle>
         </ToolbarHeading>
         <ToolbarActions className="w-full sm:w-auto">
           <InputWrapper className="w-full sm:w-72" variant="sm">

@@ -18,8 +18,17 @@ export function useProjectNavigation() {
       `/project/${encodedCurrentId}`,
       `/project/${encodedNextId}`
     );
+    const searchParams = new URLSearchParams(location.search);
 
-    navigate(newPath + location.search, {
+    if (newPath.includes('/files')) {
+      searchParams.delete('folderId');
+      searchParams.delete('folderPath');
+      searchParams.delete('page');
+    }
+
+    const nextSearch = searchParams.toString();
+
+    navigate(`${newPath}${nextSearch ? `?${nextSearch}` : ''}`, {
       replace: options?.replace ?? false,
       state: location.state,
     });

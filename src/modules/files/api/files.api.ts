@@ -11,6 +11,23 @@ import {
 
 const BASE = '/file';
 
+export type ProjectProtectedFolderType =
+  | 'INVOICE'
+  | 'RFQ'
+  | 'PURCHASE_ORDER'
+  | 'PURCHASE_ORDER_CO'
+  | 'PRIME_CO'
+  | 'PRIME_CONTRACT'
+  | 'SCHEDULE';
+
+function parseFolderId(raw: unknown, context: string): string {
+  if (typeof raw !== 'string' || !raw) {
+    throw new Error(`${context} returned an invalid folder id`);
+  }
+
+  return raw;
+}
+
 export const filesApi = {
   async getRootFolder(): Promise<FileItem> {
     const res = await api.get(`${BASE}/root`);
@@ -36,6 +53,23 @@ export const filesApi = {
     }
 
     return result.data;
+  },
+
+  async getProjectFolderId(projectId: string): Promise<string> {
+    const res = await api.get(`${BASE}/project/${projectId}/folder`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseFolderId(raw, 'Project folder lookup');
+  },
+
+  async getProjectSubFolderId(
+    projectId: string,
+    type: ProjectProtectedFolderType
+  ): Promise<string> {
+    const res = await api.get(`${BASE}/project/${projectId}/folder/${type}`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseFolderId(raw, 'Project subfolder lookup');
   },
 
   async createFolder(data: FolderCreateInput): Promise<FileItem> {

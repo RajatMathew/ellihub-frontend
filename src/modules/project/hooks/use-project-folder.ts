@@ -1,41 +1,34 @@
+import { filesApi, type ProjectProtectedFolderType } from '@/modules/files/api/files.api';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { useQuery } from '@tanstack/react-query';
 
-import { filesApi } from '@/modules/files/api/files.api';
-import { filesKeys } from '@/modules/files/constants/files.keys';
+const PROJECT_SUBFOLDER_TYPES: Record<string, ProjectProtectedFolderType> = {
+  invoice: 'INVOICE',
+  rfq: 'RFQ',
+  'purchase order': 'PURCHASE_ORDER',
+  'purchase order co': 'PURCHASE_ORDER_CO',
+  'prime co': 'PRIME_CO',
+  'prime contract': 'PRIME_CONTRACT',
+  schedule: 'SCHEDULE',
+};
 
 /**
- * Traverses the file system to find a project's subfolder:
- *   root → "projects" → {projectId} → {subfolderName}
- *
+ * Resolves a project's file folder through the project-specific file API.
  * If `subfolderName` is omitted, returns the project root folder ID.
  */
-async function resolveProjectFolder(
-  projectId: string,
-  subfolderName?: string,
-): Promise<string> {
-  // 1. Get root folder
-  const root = await filesApi.getRootFolder();
+async function resolveProjectFolder(projectId: string, subfolderName?: string): Promise<string> {
+  const projectFolderId = await filesApi.getProjectFolderId(projectId);
 
-  // 2. Find "projects" folder in root children
-  const rootDetail = await filesApi.getFolderDetails(root.id);
-  const projectsFolder = rootDetail.children.find(
-    (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects',
-  );
-  if (!projectsFolder) throw new Error('Projects folder not found');
+  if (!subfolderName) return projectFolderId;
 
-  // 3. Find the project folder by projectId
-  const projectsFolderDetail = await filesApi.getFolderDetails(projectsFolder.id);
-  const projectFolder = projectsFolderDetail.children.find(
-    (c) => c.type === 'FOLDER' && c.name === projectId,
-  );
-  if (!projectFolder) throw new Error(`Project folder not found for ${projectId}`);
+  const protectedType = PROJECT_SUBFOLDER_TYPES[subfolderName.trim().toLowerCase()];
+  if (protectedType) {
+    return filesApi.getProjectSubFolderId(projectId, protectedType);
+  }
 
-  if (!subfolderName) return projectFolder.id;
-
-  // 4. Find the named subfolder
-  const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
+  const projectFolderDetail = await filesApi.getFolderDetails(projectFolderId);
   const subfolder = projectFolderDetail.children.find(
-    (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === subfolderName.toLowerCase(),
+    (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === subfolderName.toLowerCase()
   );
   if (!subfolder) throw new Error(`Subfolder "${subfolderName}" not found`);
 

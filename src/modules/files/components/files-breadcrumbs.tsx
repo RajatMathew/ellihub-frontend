@@ -11,10 +11,15 @@ import { Home } from 'lucide-react';
 
 interface FilesBreadcrumbsProps {
   folderPath: FolderPathEntry[];
+  rootLabel?: string;
   onBreadcrumbClick: (index: number) => void;
 }
 
-export function FilesBreadcrumbs({ folderPath, onBreadcrumbClick }: FilesBreadcrumbsProps) {
+export function FilesBreadcrumbs({
+  folderPath,
+  rootLabel = 'Files',
+  onBreadcrumbClick,
+}: FilesBreadcrumbsProps) {
   if (folderPath.length === 0) return null;
 
   return (
@@ -26,7 +31,7 @@ export function FilesBreadcrumbs({ folderPath, onBreadcrumbClick }: FilesBreadcr
             onClick={() => onBreadcrumbClick(-1)}
           >
             <Home className="size-3.5" />
-            Files
+            {rootLabel}
           </BreadcrumbLink>
         </BreadcrumbItem>
         {folderPath.map((entry, index) => (
