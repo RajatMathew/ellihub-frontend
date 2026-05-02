@@ -4,7 +4,8 @@ model Project {
     description    String
     jobNumber      String? @unique
     contractNumber String?
-    fieldwireProjectId String? @unique
+    fieldwireProjectId   String? @unique
+    fieldwireProjectName String?
 
     stage      Lookup        @relation(fields: [stageId], references: [id], name: "project_stage")
     stageId    String

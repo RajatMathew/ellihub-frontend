@@ -3,6 +3,7 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { FieldwireClient } from '@modules/prime-change-order/fieldwire-client';
 import { RevisionService } from '@modules/revision';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -34,6 +35,14 @@ type ProjectWithListFinancials<T> = T & ProjectListFinancialFields;
 
 type PrimeContractWithFile = Prisma.PrimeContractGetPayload<{ include: { file: true } }>;
 type ProjectScheduleWithFile = Prisma.ProjectScheduleGetPayload<{ include: { file: true } }>;
+
+type FieldwireProjectOption = {
+    id: string;
+    name: string;
+    code: string | null;
+    address: string | null;
+    accountId: number;
+};
 
 const getGroupedCount = (count: unknown): number => {
     if (typeof count === 'number') return count;
@@ -111,6 +120,18 @@ const addProjectListFinancials = async <
 };
 
 export const ProjectService = {
+    getFieldwireProjects: async (): Promise<FieldwireProjectOption[]> => {
+        const projects = await FieldwireClient.getProjects();
+
+        return projects.map((project) => ({
+            id: project.id,
+            name: project.name,
+            code: project.code,
+            address: project.address,
+            accountId: project.account_id,
+        }));
+    },
+
     createProject: async (request: ProjectCreateRequest, userId: string): Promise<Project> => {
         const {
             stageId,
@@ -122,6 +143,7 @@ export const ProjectService = {
             setInactiveDate,
             tcoDate,
             fieldwireProjectId,
+            fieldwireProjectName,
             ...rest
         } = request;
 
@@ -177,6 +199,9 @@ export const ProjectService = {
                     gcId,
                     leadPMId: leadPMId ?? null,
                     fieldwireProjectId: fieldwireProjectId ?? null,
+                    fieldwireProjectName: fieldwireProjectId
+                        ? (fieldwireProjectName?.trim() ?? null)
+                        : null,
                     estimatedStartDate: estimatedStartDate ? new Date(estimatedStartDate) : null,
                     estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate) : null,
                     setInactiveDate: setInactiveDate ? new Date(setInactiveDate) : null,
@@ -255,6 +280,7 @@ export const ProjectService = {
                     { description: { contains: search, mode: 'insensitive' as const } },
                     { jobNumber: { contains: search, mode: 'insensitive' as const } },
                     { contractNumber: { contains: search, mode: 'insensitive' as const } },
+                    { fieldwireProjectName: { contains: search, mode: 'insensitive' as const } },
                     { city: { contains: search, mode: 'insensitive' as const } },
                     { state: { contains: search, mode: 'insensitive' as const } },
                 ],
@@ -296,6 +322,7 @@ export const ProjectService = {
             tcoDate,
             jobNumber,
             fieldwireProjectId,
+            fieldwireProjectName,
             ...rest
         } = request;
 
@@ -342,6 +369,12 @@ export const ProjectService = {
                     gcId,
                     leadPMId: leadPMId ?? null,
                     fieldwireProjectId: fieldwireProjectId ?? null,
+                    fieldwireProjectName: fieldwireProjectId
+                        ? (fieldwireProjectName?.trim() ??
+                          (fieldwireProjectId === project.fieldwireProjectId
+                              ? project.fieldwireProjectName
+                              : null))
+                        : null,
                     estimatedStartDate: estimatedStartDate ? new Date(estimatedStartDate) : null,
                     estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate) : null,
                     setInactiveDate: setInactiveDate ? new Date(setInactiveDate) : null,
@@ -764,6 +797,7 @@ export const ProjectService = {
                     { description: { contains: search, mode: 'insensitive' as const } },
                     { jobNumber: { contains: search, mode: 'insensitive' as const } },
                     { contractNumber: { contains: search, mode: 'insensitive' as const } },
+                    { fieldwireProjectName: { contains: search, mode: 'insensitive' as const } },
                     { city: { contains: search, mode: 'insensitive' as const } },
                     { state: { contains: search, mode: 'insensitive' as const } },
                 ],

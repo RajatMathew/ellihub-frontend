@@ -17,6 +17,7 @@ export const ProjectCreateSchema = z.object({
     jobNumber: z.string().min(1).optional().nullable(),
     contractNumber: z.string().min(1).optional().nullable(),
     fieldwireProjectId: z.uuid().optional().nullable(),
+    fieldwireProjectName: z.string().min(1).optional().nullable(),
     stageId: z.ulid(),
     divisionId: z.ulid(),
     status: ProjectStatusSchema,
