@@ -1,23 +1,21 @@
 import { useEffect } from 'react';
 
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldError, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
-
+} from '@/app/components/ui/dialog';
+import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Input } from '@/app/components/ui/input';
 import {
   fileFolderRenameInputSchema,
   type FileFolderRenameInput,
-} from '@modules/files/schemas/file.schema';
+} from '@/modules/files/schemas/file.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 
 interface RenameDialogProps {
   open: boolean;
@@ -56,10 +54,7 @@ export function RenameDialog({
         <DialogHeader>
           <DialogTitle>Rename</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit((data) => onSubmit(data))}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-4">
           <Controller
             name="name"
             control={control}

@@ -1,27 +1,21 @@
 import { useState } from 'react';
 
-import type { DateRange } from 'react-day-picker';
-import { CalendarDays, LayoutGrid, List, X } from 'lucide-react';
-
-import { Button } from '@app/components/ui/button';
-import { Calendar } from '@app/components/ui/calendar';
-import {
-  CardHeader,
-  CardTitle,
-  CardToolbar,
-} from '@app/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import { Button } from '@/app/components/ui/button';
+import { Calendar } from '@/app/components/ui/calendar';
+import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@app/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@app/components/ui/toggle-group';
-import { formatDate } from '@app/lib/helpers';
-
-import { DATE_PRESETS, type SortField } from '../constants/files.constants';
+} from '@/app/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
+import { formatDate } from '@/app/lib/helpers';
+import { DATE_PRESETS, type SortField } from '@/modules/files/constants/files.constants';
+import { CalendarDays, LayoutGrid, List, X } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
 
 interface FilesListFiltersProps {
   sortBy: SortField;
@@ -36,17 +30,19 @@ interface FilesListFiltersProps {
   onDateRangeChange: (from: string | undefined, to: string | undefined) => void;
 }
 
-function toDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function toDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
-function parseDateStr(s: string | undefined): Date | undefined {
-  if (!s) return undefined;
-  const d = new Date(s + 'T00:00:00');
-  return isNaN(d.getTime()) ? undefined : d;
+function parseDateString(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
+
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 export function FilesListFilters({
@@ -63,20 +59,19 @@ export function FilesListFilters({
 }: FilesListFiltersProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(() => {
-    const from = parseDateStr(dateFrom);
-    const to = parseDateStr(dateTo);
+    const from = parseDateString(dateFrom);
+    const to = parseDateString(dateTo);
     return from ? { from, to } : undefined;
   });
-
   const hasDateRange = !!dateFrom || !!dateTo;
-
-  const dateLabel = dateFrom && dateTo
-    ? `${formatDate(dateFrom)} – ${formatDate(dateTo)}`
-    : dateFrom
-      ? `From ${formatDate(dateFrom)}`
-      : dateTo
-        ? `Until ${formatDate(dateTo)}`
-        : 'Date range';
+  const dateLabel =
+    dateFrom && dateTo
+      ? `${formatDate(dateFrom)} - ${formatDate(dateTo)}`
+      : dateFrom
+        ? `From ${formatDate(dateFrom)}`
+        : dateTo
+          ? `Until ${formatDate(dateTo)}`
+          : 'Date range';
 
   return (
     <CardHeader>
@@ -85,24 +80,29 @@ export function FilesListFilters({
           {totalCount} {totalCount === 1 ? 'item' : 'items'}
         </span>
       </CardTitle>
-      <CardToolbar>
-        <div className="flex items-center gap-2.5">
-          <Popover open={popoverOpen} onOpenChange={(open) => {
-            setPopoverOpen(open);
-            if (open) {
-              const from = parseDateStr(dateFrom);
-              const to = parseDateStr(dateTo);
-              setPendingRange(from ? { from, to } : undefined);
-            }
-          }}>
+      <CardToolbar className="w-full flex-wrap justify-start sm:w-auto">
+        <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+          <Popover
+            open={popoverOpen}
+            onOpenChange={(open) => {
+              setPopoverOpen(open);
+              if (open) {
+                const from = parseDateString(dateFrom);
+                const to = parseDateString(dateTo);
+                setPendingRange(from ? { from, to } : undefined);
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-8 text-xs gap-1.5 ${hasDateRange ? 'border-primary text-primary' : ''}`}
+                className={`h-8 gap-1.5 text-xs ${
+                  hasDateRange ? 'border-primary text-primary' : ''
+                }`}
               >
                 <CalendarDays className="size-3.5" />
-                <span className="max-w-[200px] truncate">{dateLabel}</span>
+                <span className="max-w-52 truncate">{dateLabel}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -147,8 +147,8 @@ export function FilesListFilters({
                     size="sm"
                     className="h-7 text-xs"
                     onClick={() => {
-                      const from = pendingRange?.from ? toDateStr(pendingRange.from) : undefined;
-                      const to = pendingRange?.to ? toDateStr(pendingRange.to) : undefined;
+                      const from = pendingRange?.from ? toDateString(pendingRange.from) : undefined;
+                      const to = pendingRange?.to ? toDateString(pendingRange.to) : undefined;
                       onDateRangeChange(from, to);
                       setPopoverOpen(false);
                     }}
@@ -160,7 +160,7 @@ export function FilesListFilters({
             </PopoverContent>
           </Popover>
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectTrigger className="h-8 w-40 text-xs">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -175,8 +175,8 @@ export function FilesListFilters({
             variant="outline"
             size="sm"
             value={viewMode}
-            onValueChange={(v) => {
-              if (v === 'list' || v === 'grid') onViewChange(v);
+            onValueChange={(value) => {
+              if (value === 'list' || value === 'grid') onViewChange(value);
             }}
           >
             <ToggleGroupItem value="list" aria-label="List view">
@@ -187,12 +187,7 @@ export function FilesListFilters({
             </ToggleGroupItem>
           </ToggleGroup>
           {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={onClearFilters}
-            >
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
               <X className="size-3.5" />
               Clear
             </Button>

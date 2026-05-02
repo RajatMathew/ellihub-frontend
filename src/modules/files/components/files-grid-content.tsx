@@ -1,0 +1,54 @@
+import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
+import type { FileItem } from '@/modules/files/schemas/file.schema';
+
+import { FilesEmptyState } from './files-empty-state';
+import { FilesGridLoading } from './files-grid-loading';
+import { FilesGridView } from './files-grid-view';
+import { FilesSectionHeader } from './files-section-header';
+
+interface FilesGridContentProps {
+  sectionedData: SectionedFiles;
+  isLoading: boolean;
+  onFolderClick: (folder: FileItem) => void;
+  onFilePreview: (file: FileItem) => void;
+}
+
+export function FilesGridContent({
+  sectionedData,
+  isLoading,
+  onFolderClick,
+  onFilePreview,
+}: FilesGridContentProps) {
+  if (isLoading) return <FilesGridLoading />;
+
+  if (sectionedData.data.length === 0) return <FilesEmptyState />;
+
+  return (
+    <div>
+      {sectionedData.protectedItems.length > 0 && (
+        <>
+          <div className="border-y border-border bg-muted/50 px-5 py-2.5">
+            <FilesSectionHeader type="protected" count={sectionedData.protectedItems.length} />
+          </div>
+          <FilesGridView
+            data={sectionedData.protectedItems}
+            onFolderClick={onFolderClick}
+            onFilePreview={onFilePreview}
+          />
+        </>
+      )}
+      {sectionedData.sharedItems.length > 0 && (
+        <>
+          <div className="border-y border-border bg-muted/50 px-5 py-2.5">
+            <FilesSectionHeader type="shared" count={sectionedData.sharedItems.length} />
+          </div>
+          <FilesGridView
+            data={sectionedData.sharedItems}
+            onFolderClick={onFolderClick}
+            onFilePreview={onFilePreview}
+          />
+        </>
+      )}
+    </div>
+  );
+}

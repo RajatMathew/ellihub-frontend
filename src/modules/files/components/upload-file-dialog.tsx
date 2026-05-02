@@ -1,19 +1,19 @@
 /* eslint-disable react-hooks/set-state-in-effect -- reset() is a dialog lifecycle helper, not external synchronization */
+
 import { useCallback, useEffect, useState } from 'react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@app/components/ui/dialog';
-import { Field, FieldLabel } from '@app/components/ui/field';
-import { Input } from '@app/components/ui/input';
-import type { FileUploadInput } from '@modules/files/schemas/file.schema';
-
-import { FileDropZone } from '@app/components/ui/file-drop-zone';
+} from '@/app/components/ui/dialog';
+import { Field, FieldLabel } from '@/app/components/ui/field';
+import { FileDropZone } from '@/app/components/ui/file-drop-zone';
+import { Input } from '@/app/components/ui/input';
+import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 
 interface UploadFileDialogProps {
   open: boolean;

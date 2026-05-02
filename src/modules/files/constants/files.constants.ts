@@ -5,18 +5,14 @@ export const FILE_TYPE_LABELS = {
   FOLDER: 'Folder',
 } as const;
 
-// ---------------------------------------------------------------------------
-// List page constants
-// ---------------------------------------------------------------------------
-
 export const DEFAULT_PAGE_SIZE = 10;
 export const SEARCH_DEBOUNCE_MS = 300;
 
 export const SORT_OPTIONS = ['createdAt', 'name', 'size', 'updatedAt'] as const;
 export type SortField = (typeof SORT_OPTIONS)[number];
 
-export function isSortField(v: string | null): v is SortField {
-  return SORT_OPTIONS.includes(v as SortField);
+export function isSortField(value: string | null): value is SortField {
+  return SORT_OPTIONS.includes(value as SortField);
 }
 
 export const TYPE_TABS = [
@@ -24,10 +20,6 @@ export const TYPE_TABS = [
   { value: 'FOLDER', label: 'Folders' },
 ] as const;
 export type TypeFilter = (typeof TYPE_TABS)[number]['value'];
-
-// ---------------------------------------------------------------------------
-// Date range presets
-// ---------------------------------------------------------------------------
 
 export const DATE_PRESETS = [
   {
@@ -58,14 +50,12 @@ export const DATE_PRESETS = [
   },
 ] as const;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 export function formatFileSize(bytes: number | null | undefined): string {
-  if (bytes == null || bytes === 0) return '—';
+  if (bytes == null || bytes === 0) return '-';
+
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const size = bytes / Math.pow(1024, i);
-  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  const index = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, index);
+
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }

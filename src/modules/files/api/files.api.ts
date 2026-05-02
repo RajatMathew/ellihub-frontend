@@ -1,13 +1,13 @@
-import api from '@app/api';
+import api from '@/app/api';
 import {
   fileSchema,
   folderDetailSchema,
+  type FileFolderRenameInput,
   type FileItem,
   type FileUploadInput,
-  type FileFolderRenameInput,
   type FolderCreateInput,
   type FolderDetail,
-} from '@modules/files/schemas/file.schema';
+} from '@/modules/files/schemas/file.schema';
 
 const BASE = '/file';
 
@@ -16,10 +16,12 @@ export const filesApi = {
     const res = await api.get(`${BASE}/root`);
     const raw = res.data?.data ?? res.data;
     const result = fileSchema.safeParse(raw);
+
     if (!result.success) {
       console.error('[filesApi.getRootFolder] Zod parse error:', result.error.issues);
       throw result.error;
     }
+
     return result.data;
   },
 
@@ -27,10 +29,12 @@ export const filesApi = {
     const res = await api.get(`${BASE}/folder/${id}`);
     const raw = res.data?.data ?? res.data;
     const result = folderDetailSchema.safeParse(raw);
+
     if (!result.success) {
       console.error('[filesApi.getFolderDetails] Zod parse error:', result.error.issues);
       throw result.error;
     }
+
     return result.data;
   },
 
@@ -38,37 +42,38 @@ export const filesApi = {
     const res = await api.post(`${BASE}/folder`, data);
     const raw = res.data?.data ?? res.data;
     const result = fileSchema.safeParse(raw);
+
     if (!result.success) {
       console.error('[filesApi.createFolder] Zod parse error:', result.error.issues);
       throw result.error;
     }
+
     return result.data;
   },
 
   async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
     const formData = new FormData();
     formData.append('file', file);
-    
-    // Append fields individually (root level of FormData)
     formData.append('name', data.name);
     formData.append('parentId', data.parentId);
     if (data.mimeType) formData.append('mimeType', data.mimeType);
     formData.append('size', String(data.size));
-    
-    // Keep 'data' field as a stringified object for backward compatibility
     formData.append('data', JSON.stringify(data));
 
     await api.post(`${BASE}/upload`, formData);
 
-    // Backend returns empty string — find the uploaded file by querying the parent folder
+    // Backend returns an empty body, so query the parent folder to find the upload.
     const folder = await this.getFolderDetails(data.parentId);
     const match = folder.children
-      .filter((c) => c.name === data.name && c.type === 'FILE')
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+      .filter((child) => child.name === data.name && child.type === 'FILE')
+      .sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )[0];
 
     if (!match) {
       throw new Error('Upload succeeded but file not found in folder');
     }
+
     return match;
   },
 
@@ -81,10 +86,12 @@ export const filesApi = {
     const res = await api.put(`${BASE}/rename`, data);
     const raw = res.data?.data ?? res.data;
     const result = fileSchema.safeParse(raw);
+
     if (!result.success) {
       console.error('[filesApi.rename] Zod parse error:', result.error.issues);
       throw result.error;
     }
+
     return result.data;
   },
 

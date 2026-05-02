@@ -1,25 +1,23 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-import { Download, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-
-import { Button } from '@app/components/ui/button';
-import { DataGridColumnHeader } from '@app/components/ui/data-grid-column-header';
+import { Button } from '@/app/components/ui/button';
+import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@app/components/ui/dropdown-menu';
-import { Skeleton } from '@app/components/ui/skeleton';
-import { formatDateTime } from '@app/lib/helpers';
+} from '@/app/components/ui/dropdown-menu';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { formatDateTime } from '@/app/lib/helpers';
+import { formatFileSize } from '@/modules/files/constants/files.constants';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import type { FileItem } from '@/modules/files/schemas/file.schema';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Download, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
-import type { FileItem } from '@modules/files/schemas/file.schema';
-
-import { formatFileSize } from '../constants/files.constants';
 import { FileTypeIcon } from './file-type-icon';
-import { useDownloadFile } from '../hooks/files.hooks';
 
 interface UseFilesColumnsOptions {
   onPreview: (item: FileItem) => void;
@@ -36,20 +34,20 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         accessorKey: 'name',
         header: ({ column }) => <DataGridColumnHeader column={column} title="File Name" />,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <FileTypeIcon
               fileType={row.original.type}
               mimeType={row.original.mimeType}
               fileName={row.original.displayName || row.original.name}
               className="size-4 shrink-0"
             />
-            <span className="text-sm font-medium text-foreground line-clamp-1">
+            <span className="line-clamp-1 text-sm font-medium text-foreground">
               {row.original.displayName || row.original.name || 'Unnamed'}
             </span>
           </div>
         ),
         meta: {
-          headerClassName: 'min-w-[280px]',
+          headerClassName: 'min-w-72',
           skeleton: <Skeleton className="h-3.5 w-48" />,
         },
       },
@@ -57,12 +55,12 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         accessorKey: 'size',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Size" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground tabular-nums">
-            {row.original.type === 'FOLDER' ? '—' : formatFileSize(row.original.size)}
+          <span className="text-sm tabular-nums text-foreground">
+            {row.original.type === 'FOLDER' ? '-' : formatFileSize(row.original.size)}
           </span>
         ),
         meta: {
-          headerClassName: 'min-w-[100px]',
+          headerClassName: 'min-w-24',
           skeleton: <Skeleton className="h-3.5 w-16" />,
         },
       },
@@ -70,12 +68,12 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         accessorKey: 'createdBy',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Uploaded By" />,
         cell: ({ row }) => (
-          <span className="text-sm text-foreground truncate block max-w-[150px]">
-            {row.original.createdByUser?.name || row.original.createdBy || '—'}
+          <span className="block max-w-40 truncate text-sm text-foreground">
+            {row.original.createdByUser?.name || row.original.createdBy || '-'}
           </span>
         ),
         meta: {
-          headerClassName: 'min-w-[120px]',
+          headerClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,
@@ -89,7 +87,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
           </span>
         ),
         meta: {
-          headerClassName: 'min-w-[160px]',
+          headerClassName: 'min-w-40',
           skeleton: <Skeleton className="h-3.5 w-28" />,
         },
       },
@@ -98,8 +96,12 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         header: () => null,
         cell: ({ row }) => {
           const isFile = row.original.type === 'FILE';
+
           return (
-            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center justify-end gap-1"
+              onClick={(event) => event.stopPropagation()}
+            >
               {isFile && (
                 <>
                   <Button
@@ -107,6 +109,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                     size="sm"
                     className="size-8 p-0"
                     onClick={() => onPreview(row.original)}
+                    aria-label="Preview file"
                   >
                     <Eye className="size-3.5" />
                   </Button>
@@ -115,6 +118,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                     size="sm"
                     className="size-8 p-0"
                     onClick={() => downloadFile.mutate(row.original)}
+                    aria-label="Download file"
                   >
                     <Download className="size-3.5" />
                   </Button>
@@ -123,7 +127,7 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
               {row.original.isDeletable && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="size-8 p-0">
+                    <Button variant="ghost" size="sm" className="size-8 p-0" aria-label="More">
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -159,12 +163,12 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
           );
         },
         meta: {
-          headerClassName: 'w-[100px]',
+          headerClassName: 'w-24',
           skeleton: <Skeleton className="h-6 w-16" />,
         },
         enableSorting: false,
       },
     ],
-    [downloadFile, onPreview, onRename, onDelete],
+    [downloadFile, onDelete, onPreview, onRename]
   );
 }

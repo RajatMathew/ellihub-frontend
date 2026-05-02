@@ -1,6 +1,5 @@
+import FilesListPage from '@/modules/files/pages/files-list';
 import { Route, Routes } from 'react-router-dom';
-
-import FilesListPage from '../pages/files-list';
 
 const FilesModule = () => {
   return (
