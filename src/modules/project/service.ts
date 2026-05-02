@@ -4,6 +4,7 @@ import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { FieldwireClient } from '@modules/prime-change-order/fieldwire-client';
+import { RevisionService } from '@modules/revision';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -356,6 +357,8 @@ export const ProjectService = {
         }
 
         return await prisma.$transaction(async (tx) => {
+            await RevisionService.create(tx, { entityType: 'PROJECT', entityId: id, userId });
+
             const updated = await tx.project.update({
                 where: { id },
                 data: {

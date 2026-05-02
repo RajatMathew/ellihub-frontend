@@ -18,6 +18,7 @@ model User {
   createdFiles             File[]
   activityLogs             ActivityLog[]
   primeChangeOrderSyncRuns PrimeChangeOrderSyncRun[]
+  revisions                Revision[]
 
   @@unique([email])
   @@map("user")

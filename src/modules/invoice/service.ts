@@ -3,6 +3,7 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -261,31 +262,40 @@ export const InvoiceService = {
             }
         }
 
-        const updated = await prisma.invoice.update({
-            where: { id },
-            data: {
-                purchaseOrderId: purchaseOrderId ?? null,
-                invoiceNumber,
-                invoiceDate: new Date(invoiceDate),
-                dueDate: new Date(dueDate),
-                totalAmount: new Prisma.Decimal(totalAmount),
-                taxAmount: taxAmount != null ? new Prisma.Decimal(taxAmount) : null,
-                taxRate: taxRate != null ? new Prisma.Decimal(taxRate) : null,
-                notes: notes ?? null,
-                relatedSCOIds,
-            },
-        });
+        return await prisma.$transaction(async (tx) => {
+            await RevisionService.create(tx, { entityType: 'INVOICE', entityId: id, userId });
 
-        await ActivityLogService.log({
-            userId,
-            entityType: 'invoice',
-            entityId: id,
-            action: 'update',
-            description: `Updated invoice ${updated.invoiceNumber}`,
-            affectedEntityIds: [projectId, vendorId, ...(purchaseOrderId ? [purchaseOrderId] : [])],
-        });
+            const updated = await tx.invoice.update({
+                where: { id },
+                data: {
+                    purchaseOrderId: purchaseOrderId ?? null,
+                    invoiceNumber,
+                    invoiceDate: new Date(invoiceDate),
+                    dueDate: new Date(dueDate),
+                    totalAmount: new Prisma.Decimal(totalAmount),
+                    taxAmount: taxAmount != null ? new Prisma.Decimal(taxAmount) : null,
+                    taxRate: taxRate != null ? new Prisma.Decimal(taxRate) : null,
+                    notes: notes ?? null,
+                    relatedSCOIds,
+                },
+            });
 
-        return updated;
+            await ActivityLogService.log({
+                userId,
+                entityType: 'invoice',
+                entityId: id,
+                action: 'update',
+                description: `Updated invoice ${updated.invoiceNumber}`,
+                affectedEntityIds: [
+                    projectId,
+                    vendorId,
+                    ...(purchaseOrderId ? [purchaseOrderId] : []),
+                ],
+                tx,
+            });
+
+            return updated;
+        });
     },
 
     addAttachment: async (

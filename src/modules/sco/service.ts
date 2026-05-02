@@ -3,6 +3,7 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { RevisionService } from '@modules/revision';
 import { BadRequestError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
@@ -255,6 +256,12 @@ export const ScoService = {
         const amount = lineAmounts.reduce((sum, v) => sum.plus(v), new Prisma.Decimal(0));
 
         return await prisma.$transaction(async (tx) => {
+            await RevisionService.create(tx, {
+                entityType: 'SUB_CHANGE_ORDER',
+                entityId: id,
+                userId,
+            });
+
             const updated = await tx.subChangeOrder.update({
                 where: { id },
                 data: {
