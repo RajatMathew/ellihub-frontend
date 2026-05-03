@@ -3,11 +3,11 @@ import { PermissionStatement, ResourceName } from '@lib/permissions';
 import { createMiddleware } from 'hono/factory';
 
 export const authMiddleware = createMiddleware(async (c, next) => {
-    const WHITELIST = ['/api/v1/file/read'];
+    const WHITELIST: string[] = [];
 
     let whitelist = false;
 
-    for (const p in WHITELIST) {
+    for (const p of WHITELIST) {
         if (c.req.path.startsWith(p)) {
             whitelist = true;
             break;

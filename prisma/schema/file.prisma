@@ -44,6 +44,8 @@ model File {
   scoattachments SCOAttachment[]
 
   invoiceAttachments InvoiceAttachment[]
+
+  exportJobs FileExportJob[] @relation("FileExportFolder")
 }
 
 enum FileType {
@@ -78,4 +80,44 @@ enum FilePermission {
   CHANGE_PERMISSION
   ACCESS
   CREATE_FILE_WITHIN
+}
+
+model FileExportJob {
+  id String @id
+
+  folder   File   @relation("FileExportFolder", fields: [folderId], references: [id], onDelete: Restrict)
+  folderId String
+
+  status FileExportStatus @default(PENDING)
+
+  fileName String
+  objectId String?
+
+  totalFiles     Int    @default(0)
+  processedFiles Int    @default(0)
+  totalBytes     String @default("0")
+  processedBytes String @default("0")
+
+  error String?
+
+  createdBy String
+
+  expiresAt   DateTime
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([folderId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+enum FileExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
 }
