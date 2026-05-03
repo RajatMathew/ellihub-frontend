@@ -1,4 +1,4 @@
-import { File } from '@db/client';
+import { File, FileExportJob } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
@@ -9,6 +9,167 @@ import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';
+import { s3Service } from './s3';
+import { writeZipArchiveToSink, ZipStreamEntry } from './zip';
+
+type FileContent = {
+    file: File;
+    fileName: string;
+    mimeType: string;
+    content: Uint8Array;
+};
+
+type FolderExportPlan = {
+    entries: ZipStreamEntry[];
+    fileName: string;
+    totalFiles: number;
+    totalBytes: string;
+};
+
+type FolderExportJobResponse = {
+    id: string;
+    folderId: string;
+    status: FileExportJob['status'];
+    fileName: string;
+    totalFiles: number;
+    processedFiles: number;
+    totalBytes: string;
+    processedBytes: string;
+    error: string | null;
+    downloadUrl?: string;
+    expiresAt: Date;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+};
+
+const EXPORT_EXPIRES_IN_SECONDS = 24 * 60 * 60;
+const EXPORT_OBJECT_PREFIX = 'exports';
+
+function getDisplayFileName(file: File): string {
+    return file.displayName || file.name || file.id;
+}
+
+function sanitizeZipSegment(value: string): string {
+    const invalidCharacters = new Set(['<', '>', ':', '"', '\\', '|', '?', '*', '/']);
+    const segment = Array.from(value)
+        .map((character) =>
+            invalidCharacters.has(character) || character.charCodeAt(0) < 32 ? '_' : character
+        )
+        .join('')
+        .trim();
+
+    return segment || 'item';
+}
+
+function ensureUniqueZipPath(path: string, usedPaths: Set<string>, directory = false): string {
+    const normalizedPath = directory && !path.endsWith('/') ? `${path}/` : path;
+
+    if (!usedPaths.has(normalizedPath)) {
+        usedPaths.add(normalizedPath);
+        return normalizedPath;
+    }
+
+    const trimmedPath = normalizedPath.replace(/\/$/, '');
+    const separatorIndex = trimmedPath.lastIndexOf('/');
+    const directoryPath = separatorIndex >= 0 ? `${trimmedPath.slice(0, separatorIndex + 1)}` : '';
+    const fileName = separatorIndex >= 0 ? trimmedPath.slice(separatorIndex + 1) : trimmedPath;
+    const extensionIndex = directory ? -1 : fileName.lastIndexOf('.');
+    const baseName = extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName;
+    const extension = extensionIndex > 0 ? fileName.slice(extensionIndex) : '';
+    let nextIndex = 2;
+
+    while (true) {
+        const candidate = `${directoryPath}${baseName} (${nextIndex})${extension}${directory ? '/' : ''}`;
+
+        if (!usedPaths.has(candidate)) {
+            usedPaths.add(candidate);
+            return candidate;
+        }
+
+        nextIndex += 1;
+    }
+}
+
+async function serializeExportJob(job: FileExportJob): Promise<FolderExportJobResponse> {
+    const isCompleted = job.status === 'COMPLETED' && !!job.objectId && job.expiresAt > new Date();
+    const downloadUrl = isCompleted
+        ? await s3Service.getDownloadLink(job.objectId!, EXPORT_EXPIRES_IN_SECONDS)
+        : undefined;
+
+    return {
+        id: job.id,
+        folderId: job.folderId,
+        status: isCompleted ? job.status : job.status === 'COMPLETED' ? 'EXPIRED' : job.status,
+        fileName: job.fileName,
+        totalFiles: job.totalFiles,
+        processedFiles: job.processedFiles,
+        totalBytes: job.totalBytes,
+        processedBytes: job.processedBytes,
+        error: job.error,
+        downloadUrl,
+        expiresAt: job.expiresAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+    };
+}
+
+async function buildFolderExportPlan(folder: File): Promise<FolderExportPlan> {
+    const entries: ZipStreamEntry[] = [];
+    const usedPaths = new Set<string>();
+    const rootName = sanitizeZipSegment(getDisplayFileName(folder));
+    let totalFiles = 0;
+    let totalBytes = 0n;
+
+    const collectEntries = async (currentFolder: File, currentPath: string): Promise<void> => {
+        const folderPath = ensureUniqueZipPath(currentPath, usedPaths, true);
+        entries.push({
+            path: folderPath,
+            directory: true,
+            modifiedAt: currentFolder.updatedAt,
+        });
+
+        const children = await prismaClient.file.findMany({
+            where: {
+                parentId: currentFolder.id,
+                deletedAt: null,
+            },
+            orderBy: [{ type: 'desc' }, { name: 'asc' }],
+        });
+
+        for (const child of children) {
+            const childName = sanitizeZipSegment(getDisplayFileName(child));
+            const childPath = `${folderPath}${childName}`;
+
+            if (child.type === 'FOLDER') {
+                await collectEntries(child, childPath);
+                continue;
+            }
+
+            const objectId = child.objectId || child.id;
+            totalFiles += 1;
+            totalBytes += BigInt(child.size ?? 0);
+
+            entries.push({
+                path: ensureUniqueZipPath(childPath, usedPaths),
+                modifiedAt: child.updatedAt,
+                stream: () => s3Service.stream(objectId),
+            });
+        }
+    };
+
+    await collectEntries(folder, rootName);
+
+    return {
+        entries,
+        fileName: `${rootName}.zip`,
+        totalFiles,
+        totalBytes: totalBytes.toString(),
+    };
+}
 
 export const FileService = {
     protectedFolderNames: [
@@ -98,6 +259,192 @@ export const FileService = {
             description: `Uploaded file ${file.name}`,
             affectedEntityIds: file.parentId ? [file.parentId] : [],
         });
+    },
+
+    getFileContent: async (id: string): Promise<FileContent> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+
+        if (!file || file.type !== 'FILE') throw new NotFoundError('No file found with id: ' + id);
+
+        checkDeletedAt(file);
+
+        const objectId = file.objectId || file.id;
+        const content = await s3Service.read(objectId);
+
+        return {
+            file,
+            fileName: getDisplayFileName(file),
+            mimeType: file.mimeType || 'application/octet-stream',
+            content,
+        };
+    },
+
+    createFolderExportJob: async (
+        folderId: string,
+        userId: string
+    ): Promise<FolderExportJobResponse> => {
+        const folder = await prismaClient.file.findUnique({
+            where: { id: folderId },
+        });
+
+        if (!folder || folder.type !== 'FOLDER')
+            throw new NotFoundError('No folder found with id: ' + folderId);
+
+        checkDeletedAt(folder);
+
+        const plan = await buildFolderExportPlan(folder);
+        const jobId = ulid();
+        const job = await prismaClient.fileExportJob.create({
+            data: {
+                id: jobId,
+                folderId,
+                fileName: plan.fileName,
+                totalFiles: plan.totalFiles,
+                totalBytes: plan.totalBytes,
+                createdBy: userId,
+                expiresAt: new Date(Date.now() + EXPORT_EXPIRES_IN_SECONDS * 1000),
+            },
+        });
+
+        void FileService.processFolderExportJob(job.id).catch((error: unknown) => {
+            console.error('Folder export job failed', error);
+        });
+
+        return serializeExportJob(job);
+    },
+
+    getFolderExportJob: async (id: string, userId: string): Promise<FolderExportJobResponse> => {
+        const job = await prismaClient.fileExportJob.findFirst({
+            where: { id, createdBy: userId },
+        });
+
+        if (!job) throw new NotFoundError('No export job found with id: ' + id);
+
+        if (job.status === 'COMPLETED' && job.expiresAt <= new Date()) {
+            const expired = await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: { status: 'EXPIRED' },
+            });
+
+            return serializeExportJob(expired);
+        }
+
+        return serializeExportJob(job);
+    },
+
+    processFolderExportJob: async (id: string): Promise<void> => {
+        const job = await prismaClient.fileExportJob.findUnique({
+            where: { id },
+        });
+
+        if (!job || job.status !== 'PENDING') return;
+
+        const objectId = `${EXPORT_OBJECT_PREFIX}/${job.id}/${job.fileName}`;
+        const folder = await prismaClient.file.findUnique({
+            where: { id: job.folderId },
+        });
+
+        if (!folder || folder.type !== 'FOLDER') {
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    status: 'FAILED',
+                    error: 'Folder no longer exists.',
+                    completedAt: new Date(),
+                },
+            });
+            return;
+        }
+
+        const writer = s3Service.createWriter(objectId, 'application/zip');
+        let processedFiles = 0;
+        let processedBytes = 0n;
+        let lastProgressUpdate = 0;
+
+        const updateProgress = async (force = false): Promise<void> => {
+            const now = Date.now();
+            if (!force && now - lastProgressUpdate < 1000) return;
+
+            lastProgressUpdate = now;
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    processedFiles,
+                    processedBytes: processedBytes.toString(),
+                },
+            });
+        };
+
+        try {
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    status: 'PROCESSING',
+                    startedAt: new Date(),
+                    objectId,
+                    error: null,
+                },
+            });
+
+            const plan = await buildFolderExportPlan(folder);
+
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    fileName: plan.fileName,
+                    totalFiles: plan.totalFiles,
+                    totalBytes: plan.totalBytes,
+                },
+            });
+
+            await writeZipArchiveToSink(plan.entries, writer, async ({ bytes }) => {
+                processedFiles += 1;
+                processedBytes += BigInt(bytes);
+                await updateProgress();
+            });
+
+            await writer.end();
+            await updateProgress(true);
+
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    status: 'COMPLETED',
+                    objectId,
+                    processedFiles: plan.totalFiles,
+                    processedBytes: plan.totalBytes,
+                    completedAt: new Date(),
+                    expiresAt: new Date(Date.now() + EXPORT_EXPIRES_IN_SECONDS * 1000),
+                },
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Folder export failed.';
+
+            try {
+                await writer.end(error instanceof Error ? error : new Error(message));
+            } catch {
+                // Upload abort errors are secondary to the export failure we persist below.
+            }
+
+            try {
+                await s3Service.delete(objectId);
+            } catch {
+                // The object may not exist if upload failed before multipart completion.
+            }
+
+            await prismaClient.fileExportJob.update({
+                where: { id: job.id },
+                data: {
+                    status: 'FAILED',
+                    error: message,
+                    completedAt: new Date(),
+                    processedFiles,
+                    processedBytes: processedBytes.toString(),
+                },
+            });
+        }
     },
 
     delete: async (id: string, userId: string) => {

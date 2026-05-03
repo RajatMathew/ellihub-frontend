@@ -9,6 +9,15 @@ import { FileService } from './services';
 
 export const app = new Hono();
 
+function getContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+    const fallbackName = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+    return `${disposition}; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+function getResponseBody(content: Uint8Array): ArrayBuffer {
+    return content.slice().buffer;
+}
+
 app.get(
     '/search',
     paginationMiddleware({
@@ -55,6 +64,24 @@ app.get('/download/:id', async (c) => {
     return success(c, link);
 });
 
+app.get('/read/:id', async (c) => {
+    const file = await FileService.getFileContent(c.req.param('id'));
+    const disposition =
+        c.req.query('disposition') === 'attachment' || c.req.query('download') === 'true'
+            ? 'attachment'
+            : 'inline';
+
+    return new Response(getResponseBody(file.content), {
+        status: 200,
+        headers: {
+            'Content-Type': file.mimeType,
+            'Content-Length': String(file.content.byteLength),
+            'Content-Disposition': getContentDisposition(disposition, file.fileName),
+            'Cache-Control': 'private, max-age=300',
+        },
+    });
+});
+
 app.get('/root', async (c) => {
     const rootFolderId = await FileService.getRootFolder('root');
 
@@ -82,6 +109,18 @@ app.put(
         return success(c, folder);
     }
 );
+
+app.post('/folder/:id/export', async (c) => {
+    const job = await FileService.createFolderExportJob(c.req.param('id'), c.get('user')!.id);
+
+    return success(c, job, 202);
+});
+
+app.get('/export/:id', async (c) => {
+    const job = await FileService.getFolderExportJob(c.req.param('id'), c.get('user')!.id);
+
+    return success(c, job);
+});
 
 app.get('/folder/:id/breadcrumbs', async (c) => {
     const breadcrumbs = await FileService.getBreadcrumbs(c.req.param('id'));

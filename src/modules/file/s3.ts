@@ -1,5 +1,5 @@
 import { InternalServerError, NotFoundError } from '@utils';
-import { S3Client } from 'bun';
+import { S3Client, type NetworkSink } from 'bun';
 import { ulid } from 'ulid';
 
 const s3Client = new S3Client({
@@ -26,12 +26,38 @@ export const s3Service = {
         }
     },
 
-    getDownloadLink: async (fileId: string): Promise<string> => {
+    getDownloadLink: async (fileId: string, expiresIn = 60 * 60): Promise<string> => {
         const file = await s3Client.file(fileId);
 
         if (!file) throw new NotFoundError('No file found with id ' + fileId);
 
-        return await s3Client.presign(fileId);
+        return s3Client.presign(fileId, { expiresIn });
+    },
+
+    read: async (fileId: string): Promise<Uint8Array> => {
+        try {
+            const file = await s3Client.file(fileId);
+
+            if (!file) throw new NotFoundError('No file found with id ' + fileId);
+
+            return new Uint8Array(await file.arrayBuffer());
+        } catch (e) {
+            console.log(e);
+
+            throw new NotFoundError('No file found with id ' + fileId);
+        }
+    },
+
+    stream: (fileId: string): ReadableStream<Uint8Array> => {
+        return s3Client.file(fileId).stream();
+    },
+
+    createWriter: (fileId: string, type = 'application/octet-stream'): NetworkSink => {
+        return s3Client.file(fileId).writer({
+            type,
+            partSize: 10 * 1024 * 1024,
+            queueSize: 3,
+        });
     },
 
     delete: async (fileId: string): Promise<void> => {
