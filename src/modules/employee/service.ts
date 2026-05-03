@@ -5,6 +5,7 @@ import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { UserService } from '@modules/user/services';
 import { ConflictError, NotFoundError } from '@utils';
+import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
@@ -179,6 +180,59 @@ export const EmployeeService = {
             });
 
             return employee;
+        });
+    },
+
+    delete: async (id: string, userId: string): Promise<void> => {
+        const employee = await prisma.employee.findUnique({ where: { id } });
+        if (!employee) throw new NotFoundError('Employee not found');
+        checkDeletedAt(employee);
+
+        const [leadProjects, teamMemberships] = await Promise.all([
+            prisma.project.findMany({
+                where: { leadPMId: id, deletedAt: null },
+                select: { id: true },
+            }),
+            prisma.projectTeamMember.findMany({
+                where: { employeeId: id },
+                select: { projectId: true },
+            }),
+        ]);
+        const affectedProjectIds = Array.from(
+            new Set([
+                ...leadProjects.map((project) => project.id),
+                ...teamMemberships.map((member) => member.projectId),
+            ])
+        );
+
+        await prisma.$transaction(async (tx) => {
+            await tx.project.updateMany({
+                where: { leadPMId: id },
+                data: { leadPMId: null },
+            });
+
+            await tx.projectTeamMember.deleteMany({
+                where: { employeeId: id },
+            });
+
+            await tx.employee.update({
+                where: { id },
+                data: {
+                    deletedAt: new Date(),
+                    departmentId: null,
+                    roleId: null,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'employee',
+                entityId: id,
+                action: 'delete',
+                description: `Deleted employee ${employee.name}`,
+                affectedEntityIds: affectedProjectIds,
+                tx,
+            });
         });
     },
 
