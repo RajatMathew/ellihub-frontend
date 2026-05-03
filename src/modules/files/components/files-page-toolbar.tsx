@@ -1,4 +1,4 @@
-import {
+﻿import {
   Toolbar,
   ToolbarActions,
   ToolbarHeading,
@@ -47,7 +47,7 @@ export function FilesPageToolbar({
           </InputWrapper>
           <Button variant="outline" size="sm" onClick={onExport} disabled={!canExport}>
             <Download className="size-4" />
-            Export
+            Export ZIP
           </Button>
           <Button variant="outline" size="sm" onClick={onCreateFolder} disabled={!canMutateFolder}>
             <FolderPlus className="size-4" />

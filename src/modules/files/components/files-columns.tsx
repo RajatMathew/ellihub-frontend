@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
@@ -23,9 +23,15 @@ interface UseFilesColumnsOptions {
   onPreview: (item: FileItem) => void;
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
+  onExportFolder: (item: FileItem) => void;
 }
 
-export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColumnsOptions) {
+export function useFilesColumns({
+  onPreview,
+  onRename,
+  onDelete,
+  onExportFolder,
+}: UseFilesColumnsOptions) {
   const downloadFile = useDownloadFile();
 
   return useMemo<ColumnDef<FileItem>[]>(
@@ -96,6 +102,8 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         header: () => null,
         cell: ({ row }) => {
           const isFile = row.original.type === 'FILE';
+          const isFolder = row.original.type === 'FOLDER';
+          const showMenu = isFile || isFolder || row.original.isDeletable;
 
           return (
             <div
@@ -124,7 +132,18 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                   </Button>
                 </>
               )}
-              {row.original.isDeletable && (
+              {isFolder && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="size-8 p-0"
+                  onClick={() => onExportFolder(row.original)}
+                  aria-label="Export folder as ZIP"
+                >
+                  <Download className="size-3.5" />
+                </Button>
+              )}
+              {showMenu && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="size-8 p-0" aria-label="More">
@@ -138,24 +157,34 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
                         Preview
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => onRename(row.original)}>
-                      <Pencil className="size-3.5" />
-                      Rename
-                    </DropdownMenuItem>
                     {isFile && (
                       <DropdownMenuItem onClick={() => downloadFile.mutate(row.original)}>
                         <Download className="size-3.5" />
                         Download
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => onDelete(row.original)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </DropdownMenuItem>
+                    {isFolder && (
+                      <DropdownMenuItem onClick={() => onExportFolder(row.original)}>
+                        <Download className="size-3.5" />
+                        Export ZIP
+                      </DropdownMenuItem>
+                    )}
+                    {row.original.isDeletable && (
+                      <DropdownMenuItem onClick={() => onRename(row.original)}>
+                        <Pencil className="size-3.5" />
+                        Rename
+                      </DropdownMenuItem>
+                    )}
+                    {row.original.isDeletable && <DropdownMenuSeparator />}
+                    {row.original.isDeletable && (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => onDelete(row.original)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -169,6 +198,6 @@ export function useFilesColumns({ onPreview, onRename, onDelete }: UseFilesColum
         enableSorting: false,
       },
     ],
-    [downloadFile, onDelete, onPreview, onRename]
+    [downloadFile, onDelete, onExportFolder, onPreview, onRename]
   );
 }

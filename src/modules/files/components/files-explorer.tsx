@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+﻿import { useCallback, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card';
@@ -11,11 +11,12 @@ import { FilesListFilters } from '@/modules/files/components/files-list-filters'
 import { FilesListTable } from '@/modules/files/components/files-list-table';
 import { FilesPageDialogs } from '@/modules/files/components/files-page-dialogs';
 import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar';
-import { useFilesCsvExport } from '@/modules/files/hooks/use-files-csv-export';
+import { FolderExportProgressDialog } from '@/modules/files/components/folder-export-progress-dialog';
 import { useFilesDisplayData } from '@/modules/files/hooks/use-files-display-data';
 import { useFilesFolderData } from '@/modules/files/hooks/use-files-folder-data';
 import { encodeFolderPath, useFilesListParams } from '@/modules/files/hooks/use-files-list-params';
 import { useFilesTable } from '@/modules/files/hooks/use-files-table';
+import { useFolderZipExport } from '@/modules/files/hooks/use-folder-zip-export';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 
 interface FilesExplorerProps {
@@ -46,10 +47,8 @@ export function FilesExplorer({
     dateTo,
     clearFilters,
   } = listParams;
-  const { currentFolderId, allChildren, isLoading, isError, refetch } = useFilesFolderData(
-    folderId,
-    rootFolderId
-  );
+  const { currentFolderId, folderDetail, allChildren, isLoading, isError, refetch } =
+    useFilesFolderData(folderId, rootFolderId);
   const { sectionedData, totalCount, hasActiveFilters } = useFilesDisplayData({
     items: allChildren,
     page,
@@ -66,8 +65,12 @@ export function FilesExplorer({
   const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
   const [renameItem, setRenameItem] = useState<FileItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<FileItem | null>(null);
+  const folderZipExport = useFolderZipExport();
 
-  const handleExport = useFilesCsvExport(allChildren);
+  const handleExport = useCallback(() => {
+    if (!folderDetail) return;
+    void folderZipExport.startExport(folderDetail);
+  }, [folderDetail, folderZipExport]);
 
   const handleFolderClick = useCallback(
     (folder: FileItem) => {
@@ -125,6 +128,7 @@ export function FilesExplorer({
     onPreview: setPreviewItem,
     onRename: setRenameItem,
     onDelete: setDeleteItem,
+    onExportFolder: (item) => void folderZipExport.startExport(item),
   });
 
   return (
@@ -133,7 +137,7 @@ export function FilesExplorer({
         title={title}
         searchInput={searchInput}
         canMutateFolder={!!currentFolderId}
-        canExport={allChildren.length > 0}
+        canExport={!!folderDetail && !folderZipExport.isExporting}
         onSearchChange={handleSearchChange}
         onExport={handleExport}
         onCreateFolder={() => setCreateFolderOpen(true)}
@@ -194,6 +198,7 @@ export function FilesExplorer({
                 isLoading={isLoading}
                 onFolderClick={handleFolderClick}
                 onFilePreview={setPreviewItem}
+                onFolderExport={(item) => void folderZipExport.startExport(item)}
               />
             )}
             <CardFooter>
@@ -202,6 +207,17 @@ export function FilesExplorer({
           </DataGrid>
         )}
       </Card>
+
+      <FolderExportProgressDialog
+        open={folderZipExport.open}
+        onOpenChange={folderZipExport.setOpen}
+        folder={folderZipExport.folder}
+        job={folderZipExport.job}
+        error={folderZipExport.error}
+        hasAutoDownloaded={folderZipExport.hasAutoDownloaded}
+        onRetry={folderZipExport.retry}
+        onDownloadAgain={folderZipExport.downloadAgain}
+      />
 
       <FilesPageDialogs
         currentFolderId={currentFolderId}

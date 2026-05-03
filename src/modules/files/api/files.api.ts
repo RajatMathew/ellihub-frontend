@@ -1,7 +1,9 @@
-import api from '@/app/api';
+﻿import api from '@/app/api';
 import {
+  fileExportJobSchema,
   fileSchema,
   folderDetailSchema,
+  type FileExportJob,
   type FileFolderRenameInput,
   type FileItem,
   type FileUploadInput,
@@ -20,12 +22,52 @@ export type ProjectProtectedFolderType =
   | 'PRIME_CONTRACT'
   | 'SCHEDULE';
 
+type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
+
 function parseFolderId(raw: unknown, context: string): string {
   if (typeof raw !== 'string' || !raw) {
     throw new Error(`${context} returned an invalid folder id`);
   }
 
   return raw;
+}
+
+function getDownloadName(item: DownloadTarget, fallback: string): string {
+  return item.displayName || item.name || fallback;
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const blobUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+
+  anchor.href = blobUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+function parseExportJob(raw: unknown, context: string): FileExportJob {
+  const result = fileExportJobSchema.safeParse(raw);
+
+  if (!result.success) {
+    console.error(`[${context}] Zod parse error:`, result.error.issues);
+    throw result.error;
+  }
+
+  return result.data;
+}
+
+function downloadFromUrl(url: string, fileName: string): void {
+  const anchor = document.createElement('a');
+
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
 }
 
 export const filesApi = {
@@ -114,6 +156,36 @@ export const filesApi = {
   async getDownloadLink(id: string): Promise<string> {
     const res = await api.get(`${BASE}/download/${id}`);
     return res.data?.data ?? res.data;
+  },
+
+  async downloadFile(file: DownloadTarget): Promise<void> {
+    const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
+      params: { disposition: 'attachment' },
+      responseType: 'blob',
+      timeout: 0,
+    });
+
+    downloadBlob(res.data, getDownloadName(file, 'download'));
+  },
+
+  async startFolderExport(folder: DownloadTarget): Promise<FileExportJob> {
+    const res = await api.post(`${BASE}/folder/${folder.id}/export`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseExportJob(raw, 'filesApi.startFolderExport');
+  },
+
+  async getFolderExportJob(jobId: string): Promise<FileExportJob> {
+    const res = await api.get(`${BASE}/export/${jobId}`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseExportJob(raw, 'filesApi.getFolderExportJob');
+  },
+
+  downloadExportJob(job: FileExportJob): void {
+    if (!job.downloadUrl) throw new Error('Export is not ready yet.');
+
+    downloadFromUrl(job.downloadUrl, job.fileName);
   },
 
   async rename(data: FileFolderRenameInput): Promise<FileItem> {

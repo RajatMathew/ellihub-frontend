@@ -1,4 +1,4 @@
-import { Button } from '@/app/components/ui/button';
+﻿import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { formatDateTime } from '@/app/lib/helpers';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
@@ -11,9 +11,15 @@ interface FilesGridViewProps {
   data: FileItem[];
   onFolderClick?: (folder: FileItem) => void;
   onFilePreview?: (file: FileItem) => void;
+  onFolderExport?: (folder: FileItem) => void;
 }
 
-export function FilesGridView({ data, onFolderClick, onFilePreview }: FilesGridViewProps) {
+export function FilesGridView({
+  data,
+  onFolderClick,
+  onFilePreview,
+  onFolderExport,
+}: FilesGridViewProps) {
   const downloadFile = useDownloadFile();
 
   if (data.length === 0) return null;
@@ -47,20 +53,22 @@ export function FilesGridView({ data, onFolderClick, onFilePreview }: FilesGridV
               <span className="text-xs text-muted-foreground">
                 {formatDateTime(item.updatedAt || '')}
               </span>
-              {!isFolder && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="size-7 p-0"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    downloadFile.mutate(item);
-                  }}
-                  aria-label="Download file"
-                >
-                  <Download className="size-3.5" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="size-7 p-0"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isFolder) {
+                    onFolderExport?.(item);
+                    return;
+                  }
+                  downloadFile.mutate(item);
+                }}
+                aria-label={isFolder ? 'Export folder as ZIP' : 'Download file'}
+              >
+                <Download className="size-3.5" />
+              </Button>
             </CardContent>
           </Card>
         );

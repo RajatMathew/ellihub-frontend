@@ -1,4 +1,4 @@
-import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
+﻿import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 
 import { FilesEmptyState } from './files-empty-state';
@@ -11,6 +11,7 @@ interface FilesGridContentProps {
   isLoading: boolean;
   onFolderClick: (folder: FileItem) => void;
   onFilePreview: (file: FileItem) => void;
+  onFolderExport: (folder: FileItem) => void;
 }
 
 export function FilesGridContent({
@@ -18,6 +19,7 @@ export function FilesGridContent({
   isLoading,
   onFolderClick,
   onFilePreview,
+  onFolderExport,
 }: FilesGridContentProps) {
   if (isLoading) return <FilesGridLoading />;
 
@@ -34,6 +36,7 @@ export function FilesGridContent({
             data={sectionedData.protectedItems}
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
+            onFolderExport={onFolderExport}
           />
         </>
       )}
@@ -46,6 +49,7 @@ export function FilesGridContent({
             data={sectionedData.sharedItems}
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
+            onFolderExport={onFolderExport}
           />
         </>
       )}

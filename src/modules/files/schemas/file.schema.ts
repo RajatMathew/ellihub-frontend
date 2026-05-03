@@ -1,9 +1,17 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 // --- Enums ---
 
 export const fileTypeSchema = z.enum(['FILE', 'FOLDER']);
 export type FileType = z.infer<typeof fileTypeSchema>;
+
+export const fileExportStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'COMPLETED',
+  'FAILED',
+  'EXPIRED',
+]);
 
 // --- Main model ---
 
@@ -45,6 +53,30 @@ export const folderDetailSchema = fileSchema.extend({
 });
 
 export type FolderDetail = z.infer<typeof folderDetailSchema>;
+
+// --- Folder export jobs ---
+
+export const fileExportJobSchema = z
+  .object({
+    id: z.string(),
+    folderId: z.string(),
+    status: fileExportStatusSchema,
+    fileName: z.string(),
+    totalFiles: z.coerce.number(),
+    processedFiles: z.coerce.number(),
+    totalBytes: z.string(),
+    processedBytes: z.string(),
+    error: z.string().nullable().optional(),
+    downloadUrl: z.string().nullable().optional(),
+    expiresAt: z.string(),
+    startedAt: z.string().nullable().optional(),
+    completedAt: z.string().nullable().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export type FileExportJob = z.infer<typeof fileExportJobSchema>;
 
 // --- Input schemas ---
 

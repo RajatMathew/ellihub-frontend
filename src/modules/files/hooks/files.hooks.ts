@@ -1,4 +1,4 @@
-import { toastApiError } from '@/app/lib/toast-api-error';
+﻿import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesApi } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import type {
@@ -9,7 +9,6 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const PREVIEW_STALE_TIME = 5 * 60 * 1000;
-
 export const useRootFolderQuery = (enabled = true) =>
   useQuery({
     queryKey: filesKeys.root(),
@@ -47,8 +46,10 @@ export const useTextContentQuery = (url: string | undefined, enabled: boolean) =
       if (!url) throw new Error('Missing preview URL');
 
       const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load text preview');
+
       const text = await res.text();
-      return text.slice(0, 50000);
+      return text.slice(0, 100000);
     },
     enabled: enabled && !!url,
     staleTime: PREVIEW_STALE_TIME,
@@ -107,28 +108,8 @@ export const useDeleteFolderMutation = () => {
 
 export const useDownloadFile = () => {
   return useMutation({
-    mutationFn: async (file: { id: string; name?: string | null; displayName?: string | null }) => {
-      const url = await filesApi.getDownloadLink(file.id);
-
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Download failed');
-
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-
-        anchor.href = blobUrl;
-        anchor.download = file.displayName || file.name || 'download';
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(blobUrl);
-      } catch (error) {
-        console.error('Blob download failed, falling back to window.open', error);
-        window.open(url, '_blank');
-      }
-    },
+    mutationFn: (file: { id: string; name?: string | null; displayName?: string | null }) =>
+      filesApi.downloadFile(file),
     onError: (error) => toastApiError(error, 'Failed to download file.'),
   });
 };

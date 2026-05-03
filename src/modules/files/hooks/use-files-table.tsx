@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+﻿import { useMemo } from 'react';
 
 import type { ResourceListParamPatch } from '@/app/hooks/use-resource-list-params';
 import { useFilesColumns } from '@/modules/files/components/files-columns';
@@ -24,6 +24,7 @@ interface UseFilesTableParams {
   onPreview: (item: FileItem) => void;
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
+  onExportFolder: (item: FileItem) => void;
 }
 
 export function useFilesTable({
@@ -37,12 +38,13 @@ export function useFilesTable({
   onPreview,
   onRename,
   onDelete,
+  onExportFolder,
 }: UseFilesTableParams) {
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
     [sortBy, sortOrder]
   );
-  const columns = useFilesColumns({ onPreview, onRename, onDelete });
+  const columns = useFilesColumns({ onPreview, onRename, onDelete, onExportFolder });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
 
   // eslint-disable-next-line react-hooks/incompatible-library
