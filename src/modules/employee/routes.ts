@@ -30,7 +30,7 @@ app.post(
     zValidator('json', EmployeeCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const employee = await EmployeeService.create(data, c.get('user')!.id);
+        const employee = await EmployeeService.create(data, c.get('user')!.id, c.req.raw.headers);
         return success(c, employee, 201);
     }
 );
@@ -54,7 +54,7 @@ app.put(
 
 app.delete('/:id', requirePermission({ project: ['delete'] }), async (c) => {
     const id = c.req.param('id');
-    await EmployeeService.delete(id);
+    await EmployeeService.delete(id, c.get('user')!.id);
     return success(c, null, 200, 'Employee deleted');
 });
 
