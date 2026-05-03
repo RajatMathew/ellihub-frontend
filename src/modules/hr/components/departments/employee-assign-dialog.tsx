@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -12,20 +12,24 @@ import {
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { useAppLookupsQuery } from '@/app/hooks/use-lookup';
+import { getDepartmentEmployeeId } from '@/modules/hr/components/departments/detail/department-employee-utils';
 import { useAssignEmployeeMutation } from '@/modules/hr/hooks/departments.hooks';
 import { useEmployeesQuery } from '@/modules/hr/hooks/employees.hooks';
+import type { DepartmentEmployee } from '@/modules/hr/schemas/department.schema';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
 
 interface EmployeeAssignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departmentId: string;
+  assignedEmployees: DepartmentEmployee[];
 }
 
 export function EmployeeAssignDialog({
   open,
   onOpenChange,
   departmentId,
+  assignedEmployees,
 }: EmployeeAssignDialogProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
@@ -39,8 +43,43 @@ export function EmployeeAssignDialog({
   const { data: rolesData, isLoading: isRolesLoading } = useAppLookupsQuery('PROFESSIONAL_ROLE');
   const assignMutation = useAssignEmployeeMutation();
 
+  const employeeOptions = useMemo(() => {
+    const assignedEmployeeIds = new Set(
+      assignedEmployees
+        .map((assignment) => getDepartmentEmployeeId(assignment))
+        .filter((employeeId) => employeeId.length > 0)
+    );
+
+    return (employeesData?.data ?? [])
+      .filter(
+        (employee: Employee) =>
+          !assignedEmployeeIds.has(employee.id) && employee.departmentId !== departmentId
+      )
+      .map((employee: Employee) => ({
+        value: employee.id,
+        label: employee.name,
+      }));
+  }, [assignedEmployees, departmentId, employeesData?.data]);
+
+  const roleOptions = (rolesData ?? []).map((role) => ({
+    value: role.id,
+    label: role.label || role.name || 'Unknown Role',
+  }));
+
+  const hasSelectedEmployee = employeeOptions.some((option) => option.value === selectedEmployeeId);
+
+  const resetSelections = () => {
+    setSelectedEmployeeId('');
+    setSelectedRoleId('');
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) resetSelections();
+    onOpenChange(nextOpen);
+  };
+
   const handleAssign = async () => {
-    if (!selectedEmployeeId) return;
+    if (!hasSelectedEmployee) return;
 
     await assignMutation.mutateAsync({
       departmentId,
@@ -48,23 +87,11 @@ export function EmployeeAssignDialog({
       roleId: selectedRoleId || undefined,
     });
 
-    onOpenChange(false);
-    setSelectedEmployeeId('');
-    setSelectedRoleId('');
+    handleOpenChange(false);
   };
 
-  const employeeOptions = (employeesData?.data ?? []).map((employee: Employee) => ({
-    value: employee.id,
-    label: employee.name,
-  }));
-
-  const roleOptions = (rolesData ?? []).map((role) => ({
-    value: role.id,
-    label: role.label || role.name || 'Unknown Role',
-  }));
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm font-bold uppercase tracking-widest">
@@ -85,6 +112,7 @@ export function EmployeeAssignDialog({
               value={selectedEmployeeId}
               onValueChange={(value) => setSelectedEmployeeId(value ?? '')}
               placeholder="Search employees..."
+              emptyMessage="No unassigned employees found."
               disabled={isEmployeesLoading}
             />
           </Field>
@@ -104,13 +132,13 @@ export function EmployeeAssignDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button
             size="sm"
             onClick={handleAssign}
-            disabled={!selectedEmployeeId || assignMutation.isPending}
+            disabled={!hasSelectedEmployee || assignMutation.isPending}
           >
             {assignMutation.isPending ? 'Assigning...' : 'Assign to Department'}
           </Button>
