@@ -250,6 +250,41 @@
                 }
             }
         },
+        "/rfq/vendor/{id}/pdf": {
+            "post": {
+                "tags": ["RFQ"],
+                "summary": "Generate a vendor-specific RFQ PDF",
+                "operationId": "generateRfqVendorPdf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "RFQVendorQuote ULID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerateRfqVendorPdfRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/pdf": {
+                                "schema": { "type": "string", "format": "binary" }
+                            }
+                        }
+                    },
+                    "400": { "description": "RFQ has no deliverables or deleted resource", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires rfq:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Vendor quote not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "500": { "description": "PDF engine failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
         "/rfq/vendor/submit-quote": {
             "patch": {
                 "tags": ["RFQ"],
@@ -479,6 +514,32 @@
                 "properties": {
                     "rfqId": { "type": "string" },
                     "vendorId": { "type": "string" }
+                }
+            },
+            "GenerateRfqVendorPdfRequest": {
+                "type": "object",
+                "required": ["company", "shipToName"],
+                "properties": {
+                    "company": {
+                        "type": "object",
+                        "required": ["name", "addressLines", "phone"],
+                        "properties": {
+                            "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+                            "addressLines": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+                            },
+                            "phone": { "type": "string", "minLength": 1, "maxLength": 40 },
+                            "logoPath": { "type": "string", "maxLength": 240, "default": "assets/logo.png" }
+                        }
+                    },
+                    "shipToName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                    }
                 }
             },
             "RemoveVendorRequest": {

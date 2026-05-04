@@ -59,6 +59,20 @@ export const RemoveVendorSchema = z.object({
 
 export type RemoveVendorRequest = z.infer<typeof RemoveVendorSchema>;
 
+const RfqVendorPdfCompanySchema = z.object({
+    name: z.string().trim().min(1).max(160),
+    addressLines: z.array(z.string().trim().min(1).max(160)).min(1).max(5),
+    phone: z.string().trim().min(1).max(40),
+    logoPath: z.string().trim().max(240).default('assets/logo.png'),
+});
+
+export const GenerateVendorPdfSchema = z.object({
+    company: RfqVendorPdfCompanySchema,
+    shipToName: z.string().trim().min(1).max(160),
+});
+
+export type GenerateVendorPdfRequest = z.infer<typeof GenerateVendorPdfSchema>;
+
 export const SubmitQuoteSchema = z.object({
     id: z.ulid(),
     quotedAmount: z.number().nonnegative(),
