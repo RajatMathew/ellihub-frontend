@@ -200,11 +200,11 @@
         "/project/fieldwire/projects": {
             "get": {
                 "tags": ["Projects"],
-                "summary": "List active Fieldwire projects",
+                "summary": "List all active Fieldwire projects",
                 "operationId": "listFieldwireProjects",
                 "responses": {
                     "200": {
-                        "description": "Active Fieldwire projects available for mapping",
+                        "description": "All active Fieldwire projects available for mapping",
                         "content": {
                             "application/json": {
                                 "schema": {
