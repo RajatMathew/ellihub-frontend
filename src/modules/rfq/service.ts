@@ -1,4 +1,5 @@
-import { RFQ, RFQAttachment, RFQVendorQuote } from '@db/client';
+import { RFQ, RFQAttachment, RFQVendorQuote, type Prisma } from '@db/client';
+import { renderPdf, type PdfJsonObject } from '@lib/pdf-engine';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -9,6 +10,7 @@ import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
+    type GenerateVendorPdfRequest,
     AddRfqAttachmentRequest,
     AddVendorRequest,
     AwardRfqRequest,
@@ -23,6 +25,116 @@ import {
     UnawardRfqRequest,
     VoidRfqRequest,
 } from './models';
+
+type RfqVendorPdfResult = {
+    bytes: Uint8Array;
+    fileName: string;
+    contentType: string;
+    requestHash: string | null;
+    cacheHit: boolean;
+};
+
+type RfqVendorPdfQuote = Prisma.RFQVendorQuoteGetPayload<{
+    include: {
+        vendor: true;
+        rfq: {
+            include: {
+                project: true;
+                type: true;
+                rfqdeliverables: { include: { unit: true } };
+            };
+        };
+    };
+}>;
+
+const RFQ_VENDOR_PDF_TEMPLATE_ID = 'rfq_vendor_request_v1';
+const FILE_NAME_INVALID_CHARACTERS = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*']);
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+});
+
+const quantityFormatter = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+});
+
+function formatDate(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    return dateFormatter.format(new Date(value));
+}
+
+function formatQuantity(value: { toString(): string }): string {
+    const numericValue = Number(value.toString());
+    if (!Number.isFinite(numericValue)) return value.toString();
+    return quantityFormatter.format(numericValue);
+}
+
+function sanitizeFileName(value: string): string {
+    return (
+        Array.from(value)
+            .map((character) =>
+                FILE_NAME_INVALID_CHARACTERS.has(character) || character.charCodeAt(0) < 32
+                    ? '_'
+                    : character
+            )
+            .join('')
+            .replace(/\s+/g, ' ')
+            .trim() || 'rfq.pdf'
+    );
+}
+
+function buildRfqVendorPdfData(
+    quote: RfqVendorPdfQuote,
+    requestedBy: string,
+    pdfRequest: GenerateVendorPdfRequest
+): PdfJsonObject {
+    const shipToName = pdfRequest.shipToName;
+    const logoPath = pdfRequest.company.logoPath || 'assets/logo.png';
+    return {
+        company: {
+            name: pdfRequest.company.name,
+            address_lines: pdfRequest.company.addressLines,
+            phone: pdfRequest.company.phone,
+            logo_path: logoPath,
+        },
+        rfq: {
+            number: quote.rfq.rfqNumber,
+            title: quote.rfq.title,
+            description: quote.rfq.description || '',
+            issued_on: formatDate(new Date()),
+            needed_by: formatDate(quote.rfq.bidDeadline),
+            type: quote.rfq.type.label,
+            status: quote.rfq.status,
+        },
+        project: {
+            name: quote.rfq.project.name,
+            number: quote.rfq.project.jobNumber || quote.rfq.project.contractNumber || '',
+            contract_number: quote.rfq.project.contractNumber || '',
+        },
+        vendor: {
+            name: quote.vendor.name,
+            address: quote.vendor.address || '',
+            email: quote.vendor.email || '',
+            phone: quote.vendor.phone || '',
+        },
+        request: {
+            ship_to: shipToName,
+            requested_by: requestedBy,
+        },
+        deliverables: quote.rfq.rfqdeliverables.map((deliverable, index) => ({
+            sequence: String(index + 1),
+            description: deliverable.name,
+            quantity: formatQuantity(deliverable.quantity),
+            unit: deliverable.unit.label,
+        })),
+        deliverables_count: String(quote.rfq.rfqdeliverables.length),
+        footer: {
+            left: `${pdfRequest.company.name} - ${quote.rfq.rfqNumber}`,
+        },
+    };
+}
 
 export const RfqService = {
     createRfq: async (request: RfqCreateRequest, userId: string): Promise<RFQ> => {
@@ -679,6 +791,57 @@ export const RfqService = {
         });
 
         return updated;
+    },
+
+    generateVendorPdf: async (
+        quoteId: string,
+        requestedBy: string,
+        pdfRequest: GenerateVendorPdfRequest
+    ): Promise<RfqVendorPdfResult> => {
+        const quote = await prisma.rFQVendorQuote.findUnique({
+            where: { id: quoteId },
+            include: {
+                vendor: true,
+                rfq: {
+                    include: {
+                        project: true,
+                        type: true,
+                        rfqdeliverables: {
+                            where: { deletedAt: null },
+                            orderBy: { createdAt: 'asc' },
+                            include: { unit: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!quote) throw new NotFoundError('Vendor quote not found');
+        checkDeletedAt(quote.rfq);
+        checkDeletedAt(quote.vendor);
+
+        if (!quote.rfq.rfqdeliverables.length) {
+            throw new BadRequestError('RFQ must have at least one deliverable to generate a PDF');
+        }
+
+        const fileName = sanitizeFileName(
+            `${quote.rfq.rfqNumber}-${quote.vendor.name}-request-for-quote.pdf`
+        );
+        const pdf = await renderPdf({
+            template_id: RFQ_VENDOR_PDF_TEMPLATE_ID,
+            data: buildRfqVendorPdfData(quote, requestedBy, pdfRequest),
+            branding: {
+                company_name: pdfRequest.company.name,
+            },
+            settings: {
+                filename: fileName,
+            },
+        });
+
+        return {
+            ...pdf,
+            fileName,
+        };
     },
 
     getRfq: async (id: string): Promise<RFQ> => {

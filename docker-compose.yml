@@ -39,6 +39,7 @@ services:
             CLIENT_URL: ${CLIENT_URL}
             NODE_ENV: ${NODE_ENV:-production}
             PORT: ${PORT:-3000}
+            PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://pdf-engine:8000}
         # ports:
         #     - '${API_PORT:-3005}:3000'
         depends_on:

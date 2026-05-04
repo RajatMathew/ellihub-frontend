@@ -9,6 +9,7 @@ import {
     AwardRfqSchema,
     DeclineQuoteSchema,
     EditQuoteSchema,
+    GenerateVendorPdfSchema,
     RemoveQuoteSchema,
     RemoveRfqAttachmentSchema,
     RemoveVendorSchema,
@@ -21,6 +22,22 @@ import {
 import { RfqService } from './service';
 
 const app = new Hono();
+
+function getContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+    const fallbackName = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+    return `${disposition}; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+function getResponseBody(content: Uint8Array): ArrayBuffer {
+    const body = new Uint8Array(content.byteLength);
+    body.set(content);
+    return body.buffer;
+}
+
+function getRequestedBy(c: Context): string {
+    const user = c.get('user');
+    return user?.name || user?.email || 'Elli NY Design Corp';
+}
 
 app.get(
     '/',
@@ -80,6 +97,36 @@ app.patch(
         const data = c.req.valid('json');
         const quote = await RfqService.submitQuote(data, c.get('user')!.id);
         return success(c, quote);
+    }
+);
+
+app.post(
+    '/vendor/:id/pdf',
+    requirePermission({ rfq: ['read'] }),
+    zValidator('json', GenerateVendorPdfSchema),
+    async (c) => {
+        const request = c.req.valid('json');
+        const pdf = await RfqService.generateVendorPdf(
+            c.req.param('id'),
+            getRequestedBy(c),
+            request
+        );
+        const headers = new Headers({
+            'Content-Type': pdf.contentType,
+            'Content-Length': String(pdf.bytes.byteLength),
+            'Content-Disposition': getContentDisposition('attachment', pdf.fileName),
+            'Cache-Control': 'private, max-age=0, no-store',
+            'X-PDF-Engine-Cache-Hit': String(pdf.cacheHit),
+        });
+
+        if (pdf.requestHash) {
+            headers.set('X-PDF-Engine-Request-Hash', pdf.requestHash);
+        }
+
+        return new Response(getResponseBody(pdf.bytes), {
+            status: 200,
+            headers,
+        });
     }
 );
 
