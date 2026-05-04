@@ -30,7 +30,9 @@ export const useFieldwireProjectsQuery = () =>
   useQuery({
     queryKey: projectKeys.fieldwireProjects(),
     queryFn: () => projectApi.listFieldwireProjects(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
 export const useInvoiceAgingQuery = (
@@ -77,7 +79,7 @@ export const useUpdateProjectMutation = () => {
       await invalidateProjectQueries(qc, [
         projectKeys.list(),
         projectKeys.detail(updated.id),
-        primeChangeOrderKeys.financialSummary(updated.id),
+        primeChangeOrderKeys.all,
       ]);
       toast.success('Project updated successfully.');
     },
