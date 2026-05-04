@@ -11,7 +11,7 @@ import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 import { ZodError } from 'zod';
 
-import { FieldwireClient } from './fieldwire-client';
+import { FieldwireClient, getFieldwireErrorMessage } from './fieldwire-client';
 import {
     FieldwireChangeOrder,
     FieldwireProjectUser as FieldwireProjectUserResponse,
@@ -52,6 +52,11 @@ type PrimeChangeOrderAssignee = {
 type PrimeChangeOrderWithAssignee = PrimeChangeOrder & {
     assignee: PrimeChangeOrderAssignee | null;
 };
+
+type FieldwireMappingCleanupClient = Pick<
+    typeof prisma,
+    'fieldwireProjectUser' | 'primeChangeOrder' | 'primeChangeOrderSyncStatus'
+>;
 
 const primeChangeOrderStatuses = [
     'Draft',
@@ -143,6 +148,9 @@ const getAssigneeUserIds = (orders: Array<Pick<PrimeChangeOrder, 'assigneeUserId
     );
 
 const getErrorMessage = (error: unknown) => {
+    const fieldwireMessage = getFieldwireErrorMessage(error);
+    if (fieldwireMessage) return fieldwireMessage;
+
     if (error instanceof ZodError) return 'Invalid Fieldwire response';
     if (error instanceof Error) return error.message;
     return 'Unknown Fieldwire sync error';
@@ -170,6 +178,76 @@ const buildDecimalRange = (min?: unknown, max?: unknown) => {
     } catch {
         throw new BadRequestError('Invalid total cost filter');
     }
+};
+
+const buildOtherFieldwireProjectOrderWhere = (
+    projectId: string,
+    fieldwireProjectId: string | null
+): Prisma.PrimeChangeOrderWhereInput => ({
+    projectId,
+    deletedAt: null,
+    ...(fieldwireProjectId ? { fieldwireProjectId: { not: fieldwireProjectId } } : {}),
+});
+
+const buildOtherFieldwireProjectUserWhere = (
+    projectId: string,
+    fieldwireProjectId: string | null
+): Prisma.FieldwireProjectUserWhereInput => ({
+    projectId,
+    ...(fieldwireProjectId ? { fieldwireProjectId: { not: fieldwireProjectId } } : {}),
+});
+
+const archivePrimeChangeOrdersFromOtherFieldwireProjects = async (
+    client: FieldwireMappingCleanupClient,
+    projectId: string,
+    fieldwireProjectId: string | null,
+    archivedAt: Date
+): Promise<string[]> => {
+    const staleOrders = await client.primeChangeOrder.findMany({
+        where: buildOtherFieldwireProjectOrderWhere(projectId, fieldwireProjectId),
+        select: { id: true },
+    });
+    const staleOrderIds = staleOrders.map((order) => order.id);
+
+    if (staleOrderIds.length > 0) {
+        await client.primeChangeOrder.updateMany({
+            where: { id: { in: staleOrderIds } },
+            data: {
+                deletedAt: archivedAt,
+                lastSyncedAt: archivedAt,
+            },
+        });
+    }
+
+    return staleOrderIds;
+};
+
+const deleteFieldwireUsersFromOtherProjects = async (
+    client: FieldwireMappingCleanupClient,
+    projectId: string,
+    fieldwireProjectId: string | null
+) => {
+    await client.fieldwireProjectUser.deleteMany({
+        where: buildOtherFieldwireProjectUserWhere(projectId, fieldwireProjectId),
+    });
+};
+
+const resetPrimeChangeOrderSyncStatus = async (
+    client: FieldwireMappingCleanupClient,
+    projectId: string
+) => {
+    await client.primeChangeOrderSyncStatus.updateMany({
+        where: { projectId },
+        data: {
+            lastSyncedAt: null,
+            lastSyncStatus: null,
+            lastSyncError: null,
+            totalReceived: 0,
+            createdCount: 0,
+            updatedCount: 0,
+            deletedCount: 0,
+        },
+    });
 };
 
 const mapChangeOrder = (
@@ -261,18 +339,20 @@ const ensureFieldwireProjectUserCache = async ({
                 fieldwireUserId: { in: uniqueUserIds },
             },
             select: {
+                fieldwireProjectId: true,
                 fieldwireUserId: true,
                 lastSyncedAt: true,
             },
         });
 
-        const cachedByUserId = new Map(
-            cachedUsers.map((user) => [user.fieldwireUserId, user.lastSyncedAt])
-        );
+        const cachedByUserId = new Map(cachedUsers.map((user) => [user.fieldwireUserId, user]));
         const staleBefore = new Date(Date.now() - FIELDWIRE_PROJECT_USER_CACHE_TTL_MS);
         const shouldRefresh = uniqueUserIds.some((fieldwireUserId) => {
-            const lastSyncedAt = cachedByUserId.get(fieldwireUserId);
-            return !lastSyncedAt || lastSyncedAt < staleBefore;
+            const cachedUser = cachedByUserId.get(fieldwireUserId);
+            if (!cachedUser) return true;
+            if (cachedUser.fieldwireProjectId !== fieldwireProjectId) return true;
+
+            return cachedUser.lastSyncedAt < staleBefore;
         });
 
         if (!shouldRefresh) return;
@@ -337,6 +417,32 @@ const emptySyncStatus = {
 };
 
 export const PrimeChangeOrderService = {
+    resetAfterFieldwireProjectChange: async ({
+        projectId,
+        fieldwireProjectId,
+        tx = prisma,
+    }: {
+        projectId: string;
+        fieldwireProjectId: string | null;
+        tx?: FieldwireMappingCleanupClient;
+    }) => {
+        const archivedAt = new Date();
+        const archivedOrderIds = await archivePrimeChangeOrdersFromOtherFieldwireProjects(
+            tx,
+            projectId,
+            fieldwireProjectId,
+            archivedAt
+        );
+
+        await deleteFieldwireUsersFromOtherProjects(tx, projectId, fieldwireProjectId);
+        await resetPrimeChangeOrderSyncStatus(tx, projectId);
+
+        return {
+            archivedCount: archivedOrderIds.length,
+            archivedOrderIds,
+        };
+    },
+
     getByProject: async (
         projectId: string,
         params: PaginationParams
@@ -560,6 +666,21 @@ export const PrimeChangeOrderService = {
             };
 
             await prisma.$transaction(async (tx) => {
+                const archivedOrderIds = await archivePrimeChangeOrdersFromOtherFieldwireProjects(
+                    tx,
+                    projectId,
+                    project.fieldwireProjectId,
+                    syncedAt
+                );
+                await deleteFieldwireUsersFromOtherProjects(
+                    tx,
+                    projectId,
+                    project.fieldwireProjectId
+                );
+
+                counts.deletedCount += archivedOrderIds.length;
+                changedIds.push(...archivedOrderIds);
+
                 for (const order of fieldwireChangeOrders) {
                     const existing = await tx.primeChangeOrder.findUnique({
                         where: { fieldwireId: order.id },
@@ -671,6 +792,8 @@ export const PrimeChangeOrderService = {
                 data,
             };
         } catch (error) {
+            const fieldwireErrorMessage = getFieldwireErrorMessage(error);
+
             await PrimeChangeOrderService.recordFailedSync(
                 projectId,
                 trigger,
@@ -678,6 +801,11 @@ export const PrimeChangeOrderService = {
                 error,
                 userId
             );
+
+            if (fieldwireErrorMessage) {
+                throw new BadRequestError(fieldwireErrorMessage);
+            }
+
             throw error;
         }
     },

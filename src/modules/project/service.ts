@@ -4,6 +4,7 @@ import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { FieldwireClient } from '@modules/prime-change-order/fieldwire-client';
+import { PrimeChangeOrderService } from '@modules/prime-change-order/service';
 import { RevisionService } from '@modules/revision';
 import { ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -123,13 +124,15 @@ export const ProjectService = {
     getFieldwireProjects: async (): Promise<FieldwireProjectOption[]> => {
         const projects = await FieldwireClient.getProjects();
 
-        return projects.map((project) => ({
-            id: project.id,
-            name: project.name,
-            code: project.code,
-            address: project.address,
-            accountId: project.account_id,
-        }));
+        return projects
+            .map((project) => ({
+                id: project.id,
+                name: project.name,
+                code: project.code,
+                address: project.address,
+                accountId: project.account_id,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
     },
 
     createProject: async (request: ProjectCreateRequest, userId: string): Promise<Project> => {
@@ -356,6 +359,9 @@ export const ProjectService = {
             if (existing) throw new ConflictError('Fieldwire project ID already exists');
         }
 
+        const nextFieldwireProjectId = fieldwireProjectId ?? null;
+        const hasFieldwireProjectChanged = nextFieldwireProjectId !== project.fieldwireProjectId;
+
         return await prisma.$transaction(async (tx) => {
             await RevisionService.create(tx, { entityType: 'PROJECT', entityId: id, userId });
 
@@ -368,10 +374,10 @@ export const ProjectService = {
                     divisionId,
                     gcId,
                     leadPMId: leadPMId ?? null,
-                    fieldwireProjectId: fieldwireProjectId ?? null,
-                    fieldwireProjectName: fieldwireProjectId
+                    fieldwireProjectId: nextFieldwireProjectId,
+                    fieldwireProjectName: nextFieldwireProjectId
                         ? (fieldwireProjectName?.trim() ??
-                          (fieldwireProjectId === project.fieldwireProjectId
+                          (nextFieldwireProjectId === project.fieldwireProjectId
                               ? project.fieldwireProjectName
                               : null))
                         : null,
@@ -385,6 +391,14 @@ export const ProjectService = {
             if (updated.name !== project.name) {
                 const folderId = await FileService.getProjectFolderId(id, tx);
                 await FileService.updateFolderDisplayName(folderId, updated.name, tx);
+            }
+
+            if (hasFieldwireProjectChanged) {
+                await PrimeChangeOrderService.resetAfterFieldwireProjectChange({
+                    projectId: id,
+                    fieldwireProjectId: nextFieldwireProjectId,
+                    tx,
+                });
             }
 
             await ActivityLogService.log({
