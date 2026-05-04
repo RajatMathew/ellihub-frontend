@@ -1,12 +1,3 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
@@ -18,11 +9,14 @@ import type {
   UpdateRFQInput,
   VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 function invalidateRFQQueries(queryClient: QueryClient, rfqId?: string) {
   return invalidateProjectQueries(
     queryClient,
-    rfqId ? [rfqKeys.all, rfqKeys.detail(rfqId)] : [rfqKeys.all],
+    rfqId ? [rfqKeys.all, rfqKeys.detail(rfqId)] : [rfqKeys.all]
   );
 }
 
@@ -216,12 +210,8 @@ export const useChangeRFQStatusMutation = () => {
 export const useDeclineInviteMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      data,
-    }: {
-      rfqId: string;
-      data: { id: string; declineReason?: string };
-    }) => rfqApi.declineInvite(data),
+    mutationFn: ({ data }: { rfqId: string; data: { id: string; declineReason?: string } }) =>
+      rfqApi.declineInvite(data),
     onSuccess: async (_, { rfqId }) => {
       await invalidateRFQQueries(qc, rfqId);
       toast.success('Invite declined.');
@@ -255,6 +245,13 @@ export const useRemoveVendorMutation = () => {
     onError: (err) => toastApiError(err, 'Failed to remove vendor.'),
   });
 };
+
+export const useGenerateRFQVendorPdfMutation = () =>
+  useMutation({
+    mutationFn: ({ quoteId, vendorName }: { quoteId: string; vendorName: string }) =>
+      rfqApi.generateVendorPdf(quoteId, vendorName),
+    onError: (err) => toastApiError(err, 'Failed to generate RFQ PDF.'),
+  });
 
 /* ---- workflow mutations ---- */
 
@@ -380,10 +377,7 @@ export const useGeneratePOMutation = () => {
       toast.success('Purchase Order created.');
 
       const poId =
-        typeof data === 'object' &&
-        data !== null &&
-        'id' in data &&
-        typeof data.id === 'string'
+        typeof data === 'object' && data !== null && 'id' in data && typeof data.id === 'string'
           ? data.id
           : undefined;
       if (poId && projectId) {

@@ -1,8 +1,11 @@
-import { z } from 'zod';
-
 import api from '@/app/api';
+import {
+  getPdfDownloadName,
+  sanitizeDownloadName,
+  type GeneratedPdfFile,
+} from '@/app/lib/generated-pdf';
+import { RFQ_VENDOR_PDF_PROFILE } from '@/modules/project/constants/rfq';
 import { lookupSchema, type Lookup } from '@/modules/project/schemas/lookup.schema';
-
 import {
   rfqAttachmentSchema,
   rfqDetailSchema,
@@ -10,13 +13,14 @@ import {
   rfqStatusSchema,
   type CreateRFQInput,
   type ListRFQParams,
-  type RFQDetail,
   type RFQDeliverableInput,
+  type RFQDetail,
   type RFQPaginatedResponse,
   type RFQStatus,
   type UpdateRFQInput,
   type VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
+import { z } from 'zod';
 
 export type BidComparisonQuote = {
   quoteId: string;
@@ -128,7 +132,7 @@ function normalizeRFQ(item: unknown) {
   const typeId = record.typeId || type?.id || undefined;
 
   const deliverables = toArray<RFQApiDeliverable>(
-    record.deliverables ?? record.rfqdeliverables,
+    record.deliverables ?? record.rfqdeliverables
   ).map((d) => ({
     ...d,
     unitId: d.unitId ?? (isRecord(d.unit) ? getString(d.unit.id) : ''),
@@ -296,7 +300,7 @@ export const rfqApi = {
   async updateDeliverable(
     rfqId: string,
     deliverableId: string,
-    data: Partial<RFQDeliverableInput>,
+    data: Partial<RFQDeliverableInput>
   ): Promise<unknown> {
     const res = await api.put(`${BASE}/${rfqId}/deliverables/${deliverableId}`, data);
     return res.data?.data ?? res.data;
@@ -315,6 +319,24 @@ export const rfqApi = {
 
   async removeVendor(quoteId: string): Promise<void> {
     await api.patch(`${BASE}/vendor/remove`, { id: quoteId });
+  },
+
+  async generateVendorPdf(quoteId: string, vendorName: string): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf`, RFQ_VENDOR_PDF_PROFILE, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${vendorName || 'vendor'}-rfq.pdf`);
+    const fileName = getPdfDownloadName(
+      String(res.headers['content-disposition'] ?? ''),
+      fallbackName
+    );
+
+    return {
+      blob: res.data,
+      fileName,
+      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
+    };
   },
 
   /* ---- Invite actions ---- */

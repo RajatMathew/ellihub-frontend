@@ -24,12 +24,14 @@ export function RFQDetailVendorsCard({
   isAwarded,
   onInviteVendor,
   onOpenQuote,
+  onGenerateVendorPdf,
   onAwardQuote,
   onUnaward,
   onGeneratePO,
   onRemoveQuote,
   onRemoveVendor,
   onDeclineInvite,
+  isGeneratingVendorPdf,
 }: RFQDetailVendorsCardProps) {
   const rows = useMemo<RFQVendorRowModel[]>(() => {
     const quoteByVendor = new Map<string, RFQQuote>();
@@ -63,7 +65,9 @@ export function RFQDetailVendorsCard({
     isPublished,
     isEvaluation,
     isAwarded,
+    isGeneratingVendorPdf,
     onOpenQuote,
+    onGenerateVendorPdf,
     onAwardQuote,
     onUnaward,
     onGeneratePO,

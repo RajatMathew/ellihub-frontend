@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { PdfPreviewDialog } from '@/app/components/pdf-preview-dialog';
 import {
   Toolbar,
   ToolbarActions,
@@ -34,6 +35,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
@@ -64,6 +66,7 @@ import {
   useDeclineInviteMutation,
   useDeleteRFQMutation,
   useGeneratePOMutation,
+  useGenerateRFQVendorPdfMutation,
   usePublishRFQMutation,
   useRemoveQuoteMutation,
   useRemoveRFQAttachmentMutation,
@@ -177,6 +180,7 @@ export default function RFQDetailPage() {
   const voidMutation = useVoidAwardMutation();
   const unawardMutation = useUnawardRFQMutation();
   const generatePOMutation = useGeneratePOMutation();
+  const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
   const deleteMutation = useDeleteRFQMutation();
   const addVendorMutation = useAddVendorMutation();
   const removeVendorMutation = useRemoveVendorMutation();
@@ -233,6 +237,11 @@ export default function RFQDetailPage() {
 
   // Bid comparison dialog
   const [comparisonOpen, setComparisonOpen] = useState(false);
+
+  // Generated PDF preview
+  const [vendorPdfPreviewOpen, setVendorPdfPreviewOpen] = useState(false);
+  const [vendorPdfPreview, setVendorPdfPreview] = useState<GeneratedPdfFile | null>(null);
+
   const {
     data: bidComparison,
     isLoading: isComparisonLoading,
@@ -395,8 +404,32 @@ export default function RFQDetailPage() {
     unawardMutation.mutate(rfqId);
   }
 
+  function handleVendorPdfPreviewOpenChange(open: boolean) {
+    setVendorPdfPreviewOpen(open);
+    if (!open) setVendorPdfPreview(null);
+  }
+
+  function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
+    generateVendorPdfMutation.mutate(
+      { quoteId: inviteId, vendorName },
+      {
+        onSuccess: (file) => {
+          setVendorPdfPreview(file);
+          setVendorPdfPreviewOpen(true);
+        },
+      }
+    );
+  }
+
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
+      <PdfPreviewDialog
+        open={vendorPdfPreviewOpen}
+        onOpenChange={handleVendorPdfPreviewOpenChange}
+        file={vendorPdfPreview}
+        title={vendorPdfPreview?.fileName}
+      />
+
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>
@@ -593,6 +626,7 @@ export default function RFQDetailPage() {
               setInviteOpen(true);
             }}
             onOpenQuote={openQuoteDialog}
+            onGenerateVendorPdf={handleGenerateVendorPdf}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
             onGeneratePO={() => generatePOMutation.mutate(rfqId)}
@@ -601,6 +635,7 @@ export default function RFQDetailPage() {
             onDeclineInvite={(inviteId) =>
               declineInviteMutation.mutate({ rfqId, data: { id: inviteId } })
             }
+            isGeneratingVendorPdf={generateVendorPdfMutation.isPending}
           />
 
           <RFQDetailAttachmentsCard

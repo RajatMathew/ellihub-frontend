@@ -1,5 +1,5 @@
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/app/components/ui/dropdown-menu';
-import { Eye, FileText, Pencil, Trash2, Trophy, Upload, XCircle } from 'lucide-react';
+import { Eye, FileDown, FileText, Pencil, Trash2, Trophy, Upload, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { RFQVendorActionContext, RFQVendorRowModel } from './rfq-detail-vendor-types';
@@ -13,7 +13,9 @@ export function RFQVendorActionItems({
   isPublished,
   isEvaluation,
   isAwarded,
+  isGeneratingVendorPdf,
   onOpenQuote,
+  onGenerateVendorPdf,
   onAwardQuote,
   onUnaward,
   onGeneratePO,
@@ -79,9 +81,14 @@ export function RFQVendorActionItems({
           </Link>
         </DropdownMenuItem>
       )}
-      {(hasQuote || isVendorAwarded || (!declined && !isVendorAwarded)) && (
-        <DropdownMenuSeparator />
-      )}
+      <DropdownMenuItem
+        disabled={isGeneratingVendorPdf}
+        onClick={() => onGenerateVendorPdf(invite.id, row.vendorName)}
+      >
+        <FileDown className="size-4" />
+        {isGeneratingVendorPdf ? 'Generating PDF...' : 'Generate PDF'}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
       {hasQuote && quote && !isVendorAwarded && (
         <DropdownMenuItem variant="destructive" onClick={() => onRemoveQuote(quote.id)}>
           <Trash2 className="size-4" />

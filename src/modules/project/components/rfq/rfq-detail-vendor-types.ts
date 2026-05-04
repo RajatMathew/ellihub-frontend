@@ -28,8 +28,10 @@ export interface RFQDetailVendorsCardProps {
   isPublished: boolean;
   isEvaluation: boolean;
   isAwarded: boolean;
+  isGeneratingVendorPdf: boolean;
   onInviteVendor: () => void;
   onOpenQuote: (inviteId: string, vendorId: string, quoteId?: string, viewOnly?: boolean) => void;
+  onGenerateVendorPdf: (inviteId: string, vendorName: string) => void;
   onAwardQuote: (quoteId: string) => void;
   onUnaward: () => void;
   onGeneratePO: () => void;
@@ -41,6 +43,7 @@ export interface RFQDetailVendorsCardProps {
 export interface RFQVendorActionContext extends Pick<
   RFQDetailVendorsCardProps,
   | 'onOpenQuote'
+  | 'onGenerateVendorPdf'
   | 'onAwardQuote'
   | 'onUnaward'
   | 'onGeneratePO'
@@ -51,4 +54,5 @@ export interface RFQVendorActionContext extends Pick<
   isPublished: boolean;
   isEvaluation: boolean;
   isAwarded: boolean;
+  isGeneratingVendorPdf: boolean;
 }
