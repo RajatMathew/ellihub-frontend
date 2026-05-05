@@ -45,6 +45,7 @@ import type {
     FeatureMailAttachmentPreview,
     FeatureMailKey,
     FeatureMailSendResponse,
+    MailSignatureInput,
 } from '@modules/mail/models';
 
 type RfqVendorPdfResult = {
@@ -264,20 +265,25 @@ function selectAttachmentPreviews(
     return attachments.filter((attachment) => selected.has(attachment.id));
 }
 
-function getDefaultVendorEmailRequest(quote: RfqVendorPdfQuote): FeatureMailDraftRequest {
+function getDefaultVendorEmailRequest(
+    quote: RfqVendorPdfQuote,
+    signature: MailSignatureInput
+): FeatureMailDraftRequest {
     const context = buildRfqVendorEmailContext(quote);
 
     return buildDefaultFeatureMailDraft({
         feature: RFQ_VENDOR_MAIL_FEATURE,
         context,
         to: [getVendorEmail(quote)],
+        signature,
     });
 }
 
 function buildRfqVendorEmailDraft(
     quote: RfqVendorPdfQuote,
     request: FeatureMailDraftRequest | null,
-    mode: 'preview' | 'send'
+    mode: 'preview' | 'send',
+    signature: MailSignatureInput
 ): FeatureMailDraftResponse {
     const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
     const availableAttachments = [
@@ -286,7 +292,8 @@ function buildRfqVendorEmailDraft(
     ];
     const attachmentIds = resolveSelectedAttachmentIds(request, availableAttachments);
     const draft = {
-        ...(request ?? getDefaultVendorEmailRequest(quote)),
+        ...(request ?? getDefaultVendorEmailRequest(quote, signature)),
+        signature,
         to: [getVendorEmail(quote)],
         attachmentIds,
     };
@@ -323,18 +330,23 @@ function buildRfqBulkEmailContext(quotes: RfqVendorPdfQuote[]): TemplateContext 
     };
 }
 
-function getDefaultAllVendorEmailRequest(quotes: RfqVendorPdfQuote[]): FeatureMailDraftRequest {
+function getDefaultAllVendorEmailRequest(
+    quotes: RfqVendorPdfQuote[],
+    signature: MailSignatureInput
+): FeatureMailDraftRequest {
     return buildDefaultFeatureMailDraft({
         feature: RFQ_VENDOR_BULK_MAIL_FEATURE,
         context: buildRfqBulkEmailContext(quotes),
         to: getUniqueVendorEmails(quotes),
+        signature,
     });
 }
 
 function buildRfqAllVendorEmailDraft(
     quotes: RfqVendorPdfQuote[],
     request: FeatureMailDraftRequest | null,
-    mode: 'preview' | 'send'
+    mode: 'preview' | 'send',
+    signature: MailSignatureInput
 ): FeatureMailDraftResponse {
     const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
     const availableAttachments = getUniqueAttachmentPreviews([
@@ -343,7 +355,8 @@ function buildRfqAllVendorEmailDraft(
     ]);
     const attachmentIds = resolveSelectedAttachmentIds(request, availableAttachments);
     const draft = {
-        ...(request ?? getDefaultAllVendorEmailRequest(quotes)),
+        ...(request ?? getDefaultAllVendorEmailRequest(quotes, signature)),
+        signature,
         to: getUniqueVendorEmails(quotes),
         attachmentIds,
     };
@@ -1182,37 +1195,46 @@ export const RfqService = {
         return updated;
     },
 
-    getVendorEmailDraft: async (quoteId: string): Promise<FeatureMailDraftResponse> => {
+    getVendorEmailDraft: async (
+        quoteId: string,
+        signature: MailSignatureInput
+    ): Promise<FeatureMailDraftResponse> => {
         const quote = await getRfqVendorQuote(quoteId);
-        return buildRfqVendorEmailDraft(quote, null, 'preview');
+        return buildRfqVendorEmailDraft(quote, null, 'preview', signature);
     },
 
     previewVendorEmail: async (
         quoteId: string,
-        request: FeatureMailDraftRequest
+        request: FeatureMailDraftRequest,
+        signature: MailSignatureInput
     ): Promise<FeatureMailDraftResponse> => {
         const quote = await getRfqVendorQuote(quoteId);
-        return buildRfqVendorEmailDraft(quote, request, 'preview');
+        return buildRfqVendorEmailDraft(quote, request, 'preview', signature);
     },
 
-    getAllVendorEmailDraft: async (rfqId: string): Promise<FeatureMailDraftResponse> => {
+    getAllVendorEmailDraft: async (
+        rfqId: string,
+        signature: MailSignatureInput
+    ): Promise<FeatureMailDraftResponse> => {
         const quotes = await getRfqVendorQuotes(rfqId);
-        return buildRfqAllVendorEmailDraft(quotes, null, 'preview');
+        return buildRfqAllVendorEmailDraft(quotes, null, 'preview', signature);
     },
 
     previewAllVendorEmail: async (
         rfqId: string,
-        request: FeatureMailDraftRequest
+        request: FeatureMailDraftRequest,
+        signature: MailSignatureInput
     ): Promise<FeatureMailDraftResponse> => {
         const quotes = await getRfqVendorQuotes(rfqId);
-        return buildRfqAllVendorEmailDraft(quotes, request, 'preview');
+        return buildRfqAllVendorEmailDraft(quotes, request, 'preview', signature);
     },
 
     sendVendorEmail: async (
         quoteId: string,
         request: FeatureMailDraftRequest,
         requestedBy: string,
-        userId: string
+        userId: string,
+        signature: MailSignatureInput
     ): Promise<FeatureMailSendResponse> => {
         if (!isAllowedFeatureMailSender(RFQ_VENDOR_MAIL_FEATURE, request.from)) {
             throw new BadRequestError('Selected sender is not allowed');
@@ -1220,7 +1242,7 @@ export const RfqService = {
 
         const quote = await getRfqVendorQuote(quoteId);
         const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
-        const draft = buildRfqVendorEmailDraft(quote, request, 'send');
+        const draft = buildRfqVendorEmailDraft(quote, request, 'send', signature);
         if (!template.pdfProfile) {
             throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
         }
@@ -1272,7 +1294,8 @@ export const RfqService = {
         rfqId: string,
         request: FeatureMailDraftRequest,
         requestedBy: string,
-        userId: string
+        userId: string,
+        signature: MailSignatureInput
     ): Promise<FeatureMailSendResponse> => {
         if (!isAllowedFeatureMailSender(RFQ_VENDOR_BULK_MAIL_FEATURE, request.from)) {
             throw new BadRequestError('Selected sender is not allowed');
@@ -1280,7 +1303,7 @@ export const RfqService = {
 
         const quotes = await getRfqVendorQuotes(rfqId);
         const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
-        const draft = buildRfqAllVendorEmailDraft(quotes, request, 'send');
+        const draft = buildRfqAllVendorEmailDraft(quotes, request, 'send', signature);
         if (!template.pdfProfile) {
             throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
         }

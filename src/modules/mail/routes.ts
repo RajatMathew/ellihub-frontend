@@ -31,7 +31,10 @@ app.get(
     requirePermission({ mail: ['send'] }),
     zValidator('query', FeatureMailQuerySchema),
     async (c) => {
-        const draft = await MailFeatureService.getDraft(c.req.valid('query'));
+        const draft = await MailFeatureService.getDraft(c.req.valid('query'), {
+            requestedBy: getRequestedBy(c),
+            userId: c.get('user')!.id,
+        });
         return success(c, draft);
     }
 );
@@ -41,7 +44,10 @@ app.post(
     requirePermission({ mail: ['send'] }),
     zValidator('json', FeatureMailActionSchema),
     async (c) => {
-        const draft = await MailFeatureService.preview(c.req.valid('json'));
+        const draft = await MailFeatureService.preview(c.req.valid('json'), {
+            requestedBy: getRequestedBy(c),
+            userId: c.get('user')!.id,
+        });
         return success(c, draft);
     }
 );

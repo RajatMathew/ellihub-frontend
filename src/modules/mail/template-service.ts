@@ -78,7 +78,7 @@ const TEMPLATE_ROOT =
 const MAIL_TEMPLATE_CONFIG_PATH = join(TEMPLATE_ROOT, 'mail-defaults.json');
 const SIGNATURE_TEXT_STYLE =
     'text-align:start;color:#0a2f41;background-color:#ffffff;font-size:16px;font-family:Aptos, sans-serif;margin:0 0 8px;';
-const SINGLE_QUOTE = "'";
+const SINGLE_QUOTE = '\u0027';
 
 export function getMailTemplateConfig(): MailTemplateConfig {
     return JSON.parse(readFileSync(MAIL_TEMPLATE_CONFIG_PATH, 'utf-8')) as MailTemplateConfig;
@@ -128,12 +128,19 @@ export function buildDefaultFeatureMailDraft({
     feature,
     context,
     to,
+    signature,
 }: {
     feature: FeatureMailKey;
     context: TemplateContext;
     to: string[];
+    signature?: MailSignatureInput;
 }): FeatureMailDraftRequest {
     const template = getFeatureMailTemplate(feature);
+    const resolvedSignature = signature ?? {
+        name: template.signature.name,
+        role: template.signature.role,
+        email: template.signature.email,
+    };
 
     return {
         from: template.defaultFrom,
@@ -142,11 +149,7 @@ export function buildDefaultFeatureMailDraft({
         bcc: [],
         subject: renderTemplate(template.subject, context),
         body: renderTemplate(template.body, context),
-        signature: {
-            name: template.signature.name,
-            role: template.signature.role,
-            email: template.signature.email,
-        },
+        signature: resolvedSignature,
         attachmentIds: [],
         saveToSentItems: true,
     };
