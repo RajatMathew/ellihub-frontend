@@ -246,7 +246,7 @@
             },
             "VendorCreateRequest": {
                 "type": "object",
-                "required": ["name", "status"],
+                "required": ["name", "email", "status"],
                 "properties": {
                     "name": { "type": "string", "minLength": 2 },
                     "typeId": { "type": "string", "nullable": true, "description": "Vendor type lookup ULID" },
@@ -254,7 +254,7 @@
                     "categoryTags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
                     "taxId": { "type": "string", "nullable": true },
                     "address": { "type": "string", "nullable": true },
-                    "email": { "type": "string", "format": "email", "nullable": true },
+                    "email": { "type": "string", "format": "email" },
                     "phone": { "type": "string", "nullable": true },
                     "website": { "type": "string", "format": "uri", "nullable": true },
                     "fax": { "type": "string", "nullable": true },
