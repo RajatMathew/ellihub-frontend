@@ -41,12 +41,14 @@ export const FeatureMailDraftSchema = z.object({
     subject: z.string().trim().min(1),
     body: z.string().trim().min(1),
     signature: MailSignatureSchema,
+    attachmentIds: z.array(z.string().trim().min(1)).default([]),
     saveToSentItems: z.boolean().default(true),
 });
 
 export type FeatureMailDraftRequest = z.infer<typeof FeatureMailDraftSchema>;
 
 export type FeatureMailAttachmentPreview = {
+    id: string;
     name: string;
     contentType: string;
     source?: string;

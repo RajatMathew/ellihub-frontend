@@ -4,7 +4,7 @@ import { requirePermission } from 'src/middleware/auth';
 
 import { readMailAsset } from './asset-service';
 import { MailFeatureService } from './feature-service';
-import { getMailService } from './mail-service';
+import { sendLoggedMail } from './log-service';
 import { getSenderMailboxes, isAllowedSender } from './mailboxes';
 import { FeatureMailActionSchema, FeatureMailQuerySchema, MailSendSchema } from './models';
 
@@ -70,7 +70,10 @@ app.post(
             throw new BadRequestError('Selected sender is not allowed');
         }
 
-        await getMailService().sendMail(data);
+        await sendLoggedMail(data, {
+            feature: 'raw',
+            createdBy: c.get('user')!.id,
+        });
         return success(c, null);
     }
 );

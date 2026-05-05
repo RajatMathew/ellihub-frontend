@@ -20,8 +20,29 @@ export type SendMailInput = {
     saveToSentItems?: boolean;
 };
 
+export type MailSendResult = {
+    provider: 'microsoftGraph';
+    status: number;
+    statusText: string;
+    response: {
+        requestId: string | null;
+        clientRequestId: string | null;
+        body: string | null;
+    };
+};
+
+export class MailProviderError extends Error {
+    constructor(
+        message: string,
+        readonly result: MailSendResult
+    ) {
+        super(message);
+        this.name = 'MailProviderError';
+    }
+}
+
 export function createMailService(graphFetch: GraphFetch) {
-    async function sendMail(input: SendMailInput): Promise<void> {
+    async function sendMail(input: SendMailInput): Promise<MailSendResult> {
         const response = await graphFetch(`/users/${encodeURIComponent(input.from)}/sendMail`, {
             method: 'POST',
             body: JSON.stringify({
@@ -39,12 +60,26 @@ export function createMailService(graphFetch: GraphFetch) {
                 saveToSentItems: input.saveToSentItems ?? true,
             }),
         });
+        const responseBody = await response.text();
+        const result: MailSendResult = {
+            provider: 'microsoftGraph',
+            status: response.status,
+            statusText: response.statusText,
+            response: {
+                requestId: response.headers.get('request-id'),
+                clientRequestId: response.headers.get('client-request-id'),
+                body: responseBody || null,
+            },
+        };
 
         if (response.status !== 202) {
-            throw new Error(
-                `Microsoft Graph sendMail failed (${response.status}): ${await response.text()}`
+            throw new MailProviderError(
+                `Microsoft Graph sendMail failed (${response.status}): ${responseBody}`,
+                result
             );
         }
+
+        return result;
     }
 
     return { sendMail };

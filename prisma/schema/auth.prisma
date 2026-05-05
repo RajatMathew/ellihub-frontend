@@ -17,6 +17,7 @@ model User {
   profile                  String?
   createdFiles             File[]
   activityLogs             ActivityLog[]
+  sentEmailLogs            SentEmailLog[]
   primeChangeOrderSyncRuns PrimeChangeOrderSyncRun[]
   revisions                Revision[]
 
