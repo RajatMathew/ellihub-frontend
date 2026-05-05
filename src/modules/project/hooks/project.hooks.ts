@@ -1,3 +1,4 @@
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { projectApi } from '@/modules/project/api/project.api';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
 import { projectKeys } from '@/modules/project/constants/project.keys';
@@ -61,7 +62,7 @@ export const useCreateProjectMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: projectKeys.all });
     },
-    onError: () => toast.error('Failed to create project.'),
+    onError: (error) => toastApiError(error, 'Failed to create project.'),
   });
 };
 
@@ -83,7 +84,7 @@ export const useUpdateProjectMutation = () => {
       ]);
       toast.success('Project updated successfully.');
     },
-    onError: () => toast.error('Failed to update project.'),
+    onError: (error) => toastApiError(error, 'Failed to update project.'),
   });
 };
 
@@ -96,7 +97,7 @@ export const useDeleteProjectMutation = () => {
         toast.success('Project deleted successfully.');
       });
     },
-    onError: () => toast.error('Failed to delete project.'),
+    onError: (error) => toastApiError(error, 'Failed to delete project.'),
   });
 };
 
@@ -110,7 +111,7 @@ export const useSetProjectActiveMutation = () => {
         toast.success('Project is now Active.');
       });
     },
-    onError: () => toast.error('Failed to set project active.'),
+    onError: (error) => toastApiError(error, 'Failed to set project active.'),
   });
 };
 
@@ -124,7 +125,7 @@ export const useSetProjectInactiveMutation = () => {
         toast.success('Project is now Inactive.');
       });
     },
-    onError: () => toast.error('Failed to set project inactive.'),
+    onError: (error) => toastApiError(error, 'Failed to set project inactive.'),
   });
 };
 
@@ -138,7 +139,7 @@ export const useSetProjectClosedMutation = () => {
         toast.success('Project closed successfully.');
       });
     },
-    onError: () => toast.error('Failed to close project.'),
+    onError: (error) => toastApiError(error, 'Failed to close project.'),
   });
 };
 
@@ -152,6 +153,6 @@ export const useSetProjectCompletedMutation = () => {
         toast.success('Project marked as Completed.');
       });
     },
-    onError: () => toast.error('Failed to set project completed.'),
+    onError: (error) => toastApiError(error, 'Failed to set project completed.'),
   });
 };
