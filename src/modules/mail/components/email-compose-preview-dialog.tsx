@@ -234,38 +234,14 @@ function EmailComposePreviewForm({
               />
             </LabeledControl>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <SignatureInput
-                label="Signature Name"
-                value={form.signature.name}
-                onChange={(name) =>
-                  setForm((current) => ({
-                    ...current,
-                    signature: { ...current.signature, name },
-                  }))
-                }
-              />
-              <SignatureInput
-                label="Role"
-                value={form.signature.role}
-                onChange={(role) =>
-                  setForm((current) => ({
-                    ...current,
-                    signature: { ...current.signature, role },
-                  }))
-                }
-              />
-              <SignatureInput
-                label="Signature Email"
-                type="email"
-                value={form.signature.email}
-                onChange={(email) =>
-                  setForm((current) => ({
-                    ...current,
-                    signature: { ...current.signature, email },
-                  }))
-                }
-              />
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">Signature</div>
+              <div className="mt-1 text-sm font-medium text-foreground">
+                {form.signature.name} - {form.signature.role}
+              </div>
+              <div className="mt-0.5 break-all text-sm text-muted-foreground">
+                {form.signature.email}
+              </div>
             </div>
           </div>
         </div>
@@ -347,24 +323,6 @@ function LabeledControl({ label, children }: { label: string; children: ReactNod
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
-  );
-}
-
-function SignatureInput({
-  label,
-  value,
-  onChange,
-  type = 'text',
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: 'email' | 'text';
-}) {
-  return (
-    <LabeledControl label={label}>
-      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
-    </LabeledControl>
   );
 }
 
