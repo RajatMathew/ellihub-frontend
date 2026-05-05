@@ -21,6 +21,7 @@ export const statement = {
     primeChangeOrder: ['read', 'sync'],
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
+    mail: ['read', 'send'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -45,6 +46,7 @@ export const owner = ac.newRole({
     primeChangeOrder: ['read', 'sync'],
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
+    mail: ['read', 'send'],
 });
 
 // Export the type

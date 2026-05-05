@@ -1,9 +1,21 @@
+import { Buffer } from 'node:buffer';
+
 import { RFQ, RFQAttachment, RFQVendorQuote, type Prisma } from '@db/client';
 import { renderPdf, type PdfJsonObject } from '@lib/pdf-engine';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { getMailService } from '@modules/mail/mail-service';
+import { getSenderMailboxes, isAllowedSender } from '@modules/mail/mailboxes';
+import {
+    buildDefaultFeatureMailDraft,
+    buildFeatureEmailHtml,
+    buildSignatureInlineAttachments,
+    getFeatureMailTemplate,
+    getSignatureAssetMetadata,
+    type TemplateContext,
+} from '@modules/mail/template-service';
 import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
@@ -25,6 +37,13 @@ import {
     UnawardRfqRequest,
     VoidRfqRequest,
 } from './models';
+
+import type {
+    FeatureMailDraftRequest,
+    FeatureMailDraftResponse,
+    FeatureMailKey,
+    FeatureMailSendResponse,
+} from '@modules/mail/models';
 
 type RfqVendorPdfResult = {
     bytes: Uint8Array;
@@ -48,6 +67,8 @@ type RfqVendorPdfQuote = Prisma.RFQVendorQuoteGetPayload<{
 }>;
 
 const RFQ_VENDOR_PDF_TEMPLATE_ID = 'rfq_vendor_request_v1';
+const RFQ_VENDOR_MAIL_FEATURE = 'rfq.vendorRequest' satisfies FeatureMailKey;
+const RFQ_VENDOR_BULK_MAIL_FEATURE = 'rfq.vendorRequestAll' satisfies FeatureMailKey;
 const FILE_NAME_INVALID_CHARACTERS = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*']);
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
     month: '2-digit',
@@ -134,6 +155,192 @@ function buildRfqVendorPdfData(
             left: `${pdfRequest.company.name} - ${quote.rfq.rfqNumber}`,
         },
     };
+}
+
+function buildRfqVendorPdfFileName(quote: RfqVendorPdfQuote): string {
+    return sanitizeFileName(`${quote.rfq.rfqNumber}-${quote.vendor.name}-request-for-quote.pdf`);
+}
+
+function buildRfqVendorEmailContext(quote: RfqVendorPdfQuote): TemplateContext {
+    return {
+        bidDeadline: formatDate(quote.rfq.bidDeadline),
+        projectName: quote.rfq.project.name,
+        projectNumber: quote.rfq.project.jobNumber || quote.rfq.project.contractNumber || '',
+        rfqNumber: quote.rfq.rfqNumber,
+        rfqTitle: quote.rfq.title,
+        vendorName: quote.vendor.name,
+    };
+}
+
+function getVendorEmail(quote: RfqVendorPdfQuote): string {
+    const email = quote.vendor.email?.trim().toLowerCase();
+
+    if (!email) {
+        throw new BadRequestError(`Vendor ${quote.vendor.name} does not have an email address`);
+    }
+
+    return email;
+}
+
+function getUniqueVendorEmails(quotes: RfqVendorPdfQuote[]): string[] {
+    return [...new Set(quotes.map(getVendorEmail))];
+}
+
+function getDefaultVendorEmailRequest(quote: RfqVendorPdfQuote): FeatureMailDraftRequest {
+    const context = buildRfqVendorEmailContext(quote);
+
+    return buildDefaultFeatureMailDraft({
+        feature: RFQ_VENDOR_MAIL_FEATURE,
+        context,
+        to: [getVendorEmail(quote)],
+    });
+}
+
+function buildRfqVendorEmailDraft(
+    quote: RfqVendorPdfQuote,
+    request: FeatureMailDraftRequest | null,
+    mode: 'preview' | 'send'
+): FeatureMailDraftResponse {
+    const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
+    const draft = {
+        ...(request ?? getDefaultVendorEmailRequest(quote)),
+        to: [getVendorEmail(quote)],
+    };
+    const html = buildFeatureEmailHtml(draft.body, draft.signature, template.signature, mode);
+
+    return {
+        from: draft.from,
+        senderOptions: getSenderMailboxes(),
+        to: draft.to,
+        cc: draft.cc,
+        bcc: draft.bcc,
+        subject: draft.subject,
+        body: draft.body,
+        signature: draft.signature,
+        saveToSentItems: draft.saveToSentItems,
+        html,
+        attachments: [
+            {
+                name: buildRfqVendorPdfFileName(quote),
+                contentType: 'application/pdf',
+                source: 'generated',
+            },
+        ],
+        signatureAssets: getSignatureAssetMetadata(template.signature),
+    };
+}
+
+function buildRfqBulkEmailContext(quotes: RfqVendorPdfQuote[]): TemplateContext {
+    const quote = quotes[0];
+
+    if (!quote) {
+        return {};
+    }
+
+    return {
+        ...buildRfqVendorEmailContext(quote),
+        recipientCount: quotes.length,
+        vendorName: 'vendors',
+    };
+}
+
+function getDefaultAllVendorEmailRequest(quotes: RfqVendorPdfQuote[]): FeatureMailDraftRequest {
+    return buildDefaultFeatureMailDraft({
+        feature: RFQ_VENDOR_BULK_MAIL_FEATURE,
+        context: buildRfqBulkEmailContext(quotes),
+        to: getUniqueVendorEmails(quotes),
+    });
+}
+
+function buildRfqAllVendorEmailDraft(
+    quotes: RfqVendorPdfQuote[],
+    request: FeatureMailDraftRequest | null,
+    mode: 'preview' | 'send'
+): FeatureMailDraftResponse {
+    const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
+    const draft = {
+        ...(request ?? getDefaultAllVendorEmailRequest(quotes)),
+        to: getUniqueVendorEmails(quotes),
+    };
+    const html = buildFeatureEmailHtml(draft.body, draft.signature, template.signature, mode);
+
+    return {
+        from: draft.from,
+        senderOptions: getSenderMailboxes(),
+        to: draft.to,
+        cc: draft.cc,
+        bcc: draft.bcc,
+        subject: draft.subject,
+        body: draft.body,
+        signature: draft.signature,
+        saveToSentItems: draft.saveToSentItems,
+        html,
+        attachments: quotes.map((quote) => ({
+            name: buildRfqVendorPdfFileName(quote),
+            contentType: 'application/pdf',
+            source: 'generated',
+        })),
+        signatureAssets: getSignatureAssetMetadata(template.signature),
+    };
+}
+
+async function getRfqVendorQuote(quoteId: string): Promise<RfqVendorPdfQuote> {
+    const quote = await prisma.rFQVendorQuote.findUnique({
+        where: { id: quoteId },
+        include: {
+            vendor: true,
+            rfq: {
+                include: {
+                    project: true,
+                    type: true,
+                    rfqdeliverables: {
+                        where: { deletedAt: null },
+                        orderBy: { createdAt: 'asc' },
+                        include: { unit: true },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!quote) throw new NotFoundError('Vendor quote not found');
+    checkDeletedAt(quote.rfq);
+    checkDeletedAt(quote.vendor);
+
+    return quote;
+}
+
+async function getRfqVendorQuotes(rfqId: string): Promise<RfqVendorPdfQuote[]> {
+    const rfq = await prisma.rFQ.findUnique({ where: { id: rfqId } });
+    if (!rfq) throw new NotFoundError('RFQ not found');
+    checkDeletedAt(rfq);
+
+    const quotes = await prisma.rFQVendorQuote.findMany({
+        where: { rfqId },
+        orderBy: { createdAt: 'asc' },
+        include: {
+            vendor: true,
+            rfq: {
+                include: {
+                    project: true,
+                    type: true,
+                    rfqdeliverables: {
+                        where: { deletedAt: null },
+                        orderBy: { createdAt: 'asc' },
+                        include: { unit: true },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!quotes.length) throw new BadRequestError('RFQ has no invited vendors');
+
+    for (const quote of quotes) {
+        checkDeletedAt(quote.vendor);
+    }
+
+    return quotes;
 }
 
 export const RfqService = {
@@ -793,40 +1000,161 @@ export const RfqService = {
         return updated;
     },
 
+    getVendorEmailDraft: async (quoteId: string): Promise<FeatureMailDraftResponse> => {
+        const quote = await getRfqVendorQuote(quoteId);
+        return buildRfqVendorEmailDraft(quote, null, 'preview');
+    },
+
+    previewVendorEmail: async (
+        quoteId: string,
+        request: FeatureMailDraftRequest
+    ): Promise<FeatureMailDraftResponse> => {
+        const quote = await getRfqVendorQuote(quoteId);
+        return buildRfqVendorEmailDraft(quote, request, 'preview');
+    },
+
+    getAllVendorEmailDraft: async (rfqId: string): Promise<FeatureMailDraftResponse> => {
+        const quotes = await getRfqVendorQuotes(rfqId);
+        return buildRfqAllVendorEmailDraft(quotes, null, 'preview');
+    },
+
+    previewAllVendorEmail: async (
+        rfqId: string,
+        request: FeatureMailDraftRequest
+    ): Promise<FeatureMailDraftResponse> => {
+        const quotes = await getRfqVendorQuotes(rfqId);
+        return buildRfqAllVendorEmailDraft(quotes, request, 'preview');
+    },
+
+    sendVendorEmail: async (
+        quoteId: string,
+        request: FeatureMailDraftRequest,
+        requestedBy: string,
+        userId: string
+    ): Promise<FeatureMailSendResponse> => {
+        if (!isAllowedSender(request.from)) {
+            throw new BadRequestError('Selected sender is not allowed');
+        }
+
+        const quote = await getRfqVendorQuote(quoteId);
+        const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
+        const draft = buildRfqVendorEmailDraft(quote, request, 'send');
+        if (!template.pdfProfile) {
+            throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
+        }
+        const pdf = await RfqService.generateVendorPdf(quoteId, requestedBy, template.pdfProfile);
+        const inlineAttachments = await buildSignatureInlineAttachments(template.signature);
+
+        await getMailService().sendMail({
+            from: draft.from,
+            to: draft.to,
+            cc: draft.cc,
+            bcc: draft.bcc,
+            subject: draft.subject,
+            html: draft.html,
+            saveToSentItems: request.saveToSentItems,
+            attachments: [
+                ...inlineAttachments,
+                {
+                    name: pdf.fileName,
+                    contentType: pdf.contentType,
+                    contentBytes: Buffer.from(pdf.bytes).toString('base64'),
+                },
+            ],
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'rfq',
+            entityId: quote.rfqId,
+            action: 'comment',
+            description: `Sent RFQ email to ${quote.vendor.name} for ${quote.rfq.rfqNumber}`,
+            affectedEntityIds: [quote.vendorId, quote.rfq.projectId, quote.id],
+        });
+
+        return {
+            ...draft,
+            sentAt: new Date().toISOString(),
+        };
+    },
+
+    sendAllVendorEmail: async (
+        rfqId: string,
+        request: FeatureMailDraftRequest,
+        requestedBy: string,
+        userId: string
+    ): Promise<FeatureMailSendResponse> => {
+        if (!isAllowedSender(request.from)) {
+            throw new BadRequestError('Selected sender is not allowed');
+        }
+
+        const quotes = await getRfqVendorQuotes(rfqId);
+        const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
+        const draft = buildRfqAllVendorEmailDraft(quotes, request, 'send');
+        if (!template.pdfProfile) {
+            throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
+        }
+
+        const inlineAttachments = await buildSignatureInlineAttachments(template.signature);
+
+        for (const quote of quotes) {
+            const pdf = await RfqService.generateVendorPdf(
+                quote.id,
+                requestedBy,
+                template.pdfProfile
+            );
+
+            await getMailService().sendMail({
+                from: draft.from,
+                to: [getVendorEmail(quote)],
+                cc: draft.cc,
+                bcc: draft.bcc,
+                subject: draft.subject,
+                html: draft.html,
+                saveToSentItems: request.saveToSentItems,
+                attachments: [
+                    ...inlineAttachments,
+                    {
+                        name: pdf.fileName,
+                        contentType: pdf.contentType,
+                        contentBytes: Buffer.from(pdf.bytes).toString('base64'),
+                    },
+                ],
+            });
+        }
+
+        const rfq = quotes[0].rfq;
+        await ActivityLogService.log({
+            userId,
+            entityType: 'rfq',
+            entityId: rfqId,
+            action: 'comment',
+            description: `Sent RFQ email to ${quotes.length} vendors for ${rfq.rfqNumber}`,
+            affectedEntityIds: [
+                rfq.projectId,
+                ...quotes.map((quote) => quote.vendorId),
+                ...quotes.map((quote) => quote.id),
+            ],
+        });
+
+        return {
+            ...draft,
+            sentAt: new Date().toISOString(),
+        };
+    },
+
     generateVendorPdf: async (
         quoteId: string,
         requestedBy: string,
         pdfRequest: GenerateVendorPdfRequest
     ): Promise<RfqVendorPdfResult> => {
-        const quote = await prisma.rFQVendorQuote.findUnique({
-            where: { id: quoteId },
-            include: {
-                vendor: true,
-                rfq: {
-                    include: {
-                        project: true,
-                        type: true,
-                        rfqdeliverables: {
-                            where: { deletedAt: null },
-                            orderBy: { createdAt: 'asc' },
-                            include: { unit: true },
-                        },
-                    },
-                },
-            },
-        });
-
-        if (!quote) throw new NotFoundError('Vendor quote not found');
-        checkDeletedAt(quote.rfq);
-        checkDeletedAt(quote.vendor);
+        const quote = await getRfqVendorQuote(quoteId);
 
         if (!quote.rfq.rfqdeliverables.length) {
             throw new BadRequestError('RFQ must have at least one deliverable to generate a PDF');
         }
 
-        const fileName = sanitizeFileName(
-            `${quote.rfq.rfqNumber}-${quote.vendor.name}-request-for-quote.pdf`
-        );
+        const fileName = buildRfqVendorPdfFileName(quote);
         const pdf = await renderPdf({
             template_id: RFQ_VENDOR_PDF_TEMPLATE_ID,
             data: buildRfqVendorPdfData(quote, requestedBy, pdfRequest),

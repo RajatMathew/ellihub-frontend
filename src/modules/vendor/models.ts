@@ -11,6 +11,8 @@ export const PaymentTermsSchema = z.enum([
     'DUE_ON_RECEIPT',
 ]);
 
+const VendorEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
+
 export const VendorCreateSchema = z.object({
     name: z.string().min(2),
     typeId: z.ulid().optional().nullable(),
@@ -18,7 +20,7 @@ export const VendorCreateSchema = z.object({
     categoryTags: z.array(z.string().min(1)).optional(),
     taxId: z.string().min(1).optional().nullable(),
     address: z.string().min(1).optional().nullable(),
-    email: z.email().optional().nullable(),
+    email: VendorEmailSchema,
     phone: z.string().min(1).optional().nullable(),
     website: z.url().optional().nullable(),
     fax: z.string().min(1).optional().nullable(),
