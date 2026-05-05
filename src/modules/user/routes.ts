@@ -1,10 +1,43 @@
 import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 
-import { roleCreateSchema } from './models';
+import { roleCreateSchema, UserProfileUpdateSchema } from './models';
 import { UserService } from './services';
 
 const app = new Hono();
+
+app.get('/me', async (c) => {
+    const session = c.get('session');
+    const user = c.get('user');
+    if (!session || !user) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    return success(c, user);
+});
+
+app.get('/me/profile', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const profile = await UserService.getCurrentProfile(user.id);
+
+    return success(c, profile);
+});
+
+app.patch('/me/profile', zValidator('json', UserProfileUpdateSchema), async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.valid('json');
+    const profile = await UserService.updateCurrentProfile(user.id, body);
+
+    return success(c, profile);
+});
 
 // Get all users
 app.get('/', async (c) => {
@@ -12,23 +45,6 @@ app.get('/', async (c) => {
     const result = await UserService.getAllUsers(c.req.raw.headers);
 
     return success(c, result?.users);
-});
-
-// Get user by ID
-app.get('/:id', async (c) => {
-    const id = c.req.param('id');
-    const user = await UserService.getUser(id);
-    return success(c, user);
-});
-
-app.get('/me', async (c) => {
-    const session = c.get('session');
-    if (!session) {
-        return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const user = c.get('user');
-    return success(c, user);
 });
 
 // Create org role
@@ -44,6 +60,13 @@ app.get('/org-role/list', async (c) => {
     const result = await UserService.getOrgRoles(c.req.raw.headers);
 
     return success(c, result);
+});
+
+// Get user by ID
+app.get('/:id', async (c) => {
+    const id = c.req.param('id');
+    const user = await UserService.getUser(id);
+    return success(c, user);
 });
 
 export default app;

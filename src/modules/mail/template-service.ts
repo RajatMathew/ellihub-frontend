@@ -41,13 +41,22 @@ export type MailPdfProfileTemplate = {
 
 export type MailFeatureTemplate = {
     defaultFrom?: string;
+    senderGroup?: string;
     subject: string;
     body: string;
     pdfProfile?: string;
 };
 
+export type MailSenderGroupTemplate = {
+    allowed: string[];
+    default?: string;
+};
+
 export type MailTemplateConfig = {
     defaultFrom: string;
+    email?: {
+        senders?: Record<string, MailSenderGroupTemplate>;
+    };
     signature: MailSignatureTemplate;
     pdfProfiles: Record<string, MailPdfProfileTemplate>;
     features: Record<string, MailFeatureTemplate>;
@@ -55,6 +64,7 @@ export type MailTemplateConfig = {
 
 export type ResolvedMailFeatureTemplate = Omit<MailFeatureTemplate, 'pdfProfile'> & {
     defaultFrom: string;
+    senderOptions: string[];
     signature: MailSignatureTemplate;
     pdfProfile?: MailPdfProfileTemplate;
 };
@@ -68,6 +78,7 @@ const TEMPLATE_ROOT =
 const MAIL_TEMPLATE_CONFIG_PATH = join(TEMPLATE_ROOT, 'mail-defaults.json');
 const SIGNATURE_TEXT_STYLE =
     'text-align:start;color:#0a2f41;background-color:#ffffff;font-size:16px;font-family:Aptos, sans-serif;margin:0 0 8px;';
+const SINGLE_QUOTE = '\u0027';
 
 export function getMailTemplateConfig(): MailTemplateConfig {
     return JSON.parse(readFileSync(MAIL_TEMPLATE_CONFIG_PATH, 'utf-8')) as MailTemplateConfig;
@@ -82,9 +93,11 @@ export function getFeatureMailTemplate(feature: FeatureMailKey): ResolvedMailFea
     }
 
     const { pdfProfile, ...templateFields } = featureTemplate;
+    const senderOptions = getFeatureSenderOptions(config, featureTemplate);
     const resolved = {
         ...templateFields,
-        defaultFrom: featureTemplate.defaultFrom ?? config.defaultFrom,
+        defaultFrom: getFeatureDefaultSender(config, featureTemplate, senderOptions),
+        senderOptions,
         signature: config.signature,
     };
 
@@ -96,16 +109,38 @@ export function getFeatureMailTemplate(feature: FeatureMailKey): ResolvedMailFea
     };
 }
 
+export function getFeatureMailSenderOptions(feature: FeatureMailKey): string[] {
+    const config = getMailTemplateConfig();
+    const featureTemplate = config.features[feature];
+
+    if (!featureTemplate) {
+        throw new BadRequestError(`Mail feature template is not configured: ${feature}`);
+    }
+
+    return getFeatureSenderOptions(config, featureTemplate);
+}
+
+export function isAllowedFeatureMailSender(feature: FeatureMailKey, mailbox: string): boolean {
+    return getFeatureMailSenderOptions(feature).includes(mailbox.trim().toLowerCase());
+}
+
 export function buildDefaultFeatureMailDraft({
     feature,
     context,
     to,
+    signature,
 }: {
     feature: FeatureMailKey;
     context: TemplateContext;
     to: string[];
+    signature?: MailSignatureInput;
 }): FeatureMailDraftRequest {
     const template = getFeatureMailTemplate(feature);
+    const resolvedSignature = signature ?? {
+        name: template.signature.name,
+        role: template.signature.role,
+        email: template.signature.email,
+    };
 
     return {
         from: template.defaultFrom,
@@ -114,11 +149,8 @@ export function buildDefaultFeatureMailDraft({
         bcc: [],
         subject: renderTemplate(template.subject, context),
         body: renderTemplate(template.body, context),
-        signature: {
-            name: template.signature.name,
-            role: template.signature.role,
-            email: template.signature.email,
-        },
+        signature: resolvedSignature,
+        attachmentIds: [],
         saveToSentItems: true,
     };
 }
@@ -228,6 +260,45 @@ function getPdfProfile(config: MailTemplateConfig, profileName: string): MailPdf
     return pdfProfile;
 }
 
+function getFeatureSenderOptions(
+    config: MailTemplateConfig,
+    featureTemplate: MailFeatureTemplate
+): string[] {
+    const senderGroup = featureTemplate.senderGroup;
+    const allowed = senderGroup ? (config.email?.senders?.[senderGroup]?.allowed ?? []) : [];
+
+    return allowed.map((email) => email.trim().toLowerCase()).filter(Boolean);
+}
+
+function getFeatureDefaultSender(
+    config: MailTemplateConfig,
+    featureTemplate: MailFeatureTemplate,
+    senderOptions: string[]
+): string {
+    const senderGroup = featureTemplate.senderGroup;
+    const groupDefault = senderGroup ? config.email?.senders?.[senderGroup]?.default : undefined;
+    const candidates = [
+        groupDefault,
+        featureTemplate.defaultFrom,
+        senderOptions[0],
+        config.defaultFrom,
+    ];
+    const selected = candidates
+        .find((email): email is string => !!email)
+        ?.trim()
+        .toLowerCase();
+
+    if (!selected) {
+        throw new BadRequestError('Mail sender is not configured');
+    }
+
+    if (senderOptions.length > 0 && !senderOptions.includes(selected)) {
+        return senderOptions[0];
+    }
+
+    return selected;
+}
+
 function textToHtml(value: string): string {
     return value
         .split(/\n{2,}/)
@@ -246,5 +317,5 @@ function escapeHtml(value: string): string {
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+        .replaceAll(SINGLE_QUOTE, '&#39;');
 }

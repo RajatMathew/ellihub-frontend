@@ -4,7 +4,7 @@ import { requirePermission } from 'src/middleware/auth';
 
 import { readMailAsset } from './asset-service';
 import { MailFeatureService } from './feature-service';
-import { getMailService } from './mail-service';
+import { sendLoggedMail } from './log-service';
 import { getSenderMailboxes, isAllowedSender } from './mailboxes';
 import { FeatureMailActionSchema, FeatureMailQuerySchema, MailSendSchema } from './models';
 
@@ -31,7 +31,10 @@ app.get(
     requirePermission({ mail: ['send'] }),
     zValidator('query', FeatureMailQuerySchema),
     async (c) => {
-        const draft = await MailFeatureService.getDraft(c.req.valid('query'));
+        const draft = await MailFeatureService.getDraft(c.req.valid('query'), {
+            requestedBy: getRequestedBy(c),
+            userId: c.get('user')!.id,
+        });
         return success(c, draft);
     }
 );
@@ -41,7 +44,10 @@ app.post(
     requirePermission({ mail: ['send'] }),
     zValidator('json', FeatureMailActionSchema),
     async (c) => {
-        const draft = await MailFeatureService.preview(c.req.valid('json'));
+        const draft = await MailFeatureService.preview(c.req.valid('json'), {
+            requestedBy: getRequestedBy(c),
+            userId: c.get('user')!.id,
+        });
         return success(c, draft);
     }
 );
@@ -70,7 +76,10 @@ app.post(
             throw new BadRequestError('Selected sender is not allowed');
         }
 
-        await getMailService().sendMail(data);
+        await sendLoggedMail(data, {
+            feature: 'raw',
+            createdBy: c.get('user')!.id,
+        });
         return success(c, null);
     }
 );

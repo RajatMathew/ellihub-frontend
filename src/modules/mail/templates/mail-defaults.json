@@ -1,5 +1,31 @@
 {
     "defaultFrom": "bidding@ellicorp.com",
+    "email": {
+        "senders": {
+            "rfq": {
+                "allowed": [
+                    "hello@cofount.onmicrosoft.com",
+                    "adithya@cofount.onmicrosoft.com",
+                    "purchasing@ellicorp.com"
+                ],
+                "default": "hello@cofount.onmicrosoft.com"
+            },
+            "po": {
+                "allowed": [
+                    "purchasing@ellicorp.com",
+                    "ap@ellicorp.com"
+                ],
+                "default": "purchasing@ellicorp.com"
+            },
+            "changeOrder": {
+                "allowed": [
+                    "projects@ellicorp.com",
+                    "contracts@ellicorp.com"
+                ],
+                "default": "projects@ellicorp.com"
+            }
+        }
+    },
     "signature": {
         "name": "Lissette Olivo",
         "role": "Chief Executive Officer",
@@ -67,11 +93,13 @@
     },
     "features": {
         "rfq.vendorRequest": {
+            "senderGroup": "rfq",
             "subject": "RFQ {{rfqNumber}} - {{projectName}} - {{rfqTitle}}",
             "body": "Hello {{vendorName}},\n\nPlease review the attached Request for Quote for {{projectName}}.\n\nRFQ: {{rfqNumber}}\nTitle: {{rfqTitle}}\nBid Deadline: {{bidDeadline}}\n\nPlease send your proposal before the deadline. Let us know if you have any questions.",
             "pdfProfile": "elliDefault"
         },
         "rfq.vendorRequestAll": {
+            "senderGroup": "rfq",
             "subject": "RFQ {{rfqNumber}} - {{projectName}} - {{rfqTitle}}",
             "body": "Hello,\n\nPlease review the attached Request for Quote for {{projectName}}.\n\nRFQ: {{rfqNumber}}\nTitle: {{rfqTitle}}\nBid Deadline: {{bidDeadline}}\n\nPlease send your proposal before the deadline. Let us know if you have any questions.",
             "pdfProfile": "elliDefault"

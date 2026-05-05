@@ -27,7 +27,7 @@ export function getMailSenderOptions(): string[] {
 }
 
 export function allowsCustomSender(): boolean {
-    return process.env.MAIL_ALLOW_CUSTOM_SENDER !== 'false';
+    return false;
 }
 
 function requiredEnv(name: string): string {
