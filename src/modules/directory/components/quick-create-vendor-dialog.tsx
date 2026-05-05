@@ -51,6 +51,7 @@ export function QuickCreateVendorDialog({
     resolver: zodResolver(quickCreateVendorSchema),
     defaultValues: {
       name: '',
+      email: '',
       type: defaultTypeId,
       status: 'ACTIVE',
     },
@@ -58,7 +59,7 @@ export function QuickCreateVendorDialog({
 
   useEffect(() => {
     if (open) {
-      reset({ name: '', type: defaultTypeId, status: 'ACTIVE' });
+      reset({ name: '', email: '', type: defaultTypeId, status: 'ACTIVE' });
     }
   }, [open, reset, defaultTypeId]);
 
@@ -71,6 +72,7 @@ export function QuickCreateVendorDialog({
     e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       name: data.name,
+      email: data.email,
       typeId: data.type || undefined,
       status: data.status,
     });
@@ -99,6 +101,26 @@ export function QuickCreateVendorDialog({
                   {...field}
                   placeholder="Enter vendor name"
                   autoComplete="off"
+                  aria-invalid={fieldState.invalid}
+                />
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+
+          <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email
+                </FieldLabel>
+                <Input
+                  {...field}
+                  type="email"
+                  placeholder="vendor@example.com"
+                  autoComplete="email"
                   aria-invalid={fieldState.invalid}
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

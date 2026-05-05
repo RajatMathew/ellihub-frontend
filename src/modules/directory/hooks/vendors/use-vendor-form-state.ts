@@ -24,6 +24,7 @@ export function useVendorFormState(id: string | undefined) {
     resolver: zodResolver(vendorFormSchema),
     defaultValues: {
       name: '',
+      email: '',
       type: '',
       status: 'ACTIVE',
       taxId: '',
@@ -47,6 +48,7 @@ export function useVendorFormState(id: string | undefined) {
 
     form.reset({
       name: vendor.name,
+      email: vendor.email ?? '',
       website: vendor.website ?? '',
       paymentTerms: vendor.paymentTerms ?? '',
       type: typeValue,
@@ -89,6 +91,7 @@ export function useVendorFormState(id: string | undefined) {
 
     form.reset({
       name: `Random Vendor ${randomId}`,
+      email: `vendor-${randomId}@example.com`,
       type: randomType ?? 'MATERIAL',
       status: Math.random() > 0.5 ? 'ACTIVE' : 'INACTIVE',
       taxId: `${Math.floor(10 + Math.random() * 89)}-${Math.floor(

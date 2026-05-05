@@ -35,6 +35,12 @@ export const paymentTermsSchema = z.enum([
 ]);
 export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 
+const vendorEmailInputSchema = z
+  .string()
+  .trim()
+  .min(1, 'Vendor email is required')
+  .email('Enter a valid vendor email');
+
 // --- Contact link (detail endpoint shape) ---
 
 const contactEmailSchema = z.object({
@@ -178,10 +184,10 @@ export type CreateVendorContactInput = z.infer<typeof createVendorContactInputSc
 export const createVendorInputSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
   typeId: z.string().optional(),
-    type: vendorTypeSchema.optional(),
+  type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().optional(),
-  email: z.string().email().optional(),
+  email: vendorEmailInputSchema,
   taxId: z.string().optional(),
   website: z.string().optional(),
   paymentTerms: paymentTermsSchema.optional(),
@@ -198,7 +204,7 @@ export const updateVendorInputSchema = z.object({
   type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().nullable().optional(),
-  email: z.string().email().nullable().optional(),
+  email: vendorEmailInputSchema,
   taxId: z.string().nullable().optional(),
   website: z.string().nullable().optional(),
   paymentTerms: paymentTermsSchema.optional(),
@@ -222,6 +228,7 @@ export type UpdateVendorContactInput = z.infer<typeof updateVendorContactInputSc
 
 export const vendorFormSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
+  email: vendorEmailInputSchema,
   type: z.string().min(1, 'Vendor type is required'),
   status: z.string(),
   taxId: z
@@ -245,6 +252,7 @@ export type VendorFormValues = z.infer<typeof vendorFormSchema>;
 
 export const quickCreateVendorSchema = z.object({
   name: z.string().min(1, 'Vendor name is required'),
+  email: vendorEmailInputSchema,
   type: z.string().min(1, 'Vendor type is required'),
   status: vendorStatusSchema,
 });

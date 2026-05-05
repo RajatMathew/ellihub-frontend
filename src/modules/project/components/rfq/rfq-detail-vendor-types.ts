@@ -32,6 +32,7 @@ export interface RFQDetailVendorsCardProps {
   onInviteVendor: () => void;
   onOpenQuote: (inviteId: string, vendorId: string, quoteId?: string, viewOnly?: boolean) => void;
   onGenerateVendorPdf: (inviteId: string, vendorName: string) => void;
+  onEmailVendor: (inviteId: string) => void;
   onAwardQuote: (quoteId: string) => void;
   onUnaward: () => void;
   onGeneratePO: () => void;
@@ -44,6 +45,7 @@ export interface RFQVendorActionContext extends Pick<
   RFQDetailVendorsCardProps,
   | 'onOpenQuote'
   | 'onGenerateVendorPdf'
+  | 'onEmailVendor'
   | 'onAwardQuote'
   | 'onUnaward'
   | 'onGeneratePO'

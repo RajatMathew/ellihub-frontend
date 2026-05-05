@@ -15,7 +15,7 @@ import {
   VENDOR_TYPE_OPTIONS,
 } from '@/modules/directory/constants/vendors.constants';
 import type { VendorFormValues, VendorTypeObject } from '@/modules/directory/schemas/vendor.schema';
-import { Globe } from 'lucide-react';
+import { Globe, Mail } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
 
 interface VendorInfoFormSectionProps {
@@ -68,6 +68,31 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
           />
 
           <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
+                  Email
+                </FieldLabel>
+                <InputWrapper>
+                  <Mail className="size-4" />
+                  <Input
+                    {...field}
+                    type="email"
+                    placeholder="vendor@example.com"
+                    aria-invalid={fieldState.invalid}
+                    autoComplete="email"
+                  />
+                </InputWrapper>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Controller
             name="type"
             control={control}
             render={({ field, fieldState }) => (
@@ -91,9 +116,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
               </Field>
             )}
           />
-        </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="status"
             control={control}
@@ -117,7 +140,9 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
               </Field>
             )}
           />
+        </div>
 
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="taxId"
             control={control}

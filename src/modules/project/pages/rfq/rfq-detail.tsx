@@ -46,6 +46,13 @@ import {
   useFilePreviewQuery,
   useUploadFileMutation,
 } from '@/modules/files/hooks/files.hooks';
+import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
+import {
+  useFeatureMailDraftQuery,
+  usePreviewFeatureMailMutation,
+  useSendFeatureMailMutation,
+} from '@/modules/mail/hooks';
+import type { FeatureMailDraft, FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
@@ -181,6 +188,8 @@ export default function RFQDetailPage() {
   const unawardMutation = useUnawardRFQMutation();
   const generatePOMutation = useGeneratePOMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
+  const previewVendorEmailMutation = usePreviewFeatureMailMutation();
+  const sendVendorEmailMutation = useSendFeatureMailMutation();
   const deleteMutation = useDeleteRFQMutation();
   const addVendorMutation = useAddVendorMutation();
   const removeVendorMutation = useRemoveVendorMutation();
@@ -241,6 +250,13 @@ export default function RFQDetailPage() {
   // Generated PDF preview
   const [vendorPdfPreviewOpen, setVendorPdfPreviewOpen] = useState(false);
   const [vendorPdfPreview, setVendorPdfPreview] = useState<GeneratedPdfFile | null>(null);
+
+  // Vendor email dialog
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTarget, setEmailTarget] = useState<FeatureMailTarget | null>(null);
+  const [emailPreview, setEmailPreview] = useState<FeatureMailDraft | null>(null);
+
+  const vendorEmailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
   const {
     data: bidComparison,
@@ -324,6 +340,7 @@ export default function RFQDetailPage() {
     submitQuoteMutation.isPending ||
     unawardMutation.isPending ||
     generatePOMutation.isPending ||
+    sendVendorEmailMutation.isPending ||
     updateStatusMutation.isPending ||
     addAttachmentMutation.isPending ||
     removeAttachmentMutation.isPending;
@@ -421,6 +438,32 @@ export default function RFQDetailPage() {
     );
   }
 
+  function handleEmailVendor(inviteId: string) {
+    setEmailTarget({ feature: 'rfq.vendorRequest', entityId: inviteId });
+    setEmailPreview(null);
+    previewVendorEmailMutation.reset();
+    sendVendorEmailMutation.reset();
+    setEmailOpen(true);
+  }
+
+  function handleEmailAllVendors() {
+    setEmailTarget({ feature: 'rfq.vendorRequestAll', entityId: rfqId });
+    setEmailPreview(null);
+    previewVendorEmailMutation.reset();
+    sendVendorEmailMutation.reset();
+    setEmailOpen(true);
+  }
+
+  function handleEmailOpenChange(open: boolean) {
+    setEmailOpen(open);
+    if (!open) {
+      setEmailTarget(null);
+      setEmailPreview(null);
+      previewVendorEmailMutation.reset();
+      sendVendorEmailMutation.reset();
+    }
+  }
+
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
       <PdfPreviewDialog
@@ -428,6 +471,35 @@ export default function RFQDetailPage() {
         onOpenChange={handleVendorPdfPreviewOpenChange}
         file={vendorPdfPreview}
         title={vendorPdfPreview?.fileName}
+      />
+      <EmailComposePreviewDialog
+        open={emailOpen}
+        onOpenChange={handleEmailOpenChange}
+        title={emailTarget?.feature === 'rfq.vendorRequestAll' ? 'Email All Vendors' : 'Email RFQ'}
+        draft={vendorEmailDraftQuery.data ?? null}
+        preview={emailPreview}
+        isLoading={vendorEmailDraftQuery.isLoading}
+        isPreviewing={previewVendorEmailMutation.isPending}
+        isSending={sendVendorEmailMutation.isPending}
+        recipientsReadOnly
+        onPreview={async (payload) => {
+          if (!emailTarget) return;
+          const preview = await previewVendorEmailMutation.mutateAsync({
+            feature: emailTarget.feature,
+            entityId: emailTarget.entityId,
+            draft: payload,
+          });
+          setEmailPreview(preview);
+        }}
+        onSend={async (payload) => {
+          if (!emailTarget) return;
+          await sendVendorEmailMutation.mutateAsync({
+            feature: emailTarget.feature,
+            entityId: emailTarget.entityId,
+            draft: payload,
+          });
+          handleEmailOpenChange(false);
+        }}
       />
 
       {/* ---- Toolbar ---- */}
@@ -604,7 +676,12 @@ export default function RFQDetailPage() {
                 </Button>
               )}
               {invites.length > 0 && (
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={previewVendorEmailMutation.isPending || sendVendorEmailMutation.isPending}
+                  onClick={handleEmailAllVendors}
+                >
                   <Mail className="size-4" />
                   Email All Vendors
                 </Button>
@@ -627,6 +704,7 @@ export default function RFQDetailPage() {
             }}
             onOpenQuote={openQuoteDialog}
             onGenerateVendorPdf={handleGenerateVendorPdf}
+            onEmailVendor={handleEmailVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
             onGeneratePO={() => generatePOMutation.mutate(rfqId)}
