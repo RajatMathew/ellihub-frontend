@@ -32,9 +32,25 @@ export type PdfRenderResult = {
 };
 
 const DEFAULT_PDF_ENGINE_URL = 'http://127.0.0.1:8000';
+const DEFAULT_PDF_ENGINE_API_KEY_HEADER = 'X-API-Key';
 
 function getPdfEngineUrl(): string {
     return (process.env.PDF_ENGINE_URL || DEFAULT_PDF_ENGINE_URL).replace(/\/+$/, '');
+}
+
+function getPdfEngineApiKeyHeader(): string {
+    return (process.env.PDF_ENGINE_API_KEY_HEADER || DEFAULT_PDF_ENGINE_API_KEY_HEADER).trim();
+}
+
+function getPdfEngineApiKey(): string | null {
+    const explicitKey = process.env.PDF_ENGINE_API_KEY?.trim();
+    if (explicitKey) return explicitKey;
+
+    const firstAllowedKey = process.env.PDF_ENGINE_API_KEYS?.split(',')
+        .map((key) => key.trim())
+        .find(Boolean);
+
+    return firstAllowedKey || null;
 }
 
 function formatPdfEngineError(status: number, statusText: string, body: string): string {
@@ -44,9 +60,16 @@ function formatPdfEngineError(status: number, statusText: string, body: string):
 }
 
 export async function renderPdf(request: PdfRenderRequest): Promise<PdfRenderResult> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const apiKey = getPdfEngineApiKey();
+    const apiKeyHeader = getPdfEngineApiKeyHeader();
+    if (apiKey && apiKeyHeader) {
+        headers[apiKeyHeader] = apiKey;
+    }
+
     const response = await fetch(`${getPdfEngineUrl()}/render`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(request),
     });
 
