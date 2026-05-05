@@ -44,6 +44,15 @@ type FolderExportJobResponse = {
     updatedAt: Date;
 };
 
+type FileBreadcrumb = {
+    id: string;
+    name: string;
+};
+
+type FileSearchResult = File & {
+    breadcrumbs?: FileBreadcrumb[];
+};
+
 const EXPORT_EXPIRES_IN_SECONDS = 24 * 60 * 60;
 const EXPORT_OBJECT_PREFIX = 'exports';
 
@@ -169,6 +178,41 @@ async function buildFolderExportPlan(folder: File): Promise<FolderExportPlan> {
         totalFiles,
         totalBytes: totalBytes.toString(),
     };
+}
+
+async function getDescendantFileIds(folderId: string): Promise<string[]> {
+    const folder = await prismaClient.file.findUnique({
+        where: { id: folderId },
+        select: { id: true, type: true, deletedAt: true },
+    });
+
+    if (!folder || folder.type !== 'FOLDER') {
+        throw new NotFoundError('No folder found with id: ' + folderId);
+    }
+
+    if (folder.deletedAt) {
+        throw new NotFoundError('No folder found with id: ' + folderId);
+    }
+
+    const descendantIds: string[] = [];
+    let nextParentIds = [folderId];
+
+    while (nextParentIds.length > 0) {
+        const children = await prismaClient.file.findMany({
+            where: {
+                parentId: { in: nextParentIds },
+                deletedAt: null,
+            },
+            select: { id: true, type: true },
+        });
+
+        descendantIds.push(...children.map((child) => child.id));
+        nextParentIds = children
+            .filter((child) => child.type === 'FOLDER')
+            .map((child) => child.id);
+    }
+
+    return descendantIds;
 }
 
 export const FileService = {
@@ -881,39 +925,50 @@ export const FileService = {
         });
     },
 
-    getBreadcrumbs: async (folderId: string): Promise<{ id: string; name: string }[]> => {
+    getBreadcrumbs: async (folderId: string): Promise<FileBreadcrumb[]> => {
         const breadcrumbs: { id: string; name: string }[] = [];
         let currentId: string | null = folderId;
 
         while (currentId) {
-            const folder: { id: string; name: string; parentId: string | null } | null =
-                await prismaClient.file.findUnique({
-                    where: { id: currentId! },
-                    select: { id: true, name: true, parentId: true },
-                });
+            const folder: {
+                id: string;
+                name: string;
+                displayName: string | null;
+                parentId: string | null;
+            } | null = await prismaClient.file.findUnique({
+                where: { id: currentId! },
+                select: { id: true, name: true, displayName: true, parentId: true },
+            });
 
             if (!folder) break;
 
-            breadcrumbs.unshift({ id: folder.id, name: folder.name });
+            breadcrumbs.unshift({ id: folder.id, name: folder.displayName || folder.name });
             currentId = folder.parentId;
         }
 
         return breadcrumbs;
     },
 
-    searchFiles: async (params: PaginationParams): Promise<{ data: File[]; count: number }> => {
+    searchFiles: async (
+        params: PaginationParams
+    ): Promise<{ data: FileSearchResult[]; count: number }> => {
         const { filter, skip, take, sortBy, sortOrder, search: querySearch } = params;
         const {
             search: filterSearch,
             type,
             mimeType,
             parentId,
+            ancestorId,
             createdBy,
             createdFrom,
             createdTo,
             ...restFilter
         } = filter || {};
         const search = querySearch || filterSearch;
+        const descendantIds =
+            typeof ancestorId === 'string' && ancestorId
+                ? await getDescendantFileIds(ancestorId)
+                : undefined;
 
         const whereClause: Record<string, unknown> = {
             deletedAt: null,
@@ -921,9 +976,13 @@ export const FileService = {
             ...(type && { type }),
             ...(mimeType && { mimeType: { contains: mimeType, mode: 'insensitive' as const } }),
             ...(parentId && { parentId }),
+            ...(descendantIds && { id: { in: descendantIds } }),
             ...(createdBy && { createdBy }),
             ...(search && {
-                name: { contains: search, mode: 'insensitive' as const },
+                OR: [
+                    { name: { contains: search, mode: 'insensitive' as const } },
+                    { displayName: { contains: search, mode: 'insensitive' as const } },
+                ],
             }),
             ...((createdFrom || createdTo) && {
                 createdAt: {
@@ -944,7 +1003,16 @@ export const FileService = {
             }),
         ]);
 
-        return { data, count };
+        const dataWithBreadcrumbs = await Promise.all(
+            data.map(async (file) => ({
+                ...file,
+                breadcrumbs: await FileService.getBreadcrumbs(
+                    file.type === 'FOLDER' ? file.id : file.parentId || file.id
+                ),
+            }))
+        );
+
+        return { data: dataWithBreadcrumbs, count };
     },
 
     deleteFile: async (id: string, userId: string): Promise<void> => {

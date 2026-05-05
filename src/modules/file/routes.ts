@@ -30,12 +30,13 @@ app.get(
         const pagination = c.get('pagination');
         const query = c.req.query();
 
-        const { type, mimeType, parentId, createdBy, createdFrom, createdTo } = query;
+        const { type, mimeType, parentId, ancestorId, createdBy, createdFrom, createdTo } = query;
         pagination.filter = {
             ...pagination.filter,
             ...(type && { type }),
             ...(mimeType && { mimeType }),
             ...(parentId && { parentId }),
+            ...(ancestorId && { ancestorId }),
             ...(createdBy && { createdBy }),
             ...(createdFrom && { createdFrom }),
             ...(createdTo && { createdTo }),
