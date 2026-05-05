@@ -23,9 +23,7 @@ import type {
   FeatureMailDraftPayload,
   MailSignature,
 } from '@/modules/mail/schemas/mail.schema';
-import { Eye, FileText, Send } from 'lucide-react';
-
-const CUSTOM_SENDER_VALUE = '__custom_sender__';
+import { Eye, FileText, Send, X } from 'lucide-react';
 
 type EmailComposePreviewDialogProps = {
   open: boolean;
@@ -49,6 +47,7 @@ type EmailFormState = {
   subject: string;
   body: string;
   signature: MailSignature;
+  attachmentIds: string[];
 };
 
 export function EmailComposePreviewDialog({
@@ -130,11 +129,27 @@ function EmailComposePreviewForm({
     JSON.stringify(toPayload(initialForm))
   );
   const senderOptions = draft.senderOptions;
-  const selectedSender = senderOptions.includes(form.from) ? form.from : CUSTOM_SENDER_VALUE;
   const activePreview = preview ?? draft;
   const payload = useMemo(() => toPayload(form), [form]);
   const payloadKey = useMemo(() => JSON.stringify(payload), [payload]);
-  const canSend = payloadKey === previewedPayloadKey && payload.to.length > 0 && !!activePreview;
+  const selectedAttachments = useMemo(() => {
+    const attachmentById = new Map(
+      [...draft.attachments, ...(activePreview?.attachments ?? [])].map((attachment) => [
+        attachment.id,
+        attachment,
+      ])
+    );
+
+    return form.attachmentIds.flatMap((id) => {
+      const attachment = attachmentById.get(id);
+      return attachment ? [attachment] : [];
+    });
+  }, [activePreview?.attachments, draft.attachments, form.attachmentIds]);
+  const canSend =
+    payloadKey === previewedPayloadKey &&
+    !!payload.from &&
+    payload.to.length > 0 &&
+    !!activePreview;
 
   async function handlePreview() {
     await onPreview(payload);
@@ -151,55 +166,31 @@ function EmailComposePreviewForm({
       <DialogBody className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
         <div className="min-h-0 overflow-auto border-b p-5 lg:border-b-0 lg:border-e">
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <LabeledControl label="Sender">
-                <Select
-                  value={selectedSender}
-                  onValueChange={(value) => {
-                    if (value === CUSTOM_SENDER_VALUE) {
-                      setForm((current) => ({
-                        ...current,
-                        from: senderOptions.includes(current.from) ? '' : current.from,
-                      }));
-                      return;
-                    }
-                    setForm((current) => ({ ...current, from: value }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select sender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {senderOptions.map((sender) => (
-                      <SelectItem key={sender} value={sender}>
-                        {sender}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value={CUSTOM_SENDER_VALUE}>Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </LabeledControl>
-              <LabeledControl label="Custom Sender">
-                <Input
-                  type="email"
-                  value={form.from}
-                  disabled={selectedSender !== CUSTOM_SENDER_VALUE}
-                  placeholder="name@elli.com"
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, from: event.target.value }))
-                  }
-                />
-              </LabeledControl>
-            </div>
+            <LabeledControl label="Sender">
+              <Select
+                value={form.from}
+                disabled={!senderOptions.length}
+                onValueChange={(value) => setForm((current) => ({ ...current, from: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sender" />
+                </SelectTrigger>
+                <SelectContent>
+                  {senderOptions.map((sender) => (
+                    <SelectItem key={sender} value={sender}>
+                      {sender}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </LabeledControl>
 
             <LabeledControl label="To">
               <Input
                 value={form.to}
                 placeholder="vendor@example.com"
                 readOnly={recipientsReadOnly}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, to: event.target.value }))
-                }
+                onChange={(event) => setForm((current) => ({ ...current, to: event.target.value }))}
               />
             </LabeledControl>
 
@@ -304,15 +295,31 @@ function EmailComposePreviewForm({
               Attachments
             </div>
             <div className="space-y-2">
-              {(activePreview?.attachments ?? []).map((attachment, index) => (
-                <div
-                  key={`${attachment.name}-${index}`}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <FileText className="size-4 text-muted-foreground" />
-                  <span className="truncate">{attachment.name}</span>
-                </div>
-              ))}
+              {selectedAttachments.length > 0 ? (
+                selectedAttachments.map((attachment) => (
+                  <div key={attachment.id} className="flex items-center gap-2 text-sm">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      className="size-7"
+                      aria-label={`Remove ${attachment.name}`}
+                      onClick={() =>
+                        setForm((current) => ({
+                          ...current,
+                          attachmentIds: current.attachmentIds.filter((id) => id !== attachment.id),
+                        }))
+                      }
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">No attachments selected.</div>
+              )}
             </div>
           </div>
         </div>
@@ -362,7 +369,7 @@ function SignatureInput({
 }
 
 function getDraftKey(draft: FeatureMailDraft): string {
-  return [draft.from, draft.to.join(','), draft.subject].join('|');
+  return [draft.from, draft.to.join(','), draft.subject, draft.attachmentIds.join(',')].join('|');
 }
 
 function toFormState(draft: FeatureMailDraft): EmailFormState {
@@ -374,6 +381,7 @@ function toFormState(draft: FeatureMailDraft): EmailFormState {
     subject: draft.subject,
     body: draft.body,
     signature: draft.signature,
+    attachmentIds: draft.attachmentIds,
   };
 }
 
@@ -390,6 +398,7 @@ function toPayload(form: EmailFormState): FeatureMailDraftPayload {
       role: form.signature.role.trim(),
       email: form.signature.email.trim().toLowerCase(),
     },
+    attachmentIds: form.attachmentIds,
     saveToSentItems: true,
   };
 }

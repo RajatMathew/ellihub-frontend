@@ -9,6 +9,7 @@ import { MoreHorizontal } from 'lucide-react';
 
 import type { RFQVendorActionContext, RFQVendorRowModel } from './rfq-detail-vendor-types';
 import { RFQVendorActionItems } from './rfq-vendor-action-items';
+import { RFQVendorEmailSentBadge } from './rfq-vendor-email-sent-badge';
 import { RFQVendorStatusBadge } from './rfq-vendor-status-badge';
 
 interface RFQVendorDesktopTableProps {
@@ -46,7 +47,10 @@ export function RFQVendorDesktopTable({
           {rows.map((row) => (
             <tr key={row.invite.id} className="border-b last:border-0">
               <td className="py-2.5 pr-4">
-                <div className="font-medium">{row.vendorName}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-medium">{row.vendorName}</div>
+                  <RFQVendorEmailSentBadge sentAt={row.emailSentAt} />
+                </div>
                 {row.vendorEmail && (
                   <div className="text-xs text-muted-foreground">{row.vendorEmail}</div>
                 )}

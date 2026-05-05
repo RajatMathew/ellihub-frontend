@@ -58,6 +58,7 @@ export function RFQDetailVendorsCard({
         isVendorAwarded: !!quote?.isAwarded || awardedVendorId === vendorId,
         purchaseOrder,
         leadTime: quote?.notes,
+        emailSentAt: invite.sentAt,
       };
     });
   }, [awardedVendorId, invites, purchaseOrders, quotes]);
