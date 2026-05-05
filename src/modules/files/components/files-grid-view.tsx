@@ -3,12 +3,16 @@ import { Card, CardContent } from '@/app/components/ui/card';
 import { formatDateTime } from '@/app/lib/helpers';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { Download } from 'lucide-react';
+import { Download, FolderTree } from 'lucide-react';
 
+import { getFileLocationLabel } from './file-location';
 import { FileTypeIcon } from './file-type-icon';
 
 interface FilesGridViewProps {
   data: FileItem[];
+  showLocation?: boolean;
+  locationRootId?: string;
+  locationRootLabel?: string;
   onFolderClick?: (folder: FileItem) => void;
   onFilePreview?: (file: FileItem) => void;
   onFolderExport?: (folder: FileItem) => void;
@@ -16,6 +20,9 @@ interface FilesGridViewProps {
 
 export function FilesGridView({
   data,
+  showLocation = false,
+  locationRootId,
+  locationRootLabel,
   onFolderClick,
   onFilePreview,
   onFolderExport,
@@ -28,6 +35,12 @@ export function FilesGridView({
     <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {data.map((item) => {
         const isFolder = item.type === 'FOLDER';
+        const location = showLocation
+          ? getFileLocationLabel(item, {
+              rootId: locationRootId,
+              rootLabel: locationRootLabel,
+            })
+          : undefined;
 
         return (
           <Card
@@ -50,6 +63,15 @@ export function FilesGridView({
               <span className="line-clamp-2 w-full text-center text-sm font-medium text-foreground">
                 {item.displayName || item.name}
               </span>
+              {location && (
+                <span
+                  className="flex w-full min-w-0 items-center justify-center gap-1 text-xs text-muted-foreground"
+                  title={location}
+                >
+                  <FolderTree className="size-3 shrink-0" />
+                  <span className="truncate">{location}</span>
+                </span>
+              )}
               <span className="text-xs text-muted-foreground">
                 {formatDateTime(item.updatedAt || '')}
               </span>

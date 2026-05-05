@@ -9,6 +9,7 @@ import {
 } from '@/modules/files/constants/files.constants';
 
 export type FilesViewMode = 'list' | 'grid';
+export type FilesSearchMode = 'global' | 'folder';
 
 export interface FolderPathEntry {
   id: string;
@@ -48,6 +49,8 @@ export function useFilesListParams() {
   });
 
   const viewMode: FilesViewMode = listParams.searchParams.get('view') === 'grid' ? 'grid' : 'list';
+  const searchMode: FilesSearchMode =
+    listParams.searchParams.get('searchMode') === 'folder' ? 'folder' : 'global';
   const folderId = listParams.searchParams.get('folderId') ?? undefined;
   const dateFrom = listParams.searchParams.get('dateFrom') ?? undefined;
   const dateTo = listParams.searchParams.get('dateTo') ?? undefined;
@@ -70,6 +73,7 @@ export function useFilesListParams() {
     ...listParams,
     folderId,
     folderPath,
+    searchMode,
     viewMode,
     dateFrom,
     dateTo,

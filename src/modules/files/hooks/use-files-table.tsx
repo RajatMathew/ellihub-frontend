@@ -20,6 +20,9 @@ interface UseFilesTableParams {
   size: number;
   sortBy: SortField;
   sortOrder: 'asc' | 'desc';
+  showLocation?: boolean;
+  locationRootId?: string;
+  locationRootLabel?: string;
   updateParams: (patch: ResourceListParamPatch) => void;
   onPreview: (item: FileItem) => void;
   onRename: (item: FileItem) => void;
@@ -34,6 +37,9 @@ export function useFilesTable({
   size,
   sortBy,
   sortOrder,
+  showLocation,
+  locationRootId,
+  locationRootLabel,
   updateParams,
   onPreview,
   onRename,
@@ -44,7 +50,15 @@ export function useFilesTable({
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
     [sortBy, sortOrder]
   );
-  const columns = useFilesColumns({ onPreview, onRename, onDelete, onExportFolder });
+  const columns = useFilesColumns({
+    showLocation,
+    locationRootId,
+    locationRootLabel,
+    onPreview,
+    onRename,
+    onDelete,
+    onExportFolder,
+  });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
 
   // eslint-disable-next-line react-hooks/incompatible-library

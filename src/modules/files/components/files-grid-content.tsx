@@ -9,6 +9,9 @@ import { FilesSectionHeader } from './files-section-header';
 interface FilesGridContentProps {
   sectionedData: SectionedFiles;
   isLoading: boolean;
+  showLocation?: boolean;
+  locationRootId?: string;
+  locationRootLabel?: string;
   onFolderClick: (folder: FileItem) => void;
   onFilePreview: (file: FileItem) => void;
   onFolderExport: (folder: FileItem) => void;
@@ -17,6 +20,9 @@ interface FilesGridContentProps {
 export function FilesGridContent({
   sectionedData,
   isLoading,
+  showLocation,
+  locationRootId,
+  locationRootLabel,
   onFolderClick,
   onFilePreview,
   onFolderExport,
@@ -34,6 +40,9 @@ export function FilesGridContent({
           </div>
           <FilesGridView
             data={sectionedData.protectedItems}
+            showLocation={showLocation}
+            locationRootId={locationRootId}
+            locationRootLabel={locationRootLabel}
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
             onFolderExport={onFolderExport}
@@ -47,6 +56,9 @@ export function FilesGridContent({
           </div>
           <FilesGridView
             data={sectionedData.sharedItems}
+            showLocation={showLocation}
+            locationRootId={locationRootId}
+            locationRootLabel={locationRootLabel}
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
             onFolderExport={onFolderExport}

@@ -1,11 +1,13 @@
 ﻿import api from '@/app/api';
 import {
   fileExportJobSchema,
+  fileSearchResponseSchema,
   fileSchema,
   folderDetailSchema,
   type FileExportJob,
   type FileFolderRenameInput,
   type FileItem,
+  type FileSearchResponse,
   type FileUploadInput,
   type FolderCreateInput,
   type FolderDetail,
@@ -23,6 +25,18 @@ export type ProjectProtectedFolderType =
   | 'SCHEDULE';
 
 type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
+
+export interface FileSearchParams {
+  page: number;
+  size: number;
+  search: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  parentId?: string;
+  ancestorId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+}
 
 function parseFolderId(raw: unknown, context: string): string {
   if (typeof raw !== 'string' || !raw) {
@@ -91,6 +105,42 @@ export const filesApi = {
 
     if (!result.success) {
       console.error('[filesApi.getFolderDetails] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+
+    return result.data;
+  },
+
+  async searchFiles(params: FileSearchParams): Promise<FileSearchResponse> {
+    const query: Record<string, string | number> = {
+      page: params.page,
+      size: params.size,
+      search: params.search,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    };
+
+    if (params.parentId) query.parentId = params.parentId;
+    if (params.ancestorId) query.ancestorId = params.ancestorId;
+    if (params.createdFrom) query.createdFrom = params.createdFrom;
+    if (params.createdTo) query.createdTo = params.createdTo;
+
+    const res = await api.get(`${BASE}/search`, { params: query });
+    const raw = {
+      data: res.data?.data ?? res.data ?? [],
+      pagination: res.data?.pagination ?? {
+        currentPage: params.page,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+        totalItems: Array.isArray(res.data?.data) ? res.data.data.length : 0,
+        itemsPerPage: params.size,
+      },
+    };
+    const result = fileSearchResponseSchema.safeParse(raw);
+
+    if (!result.success) {
+      console.error('[filesApi.searchFiles] Zod parse error:', result.error.issues);
       throw result.error;
     }
 

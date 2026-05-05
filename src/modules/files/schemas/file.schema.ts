@@ -5,6 +5,11 @@
 export const fileTypeSchema = z.enum(['FILE', 'FOLDER']);
 export type FileType = z.infer<typeof fileTypeSchema>;
 
+export const fileBreadcrumbSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
 export const fileExportStatusSchema = z.enum([
   'PENDING',
   'PROCESSING',
@@ -41,6 +46,7 @@ export const fileSchema = z
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().nullable().optional(),
     updatedAt: z.string().nullable().optional(),
+    breadcrumbs: z.array(fileBreadcrumbSchema).optional(),
   })
   .passthrough();
 
@@ -53,6 +59,22 @@ export const folderDetailSchema = fileSchema.extend({
 });
 
 export type FolderDetail = z.infer<typeof folderDetailSchema>;
+
+export const filePaginationSchema = z.object({
+  currentPage: z.number(),
+  totalPages: z.number(),
+  hasNextPage: z.boolean(),
+  hasPreviousPage: z.boolean(),
+  totalItems: z.number(),
+  itemsPerPage: z.number(),
+});
+
+export const fileSearchResponseSchema = z.object({
+  data: z.array(fileSchema),
+  pagination: filePaginationSchema,
+});
+
+export type FileSearchResponse = z.infer<typeof fileSearchResponseSchema>;
 
 // --- Folder export jobs ---
 
