@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card';
@@ -12,9 +12,18 @@ import { FilesListTable } from '@/modules/files/components/files-list-table';
 import { FilesPageDialogs } from '@/modules/files/components/files-page-dialogs';
 import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar';
 import { FolderExportProgressDialog } from '@/modules/files/components/folder-export-progress-dialog';
-import { useFilesDisplayData } from '@/modules/files/hooks/use-files-display-data';
+import { useFilesSearchQuery } from '@/modules/files/hooks/files.hooks';
+import {
+  sectionFileItems,
+  useFilesDisplayData,
+} from '@/modules/files/hooks/use-files-display-data';
 import { useFilesFolderData } from '@/modules/files/hooks/use-files-folder-data';
-import { encodeFolderPath, useFilesListParams } from '@/modules/files/hooks/use-files-list-params';
+import {
+  encodeFolderPath,
+  useFilesListParams,
+  type FilesSearchMode,
+  type FolderPathEntry,
+} from '@/modules/files/hooks/use-files-list-params';
 import { useFilesTable } from '@/modules/files/hooks/use-files-table';
 import { useFolderZipExport } from '@/modules/files/hooks/use-folder-zip-export';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
@@ -23,6 +32,28 @@ interface FilesExplorerProps {
   title?: string;
   rootFolderId?: string;
   rootLabel?: string;
+}
+
+function getFileName(file: FileItem) {
+  return file.displayName || file.name || '';
+}
+
+function getFolderPathFromBreadcrumbs(
+  folder: FileItem,
+  rootId: string | undefined,
+  fallbackPath: FolderPathEntry[]
+): FolderPathEntry[] {
+  if (!folder.breadcrumbs?.length) {
+    return [...fallbackPath, { id: folder.id, name: getFileName(folder) }];
+  }
+
+  const rootIndex = rootId
+    ? folder.breadcrumbs.findIndex((entry) => entry.id === rootId)
+    : -1;
+  const relativePath =
+    rootIndex >= 0 ? folder.breadcrumbs.slice(rootIndex + 1) : folder.breadcrumbs.slice(1);
+
+  return relativePath.map((entry) => ({ id: entry.id, name: entry.name }));
 }
 
 export function FilesExplorer({
@@ -38,6 +69,8 @@ export function FilesExplorer({
     sortBy,
     sortOrder,
     searchInput,
+    searchMode,
+    setSearchInput,
     updateParams,
     handleSearchChange,
     folderId,
@@ -47,18 +80,60 @@ export function FilesExplorer({
     dateTo,
     clearFilters,
   } = listParams;
-  const { currentFolderId, folderDetail, allChildren, isLoading, isError, refetch } =
+  const { rootFolder, currentFolderId, folderDetail, allChildren, isLoading, isError, refetch } =
     useFilesFolderData(folderId, rootFolderId);
-  const { sectionedData, totalCount, hasActiveFilters } = useFilesDisplayData({
+  const trimmedSearchQuery = searchQuery.trim();
+  const isSearchActive = trimmedSearchQuery.length > 0;
+  const searchParams = useMemo(
+    () => ({
+      page,
+      size,
+      search: trimmedSearchQuery,
+      sortBy,
+      sortOrder,
+      parentId: searchMode === 'folder' ? currentFolderId : undefined,
+      ancestorId: searchMode === 'global' ? rootFolderId : undefined,
+      createdFrom: dateFrom,
+      createdTo: dateTo,
+    }),
+    [
+      currentFolderId,
+      dateFrom,
+      dateTo,
+      page,
+      rootFolderId,
+      searchMode,
+      size,
+      sortBy,
+      sortOrder,
+      trimmedSearchQuery,
+    ]
+  );
+  const fileSearchQuery = useFilesSearchQuery(
+    searchParams,
+    isSearchActive && (searchMode === 'global' || !!currentFolderId)
+  );
+  const folderDisplayData = useFilesDisplayData({
     items: allChildren,
     page,
     size,
-    searchQuery,
+    searchQuery: isSearchActive ? '' : trimmedSearchQuery,
     sortBy,
     sortOrder,
     dateFrom,
     dateTo,
   });
+  const searchItems = fileSearchQuery.data?.data;
+  const searchSectionedData = useMemo(() => sectionFileItems(searchItems ?? []), [searchItems]);
+  const sectionedData = isSearchActive ? searchSectionedData : folderDisplayData.sectionedData;
+  const totalCount = isSearchActive
+    ? (fileSearchQuery.data?.pagination.totalItems ?? 0)
+    : folderDisplayData.totalCount;
+  const hasActiveFilters = isSearchActive || !!dateFrom || !!dateTo;
+  const isDataLoading = isLoading || (isSearchActive && fileSearchQuery.isLoading);
+  const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
+  const navigationRootId = rootFolderId ?? rootFolder?.id;
+  const showResultLocation = isSearchActive && searchMode === 'global';
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploadFileOpen, setUploadFileOpen] = useState(false);
@@ -74,18 +149,24 @@ export function FilesExplorer({
 
   const handleFolderClick = useCallback(
     (folder: FileItem) => {
-      const nextPath = [
-        ...folderPath,
-        { id: folder.id, name: folder.displayName || folder.name || '' },
-      ];
+      const nextPath = getFolderPathFromBreadcrumbs(folder, navigationRootId, folderPath);
 
+      setSearchInput('');
       updateParams({
         folderId: folder.id,
         folderPath: encodeFolderPath(nextPath),
         page: undefined,
+        search: undefined,
       });
     },
-    [folderPath, updateParams]
+    [folderPath, navigationRootId, setSearchInput, updateParams]
+  );
+
+  const handleSearchModeChange = useCallback(
+    (value: FilesSearchMode) => {
+      updateParams({ searchMode: value === 'global' ? undefined : value, page: undefined });
+    },
+    [updateParams]
   );
 
   const handleBreadcrumbClick = useCallback(
@@ -124,6 +205,9 @@ export function FilesExplorer({
     size,
     sortBy,
     sortOrder,
+    showLocation: showResultLocation,
+    locationRootId: navigationRootId,
+    locationRootLabel: rootLabel,
     updateParams,
     onPreview: setPreviewItem,
     onRename: setRenameItem,
@@ -136,9 +220,11 @@ export function FilesExplorer({
       <FilesPageToolbar
         title={title}
         searchInput={searchInput}
+        searchMode={searchMode}
         canMutateFolder={!!currentFolderId}
         canExport={!!folderDetail && !folderZipExport.isExporting}
         onSearchChange={handleSearchChange}
+        onSearchModeChange={handleSearchModeChange}
         onExport={handleExport}
         onCreateFolder={() => setCreateFolderOpen(true)}
         onUploadFile={() => setUploadFileOpen(true)}
@@ -168,11 +254,14 @@ export function FilesExplorer({
           }
         />
 
-        {isError ? (
+        {isDataError ? (
           <CardContent>
             <QueryErrorState
               title="Failed to load files"
-              onRetry={() => void refetch()}
+              onRetry={() => {
+                void refetch();
+                if (isSearchActive) void fileSearchQuery.refetch();
+              }}
               className="border-0 py-12"
             />
           </CardContent>
@@ -180,7 +269,7 @@ export function FilesExplorer({
           <DataGrid
             table={table}
             recordCount={totalCount}
-            isLoading={isLoading}
+            isLoading={isDataLoading}
             onRowClick={handleRowClick}
             emptyMessage={<FilesEmptyState />}
             tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
@@ -190,12 +279,15 @@ export function FilesExplorer({
                 table={table}
                 columns={columns}
                 sectionedData={sectionedData}
-                isLoading={isLoading}
+                isLoading={isDataLoading}
               />
             ) : (
               <FilesGridContent
                 sectionedData={sectionedData}
-                isLoading={isLoading}
+                isLoading={isDataLoading}
+                showLocation={showResultLocation}
+                locationRootId={navigationRootId}
+                locationRootLabel={rootLabel}
                 onFolderClick={handleFolderClick}
                 onFilePreview={setPreviewItem}
                 onFolderExport={(item) => void folderZipExport.startExport(item)}

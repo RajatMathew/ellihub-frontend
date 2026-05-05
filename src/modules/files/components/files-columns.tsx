@@ -15,11 +15,15 @@ import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Download, Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Download, Eye, FolderTree, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
+import { getFileLocationLabel } from './file-location';
 import { FileTypeIcon } from './file-type-icon';
 
 interface UseFilesColumnsOptions {
+  showLocation?: boolean;
+  locationRootId?: string;
+  locationRootLabel?: string;
   onPreview: (item: FileItem) => void;
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
@@ -27,6 +31,9 @@ interface UseFilesColumnsOptions {
 }
 
 export function useFilesColumns({
+  showLocation = false,
+  locationRootId,
+  locationRootLabel,
   onPreview,
   onRename,
   onDelete,
@@ -39,19 +46,38 @@ export function useFilesColumns({
       {
         accessorKey: 'name',
         header: ({ column }) => <DataGridColumnHeader column={column} title="File Name" />,
-        cell: ({ row }) => (
-          <div className="flex min-w-0 items-center gap-2.5">
-            <FileTypeIcon
-              fileType={row.original.type}
-              mimeType={row.original.mimeType}
-              fileName={row.original.displayName || row.original.name}
-              className="size-4 shrink-0"
-            />
-            <span className="line-clamp-1 text-sm font-medium text-foreground">
-              {row.original.displayName || row.original.name || 'Unnamed'}
-            </span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const location = showLocation
+            ? getFileLocationLabel(row.original, {
+                rootId: locationRootId,
+                rootLabel: locationRootLabel,
+              })
+            : undefined;
+
+          return (
+            <div className="flex min-w-0 items-start gap-2.5">
+              <FileTypeIcon
+                fileType={row.original.type}
+                mimeType={row.original.mimeType}
+                fileName={row.original.displayName || row.original.name}
+                className="mt-0.5 size-4 shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="line-clamp-1 text-sm font-medium text-foreground">
+                  {row.original.displayName || row.original.name || 'Unnamed'}
+                </span>
+                {location && (
+                  <span className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                    <FolderTree className="size-3 shrink-0" />
+                    <span className="truncate" title={location}>
+                      {location}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        },
         meta: {
           headerClassName: 'min-w-72',
           skeleton: <Skeleton className="h-3.5 w-48" />,
@@ -198,6 +224,15 @@ export function useFilesColumns({
         enableSorting: false,
       },
     ],
-    [downloadFile, onDelete, onExportFolder, onPreview, onRename]
+    [
+      downloadFile,
+      locationRootId,
+      locationRootLabel,
+      onDelete,
+      onExportFolder,
+      onPreview,
+      onRename,
+      showLocation,
+    ]
   );
 }

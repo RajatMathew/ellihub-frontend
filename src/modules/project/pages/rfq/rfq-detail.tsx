@@ -175,7 +175,7 @@ export default function RFQDetailPage() {
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
-  const { data: rfq, isLoading } = useRFQDetailQuery(rfqId);
+  const { data: rfq, isLoading, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
     rfq?.rfqNumber ?? undefined
@@ -498,6 +498,7 @@ export default function RFQDetailPage() {
             entityId: emailTarget.entityId,
             draft: payload,
           });
+          await refetchRfqDetail();
           handleEmailOpenChange(false);
         }}
       />
@@ -679,7 +680,9 @@ export default function RFQDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={previewVendorEmailMutation.isPending || sendVendorEmailMutation.isPending}
+                  disabled={
+                    previewVendorEmailMutation.isPending || sendVendorEmailMutation.isPending
+                  }
                   onClick={handleEmailAllVendors}
                 >
                   <Mail className="size-4" />

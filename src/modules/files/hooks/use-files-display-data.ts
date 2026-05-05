@@ -28,6 +28,13 @@ function getTime(value: string | null | undefined) {
   return value ? new Date(value).getTime() : 0;
 }
 
+export function sectionFileItems(items: FileItem[]): SectionedFiles {
+  const protectedItems = items.filter((file) => !file.isDeletable);
+  const sharedItems = items.filter((file) => file.isDeletable);
+
+  return { protectedItems, sharedItems, data: [...protectedItems, ...sharedItems] };
+}
+
 export function useFilesDisplayData({
   items,
   page,
@@ -81,10 +88,7 @@ export function useFilesDisplayData({
 
   const listData = filteredData.slice((page - 1) * size, page * size);
   const sectionedData = useMemo<SectionedFiles>(() => {
-    const protectedItems = listData.filter((file) => !file.isDeletable);
-    const sharedItems = listData.filter((file) => file.isDeletable);
-
-    return { protectedItems, sharedItems, data: [...protectedItems, ...sharedItems] };
+    return sectionFileItems(listData);
   }, [listData]);
 
   return {

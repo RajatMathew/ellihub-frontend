@@ -1,10 +1,9 @@
 import { lazy } from 'react';
 
-import { Outlet } from 'react-router-dom';
-
 import { NotFound } from '@/app/components/error/not-found';
 import DelayForDemo from '@/app/lib/delay';
 import { NavigateTo } from '@/app/lib/navigateTo';
+import { Outlet } from 'react-router-dom';
 
 import type { RouteDef } from './types';
 
@@ -19,6 +18,7 @@ const HrEmployees = lazy(() => import('@/modules/hr/routes/employees.route'));
 const HrDepartments = lazy(() => import('@/modules/hr/routes/departments.route'));
 const HrPTO = lazy(() => import('@/modules/hr/routes/pto.route'));
 const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
+const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
 const ProjectsRoutes = lazy(() => import('@/modules/project/routes/projects.route'));
 
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
@@ -31,6 +31,8 @@ export const routeTree: RouteDef[] = [
     component: Outlet,
     children: [
       ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit' }] : []),
+
+      { path: 'profile', component: ProfilePage, title: 'My Profile' },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
 

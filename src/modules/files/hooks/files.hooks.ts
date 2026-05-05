@@ -1,5 +1,5 @@
 ﻿import { toastApiError } from '@/app/lib/toast-api-error';
-import { filesApi } from '@/modules/files/api/files.api';
+import { filesApi, type FileSearchParams } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import type {
   FileFolderRenameInput,
@@ -25,6 +25,13 @@ export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
       return filesApi.getFolderDetails(id);
     },
     enabled: enabled && !!id,
+  });
+
+export const useFilesSearchQuery = (params: FileSearchParams, enabled: boolean) =>
+  useQuery({
+    queryKey: filesKeys.search(params),
+    queryFn: () => filesApi.searchFiles(params),
+    enabled,
   });
 
 export const useFilePreviewQuery = (fileId: string | undefined, enabled: boolean) =>

@@ -9,6 +9,7 @@ export const mailSignatureSchema = z.object({
 export type MailSignature = z.infer<typeof mailSignatureSchema>;
 
 export const mailAttachmentPreviewSchema = z.object({
+  id: z.string(),
   name: z.string(),
   contentType: z.string(),
   source: z.string().optional(),
@@ -24,6 +25,7 @@ const featureMailDraftBaseSchema = z.object({
   subject: z.string().min(1),
   body: z.string().min(1),
   signature: mailSignatureSchema,
+  attachmentIds: z.array(z.string()).default([]),
   saveToSentItems: z.boolean().default(true),
 });
 

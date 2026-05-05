@@ -1,6 +1,6 @@
 import { ThemeProvider } from 'next-themes';
 import { HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 
 import { NotFound } from '@app/components/error/not-found';
 import ProtectedLayout from '@app/components/layouts/protected';
@@ -26,6 +26,7 @@ function FrameWork() {
           <Routes>
             <Route element={<ProtectedLayout />}>
               <Route path="app/*" element={<App />} />
+              <Route path="profile" element={<Navigate to="/app/profile" replace />} />
               <Route path="help/*" element={<HelpApp />} />
               <Route
                 path="/"

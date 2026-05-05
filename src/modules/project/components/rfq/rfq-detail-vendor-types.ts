@@ -17,6 +17,7 @@ export interface RFQVendorRowModel {
   isVendorAwarded: boolean;
   purchaseOrder?: RfqPurchaseOrderLink;
   leadTime?: string | null;
+  emailSentAt?: string | null;
 }
 
 export interface RFQDetailVendorsCardProps {

@@ -9,6 +9,7 @@ import { MoreHorizontal } from 'lucide-react';
 
 import type { RFQVendorActionContext, RFQVendorRowModel } from './rfq-detail-vendor-types';
 import { RFQVendorActionItems } from './rfq-vendor-action-items';
+import { RFQVendorEmailSentBadge } from './rfq-vendor-email-sent-badge';
 import { RFQVendorStatusBadge } from './rfq-vendor-status-badge';
 
 interface RFQVendorMobileCardProps {
@@ -22,7 +23,10 @@ export function RFQVendorMobileCard({ row, isTerminal, actionContext }: RFQVendo
     <div className="rounded-lg border p-3">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="break-words text-sm font-semibold">{row.vendorName}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="break-words text-sm font-semibold">{row.vendorName}</div>
+            <RFQVendorEmailSentBadge sentAt={row.emailSentAt} />
+          </div>
           {row.vendorEmail && (
             <div className="mt-1 break-all text-xs text-muted-foreground">{row.vendorEmail}</div>
           )}

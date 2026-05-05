@@ -54,6 +54,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   };
 
   const { data } = useSession();
+  const userImage = data?.user?.image ?? 'https://i.pravatar.cc/300';
 
   return (
     <DropdownMenu>
@@ -64,11 +65,11 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           <div className="flex items-center gap-2">
             <img
               className="size-10 rounded-full border-2 border-green-500"
-              src={'https://i.pravatar.cc/300'}
+              src={userImage}
               alt="User avatar"
             />
             <div className="flex flex-col">
-              <Link to="#" className="text-sm text-mono hover:text-primary font-semibold">
+              <Link to="/app/profile" className="text-sm text-mono hover:text-primary font-semibold">
                 {data?.user?.name}
               </Link>
               <a
@@ -87,7 +88,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <Link to="#" className="flex items-center gap-2">
+          <Link to="/app/profile" className="flex items-center gap-2">
             <UserCircle />
             My Profile
           </Link>
@@ -107,7 +108,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="#" className="flex items-center gap-2">
+              <Link to="/app/profile" className="flex items-center gap-2">
                 <FileText />
                 My Profile
               </Link>
