@@ -43,7 +43,14 @@ export const mainSidebarMenu: MenuConfig = [
   {
     type: 'separator',
   },
+  {
+    type: 'menu',
+    children: [{ title: 'Lookups', path: '../lookup' }],
+  },
 
+  isDev && {
+    type: 'separator',
+  },
   isDev && {
     type: 'menu',
     children: [{ title: 'UI Kit', path: '../ui', badge: { variant: 'primary', text: 'Dev' } }],

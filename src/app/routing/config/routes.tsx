@@ -11,6 +11,7 @@ const isDev = import.meta.env.DEV;
 
 // Main (top-level) layout & pages
 const Costcodes = lazy(() => import('@/modules/catalog/routes/costcodes.route'));
+const LookupRoutes = lazy(() => import('@/modules/lookup/routes/lookup.route'));
 const DirectoryContacts = lazy(() => import('@/modules/directory/routes/contacts.route'));
 const DirectoryGC = lazy(() => import('@/modules/directory/routes/gc.route'));
 const DirectoryVendors = lazy(() => import('@/modules/directory/routes/vendors.route'));
@@ -30,6 +31,7 @@ export const routeTree: RouteDef[] = [
     path: '/',
     component: Outlet,
     children: [
+      { path: 'lookup/*', component: LookupRoutes, title: 'Lookups' },
       ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit' }] : []),
 
       { path: 'profile', component: ProfilePage, title: 'My Profile' },
