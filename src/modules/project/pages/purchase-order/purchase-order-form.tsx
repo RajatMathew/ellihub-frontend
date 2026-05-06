@@ -275,6 +275,7 @@ export function POFormPage() {
                 const data = entries[Math.floor(Math.random() * entries.length)];
                 const randomVendor =
                   vendorOptions[Math.floor(Math.random() * vendorOptions.length)]?.value ?? '';
+
                 reset({
                   ...data,
                   projectId,

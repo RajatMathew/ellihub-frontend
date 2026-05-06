@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { fakeGCName, fakePhone, fakeStreetAddress, fakeVendorEmail, fakeVendorWebsite } from '@/lib/fake-data';
 import type { LinkedContactItem } from '@/modules/directory/components/shared';
 import { useContactsQuery, useGCDetailQuery, useGCTypesQuery } from '@/modules/directory/hooks';
 import {
@@ -99,16 +100,16 @@ export function useGCFormState(id: string | undefined) {
     }
 
     const randomType = gcTypes[Math.floor(Math.random() * gcTypes.length)];
-    const randomSuffix = Math.floor(Math.random() * 1000);
+    const name = fakeGCName();
 
     form.reset({
-      name: `Test GC ${randomSuffix}`,
+      name,
       gcTypeId: randomType.id,
-      website: `https://test-gc-${randomSuffix}.com`,
+      website: fakeVendorWebsite(name),
       status: 'ACTIVE',
-      email: `test-${randomSuffix}@example.com`,
-      phone: `(555) 000-${randomSuffix.toString().padStart(4, '0')}`,
-      address: `${randomSuffix} Test Parkway, Dallas TX 75201`,
+      email: fakeVendorEmail(name),
+      phone: fakePhone(),
+      address: fakeStreetAddress(),
       paymentTerms: 'NET_30',
       retainagePercent: 10,
     });

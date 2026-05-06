@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
+
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
 import { CONTACT_FORM_SECTIONS } from '@/modules/directory/constants/contacts/contact-form.constants';
@@ -56,14 +58,14 @@ export function ContactFormContent({
   });
 
   const handleFillRandom = () => {
-    const randomSuffix = Math.floor(Math.random() * 1000);
+    const name = fakeContactName();
     const randomRole = roles[Math.floor(Math.random() * roles.length)];
     reset({
-      fullName: `Test Contact ${randomSuffix}`,
+      fullName: name,
       professionalRoleId: randomRole?.id,
-      email: { email: `test-${randomSuffix}@example.com`, label: 'Work' },
+      email: { email: fakeContactEmail(name), label: 'Work' },
       phoneNumber: {
-        number: `(555) 000-${randomSuffix.toString().padStart(4, '0')}`,
+        number: fakePhone(),
         label: 'Office',
       },
       tags: ['Test', 'Random'],

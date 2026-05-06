@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { fakeRFQDeliverables, fakeRFQTitle, pickRandom, randInt } from '@/lib/fake-data';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
@@ -39,73 +40,17 @@ import { toast } from 'sonner';
 
 /* ---- Random data for dev ---- */
 
-const RANDOM_RFQ_TITLES = [
-  'Structural steel supply — Phase 2',
-  'HVAC equipment for floors 3-5',
-  'Exterior cladding materials',
-  'Electrical switchgear & panels',
-  'Plumbing fixtures and rough-in materials',
-  'Concrete formwork and pour — foundation',
-  'Fire protection sprinkler system',
-  'Elevator installation — 2 cabs',
-  'Roofing membrane and insulation',
-  'Window and curtain wall fabrication',
-  'Demolition and hazmat abatement',
-  'Landscaping and site work',
-];
-
-const RANDOM_DELIVERABLES = [
-  { description: 'W14x30 steel beams, ASTM A992', unit: 'LF', qtyRange: [50, 500] },
-  { description: 'RTU HVAC units, 15-ton capacity', unit: 'EA', qtyRange: [2, 8] },
-  { description: 'Aluminum curtain wall panels', unit: 'SF', qtyRange: [500, 5000] },
-  { description: '200A electrical distribution panel', unit: 'EA', qtyRange: [4, 20] },
-  { description: 'PVC Schedule 40 pipe, 4"', unit: 'LF', qtyRange: [100, 1000] },
-  { description: '5000 PSI concrete, delivered', unit: 'CY', qtyRange: [20, 200] },
-  { description: 'Fire sprinkler heads, pendant type', unit: 'EA', qtyRange: [50, 500] },
-  { description: 'Passenger elevator cab, 3500 lb', unit: 'EA', qtyRange: [1, 4] },
-  { description: 'TPO roofing membrane, 60 mil', unit: 'SF', qtyRange: [2000, 15000] },
-  { description: 'Double-pane insulated glass units', unit: 'EA', qtyRange: [20, 200] },
-  { description: 'Asbestos abatement, contained area', unit: 'SF', qtyRange: [500, 3000] },
-  { description: 'Topsoil and grading', unit: 'CY', qtyRange: [50, 500] },
-  { description: 'Rebar #4, Grade 60', unit: 'TON', qtyRange: [2, 20] },
-  { description: 'Drywall, 5/8" Type X fire-rated', unit: 'SF', qtyRange: [1000, 10000] },
-];
-
-function pickRandom<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function generateRandomRFQ() {
-  const numDeliverables = randInt(2, 5);
-  const used = new Set<number>();
-  const deliverables = Array.from({ length: numDeliverables }, () => {
-    let idx: number;
-    do {
-      idx = Math.floor(Math.random() * RANDOM_DELIVERABLES.length);
-    } while (used.has(idx) && used.size < RANDOM_DELIVERABLES.length);
-    used.add(idx);
-    const item = RANDOM_DELIVERABLES[idx];
-    return {
-      description: item.description,
-      quantity: randInt(item.qtyRange[0], item.qtyRange[1]),
-      unitId: '',
-    };
-  });
-
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + randInt(7, 30));
 
   return {
-    title: pickRandom(RANDOM_RFQ_TITLES),
+    title: fakeRFQTitle(),
     description: '',
     typeId: '',
     bidDeadline: deadline.toISOString().slice(0, 10),
     biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
-    deliverables,
+    deliverables: fakeRFQDeliverables(),
   };
 }
 

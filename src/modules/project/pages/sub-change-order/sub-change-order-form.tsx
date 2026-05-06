@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { fakeContactName } from '@/lib/fake-data';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
@@ -286,7 +287,7 @@ export function SCOFormPage() {
                   description: [d.reasonForChange, d.detailedScope].filter(Boolean).join('\n\n'),
                   markupAmount: 0,
                   scheduleImpactDays: ['HIGH', 'URGENT'].includes(d.priority) ? 3 : 0,
-                  requestedBy: d.vendorContactName,
+                  requestedBy: fakeContactName(),
                   changeTypeId: randomChangeType,
                   impactsSchedule: ['HIGH', 'URGENT'].includes(d.priority),
                   lineItems: d.lineItems.map((item) => ({
