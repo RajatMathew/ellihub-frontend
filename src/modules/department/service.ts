@@ -29,17 +29,39 @@ export const DepartmentService = {
             ];
         }
 
+        const orderBy =
+            sortBy === 'employeeCount'
+                ? { employees: { _count: sortOrder } }
+                : { [sortBy as string]: sortOrder };
+
         const [count, data] = await prisma.$transaction([
             prisma.department.count({ where: whereClause }),
             prisma.department.findMany({
                 where: whereClause,
                 skip,
                 take,
-                orderBy: { [sortBy as string]: sortOrder },
+                orderBy,
+                include: {
+                    _count: {
+                        select: {
+                            employees: {
+                                where: {
+                                    deletedAt: null,
+                                },
+                            },
+                        },
+                    },
+                },
             }),
         ]);
 
-        return { data, count };
+        return {
+            data: data.map(({ _count, ...department }) => ({
+                ...department,
+                employeeCount: _count.employees,
+            })),
+            count,
+        };
     },
 
     get: async (id: string) => {
