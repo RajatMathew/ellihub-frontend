@@ -23,6 +23,7 @@ export function useContactAssociations({
   vendorOptions,
   gcOptions,
 }: UseContactAssociationsArgs) {
+  const [initialAssociation] = useState(() => getContactAssociation(isEdit ? contact : undefined));
   const [vendorLinks, setVendorLinks] = useState<ContactVendorAssociation[]>(() =>
     buildVendorLinks(isEdit ? contact : undefined)
   );
@@ -124,6 +125,7 @@ export function useContactAssociations({
     pendingUnlink,
     showUnlinkConfirm,
     setShowUnlinkConfirm,
+    initialAssociation,
     currentAssociation,
     primaryVendorId,
     primaryGCId,
@@ -135,6 +137,36 @@ export function useContactAssociations({
     confirmUnlink,
     handleVendorCreated,
   };
+}
+
+function getContactAssociation(contact?: Contact) {
+  if (!contact) return null;
+
+  const vendorId =
+    contact.vendorLinks.find((link) => link.isPrimary)?.vendorId ??
+    contact.vendorLinks[0]?.vendorId ??
+    contact.vendorId;
+
+  if (vendorId) {
+    return {
+      id: vendorId,
+      type: 'VENDOR' as const,
+    };
+  }
+
+  const generalContractorId =
+    contact.gcLinks.find((link) => link.isPrimary)?.generalContractorId ??
+    contact.gcLinks[0]?.generalContractorId ??
+    contact.generalContractorId;
+
+  if (generalContractorId) {
+    return {
+      id: generalContractorId,
+      type: 'GC' as const,
+    };
+  }
+
+  return null;
 }
 
 function buildVendorLinks(contact?: Contact): ContactVendorAssociation[] {
