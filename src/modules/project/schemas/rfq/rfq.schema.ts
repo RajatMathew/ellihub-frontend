@@ -283,23 +283,26 @@ export type RFQDetail = z.infer<typeof rfqDetailSchema>;
 
 /* ---- Input schemas (form validation) ---- */
 
+const optionalTextSchema = z.string().trim().optional();
+const requiredTextSchema = (message: string) => z.string().trim().min(1, message);
+
 export const rfqDeliverableInputSchema = z.object({
-  name: z.string().min(1, 'Name is required').optional(),
-  description: z.string().optional(),
-  specifications: z.string().optional(),
-  quantity: z.number().min(0).optional(),
-  unit: z.string().optional(),
-  unitId: z.string().optional(),
-  costCodeId: z.string().optional(),
-  estimatedUnitPrice: z.number().min(0).optional(),
+  name: optionalTextSchema,
+  description: requiredTextSchema('Deliverable description is required'),
+  specifications: optionalTextSchema,
+  quantity: z.number().min(0, 'Quantity cannot be negative').optional(),
+  unit: optionalTextSchema,
+  unitId: requiredTextSchema('Unit is required'),
+  costCodeId: optionalTextSchema,
+  estimatedUnitPrice: z.number().min(0, 'Estimated unit price cannot be negative').optional(),
 });
 
 export type RFQDeliverableInput = z.infer<typeof rfqDeliverableInputSchema>;
 
 export const createRFQInputSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: requiredTextSchema('Project is required'),
   title: z.string().min(1, 'Title is required').max(255),
-  description: z.string().optional(),
+  description: requiredTextSchema('Description is required'),
   typeId: z.string().min(1, 'Type is required'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
@@ -309,7 +312,7 @@ export type CreateRFQInput = z.infer<typeof createRFQInputSchema>;
 
 export const updateRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
-  description: z.string().nullable().optional(),
+  description: requiredTextSchema('Description is required'),
   typeId: z.string().min(1, 'Type is required'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
@@ -320,7 +323,9 @@ export type UpdateRFQInput = z.infer<typeof updateRFQInputSchema>;
 /* ---- Workflow input schemas ---- */
 
 export const publishRFQInputSchema = z.object({
-  vendorIds: z.array(z.string().min(1)).min(1, 'At least one vendor is required'),
+  vendorIds: z
+    .array(z.string().min(1, 'Vendor is required'))
+    .min(1, 'At least one vendor is required'),
   sendInviteEmails: z.boolean().optional(),
 });
 
@@ -333,9 +338,9 @@ export const cancelRFQInputSchema = z.object({
 export type CancelRFQInput = z.infer<typeof cancelRFQInputSchema>;
 
 export const awardRFQInputSchema = z.object({
-  awardedQuoteId: z.string().min(1),
-  awardedVendorId: z.string().min(1),
-  awardedAmount: z.number().positive(),
+  awardedQuoteId: z.string().min(1, 'Quote is required'),
+  awardedVendorId: z.string().min(1, 'Vendor is required'),
+  awardedAmount: z.number().positive('Awarded amount must be greater than 0'),
   autoGeneratePO: z.boolean().optional(),
   sendAwardEmail: z.boolean().optional(),
   sendRegretEmails: z.boolean().optional(),

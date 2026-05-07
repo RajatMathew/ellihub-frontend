@@ -1,3 +1,8 @@
+import { LineItems } from '@/app/components/line-items';
+import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Separator } from '@/app/components/ui/separator';
+import { formatCurrency } from '@/app/lib/helpers';
+import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
   Control,
   FieldArrayWithId,
@@ -6,12 +11,6 @@ import type {
   UseFieldArrayRemove,
 } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
-
-import { LineItems } from '@/app/components/line-items';
-import { Input, InputWrapper } from '@/app/components/ui/input';
-import { Separator } from '@/app/components/ui/separator';
-import { formatCurrency } from '@/app/lib/helpers';
-import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 
 import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 
@@ -59,6 +58,7 @@ export function PurchaseOrderFormLineItemsCard({
       costCodeOptions={costCodeOptions}
       fieldNames={{ unit: 'unitId' }}
       unitOptions={unitOptions}
+      allowCustomUnit={false}
       defaultItem={defaultLineItem}
       rootError={rootError?.root}
       showLineTotal

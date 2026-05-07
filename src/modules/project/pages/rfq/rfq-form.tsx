@@ -101,7 +101,7 @@ function generateRandomRFQ() {
 
   return {
     title: pickRandom(RANDOM_RFQ_TITLES),
-    description: '',
+    description: 'Please provide pricing, lead time, and availability for the listed deliverables.',
     typeId: '',
     bidDeadline: deadline.toISOString().slice(0, 10),
     biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
@@ -390,8 +390,12 @@ export default function RFQFormPage() {
           append={append}
           remove={remove}
           costCodeOptions={[]}
-          unitOptions={units?.map((u) => ({ value: u.id, label: u.label || u.name || u.id }))}
+          unitOptions={(units ?? []).map((u) => ({
+            value: u.id,
+            label: u.label || u.name || u.id,
+          }))}
           fieldNames={{ unit: 'unitId' }}
+          allowCustomUnit={false}
           hideCostCode
           hideUnitPrice
           defaultItem={{ description: '', quantity: 0, unitId: '' }}
