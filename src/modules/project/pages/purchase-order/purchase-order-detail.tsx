@@ -41,6 +41,7 @@ import {
   PurchaseOrderDetailLineItemsCard,
   PurchaseOrderDetailLinkedInvoicesCard,
   PurchaseOrderDetailLinkedSCOsCard,
+  PurchaseOrderPaymentHistoryCard,
 } from '@/modules/project/components/purchase-order';
 import {
   InfoRow,
@@ -59,6 +60,7 @@ import {
   useCancelPOMutation,
   useIssuePOMutation,
   usePODetailQuery,
+  usePOQuickBooksPaymentsQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
   useRevertToDraftMutation,
@@ -105,6 +107,8 @@ export function PODetailPage() {
     useInvoicesByPurchaseOrderQuery(poId);
   const { data: linkedSCOs = [], isLoading: isLinkedSCOsLoading } =
     useSCOsByPurchaseOrderQuery(poId);
+  const { data: quickBooksPayments = [], isLoading: isQuickBooksPaymentsLoading } =
+    usePOQuickBooksPaymentsQuery(poId);
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'purchaseOrder',
     entityId: poId,
@@ -224,13 +228,19 @@ export function PODetailPage() {
     .filter((sco) => sco.status === 'APPROVED')
     .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0);
   const totalCommitment = poTotal + scoTotal;
-  const amountPaid = linkedInvoices
+  const paidInvoiceTotal = linkedInvoices
     .filter((invoice) => invoice.isPaid)
     .reduce((sum, invoice) => sum + Number(invoice.totalAmount ?? 0), 0);
+  const quickBooksPaymentTotal = quickBooksPayments.reduce(
+    (sum, payment) => sum + Number(payment.totalAmount ?? 0),
+    0
+  );
+  const amountPaid = paidInvoiceTotal + quickBooksPaymentTotal;
   const invoiceTotal = linkedInvoices.reduce(
     (sum, invoice) => sum + Number(invoice.totalAmount ?? 0),
     0
   );
+  const hasPaymentActivity = linkedInvoices.length > 0 || quickBooksPayments.length > 0;
   const balanceDue = Math.max(totalCommitment - amountPaid, 0);
   const subtotal = parseFloat(po.subtotal ?? '0');
   const taxAmount = parseFloat(po.taxAmount ?? '0');
@@ -423,7 +433,7 @@ export function PODetailPage() {
               bgClass="bg-success/10"
               label="Amount Paid"
               value={formatCurrency(amountPaid)}
-              description="Via linked invoices"
+              description="Invoices + QuickBooks"
             />
             <StatsCard
               icon={<Receipt className="size-5 text-warning" />}
@@ -572,7 +582,11 @@ export function PODetailPage() {
                 }
               />
 
-              {/* Hidden until backend exposes purchase-order payment history in the API response. */}
+              <PurchaseOrderPaymentHistoryCard
+                purchaseOrderId={poId}
+                payments={quickBooksPayments}
+                isLoading={isQuickBooksPaymentsLoading}
+              />
 
               <PurchaseOrderDetailLinkedInvoicesCard
                 projectId={projectId}
@@ -645,10 +659,15 @@ export function PODetailPage() {
                       <InfoRow label="Total Commitment">{formatCurrency(totalCommitment)}</InfoRow>
                     </>
                   )}
-                  {linkedInvoices.length > 0 && (
+                  {hasPaymentActivity && (
                     <>
                       <Separator className="my-2" />
                       <InfoRow label="Invoice Total">{formatCurrency(invoiceTotal)}</InfoRow>
+                      {quickBooksPaymentTotal > 0 && (
+                        <InfoRow label="QuickBooks Payments">
+                          {formatCurrency(quickBooksPaymentTotal)}
+                        </InfoRow>
+                      )}
                       <InfoRow label="Amount Paid">{formatCurrency(amountPaid)}</InfoRow>
                       <InfoRow label="Balance Due">{formatCurrency(balanceDue)}</InfoRow>
                     </>

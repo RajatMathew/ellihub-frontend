@@ -41,6 +41,10 @@ export const mainSidebarMenu: MenuConfig = [
     children: [{ title: 'Files', path: '../files' }],
   },
   {
+    type: 'menu',
+    children: [{ title: 'Integrations', path: '../integrations' }],
+  },
+  {
     type: 'separator',
   },
 

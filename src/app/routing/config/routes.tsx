@@ -18,6 +18,7 @@ const HrEmployees = lazy(() => import('@/modules/hr/routes/employees.route'));
 const HrDepartments = lazy(() => import('@/modules/hr/routes/departments.route'));
 const HrPTO = lazy(() => import('@/modules/hr/routes/pto.route'));
 const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
+const IntegrationsRoutes = lazy(() => import('@/modules/integrations/routes/integrations.route'));
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
 const ProjectsRoutes = lazy(() => import('@/modules/project/routes/projects.route'));
 
@@ -83,6 +84,7 @@ export const routeTree: RouteDef[] = [
         title: 'Time Off',
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files' },
+      { path: 'integrations/*', component: IntegrationsRoutes, title: 'Integrations' },
       {
         path: 'project/:projectId/*',
         component: ProjectRoutes,

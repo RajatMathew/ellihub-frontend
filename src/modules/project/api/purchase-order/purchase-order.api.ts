@@ -1,12 +1,17 @@
 import api from '@/app/api';
-
 import {
   poDetailSchema,
   poPaginatedResponseSchema,
+  poQuickBooksPaymentOptionsSchema,
+  poQuickBooksPaymentSchema,
+  type AddPOQuickBooksPaymentInput,
+  type AddPOQuickBooksPaymentsInput,
   type CreatePOInput,
   type ListPOsParams,
   type PODetail,
   type POPaginatedResponse,
+  type POQuickBooksPayment,
+  type POQuickBooksPaymentOptions,
 } from '@/modules/project/schemas/purchase-order';
 
 const BASE = '/po';
@@ -38,7 +43,7 @@ function normalizePODetail(item: unknown) {
   const tradeCategoryLabel =
     getLookupValue(tradeCategoryRef, 'label') ?? getLookupValue(tradeCategoryRef, 'name');
   const tradeCategory = ['MATERIAL', 'FABRICATION', 'INSTALLATION', 'LABOR', 'EQUIPMENT'].includes(
-    tradeCategoryLabel ?? '',
+    tradeCategoryLabel ?? ''
   )
     ? tradeCategoryLabel
     : undefined;
@@ -76,7 +81,7 @@ export const poApi = {
       notifyVendor?: boolean;
       confirmInvoices?: boolean;
       confirmSCOs?: boolean;
-    },
+    }
   ): Promise<PODetail> {
     await api.patch(`${LIST_BASE}/set-cancelled`, {
       id,
@@ -87,7 +92,7 @@ export const poApi = {
 
   async recordDelivery(
     id: string,
-    data: { deliveryDate: string; notes?: string },
+    data: { deliveryDate: string; notes?: string }
   ): Promise<PODetail> {
     await api.patch(`${LIST_BASE}/set-delivered`, { id, deliveryDate: data.deliveryDate });
     return this.get(id);
@@ -146,6 +151,36 @@ export const poApi = {
       throw result.error;
     }
     return result.data;
+  },
+
+  async listQuickBooksPayments(id: string): Promise<POQuickBooksPayment[]> {
+    const res = await api.get(`${LIST_BASE}/${id}/payments`);
+    return poQuickBooksPaymentSchema.array().parse(res.data?.data ?? res.data ?? []);
+  },
+
+  async listQuickBooksPaymentOptions(id: string): Promise<POQuickBooksPaymentOptions> {
+    const res = await api.get(`${LIST_BASE}/${id}/quickbooks-payment-options`);
+    return poQuickBooksPaymentOptionsSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async addQuickBooksPayment(
+    id: string,
+    data: AddPOQuickBooksPaymentInput
+  ): Promise<POQuickBooksPayment> {
+    const res = await api.post(`${LIST_BASE}/${id}/payments/quickbooks`, data);
+    return poQuickBooksPaymentSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async addQuickBooksPayments(
+    id: string,
+    data: AddPOQuickBooksPaymentsInput
+  ): Promise<POQuickBooksPayment[]> {
+    const res = await api.post(`${LIST_BASE}/${id}/payments/quickbooks/bulk`, data);
+    return poQuickBooksPaymentSchema.array().parse(res.data?.data ?? res.data ?? []);
+  },
+
+  async removeQuickBooksPayment(id: string, paymentId: string): Promise<void> {
+    await api.delete(`${LIST_BASE}/${id}/payments/${paymentId}`);
   },
 
   async update(id: string, data: Partial<CreatePOInput>): Promise<PODetail> {

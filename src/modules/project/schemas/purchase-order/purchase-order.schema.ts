@@ -1,3 +1,4 @@
+import { quickBooksTransactionEntitySchema } from '@/modules/integrations/schemas/quickbooks.schema';
 import { z } from 'zod';
 
 // --- Enums ---
@@ -179,16 +180,13 @@ export const poLineItemSchema = z
     description: z.string(),
     unitId: z.string().nullable().optional(),
     quantity: z.string(),
-    unit: z.preprocess(
-      (value) => {
-        if (typeof value === 'object' && value !== null) {
-          const ref = value as { label?: unknown; name?: unknown; id?: unknown };
-          return ref.label ?? ref.name ?? ref.id ?? undefined;
-        }
-        return value;
-      },
-      z.string().nullable().optional(),
-    ),
+    unit: z.preprocess((value) => {
+      if (typeof value === 'object' && value !== null) {
+        const ref = value as { label?: unknown; name?: unknown; id?: unknown };
+        return ref.label ?? ref.name ?? ref.id ?? undefined;
+      }
+      return value;
+    }, z.string().nullable().optional()),
     unitPrice: z.string(),
     amount: z.string(),
     costCodeId: z.string().nullable().optional(),
@@ -294,3 +292,68 @@ export const createPOInputSchema = z.object({
 });
 
 export type CreatePOInput = z.infer<typeof createPOInputSchema>;
+
+// --- QuickBooks PO payments ---
+
+export const poQuickBooksPaymentSchema = z.object({
+  id: z.string(),
+  purchaseOrderId: z.string(),
+  realmId: z.string(),
+  entity: quickBooksTransactionEntitySchema,
+  transactionId: z.string(),
+  docNumber: z.string().nullable(),
+  displayName: z.string(),
+  txnDate: z.string().nullable(),
+  totalAmount: z.string().nullable(),
+  currency: z.string().nullable(),
+  privateNote: z.string().nullable(),
+  lastUpdatedTime: z.string().nullable(),
+  linkedById: z.string().nullable(),
+  removedAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const poQuickBooksLinkedPurchaseOrderSchema = z.object({
+  id: z.string(),
+  poNumber: z.string().nullable(),
+});
+
+export const poQuickBooksPaymentOptionSchema = z.object({
+  realmId: z.string(),
+  entity: quickBooksTransactionEntitySchema,
+  id: z.string(),
+  docNumber: z.string().nullable(),
+  txnDate: z.string().nullable(),
+  displayName: z.string(),
+  totalAmount: z.number().nullable(),
+  currency: z.string().nullable(),
+  privateNote: z.string().nullable(),
+  lastUpdatedTime: z.string().nullable(),
+  raw: z.record(z.string(), z.unknown()),
+  linkedPurchaseOrder: poQuickBooksLinkedPurchaseOrderSchema.nullable(),
+});
+
+export const poQuickBooksPaymentOptionsSchema = z.object({
+  realmId: z.string(),
+  companyName: z.string().nullable(),
+  environment: z.enum(['sandbox', 'production']),
+  fetchedAt: z.string(),
+  transactions: z.array(poQuickBooksPaymentOptionSchema),
+});
+
+export const addPoQuickBooksPaymentInputSchema = z.object({
+  entity: quickBooksTransactionEntitySchema,
+  transactionId: z.string().min(1),
+  realmId: z.string().min(1).optional(),
+});
+
+export const addPoQuickBooksPaymentsInputSchema = z.object({
+  payments: z.array(addPoQuickBooksPaymentInputSchema).min(1).max(25),
+});
+
+export type POQuickBooksPayment = z.infer<typeof poQuickBooksPaymentSchema>;
+export type POQuickBooksPaymentOption = z.infer<typeof poQuickBooksPaymentOptionSchema>;
+export type POQuickBooksPaymentOptions = z.infer<typeof poQuickBooksPaymentOptionsSchema>;
+export type AddPOQuickBooksPaymentInput = z.infer<typeof addPoQuickBooksPaymentInputSchema>;
+export type AddPOQuickBooksPaymentsInput = z.infer<typeof addPoQuickBooksPaymentsInputSchema>;
