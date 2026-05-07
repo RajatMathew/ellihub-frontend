@@ -1,4 +1,5 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   EmployeeFormContent,
   EmployeeFormLoading,
@@ -13,6 +14,11 @@ export default function EmployeeFormPage() {
   const navigate = useNavigate();
   const state = useEmployeeFormState(id);
   const { handleSubmit, control } = state.form;
+
+  useBreadcrumbLabel(
+    id ? `/app/hr/employees/${id}` : undefined,
+    state.employeeQuery.data?.name ?? 'Employee'
+  );
 
   const { saveEmployee, isSubmitting } = useSaveEmployee({
     id,

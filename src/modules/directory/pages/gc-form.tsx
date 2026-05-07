@@ -1,4 +1,5 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
@@ -11,6 +12,11 @@ export function GCFormPage() {
   const navigate = useNavigate();
   const state = useGCFormState(id);
   const { handleSubmit, control } = state.form;
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/general-contractors/${id}` : undefined,
+    state.gcQuery.data?.name ?? 'General Contractor'
+  );
 
   const { saveGC, isSubmitting } = useSaveGC({
     id,

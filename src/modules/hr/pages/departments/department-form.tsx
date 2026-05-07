@@ -1,4 +1,5 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   DepartmentFormContent,
   DepartmentFormLoading,
@@ -14,6 +15,11 @@ export default function DepartmentFormPage() {
     useDepartmentFormState(id);
   const { saveDepartment, isPending } = useSaveDepartment({ id, isEdit });
   const isSubmitting = form.formState.isSubmitting || isPending;
+
+  useBreadcrumbLabel(
+    id ? `/app/hr/departments/${id}` : undefined,
+    departmentQuery.data?.name ?? 'Department'
+  );
 
   if (isEdit && departmentQuery.isLoading) {
     return <DepartmentFormLoading />;

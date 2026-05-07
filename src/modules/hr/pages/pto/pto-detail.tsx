@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   PTODecisionCard,
   PTODetailLoading,
@@ -9,7 +10,11 @@ import {
   PTOHistoryCard,
   PTORequestInfoCard,
 } from '@/modules/hr/components/pto/detail';
-import { getPTOEmployeeName, PTODeleteDialog } from '@/modules/hr/components/pto/shared';
+import {
+  getPTOEmployeeName,
+  getPTOTypeLabel,
+  PTODeleteDialog,
+} from '@/modules/hr/components/pto/shared';
 import {
   useApprovePTOMutation,
   useDeletePTOMutation,
@@ -26,6 +31,14 @@ export default function PTODetailPage() {
   const rejectMutation = useRejectPTOMutation();
   const deleteMutation = useDeletePTOMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const ptoBreadcrumbLabel = ptoQuery.data
+    ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
+    : undefined;
+
+  useBreadcrumbLabel(
+    id ? `/app/hr/pto/${id}` : undefined,
+    ptoBreadcrumbLabel ?? 'PTO Request'
+  );
 
   const handleDecision = useCallback(
     (type: 'approve' | 'reject', note: string) => {
