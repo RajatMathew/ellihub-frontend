@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { fakeVendorEmail, fakeVendorName, fakeVendorWebsite, fakeTaxId } from '@/lib/fake-data';
+import { fakeVendorEmail, fakeVendorName, fakeVendorWebsite, fakeTaxId, pickRandom } from '@/lib/fake-data';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import type { LinkedContactItem } from '@/modules/directory/components/shared';
 import {
   useContactsQuery,
@@ -87,17 +88,17 @@ export function useVendorFormState(id: string | undefined) {
 
   const fillRandom = () => {
     const name = fakeVendorName();
-    const randomType =
-      vendorTypesQuery.data?.[Math.floor(Math.random() * vendorTypesQuery.data.length)]?.id;
+    const vendorTypes = vendorTypesQuery.data ?? [];
+    const randomType = vendorTypes.length > 0 ? pickRandom(vendorTypes).id : 'MATERIAL';
 
     form.reset({
       name,
       email: fakeVendorEmail(name),
-      type: randomType ?? 'MATERIAL',
+      type: randomType,
       status: Math.random() > 0.5 ? 'ACTIVE' : 'INACTIVE',
       taxId: fakeTaxId(),
       website: fakeVendorWebsite(name),
-      paymentTerms: 'NET_30',
+      paymentTerms: pickRandom(PAYMENT_TERMS_OPTIONS).value,
     });
   };
 

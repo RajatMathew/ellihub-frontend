@@ -252,7 +252,7 @@ export function fakeRFQTitle(): string {
   return pickRandom(RFQ_TITLES);
 }
 
-export function fakeRFQDeliverables(count?: number) {
+export function fakeRFQDeliverables(units?: { id: string }[], count?: number) {
   const numDeliverables = count ?? randInt(2, 5);
   const used = new Set<number>();
 
@@ -267,7 +267,7 @@ export function fakeRFQDeliverables(count?: number) {
     return {
       description: item.description,
       quantity: randInt(item.qtyRange[0], item.qtyRange[1]),
-      unitId: '',
+      unitId: units && units.length > 0 ? pickRandom(units).id : '',
     };
   });
 }

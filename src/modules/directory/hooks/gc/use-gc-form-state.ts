@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { fakeGCName, fakePhone, fakeStreetAddress, fakeVendorEmail, fakeVendorWebsite } from '@/lib/fake-data';
+import { fakeGCName, fakePhone, fakeStreetAddress, fakeVendorEmail, fakeVendorWebsite, pickRandom } from '@/lib/fake-data';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import type { LinkedContactItem } from '@/modules/directory/components/shared';
 import { useContactsQuery, useGCDetailQuery, useGCTypesQuery } from '@/modules/directory/hooks';
 import {
@@ -110,7 +111,7 @@ export function useGCFormState(id: string | undefined) {
       email: fakeVendorEmail(name),
       phone: fakePhone(),
       address: fakeStreetAddress(),
-      paymentTerms: 'NET_30',
+      paymentTerms: pickRandom(PAYMENT_TERMS_OPTIONS).value,
       retainagePercent: 10,
     });
     toast.info('Form filled with test data.');

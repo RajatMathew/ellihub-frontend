@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { fakeRFQDeliverables, fakeRFQTitle, pickRandom, randInt } from '@/lib/fake-data';
+import { fakeProjectDescription, fakeRFQDeliverables, fakeRFQTitle, pickRandom, randInt } from '@/lib/fake-data';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
@@ -40,17 +40,17 @@ import { toast } from 'sonner';
 
 /* ---- Random data for dev ---- */
 
-function generateRandomRFQ() {
+function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]) {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + randInt(7, 30));
 
   return {
     title: fakeRFQTitle(),
-    description: '',
-    typeId: '',
+    description: fakeProjectDescription(),
+    typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
     bidDeadline: deadline.toISOString().slice(0, 10),
     biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
-    deliverables: fakeRFQDeliverables(),
+    deliverables: fakeRFQDeliverables(units),
   };
 }
 
@@ -120,9 +120,9 @@ export default function RFQFormPage() {
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const fillRandom = useCallback(() => {
-    const data = generateRandomRFQ();
+    const data = generateRandomRFQ(rfqTypes, units);
     reset({ projectId, ...data });
-  }, [reset, projectId]);
+  }, [reset, projectId, rfqTypes, units]);
 
   const onSubmit = async (formData: CreateRFQInput) => {
     if (isEdit && rfqId && rfqDetail) {

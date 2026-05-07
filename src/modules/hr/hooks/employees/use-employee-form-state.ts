@@ -64,6 +64,7 @@ export function useEmployeeFormState(id: string | undefined) {
       emergencyContactName: emergencyName,
       emergencyContactPhone: fakePhone(),
       emergencyContactRelation: pickRandom(['Spouse', 'Parent', 'Sibling', 'Partner']),
+      roleId: pickRandom(rolesQuery.data ?? [])?.id || '',
       createAccount: true,
     });
     toast.info('Populated with candidate data.');
