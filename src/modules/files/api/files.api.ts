@@ -38,6 +38,22 @@ export interface FileSearchParams {
   createdTo?: string;
 }
 
+export interface FileUploadPayload {
+  file: File;
+  data: FileUploadInput;
+}
+
+export interface FileUploadProgress {
+  completed: number;
+  total: number;
+  currentFileName?: string;
+}
+
+export interface FileUploadBatchInput {
+  payloads: FileUploadPayload[];
+  onProgress?: (progress: FileUploadProgress) => void;
+}
+
 function parseFolderId(raw: unknown, context: string): string {
   if (typeof raw !== 'string' || !raw) {
     throw new Error(`${context} returned an invalid folder id`);
@@ -201,6 +217,30 @@ export const filesApi = {
     }
 
     return match;
+  },
+
+  async uploadFiles(
+    payloads: FileUploadPayload[],
+    onProgress?: (progress: FileUploadProgress) => void
+  ): Promise<FileItem[]> {
+    const uploadedFiles: FileItem[] = [];
+    const total = payloads.length;
+
+    for (const [index, payload] of payloads.entries()) {
+      onProgress?.({
+        completed: index,
+        total,
+        currentFileName: payload.file.name,
+      });
+      uploadedFiles.push(await this.uploadFile(payload.file, payload.data));
+      onProgress?.({
+        completed: index + 1,
+        total,
+        currentFileName: payload.file.name,
+      });
+    }
+
+    return uploadedFiles;
   },
 
   async getDownloadLink(id: string): Promise<string> {
