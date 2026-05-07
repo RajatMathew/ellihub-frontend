@@ -1,4 +1,5 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
 import { VendorFormContent, VendorFormToolbar } from '@/modules/directory/components/vendors/form';
@@ -11,6 +12,11 @@ export function VendorFormPage() {
   const navigate = useNavigate();
   const state = useVendorFormState(id);
   const { handleSubmit, control } = state.form;
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/vendors/${id}` : undefined,
+    state.vendorQuery.data?.name ?? 'Vendor'
+  );
 
   const { saveVendor, isSubmitting } = useSaveVendor({
     id,

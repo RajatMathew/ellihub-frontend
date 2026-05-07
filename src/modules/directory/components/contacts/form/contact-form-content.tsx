@@ -52,6 +52,7 @@ export function ContactFormContent({
     isEdit,
     primaryVendorId: associations.primaryVendorId,
     primaryGCId: associations.primaryGCId,
+    initialAssociation: associations.initialAssociation,
     onSaved: () => navigate('..', { relative: 'path' }),
   });
 

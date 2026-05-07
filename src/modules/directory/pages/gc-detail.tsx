@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import {
   GCDetailDialogs,
@@ -44,6 +45,11 @@ export function GCDetailPage() {
   const { data: stats } = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
   const activity = useDirectoryActivity('gc', id);
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/general-contractors/${id}` : undefined,
+    gc?.name ?? 'General Contractor'
+  );
 
   if (isLoading) {
     return <DirectoryDetailLoading />;

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   DepartmentDetailDialogs,
   DepartmentDetailLoading,
@@ -28,6 +29,11 @@ export default function DepartmentDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
+
+  useBreadcrumbLabel(
+    id ? `/app/hr/departments/${id}` : undefined,
+    departmentQuery.data?.name ?? 'Department'
+  );
 
   if (departmentQuery.isLoading) {
     return <DepartmentDetailLoading />;

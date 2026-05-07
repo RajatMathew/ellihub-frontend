@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type ReactElement,
+} from 'react';
 
 import {
   AlertTriangle,
@@ -13,245 +21,361 @@ import {
   X,
 } from 'lucide-react';
 
-import { Button } from '@app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
+import { cn } from '@/app/lib/utils';
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
+function formatFileBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
+
   const units = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const size = bytes / Math.pow(1024, i);
-  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const size = bytes / Math.pow(1024, index);
+
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-// ── Blocked extensions (executables, scripts, system files) ──────────
-
 const BLOCKED_EXTENSIONS = new Set([
-  'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif',
-  'vbs', 'vbe', 'js', 'jse', 'wsf', 'wsh', 'ps1',
-  'reg', 'dll', 'sys', 'cpl', 'inf', 'hta', 'lnk',
-  'sh', 'bash', 'csh', 'ksh',
+  'exe',
+  'bat',
+  'cmd',
+  'com',
+  'msi',
+  'scr',
+  'pif',
+  'vbs',
+  'vbe',
+  'js',
+  'jse',
+  'wsf',
+  'wsh',
+  'ps1',
+  'reg',
+  'dll',
+  'sys',
+  'cpl',
+  'inf',
+  'hta',
+  'lnk',
+  'sh',
+  'bash',
+  'csh',
+  'ksh',
 ]);
 
 function getExtension(name: string): string {
   const dotIdx = name.lastIndexOf('.');
+
   return dotIdx > 0 ? name.slice(dotIdx + 1).toLowerCase() : '';
 }
 
-function validateFile(
-  file: File,
-  maxSize?: number,
-): string | null {
+function validateFile(file: File, maxSize?: number): string | null {
   const ext = getExtension(file.name);
+
   if (BLOCKED_EXTENSIONS.has(ext)) {
     return `File type ".${ext}" is not allowed for security reasons.`;
   }
+
   if (maxSize && file.size > maxSize) {
-    return `File is too large. Maximum size is ${formatBytes(maxSize)}.`;
+    return `File is too large. Maximum size is ${formatFileBytes(maxSize)}.`;
   }
+
   return null;
 }
-
-// ── Preview helpers ─────────────────────────────────────────────────
 
 function isImageType(file: File): boolean {
   return file.type.startsWith('image/');
 }
 
+function getFileKey(file: File): string {
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
 
-function FileIconDisplay({ file }: { file: File }) {
+function mergeFiles(currentFiles: File[], incomingFiles: File[]): File[] {
+  const seen = new Set(currentFiles.map(getFileKey));
+  const nextFiles = [...currentFiles];
+
+  for (const file of incomingFiles) {
+    const key = getFileKey(file);
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      nextFiles.push(file);
+    }
+  }
+
+  return nextFiles;
+}
+
+export function FileIconDisplay({
+  file,
+  className,
+}: {
+  file: File;
+  className?: string;
+}) {
   const mime = file.type;
   const ext = getExtension(file.name);
-  const cls = "size-6 text-muted-foreground";
+  const iconClassName = cn('size-6 text-muted-foreground', className);
 
-  if (mime.startsWith('image/')) return <ImageIcon className={cls} />;
-  if (mime.startsWith('video/')) return <FileVideo className={cls} />;
-  if (mime.startsWith('audio/')) return <FileAudio className={cls} />;
-  if (mime === 'application/pdf' || ext === 'pdf') return <FileText className={cls} />;
+  if (mime.startsWith('image/')) return <ImageIcon className={iconClassName} />;
+  if (mime.startsWith('video/')) return <FileVideo className={iconClassName} />;
+  if (mime.startsWith('audio/')) return <FileAudio className={iconClassName} />;
+  if (mime === 'application/pdf' || ext === 'pdf') return <FileText className={iconClassName} />;
   if (
     ['doc', 'docx', 'odt', 'rtf', 'txt', 'md'].includes(ext) ||
     mime.includes('wordprocessing') ||
     mime.includes('msword') ||
     mime.startsWith('text/')
-  )
-    return <FileText className={cls} />;
+  ) {
+    return <FileText className={iconClassName} />;
+  }
   if (
     ['xls', 'xlsx', 'csv', 'ods'].includes(ext) ||
     mime.includes('spreadsheet') ||
     mime.includes('excel')
-  )
-    return <FileSpreadsheet className={cls} />;
+  ) {
+    return <FileSpreadsheet className={iconClassName} />;
+  }
   if (
     ['json', 'xml', 'html', 'css', 'ts', 'tsx', 'jsx', 'py', 'java', 'yml', 'yaml'].includes(ext) ||
     mime.includes('json') ||
     mime.includes('xml')
-  )
-    return <FileCode className={cls} />;
+  ) {
+    return <FileCode className={iconClassName} />;
+  }
 
-  return <FileIcon className={cls} />;
+  return <FileIcon className={iconClassName} />;
 }
 
-// ── Component ───────────────────────────────────────────────────────
+interface FilePreviewProps {
+  file: File;
+}
 
-interface FileDropZoneProps {
-  value: File | null;
-  onChange: (file: File | null) => void;
+function FilePreview({ file }: FilePreviewProps) {
+  const previewUrl = useMemo(() => {
+    if (isImageType(file)) return URL.createObjectURL(file);
+
+    return null;
+  }, [file]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  if (previewUrl) {
+    return (
+      <img
+        src={previewUrl}
+        alt={file.name}
+        className="size-12 shrink-0 rounded-md border object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted">
+      <FileIconDisplay file={file} />
+    </div>
+  );
+}
+
+interface FileDropZoneBaseProps {
   accept?: string;
   maxSize?: number;
   disabled?: boolean;
+  showSelectedPreview?: boolean;
+  className?: string;
 }
 
-export function FileDropZone({
-  value,
-  onChange,
-  accept,
-  maxSize,
-  disabled,
-}: FileDropZoneProps) {
+interface SingleFileDropZoneProps extends FileDropZoneBaseProps {
+  multiple?: false;
+  value: File | null;
+  onChange: (file: File | null) => void;
+}
+
+interface MultipleFileDropZoneProps extends FileDropZoneBaseProps {
+  multiple: true;
+  value: File[];
+  onChange: (files: File[]) => void;
+}
+
+type FileDropZoneProps = SingleFileDropZoneProps | MultipleFileDropZoneProps;
+
+export function FileDropZone(props: SingleFileDropZoneProps): ReactElement;
+export function FileDropZone(props: MultipleFileDropZoneProps): ReactElement;
+export function FileDropZone(props: FileDropZoneProps): ReactElement {
+  const {
+    accept,
+    className,
+    disabled = false,
+    maxSize,
+    showSelectedPreview = true,
+  } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const tryAcceptFile = useCallback(
-    (file: File) => {
-      const err = validateFile(file, maxSize);
-      if (err) {
-        setError(err);
-        return;
+  const selectedFiles = props.multiple ? props.value : props.value ? [props.value] : [];
+  const isMultiple = props.multiple === true;
+  const hasSelectedFiles = selectedFiles.length > 0;
+  const shouldShowDropZone = isMultiple || !hasSelectedFiles || !showSelectedPreview;
+
+  function commitFiles(files: File[]) {
+    if (files.length === 0) return;
+
+    const acceptedFiles: File[] = [];
+    const rejectedMessages: string[] = [];
+
+    for (const file of files) {
+      const validationError = validateFile(file, maxSize);
+
+      if (validationError) {
+        rejectedMessages.push(`${file.name}: ${validationError}`);
+      } else {
+        acceptedFiles.push(file);
       }
+    }
+
+    if (rejectedMessages.length > 0) {
+      setError(
+        rejectedMessages.length === 1
+          ? rejectedMessages[0]
+          : `${rejectedMessages.length} files could not be added. ${rejectedMessages[0]}`
+      );
+    } else {
       setError(null);
-      onChange(file);
-    },
-    [onChange, maxSize],
-  );
+    }
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragOver(false);
-      if (disabled) return;
-      const file = e.dataTransfer.files[0];
-      if (file) tryAcceptFile(file);
-    },
-    [tryAcceptFile, disabled],
-  );
+    if (acceptedFiles.length === 0) return;
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      if (!disabled) setIsDragOver(true);
-    },
-    [disabled],
-  );
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) tryAcceptFile(file);
-      e.target.value = '';
-    },
-    [tryAcceptFile],
-  );
-
-  const handleRemove = useCallback(() => {
-    setError(null);
-    onChange(null);
-  }, [onChange]);
-
-  // Image preview URL
-  const previewUrl = useMemo(() => {
-    if (value && isImageType(value)) return URL.createObjectURL(value);
-    return null;
-  }, [value]);
-
-  // Selected file preview
-  if (value) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
-          {/* Preview thumbnail or icon */}
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt={value.name}
-              className="size-12 shrink-0 rounded-md object-cover border"
-              onLoad={() => {
-                // Revoke on unmount would be ideal, but onLoad is fine for short-lived dialogs
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center size-12 shrink-0 rounded-md bg-muted">
-              <FileIconDisplay file={value} />
-            </div>
-          )}
-
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{value.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatBytes(value.size)}
-              {value.type && ` · ${value.type}`}
-            </p>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="size-7 p-0 shrink-0"
-            type="button"
-            disabled={disabled}
-            onClick={handleRemove}
-          >
-            <X className="size-3.5" />
-          </Button>
-        </div>
-      </div>
-    );
+    if (props.multiple) {
+      props.onChange(mergeFiles(props.value, acceptedFiles));
+    } else {
+      props.onChange(acceptedFiles[0] ?? null);
+    }
   }
 
-  // Drop zone
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    if (disabled) return;
+
+    commitFiles(Array.from(e.dataTransfer.files));
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+
+    if (!disabled) setIsDragOver(true);
+  }
+
+  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDragOver(false);
+  }
+
+  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
+    commitFiles(Array.from(e.target.files ?? []));
+    e.target.value = '';
+  }
+
+  function handleRemove(index: number) {
+    setError(null);
+
+    if (props.multiple) {
+      props.onChange(props.value.filter((_, currentIndex) => currentIndex !== index));
+    } else {
+      props.onChange(null);
+    }
+  }
+
   return (
-    <div className="space-y-2">
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => !disabled && inputRef.current?.click()}
-        className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
-          disabled
-            ? 'cursor-not-allowed opacity-50'
-            : isDragOver
-              ? 'cursor-pointer border-primary bg-primary/5'
-              : error
-                ? 'cursor-pointer border-destructive/50'
-                : 'cursor-pointer border-muted-foreground/25 hover:border-primary/50'
-        }`}
-      >
-        <FileUp
-          className={`size-10 ${isDragOver ? 'text-primary' : 'text-muted-foreground/50'}`}
-        />
-        <div className="text-center">
-          <p className="text-sm font-medium">
-            {isDragOver ? 'Drop file here' : 'Drag & drop a file here'}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
+    <div className={cn('space-y-2', className)}>
+      {shouldShowDropZone && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => {
+            if (!disabled) inputRef.current?.click();
+          }}
+          className={cn(
+            'flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+            disabled
+              ? 'cursor-not-allowed opacity-50'
+              : isDragOver
+                ? 'cursor-pointer border-primary bg-primary/5'
+                : error
+                  ? 'cursor-pointer border-destructive/50'
+                  : 'cursor-pointer border-muted-foreground/25 hover:border-primary/50'
+          )}
+          aria-disabled={disabled}
+        >
+          <FileUp className={cn('size-10', isDragOver ? 'text-primary' : 'text-muted-foreground/50')} />
+          <div>
+            <p className="text-sm font-medium">
+              {isDragOver
+                ? isMultiple
+                  ? 'Drop files here'
+                  : 'Drop file here'
+                : isMultiple
+                  ? hasSelectedFiles
+                    ? 'Drop more files here'
+                    : 'Drag & drop files here'
+                  : 'Drag & drop a file here'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">or click to browse</p>
+          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            accept={accept}
+            multiple={isMultiple}
+            disabled={disabled}
+            onChange={handleInputChange}
+          />
         </div>
-        <input
-          ref={inputRef}
-          type="file"
-          className="hidden"
-          accept={accept}
-          onChange={handleInputChange}
-        />
-      </div>
+      )}
+
+      {showSelectedPreview && hasSelectedFiles && (
+        <div className="space-y-2">
+          {selectedFiles.map((file, index) => (
+            <div
+              key={`${getFileKey(file)}-${index}`}
+              className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3"
+            >
+              <FilePreview file={file} />
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileBytes(file.size)}
+                  {file.type && ` · ${file.type}`}
+                </p>
+              </div>
+
+              <Button
+                variant="ghost"
+                mode="icon"
+                size="sm"
+                type="button"
+                disabled={disabled}
+                aria-label={`Remove ${file.name}`}
+                onClick={() => handleRemove(index)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
-        <div className="flex items-center gap-2 text-destructive text-xs">
+        <div className="flex items-center gap-2 text-xs text-destructive">
           <AlertTriangle className="size-3.5 shrink-0" />
           <span>{error}</span>
         </div>

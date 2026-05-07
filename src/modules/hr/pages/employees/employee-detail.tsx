@@ -5,6 +5,7 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   EmployeeDetailDialogs,
   EmployeeDetailLoading,
@@ -35,6 +36,8 @@ export default function EmployeeDetailPage() {
   const deleteMutation = useDeleteEmployeeMutation();
   const removeDocumentMutation = useRemoveEmployeeDocumentMutation();
   const activity = useActivityPanelItems('employee', id);
+
+  useBreadcrumbLabel(id ? `/app/hr/employees/${id}` : undefined, employee?.name ?? 'Employee');
 
   if (isLoading) {
     return <EmployeeDetailLoading />;
