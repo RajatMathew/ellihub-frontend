@@ -4,6 +4,8 @@ import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
+    AddPoQuickBooksPaymentSchema,
+    AddPoQuickBooksPaymentsSchema,
     AddPoAttachmentSchema,
     PoCreateSchema,
     PoUpdateSchema,
@@ -33,6 +35,52 @@ app.get('/:id', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
     const po = await PoService.getPurchaseOrder(id);
     return success(c, po);
 });
+
+app.get('/:id/payments', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const payments = await PoService.getQuickBooksPayments(id);
+    return success(c, payments);
+});
+
+app.get(
+    '/:id/quickbooks-payment-options',
+    requirePermission({ purchaseOrder: ['read'] }),
+    async (c) => {
+        const id = c.req.param('id');
+        const options = await PoService.getQuickBooksPaymentOptions(id);
+        return success(c, options);
+    }
+);
+
+app.post(
+    '/:id/payments/quickbooks/bulk',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', AddPoQuickBooksPaymentsSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const payments = await PoService.addQuickBooksPayments(
+            id,
+            c.req.valid('json'),
+            c.get('user')!.id
+        );
+        return success(c, payments, 201);
+    }
+);
+
+app.post(
+    '/:id/payments/quickbooks',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', AddPoQuickBooksPaymentSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        const payment = await PoService.addQuickBooksPayment(
+            id,
+            c.req.valid('json'),
+            c.get('user')!.id
+        );
+        return success(c, payment, 201);
+    }
+);
 
 app.post(
     '/',
@@ -124,6 +172,19 @@ app.patch(
     async (c) => {
         const data = c.req.valid('json');
         await PoService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+app.delete(
+    '/:id/payments/:paymentId',
+    requirePermission({ purchaseOrder: ['update'] }),
+    async (c) => {
+        const id = c.req.param('id');
+        const paymentId = c.req.param('paymentId');
+
+        await PoService.removeQuickBooksPayment(id, paymentId, c.get('user')!.id);
+
         return success(c, null);
     }
 );
