@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { Employee } from '@/app/api/employees.api';
+import type { Employee } from '@/modules/hr/schemas/employee.schema';
 import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface UseEmployeeOptionsParams {

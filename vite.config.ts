@@ -81,7 +81,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://elli-api-dev.zubble.co',
+        target: 'https://elli-api-test.zubble.co',
         changeOrigin: true,
       },
     },
