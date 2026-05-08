@@ -2,13 +2,11 @@ import { useMemo } from 'react';
 
 import { activityLogApi, type ListActivityLogParams } from '@/app/api/activity-log.api';
 import type { ActivityPanelItem } from '@/app/components/activity-panel';
+import { activityLogKeys } from '@/app/hooks/activity-log.keys';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clock, Pencil, PlusCircle, Trash2 } from 'lucide-react';
 
-export const activityLogKeys = {
-  all: ['activity-log'] as const,
-  list: (params?: ListActivityLogParams) => [...activityLogKeys.all, 'list', params] as const,
-};
+export { activityLogKeys };
 
 export function useActivityLogQuery(params?: ListActivityLogParams) {
   return useQuery({

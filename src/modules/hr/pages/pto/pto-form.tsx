@@ -1,5 +1,7 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { PTOFormContent, PTOFormLoading, PTOFormToolbar } from '@/modules/hr/components/pto/form';
+import { getPTOEmployeeName, getPTOTypeLabel } from '@/modules/hr/components/pto/shared';
 import { usePTOFormState } from '@/modules/hr/hooks/pto/use-pto-form-state';
 import { useSavePTO } from '@/modules/hr/hooks/pto/use-save-pto';
 import { useParams } from 'react-router-dom';
@@ -17,6 +19,14 @@ export default function PTOFormPage() {
   } = usePTOFormState(id);
   const { savePTO, isPending } = useSavePTO({ id, isEdit });
   const isSubmitting = form.formState.isSubmitting || isPending;
+  const ptoBreadcrumbLabel = ptoQuery.data
+    ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
+    : undefined;
+
+  useBreadcrumbLabel(
+    id ? `/app/hr/pto/${id}` : undefined,
+    ptoBreadcrumbLabel ?? 'PTO Request'
+  );
 
   if (isEdit && ptoQuery.isLoading) {
     return <PTOFormLoading />;

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import {
@@ -44,6 +45,8 @@ export function VendorDetailPage() {
   const { data: vendor, isLoading, isError, refetch } = useVendorDetailQuery(id ?? '');
   const deleteMutation = useDeleteVendorMutation();
   const activity = useDirectoryActivity('vendor', id);
+
+  useBreadcrumbLabel(id ? `/app/directory/vendors/${id}` : undefined, vendor?.name ?? 'Vendor');
 
   if (isLoading) {
     return <DirectoryDetailLoading />;

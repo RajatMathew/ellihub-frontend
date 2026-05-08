@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { activityLogKeys } from '@/app/hooks/activity-log.keys';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const defaultOptions = {
   defaultOptions: {
@@ -12,8 +13,21 @@ const defaultOptions = {
   },
 };
 
+function createQueryClient() {
+  const queryClient = new QueryClient({
+    ...defaultOptions,
+    mutationCache: new MutationCache({
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
+      },
+    }),
+  });
+
+  return queryClient;
+}
+
 export function QueryProvider({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient(defaultOptions));
+  const [queryClient] = useState(createQueryClient);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

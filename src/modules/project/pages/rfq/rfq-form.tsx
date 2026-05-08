@@ -47,7 +47,7 @@ function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]
   return {
     title: fakeRFQTitle(),
     description: fakeProjectDescription(),
-    typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
+    typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : ''
     bidDeadline: deadline.toISOString().slice(0, 10),
     biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
     deliverables: fakeRFQDeliverables(units),
@@ -335,8 +335,12 @@ export default function RFQFormPage() {
           append={append}
           remove={remove}
           costCodeOptions={[]}
-          unitOptions={units?.map((u) => ({ value: u.id, label: u.label || u.name || u.id }))}
+          unitOptions={(units ?? []).map((u) => ({
+            value: u.id,
+            label: u.label || u.name || u.id,
+          }))}
           fieldNames={{ unit: 'unitId' }}
+          allowCustomUnit={false}
           hideCostCode
           hideUnitPrice
           defaultItem={{ description: '', quantity: 0, unitId: '' }}

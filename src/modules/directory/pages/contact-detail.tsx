@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import {
   ContactDetailDialogs,
@@ -32,6 +33,8 @@ export function ContactDetailPage() {
 
   const { data: contact, isLoading, isError, refetch } = useContactDetailQuery(id ?? '');
   const deleteMutation = useDeleteContactMutation();
+
+  useBreadcrumbLabel(id ? `/app/directory/contacts/${id}` : undefined, contact?.fullName ?? 'Contact');
 
   const roleName = contact?.professionalRole?.label ?? contact?.professionalRole?.name ?? null;
   const { allMergedLinks, primaryCompanyName } = useContactEntityLinks(contact);

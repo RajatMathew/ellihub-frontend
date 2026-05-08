@@ -24,6 +24,15 @@ export function ProjectSidebarSwitcher() {
   const projects = data?.data ?? [];
 
   const currentProject = projects.find((p) => p.id === projectId);
+  const getProjectDivisionLabel = (project: (typeof projects)[number]) => {
+    const { division } = project;
+
+    if (typeof division === 'string') return division;
+
+    return division?.label || division?.name || 'N/A';
+  };
+  const getProjectSubtitle = (project: (typeof projects)[number]) =>
+    [project.jobNumber, getProjectDivisionLabel(project)].filter(Boolean).join(' \u00b7 ');
 
   const handleSelect = (id: string) => {
     if (id === projectId) {
@@ -35,20 +44,20 @@ export function ProjectSidebarSwitcher() {
   };
 
   return (
-    <div className="px-5">
+    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full justify-between bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary px-3 h-auto py-2"
+            className="grid h-auto w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-hidden bg-primary/10 px-3 py-2 text-primary hover:bg-primary/20 hover:text-primary"
           >
-            <div className="text-left min-w-0">
-              <div className="text-sm font-semibold truncate">
+            <div className="min-w-0 overflow-hidden text-left">
+              <div className="truncate text-sm font-semibold" title={currentProject?.name}>
                 {currentProject?.name ?? 'Select Project'}
               </div>
               {currentProject && (
-                <div className="text-xs opacity-75 truncate">
-                  {currentProject.jobNumber} &middot; {typeof currentProject.division === 'string' ? currentProject.division : (currentProject.division?.label || currentProject.division?.name || 'N/A')}
+                <div className="truncate text-xs opacity-75" title={getProjectSubtitle(currentProject)}>
+                  {getProjectSubtitle(currentProject)}
                 </div>
               )}
             </div>
@@ -66,16 +75,23 @@ export function ProjectSidebarSwitcher() {
                     key={project.id}
                     value={project.id}
                     keywords={[
-                      project.name, 
-                      project.jobNumber ?? '', 
-                      typeof project.division === 'string' ? project.division : (project.division?.label || project.division?.name || '')
+                      project.name,
+                      project.jobNumber ?? '',
+                      getProjectDivisionLabel(project),
                     ]}
                     onSelect={() => handleSelect(project.id)}
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto]"
+                    title={`${project.name} - ${getProjectSubtitle(project)}`}
                   >
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{project.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {project.jobNumber} &middot; {typeof project.division === 'string' ? project.division : (project.division?.label || project.division?.name || 'N/A')}
+                    <div className="min-w-0 overflow-hidden">
+                      <div className="truncate text-sm font-medium" title={project.name}>
+                        {project.name}
+                      </div>
+                      <div
+                        className="truncate text-xs text-muted-foreground"
+                        title={getProjectSubtitle(project)}
+                      >
+                        {getProjectSubtitle(project)}
                       </div>
                     </div>
                     {project.id === projectId && <CommandCheck />}

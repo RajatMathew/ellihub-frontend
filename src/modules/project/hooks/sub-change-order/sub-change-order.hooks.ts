@@ -1,13 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import { type AxiosError } from 'axios';
-import { toast } from 'sonner';
-
-import { toastApiError as showApiError } from '@/app/lib/toast-api-error';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { scoApi } from '@/modules/project/api/sub-change-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -17,37 +8,14 @@ import type {
   SCOLineItemInput,
   UpdateSCOInput,
 } from '@/modules/project/schemas/sub-change-order';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 function invalidateSCOQueries(queryClient: QueryClient, scoId?: string) {
   return invalidateProjectQueries(
     queryClient,
-    scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all],
+    scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all]
   );
-}
-
-/* ---- error helper ---- */
-
-function getApiErrorMessage(error: unknown, fallback: string): string {
-  const axiosErr = error as AxiosError<{
-    message?: string;
-    details?: { details?: { path?: string[]; message?: string }[] };
-  }>;
-  const data = axiosErr?.response?.data;
-  if (data?.details?.details?.length) {
-    const msgs = data.details.details
-      .map((d) => {
-        const field = d.path?.join('.') ?? '';
-        return field ? `${field}: ${d.message}` : d.message;
-      })
-      .filter(Boolean);
-    if (msgs.length) return msgs.join('\n');
-  }
-  if (data?.message) return data.message;
-  return fallback;
-}
-
-function toastApiError(error: unknown, fallback: string) {
-  showApiError(error, getApiErrorMessage(error, fallback));
 }
 
 /* ---- queries ---- */
@@ -169,8 +137,7 @@ export const useApproveSCOMutation = () => {
 export const useRejectSCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { reason: string } }) =>
-      scoApi.reject(id, data),
+    mutationFn: ({ id, data }: { id: string; data: { reason: string } }) => scoApi.reject(id, data),
     onSuccess: async (_, { id }) => {
       await invalidateSCOQueries(qc, id);
       toast.success('SCO rejected.');
