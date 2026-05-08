@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fakeCity, fakeContractNumber, fakeJobNumber, fakeProjectDescription, fakeProjectName, fakeState, fakeStreetAddress, fakeZipCode, randInt } from '@/lib/fake-data';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
@@ -208,17 +209,17 @@ export default function ProjectForm() {
   /* ---- Submit ---- */
 
   const fillRandom = () => {
-    const randomId = Math.floor(Math.random() * 10000);
+    const name = fakeProjectName();
     const start = new Date();
     start.setDate(start.getDate() + Math.floor(Math.random() * 30));
     const end = new Date(start);
     end.setMonth(end.getMonth() + 12);
 
     reset({
-      name: `Random Project ${randomId}`,
-      description: 'Generic project description for testing purposes.',
-      jobNumber: `P-2024-${randomId}`,
-      contractNumber: `C-CON-${randomId}`,
+      name,
+      description: fakeProjectDescription(),
+      jobNumber: fakeJobNumber(),
+      contractNumber: fakeContractNumber(),
       fieldwireProjectId: '',
       fieldwireProjectName: '',
       stageId: stageOptions[Math.floor(Math.random() * stageOptions.length)]?.value || '',
@@ -228,11 +229,11 @@ export default function ProjectForm() {
       divisionId: divisionOptions[Math.floor(Math.random() * divisionOptions.length)]?.value || '',
       gcId: gcOptions[Math.floor(Math.random() * gcOptions.length)]?.value || '',
       leadPMId: pmOptions[Math.floor(Math.random() * pmOptions.length)]?.value || '',
-      streetAddress: `${randomId} Test Parkway`,
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      contractValue: Math.floor(Math.random() * 1000000) + 50000,
+      streetAddress: fakeStreetAddress(),
+      city: fakeCity(),
+      state: fakeState(),
+      zipCode: fakeZipCode(),
+      contractValue: randInt(50000, 1050000),
       contractType: 'Lump Sum',
       retainagePercent: 10,
       targetBudgetPercent: 8,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useAppLookupsQuery } from '@/app/hooks/use-lookup';
-import { EMPLOYEE_SAMPLE_NAMES } from '@/modules/hr/constants/employees/employee-form.constants';
+import { fakeContactName, fakeEmployeeEmail, fakePhone, fakeStreetAddress, pickRandom } from '@/lib/fake-data';
 import { useEmployeeDetailQuery } from '@/modules/hr/hooks/employees.hooks';
 import {
   createEmployeeInputSchema,
@@ -52,19 +52,19 @@ export function useEmployeeFormState(id: string | undefined) {
   }, [employeeQuery.data, form, isEdit]);
 
   const fillSample = () => {
-    const selectedName =
-      EMPLOYEE_SAMPLE_NAMES[Math.floor(Math.random() * EMPLOYEE_SAMPLE_NAMES.length)];
-    const emailPrefix = selectedName.toLowerCase().replace(' ', '.');
+    const selectedName = fakeContactName();
+    const emergencyName = fakeContactName();
 
     form.reset({
       name: selectedName,
-      email: `${emailPrefix}@contractor-corp.com`,
-      phoneNumber: `(555) 012-${Math.floor(1000 + Math.random() * 9000)}`,
-      address: `${Math.floor(100 + Math.random() * 900)} Construction Way, Building B`,
+      email: fakeEmployeeEmail(selectedName),
+      phoneNumber: fakePhone(),
+      address: fakeStreetAddress(),
       startDate: new Date().toISOString().split('T')[0],
-      emergencyContactName: 'Jane Smith',
-      emergencyContactPhone: '(555) 012-9999',
-      emergencyContactRelation: 'Spouse',
+      emergencyContactName: emergencyName,
+      emergencyContactPhone: fakePhone(),
+      emergencyContactRelation: pickRandom(['Spouse', 'Parent', 'Sibling', 'Partner']),
+      roleId: pickRandom(rolesQuery.data ?? [])?.id || '',
       createAccount: true,
     });
     toast.info('Populated with candidate data.');

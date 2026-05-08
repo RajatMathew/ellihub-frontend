@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { DEPARTMENT_SAMPLE_NAMES } from '@/modules/hr/constants/departments/department-form.constants';
+import { fakeDepartmentDescription, fakeDepartmentName } from '@/lib/fake-data';
 import { useDepartmentDetailQuery } from '@/modules/hr/hooks/departments.hooks';
 import {
   createDepartmentInputSchema,
@@ -33,13 +33,11 @@ export function useDepartmentFormState(id: string | undefined) {
   }, [departmentQuery.data, form, isEdit]);
 
   const fillSample = () => {
-    const selectedName =
-      DEPARTMENT_SAMPLE_NAMES[Math.floor(Math.random() * DEPARTMENT_SAMPLE_NAMES.length)];
-    const suffix = Math.floor(Math.random() * 1000);
+    const selectedName = fakeDepartmentName();
 
     form.reset({
-      name: `${selectedName} ${suffix}`,
-      description: `Focused responsibilities for the ${selectedName} team, organized around clear ownership and measurable outcomes.`,
+      name: selectedName,
+      description: fakeDepartmentDescription(selectedName),
     });
     toast.info('Form filled with sample department data.');
   };

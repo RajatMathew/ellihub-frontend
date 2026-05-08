@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { fakeInvoiceNumber } from '@/lib/fake-data';
+
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -164,7 +166,7 @@ export function InvoiceFormPage() {
       projectId,
       vendorId: randomPoData?.vendorId ?? vendorOptions[0]?.value ?? '',
       purchaseOrderId: randomPo?.value ?? '',
-      invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
+      invoiceNumber: fakeInvoiceNumber(),
       invoiceDate: new Date().toISOString().slice(0, 10),
       dueDate: dueDate.toISOString().slice(0, 10),
       totalAmount: subtotal + tax,
