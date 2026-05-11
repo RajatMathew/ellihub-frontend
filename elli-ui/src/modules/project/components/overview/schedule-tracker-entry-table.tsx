@@ -1,0 +1,117 @@
+import { CardTable } from '@/app/components/ui/card';
+import { Table, TableBody } from '@/app/components/ui/table';
+import { ScheduleTrackerEmptyRow } from '@/modules/project/components/overview/schedule-tracker-empty-row';
+import { ScheduleTrackerFormRow } from '@/modules/project/components/overview/schedule-tracker-form-row';
+import { ScheduleTrackerLoading } from '@/modules/project/components/overview/schedule-tracker-loading';
+import { ScheduleTrackerReadRow } from '@/modules/project/components/overview/schedule-tracker-read-row';
+import { ScheduleTrackerTableHeader } from '@/modules/project/components/overview/schedule-tracker-table-header';
+import type {
+  ScheduleTrackerDraft,
+  ScheduleTrackerEditingEntry,
+  ScheduleTrackerUploadTarget,
+} from '@/modules/project/components/overview/schedule-tracker-types';
+import type {
+  ProjectScheduleEntry,
+  ScheduleFile,
+} from '@/modules/project/schemas/project-schedule.schema';
+
+interface ScheduleTrackerEntryTableProps {
+  entries: ProjectScheduleEntry[];
+  isLoading: boolean;
+  isAdding: boolean;
+  editingEntry: ScheduleTrackerEditingEntry | null;
+  newEntry: ScheduleTrackerDraft;
+  parentFolderId?: string;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+  onAttach: (target: Exclude<ScheduleTrackerUploadTarget, null>) => void;
+  onCancelAdd: () => void;
+  onCancelEdit: () => void;
+  onChangeAdd: (draft: ScheduleTrackerDraft) => void;
+  onChangeEdit: (entryId: string, draft: ScheduleTrackerDraft) => void;
+  onDelete: (entryId: string) => void;
+  onDownload: (file: ScheduleFile) => void;
+  onEdit: (entry: ProjectScheduleEntry) => void;
+  onSaveAdd: () => void;
+  onSaveEdit: () => void;
+}
+
+export function ScheduleTrackerEntryTable({
+  entries,
+  isLoading,
+  isAdding,
+  editingEntry,
+  newEntry,
+  parentFolderId,
+  isCreating,
+  isUpdating,
+  isDeleting,
+  onAttach,
+  onCancelAdd,
+  onCancelEdit,
+  onChangeAdd,
+  onChangeEdit,
+  onDelete,
+  onDownload,
+  onEdit,
+  onSaveAdd,
+  onSaveEdit,
+}: ScheduleTrackerEntryTableProps) {
+  if (isLoading) {
+    return (
+      <CardTable>
+        <ScheduleTrackerLoading />
+      </CardTable>
+    );
+  }
+
+  return (
+    <CardTable>
+      <div className="overflow-x-auto">
+        <Table className="min-w-full">
+          <ScheduleTrackerTableHeader />
+          <TableBody>
+            {entries.map((entry) =>
+              editingEntry?.id === entry.id ? (
+                <ScheduleTrackerFormRow
+                  key={entry.id}
+                  draft={editingEntry.draft}
+                  isSaving={isUpdating}
+                  parentFolderId={parentFolderId}
+                  onAttach={() => onAttach('edit')}
+                  onCancel={onCancelEdit}
+                  onChange={(draft) => onChangeEdit(entry.id, draft)}
+                  onSave={onSaveEdit}
+                />
+              ) : (
+                <ScheduleTrackerReadRow
+                  key={entry.id}
+                  entry={entry}
+                  isDeleting={isDeleting}
+                  onDelete={onDelete}
+                  onDownload={onDownload}
+                  onEdit={onEdit}
+                />
+              ),
+            )}
+
+            {isAdding && (
+              <ScheduleTrackerFormRow
+                draft={newEntry}
+                isSaving={isCreating}
+                parentFolderId={parentFolderId}
+                onAttach={() => onAttach('add')}
+                onCancel={onCancelAdd}
+                onChange={onChangeAdd}
+                onSave={onSaveAdd}
+              />
+            )}
+
+            {entries.length === 0 && !isAdding && <ScheduleTrackerEmptyRow />}
+          </TableBody>
+        </Table>
+      </div>
+    </CardTable>
+  );
+}

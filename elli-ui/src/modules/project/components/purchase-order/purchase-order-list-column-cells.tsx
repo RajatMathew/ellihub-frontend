@@ -1,0 +1,190 @@
+import { MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import {
+  PO_STATUS_BADGE_VARIANTS,
+  PO_STATUS_LABELS,
+} from '@/modules/project/constants/purchase-order';
+import type { POListItem } from '@/modules/project/schemas/purchase-order';
+
+import {
+  formatOptionalPurchaseOrderCurrency,
+  formatOptionalPurchaseOrderDate,
+  formatPurchaseOrderPaymentTerms,
+  getPurchaseOrderRfqLabel,
+  getPurchaseOrderTradeCategoryLabel,
+  getPurchaseOrderVendorName,
+} from './purchase-order-list-utils';
+
+export function PurchaseOrderNumberCell({ po }: { po: POListItem }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <Link to={`${po.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
+        {po.poNumber ?? '-'}
+      </Link>
+      <span className="line-clamp-1 text-2sm text-muted-foreground">
+        {po.description ?? '-'}
+      </span>
+    </div>
+  );
+}
+
+export function PurchaseOrderVendorCell({ po }: { po: POListItem }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="line-clamp-1 text-sm font-medium text-foreground">
+        {getPurchaseOrderVendorName(po)}
+      </span>
+      {po.vendor?.paymentTerms && (
+        <span className="text-2sm text-muted-foreground">
+          {formatPurchaseOrderPaymentTerms(po.vendor.paymentTerms)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function PurchaseOrderRfqCell({
+  po,
+  projectId,
+}: {
+  po: POListItem;
+  projectId: string;
+}) {
+  const rfqLabel = getPurchaseOrderRfqLabel(po);
+
+  if (!po.rfqId) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <Link
+      to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
+      className="font-mono text-xs text-foreground hover:text-primary"
+      title={rfqLabel ?? po.rfqId}
+    >
+      {rfqLabel ?? po.rfqId}
+    </Link>
+  );
+}
+
+export function PurchaseOrderTradeCategoryCell({
+  po,
+  fallback,
+}: {
+  po: POListItem;
+  fallback?: string;
+}) {
+  if (!po.tradeCategory && !po.tradeCategoryId) {
+    return <span className="text-sm text-muted-foreground">-</span>;
+  }
+
+  return (
+    <Badge variant="primary" appearance="outline" size="sm">
+      {getPurchaseOrderTradeCategoryLabel(po, fallback)}
+    </Badge>
+  );
+}
+
+export function PurchaseOrderStatusCell({ po }: { po: POListItem }) {
+  return (
+    <Badge
+      variant={PO_STATUS_BADGE_VARIANTS[po.status] ?? 'primary'}
+      appearance="outline"
+      size="sm"
+    >
+      {PO_STATUS_LABELS[po.status] ?? po.status}
+    </Badge>
+  );
+}
+
+export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
+  return (
+    <div className="flex flex-col gap-0.5 text-right">
+      <span className="text-sm font-medium text-foreground">
+        {formatOptionalPurchaseOrderCurrency(po.total)}
+      </span>
+      <span className="text-2sm text-muted-foreground">
+        Subtotal {formatOptionalPurchaseOrderCurrency(po.subtotal)}
+      </span>
+      <span className="text-2sm text-muted-foreground">
+        Tax {formatOptionalPurchaseOrderCurrency(po.taxAmount)}
+      </span>
+      <span className="text-2sm text-muted-foreground">
+        {formatPurchaseOrderPaymentTerms(po.paymentTerms)}
+      </span>
+    </div>
+  );
+}
+
+export function PurchaseOrderTimelineCell({ po }: { po: POListItem }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-sm text-foreground">
+        Expected: {formatOptionalPurchaseOrderDate(po.expectedDate)}
+      </span>
+      <span className="text-2sm text-muted-foreground">
+        Delivered: {formatOptionalPurchaseOrderDate(po.deliveryDate)}
+      </span>
+    </div>
+  );
+}
+
+export function PurchaseOrderCreatedAtCell({ po }: { po: POListItem }) {
+  return (
+    <span className="text-sm text-foreground">
+      {formatOptionalPurchaseOrderDate(po.createdAt)}
+    </span>
+  );
+}
+
+export function PurchaseOrderActionsCell({
+  po,
+  onCancel,
+}: {
+  po: POListItem;
+  onCancel: (po: POListItem) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          mode="icon"
+          size="sm"
+          className="size-7"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal className="size-4" />
+          <span className="sr-only">Actions</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuItem asChild>
+          <Link to={`${po.id}`}>View</Link>
+        </DropdownMenuItem>
+        {po.status === 'DRAFT' && (
+          <DropdownMenuItem asChild>
+            <Link to={`${po.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {po.status !== 'CANCELLED' && (
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={() => onCancel(po)}
+          >
+            Cancel
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
