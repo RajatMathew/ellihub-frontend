@@ -65,7 +65,7 @@ services:
     networks:
       - elli_network
 
-  q-nginx:
+  nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
