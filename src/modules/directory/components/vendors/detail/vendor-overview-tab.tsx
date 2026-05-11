@@ -19,7 +19,7 @@ interface VendorOverviewTabProps {
 export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) {
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
         <VendorFinancialCard />
         <VendorInfoCard vendor={vendor} />
       </div>
@@ -32,7 +32,7 @@ export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) 
         </CardHeader>
         <CardContent>
           {contacts.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
               {contacts.map((contact) => (
                 <div key={contact.id} className="rounded-lg border border-border p-4">
                   <ContactCard
@@ -67,7 +67,7 @@ function VendorFinancialCard() {
       <CardContent className="space-y-4 pt-5">
         {['Total Committed', 'Total Paid', 'Retainage Held', 'Current Balance'].map((label) => (
           <div key={label}>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-start justify-between gap-4">
               <span className="text-sm text-muted-foreground">{label}</span>
               <span className="text-sm font-semibold text-muted-foreground">-</span>
             </div>
@@ -91,29 +91,29 @@ function VendorInfoCard({ vendor }: { vendor: VendorDetail }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
           <span className="text-sm text-muted-foreground">Payment Terms</span>
-          <Badge variant="secondary" size="sm">
+          <Badge variant="secondary" size="sm" className="min-w-0 break-words text-right">
             {vendor.paymentTerms ? PAYMENT_TERMS_LABELS[vendor.paymentTerms] : '-'}
           </Badge>
         </div>
         <Separator />
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
           <span className="text-sm text-muted-foreground">Retainage %</span>
           <Badge variant="secondary" size="sm">
             -
           </Badge>
         </div>
         <Separator />
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
           <span className="text-sm text-muted-foreground">Default Status</span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 text-right">
             <span
               className={`size-2 rounded-full ${
                 VENDOR_STATUS_COLORS[vendor.status] ?? 'bg-muted-foreground'
               }`}
             />
-            <span className="text-sm font-medium">
+            <span className="break-words text-sm font-medium">
               {VENDOR_STATUS_LABELS[vendor.status] ?? vendor.status}
             </span>
           </div>

@@ -85,18 +85,18 @@ export default function PTODetailPage() {
   const isDecisionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <PTODetailToolbar pto={pto} onDelete={() => setDeleteOpen(true)} />
 
-      <div className="grid grid-cols-1 gap-6 pt-6 lg:grid-cols-4">
-        <div className="space-y-6 lg:col-span-3">
+      <div className="grid min-w-0 grid-cols-1 gap-6 pt-6 lg:grid-cols-4">
+        <div className="min-w-0 space-y-6 lg:col-span-3">
           <PTORequestInfoCard pto={pto} />
           {isPending && (
             <PTODecisionCard isPending={isDecisionPending} onDecision={handleDecision} />
           )}
         </div>
 
-        <div className="space-y-6 lg:col-span-1">
+        <div className="min-w-0 space-y-6 lg:col-span-1">
           <PTOEmployeeCard pto={pto} />
           <PTOHistoryCard pto={pto} />
         </div>

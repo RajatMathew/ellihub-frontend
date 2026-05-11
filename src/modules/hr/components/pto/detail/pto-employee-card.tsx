@@ -16,7 +16,7 @@ export function PTOEmployeeCard({ pto }: PTOEmployeeCardProps) {
           Employee Details
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 p-4">
+      <CardContent className="min-w-0 space-y-4 p-4">
         <SidebarField label="Staff Member">{pto.employee?.name ?? '-'}</SidebarField>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
           <SidebarField label="Department">{pto.employee?.department?.name ?? '-'}</SidebarField>
@@ -31,11 +31,11 @@ export function PTOEmployeeCard({ pto }: PTOEmployeeCardProps) {
 
 function SidebarField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="border-b border-border pb-3 last:border-b-0 last:pb-0">
+    <div className="min-w-0 border-b border-border pb-3 last:border-b-0 last:pb-0">
       <span className="mb-0.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <div className="truncate text-sm font-bold uppercase text-foreground">{children}</div>
+      <div className="break-words text-sm font-bold uppercase text-foreground">{children}</div>
     </div>
   );
 }

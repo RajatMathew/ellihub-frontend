@@ -43,7 +43,7 @@ export function GCDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to="../.." relative="path" className="hover:text-foreground">
               Directory
@@ -53,7 +53,7 @@ export function GCDetailToolbar({
               General Contractors
             </Link>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <ToolbarPageTitle>{gc.name}</ToolbarPageTitle>
             <Badge
               variant={typeCode ? (GC_TYPE_BADGE_VARIANTS[typeCode] ?? 'primary') : 'primary'}
@@ -74,8 +74,8 @@ export function GCDetailToolbar({
             </div>
           </div>
         </ToolbarHeading>
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
             <Link to="edit">
               <Pencil className="size-4" />
               Edit Profile
@@ -102,7 +102,12 @@ export function GCDetailToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               View Details
             </Button>

@@ -39,7 +39,7 @@ export function ContactDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to="/app/directory/contacts" className="hover:text-foreground">
               Directory
@@ -50,11 +50,13 @@ export function ContactDetailToolbar({
             </Link>
           </div>
           <ToolbarPageTitle>{contactName}</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">{subtitle || 'Directory contact'}</span>
+          <span className="max-w-full break-words text-sm text-muted-foreground">
+            {subtitle || 'Directory contact'}
+          </span>
         </ToolbarHeading>
 
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
             <Link to="edit">
               <Pencil className="size-4" />
               Edit Contact
@@ -74,7 +76,12 @@ export function ContactDetailToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               View Details
             </Button>

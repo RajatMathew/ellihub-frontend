@@ -73,7 +73,7 @@ export function ContactDetailPage() {
   const companyNames = allMergedLinks.map((link) => link.name);
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <ContactDetailToolbar
         contactName={contact.fullName}
         roleName={roleName}
@@ -83,7 +83,7 @@ export function ContactDetailPage() {
         onDelete={() => setDeleteOpen(true)}
       />
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
           <ContactDetailStats
             roleName={roleName}
@@ -91,14 +91,14 @@ export function ContactDetailPage() {
             tagCount={contact.tags.length}
           />
 
-          <Tabs defaultValue="overview">
-            <TabsList variant="line">
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="projects">Projects</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
                 <ContactPersonalDetailsCard
                   roleName={roleName}
                   companyNames={companyNames}

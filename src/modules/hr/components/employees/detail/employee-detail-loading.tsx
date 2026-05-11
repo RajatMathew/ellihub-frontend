@@ -3,16 +3,16 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function EmployeeDetailLoading() {
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <div className="mb-6 space-y-3">
         <Skeleton className="h-3 w-40" />
         <Skeleton className="h-8 w-full max-w-sm" />
         <Skeleton className="h-4 w-72" />
       </div>
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
             {Array.from({ length: 2 }, (_, index) => (
               <Card key={`employee-detail-loader-${index}`}>
                 <CardHeader>
@@ -28,7 +28,7 @@ export function EmployeeDetailLoading() {
           </div>
         </div>
 
-        <Card className="w-full xl:w-80">
+        <Card className="w-full lg:w-72 xl:w-80">
           <CardHeader>
             <Skeleton className="h-4 w-32" />
           </CardHeader>

@@ -79,7 +79,7 @@ export function VendorDetailPage() {
   const contacts = mergeLinkedContacts(vendor.contacts, vendor.contactLinks);
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <VendorDetailToolbar
         vendor={vendor}
         sidebarOpen={sidebarOpen}
@@ -87,12 +87,12 @@ export function VendorDetailPage() {
         onOpenSidebar={() => setSidebarOpen(true)}
       />
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
           <VendorDetailStats />
 
-          <Tabs defaultValue="overview">
-            <TabsList variant="line">
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
               {VENDOR_DETAIL_TABS.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}
