@@ -23,14 +23,14 @@ services:
       dockerfile: docker/prod.Dockerfile
       args:
         DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@db:5432/${POSTGRES_DB:-postgres}?schema=public
-        BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-http://localhost}
-        CLIENT_URL: ${CLIENT_URL:-http://localhost}
+        BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-https://york.zubble.co}
+        CLIENT_URL: ${CLIENT_URL:-https://york.zubble.co}
         NODE_ENV: ${NODE_ENV:-production}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@db:5432/${POSTGRES_DB:-postgres}?schema=public
-      BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-http://localhost}
-      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-https://york.zubble.co}
+      CLIENT_URL: ${CLIENT_URL:-https://york.zubble.co}
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
       PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://pdf-engine:8000}
@@ -45,7 +45,7 @@ services:
       FIELDWIRE_API_TOKEN: ${FIELDWIRE_API_TOKEN:-}
       QUICKBOOKS_CLIENT_ID: ${QUICKBOOKS_CLIENT_ID:-}
       QUICKBOOKS_CLIENT_SECRET: ${QUICKBOOKS_CLIENT_SECRET:-}
-      QUICKBOOKS_REDIRECT_URI: ${QUICKBOOKS_REDIRECT_URI:-http://localhost/api/v1/integrations/quickbooks/callback}
+      QUICKBOOKS_REDIRECT_URI: ${QUICKBOOKS_REDIRECT_URI:-https://york.zubble.co/api/v1/integrations/quickbooks/callback}
       QUICKBOOKS_ENVIRONMENT: ${QUICKBOOKS_ENVIRONMENT:-sandbox}
       QUICKBOOKS_MINOR_VERSION: ${QUICKBOOKS_MINOR_VERSION:-75}
       QUICKBOOKS_TOKEN_ENCRYPTION_KEY: ${QUICKBOOKS_TOKEN_ENCRYPTION_KEY:-}
