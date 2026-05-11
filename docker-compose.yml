@@ -27,6 +27,8 @@ services:
         CLIENT_URL: ${CLIENT_URL:-https://york.zubble.co}
         NODE_ENV: ${NODE_ENV:-production}
     restart: unless-stopped
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@db:5432/${POSTGRES_DB:-postgres}?schema=public
       BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-https://york.zubble.co}
