@@ -1,5 +1,5 @@
 services:
-  db:
+  q-db:
     image: postgres:17
     restart: unless-stopped
     environment:
@@ -17,12 +17,12 @@ services:
       retries: 5
       start_period: 10s
 
-  api:
+  q-api:
     build:
       context: ./elli-core
       dockerfile: docker/prod.Dockerfile
       args:
-        DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@db:5432/${POSTGRES_DB:-postgres}?schema=public
+        DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public
         BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-https://york.zubble.co}
         CLIENT_URL: ${CLIENT_URL:-https://york.zubble.co}
         NODE_ENV: ${NODE_ENV:-production}
@@ -30,7 +30,7 @@ services:
     expose:
       - "3000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@db:5432/${POSTGRES_DB:-postgres}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public
       BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-https://york.zubble.co}
       CLIENT_URL: ${CLIENT_URL:-https://york.zubble.co}
       NODE_ENV: ${NODE_ENV:-production}
@@ -60,12 +60,12 @@ services:
       MAIL_TEMPLATE_DIR: ${MAIL_TEMPLATE_DIR:-src/modules/mail/templates}
       SEED_API_KEY: ${SEED_API_KEY:-}
     depends_on:
-      db:
+      q-db:
         condition: service_healthy
     networks:
       - elli_network
 
-  nginx:
+  q-nginx:
     build:
       context: .
       dockerfile: Dockerfile.nginx
@@ -73,7 +73,7 @@ services:
     expose:
       - "80"
     depends_on:
-      - api
+      - q-api
     networks:
       - elli_network
 
