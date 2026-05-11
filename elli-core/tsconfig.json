@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "nodenext",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    // "ignoreDeprecations": "6.0",
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "baseUrl": "./",
+    "paths": {
+      "@api/*": ["src/api/*"],
+      "@db/*": ["src/lib/db/*"],
+      "@handler/*": ["src/handler/*"],
+      "@lib/*": ["src/lib/*"],
+      "@middleware": ["src/middleware"],
+      "@modules/*": ["src/modules/*"],
+      "@utils": ["src/utils"],
+      "@utils/*": ["src/utils/*"]
+    }
+  }
+}

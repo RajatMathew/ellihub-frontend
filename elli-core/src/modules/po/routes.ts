@@ -1,0 +1,131 @@
+import { paginationMiddleware } from '@middleware';
+import { success, zValidator } from '@utils';
+import { Hono } from 'hono';
+import { requirePermission } from 'src/middleware/auth';
+
+import {
+    AddPoAttachmentSchema,
+    PoCreateSchema,
+    PoUpdateSchema,
+    RemovePoAttachmentSchema,
+    SetPoCancelledSchema,
+    SetPoDeliveredSchema,
+    SetPoDraftSchema,
+    SetPoIssuedSchema,
+} from './models';
+import { PoService } from './service';
+
+const app = new Hono();
+
+app.get(
+    '/',
+    requirePermission({ purchaseOrder: ['read'] }),
+    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
+    async (c) => {
+        const pagination = c.get('pagination');
+        const { data, count } = await PoService.getPurchaseOrders(pagination);
+        return success(c, data, 200, 'OK', count);
+    }
+);
+
+app.get('/:id', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const id = c.req.param('id');
+    const po = await PoService.getPurchaseOrder(id);
+    return success(c, po);
+});
+
+app.post(
+    '/',
+    requirePermission({ purchaseOrder: ['create'] }),
+    zValidator('json', PoCreateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.createPurchaseOrder(data, c.get('user')!.id);
+        return success(c, po, 201);
+    }
+);
+
+app.put(
+    '/',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', PoUpdateSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.updatePurchaseOrder(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.post('/from-rfq/:rfqId', requirePermission({ purchaseOrder: ['create'] }), async (c) => {
+    const rfqId = c.req.param('rfqId');
+    const po = await PoService.createFromRfq(rfqId, c.get('user')!.id);
+    return success(c, po, 201);
+});
+
+app.patch(
+    '/set-draft',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoDraftSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setDraft(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-issued',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoIssuedSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setIssued(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-delivered',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoDeliveredSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setDelivered(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/set-cancelled',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', SetPoCancelledSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const po = await PoService.setCancelled(data, c.get('user')!.id);
+        return success(c, po);
+    }
+);
+
+app.patch(
+    '/attachment/add',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', AddPoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        const attachment = await PoService.addAttachment(data, c.get('user')!.id);
+        return success(c, attachment);
+    }
+);
+
+app.patch(
+    '/attachment/remove',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', RemovePoAttachmentSchema),
+    async (c) => {
+        const data = c.req.valid('json');
+        await PoService.removeAttachment(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
+
+export default app;

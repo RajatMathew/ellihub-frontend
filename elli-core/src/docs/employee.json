@@ -1,0 +1,547 @@
+{
+    "paths": {
+        "/hr/employee": {
+            "get": {
+                "tags": ["Employees"],
+                "summary": "List employees (paginated)",
+                "operationId": "listEmployees",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["name", "createdAt", "updatedAt"], "default": "name" },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+                        "description": "Sort direction"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by name or email"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of employees",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/Employee" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:view-all)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Employees"],
+                "summary": "Create an employee",
+                "operationId": "createEmployee",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/EmployeeCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Employee created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Employee" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Employee with this email already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Employees"],
+                "summary": "Update an employee",
+                "operationId": "updateEmployee",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/EmployeeUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Employee updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Employee" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Email already in use by another employee or user",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hr/employee/{id}": {
+            "get": {
+                "tags": ["Employees"],
+                "summary": "Get an employee by ID",
+                "operationId": "getEmployee",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Employee ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employee details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Employee" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:view-all)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Employees"],
+                "summary": "Delete an employee (soft delete)",
+                "operationId": "deleteEmployee",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Employee ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Employee deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:delete)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hr/employee/document/add": {
+            "patch": {
+                "tags": ["Employees"],
+                "summary": "Link a document to an employee",
+                "operationId": "addEmployeeDocument",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddEmployeeDocumentRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Document linked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/EmployeeDocument" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee or file not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Document already linked to this employee",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hr/employee/document/remove": {
+            "patch": {
+                "tags": ["Employees"],
+                "summary": "Unlink a document from an employee",
+                "operationId": "removeEmployeeDocument",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RemoveEmployeeDocumentRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Document unlinked",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires project:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Employee document not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Employee": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "phoneNumber": { "type": "string" },
+                    "address": { "type": "string", "nullable": true },
+                    "startDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "emergencyContactName": { "type": "string", "nullable": true },
+                    "emergencyContactPhone": { "type": "string", "nullable": true },
+                    "emergencyContactRelation": { "type": "string", "nullable": true },
+                    "userId": { "type": "string", "nullable": true, "description": "Linked user account ID (set when account was created)" },
+                    "status": { "type": "string", "enum": ["ACTIVE", "ON_LEAVE"] },
+                    "departmentId": { "type": "string", "nullable": true },
+                    "department": { "$ref": "#/components/schemas/Department", "nullable": true },
+                    "roleId": { "type": "string", "nullable": true, "description": "Lookup ID for the employee's role" },
+                    "role": { "type": "object", "nullable": true, "description": "Lookup row for the role" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "EmployeeCreateRequest": {
+                "type": "object",
+                "required": ["name", "email", "phoneNumber", "createAccount"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 2 },
+                    "email": { "type": "string", "format": "email" },
+                    "phoneNumber": { "type": "string", "minLength": 7 },
+                    "address": { "type": "string" },
+                    "startDate": { "type": "string", "format": "date-time", "description": "Coerced to a Date" },
+                    "emergencyContactName": { "type": "string" },
+                    "emergencyContactPhone": { "type": "string" },
+                    "emergencyContactRelation": { "type": "string" },
+                    "roleId": { "type": "string", "description": "Optional role ID (ULID) to assign when an account is created" },
+                    "createAccount": { "type": "boolean", "description": "Whether to create a user account for this employee" }
+                }
+            },
+            "EmployeeDocument": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "employeeId": { "type": "string", "description": "Employee ID (ULID)" },
+                    "fileId": { "type": "string", "description": "File ID (ULID)" },
+                    "expiresOn": { "type": "string", "format": "date", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "AddEmployeeDocumentRequest": {
+                "type": "object",
+                "required": ["employeeId", "fileId"],
+                "properties": {
+                    "employeeId": { "type": "string", "description": "Employee ID (ULID)" },
+                    "fileId": { "type": "string", "description": "File ID (ULID)" },
+                    "expiresOn": { "type": "string", "format": "date", "nullable": true }
+                }
+            },
+            "RemoveEmployeeDocumentRequest": {
+                "type": "object",
+                "required": ["employeeId", "fileId"],
+                "properties": {
+                    "employeeId": { "type": "string", "description": "Employee ID (ULID)" },
+                    "fileId": { "type": "string", "description": "File ID (ULID)" }
+                }
+            },
+            "EmployeeUpdateRequest": {
+                "type": "object",
+                "required": ["id", "name", "email", "phoneNumber"],
+                "properties": {
+                    "id": { "type": "string", "description": "Employee ID (ULID)" },
+                    "name": { "type": "string", "minLength": 2 },
+                    "email": { "type": "string", "format": "email" },
+                    "phoneNumber": { "type": "string", "minLength": 7 },
+                    "address": { "type": "string" },
+                    "startDate": { "type": "string", "format": "date-time" },
+                    "emergencyContactName": { "type": "string" },
+                    "emergencyContactPhone": { "type": "string" },
+                    "emergencyContactRelation": { "type": "string" }
+                }
+            }
+        }
+    }
+}
