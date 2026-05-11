@@ -4,20 +4,15 @@ import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.const
 import type { GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
 import { Briefcase, DollarSign, FolderOpen, ShieldCheck } from 'lucide-react';
 
+import { getGCProjectMetrics } from './gc-project-metrics';
+
 interface GCDetailStatsProps {
   gc: GeneralContractorDetail;
   contactCount: number;
 }
 
 export function GCDetailStats({ gc, contactCount }: GCDetailStatsProps) {
-  const activeProjectsFromList = gc.projects.filter(
-    (project) => project.status.toUpperCase() === 'ACTIVE'
-  ).length;
-  const activeProjects = gc.activeProjects || activeProjectsFromList;
-  const committedFromList = gc.projects.reduce((total, project) => {
-    return project.status.toUpperCase() === 'ACTIVE' ? total + project.contractValue : total;
-  }, 0);
-  const totalCommitted = gc.totalCommitted || committedFromList;
+  const { activeProjects, totalCommitted, totalProjects } = getGCProjectMetrics(gc);
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
@@ -33,7 +28,7 @@ export function GCDetailStats({ gc, contactCount }: GCDetailStatsProps) {
         bgClass="bg-info/10"
         label="Active Projects"
         value={activeProjects}
-        description={`${gc.projects.length} total linked`}
+        description={`${totalProjects} total linked`}
       />
       <StatsCard
         icon={<Briefcase className="size-5 text-warning" />}

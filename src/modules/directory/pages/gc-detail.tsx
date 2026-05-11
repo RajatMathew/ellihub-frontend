@@ -1,10 +1,8 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import {
   GCDetailDialogs,
   GCDetailSidebar,
@@ -17,23 +15,7 @@ import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory
 import { GC_DETAIL_TABS } from '@/modules/directory/constants/gc/gc-detail.constants';
 import { useDeleteGCMutation, useGCDetailQuery } from '@/modules/directory/hooks/gc.hooks';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
-import { DollarSign, FileText } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-
-const GC_PLACEHOLDER_ICONS = {
-  'change-orders': FileText,
-  'prime-payments': DollarSign,
-} as const;
-
-const GC_PLACEHOLDER_TITLES = {
-  'change-orders': 'Prime Change Orders',
-  'prime-payments': 'Prime Payments',
-} as const;
-
-type GCPlaceholderTab = {
-  value: keyof typeof GC_PLACEHOLDER_ICONS;
-  label: string;
-};
 
 export function GCDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,9 +61,6 @@ export function GCDetailPage() {
   }
 
   const contacts = mergeLinkedContacts(gc.contacts, gc.contactLinks);
-  const placeholderTabs = GC_DETAIL_TABS.filter(
-    (tab) => tab.value !== 'overview' && tab.value !== 'projects'
-  ) as GCPlaceholderTab[];
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
@@ -112,19 +91,6 @@ export function GCDetailPage() {
             <TabsContent value="projects">
               <GCProjectsTab projects={gc.projects} />
             </TabsContent>
-
-            {placeholderTabs.map((tab) => {
-              const Icon = GC_PLACEHOLDER_ICONS[tab.value];
-              return (
-                <TabsContent key={tab.value} value={tab.value}>
-                  <Card>
-                    <CardContent>
-                      <ComingSoonPlaceholder icon={Icon} title={GC_PLACEHOLDER_TITLES[tab.value]} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              );
-            })}
           </Tabs>
         </div>
 

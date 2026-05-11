@@ -7,6 +7,8 @@ import type { GCProject } from '@/modules/directory/schemas/gc.schema';
 import { Building2, CalendarDays, ExternalLink, FolderOpen, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { getProjectMetricsFromProjects } from './gc-project-metrics';
+
 interface GCProjectsTabProps {
   projects: GCProject[];
 }
@@ -29,10 +31,7 @@ const PROJECT_STATUS_VARIANTS: Record<
 };
 
 export function GCProjectsTab({ projects }: GCProjectsTabProps) {
-  const activeCount = projects.filter((project) => project.status.toUpperCase() === 'ACTIVE').length;
-  const totalCommitted = projects.reduce((sum, project) => {
-    return project.status.toUpperCase() === 'ACTIVE' ? sum + project.contractValue : sum;
-  }, 0);
+  const { activeProjects, totalCommitted } = getProjectMetricsFromProjects(projects);
 
   return (
     <Card>
@@ -42,7 +41,7 @@ export function GCProjectsTab({ projects }: GCProjectsTabProps) {
             Project Section
           </CardTitle>
           <p className="mt-2 text-sm text-muted-foreground">
-            {activeCount} active of {projects.length} linked projects
+            {activeProjects} active of {projects.length} linked projects
           </p>
         </div>
         <div className="shrink-0 text-left sm:text-right">

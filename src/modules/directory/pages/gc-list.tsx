@@ -57,8 +57,8 @@ export function GCListPage() {
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
-  const visibleActiveProjects = listData.reduce((sum, gc) => sum + gc.activeProjects, 0);
-  const visibleCommitted = listData.reduce((sum, gc) => sum + gc.totalCommitted, 0);
+  const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
+  const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
   const hasActiveFilters = Boolean(searchQuery || gcTypeIdFilter || statusFilter);
 
   const typeLabels = useMemo(() => {

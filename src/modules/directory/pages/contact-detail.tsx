@@ -1,10 +1,7 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import {
   ContactDetailDialogs,
   ContactDetailLoading,
@@ -22,7 +19,6 @@ import { useContactActivity } from '@/modules/directory/hooks/contacts/use-conta
 import { useContactEntityLinks } from '@/modules/directory/hooks/contacts/use-contact-entity-links';
 import { useContactMethodEditor } from '@/modules/directory/hooks/contacts/use-contact-method-editor';
 import { useContactTags } from '@/modules/directory/hooks/contacts/use-contact-tags';
-import { FolderOpen } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function ContactDetailPage() {
@@ -91,32 +87,15 @@ export function ContactDetailPage() {
             tagCount={contact.tags.length}
           />
 
-          <Tabs defaultValue="overview" className="min-w-0">
-            <TabsList variant="line" className="max-w-full overflow-x-auto">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
-              <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
-                <ContactPersonalDetailsCard
-                  roleName={roleName}
-                  companyNames={companyNames}
-                  tags={contact.tags}
-                  tagEditor={tagEditor}
-                />
-                <ContactInfoCard contact={contact} editor={methodEditor} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="projects">
-              <Card>
-                <CardContent>
-                  <ComingSoonPlaceholder icon={FolderOpen} title="Project Assignments" />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
+            <ContactPersonalDetailsCard
+              roleName={roleName}
+              companyNames={companyNames}
+              tags={contact.tags}
+              tagEditor={tagEditor}
+            />
+            <ContactInfoCard contact={contact} editor={methodEditor} />
+          </div>
         </div>
 
         <ContactDetailSidebar

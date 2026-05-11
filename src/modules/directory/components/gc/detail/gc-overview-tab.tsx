@@ -21,21 +21,14 @@ import {
 } from 'lucide-react';
 
 import { getGCTypeName } from './gc-detail-utils';
+import { getGCProjectMetrics } from './gc-project-metrics';
 
 interface GCOverviewTabProps {
   gc: GeneralContractorDetail;
 }
 
 export function GCOverviewTab({ gc }: GCOverviewTabProps) {
-  const projectCount = gc.projects?.length ?? 0;
-  const activeProjectCount =
-    gc.activeProjects ||
-    gc.projects.filter((project) => project.status.toUpperCase() === 'ACTIVE').length;
-  const totalCommitted =
-    gc.totalCommitted ||
-    gc.projects.reduce((sum, project) => {
-      return project.status.toUpperCase() === 'ACTIVE' ? sum + project.contractValue : sum;
-    }, 0);
+  const { activeProjects, totalCommitted, totalProjects } = getGCProjectMetrics(gc);
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
@@ -61,10 +54,10 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
           </GCInfoRow>
           <Separator />
           <GCInfoRow icon={<FolderOpen className="size-4" />} label="Total Projects">
-            {projectCount}
+            {totalProjects}
           </GCInfoRow>
           <GCInfoRow icon={<FolderOpen className="size-4" />} label="Active Projects">
-            {activeProjectCount}
+            {activeProjects}
           </GCInfoRow>
           <GCInfoRow icon={<DollarSign className="size-4" />} label="Total Committed">
             {formatCurrency(totalCommitted)}
