@@ -22,19 +22,22 @@ services:
       context: ./elli-core
       dockerfile: docker/prod.Dockerfile
       args:
-        DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public
+        DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public}
         BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-http://localhost}
+        BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
         CLIENT_URL: ${CLIENT_URL:-http://localhost}
-        NODE_ENV: ${NODE_ENV:-production}
+        NODE_ENV: ${NODE_ENV:-development}
     restart: unless-stopped
     expose:
       - "3000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ellepass}@q-db:5432/${POSTGRES_DB:-postgres}?schema=public}
       BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-http://localhost}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      REDIS_URL: ${REDIS_URL:-redis://localhost:6379}
       PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://pdf-engine:8000}
       PDF_ENGINE_API_KEY_HEADER: ${PDF_ENGINE_API_KEY_HEADER:-X-API-Key}
       PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:-local-dev-key}
@@ -54,6 +57,7 @@ services:
       MS_TENANT_ID: ${MS_TENANT_ID:-}
       MS_CLIENT_ID: ${MS_CLIENT_ID:-}
       MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      ALLOWED_SENDERS: ${ALLOWED_SENDERS:-}
       MAIL_ALLOWED_SENDERS: ${MAIL_ALLOWED_SENDERS:-}
       MAIL_ALLOW_CUSTOM_SENDER: ${MAIL_ALLOW_CUSTOM_SENDER:-true}
       MAIL_ASSET_DIR: ${MAIL_ASSET_DIR:-src/modules/mail/assets}
