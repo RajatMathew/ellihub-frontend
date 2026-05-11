@@ -53,4 +53,4 @@ History uses concise imperative commits, for example `Update environment URLs...
 
 ## Security & Configuration Tips
 
-Copy `.env.example` to deployment environment variables; do not commit real secrets. For production auth, `BETTER_AUTH_BASE_URL` and `CLIENT_URL` must match the public origin, such as `https://york.zubble.co`. The compose file intentionally avoids public `ports:` bindings; expose services through the deployment platform's internal routing only.
+Copy `.env.example` to deployment environment variables; do not commit real secrets. For production auth, `BETTER_AUTH_BASE_URL` and `CLIENT_URL` must match the public origin, such as `http://localhost` for local deployments. The compose file intentionally avoids public `ports:` bindings; expose services through the deployment platform's internal routing only.
