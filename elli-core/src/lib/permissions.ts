@@ -22,6 +22,7 @@ export const statement = {
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
     mail: ['read', 'send'],
+    integration: ['read', 'manage'],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -47,6 +48,7 @@ export const owner = ac.newRole({
     subChangeOrder: ['create', 'update', 'delete', 'read'],
     invoice: ['create', 'update', 'delete', 'read'],
     mail: ['read', 'send'],
+    integration: ['read', 'manage'],
 });
 
 // Export the type

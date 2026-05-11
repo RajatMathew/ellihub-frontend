@@ -1,3 +1,4 @@
+import { QuickBooksTransactionEntitySchema } from '@modules/integrations/models';
 import z from 'zod';
 
 export const PaymentTermsSchema = z.enum([
@@ -82,3 +83,21 @@ export const RemovePoAttachmentSchema = z.object({
 });
 
 export type RemovePoAttachmentRequest = z.infer<typeof RemovePoAttachmentSchema>;
+
+const PoQuickBooksPaymentRefSchema = z.object({
+    entity: QuickBooksTransactionEntitySchema,
+    transactionId: z.string().min(1),
+    realmId: z.string().min(1).optional(),
+});
+
+export const AddPoQuickBooksPaymentSchema = PoQuickBooksPaymentRefSchema;
+
+export type AddPoQuickBooksPaymentRequest = z.infer<typeof AddPoQuickBooksPaymentSchema>;
+
+export const AddPoQuickBooksPaymentsSchema = z.object({
+    payments: z.array(PoQuickBooksPaymentRefSchema).min(1).max(25),
+});
+
+export type AddPoQuickBooksPaymentsRequest = z.infer<typeof AddPoQuickBooksPaymentsSchema>;
+
+export const QUICKBOOKS_PO_PAYMENT_ENTITIES = 'BillPayment,Purchase,Payment';

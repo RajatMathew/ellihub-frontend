@@ -1,0 +1,45 @@
+model QuickBooksConnection {
+  id                    String                     @id
+  realmId               String                     @unique
+  companyName           String?
+  environment           QuickBooksEnvironment      @default(SANDBOX)
+  status                QuickBooksConnectionStatus @default(CONNECTED)
+  scope                 String
+  accessToken           String                     @db.Text
+  refreshToken          String                     @db.Text
+  tokenType             String                     @default("bearer")
+  accessTokenExpiresAt  DateTime
+  refreshTokenExpiresAt DateTime?
+  connectedById         String?
+  connectedBy           User?                      @relation("QuickBooksConnections", fields: [connectedById], references: [id], onDelete: SetNull)
+  lastSyncedAt          DateTime?
+  disconnectedAt        DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  @@index([status])
+  @@index([connectedById])
+}
+
+model QuickBooksOAuthState {
+  id         String   @id
+  state      String   @unique
+  userId     String
+  user       User     @relation("QuickBooksOAuthStates", fields: [userId], references: [id], onDelete: Cascade)
+  redirectTo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum QuickBooksEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum QuickBooksConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+}

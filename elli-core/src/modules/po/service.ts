@@ -1,15 +1,20 @@
-import { POAttachment, Prisma, PurchaseOrder } from '@db/client';
+import { POAttachment, Prisma, PurchaseOrder, PurchaseOrderQuickBooksPayment } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { QuickBooksTransactionPreview } from '@modules/integrations/models';
+import { QuickBooksService } from '@modules/integrations/service';
 import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
 import { checkDeletedAt } from '@utils/soft-delete';
 import { ulid } from 'ulid';
 
 import {
+    AddPoQuickBooksPaymentRequest,
+    AddPoQuickBooksPaymentsRequest,
     AddPoAttachmentRequest,
+    QUICKBOOKS_PO_PAYMENT_ENTITIES,
     PoCreateRequest,
     PoUpdateRequest,
     RemovePoAttachmentRequest,
@@ -19,6 +24,214 @@ import {
     SetPoIssuedRequest,
 } from './models';
 import { generatePoNumber } from './utils';
+
+type PurchaseOrderQuickBooksPaymentResponse = {
+    id: string;
+    purchaseOrderId: string;
+    realmId: string;
+    entity: string;
+    transactionId: string;
+    docNumber: string | null;
+    displayName: string;
+    txnDate: string | null;
+    totalAmount: string | null;
+    currency: string | null;
+    privateNote: string | null;
+    lastUpdatedTime: string | null;
+    linkedById: string | null;
+    removedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+type QuickBooksPaymentOption = QuickBooksTransactionPreview & {
+    realmId: string;
+    linkedPurchaseOrder: { id: string; poNumber: string | null } | null;
+};
+
+type QuickBooksPaymentOptionsResponse = {
+    realmId: string;
+    companyName: string | null;
+    environment: 'sandbox' | 'production';
+    fetchedAt: string;
+    transactions: QuickBooksPaymentOption[];
+};
+
+type PaymentWithPurchaseOrder = PurchaseOrderQuickBooksPayment & {
+    purchaseOrder?: Pick<PurchaseOrder, 'id' | 'poNumber'>;
+};
+
+const toIsoOrNull = (date: Date | null): string | null => date?.toISOString() ?? null;
+
+const toDateOrNull = (value: string | null): Date | null => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getQuickBooksPaymentKey = (realmId: string, entity: string, transactionId: string): string =>
+    `${realmId}:${entity}:${transactionId}`;
+
+const toQuickBooksPaymentResponse = (
+    payment: PurchaseOrderQuickBooksPayment
+): PurchaseOrderQuickBooksPaymentResponse => ({
+    id: payment.id,
+    purchaseOrderId: payment.purchaseOrderId,
+    realmId: payment.realmId,
+    entity: payment.quickBooksEntity,
+    transactionId: payment.quickBooksTransactionId,
+    docNumber: payment.docNumber,
+    displayName: payment.displayName,
+    txnDate: toIsoOrNull(payment.txnDate),
+    totalAmount: payment.totalAmount?.toString() ?? null,
+    currency: payment.currency,
+    privateNote: payment.privateNote,
+    lastUpdatedTime: toIsoOrNull(payment.lastUpdatedTime),
+    linkedById: payment.linkedById,
+    removedAt: toIsoOrNull(payment.removedAt),
+    createdAt: payment.createdAt.toISOString(),
+    updatedAt: payment.updatedAt.toISOString(),
+});
+
+const assertPurchaseOrderExists = async (id: string): Promise<PurchaseOrder> => {
+    const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+    if (!po) throw new NotFoundError('Purchase order not found');
+    checkDeletedAt(po);
+    return po;
+};
+
+type ResolvedQuickBooksPayment = {
+    realmId: string;
+    transaction: QuickBooksTransactionPreview;
+};
+
+const resolveQuickBooksPayment = async (
+    request: AddPoQuickBooksPaymentRequest
+): Promise<ResolvedQuickBooksPayment> => {
+    const transactionResponse = await QuickBooksService.getTransactionById(
+        request.entity,
+        request.transactionId,
+        request.realmId
+    );
+    const transaction = transactionResponse.transaction;
+
+    if (!transaction.id) {
+        throw new BadRequestError('QuickBooks transaction is missing an id');
+    }
+
+    return {
+        realmId: transactionResponse.realmId,
+        transaction,
+    };
+};
+
+const addQuickBooksPaymentsToPurchaseOrder = async (
+    purchaseOrderId: string,
+    requests: AddPoQuickBooksPaymentRequest[],
+    userId: string
+): Promise<PurchaseOrderQuickBooksPaymentResponse[]> => {
+    const po = await assertPurchaseOrderExists(purchaseOrderId);
+    const resolvedPayments: ResolvedQuickBooksPayment[] = [];
+    const selectedKeys = new Set<string>();
+
+    for (const request of requests) {
+        const resolved = await resolveQuickBooksPayment(request);
+        const key = getQuickBooksPaymentKey(
+            resolved.realmId,
+            resolved.transaction.entity,
+            resolved.transaction.id
+        );
+
+        if (selectedKeys.has(key)) {
+            throw new BadRequestError('Duplicate QuickBooks transaction selected');
+        }
+
+        selectedKeys.add(key);
+        resolvedPayments.push(resolved);
+    }
+
+    const existingPayments = await prisma.purchaseOrderQuickBooksPayment.findMany({
+        where: {
+            removedAt: null,
+            OR: resolvedPayments.map(({ realmId, transaction }) => ({
+                realmId,
+                quickBooksEntity: transaction.entity,
+                quickBooksTransactionId: transaction.id,
+            })),
+        },
+        include: { purchaseOrder: true },
+    });
+
+    if (existingPayments.length > 0) {
+        const existing = existingPayments[0];
+        if (!existing) throw new ConflictError('QuickBooks transaction is already linked');
+
+        if (existing.purchaseOrderId === purchaseOrderId) {
+            throw new ConflictError(
+                'One or more QuickBooks transactions are already linked to this purchase order'
+            );
+        }
+
+        throw new ConflictError(
+            `One or more QuickBooks transactions are already linked to PO ${
+                existing.purchaseOrder.poNumber ?? existing.purchaseOrderId
+            }`
+        );
+    }
+
+    const createdPayments = await prisma.$transaction(async (tx) => {
+        const created: PurchaseOrderQuickBooksPayment[] = [];
+
+        for (const { realmId, transaction } of resolvedPayments) {
+            const payment = await tx.purchaseOrderQuickBooksPayment.create({
+                data: {
+                    id: ulid(),
+                    purchaseOrderId,
+                    realmId,
+                    quickBooksEntity: transaction.entity,
+                    quickBooksTransactionId: transaction.id,
+                    docNumber: transaction.docNumber,
+                    displayName: transaction.displayName,
+                    txnDate: toDateOrNull(transaction.txnDate),
+                    totalAmount:
+                        transaction.totalAmount === null
+                            ? null
+                            : new Prisma.Decimal(transaction.totalAmount),
+                    currency: transaction.currency,
+                    privateNote: transaction.privateNote,
+                    lastUpdatedTime: toDateOrNull(transaction.lastUpdatedTime),
+                    raw: transaction.raw as Prisma.InputJsonValue,
+                    linkedById: userId,
+                },
+            });
+
+            created.push(payment);
+        }
+
+        const firstResolved = resolvedPayments[0];
+        if (!firstResolved) throw new BadRequestError('No QuickBooks payments selected');
+        const description =
+            created.length === 1
+                ? `Linked QuickBooks ${firstResolved.transaction.entity} ${
+                      firstResolved.transaction.docNumber ?? firstResolved.transaction.id
+                  } to PO ${po.poNumber}`
+                : `Linked ${created.length} QuickBooks payments to PO ${po.poNumber}`;
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'purchaseOrder',
+            entityId: purchaseOrderId,
+            action: 'link',
+            description,
+            affectedEntityIds: created.map((payment) => payment.id),
+            tx,
+        });
+
+        return created;
+    });
+
+    return createdPayments.map(toQuickBooksPaymentResponse);
+};
 
 export const PoService = {
     getPurchaseOrder: async (id: string): Promise<PurchaseOrder> => {
@@ -417,6 +630,108 @@ export const PoService = {
         });
     },
 
+    getQuickBooksPayments: async (
+        purchaseOrderId: string
+    ): Promise<PurchaseOrderQuickBooksPaymentResponse[]> => {
+        await assertPurchaseOrderExists(purchaseOrderId);
+
+        const payments = await prisma.purchaseOrderQuickBooksPayment.findMany({
+            where: { purchaseOrderId, removedAt: null },
+            orderBy: [{ txnDate: 'desc' }, { createdAt: 'desc' }],
+        });
+
+        return payments.map(toQuickBooksPaymentResponse);
+    },
+
+    getQuickBooksPaymentOptions: async (
+        purchaseOrderId: string
+    ): Promise<QuickBooksPaymentOptionsResponse> => {
+        await assertPurchaseOrderExists(purchaseOrderId);
+
+        const response = await QuickBooksService.getTransactions({
+            entities: QUICKBOOKS_PO_PAYMENT_ENTITIES,
+            maxResults: 25,
+        });
+        const keys = response.transactions.map((transaction) =>
+            getQuickBooksPaymentKey(response.realmId, transaction.entity, transaction.id)
+        );
+        const linkedPayments =
+            keys.length > 0
+                ? await prisma.purchaseOrderQuickBooksPayment.findMany({
+                      where: {
+                          removedAt: null,
+                          OR: response.transactions.map((transaction) => ({
+                              realmId: response.realmId,
+                              quickBooksEntity: transaction.entity,
+                              quickBooksTransactionId: transaction.id,
+                          })),
+                      },
+                      include: {
+                          purchaseOrder: {
+                              select: { id: true, poNumber: true },
+                          },
+                      },
+                  })
+                : [];
+        const linkedMap = new Map(
+            linkedPayments.map((payment) => [
+                getQuickBooksPaymentKey(
+                    payment.realmId,
+                    payment.quickBooksEntity,
+                    payment.quickBooksTransactionId
+                ),
+                payment,
+            ])
+        );
+
+        return {
+            realmId: response.realmId,
+            companyName: response.companyName,
+            environment: response.environment,
+            fetchedAt: response.fetchedAt,
+            transactions: response.transactions.map((transaction) => {
+                const linked = linkedMap.get(
+                    getQuickBooksPaymentKey(response.realmId, transaction.entity, transaction.id)
+                ) as PaymentWithPurchaseOrder | undefined;
+
+                return {
+                    ...transaction,
+                    realmId: response.realmId,
+                    linkedPurchaseOrder: linked?.purchaseOrder
+                        ? {
+                              id: linked.purchaseOrder.id,
+                              poNumber: linked.purchaseOrder.poNumber,
+                          }
+                        : null,
+                };
+            }),
+        };
+    },
+
+    addQuickBooksPayment: async (
+        purchaseOrderId: string,
+        request: AddPoQuickBooksPaymentRequest,
+        userId: string
+    ): Promise<PurchaseOrderQuickBooksPaymentResponse> => {
+        const payments = await addQuickBooksPaymentsToPurchaseOrder(
+            purchaseOrderId,
+            [request],
+            userId
+        );
+        const payment = payments[0];
+        if (!payment) throw new BadRequestError('No QuickBooks payment was added');
+
+        return payment;
+    },
+
+    addQuickBooksPayments: async (
+        purchaseOrderId: string,
+        request: AddPoQuickBooksPaymentsRequest,
+        userId: string
+    ): Promise<PurchaseOrderQuickBooksPaymentResponse[]> => {
+        return addQuickBooksPaymentsToPurchaseOrder(purchaseOrderId, request.payments, userId);
+    },
+
     addAttachment: async (
         request: AddPoAttachmentRequest,
         userId: string
@@ -485,6 +800,39 @@ export const PoService = {
             action: 'unlink',
             description: `Removed attachment ${attachment.document.name} from PO ${attachment.purchaseOrder.poNumber}`,
             affectedEntityIds: [attachment.documentId],
+        });
+    },
+
+    removeQuickBooksPayment: async (
+        purchaseOrderId: string,
+        paymentId: string,
+        userId: string
+    ): Promise<void> => {
+        const payment = await prisma.purchaseOrderQuickBooksPayment.findFirst({
+            where: { id: paymentId, purchaseOrderId, removedAt: null },
+            include: { purchaseOrder: true },
+        });
+        if (!payment) throw new NotFoundError('PO payment not found');
+        checkDeletedAt(payment.purchaseOrder);
+
+        await prisma.$transaction(async (tx) => {
+            await tx.purchaseOrderQuickBooksPayment.update({
+                where: { id: payment.id },
+                data: {
+                    removedAt: new Date(),
+                    removedById: userId,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'purchaseOrder',
+                entityId: purchaseOrderId,
+                action: 'unlink',
+                description: `Removed QuickBooks ${payment.quickBooksEntity} ${payment.docNumber ?? payment.quickBooksTransactionId} from PO ${payment.purchaseOrder.poNumber}`,
+                affectedEntityIds: [payment.id],
+                tx,
+            });
         });
     },
 
