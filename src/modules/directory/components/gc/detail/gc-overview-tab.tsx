@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatCurrency } from '@/app/lib/helpers';
 import { Separator } from '@/app/components/ui/separator';
 import {
   GC_STATUS_COLORS,
@@ -27,6 +28,14 @@ interface GCOverviewTabProps {
 
 export function GCOverviewTab({ gc }: GCOverviewTabProps) {
   const projectCount = gc.projects?.length ?? 0;
+  const activeProjectCount =
+    gc.activeProjects ||
+    gc.projects.filter((project) => project.status.toUpperCase() === 'ACTIVE').length;
+  const totalCommitted =
+    gc.totalCommitted ||
+    gc.projects.reduce((sum, project) => {
+      return project.status.toUpperCase() === 'ACTIVE' ? sum + project.contractValue : sum;
+    }, 0);
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
@@ -53,6 +62,12 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
           <Separator />
           <GCInfoRow icon={<FolderOpen className="size-4" />} label="Total Projects">
             {projectCount}
+          </GCInfoRow>
+          <GCInfoRow icon={<FolderOpen className="size-4" />} label="Active Projects">
+            {activeProjectCount}
+          </GCInfoRow>
+          <GCInfoRow icon={<DollarSign className="size-4" />} label="Total Committed">
+            {formatCurrency(totalCommitted)}
           </GCInfoRow>
           <GCInfoRow icon={<DollarSign className="size-4" />} label="Payment Terms">
             {gc.paymentTerms ? (PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms) : '-'}

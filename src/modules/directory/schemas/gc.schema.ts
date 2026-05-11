@@ -84,6 +84,26 @@ export const gcContactLinkSchema = z
 
 export type GCContactLink = z.infer<typeof gcContactLinkSchema>;
 
+// --- Project summary (detail endpoint shape) ---
+
+export const gcProjectSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    jobNumber: z.string().nullable().optional(),
+    status: z.string(),
+    contractValue: z.coerce.number().optional().default(0),
+    estimatedStartDate: z.string().nullable().optional(),
+    estimatedEndDate: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    state: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export type GCProject = z.infer<typeof gcProjectSchema>;
+
 // --- Main model (list view) ---
 
 export const generalContractorSchema = z
@@ -101,6 +121,8 @@ export const generalContractorSchema = z
     retainagePercent: z.number().optional().default(10.0),
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
+    activeProjects: z.number().optional().default(0),
+    totalCommitted: z.coerce.number().optional().default(0),
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
     contacts: z.array(gcContactLinkContactSchema).optional().default([]),
     _count: z
@@ -134,9 +156,11 @@ export const generalContractorDetailSchema = z
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
+    activeProjects: z.number().optional().default(0),
+    totalCommitted: z.coerce.number().optional().default(0),
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
     contacts: z.array(gcContactLinkContactSchema).optional().default([]),
-    projects: z.array(z.object({ id: z.string() }).passthrough()).optional().default([]),
+    projects: z.array(gcProjectSchema).optional().default([]),
   })
   .passthrough();
 

@@ -11,29 +11,29 @@ import {
   GCDetailStats,
   GCDetailToolbar,
   GCOverviewTab,
+  GCProjectsTab,
 } from '@/modules/directory/components/gc/detail';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import { GC_DETAIL_TABS } from '@/modules/directory/constants/gc/gc-detail.constants';
-import {
-  useDeleteGCMutation,
-  useGCDetailQuery,
-  useGCStatsQuery,
-} from '@/modules/directory/hooks/gc.hooks';
+import { useDeleteGCMutation, useGCDetailQuery } from '@/modules/directory/hooks/gc.hooks';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
-import { DollarSign, FileText, FolderOpen } from 'lucide-react';
+import { DollarSign, FileText } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const GC_PLACEHOLDER_ICONS = {
-  projects: FolderOpen,
   'change-orders': FileText,
   'prime-payments': DollarSign,
 } as const;
 
 const GC_PLACEHOLDER_TITLES = {
-  projects: 'Projects',
   'change-orders': 'Prime Change Orders',
   'prime-payments': 'Prime Payments',
 } as const;
+
+type GCPlaceholderTab = {
+  value: keyof typeof GC_PLACEHOLDER_ICONS;
+  label: string;
+};
 
 export function GCDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +42,6 @@ export function GCDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { data: gc, isLoading, isError, refetch } = useGCDetailQuery(id ?? '');
-  const { data: stats } = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
   const activity = useDirectoryActivity('gc', id);
 
@@ -80,6 +79,9 @@ export function GCDetailPage() {
   }
 
   const contacts = mergeLinkedContacts(gc.contacts, gc.contactLinks);
+  const placeholderTabs = GC_DETAIL_TABS.filter(
+    (tab) => tab.value !== 'overview' && tab.value !== 'projects'
+  ) as GCPlaceholderTab[];
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
@@ -92,7 +94,7 @@ export function GCDetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
-          <GCDetailStats gc={gc} stats={stats} contactCount={contacts.length} />
+          <GCDetailStats gc={gc} contactCount={contacts.length} />
 
           <Tabs defaultValue="overview" className="min-w-0">
             <TabsList variant="line" className="max-w-full overflow-x-auto">
@@ -107,7 +109,11 @@ export function GCDetailPage() {
               <GCOverviewTab gc={gc} />
             </TabsContent>
 
-            {GC_DETAIL_TABS.filter((tab) => tab.value !== 'overview').map((tab) => {
+            <TabsContent value="projects">
+              <GCProjectsTab projects={gc.projects} />
+            </TabsContent>
+
+            {placeholderTabs.map((tab) => {
               const Icon = GC_PLACEHOLDER_ICONS[tab.value];
               return (
                 <TabsContent key={tab.value} value={tab.value}>

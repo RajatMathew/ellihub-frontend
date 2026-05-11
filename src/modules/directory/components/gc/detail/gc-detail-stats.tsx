@@ -1,17 +1,23 @@
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { formatCurrency } from '@/app/lib/helpers';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
-import type { GCStats, GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
+import type { GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
 import { Briefcase, DollarSign, FolderOpen, ShieldCheck } from 'lucide-react';
 
 interface GCDetailStatsProps {
   gc: GeneralContractorDetail;
-  stats: GCStats | undefined;
   contactCount: number;
 }
 
-export function GCDetailStats({ gc, stats, contactCount }: GCDetailStatsProps) {
-  const resolvedStats = stats ?? { totalGCs: 0, activeProjects: 0, totalCommitted: 0 };
+export function GCDetailStats({ gc, contactCount }: GCDetailStatsProps) {
+  const activeProjectsFromList = gc.projects.filter(
+    (project) => project.status.toUpperCase() === 'ACTIVE'
+  ).length;
+  const activeProjects = gc.activeProjects || activeProjectsFromList;
+  const committedFromList = gc.projects.reduce((total, project) => {
+    return project.status.toUpperCase() === 'ACTIVE' ? total + project.contractValue : total;
+  }, 0);
+  const totalCommitted = gc.totalCommitted || committedFromList;
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
@@ -19,15 +25,15 @@ export function GCDetailStats({ gc, stats, contactCount }: GCDetailStatsProps) {
         icon={<DollarSign className="size-5 text-success" />}
         bgClass="bg-success/10"
         label="Total Committed"
-        value={formatCurrency(resolvedStats.totalCommitted)}
-        description="Portfolio value"
+        value={formatCurrency(totalCommitted)}
+        description="Active contracts"
       />
       <StatsCard
         icon={<FolderOpen className="size-5 text-info" />}
         bgClass="bg-info/10"
-        label="Total Projects"
-        value={gc.projects?.length ?? 0}
-        description="Linked projects"
+        label="Active Projects"
+        value={activeProjects}
+        description={`${gc.projects.length} total linked`}
       />
       <StatsCard
         icon={<Briefcase className="size-5 text-warning" />}
