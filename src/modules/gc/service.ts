@@ -1,4 +1,4 @@
-import { GCDocument, GeneralContractor } from '@db/client';
+import { GCDocument, GeneralContractor, Prisma, ProjectStatus } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
@@ -14,6 +14,86 @@ import {
     RemoveGcDocumentRequest,
     UpdateGcDocumentRequest,
 } from './models';
+
+const gcListInclude = {
+    gcType: true,
+    contacts: true,
+    _count: {
+        select: {
+            contacts: true,
+            projects: true,
+        },
+    },
+} satisfies Prisma.GeneralContractorInclude;
+
+const gcDetailInclude = {
+    gcType: true,
+    contacts: true,
+    projects: {
+        where: { deletedAt: null },
+        orderBy: [{ status: 'asc' }, { name: 'asc' }],
+        select: {
+            id: true,
+            name: true,
+            jobNumber: true,
+            status: true,
+            contractValue: true,
+            estimatedStartDate: true,
+            estimatedEndDate: true,
+            city: true,
+            state: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    },
+} satisfies Prisma.GeneralContractorInclude;
+
+type GcProjectMetrics = {
+    activeProjects: number;
+    totalCommitted: number;
+};
+
+type GcListItem = Prisma.GeneralContractorGetPayload<{ include: typeof gcListInclude }> &
+    GcProjectMetrics;
+type GcDetail = Prisma.GeneralContractorGetPayload<{ include: typeof gcDetailInclude }> &
+    GcProjectMetrics;
+type GcStats = {
+    totalGCs: number;
+    activeProjects: number;
+    totalCommitted: number;
+};
+
+const getProjectMetricsByGcId = async (gcIds: string[]): Promise<Map<string, GcProjectMetrics>> => {
+    if (gcIds.length === 0) return new Map();
+
+    const rows = await prisma.project.groupBy({
+        by: ['gcId'],
+        where: { gcId: { in: gcIds }, deletedAt: null, status: ProjectStatus.ACTIVE },
+        _count: { _all: true },
+        _sum: { contractValue: true },
+    });
+
+    return new Map(
+        rows.map((row) => [
+            row.gcId,
+            {
+                activeProjects: row._count._all,
+                totalCommitted: Number(row._sum.contractValue ?? 0),
+            },
+        ])
+    );
+};
+
+const withProjectMetrics = async <T extends { id: string }>(
+    gcs: T[]
+): Promise<(T & GcProjectMetrics)[]> => {
+    const metricsByGcId = await getProjectMetricsByGcId(gcs.map((gc) => gc.id));
+
+    return gcs.map((gc) => ({
+        ...gc,
+        ...(metricsByGcId.get(gc.id) ?? { activeProjects: 0, totalCommitted: 0 }),
+    }));
+};
 
 export const GcService = {
     createGc: async (request: GcCreateRequest, userId: string): Promise<GeneralContractor> => {
@@ -42,13 +122,10 @@ export const GcService = {
         });
     },
 
-    getGc: async (id: string): Promise<GeneralContractor> => {
+    getGc: async (id: string): Promise<GcDetail> => {
         const gc = await prisma.generalContractor.findUnique({
             where: { id },
-            include: {
-                gcType: true,
-                contacts: true,
-            },
+            include: gcDetailInclude,
         });
 
         if (!gc) {
@@ -57,7 +134,28 @@ export const GcService = {
 
         checkDeletedAt(gc);
 
-        return gc;
+        const [gcWithMetrics] = await withProjectMetrics([gc]);
+        return gcWithMetrics;
+    },
+
+    getStats: async (): Promise<GcStats> => {
+        const activeProjectWhere = {
+            deletedAt: null,
+            status: ProjectStatus.ACTIVE,
+            gc: { deletedAt: null },
+        } satisfies Prisma.ProjectWhereInput;
+
+        const [totalGCs, activeProjects, committed] = await prisma.$transaction([
+            prisma.generalContractor.count({ where: { deletedAt: null } }),
+            prisma.project.count({ where: activeProjectWhere }),
+            prisma.project.aggregate({ where: activeProjectWhere, _sum: { contractValue: true } }),
+        ]);
+
+        return {
+            totalGCs,
+            activeProjects,
+            totalCommitted: Number(committed._sum.contractValue ?? 0),
+        };
     },
 
     updateGc: async (request: GcUpdateRequest, userId: string): Promise<GeneralContractor> => {
@@ -240,7 +338,7 @@ export const GcService = {
     getGcs: async (
         params: PaginationParams
     ): Promise<{
-        data: GeneralContractor[];
+        data: GcListItem[];
         count: number;
     }> => {
         const { filter, skip, take, sortBy, sortOrder, search } = params;
@@ -263,6 +361,16 @@ export const GcService = {
             }),
         };
 
+        const resolvedSortBy = sortBy ?? 'name';
+        const resolvedSortOrder = sortOrder ?? 'asc';
+        const orderBy = (
+            resolvedSortBy === 'type'
+                ? { gcType: { name: resolvedSortOrder } }
+                : {
+                      [resolvedSortBy as keyof GeneralContractor]: resolvedSortOrder,
+                  }
+        ) as Prisma.GeneralContractorOrderByWithRelationInput;
+
         const [count, data] = await prisma.$transaction([
             prisma.generalContractor.count({
                 where: whereClause,
@@ -272,16 +380,13 @@ export const GcService = {
                 where: whereClause,
                 skip,
                 take,
-                orderBy: {
-                    [sortBy as keyof GeneralContractor]: sortOrder,
-                },
-                include: {
-                    gcType: true,
-                    contacts: true,
-                },
+                orderBy,
+                include: gcListInclude,
             }),
         ]);
 
-        return { data, count };
+        const dataWithMetrics = await withProjectMetrics(data);
+
+        return { data: dataWithMetrics, count };
     },
 };

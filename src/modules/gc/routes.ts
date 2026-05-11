@@ -25,6 +25,11 @@ app.get(
     }
 );
 
+app.get('/stats', requirePermission({ generalContractor: ['read'] }), async (c) => {
+    const stats = await GcService.getStats();
+    return success(c, stats);
+});
+
 app.get('/:id', requirePermission({ generalContractor: ['read'] }), async (c) => {
     const id = c.req.param('id');
     const gc = await GcService.getGc(id);
