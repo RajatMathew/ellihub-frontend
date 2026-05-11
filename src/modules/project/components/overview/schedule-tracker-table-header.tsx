@@ -13,7 +13,7 @@ export function ScheduleTrackerTableHeader() {
         <TableHead>Adj. Finish</TableHead>
         <TableHead>File</TableHead>
         <TableHead>Notes</TableHead>
-        <TableHead className="w-10" />
+        <TableHead className="w-20" />
       </TableRow>
     </TableHeader>
   );

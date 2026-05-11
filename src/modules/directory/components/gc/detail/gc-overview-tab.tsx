@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatCurrency } from '@/app/lib/helpers';
 import { Separator } from '@/app/components/ui/separator';
 import {
   GC_STATUS_COLORS,
@@ -20,16 +21,17 @@ import {
 } from 'lucide-react';
 
 import { getGCTypeName } from './gc-detail-utils';
+import { getGCProjectMetrics } from './gc-project-metrics';
 
 interface GCOverviewTabProps {
   gc: GeneralContractorDetail;
 }
 
 export function GCOverviewTab({ gc }: GCOverviewTabProps) {
-  const projectCount = gc.projects?.length ?? 0;
+  const { activeProjects, totalCommitted, totalProjects } = getGCProjectMetrics(gc);
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -52,7 +54,13 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
           </GCInfoRow>
           <Separator />
           <GCInfoRow icon={<FolderOpen className="size-4" />} label="Total Projects">
-            {projectCount}
+            {totalProjects}
+          </GCInfoRow>
+          <GCInfoRow icon={<FolderOpen className="size-4" />} label="Active Projects">
+            {activeProjects}
+          </GCInfoRow>
+          <GCInfoRow icon={<DollarSign className="size-4" />} label="Total Committed">
+            {formatCurrency(totalCommitted)}
           </GCInfoRow>
           <GCInfoRow icon={<DollarSign className="size-4" />} label="Payment Terms">
             {gc.paymentTerms ? (PAYMENT_TERMS_LABELS[gc.paymentTerms] ?? gc.paymentTerms) : '-'}
@@ -122,11 +130,11 @@ function GCInfoRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-start gap-3">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-accent text-muted-foreground">
         {icon}
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </div>

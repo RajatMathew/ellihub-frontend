@@ -29,20 +29,20 @@ export function PTODetailToolbar({ pto, onDelete }: PTODetailToolbarProps) {
   return (
     <Toolbar sticky={false}>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="mb-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
             HR / Time Off / Request Detail
           </div>
           <ToolbarPageTitle>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <span>{formatPTOReference(pto.id, 6)}</span>
               <PTOStatusBadge status={pto.status} />
             </div>
           </ToolbarPageTitle>
         </ToolbarHeading>
-        <ToolbarActions>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
           {isPending && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
               <Link to="edit">
                 <Pencil className="size-4" />
                 Modify

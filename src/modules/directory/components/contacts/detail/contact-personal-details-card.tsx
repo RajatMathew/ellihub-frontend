@@ -56,11 +56,11 @@ function ContactDetailField({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-start gap-3">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-accent">
         {icon}
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </div>

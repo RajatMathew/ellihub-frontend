@@ -33,7 +33,7 @@ export function EmployeeDocumentsTab({
       </CardHeader>
       <CardContent>
         {documents.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
             {documents.map((document) => (
               <div
                 key={document.id}

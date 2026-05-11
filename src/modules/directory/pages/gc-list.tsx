@@ -9,6 +9,7 @@ import {
 import {
   useDeleteGCMutation,
   useGCsQuery,
+  useGCStatsQuery,
   useGCTypesQuery,
 } from '@/modules/directory/hooks/gc.hooks';
 import { useGCListParams } from '@/modules/directory/hooks/gc/use-gc-list-params';
@@ -51,10 +52,13 @@ export function GCListPage() {
 
   const { data: typeTabs = [], isLoading: isTypesLoading } = useGCTypesQuery();
   const { data, isLoading, isError, refetch } = useGCsQuery(filters);
+  const { data: stats } = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
+  const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
+  const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
   const hasActiveFilters = Boolean(searchQuery || gcTypeIdFilter || statusFilter);
 
   const typeLabels = useMemo(() => {
@@ -142,7 +146,11 @@ export function GCListPage() {
         addIcon={<Plus className="size-4" />}
       />
 
-      <GCStatsCards totalGCs={totalCount} activeProjects={0} totalCommitted={0} />
+      <GCStatsCards
+        totalGCs={stats?.totalGCs ?? totalCount}
+        activeProjects={stats?.activeProjects ?? visibleActiveProjects}
+        totalCommitted={stats?.totalCommitted ?? visibleCommitted}
+      />
 
       <GCTableCard
         table={table}

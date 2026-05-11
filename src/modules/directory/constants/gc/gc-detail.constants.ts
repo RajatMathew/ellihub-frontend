@@ -23,6 +23,4 @@ export const GC_STATUS_LABELS: Record<GCStatus, string> = {
 export const GC_DETAIL_TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'projects', label: 'Projects' },
-  { value: 'change-orders', label: 'Change Orders' },
-  { value: 'prime-payments', label: 'Prime Payments' },
 ] as const;

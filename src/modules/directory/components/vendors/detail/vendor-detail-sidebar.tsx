@@ -73,19 +73,19 @@ function VendorVerificationCard({ vendor }: { vendor: VendorDetail }) {
       </div>
       <Card>
         <CardContent className="space-y-3 p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               Established Date
             </span>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="break-words text-sm font-semibold text-foreground sm:text-right">
               {formatDirectoryDate(vendor.createdAt)}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               Last Review Date
             </span>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="break-words text-sm font-semibold text-foreground sm:text-right">
               {formatDirectoryDate(vendor.updatedAt)}
             </span>
           </div>
@@ -162,9 +162,12 @@ function VendorContactInfoCard({ vendor }: { vendor: VendorDetail }) {
           {vendor.phone && (
             <>
               {vendor.address && <Separator />}
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-start gap-3">
                 <Phone className="size-4 shrink-0 text-muted-foreground" />
-                <a href={`tel:${vendor.phone}`} className="break-words text-sm hover:text-primary">
+                <a
+                  href={`tel:${vendor.phone}`}
+                  className="min-w-0 break-words text-sm hover:text-primary"
+                >
                   {vendor.phone}
                 </a>
               </div>
@@ -173,7 +176,7 @@ function VendorContactInfoCard({ vendor }: { vendor: VendorDetail }) {
           {vendor.email && (
             <>
               {(vendor.address || vendor.phone) && <Separator />}
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-start gap-3">
                 <Mail className="size-4 shrink-0 text-muted-foreground" />
                 <a href={`mailto:${vendor.email}`} className="break-all text-sm hover:text-primary">
                   {vendor.email}

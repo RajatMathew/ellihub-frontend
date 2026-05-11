@@ -25,13 +25,18 @@ export const createEmptyScheduleTrackerDraft = (): ScheduleTrackerDraft => ({
   fileName: '',
 });
 
+const toDateInputValue = (value: string | null | undefined): string => {
+  const dateMatch = value?.match(/^(\d{4}-\d{2}-\d{2})/);
+  return dateMatch?.[1] ?? '';
+};
+
 export function createScheduleTrackerDraftFromEntry(
   entry: ProjectScheduleEntry,
 ): ScheduleTrackerDraft {
   return {
-    date: entry.date ?? '',
+    date: toDateInputValue(entry.date),
     description: entry.description ?? '',
-    adjustedFinishDate: entry.adjustedFinishDate ?? '',
+    adjustedFinishDate: toDateInputValue(entry.adjustedFinishDate),
     notes: entry.notes ?? '',
     fileId: entry.fileId ?? '',
     fileName: entry.file?.name ?? '',

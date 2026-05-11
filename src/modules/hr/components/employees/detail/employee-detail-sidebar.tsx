@@ -38,7 +38,7 @@ export function EmployeeDetailSidebar({
         />
       }
     >
-      <div className="space-y-4 p-4">
+      <div className="min-w-0 space-y-4 p-4">
         <div>
           <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Quick Contact
@@ -75,9 +75,9 @@ export function EmployeeDetailSidebar({
 
 function ContactLine({ icon, value }: { icon: ReactNode; value: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 text-sm">
+    <div className="flex min-w-0 items-start gap-3 text-sm">
       {icon}
-      <span className="min-w-0 break-words">{value}</span>
+      <span className="min-w-0 flex-1 break-words">{value}</span>
     </div>
   );
 }

@@ -8,7 +8,7 @@ interface EmployeeOverviewTabProps {
 
 export function EmployeeOverviewTab({ employee }: EmployeeOverviewTabProps) {
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -58,13 +58,13 @@ function EmployeeInfoRow({
   alignEnd?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-4">
+    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <span
-        className={`min-w-0 break-words text-sm font-medium ${
-          alignEnd ? 'max-w-48 text-right' : ''
+        className={`min-w-0 break-words text-sm font-medium sm:text-right ${
+          alignEnd ? 'sm:max-w-48' : ''
         }`}
       >
         {value}

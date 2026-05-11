@@ -9,13 +9,14 @@ interface ContactDetailStatsProps {
 
 export function ContactDetailStats({ roleName, entityCount, tagCount }: ContactDetailStatsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
       <StatsCard
         icon={<Briefcase className="size-5 text-primary" />}
         bgClass="bg-primary/10"
         label="Role"
         value={roleName ?? '-'}
         description="Professional role"
+        compactValue
       />
       <StatsCard
         icon={<Building2 className="size-5 text-success" />}

@@ -1,39 +1,21 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
 import {
   GCDetailDialogs,
   GCDetailSidebar,
   GCDetailStats,
   GCDetailToolbar,
   GCOverviewTab,
+  GCProjectsTab,
 } from '@/modules/directory/components/gc/detail';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import { GC_DETAIL_TABS } from '@/modules/directory/constants/gc/gc-detail.constants';
-import {
-  useDeleteGCMutation,
-  useGCDetailQuery,
-  useGCStatsQuery,
-} from '@/modules/directory/hooks/gc.hooks';
+import { useDeleteGCMutation, useGCDetailQuery } from '@/modules/directory/hooks/gc.hooks';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
-import { DollarSign, FileText, FolderOpen } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-
-const GC_PLACEHOLDER_ICONS = {
-  projects: FolderOpen,
-  'change-orders': FileText,
-  'prime-payments': DollarSign,
-} as const;
-
-const GC_PLACEHOLDER_TITLES = {
-  projects: 'Projects',
-  'change-orders': 'Prime Change Orders',
-  'prime-payments': 'Prime Payments',
-} as const;
 
 export function GCDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +24,6 @@ export function GCDetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { data: gc, isLoading, isError, refetch } = useGCDetailQuery(id ?? '');
-  const { data: stats } = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
   const activity = useDirectoryActivity('gc', id);
 
@@ -82,7 +63,7 @@ export function GCDetailPage() {
   const contacts = mergeLinkedContacts(gc.contacts, gc.contactLinks);
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <GCDetailToolbar
         gc={gc}
         sidebarOpen={sidebarOpen}
@@ -90,12 +71,12 @@ export function GCDetailPage() {
         onOpenSidebar={() => setSidebarOpen(true)}
       />
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
-          <GCDetailStats gc={gc} stats={stats} contactCount={contacts.length} />
+          <GCDetailStats gc={gc} contactCount={contacts.length} />
 
-          <Tabs defaultValue="overview">
-            <TabsList variant="line">
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
               {GC_DETAIL_TABS.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}
@@ -107,18 +88,9 @@ export function GCDetailPage() {
               <GCOverviewTab gc={gc} />
             </TabsContent>
 
-            {GC_DETAIL_TABS.filter((tab) => tab.value !== 'overview').map((tab) => {
-              const Icon = GC_PLACEHOLDER_ICONS[tab.value];
-              return (
-                <TabsContent key={tab.value} value={tab.value}>
-                  <Card>
-                    <CardContent>
-                      <ComingSoonPlaceholder icon={Icon} title={GC_PLACEHOLDER_TITLES[tab.value]} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              );
-            })}
+            <TabsContent value="projects">
+              <GCProjectsTab projects={gc.projects} />
+            </TabsContent>
           </Tabs>
         </div>
 

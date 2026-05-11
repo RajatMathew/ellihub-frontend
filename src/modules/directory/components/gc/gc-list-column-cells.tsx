@@ -111,7 +111,7 @@ export function GCPrimaryContactCell({ gc }: { gc: GeneralContractor }) {
 export function GCActiveProjectsCell({ gc }: { gc: GeneralContractor }) {
   return (
     <span className="block text-center text-sm font-medium text-foreground">
-      {gc._count.projects}
+      {gc.activeProjects ?? 0}
     </span>
   );
 }

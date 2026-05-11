@@ -22,8 +22,8 @@ export function PTORequestInfoCard({ pto }: PTORequestInfoCardProps) {
           Request Information
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-8 p-6 pt-4">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      <CardContent className="space-y-8 p-4 pt-4 sm:p-6 sm:pt-4">
+        <div className="grid min-w-0 grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-4">
           <InfoField label="Leave Type">
             <Badge
               variant="outline"
@@ -41,11 +41,11 @@ export function PTORequestInfoCard({ pto }: PTORequestInfoCardProps) {
 
         <Separator className="opacity-50" />
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Reason / Justification
           </span>
-          <div className="rounded-lg border border-border bg-muted/20 p-5 text-sm italic leading-relaxed text-foreground">
+          <div className="break-words rounded-lg border border-border bg-muted/20 p-4 text-sm italic leading-relaxed text-foreground sm:p-5">
             {pto.reason || 'No justification provided.'}
           </div>
         </div>
@@ -56,11 +56,13 @@ export function PTORequestInfoCard({ pto }: PTORequestInfoCardProps) {
 
 function InfoField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-1.5">
+    <div className="min-w-0 space-y-1.5">
       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
-      <div className="text-sm font-bold uppercase tracking-tight text-foreground">{children}</div>
+      <div className="break-words text-sm font-bold uppercase tracking-tight text-foreground">
+        {children}
+      </div>
     </div>
   );
 }

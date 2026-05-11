@@ -39,7 +39,7 @@ export function VendorDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to="../.." relative="path" className="hover:text-foreground">
               Vendors
@@ -48,7 +48,7 @@ export function VendorDetailToolbar({
             <span>Profile</span>
           </div>
           <ToolbarPageTitle>{vendor.name}</ToolbarPageTitle>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <span>
               Type: <span className="text-foreground">{getVendorTypeLabel(vendor)}</span>
             </span>
@@ -69,8 +69,8 @@ export function VendorDetailToolbar({
             </div>
           </div>
         </ToolbarHeading>
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
             <Link to="edit">
               <Pencil className="size-4" />
               Edit Profile
@@ -97,7 +97,12 @@ export function VendorDetailToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               View Details
             </Button>

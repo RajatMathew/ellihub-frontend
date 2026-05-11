@@ -1,33 +1,34 @@
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { formatCurrency } from '@/app/lib/helpers';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
-import type { GCStats, GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
+import type { GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
 import { Briefcase, DollarSign, FolderOpen, ShieldCheck } from 'lucide-react';
+
+import { getGCProjectMetrics } from './gc-project-metrics';
 
 interface GCDetailStatsProps {
   gc: GeneralContractorDetail;
-  stats: GCStats | undefined;
   contactCount: number;
 }
 
-export function GCDetailStats({ gc, stats, contactCount }: GCDetailStatsProps) {
-  const resolvedStats = stats ?? { totalGCs: 0, activeProjects: 0, totalCommitted: 0 };
+export function GCDetailStats({ gc, contactCount }: GCDetailStatsProps) {
+  const { activeProjects, totalCommitted, totalProjects } = getGCProjectMetrics(gc);
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
       <StatsCard
         icon={<DollarSign className="size-5 text-success" />}
         bgClass="bg-success/10"
         label="Total Committed"
-        value={formatCurrency(resolvedStats.totalCommitted)}
-        description="Portfolio value"
+        value={formatCurrency(totalCommitted)}
+        description="Active contracts"
       />
       <StatsCard
         icon={<FolderOpen className="size-5 text-info" />}
         bgClass="bg-info/10"
-        label="Total Projects"
-        value={gc.projects?.length ?? 0}
-        description="Linked projects"
+        label="Active Projects"
+        value={activeProjects}
+        description={`${totalProjects} total linked`}
       />
       <StatsCard
         icon={<Briefcase className="size-5 text-warning" />}

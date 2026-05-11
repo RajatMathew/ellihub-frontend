@@ -40,7 +40,7 @@ export function EmployeeDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to=".." relative="path" className="transition-colors hover:text-foreground">
               Employees
@@ -49,10 +49,10 @@ export function EmployeeDetailToolbar({
             <span>Profile Overview</span>
           </div>
           <ToolbarPageTitle>{employee.name}</ToolbarPageTitle>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <div className="flex items-center gap-1.5 text-foreground">
               <ShieldAlert className="size-3.5" />
-              <span>{employee.role?.name || 'Standard Role'}</span>
+              <span className="break-words">{employee.role?.name || 'Standard Role'}</span>
             </div>
             {employee.startDate && (
               <div className="flex items-center gap-1.5">
@@ -62,8 +62,8 @@ export function EmployeeDetailToolbar({
             )}
           </div>
         </ToolbarHeading>
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
             <Link to="edit">
               <Pencil className="size-4" />
               Edit Profile
@@ -90,7 +90,12 @@ export function EmployeeDetailToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               Contact Info
             </Button>
