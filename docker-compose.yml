@@ -65,26 +65,15 @@ services:
     networks:
       - elli_network
 
-  ui:
-    build:
-      context: ./elli-ui
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    expose:
-      - "80"
-    networks:
-      - elli_network
-
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - api
-      - ui
     networks:
       - elli_network
 

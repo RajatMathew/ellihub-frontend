@@ -1,0 +1,9 @@
+.git
+elli-core
+elli-core/node_modules
+elli-core/dist
+elli-core/.vitepress
+elli-ui/node_modules
+elli-ui/dist
+elli-ui/.vite
+*.log
