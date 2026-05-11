@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/app/components/ui/button';
 import { TableCell, TableRow } from '@/app/components/ui/table';
@@ -53,19 +53,35 @@ export function ScheduleTrackerReadRow({
       </TableCell>
       <TableCell className="text-muted-foreground">{entry.notes || '-'}</TableCell>
       <TableCell>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          aria-label="Delete schedule entry"
-          disabled={isDeleting}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(entry.id);
-          }}
-        >
-          <Trash2 className="size-3.5 text-destructive" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            mode="icon"
+            size="sm"
+            aria-label="Edit schedule entry"
+            title="Edit schedule entry"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(entry);
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            mode="icon"
+            size="sm"
+            aria-label="Delete schedule entry"
+            title="Delete schedule entry"
+            disabled={isDeleting}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(entry.id);
+            }}
+          >
+            <Trash2 className="size-3.5 text-destructive" />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );
