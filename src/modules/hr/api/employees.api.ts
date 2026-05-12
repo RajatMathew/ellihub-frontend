@@ -7,12 +7,49 @@ import {
   type Employee,
   type EmployeePaginatedResponse,
   type EmployeeProject,
+  type LinkEmployeeUserInput,
   type ListEmployeesParams,
   type UpdateEmployeeInput,
 } from '@/modules/hr/schemas/employee.schema';
 import { z } from 'zod';
 
 const BASE = '/hr/employee';
+
+function toCreatePayload(input: CreateEmployeeInput) {
+  return {
+    name: input.name,
+    email: input.email,
+    phoneNumber: input.phoneNumber,
+    address: input.address,
+    startDate: input.startDate,
+    emergencyContactName: input.emergencyContactName,
+    emergencyContactPhone: input.emergencyContactPhone,
+    emergencyContactRelation: input.emergencyContactRelation,
+    roleId: input.roleId,
+    createAccount: input.createAccount,
+    ...(input.createAccount
+      ? {
+          authRole: input.authRole,
+          password: input.password,
+        }
+      : {}),
+  };
+}
+
+function toUpdatePayload(input: UpdateEmployeeInput) {
+  return {
+    id: input.id,
+    name: input.name,
+    email: input.email,
+    phoneNumber: input.phoneNumber,
+    address: input.address,
+    startDate: input.startDate,
+    emergencyContactName: input.emergencyContactName,
+    emergencyContactPhone: input.emergencyContactPhone,
+    emergencyContactRelation: input.emergencyContactRelation,
+    roleId: input.roleId,
+  };
+}
 
 export const employeesApi = {
   async list(params: ListEmployeesParams): Promise<EmployeePaginatedResponse> {
@@ -37,12 +74,22 @@ export const employeesApi = {
   },
 
   async create(input: CreateEmployeeInput): Promise<Employee> {
-    const res = await api.post(BASE, input);
+    const res = await api.post(BASE, toCreatePayload(input));
     return employeeSchema.parse(res.data?.data ?? res.data);
   },
 
   async update(input: UpdateEmployeeInput): Promise<Employee> {
-    const res = await api.put(BASE, input);
+    const res = await api.put(BASE, toUpdatePayload(input));
+    return employeeSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async linkUser(employeeId: string, input: LinkEmployeeUserInput): Promise<Employee> {
+    const res = await api.post(`${BASE}/${employeeId}/user`, input);
+    return employeeSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async unlinkUser(employeeId: string): Promise<Employee> {
+    const res = await api.delete(`${BASE}/${employeeId}/user`);
     return employeeSchema.parse(res.data?.data ?? res.data);
   },
 

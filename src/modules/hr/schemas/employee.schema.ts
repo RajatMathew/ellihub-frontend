@@ -29,6 +29,7 @@ export const employeeSchema = z
     emergencyContactName: z.string().optional().nullable(),
     emergencyContactPhone: z.string().optional().nullable(),
     emergencyContactRelation: z.string().optional().nullable(),
+    userId: z.string().optional().nullable(),
     departmentId: z.string().optional().nullable(),
     roleId: z.string().optional().nullable(),
     role: employeeRoleSchema.optional().nullable(),
@@ -65,8 +66,11 @@ export const employeePaginatedResponseSchema = z.object({
 
 export type EmployeePaginatedResponse = z.infer<typeof employeePaginatedResponseSchema>;
 
+export const employeeAuthRoleSchema = z.enum(['admin', 'user']);
+export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
+
 // Input schema for creation
-export const createEmployeeInputSchema = z.object({
+const createEmployeeBaseSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phoneNumber: z.string().optional(),
@@ -80,18 +84,47 @@ export const createEmployeeInputSchema = z.object({
     .optional()
     .nullable()
     .transform((value) => (value === '' ? undefined : value)),
-  createAccount: z.boolean().default(true),
+  createAccount: z.boolean().default(false),
+  authRole: employeeAuthRoleSchema.optional(),
+  password: z.string().optional(),
+});
+
+export const createEmployeeInputSchema = createEmployeeBaseSchema.superRefine((value, ctx) => {
+  if (!value.createAccount) return;
+
+  if (!value.authRole) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['authRole'],
+      message: 'Auth role is required',
+    });
+  }
+
+  if (!value.password || value.password.length < 8) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['password'],
+      message: 'Password must be at least 8 characters',
+    });
+  }
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeInputSchema>;
 
-export const updateEmployeeInputSchema = createEmployeeInputSchema
-  .omit({ createAccount: true })
+export const updateEmployeeInputSchema = createEmployeeBaseSchema
+  .omit({ createAccount: true, authRole: true, password: true })
   .extend({
     id: z.string(),
   });
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeInputSchema>;
+
+export const linkEmployeeUserInputSchema = z.object({
+  role: employeeAuthRoleSchema,
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export type LinkEmployeeUserInput = z.infer<typeof linkEmployeeUserInputSchema>;
 
 // Query params schema
 export const listEmployeesParamsSchema = z.object({

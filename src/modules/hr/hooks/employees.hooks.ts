@@ -3,6 +3,7 @@ import { employeesApi } from '@/modules/hr/api/employees.api';
 import { employeesKeys } from '@/modules/hr/constants/employees.keys';
 import type {
   CreateEmployeeInput,
+  LinkEmployeeUserInput,
   ListEmployeesParams,
   UpdateEmployeeInput,
 } from '@/modules/hr/schemas/employee.schema';
@@ -66,6 +67,35 @@ export const useDeleteEmployeeMutation = () => {
       void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to delete employee.'),
+  });
+};
+
+export const useLinkEmployeeUserMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ employeeId, input }: { employeeId: string; input: LinkEmployeeUserInput }) =>
+      employeesApi.linkUser(employeeId, input),
+    onSuccess: (employee) => {
+      queryClient.setQueryData(employeesKeys.detail(employee.id), employee);
+      queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+    },
+    onError: (error) => toastApiError(error, 'Failed to link user account.'),
+  });
+};
+
+export const useUnlinkEmployeeUserMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (employeeId: string) => employeesApi.unlinkUser(employeeId),
+    onSuccess: (employee) => {
+      queryClient.setQueryData(employeesKeys.detail(employee.id), employee);
+      queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+    },
+    onError: (error) => toastApiError(error, 'Failed to unlink user account.'),
   });
 };
 

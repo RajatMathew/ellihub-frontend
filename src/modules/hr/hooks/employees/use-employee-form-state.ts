@@ -29,7 +29,9 @@ export function useEmployeeFormState(id: string | undefined) {
       emergencyContactPhone: '',
       emergencyContactRelation: '',
       roleId: '',
-      createAccount: true,
+      createAccount: false,
+      authRole: 'user',
+      password: '',
     },
   });
 
@@ -47,7 +49,9 @@ export function useEmployeeFormState(id: string | undefined) {
       emergencyContactPhone: employee.emergencyContactPhone ?? '',
       emergencyContactRelation: employee.emergencyContactRelation ?? '',
       roleId: employee.roleId ?? '',
-      createAccount: true,
+      createAccount: false,
+      authRole: 'user',
+      password: '',
     });
   }, [employeeQuery.data, form, isEdit]);
 
@@ -65,7 +69,9 @@ export function useEmployeeFormState(id: string | undefined) {
       emergencyContactPhone: fakePhone(),
       emergencyContactRelation: pickRandom(['Spouse', 'Parent', 'Sibling', 'Partner']),
       roleId: pickRandom(rolesQuery.data ?? [])?.id || '',
-      createAccount: true,
+      createAccount: false,
+      authRole: 'user',
+      password: '',
     });
     toast.info('Populated with candidate data.');
   };

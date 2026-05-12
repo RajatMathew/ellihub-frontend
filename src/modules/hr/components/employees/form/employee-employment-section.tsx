@@ -1,12 +1,21 @@
+import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Switch } from '@/app/components/ui/switch';
-import type { CreateEmployeeInput } from '@/modules/hr/schemas/employee.schema';
-import { Calendar } from 'lucide-react';
-import { Controller, type Control } from 'react-hook-form';
+import { generateEmployeePassword } from '@/modules/hr/lib/employee-auth.utils';
+import type { CreateEmployeeInput, EmployeeAuthRole } from '@/modules/hr/schemas/employee.schema';
+import { Calendar, KeyRound, ShieldCheck } from 'lucide-react';
+import { Controller, useWatch, type Control } from 'react-hook-form';
 
 interface EmployeeEmploymentSectionProps {
   control: Control<CreateEmployeeInput>;
@@ -19,6 +28,8 @@ export function EmployeeEmploymentSection({
   isEdit,
   roleOptions,
 }: EmployeeEmploymentSectionProps) {
+  const createAccount = useWatch({ control, name: 'createAccount' });
+
   return (
     <Card id="employment">
       <CardContent className="space-y-6">
@@ -58,12 +69,12 @@ export function EmployeeEmploymentSection({
               render={({ field }) => (
                 <Field>
                   <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                    Create System Account
+                    Link Auth User
                   </FieldLabel>
                   <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                     <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Auto-generate login credentials
+                      Create login access for this employee
                     </span>
                   </div>
                 </Field>
@@ -89,6 +100,66 @@ export function EmployeeEmploymentSection({
               </Field>
             )}
           />
+
+          {!isEdit && createAccount && (
+            <>
+              <Controller
+                name="authRole"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-bold uppercase tracking-widest">
+                      Auth Role
+                    </FieldLabel>
+                    <Select
+                      value={field.value ?? 'user'}
+                      onValueChange={(value) => field.onChange(value as EmployeeAuthRole)}
+                    >
+                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <ShieldCheck className="me-1.5 size-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select auth role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="password"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-bold uppercase tracking-widest">
+                      Temporary Password
+                    </FieldLabel>
+                    <InputWrapper>
+                      <Input
+                        {...field}
+                        type="text"
+                        value={field.value ?? ''}
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        mode="icon"
+                        size="sm"
+                        onClick={() => field.onChange(generateEmployeePassword())}
+                      >
+                        <KeyRound className="size-4" />
+                      </Button>
+                    </InputWrapper>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

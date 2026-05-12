@@ -21,6 +21,7 @@ const HrPTO = lazy(() => import('@/modules/hr/routes/pto.route'));
 const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
 const ProjectsRoutes = lazy(() => import('@/modules/project/routes/projects.route'));
+const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.route'));
 
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
 
@@ -35,6 +36,7 @@ export const routeTree: RouteDef[] = [
       ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit' }] : []),
 
       { path: 'profile', component: ProfilePage, title: 'My Profile' },
+      { path: 'settings/*', component: SettingsRoutes, title: 'Settings' },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
 

@@ -52,7 +52,9 @@ export function EmployeeDetailToolbar({
           <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <div className="flex items-center gap-1.5 text-foreground">
               <ShieldAlert className="size-3.5" />
-              <span className="break-words">{employee.role?.name || 'Standard Role'}</span>
+              <span className="break-words">
+                {employee.role?.label || employee.role?.name || 'No Professional Role'}
+              </span>
             </div>
             {employee.startDate && (
               <div className="flex items-center gap-1.5">

@@ -126,7 +126,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="#" className="flex items-center gap-2">
+              <Link to="/app/settings/members" className="flex items-center gap-2">
                 <Users />
                 Members & Roles
               </Link>
