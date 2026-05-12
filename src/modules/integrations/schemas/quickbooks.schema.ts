@@ -10,6 +10,7 @@ export const quickBooksConnectionSchema = z.object({
   connectedById: z.string().nullable(),
   accessTokenExpiresAt: z.string(),
   refreshTokenExpiresAt: z.string().nullable(),
+  tokenHealth: z.enum(['healthy', 'expiring', 'expired', 'unknown']),
   lastSyncedAt: z.string().nullable(),
   disconnectedAt: z.string().nullable(),
   createdAt: z.string(),

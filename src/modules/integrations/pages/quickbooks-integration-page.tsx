@@ -41,6 +41,11 @@ export default function QuickBooksIntegrationPage() {
       void statusQuery.refetch();
     }
 
+    if (result === 'disconnected') {
+      toast.info('QuickBooks has been disconnected.');
+      void statusQuery.refetch();
+    }
+
     if (result === 'error') {
       toast.error(searchParams.get('reason') ?? 'QuickBooks connection failed.');
     }

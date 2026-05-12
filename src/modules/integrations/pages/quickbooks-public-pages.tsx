@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { ArrowRight, CheckCircle2, PlugZap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { useSession } from '@/app/api';
 import { Button } from '@/app/components/ui/button';
@@ -58,11 +58,18 @@ export function QuickBooksConnectPage() {
 }
 
 export function QuickBooksDisconnectedPage() {
+  const [searchParams] = useSearchParams();
+  const realmId = searchParams.get('realmId');
+
+  const description = realmId
+    ? `QuickBooks Online company (${realmId}) has been disconnected. Sign in to Elli to review the connection status or reconnect.`
+    : 'Your QuickBooks Online company connection has been disconnected. Sign in to Elli to review the connection status or reconnect.';
+
   return (
     <QuickBooksPublicPage
       icon={<CheckCircle2 className="size-6" />}
       title="QuickBooks Disconnected"
-      description="Your QuickBooks Online company connection has been disconnected. Sign in to Elli to review the connection status or reconnect."
+      description={description}
       actionLabel="Sign in to reconnect"
     />
   );
