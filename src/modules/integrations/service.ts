@@ -527,16 +527,9 @@ export const QuickBooksService = {
 
         try {
             await QuickBooksClient.revokeToken(decryptQuickBooksToken(connection.refreshToken));
-        } catch (error) {
-            if (isQuickBooksAuthError(error)) {
-                // Token already revoked — proceed with local cleanup
-            } else {
-                const message = getQuickBooksClientErrorMessage(error);
-                if (message) {
-                    throw new BadRequestError(`QuickBooks disconnect failed: ${message}`);
-                }
-                throw error;
-            }
+        } catch {
+            // Best effort — token may already be revoked, expired, or invalid.
+            // We always proceed with local cleanup regardless.
         }
 
         await markConnectionDisconnected(connection.id);
