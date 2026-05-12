@@ -2,7 +2,7 @@ import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
-import { QuickBooksCallbackQuerySchema, QuickBooksTransactionsQuerySchema } from './models';
+import { QuickBooksTransactionsQuerySchema } from './models';
 import { QuickBooksService } from './service';
 
 const app = new Hono();
@@ -17,13 +17,6 @@ app.post('/quickbooks/auth-url', requirePermission({ integration: ['manage'] }),
     const authorization = await QuickBooksService.createAuthorizationUrl(user.id);
 
     return success(c, authorization);
-});
-
-app.get('/quickbooks/callback', zValidator('query', QuickBooksCallbackQuerySchema), async (c) => {
-    const user = c.get('user')!;
-    const result = await QuickBooksService.handleCallback(c.req.valid('query'), user.id);
-
-    return c.redirect(result.redirectUrl);
 });
 
 app.get(

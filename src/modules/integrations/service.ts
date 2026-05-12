@@ -8,6 +8,7 @@ import {
     QUICKBOOKS_ACCOUNTING_SCOPE,
     QUICKBOOKS_DEFAULT_TRANSACTION_ENTITIES,
     QuickBooksCallbackQuery,
+    QuickBooksDisconnectCallbackQuery,
     QuickBooksTransactionEntity,
     QuickBooksTransactionEntitySchema,
     QuickBooksTransactionPreview,
@@ -18,6 +19,7 @@ import {
     getQuickBooksClientErrorMessage,
     getQuickBooksConfig,
     getQuickBooksConfigurationStatus,
+    isQuickBooksAuthError,
     QuickBooksClient,
     QuickBooksTokenResponse,
 } from './quickbooks-client';
@@ -27,7 +29,10 @@ import type { QuickBooksConnection } from '@db/client';
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const ACCESS_TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
+const REFRESH_TOKEN_EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 const QUICKBOOKS_ENTITY_SET = new Set<string>(QuickBooksTransactionEntitySchema.options);
+
+type QuickBooksTokenHealth = 'healthy' | 'expiring' | 'expired' | 'unknown';
 
 type QuickBooksStatusConnection = {
     id: string;
@@ -39,6 +44,7 @@ type QuickBooksStatusConnection = {
     connectedById: string | null;
     accessTokenExpiresAt: string;
     refreshTokenExpiresAt: string | null;
+    tokenHealth: QuickBooksTokenHealth;
     lastSyncedAt: string | null;
     disconnectedAt: string | null;
     createdAt: string;
@@ -86,6 +92,10 @@ type QuickBooksDisconnectResponse = {
     disconnected: boolean;
 };
 
+type QuickBooksDisconnectCallbackResponse = {
+    redirectUrl: string;
+};
+
 const addSeconds = (date: Date, seconds: number): Date => new Date(date.getTime() + seconds * 1000);
 
 const toEnvironment = (value: QuickBooksConnection['environment']): 'sandbox' | 'production' =>
@@ -93,6 +103,19 @@ const toEnvironment = (value: QuickBooksConnection['environment']): 'sandbox' | 
 
 const toConnectionStatus = (value: QuickBooksConnection['status']): 'CONNECTED' | 'DISCONNECTED' =>
     value === 'CONNECTED' ? 'CONNECTED' : 'DISCONNECTED';
+
+const getTokenHealth = (connection: QuickBooksConnection): QuickBooksTokenHealth => {
+    if (connection.status !== 'CONNECTED') return 'unknown';
+    if (!connection.refreshTokenExpiresAt) return 'unknown';
+
+    const now = Date.now();
+    const expiresAt = connection.refreshTokenExpiresAt.getTime();
+
+    if (expiresAt <= now) return 'expired';
+    if (expiresAt - now <= REFRESH_TOKEN_EXPIRY_WARNING_MS) return 'expiring';
+
+    return 'healthy';
+};
 
 const toStatusConnection = (connection: QuickBooksConnection): QuickBooksStatusConnection => ({
     id: connection.id,
@@ -104,6 +127,7 @@ const toStatusConnection = (connection: QuickBooksConnection): QuickBooksStatusC
     connectedById: connection.connectedById,
     accessTokenExpiresAt: connection.accessTokenExpiresAt.toISOString(),
     refreshTokenExpiresAt: connection.refreshTokenExpiresAt?.toISOString() ?? null,
+    tokenHealth: getTokenHealth(connection),
     lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
     disconnectedAt: connection.disconnectedAt?.toISOString() ?? null,
     createdAt: connection.createdAt.toISOString(),
@@ -138,6 +162,28 @@ const buildFrontendRedirect = (params: Record<string, string>): string => {
     Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
     return url.toString();
+};
+
+const buildPublicRedirect = (path: string, params: Record<string, string> = {}): string => {
+    const url = new URL(path, getFrontendUrl());
+
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+
+    return url.toString();
+};
+
+const markConnectionDisconnected = async (connectionId: string): Promise<void> => {
+    await prisma.quickBooksConnection.update({
+        where: { id: connectionId },
+        data: {
+            status: 'DISCONNECTED',
+            accessToken: '',
+            refreshToken: '',
+            accessTokenExpiresAt: new Date(0),
+            refreshTokenExpiresAt: null,
+            disconnectedAt: new Date(),
+        },
+    });
 };
 
 const storeTokenResponse = async (
@@ -180,6 +226,13 @@ const getValidAccessToken = async (connectionId: string): Promise<string> => {
 
         return token.accessToken;
     } catch (error) {
+        if (isQuickBooksAuthError(error)) {
+            await markConnectionDisconnected(connection.id);
+            throw new BadRequestError(
+                'QuickBooks authorization has been revoked. Please reconnect.'
+            );
+        }
+
         const message = getQuickBooksClientErrorMessage(error);
         if (message) {
             throw new BadRequestError(`QuickBooks token refresh failed: ${message}`);
@@ -344,10 +397,7 @@ export const QuickBooksService = {
         };
     },
 
-    handleCallback: async (
-        query: QuickBooksCallbackQuery,
-        userId: string
-    ): Promise<QuickBooksCallbackResponse> => {
+    handleCallback: async (query: QuickBooksCallbackQuery): Promise<QuickBooksCallbackResponse> => {
         if (query.error) {
             return {
                 redirectUrl: buildFrontendRedirect({
@@ -370,7 +420,7 @@ export const QuickBooksService = {
             where: { state: query.state },
         });
 
-        if (!oauthState || oauthState.userId !== userId || oauthState.expiresAt < new Date()) {
+        if (!oauthState || oauthState.expiresAt < new Date()) {
             return {
                 redirectUrl: buildFrontendRedirect({
                     quickbooks: 'error',
@@ -378,6 +428,8 @@ export const QuickBooksService = {
                 }),
             };
         }
+
+        const userId = oauthState.userId;
 
         await prisma.quickBooksOAuthState.delete({ where: { state: query.state } });
 
@@ -395,6 +447,23 @@ export const QuickBooksService = {
                 companyName = company.name;
             } catch {
                 companyName = null;
+            }
+
+            // Disconnect any other active connections (single-connection enforcement)
+            const otherConnections = await prisma.quickBooksConnection.findMany({
+                where: {
+                    status: 'CONNECTED',
+                    realmId: { not: query.realmId },
+                },
+            });
+
+            for (const other of otherConnections) {
+                try {
+                    await QuickBooksClient.revokeToken(decryptQuickBooksToken(other.refreshToken));
+                } catch {
+                    // Best effort — token may already be invalid
+                }
+                await markConnectionDisconnected(other.id);
             }
 
             await prisma.quickBooksConnection.upsert({
@@ -459,27 +528,38 @@ export const QuickBooksService = {
         try {
             await QuickBooksClient.revokeToken(decryptQuickBooksToken(connection.refreshToken));
         } catch (error) {
-            const message = getQuickBooksClientErrorMessage(error);
-            if (message) {
-                throw new BadRequestError(`QuickBooks disconnect failed: ${message}`);
+            if (isQuickBooksAuthError(error)) {
+                // Token already revoked — proceed with local cleanup
+            } else {
+                const message = getQuickBooksClientErrorMessage(error);
+                if (message) {
+                    throw new BadRequestError(`QuickBooks disconnect failed: ${message}`);
+                }
+                throw error;
             }
-
-            throw error;
         }
 
-        await prisma.quickBooksConnection.update({
-            where: { id: connection.id },
-            data: {
-                status: 'DISCONNECTED',
-                accessToken: '',
-                refreshToken: '',
-                accessTokenExpiresAt: new Date(0),
-                refreshTokenExpiresAt: null,
-                disconnectedAt: new Date(),
-            },
-        });
+        await markConnectionDisconnected(connection.id);
 
         return { disconnected: true };
+    },
+
+    handleDisconnectCallback: async (
+        query: QuickBooksDisconnectCallbackQuery
+    ): Promise<QuickBooksDisconnectCallbackResponse> => {
+        const connection = await prisma.quickBooksConnection.findUnique({
+            where: { realmId: query.realmId },
+        });
+
+        if (connection && connection.status === 'CONNECTED') {
+            await markConnectionDisconnected(connection.id);
+        }
+
+        return {
+            redirectUrl: buildPublicRedirect('/quickbooks/disconnected', {
+                realmId: query.realmId,
+            }),
+        };
     },
 
     getTransactions: async (
