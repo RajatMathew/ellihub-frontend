@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useFieldArray, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
@@ -17,6 +12,7 @@ import {
   PurchaseOrderFormFinancialCard,
   PurchaseOrderFormLineItemsCard,
 } from '@/modules/project/components/purchase-order';
+import { getRFQStatusName } from '@/modules/project/components/rfq';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -38,6 +34,10 @@ import {
   type CreatePOInput,
   type PODetail,
 } from '@/modules/project/schemas/purchase-order';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 type PurchaseOrderLineItemInput = CreatePOInput['lineItems'][number];
 
@@ -105,7 +105,7 @@ export function POFormPage() {
   const { data: existingPO, isLoading: isLoadingPO } = usePODetailQuery(poId ?? '');
   useBreadcrumbLabel(
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
-    existingPO?.poNumber ?? undefined,
+    existingPO?.poNumber ?? undefined
   );
 
   const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
@@ -135,10 +135,12 @@ export function POFormPage() {
     value: unit.id,
     label: unit.label ?? unit.name ?? unit.id,
   }));
-  const rfqOptions = (rfqsData?.data ?? []).map((rfq) => ({
-    value: rfq.id,
-    label: rfq.rfqNumber ?? rfq.title,
-  }));
+  const rfqOptions = (rfqsData?.data ?? [])
+    .filter((rfq) => getRFQStatusName(rfq) === 'AWARDED')
+    .map((rfq) => ({
+      value: rfq.id,
+      label: rfq.rfqNumber ?? rfq.title,
+    }));
 
   const { control, handleSubmit, formState, reset, watch } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
@@ -155,7 +157,7 @@ export function POFormPage() {
   const watchedLineItems = watch('lineItems');
   const subtotal = (watchedLineItems ?? []).reduce(
     (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
-    0,
+    0
   );
   const watchedMarkup = watch('markupAmount') ?? 0;
   const taxPercent = watch('taxPercent') ?? 0;
@@ -249,10 +251,10 @@ export function POFormPage() {
 
   return (
     <form
-      key={isEditMode ? existingPO?.id ?? 'loading' : 'create'}
+      key={isEditMode ? (existingPO?.id ?? 'loading') : 'create'}
       onSubmit={(event) =>
         void handleSubmit(onSubmit, () =>
-          toast.error('Please fix the highlighted purchase order fields.'),
+          toast.error('Please fix the highlighted purchase order fields.')
         )(event)
       }
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"

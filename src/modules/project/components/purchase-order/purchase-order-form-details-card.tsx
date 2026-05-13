@@ -1,6 +1,3 @@
-import type { Control } from 'react-hook-form';
-import { Controller } from 'react-hook-form';
-
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -15,6 +12,8 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
+import type { Control } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 
 import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 
@@ -101,7 +100,7 @@ export function PurchaseOrderFormDetailsCard({
                 onValueChange={(value) => field.onChange(value ?? undefined)}
                 placeholder="Select RFQ..."
                 searchPlaceholder="Search RFQs..."
-                emptyMessage="No RFQs found."
+                emptyMessage="No awarded RFQs found."
               />
             </Field>
           )}
@@ -153,9 +152,7 @@ export function PurchaseOrderFormDetailsCard({
                     step={1}
                     placeholder="e.g. 30"
                     value={field.value ?? ''}
-                    onChange={(event) =>
-                      field.onChange(event.target.value.replace(/[^0-9]/g, ''))
-                    }
+                    onChange={(event) => field.onChange(event.target.value.replace(/[^0-9]/g, ''))}
                     onKeyDown={(event) => {
                       if (['e', 'E', '+', '-', '.'].includes(event.key)) {
                         event.preventDefault();
