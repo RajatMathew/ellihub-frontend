@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const gcTypeCodeSchema = z.string();
 export type GCTypeCode = string;
 
-export const gcStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PROSPECTING']);
+export const gcStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export type GCStatus = z.infer<typeof gcStatusSchema>;
 
 export const paymentTermsSchema = z.enum([
@@ -242,27 +242,21 @@ export const gcFormSchema = z.object({
     .string()
     .refine(
       (val) => !val || /^https?:\/\/.+/.test(val),
-      'Enter a valid URL starting with http:// or https://',
+      'Enter a valid URL starting with http:// or https://'
     ),
-  status: z.string(),
+  status: gcStatusSchema,
   email: z
     .string()
-    .refine(
-      (val) => !val || z.string().email().safeParse(val).success,
-      'Invalid email address',
-    ),
+    .refine((val) => !val || z.string().email().safeParse(val).success, 'Invalid email address'),
   phone: z
     .string()
     .refine(
       (val) => !val || /^[+\d\s\-().]+$/.test(val),
-      'Phone number contains invalid characters',
+      'Phone number contains invalid characters'
     )
-    .refine(
-      (val) => !val || val.replace(/\D/g, '').length >= 7,
-      'Enter a valid phone number',
-    ),
+    .refine((val) => !val || val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number'),
   address: z.string(),
-  paymentTerms: z.string(),
+  paymentTerms: paymentTermsSchema,
   retainagePercent: z.number().min(0).max(100),
 });
 

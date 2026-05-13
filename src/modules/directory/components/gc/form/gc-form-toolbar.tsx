@@ -45,9 +45,6 @@ export function GCFormToolbar({ isEdit, isSubmitting, onFillRandom }: GCFormTool
               Cancel
             </Link>
           </Button>
-          <Button variant="outline" size="sm" type="submit" disabled={isSubmitting}>
-            Save as Draft
-          </Button>
           <Button size="sm" type="submit" disabled={isSubmitting}>
             <Check className="size-4" />
             {isEdit ? 'Save Changes' : 'Create GC'}

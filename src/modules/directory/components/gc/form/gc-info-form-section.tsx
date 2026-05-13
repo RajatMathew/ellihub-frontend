@@ -110,7 +110,11 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                 <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
                   Initial Status
                 </FieldLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  key={field.value || 'empty-status'}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status..." />
                   </SelectTrigger>

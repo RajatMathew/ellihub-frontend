@@ -8,6 +8,5 @@ export const GC_FORM_SECTIONS = [
 
 export const GC_STATUS_OPTIONS: { value: GCStatus; label: string }[] = [
   { value: 'ACTIVE', label: 'Active' },
-  { value: 'PROSPECTING', label: 'Prospect' },
   { value: 'INACTIVE', label: 'Inactive' },
 ];

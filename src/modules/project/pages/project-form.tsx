@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fakeCity, fakeContractNumber, fakeJobNumber, fakeProjectDescription, fakeProjectName, fakeState, fakeStreetAddress, fakeZipCode, randInt } from '@/lib/fake-data';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
@@ -24,6 +23,17 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import {
+  fakeCity,
+  fakeContractNumber,
+  fakeJobNumber,
+  fakeProjectDescription,
+  fakeProjectName,
+  fakeState,
+  fakeStreetAddress,
+  fakeZipCode,
+  randInt,
+} from '@/lib/fake-data';
 import { useGCsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
@@ -426,9 +436,6 @@ export default function ProjectForm() {
                 >
                   <Sparkles className="size-4" />
                   Fill Random
-                </Button>
-                <Button variant="outline" size="sm" type="submit" disabled={isSubmitting}>
-                  Save as Draft
                 </Button>
               </>
             )}
