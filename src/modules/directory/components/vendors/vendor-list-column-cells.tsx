@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   getVendorContactCount,
   getVendorPrimaryContact,
@@ -18,7 +19,7 @@ import {
   VENDOR_TYPE_BADGE_VARIANTS,
 } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
-import { MoreHorizontal, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface VendorNameCellProps {
@@ -105,17 +106,18 @@ export function VendorContactCell({ vendor }: VendorNameCellProps) {
   );
 }
 
-export function VendorComplianceCell() {
+export function VendorDocumentCountCell({ vendor }: VendorNameCellProps) {
+  const count = vendor.documentCount ?? vendor._count?.documents ?? 0;
+
   return (
-    <Badge variant="secondary" size="sm">
-      <ShieldCheck className="mr-1 size-3" />
-      N/A
-    </Badge>
+    <span className="text-sm text-foreground">
+      {count} Document{count === 1 ? '' : 's'}
+    </span>
   );
 }
 
-export function VendorEmptyValueCell() {
-  return <span className="text-sm text-muted-foreground">-</span>;
+export function VendorCurrencyCell({ value }: { value: number }) {
+  return <span className="text-sm font-medium text-foreground">{formatCurrency(value)}</span>;
 }
 
 export function VendorActionsCell({

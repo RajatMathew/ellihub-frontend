@@ -13,6 +13,7 @@ import {
 import {
   useDeleteVendorMutation,
   useVendorsQuery,
+  useVendorStatsQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks/vendors.hooks';
 import { useVendorListParams } from '@/modules/directory/hooks/vendors/use-vendor-list-params';
@@ -53,7 +54,7 @@ export function VendorListPage() {
     [page, searchQuery, size, sortBy, sortOrder, statusFilter, typeFilter]
   );
 
-  const { data: allData, isLoading: isStatsLoading } = useVendorsQuery({ limit: 100 });
+  const { data: stats, isLoading: isStatsLoading } = useVendorStatsQuery();
   const { data: typeTabs = [], isLoading: isTypesLoading } = useVendorTypesQuery();
   const { data, isLoading, isError, refetch } = useVendorsQuery(filters);
   const deleteMutation = useDeleteVendorMutation();
@@ -62,7 +63,7 @@ export function VendorListPage() {
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = Boolean(searchQuery || typeFilter || statusFilter);
 
-  const totalVendors = allData?.pagination?.totalItems ?? allData?.data.length ?? totalCount;
+  const totalVendors = stats?.totalVendors ?? totalCount;
   const typeLabels = useMemo(() => {
     const labels = new Map<string, string>();
     for (const type of typeTabs) {
@@ -149,7 +150,13 @@ export function VendorListPage() {
         addIcon={<Plus className="size-4" />}
       />
 
-      <VendorStatsCards totalVendors={totalVendors} isLoading={isStatsLoading} />
+      <VendorStatsCards
+        totalVendors={totalVendors}
+        totalCommitted={stats?.totalCommitted ?? 0}
+        totalPaid={stats?.totalPaid ?? 0}
+        outstandingBalance={stats?.outstandingBalance ?? 0}
+        isLoading={isStatsLoading}
+      />
 
       <VendorsTableCard
         table={table}

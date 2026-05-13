@@ -1,6 +1,7 @@
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
+import { formatCurrency } from '@/app/lib/helpers';
 import { ContactCard } from '@/modules/directory/components/contact-card';
 import type { DirectoryContactSnapshot } from '@/modules/directory/components/shared';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
@@ -11,6 +12,8 @@ import {
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
 import { UserMinus } from 'lucide-react';
 
+import { getVendorTypeLabel } from './vendor-detail-utils';
+
 interface VendorOverviewTabProps {
   vendor: VendorDetail;
   contacts: DirectoryContactSnapshot[];
@@ -20,7 +23,7 @@ export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) 
   return (
     <div className="space-y-5">
       <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
-        <VendorFinancialCard />
+        <VendorFinancialCard vendor={vendor} />
         <VendorInfoCard vendor={vendor} />
       </div>
 
@@ -56,7 +59,14 @@ export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) 
   );
 }
 
-function VendorFinancialCard() {
+function VendorFinancialCard({ vendor }: { vendor: VendorDetail }) {
+  const rows = [
+    { label: 'Total Committed', value: formatCurrency(vendor.totalCommitted) },
+    { label: 'Paid to Date', value: formatCurrency(vendor.totalPaid) },
+    { label: 'Outstanding', value: formatCurrency(vendor.outstandingBalance) },
+    { label: 'Current Balance', value: formatCurrency(vendor.currentBalance) },
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -65,18 +75,15 @@ function VendorFinancialCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
-        {['Total Committed', 'Total Paid', 'Retainage Held', 'Current Balance'].map((label) => (
-          <div key={label}>
+        {rows.map((row, index) => (
+          <div key={row.label}>
             <div className="flex min-w-0 items-start justify-between gap-4">
-              <span className="text-sm text-muted-foreground">{label}</span>
-              <span className="text-sm font-semibold text-muted-foreground">-</span>
+              <span className="text-sm text-muted-foreground">{row.label}</span>
+              <span className="text-sm font-semibold text-foreground">{row.value}</span>
             </div>
-            {label !== 'Current Balance' && <Separator className="mt-4" />}
+            {index < rows.length - 1 && <Separator className="mt-4" />}
           </div>
         ))}
-        <p className="pt-2 text-center text-xs text-muted-foreground">
-          Financial data will be available in a future update.
-        </p>
       </CardContent>
     </Card>
   );
@@ -92,16 +99,16 @@ function VendorInfoCard({ vendor }: { vendor: VendorDetail }) {
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <div className="flex min-w-0 items-start justify-between gap-4">
-          <span className="text-sm text-muted-foreground">Payment Terms</span>
-          <Badge variant="secondary" size="sm" className="min-w-0 break-words text-right">
-            {vendor.paymentTerms ? PAYMENT_TERMS_LABELS[vendor.paymentTerms] : '-'}
-          </Badge>
+          <span className="text-sm text-muted-foreground">Vendor Type</span>
+          <span className="break-words text-right text-sm font-medium text-foreground">
+            {getVendorTypeLabel(vendor)}
+          </span>
         </div>
         <Separator />
         <div className="flex min-w-0 items-start justify-between gap-4">
-          <span className="text-sm text-muted-foreground">Retainage %</span>
-          <Badge variant="secondary" size="sm">
-            -
+          <span className="text-sm text-muted-foreground">Payment Terms</span>
+          <Badge variant="secondary" size="sm" className="min-w-0 break-words text-right">
+            {vendor.paymentTerms ? PAYMENT_TERMS_LABELS[vendor.paymentTerms] : '-'}
           </Badge>
         </div>
         <Separator />
@@ -117,6 +124,13 @@ function VendorInfoCard({ vendor }: { vendor: VendorDetail }) {
               {VENDOR_STATUS_LABELS[vendor.status] ?? vendor.status}
             </span>
           </div>
+        </div>
+        <Separator />
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <span className="text-sm text-muted-foreground">Tax ID / EIN</span>
+          <span className="break-words text-right text-sm font-medium text-foreground">
+            {vendor.taxId || '-'}
+          </span>
         </div>
       </CardContent>
     </Card>

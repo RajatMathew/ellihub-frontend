@@ -31,6 +31,12 @@ export const useVendorTypesQuery = () =>
     queryFn: () => vendorsApi.getTypes(),
   });
 
+export const useVendorStatsQuery = () =>
+  useQuery({
+    queryKey: [...vendorsKeys.all, 'stats'],
+    queryFn: () => vendorsApi.stats(),
+  });
+
 /* ---- mutations ---- */
 
 export const useCreateVendorMutation = () => {

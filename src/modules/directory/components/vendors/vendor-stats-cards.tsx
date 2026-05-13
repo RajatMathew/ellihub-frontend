@@ -1,14 +1,24 @@
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { StatsCard } from '@/app/components/ui/stats-card';
-import { AlertTriangle, DollarSign, Package } from 'lucide-react';
+import { formatCurrency } from '@/app/lib/helpers';
+import { DollarSign, Package } from 'lucide-react';
 
 interface VendorStatsCardsProps {
   totalVendors: number;
+  totalCommitted: number;
+  totalPaid: number;
+  outstandingBalance: number;
   isLoading: boolean;
 }
 
-export function VendorStatsCards({ totalVendors, isLoading }: VendorStatsCardsProps) {
+export function VendorStatsCards({
+  totalVendors,
+  totalCommitted,
+  totalPaid,
+  outstandingBalance,
+  isLoading,
+}: VendorStatsCardsProps) {
   if (isLoading) {
     return (
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mb-7.5 lg:grid-cols-4">
@@ -37,23 +47,23 @@ export function VendorStatsCards({ totalVendors, isLoading }: VendorStatsCardsPr
       bgClass: 'bg-primary/10',
     },
     {
-      label: 'Compliance Expired',
-      value: '-',
-      description: 'Coming soon',
-      icon: <AlertTriangle className="size-6 text-destructive" />,
-      bgClass: 'bg-destructive/10',
-    },
-    {
       label: 'Committed',
-      value: '-',
-      description: 'Coming soon',
+      value: formatCurrency(totalCommitted),
+      description: 'Open purchase orders',
       icon: <DollarSign className="size-6 text-success" />,
       bgClass: 'bg-success/10',
     },
     {
+      label: 'Paid to Date',
+      value: formatCurrency(totalPaid),
+      description: 'Paid invoices',
+      icon: <DollarSign className="size-6 text-info" />,
+      bgClass: 'bg-info/10',
+    },
+    {
       label: 'Outstanding',
-      value: '-',
-      description: 'Coming soon',
+      value: formatCurrency(outstandingBalance),
+      description: 'Unpaid invoices',
       icon: <DollarSign className="size-6 text-warning" />,
       bgClass: 'bg-warning/10',
     },
