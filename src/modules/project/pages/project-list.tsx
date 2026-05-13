@@ -23,7 +23,10 @@ import { Link } from 'react-router-dom';
 const currentYear = new Date().getFullYear();
 
 const getProjectYear = (project: ProjectListItem): number | null => {
-  return project.createdAt ? new Date(project.createdAt).getFullYear() : null;
+  if (!project.estimatedEndDate) return null;
+
+  const year = Number.parseInt(project.estimatedEndDate.slice(0, 4), 10);
+  return Number.isInteger(year) ? year : null;
 };
 
 const getProjectStatusId = (project: ProjectListItem): string | undefined => {
@@ -38,9 +41,9 @@ export function ProjectList() {
 
   const { data, isLoading, isError, refetch } = useProjectsQuery({
     size: 100,
-    sortBy: 'createdAt',
+    sortBy: 'estimatedEndDate',
     sortOrder: 'desc',
-    year: undefined,
+    year,
   });
 
   const summaryProjects = useMemo(
@@ -57,7 +60,7 @@ export function ProjectList() {
     [summaryProjects, statusId]
   );
 
-  const totalCount = summaryProjects.length;
+  const totalCount = data?.pagination.totalItems ?? summaryProjects.length;
 
   const handleYearChange = useCallback(
     (y: number) => {
