@@ -57,3 +57,11 @@ export type QuickBooksTransactionPreview = {
     lastUpdatedTime: string | null;
     raw: Record<string, unknown>;
 };
+
+export const QuickBooksDisconnectCallbackQuerySchema = z.object({
+    realmId: z.string().min(1),
+});
+
+export type QuickBooksDisconnectCallbackQuery = z.infer<
+    typeof QuickBooksDisconnectCallbackQuerySchema
+>;

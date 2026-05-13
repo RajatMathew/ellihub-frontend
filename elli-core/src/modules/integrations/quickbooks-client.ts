@@ -166,6 +166,19 @@ export const getQuickBooksClientErrorMessage = (error: unknown): string | null =
     );
 };
 
+export const isQuickBooksAuthError = (error: unknown): boolean => {
+    if (!axios.isAxiosError(error)) return false;
+    const status = error.response?.status;
+    if (status === 401) return true;
+    if (status === 400) {
+        const data = error.response?.data;
+        if (isRecord(data) && typeof data.error === 'string') {
+            return data.error === 'invalid_grant' || data.error === 'invalid_client';
+        }
+    }
+    return false;
+};
+
 export const QuickBooksClient = {
     createAuthorizationUrl: (state: string): string => {
         const config = getQuickBooksConfig();

@@ -6,7 +6,7 @@ import { departmentRoutes } from '@modules/department';
 import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
-import { integrationRoutes } from '@modules/integrations';
+import { integrationPublicRoutes, integrationRoutes } from '@modules/integrations';
 import { invoiceRoutes } from '@modules/invoice';
 import { lookupRoutes } from '@modules/lookup';
 import { mailRoutes } from '@modules/mail';
@@ -30,6 +30,9 @@ app.on(['POST', 'GET'], '/auth/*', (c) => {
 });
 
 app.route('/seed', seederRoutes);
+
+// Public integration callbacks (no auth required — Intuit redirects here)
+app.route('/integrations', integrationPublicRoutes);
 
 app.use('/*', authMiddleware);
 
