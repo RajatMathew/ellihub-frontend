@@ -1,8 +1,6 @@
 import { useState } from 'react';
 
-import { ActivityPanel } from '@/app/components/activity-panel';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
@@ -112,19 +110,6 @@ export default function EmployeeDetailPage() {
                   removeDocumentMutation.mutate({ employeeId: id, fileId });
                 }}
               />
-            </TabsContent>
-            <TabsContent value="history">
-              <Card>
-                <CardContent>
-                  <ActivityPanel
-                    items={activity.items}
-                    isLoading={activity.isLoading}
-                    isError={activity.isError}
-                    onRetry={() => void activity.refetch()}
-                    emptyMessage="No activity recorded for this employee."
-                  />
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>
