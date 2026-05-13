@@ -1,6 +1,5 @@
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
-  DeferredSectionCard,
   LinkedContactsSection,
   type LinkedContactItem,
   type LinkedContactNameSource,
@@ -8,7 +7,6 @@ import {
 } from '@/modules/directory/components/shared';
 import { VENDOR_FORM_SECTIONS } from '@/modules/directory/constants/vendors.constants';
 import type { VendorFormValues, VendorTypeObject } from '@/modules/directory/schemas/vendor.schema';
-import { FileText } from 'lucide-react';
 import type { Control } from 'react-hook-form';
 
 import { VendorInfoFormSection } from './vendor-info-form-section';
@@ -59,14 +57,6 @@ export function VendorFormContent({
           contactOptions={contactOptions}
           onChange={onContactLinksChange}
           onCreateContact={onCreateContact}
-        />
-
-        <DeferredSectionCard
-          id="compliance-docs"
-          title="Compliance Docs"
-          description="Track insurance and legal documentation status."
-          icon={FileText}
-          message="Compliance document tracking will be available in a future update."
         />
       </div>
     </>

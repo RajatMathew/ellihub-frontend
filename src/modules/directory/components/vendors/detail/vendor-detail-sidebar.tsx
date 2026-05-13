@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
@@ -7,8 +5,8 @@ import {
   DirectoryActivityPanel,
   type DirectoryActivityItem,
 } from '@/modules/directory/components/shared';
-import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
-import { Briefcase, ExternalLink, Globe, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react';
+import type { VendorDetail, VendorDocument } from '@/modules/directory/schemas/vendor.schema';
+import { ExternalLink, FileText, Globe, Mail, MapPin, Phone } from 'lucide-react';
 
 import { formatDirectoryDate } from './vendor-detail-utils';
 
@@ -46,16 +44,7 @@ export function VendorDetailSidebar({
     >
       <div className="space-y-6 pt-2">
         <VendorVerificationCard vendor={vendor} />
-        <VendorPlaceholderCard
-          title="Compliance Documents"
-          icon={<ShieldCheck className="size-8 text-muted-foreground/40" />}
-          description="Compliance document tracking will be available in a future update."
-        />
-        <VendorPlaceholderCard
-          title="Account Manager"
-          icon={<Briefcase className="size-8 text-muted-foreground/40" />}
-          description="Account manager assignment will be available in a future update."
-        />
+        {vendor.documents.length > 0 && <VendorDocumentsCard documents={vendor.documents} />}
         {vendor.website && <VendorWebsiteCard website={vendor.website} />}
         {(vendor.phone || vendor.email || vendor.address) && (
           <VendorContactInfoCard vendor={vendor} />
@@ -95,26 +84,32 @@ function VendorVerificationCard({ vendor }: { vendor: VendorDetail }) {
   );
 }
 
-function VendorPlaceholderCard({
-  title,
-  icon,
-  description,
-}: {
-  title: string;
-  icon: ReactNode;
-  description: string;
-}) {
+function VendorDocumentsCard({ documents }: { documents: VendorDocument[] }) {
   return (
     <div>
       <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        {title}
+        Documents
       </div>
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            {icon}
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
+        <CardContent className="space-y-3 p-4">
+          {documents.map((document, index) => (
+            <div key={document.id}>
+              <div className="flex min-w-0 items-start gap-3">
+                <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="break-words text-sm font-medium text-foreground">
+                    {document.file?.displayName || document.file?.name || document.fileId}
+                  </div>
+                  {document.expiresOn && (
+                    <div className="text-xs text-muted-foreground">
+                      Expires {formatDirectoryDate(document.expiresOn)}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {index < documents.length - 1 && <Separator className="mt-3" />}
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>

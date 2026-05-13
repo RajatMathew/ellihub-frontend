@@ -26,7 +26,11 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
             <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
               Payment Terms
             </FieldLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
+            <Select
+              key={field.value || 'empty-payment-terms'}
+              value={field.value || ''}
+              onValueChange={field.onChange}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select terms..." />
               </SelectTrigger>

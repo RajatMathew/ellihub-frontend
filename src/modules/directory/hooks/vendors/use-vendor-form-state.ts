@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { fakeVendorEmail, fakeVendorName, fakeVendorWebsite, fakeTaxId, pickRandom } from '@/lib/fake-data';
-import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
+import {
+  fakeTaxId,
+  fakeVendorEmail,
+  fakeVendorName,
+  fakeVendorWebsite,
+  pickRandom,
+} from '@/lib/fake-data';
 import type { LinkedContactItem } from '@/modules/directory/components/shared';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import {
   useContactsQuery,
   useVendorDetailQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks';
 import {
+  paymentTermsSchema,
   vendorFormSchema,
+  vendorStatusSchema,
   type VendorContactLink,
+  type VendorDetail,
   type VendorFormValues,
 } from '@/modules/directory/schemas/vendor.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,22 +48,22 @@ export function useVendorFormState(id: string | undefined) {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
   const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const initializedVendorIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isEdit || !vendorQuery.data || isInitialized) return;
+    if (!isEdit || !vendorQuery.data || initializedVendorIdRef.current === vendorQuery.data.id) {
+      return;
+    }
 
     const vendor = vendorQuery.data;
-    const typeValue =
-      vendor.typeId || (typeof vendor.type === 'object' ? vendor.type?.id : vendor.type) || '';
 
     form.reset({
       name: vendor.name,
       email: vendor.email ?? '',
       website: vendor.website ?? '',
-      paymentTerms: vendor.paymentTerms ?? '',
-      type: typeValue,
-      status: vendor.status,
+      paymentTerms: getVendorPaymentTermsFormValue(vendor),
+      type: getVendorTypeFormValue(vendor),
+      status: getVendorStatusFormValue(vendor),
       taxId: vendor.taxId ?? '',
     });
 
@@ -69,13 +78,13 @@ export function useVendorFormState(id: string | undefined) {
           isPrimary: link.isPrimary,
         }))
       );
-      setIsInitialized(true);
+      initializedVendorIdRef.current = vendor.id;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [form, isEdit, isInitialized, vendorQuery.data]);
+  }, [form, isEdit, vendorQuery.data]);
 
   const contactOptions = useMemo(
     () =>
@@ -123,6 +132,24 @@ export function useVendorFormState(id: string | undefined) {
     fillRandom,
     handleContactCreated,
   };
+}
+
+function getVendorTypeFormValue(vendor: VendorDetail) {
+  if (vendor.typeId) return vendor.typeId;
+  if (vendor.type && typeof vendor.type === 'object') return vendor.type.id;
+  if (typeof vendor.type === 'string') return vendor.type;
+
+  return '';
+}
+
+function getVendorStatusFormValue(vendor: VendorDetail) {
+  const result = vendorStatusSchema.safeParse(vendor.status);
+  return result.success ? result.data : 'ACTIVE';
+}
+
+function getVendorPaymentTermsFormValue(vendor: VendorDetail) {
+  const result = paymentTermsSchema.safeParse(vendor.paymentTerms);
+  return result.success ? result.data : 'NET_30';
 }
 
 function buildVendorContactLinks(

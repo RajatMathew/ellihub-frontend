@@ -4,9 +4,9 @@ import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-heade
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   VendorActionsCell,
-  VendorComplianceCell,
   VendorContactCell,
-  VendorEmptyValueCell,
+  VendorCurrencyCell,
+  VendorDocumentCountCell,
   VendorNameCell,
   VendorTypeCell,
 } from '@/modules/directory/components/vendors/vendor-list-column-cells';
@@ -61,9 +61,9 @@ export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColu
         enableSorting: false,
       },
       {
-        id: 'compliance',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Compliance" />,
-        cell: () => <VendorComplianceCell />,
+        id: 'documents',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Documents" />,
+        cell: ({ row }) => <VendorDocumentCountCell vendor={row.original} />,
         meta: {
           headerClassName: 'min-w-36',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
@@ -73,7 +73,7 @@ export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColu
       {
         id: 'totalCommitted',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Total Committed" />,
-        cell: () => <VendorEmptyValueCell />,
+        cell: ({ row }) => <VendorCurrencyCell value={row.original.totalCommitted} />,
         meta: {
           headerClassName: 'min-w-44',
           skeleton: <Skeleton className="h-3.5 w-20" />,
@@ -83,7 +83,7 @@ export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColu
       {
         id: 'balance',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Balance" />,
-        cell: () => <VendorEmptyValueCell />,
+        cell: ({ row }) => <VendorCurrencyCell value={row.original.currentBalance} />,
         meta: {
           headerClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-16" />,

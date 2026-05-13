@@ -16,13 +16,11 @@ export const GC_TYPE_BADGE_VARIANTS: Record<string, 'primary' | 'success' | 'inf
 
 export const GC_STATUS_COLORS: Record<GCStatus, string> = {
   ACTIVE: 'bg-success',
-  PROSPECTING: 'bg-primary',
   INACTIVE: 'bg-muted-foreground',
 };
 
 export const GC_STATUS_LABELS: Record<GCStatus, string> = {
   ACTIVE: 'Active',
-  PROSPECTING: 'Prospect',
   INACTIVE: 'Inactive',
 };
 
@@ -31,5 +29,5 @@ export function isGCsSortByField(value: string | null): value is GCsSortByField 
 }
 
 export function isValidGCStatus(value: string | null): value is GCStatus {
-  return value === 'ACTIVE' || value === 'PROSPECTING' || value === 'INACTIVE';
+  return value === 'ACTIVE' || value === 'INACTIVE';
 }

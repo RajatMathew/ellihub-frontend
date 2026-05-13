@@ -61,13 +61,15 @@ export const vendorContactLinkContactSchema = z
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
     email: z.preprocess((val) => {
+      if (!val) return [];
       if (typeof val === 'string') return [{ email: val, label: 'Email' }];
       return val;
-    }, z.array(contactEmailSchema).optional().default([])),
+    }, z.array(contactEmailSchema).default([])),
     phoneNumber: z.preprocess((val) => {
+      if (!val) return [];
       if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
       return val;
-    }, z.array(contactPhoneSchema).optional().default([])),
+    }, z.array(contactPhoneSchema).default([])),
     tags: z.array(z.string()).optional().default([]),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -90,6 +92,42 @@ export const vendorContactLinkSchema = z
   .passthrough();
 
 export type VendorContactLink = z.infer<typeof vendorContactLinkSchema>;
+
+const vendorDocumentFileSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    displayName: z.string().nullable().optional(),
+    mimeType: z.string().nullable().optional(),
+    size: z.number().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export const vendorDocumentSchema = z
+  .object({
+    id: z.string(),
+    fileId: z.string(),
+    vendorId: z.string(),
+    expiresOn: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    file: vendorDocumentFileSchema.optional().nullable(),
+  })
+  .passthrough();
+
+export type VendorDocument = z.infer<typeof vendorDocumentSchema>;
+
+const vendorMetricsSchema = z.object({
+  totalCommitted: z.coerce.number().optional().default(0),
+  totalPaid: z.coerce.number().optional().default(0),
+  outstandingBalance: z.coerce.number().optional().default(0),
+  currentBalance: z.coerce.number().optional().default(0),
+  purchaseOrderCount: z.number().optional().default(0),
+  invoiceCount: z.number().optional().default(0),
+  documentCount: z.number().optional().default(0),
+});
 
 // --- Main model (list view) ---
 
@@ -117,11 +155,15 @@ export const vendorSchema = z
       .object({
         contactLinks: z.number().default(0),
         contacts: z.number().default(0),
+        documents: z.number().default(0),
+        purchaseOrders: z.number().default(0),
+        invoices: z.number().default(0),
       })
       .passthrough()
       .optional()
-      .default({ contactLinks: 0, contacts: 0 }),
+      .default({ contactLinks: 0, contacts: 0, documents: 0, purchaseOrders: 0, invoices: 0 }),
   })
+  .merge(vendorMetricsSchema)
   .passthrough();
 
 export type Vendor = z.infer<typeof vendorSchema>;
@@ -148,7 +190,20 @@ export const vendorDetailSchema = z
     updatedAt: z.string().optional().default(''),
     contactLinks: z.array(vendorContactLinkSchema).optional().default([]),
     contacts: z.array(vendorContactLinkContactSchema).optional().default([]),
+    documents: z.array(vendorDocumentSchema).optional().default([]),
+    _count: z
+      .object({
+        contactLinks: z.number().default(0),
+        contacts: z.number().default(0),
+        documents: z.number().default(0),
+        purchaseOrders: z.number().default(0),
+        invoices: z.number().default(0),
+      })
+      .passthrough()
+      .optional()
+      .default({ contactLinks: 0, contacts: 0, documents: 0, purchaseOrders: 0, invoices: 0 }),
   })
+  .merge(vendorMetricsSchema)
   .passthrough();
 
 export type VendorDetail = z.infer<typeof vendorDetailSchema>;
@@ -168,6 +223,16 @@ export const vendorPaginatedResponseSchema = z.object({
 });
 
 export type VendorPaginatedResponse = z.infer<typeof vendorPaginatedResponseSchema>;
+
+export const vendorStatsSchema = z.object({
+  totalVendors: z.number(),
+  totalCommitted: z.coerce.number().default(0),
+  totalPaid: z.coerce.number().default(0),
+  outstandingBalance: z.coerce.number().default(0),
+  currentBalance: z.coerce.number().default(0),
+});
+
+export type VendorStats = z.infer<typeof vendorStatsSchema>;
 
 // --- Inputs ---
 
@@ -233,15 +298,12 @@ export const vendorFormSchema = z.object({
   status: z.string(),
   taxId: z
     .string()
-    .refine(
-      (val) => !val || /^\d{2}-?\d{7}$/.test(val),
-      'Enter a valid EIN (e.g. 12-3456789)',
-    ),
+    .refine((val) => !val || /^\d{2}-?\d{7}$/.test(val), 'Enter a valid EIN (e.g. 12-3456789)'),
   website: z
     .string()
     .refine(
       (val) => !val || /^https?:\/\/.+/.test(val),
-      'Enter a valid URL starting with http:// or https://',
+      'Enter a valid URL starting with http:// or https://'
     ),
   paymentTerms: z.string(),
 });

@@ -1,13 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { fakeGCName, fakePhone, fakeStreetAddress, fakeVendorEmail, fakeVendorWebsite, pickRandom } from '@/lib/fake-data';
-import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
+import {
+  fakeGCName,
+  fakePhone,
+  fakeStreetAddress,
+  fakeVendorEmail,
+  fakeVendorWebsite,
+  pickRandom,
+} from '@/lib/fake-data';
 import type { LinkedContactItem } from '@/modules/directory/components/shared';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import { useContactsQuery, useGCDetailQuery, useGCTypesQuery } from '@/modules/directory/hooks';
 import {
   gcFormSchema,
+  gcStatusSchema,
+  paymentTermsSchema,
   type GCContactLink,
   type GCFormValues,
+  type GeneralContractorDetail,
 } from '@/modules/directory/schemas/gc.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -38,21 +48,21 @@ export function useGCFormState(id: string | undefined) {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
   const [originalLinks, setOriginalLinks] = useState<GCContactLink[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const initializedGcIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isEdit || !gcQuery.data || isInitialized) return;
+    if (!isEdit || !gcQuery.data || initializedGcIdRef.current === gcQuery.data.id) return;
 
     const gc = gcQuery.data;
     form.reset({
       name: gc.name,
       gcTypeId: gc.gcTypeId || gc.gcType?.id || '',
       website: gc.website ?? '',
-      status: gc.status,
+      status: getGCStatusFormValue(gc),
       email: gc.email ?? '',
       phone: gc.phone ?? '',
       address: gc.address ?? '',
-      paymentTerms: gc.paymentTerms ?? '',
+      paymentTerms: getGCPaymentTermsFormValue(gc),
       retainagePercent: gc.retainagePercent,
     });
 
@@ -67,13 +77,13 @@ export function useGCFormState(id: string | undefined) {
           isPrimary: link.isPrimary,
         }))
       );
-      setIsInitialized(true);
+      initializedGcIdRef.current = gc.id;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [form, gcQuery.data, isEdit, isInitialized]);
+  }, [form, gcQuery.data, isEdit]);
 
   const contactOptions = useMemo(
     () =>
@@ -139,6 +149,16 @@ export function useGCFormState(id: string | undefined) {
     fillRandom,
     handleContactCreated,
   };
+}
+
+function getGCStatusFormValue(gc: GeneralContractorDetail) {
+  const result = gcStatusSchema.safeParse(gc.status);
+  return result.success ? result.data : 'ACTIVE';
+}
+
+function getGCPaymentTermsFormValue(gc: GeneralContractorDetail) {
+  const result = paymentTermsSchema.safeParse(gc.paymentTerms);
+  return result.success ? result.data : 'NET_30';
 }
 
 function buildGCContactLinks(

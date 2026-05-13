@@ -70,7 +70,7 @@ export function VendorDetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
-          <VendorDetailStats />
+          <VendorDetailStats vendor={vendor} />
           <VendorOverviewTab vendor={vendor} contacts={contacts} />
         </div>
 
