@@ -49,7 +49,13 @@ export const rfqListItemSchema = z
       .passthrough()
       .nullable()
       .optional(),
-    _count: z.record(z.string(), z.number()).nullable().optional(),
+    _count: z
+      .object({
+        invites: z.number(),
+        quotes: z.number(),
+      })
+      .nullable()
+      .optional(),
     createdAt: z.string().optional(),
   })
   .passthrough();
