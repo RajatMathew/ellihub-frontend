@@ -59,11 +59,7 @@ import {
   RFQDetailVendorsCard,
 } from '@/modules/project/components/rfq';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
-import {
-  BIDDING_TYPE_LABELS,
-  getRfqStatusVariant,
-  RFQ_TRACK_LABELS,
-} from '@/modules/project/constants/rfq';
+import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -632,18 +628,7 @@ export default function RFQDetailPage() {
         {/* Left column */}
         <div className="min-w-0 flex-1 space-y-5">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard
-              icon={<ShieldAlert className="size-6 text-muted-foreground" />}
-              bgClass="bg-muted/50"
-              label="Bidding Type"
-              value={
-                ((rfq.biddingType &&
-                  BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
-                  rfq.biddingType) ||
-                ''
-              }
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatsCard
               icon={<Users className="size-6 text-primary" />}
               bgClass="bg-primary/10"
@@ -811,11 +796,6 @@ export default function RFQDetailPage() {
                     {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '—'}
                   </InfoRow>
                   <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
-                  <InfoRow label="Bidding Type">
-                    {(rfq.biddingType &&
-                      BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
-                      rfq.biddingType}
-                  </InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
                   )}

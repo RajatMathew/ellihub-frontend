@@ -15,16 +15,6 @@ export function getRfqStatusVariant(statusName: string | null | undefined) {
   }
 }
 
-export const BIDDING_TYPE_LABELS: Record<string, string> = {
-  ANONYMOUS: 'Anonymous',
-  OPEN: 'Open',
-};
-
-export const BIDDING_TYPE_OPTIONS = [
-  { value: 'ANONYMOUS', label: 'Anonymous' },
-  { value: 'OPEN', label: 'Open' },
-] as const;
-
 export const RFQ_TRACK_OPTIONS = [
   { value: 'MATERIAL', label: 'Material' },
   { value: 'FABRICATION', label: 'Fabrication' },

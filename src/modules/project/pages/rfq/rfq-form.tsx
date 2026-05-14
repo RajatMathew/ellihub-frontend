@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { fakeProjectDescription, fakeRFQDeliverables, fakeRFQTitle, pickRandom, randInt } from '@/lib/fake-data';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
@@ -16,6 +15,13 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import {
+  fakeProjectDescription,
+  fakeRFQDeliverables,
+  fakeRFQTitle,
+  pickRandom,
+  randInt,
+} from '@/lib/fake-data';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
@@ -49,7 +55,6 @@ function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]
     description: fakeProjectDescription(),
     typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
     bidDeadline: deadline.toISOString().slice(0, 10),
-    biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
     deliverables: fakeRFQDeliverables(units),
   };
 }
