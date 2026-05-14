@@ -43,7 +43,6 @@ export const rfqListItemSchema = z
       .optional(),
     bidDeadline: z.string().nullable().optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
-    biddingType: z.string().nullable().optional(),
     project: z
       .object({ id: z.string(), name: z.string(), jobNumber: z.string().nullable().optional() })
       .passthrough()
@@ -247,7 +246,6 @@ export const rfqDetailSchema = z
       .optional(),
 
     bidDeadline: z.string().nullable().optional(),
-    biddingType: z.string().nullable().optional(),
     minimumVendors: z.number().optional(),
     deliverables: z.array(rfqDeliverableSchema).optional().default([]),
     invites: z.array(rfqInviteSchema).optional().default([]),

@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import {
   EmployeeDetailDialogs,
   EmployeeDetailLoading,
@@ -42,6 +43,7 @@ export default function EmployeeDetailPage() {
   const linkUserMutation = useLinkEmployeeUserMutation();
   const unlinkUserMutation = useUnlinkEmployeeUserMutation();
   const removeDocumentMutation = useRemoveEmployeeDocumentMutation();
+  const downloadFileMutation = useDownloadFile();
   const activity = useActivityPanelItems('employee', id);
 
   useBreadcrumbLabel(id ? `/app/hr/employees/${id}` : undefined, employee?.name ?? 'Employee');
@@ -104,7 +106,9 @@ export default function EmployeeDetailPage() {
               <EmployeeDocumentsTab
                 documents={employee.documents}
                 isRemoving={removeDocumentMutation.isPending}
+                isDownloading={downloadFileMutation.isPending}
                 onAddDocument={() => setAddDocumentOpen(true)}
+                onDownloadDocument={(file) => downloadFileMutation.mutate(file)}
                 onRemoveDocument={(fileId) => {
                   if (!id) return;
                   removeDocumentMutation.mutate({ employeeId: id, fileId });

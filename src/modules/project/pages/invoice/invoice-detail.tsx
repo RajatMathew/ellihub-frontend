@@ -146,7 +146,8 @@ export function InvoiceDetailPage() {
   );
 
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
-  const { data: paymentMethods } = useLookupsQuery('PAYMENT_METHOD');
+  const { data: paymentMethods, isLoading: isLoadingPaymentMethods } =
+    useLookupsQuery('PAYMENT_METHOD');
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'invoice',
     entityId: invoiceId,
@@ -252,6 +253,7 @@ export function InvoiceDetailPage() {
     markUnpaidMutation.isPending ||
     disputeMutation.isPending ||
     resolveDisputeMutation.isPending;
+  const hasPaymentMethods = (paymentMethods?.length ?? 0) > 0;
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
@@ -752,16 +754,28 @@ export function InvoiceDetailPage() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Payment Method</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isLoadingPaymentMethods || markPaidMutation.isPending}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select payment method..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {(paymentMethods ?? []).map((method) => (
-                        <SelectItem key={method.id} value={method.id}>
-                          {method.label ?? method.name ?? method.id}
+                      {hasPaymentMethods ? (
+                        paymentMethods?.map((method) => (
+                          <SelectItem key={method.id} value={method.id}>
+                            {method.label ?? method.name ?? method.id}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__payment_methods_empty" disabled>
+                          {isLoadingPaymentMethods
+                            ? 'Loading payment methods...'
+                            : 'No payment methods available'}
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -794,7 +808,7 @@ export function InvoiceDetailPage() {
               <Button type="button" variant="outline" onClick={() => setMarkPaidOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={markPaidMutation.isPending}>
+              <Button type="submit" disabled={markPaidMutation.isPending || !hasPaymentMethods}>
                 Mark Paid
               </Button>
             </DialogFooter>

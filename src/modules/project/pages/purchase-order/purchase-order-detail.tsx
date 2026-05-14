@@ -240,8 +240,6 @@ export function PODetailPage() {
     po.tradeCategoryLabel ??
     (po.tradeCategory ? TRADE_CATEGORY_LABELS[po.tradeCategory] : undefined);
   const vendorEmail = typeof po.vendor?.email === 'string' ? po.vendor.email : undefined;
-  const vendorPhone = typeof po.vendor?.phone === 'string' ? po.vendor.phone : undefined;
-  const vendorAddress = typeof po.vendor?.address === 'string' ? po.vendor.address : undefined;
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
@@ -466,7 +464,7 @@ export function PODetailPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                     <ProjectDetailField label="Vendor">{po.vendor?.name}</ProjectDetailField>
                     <ProjectDetailField label="Email">
                       {vendorEmail ? (
@@ -477,16 +475,9 @@ export function PODetailPage() {
                         '-'
                       )}
                     </ProjectDetailField>
-                    <ProjectDetailField label="Phone">{vendorPhone}</ProjectDetailField>
                     <ProjectDetailField label="Lead Time">{po.leadTime}</ProjectDetailField>
                     <ProjectDetailField label="Payment Terms">
                       {po.paymentTerms?.replace(/_/g, ' ')}
-                    </ProjectDetailField>
-                    <ProjectDetailField
-                      label="Vendor Address"
-                      className="sm:col-span-2 lg:col-span-3"
-                    >
-                      {vendorAddress ?? '-'}
                     </ProjectDetailField>
                   </div>
                 </CardContent>

@@ -1,3 +1,4 @@
+import { fileSchema } from '@/modules/files/schemas/file.schema';
 import { z } from 'zod';
 
 export const employeeRoleSchema = z
@@ -14,6 +15,18 @@ export const employeeDepartmentSchema = z
     id: z.string(),
     name: z.string(),
     description: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+export const employeeDocumentSchema = z
+  .object({
+    id: z.string(),
+    employeeId: z.string(),
+    fileId: z.string(),
+    expiresOn: z.string().optional().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    file: fileSchema.optional().nullable(),
   })
   .passthrough();
 
@@ -35,23 +48,14 @@ export const employeeSchema = z
     role: employeeRoleSchema.optional().nullable(),
     department: employeeDepartmentSchema.optional().nullable(),
     status: z.string().optional().nullable(),
-    documents: z
-      .array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-          url: z.string().optional(),
-          type: z.string().optional(),
-        })
-      )
-      .optional()
-      .default([]),
+    documents: z.array(employeeDocumentSchema).optional().default([]),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
   .passthrough();
 
 export type Employee = z.infer<typeof employeeSchema>;
+export type EmployeeDocument = z.infer<typeof employeeDocumentSchema>;
 
 // Pagination schema
 export const employeePaginatedResponseSchema = z.object({
