@@ -1,21 +1,27 @@
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatDate } from '@/app/lib/helpers';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
-import { FileText, PlusCircle, Trash2 } from 'lucide-react';
+import { Download, FileText, PlusCircle, Trash2 } from 'lucide-react';
 
 type EmployeeDocument = Employee['documents'][number];
+type EmployeeDocumentFile = NonNullable<EmployeeDocument['file']>;
 
 interface EmployeeDocumentsTabProps {
   documents: EmployeeDocument[];
   isRemoving: boolean;
+  isDownloading: boolean;
   onAddDocument: () => void;
+  onDownloadDocument: (file: EmployeeDocumentFile) => void;
   onRemoveDocument: (fileId: string) => void;
 }
 
 export function EmployeeDocumentsTab({
   documents,
   isRemoving,
+  isDownloading,
   onAddDocument,
+  onDownloadDocument,
   onRemoveDocument,
 }: EmployeeDocumentsTabProps) {
   return (
@@ -44,23 +50,39 @@ export function EmployeeDocumentsTab({
                     <FileText className="size-5 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-medium">{document.name}</span>
+                    <span className="block truncate text-sm font-medium">
+                      {getDocumentName(document)}
+                    </span>
                     <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                      {document.type || 'Document'}
+                      {getDocumentMeta(document)}
                     </span>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  mode="icon"
-                  className="text-destructive hover:bg-destructive/10"
-                  disabled={isRemoving}
-                  onClick={() => onRemoveDocument(document.id)}
-                  aria-label={`Remove ${document.name}`}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {document.file?.id && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      mode="icon"
+                      disabled={isDownloading}
+                      onClick={() => onDownloadDocument(document.file!)}
+                      aria-label={`Download ${getDocumentName(document)}`}
+                    >
+                      <Download className="size-3.5" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    mode="icon"
+                    className="text-destructive hover:bg-destructive/10"
+                    disabled={isRemoving}
+                    onClick={() => onRemoveDocument(document.fileId)}
+                    aria-label={`Remove ${getDocumentName(document)}`}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -75,4 +97,19 @@ export function EmployeeDocumentsTab({
       </CardContent>
     </Card>
   );
+}
+
+function getDocumentName(document: EmployeeDocument) {
+  return document.file?.displayName || document.file?.name || document.fileId;
+}
+
+function getDocumentMeta(document: EmployeeDocument) {
+  const fileType = document.file?.mimeType || document.file?.type || 'Document';
+  if (!document.expiresOn) return fileType;
+
+  return `${fileType} - Expires ${formatDate(document.expiresOn, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })}`;
 }
