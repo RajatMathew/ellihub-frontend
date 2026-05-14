@@ -131,10 +131,10 @@ export default function ProjectContractOverview() {
           project={project}
           onTeamClick={() => setTeamDialogOpen(true)}
         >
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             <Share2 className="size-4" />
             Share
-          </Button>
+          </Button> */}
           <Button variant="outline" size="sm" asChild>
             <Link to={`/app/project/${projectId}/edit`}>
               <Pencil className="size-4" />
