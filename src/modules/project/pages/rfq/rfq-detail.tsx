@@ -56,6 +56,7 @@ import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
+  RFQCreatePOPreviewDialog,
 } from '@/modules/project/components/rfq';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
@@ -67,7 +68,6 @@ import {
   useCancelRFQMutation,
   useDeclineInviteMutation,
   useDeleteRFQMutation,
-  useGeneratePOMutation,
   useGenerateRFQVendorPdfMutation,
   usePublishRFQMutation,
   useRemoveQuoteMutation,
@@ -181,7 +181,6 @@ export default function RFQDetailPage() {
   const awardMutation = useAwardRFQMutation();
   const voidMutation = useVoidAwardMutation();
   const unawardMutation = useUnawardRFQMutation();
-  const generatePOMutation = useGeneratePOMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
   const sendVendorEmailMutation = useSendFeatureMailMutation();
   const deleteMutation = useDeleteRFQMutation();
@@ -234,6 +233,9 @@ export default function RFQDetailPage() {
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardQuoteIds, setAwardQuoteIds] = useState<string[]>([]);
+
+  // Create PO preview
+  const [createPOOpen, setCreatePOOpen] = useState(false);
 
   // Upload attachment dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -332,7 +334,6 @@ export default function RFQDetailPage() {
     addVendorMutation.isPending ||
     submitQuoteMutation.isPending ||
     unawardMutation.isPending ||
-    generatePOMutation.isPending ||
     sendVendorEmailMutation.isPending ||
     updateStatusMutation.isPending ||
     addAttachmentMutation.isPending ||
@@ -673,7 +674,7 @@ export default function RFQDetailPage() {
             onEmailVendor={handleEmailVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
-            onGeneratePO={() => generatePOMutation.mutate(rfqId)}
+            onGeneratePO={() => setCreatePOOpen(true)}
             onRemoveQuote={(quoteId) => removeQuoteMutation.mutate({ rfqId, id: quoteId })}
             onRemoveVendor={(inviteId) => removeVendorMutation.mutate({ rfqId, quoteId: inviteId })}
             onDeclineInvite={(inviteId) =>
@@ -1635,6 +1636,13 @@ export default function RFQDetailPage() {
         }}
         variant="destructive"
         isPending={deleteMutation.isPending}
+      />
+
+      <RFQCreatePOPreviewDialog
+        open={createPOOpen}
+        rfqId={rfqId}
+        projectId={projectId}
+        onOpenChange={setCreatePOOpen}
       />
     </div>
   );

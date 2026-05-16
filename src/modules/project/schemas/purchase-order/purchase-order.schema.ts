@@ -276,7 +276,7 @@ export const poLineItemInputSchema = z.object({
   quantity: z.number().positive('Quantity must be > 0'),
   unitId: z.string().min(1, 'Unit is required'),
   unitPrice: z.number().min(0, 'Unit price must be >= 0'),
-  costCodeId: z.string().optional(),
+  costCodeId: z.string().min(1, 'Cost code is required'),
   notes: z.string().optional(),
 });
 

@@ -4,6 +4,7 @@ import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreateRFQInput,
+  CreatePOFromRFQInput,
   ListRFQParams,
   RFQDeliverableInput,
   UpdateRFQInput,
@@ -371,8 +372,9 @@ export const useGeneratePOMutation = () => {
   const { projectId } = useParams<{ projectId: string }>();
 
   return useMutation({
-    mutationFn: (rfqId: string) => rfqApi.generatePO(rfqId),
-    onSuccess: async (data, rfqId) => {
+    mutationFn: ({ rfqId, data }: { rfqId: string; data: CreatePOFromRFQInput }) =>
+      rfqApi.generatePO(rfqId, data),
+    onSuccess: async (data, { rfqId }) => {
       await invalidateRFQQueries(qc, rfqId);
       toast.success('Purchase Order created.');
 

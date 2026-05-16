@@ -15,6 +15,7 @@ import {
   RFQListHeader,
   RFQListStats,
   RFQListTable,
+  RFQCreatePOPreviewDialog,
   getRFQStatusName,
   getRFQTrackValue,
   useRFQListColumns,
@@ -25,7 +26,6 @@ import {
 } from '@/modules/project/constants/rfq';
 import {
   useDeleteRFQMutation,
-  useGeneratePOMutation,
   useRFQListParams,
   useRFQListQuery,
   useRFQStatusesQuery,
@@ -65,7 +65,6 @@ export default function RFQListPage() {
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: allData } = useRFQListQuery({ projectId, size: 100 });
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
-  const { mutate: generatePO, isPending: isCreatePOPending } = useGeneratePOMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
   const [createPOTarget, setCreatePOTarget] = useState<RFQListItem | null>(null);
 
@@ -161,14 +160,6 @@ export default function RFQListPage() {
     });
   }, [deleteRFQ, deleteTarget]);
 
-  const handleConfirmCreatePO = useCallback(() => {
-    if (!createPOTarget) return;
-
-    generatePO(createPOTarget.id, {
-      onSuccess: () => setCreatePOTarget(null),
-    });
-  }, [createPOTarget, generatePO]);
-
   return (
     <div className="container-fluid py-7.5">
       <RFQListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
@@ -197,13 +188,17 @@ export default function RFQListPage() {
 
       <RFQListConfirmDialogs
         deleteTarget={deleteTarget}
-        createPOTarget={createPOTarget}
         isDeletePending={isDeletePending}
-        isCreatePOPending={isCreatePOPending}
         onCloseDelete={() => setDeleteTarget(null)}
-        onCloseCreatePO={() => setCreatePOTarget(null)}
         onConfirmDelete={handleConfirmDelete}
-        onConfirmCreatePO={handleConfirmCreatePO}
+      />
+      <RFQCreatePOPreviewDialog
+        open={!!createPOTarget}
+        rfqId={createPOTarget?.id ?? null}
+        projectId={projectId}
+        onOpenChange={(open) => {
+          if (!open) setCreatePOTarget(null);
+        }}
       />
     </div>
   );
