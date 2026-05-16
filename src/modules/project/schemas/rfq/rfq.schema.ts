@@ -259,6 +259,8 @@ export const rfqDetailSchema = z
             id: z.string(),
             poNumber: z.string().nullable().optional(),
             vendorId: z.string().nullable().optional(),
+            rfqId: z.string().nullable().optional(),
+            status: z.string().nullable().optional(),
             awardedQuoteId: z.string().nullable().optional(),
           })
           .passthrough()
@@ -357,3 +359,16 @@ export const voidAwardInputSchema = z.object({
 });
 
 export type VoidAwardInput = z.infer<typeof voidAwardInputSchema>;
+
+export const createPOFromRFQInputSchema = z.object({
+  lineItems: z
+    .array(
+      z.object({
+        rfqDeliverableId: z.string().min(1, 'RFQ deliverable is required'),
+        costCodeId: z.string().min(1, 'Cost code is required'),
+      })
+    )
+    .min(1, 'At least one line item is required'),
+});
+
+export type CreatePOFromRFQInput = z.infer<typeof createPOFromRFQInputSchema>;

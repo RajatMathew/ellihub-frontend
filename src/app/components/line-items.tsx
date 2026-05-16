@@ -318,17 +318,21 @@ export function LineItems({
                       <Controller
                         name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
                         control={control}
-                        render={({ field: f }) => (
-                          <SearchableSelect
-                            options={costCodeOptions}
-                            value={f.value ?? null}
-                            onValueChange={(v) => f.onChange(v ?? undefined)}
-                            placeholder="Select..."
-                            searchPlaceholder="Search..."
-                            emptyMessage="None found."
-                            onAdd={onAddCostCode}
-                            addLabel="Add Cost Code"
-                          />
+                        render={({ field: f, fieldState }) => (
+                          <div>
+                            <SearchableSelect
+                              options={costCodeOptions}
+                              value={f.value ?? null}
+                              onValueChange={(v) => f.onChange(v ?? '')}
+                              placeholder="Select..."
+                              searchPlaceholder="Search..."
+                              emptyMessage="None found."
+                              onAdd={onAddCostCode}
+                              addLabel="Add Cost Code"
+                              className={fieldState.invalid ? 'border-destructive' : undefined}
+                            />
+                            {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                          </div>
                         )}
                       />
                     </td>

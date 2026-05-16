@@ -68,7 +68,7 @@ export function RFQVendorActionItems({
           Award
         </DropdownMenuItem>
       )}
-      {isVendorAwarded && !purchaseOrder && (
+      {isVendorAwarded && (
         <DropdownMenuItem onClick={onGeneratePO}>
           <FileText className="size-4" />
           Create PO

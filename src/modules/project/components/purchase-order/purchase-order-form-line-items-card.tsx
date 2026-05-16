@@ -33,6 +33,7 @@ const defaultLineItem: CreatePOInput['lineItems'][number] = {
   quantity: 1,
   unitId: '',
   unitPrice: 0,
+  costCodeId: '',
 };
 
 export function PurchaseOrderFormLineItemsCard({

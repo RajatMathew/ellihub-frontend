@@ -57,7 +57,7 @@ function createDefaultPOValues(projectId: string): CreatePOInput {
     paymentTerms: 'NET_30',
     retainagePercent: 10,
     notes: '',
-    lineItems: [{ description: '', quantity: 1, unitId: '', unitPrice: 0 }],
+    lineItems: [{ description: '', quantity: 1, unitId: '', unitPrice: 0, costCodeId: '' }],
   };
 }
 
@@ -67,7 +67,7 @@ function mapPOLineItemToInput(item: PODetail['lineItems'][number]): PurchaseOrde
     quantity: Number(item.quantity),
     unitId: item.unitId ?? '',
     unitPrice: Number(item.unitPrice),
-    costCodeId: item.costCodeId ?? undefined,
+    costCodeId: item.costCodeId ?? '',
     notes: item.notes ?? undefined,
   };
 }
@@ -93,7 +93,7 @@ function getPOFormValues(projectId: string, po?: PODetail): CreatePOInput {
     lineItems:
       po.lineItems.length > 0
         ? po.lineItems.map(mapPOLineItemToInput)
-        : [{ description: '', quantity: 1, unitId: '', unitPrice: 0 }],
+        : [{ description: '', quantity: 1, unitId: '', unitPrice: 0, costCodeId: '' }],
   };
 }
 
@@ -204,7 +204,7 @@ export function POFormPage() {
       retainagePercent: rest.retainagePercent ?? undefined,
       lineItems: lineItems.map((item) => ({
         ...item,
-        costCodeId: item.costCodeId || undefined,
+        costCodeId: item.costCodeId,
         notes: item.notes || undefined,
       })),
     };
