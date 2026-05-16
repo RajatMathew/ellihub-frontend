@@ -107,11 +107,22 @@ export function PurchaseOrderStatusCell({ po }: { po: POListItem }) {
 }
 
 export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
+  const poTotal = Number(po.total ?? 0);
+  const approvedScoTotal = (po.subChangeOrders ?? [])
+    .filter((sco) => sco.status === 'APPROVED')
+    .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0);
+  const totalCommitment = poTotal + approvedScoTotal;
+
   return (
     <div className="flex flex-col gap-0.5 text-right">
       <span className="text-sm font-medium text-foreground">
-        {formatOptionalPurchaseOrderCurrency(po.total)}
+        {formatOptionalPurchaseOrderCurrency(totalCommitment)}
       </span>
+      {approvedScoTotal > 0 && (
+        <span className="text-2sm text-muted-foreground">
+          SCO +{formatOptionalPurchaseOrderCurrency(approvedScoTotal)}
+        </span>
+      )}
       <span className="text-2sm text-muted-foreground">
         Subtotal {formatOptionalPurchaseOrderCurrency(po.subtotal)}
       </span>
@@ -176,7 +187,7 @@ export function PurchaseOrderActionsCell({
             <Link to={`${po.id}/edit`}>Edit</Link>
           </DropdownMenuItem>
         )}
-        {po.status !== 'CANCELLED' && (
+        {po.status !== 'CANCELLED' && po.status !== 'DELIVERED' && (
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={() => onCancel(po)}

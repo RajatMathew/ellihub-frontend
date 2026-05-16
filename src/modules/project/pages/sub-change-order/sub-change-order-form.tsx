@@ -905,6 +905,10 @@ function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {
   };
 }
 
+function canSelectPurchaseOrderForSCO(po: POListItem) {
+  return po.status !== 'CANCELLED';
+}
+
 function usePurchaseOrderOptions({
   projectId,
   selectedOption,
@@ -934,7 +938,9 @@ function usePurchaseOrderOptions({
 
   const options = useMemo(() => {
     const next =
-      query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
+      query.data?.pages.flatMap((page) =>
+        page.data.filter(canSelectPurchaseOrderForSCO).map(formatPurchaseOrderOption)
+      ) ?? [];
     if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
       return [selectedOption, ...next];
     }

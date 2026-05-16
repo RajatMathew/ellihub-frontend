@@ -74,6 +74,14 @@ const poTradeCategoryRefSchema = z
   })
   .passthrough();
 
+const poSubChangeOrderRefSchema = z
+  .object({
+    id: z.string(),
+    amount: z.coerce.number().nullable().optional(),
+    status: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 const poAttachmentSchema = z
   .object({
     id: z.string(),
@@ -103,6 +111,7 @@ export const poListItemSchema = z
     vendor: poVendorRefSchema.nullable().optional(),
     rfq: poRfqRefSchema.nullable().optional(),
     tradeCategory: poTradeCategoryRefSchema.nullable().optional(),
+    subChangeOrders: z.array(poSubChangeOrderRefSchema).optional().default([]),
     poNumber: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     status: poStatusNameSchema,
