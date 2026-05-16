@@ -35,5 +35,8 @@ export function mergeLinkedContacts<TContact extends DirectoryContactSnapshot>(
     });
   });
 
-  return Array.from(contactMap.values());
+  return Array.from(contactMap.values()).sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+    return a.fullName.localeCompare(b.fullName);
+  });
 }

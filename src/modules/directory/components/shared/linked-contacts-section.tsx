@@ -68,7 +68,7 @@ export function LinkedContactsSection({
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <CircleUserRound className="size-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 break-words text-sm font-medium text-foreground">
-                    {getLinkedContactName(link.contactId, originalLinks, contacts)}
+                    {getLinkedContactName(link.contactId, originalLinks, contacts, contactOptions)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
@@ -79,7 +79,9 @@ export function LinkedContactsSection({
                       onCheckedChange={(checked) =>
                         onChange(
                           contactLinks.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, isPrimary: checked } : item
+                            itemIndex === index
+                              ? { ...item, isPrimary: checked }
+                              : { ...item, isPrimary: checked ? false : item.isPrimary }
                           )
                         )
                       }
@@ -115,7 +117,7 @@ export function LinkedContactsSection({
                 value={null}
                 onValueChange={(contactId) => {
                   if (!contactId) return;
-                  onChange([...contactLinks, { contactId, isPrimary: false }]);
+                  onChange([...contactLinks, { contactId, isPrimary: contactLinks.length === 0 }]);
                 }}
                 placeholder="Search contacts..."
                 searchPlaceholder="Search contacts..."
@@ -142,12 +144,17 @@ export function LinkedContactsSection({
 function getLinkedContactName(
   contactId: string,
   originalLinks: LinkedContactOriginalLink[],
-  contacts: LinkedContactNameSource[]
+  contacts: LinkedContactNameSource[],
+  contactOptions: { value: string; label: string }[]
 ) {
   const fromLink = originalLinks.find((link) => link.contactId === contactId);
   if (fromLink?.contact?.fullName) {
     return fromLink.contact.fullName;
   }
 
-  return contacts.find((contact) => contact.id === contactId)?.fullName ?? contactId;
+  return (
+    contacts.find((contact) => contact.id === contactId)?.fullName ??
+    contactOptions.find((option) => option.value === contactId)?.label ??
+    contactId
+  );
 }

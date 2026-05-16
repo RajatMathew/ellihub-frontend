@@ -48,20 +48,27 @@ const contactPhoneSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
+const normalizeContactEmailValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+  return val;
+};
+
+const normalizeContactPhoneValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+  return val;
+};
+
 export const gcContactLinkContactSchema = z
   .object({
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: z.preprocess((val) => {
-      if (typeof val === 'string') return [{ email: val, label: 'Email' }];
-      return val;
-    }, z.array(contactEmailSchema).optional().default([])),
-    phoneNumber: z.preprocess((val) => {
-      if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
-      return val;
-    }, z.array(contactPhoneSchema).optional().default([])),
+    email: z.preprocess(normalizeContactEmailValue, z.array(contactEmailSchema).default([])),
+    phoneNumber: z.preprocess(normalizeContactPhoneValue, z.array(contactPhoneSchema).default([])),
     tags: z.array(z.string()).optional().default([]),
+    isPrimary: z.boolean().optional().default(false),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),

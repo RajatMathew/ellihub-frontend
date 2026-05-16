@@ -64,10 +64,10 @@ export function useContactAssociations({
     return null;
   }, [gcLinks, gcOptions, vendorLinks, vendorOptions]);
 
-  const primaryVendorId =
-    vendorLinks.find((link) => link.isPrimary)?.vendorId ?? vendorLinks[0]?.vendorId;
-  const primaryGCId =
-    gcLinks.find((link) => link.isPrimary)?.generalContractorId ?? gcLinks[0]?.generalContractorId;
+  const primaryVendorId = vendorLinks[0]?.vendorId;
+  const primaryGCId = gcLinks[0]?.generalContractorId;
+  const selectedAssociationIsPrimary =
+    vendorLinks[0]?.isPrimary ?? gcLinks[0]?.isPrimary ?? false;
 
   const replaceAssociation = (next: PendingContactAssociation) => {
     setVendorLinks(next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true }] : []);
@@ -129,6 +129,7 @@ export function useContactAssociations({
     currentAssociation,
     primaryVendorId,
     primaryGCId,
+    selectedAssociationIsPrimary,
     setVendorLinks,
     setGCLinks,
     handleAddAssociation,
@@ -178,7 +179,7 @@ function buildVendorLinks(contact?: Contact): ContactVendorAssociation[] {
   }));
 
   if (contact.vendorId && !links.some((link) => link.vendorId === contact.vendorId)) {
-    links.push({ vendorId: contact.vendorId, isPrimary: true });
+    links.push({ vendorId: contact.vendorId, isPrimary: contact.isPrimary });
   }
 
   return links;
@@ -196,7 +197,7 @@ function buildGCLinks(contact?: Contact): ContactGCAssociation[] {
     contact.generalContractorId &&
     !links.some((link) => link.generalContractorId === contact.generalContractorId)
   ) {
-    links.push({ generalContractorId: contact.generalContractorId, isPrimary: true });
+    links.push({ generalContractorId: contact.generalContractorId, isPrimary: contact.isPrimary });
   }
 
   return links;
