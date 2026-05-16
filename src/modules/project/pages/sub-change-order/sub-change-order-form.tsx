@@ -82,8 +82,9 @@ export function SCOFormPage() {
   const { data: costCodesData } = useCostCodesQuery();
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
+  const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
   const selectedPurchaseOrderOption =
-    scoDetail?.purchaseOrder?.id && scoDetail.purchaseOrder.status === 'ISSUED'
+    scoDetail?.purchaseOrder?.id && currentPurchaseOrderIsIssued
       ? {
           value: scoDetail.purchaseOrder.id,
           label: scoDetail.purchaseOrder.poNumber ?? scoDetail.purchaseOrder.id,
@@ -146,7 +147,9 @@ export function SCOFormPage() {
 
     reset({
       projectId: scoDetail.projectId ?? projectId,
-      purchaseOrderId: scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '',
+      purchaseOrderId: currentPurchaseOrderIsIssued
+        ? (scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '')
+        : '',
       date: scoDetail.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       title: scoDetail.title ?? '',
       description: scoDetail.description ?? '',
@@ -167,7 +170,7 @@ export function SCOFormPage() {
             }))
           : [defaultLineItem],
     });
-  }, [isEdit, projectId, reset, scoDetail]);
+  }, [currentPurchaseOrderIsIssued, isEdit, projectId, reset, scoDetail]);
 
   const watchedLineItems = watch('lineItems');
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
