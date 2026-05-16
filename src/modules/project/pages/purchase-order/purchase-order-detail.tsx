@@ -61,7 +61,6 @@ import {
   usePODetailQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
-  useRevertToDraftMutation,
 } from '@/modules/project/hooks/purchase-order';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
@@ -120,7 +119,6 @@ export function PODetailPage() {
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
-  const revertToDraftMutation = useRevertToDraftMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -190,8 +188,7 @@ export function PODetailPage() {
 
   const canEdit = isDraft;
   const canIssue = isDraft;
-  const canCancel = !isCancelled;
-  const canRevert = !isDraft;
+  const canCancel = !isCancelled && !isDelivered;
   const canRecordDelivery = isIssued && !isDelivered;
 
   const isOverdue =
@@ -204,8 +201,7 @@ export function PODetailPage() {
   const isActionPending =
     issueMutation.isPending ||
     cancelMutation.isPending ||
-    recordDeliveryMutation.isPending ||
-    revertToDraftMutation.isPending;
+    recordDeliveryMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -295,16 +291,6 @@ export function PODetailPage() {
               <Button size="sm" onClick={() => setIssueOpen(true)}>
                 <CheckCircle2 className="size-4" />
                 Issue PO
-              </Button>
-            )}
-            {canRevert && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => revertToDraftMutation.mutate(poId)}
-              >
-                Revert to Draft
               </Button>
             )}
             {canRecordDelivery && (

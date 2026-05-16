@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
@@ -38,10 +38,11 @@ import {
   useRemoveContractAttachmentMutation,
 } from '@/modules/project/hooks/contract-attachment.hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
+import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useEmployeeOptions } from '@/modules/project/hooks/use-employee-options';
 import { usePOCalculations } from '@/modules/project/hooks/use-po-calculations';
 import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
-import { EllipsisVertical, Pencil, Share2 } from 'lucide-react';
+import { EllipsisVertical, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProjectContractOverview() {
@@ -60,6 +61,7 @@ export default function ProjectContractOverview() {
     sortOrder: 'desc',
   });
   const { data: allPOs } = usePOsQuery({ projectId, size: 1000 });
+  const { data: allSCOs } = useSCOsQuery({ projectId, size: 1000 });
   const { data: attachments, isLoading: isLoadingAttachments } =
     useContractAttachmentsQuery(projectId);
   const { data: scheduleData, isLoading: isLoadingSchedule } = useProjectScheduleQuery(projectId);
@@ -79,12 +81,21 @@ export default function ProjectContractOverview() {
   const { totalPOCommitted, activePOsCount } = usePOCalculations({
     pos: allPOs?.data,
   });
+  const approvedSCOTotal = useMemo(
+    () =>
+      (allSCOs?.data ?? [])
+        .filter((sco) => sco.status === 'APPROVED')
+        .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0),
+    [allSCOs?.data],
+  );
+  const totalSpent = totalPOCommitted + approvedSCOTotal;
 
   const computations = usePrimeContractComputations({
     project,
     contract,
     primeChangeOrderSummary,
     totalPOCommitted,
+    totalSpent,
     invoiceSummary: undefined, // payments deferred to accounting module
   });
 
@@ -176,7 +187,7 @@ export default function ProjectContractOverview() {
           <ContractDetailsSimpleCard project={project} />
           <FinancialSummarySimpleCard computations={computations} />
           <BudgetCard
-            totalSpent={totalPOCommitted}
+            totalSpent={totalSpent}
             budgetLimit={computations.budgetLimit}
             targetBudgetPercent={computations.targetBudgetPercent}
           />

@@ -67,7 +67,7 @@ export function FinancialStatsBar({
       <StatsBarItem
         label="Committed (POs)"
         value={formatCurrency(totalPOCommitted)}
-        description={`${activePOsCount} active purchase orders`}
+        description={`${activePOsCount} issued purchase orders`}
         dotColor="bg-warning"
         valueColor="text-warning"
       />

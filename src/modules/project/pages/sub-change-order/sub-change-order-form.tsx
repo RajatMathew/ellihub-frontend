@@ -82,12 +82,14 @@ export function SCOFormPage() {
   const { data: costCodesData } = useCostCodesQuery();
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
-  const selectedPurchaseOrderOption = scoDetail?.purchaseOrder?.id
-    ? {
-        value: scoDetail.purchaseOrder.id,
-        label: scoDetail.purchaseOrder.poNumber ?? scoDetail.purchaseOrder.id,
-      }
-    : undefined;
+  const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
+  const selectedPurchaseOrderOption =
+    scoDetail?.purchaseOrder?.id && currentPurchaseOrderIsIssued
+      ? {
+          value: scoDetail.purchaseOrder.id,
+          label: scoDetail.purchaseOrder.poNumber ?? scoDetail.purchaseOrder.id,
+        }
+      : undefined;
   const purchaseOrderPicker = usePurchaseOrderOptions({
     projectId,
     selectedOption: selectedPurchaseOrderOption,
@@ -145,7 +147,9 @@ export function SCOFormPage() {
 
     reset({
       projectId: scoDetail.projectId ?? projectId,
-      purchaseOrderId: scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '',
+      purchaseOrderId: currentPurchaseOrderIsIssued
+        ? (scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '')
+        : '',
       date: scoDetail.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       title: scoDetail.title ?? '',
       description: scoDetail.description ?? '',
@@ -166,7 +170,7 @@ export function SCOFormPage() {
             }))
           : [defaultLineItem],
     });
-  }, [isEdit, projectId, reset, scoDetail]);
+  }, [currentPurchaseOrderIsIssued, isEdit, projectId, reset, scoDetail]);
 
   const watchedLineItems = watch('lineItems');
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
@@ -348,7 +352,7 @@ export function SCOFormPage() {
                         disabled={!projectId}
                         placeholder="Select purchase order..."
                         searchPlaceholder="Search purchase orders..."
-                        emptyMessage="No purchase orders found."
+                        emptyMessage="No issued purchase orders found."
                         loadingMessage="Loading purchase orders..."
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -905,6 +909,10 @@ function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {
   };
 }
 
+function canSelectPurchaseOrderForSCO(po: POListItem) {
+  return po.status === 'ISSUED';
+}
+
 function usePurchaseOrderOptions({
   projectId,
   selectedOption,
@@ -920,6 +928,7 @@ function usePurchaseOrderOptions({
     queryFn: ({ pageParam }) =>
       poApi.list({
         projectId,
+        status: 'ISSUED',
         search: debouncedSearch || undefined,
         page: pageParam,
         size: 25,
@@ -934,7 +943,9 @@ function usePurchaseOrderOptions({
 
   const options = useMemo(() => {
     const next =
-      query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
+      query.data?.pages.flatMap((page) =>
+        page.data.filter(canSelectPurchaseOrderForSCO).map(formatPurchaseOrderOption)
+      ) ?? [];
     if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
       return [selectedOption, ...next];
     }

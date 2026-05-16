@@ -39,7 +39,7 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
   });
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 2xl:grid-cols-4">
       {columns.map((divisionLabel) => {
         const items = divisionMap.get(divisionLabel) ?? [];
 

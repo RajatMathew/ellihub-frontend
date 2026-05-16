@@ -307,7 +307,7 @@ export const createRFQInputSchema = z.object({
   projectId: requiredTextSchema('Project is required'),
   title: z.string().min(1, 'Title is required').max(255),
   description: requiredTextSchema('Description is required'),
-  typeId: z.string().min(1, 'Type is required'),
+  typeId: z.string().min(1, 'Track is required'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });
@@ -317,7 +317,7 @@ export type CreateRFQInput = z.infer<typeof createRFQInputSchema>;
 export const updateRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: requiredTextSchema('Description is required'),
-  typeId: z.string().min(1, 'Type is required'),
+  typeId: z.string().min(1, 'Track is required'),
   bidDeadline: z.string().min(1, 'Bid deadline is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });

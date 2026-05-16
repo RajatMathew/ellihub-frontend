@@ -18,24 +18,23 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import type {
   FeatureMailDraft,
   FeatureMailDraftPayload,
   MailSignature,
 } from '@/modules/mail/schemas/mail.schema';
-import { Eye, FileText, Send, X } from 'lucide-react';
+import { featureMailDraftPayloadSchema } from '@/modules/mail/schemas/mail.schema';
+import { FileText, Send, X } from 'lucide-react';
 
 type EmailComposePreviewDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   draft: FeatureMailDraft | null;
-  preview: FeatureMailDraft | null;
   isLoading?: boolean;
-  isPreviewing?: boolean;
   isSending?: boolean;
   recipientsReadOnly?: boolean;
-  onPreview: (payload: FeatureMailDraftPayload) => Promise<void>;
   onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
 };
 
@@ -55,12 +54,9 @@ export function EmailComposePreviewDialog({
   onOpenChange,
   title,
   draft,
-  preview,
   isLoading = false,
-  isPreviewing = false,
   isSending = false,
   recipientsReadOnly = false,
-  onPreview,
   onSend,
 }: EmailComposePreviewDialogProps) {
   return (
@@ -75,12 +71,9 @@ export function EmailComposePreviewDialog({
           <EmailComposePreviewForm
             key={getDraftKey(draft)}
             draft={draft}
-            preview={preview}
-            isPreviewing={isPreviewing}
             isSending={isSending}
             recipientsReadOnly={recipientsReadOnly}
             onCancel={() => onOpenChange(false)}
-            onPreview={onPreview}
             onSend={onSend}
           />
         )}
@@ -106,55 +99,41 @@ function EmailComposeLoading({ onCancel }: { onCancel: () => void }) {
 
 function EmailComposePreviewForm({
   draft,
-  preview,
-  isPreviewing,
   isSending,
   recipientsReadOnly,
   onCancel,
-  onPreview,
   onSend,
 }: {
   draft: FeatureMailDraft;
-  preview: FeatureMailDraft | null;
-  isPreviewing: boolean;
   isSending: boolean;
   recipientsReadOnly: boolean;
   onCancel: () => void;
-  onPreview: (payload: FeatureMailDraftPayload) => Promise<void>;
   onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
 }) {
   const initialForm = useMemo(() => toFormState(draft), [draft]);
   const [form, setForm] = useState<EmailFormState>(initialForm);
-  const [previewedPayloadKey, setPreviewedPayloadKey] = useState(() =>
-    JSON.stringify(toPayload(initialForm))
-  );
   const senderOptions = draft.senderOptions;
-  const activePreview = preview ?? draft;
   const payload = useMemo(() => toPayload(form), [form]);
-  const payloadKey = useMemo(() => JSON.stringify(payload), [payload]);
+  const previewPayload = useDebouncedValue(payload, 150);
+  const isPayloadValid = useMemo(
+    () => featureMailDraftPayloadSchema.safeParse(payload).success,
+    [payload]
+  );
+  const activePreview = useMemo(
+    () => buildLocalPreview(draft, previewPayload),
+    [draft, previewPayload]
+  );
   const selectedAttachments = useMemo(() => {
     const attachmentById = new Map(
-      [...draft.attachments, ...(activePreview?.attachments ?? [])].map((attachment) => [
-        attachment.id,
-        attachment,
-      ])
+      draft.attachments.map((attachment) => [attachment.id, attachment])
     );
 
     return form.attachmentIds.flatMap((id) => {
       const attachment = attachmentById.get(id);
       return attachment ? [attachment] : [];
     });
-  }, [activePreview?.attachments, draft.attachments, form.attachmentIds]);
-  const canSend =
-    payloadKey === previewedPayloadKey &&
-    !!payload.from &&
-    payload.to.length > 0 &&
-    !!activePreview;
-
-  async function handlePreview() {
-    await onPreview(payload);
-    setPreviewedPayloadKey(payloadKey);
-  }
+  }, [draft.attachments, form.attachmentIds]);
+  const canSend = isPayloadValid;
 
   async function handleSend() {
     if (!canSend) return;
@@ -250,11 +229,11 @@ function EmailComposePreviewForm({
           <div className="border-b px-5 py-3">
             <div className="text-xs font-semibold uppercase text-muted-foreground">Preview</div>
             <div className="mt-1 truncate text-sm font-medium">
-              {activePreview?.subject || 'No preview yet'}
+              {activePreview.subject || 'No preview yet'}
             </div>
           </div>
           <div className="min-h-0 flex-1 p-4">
-            {activePreview?.html ? (
+            {activePreview.html ? (
               <iframe
                 title="Email preview"
                 srcDoc={activePreview.html}
@@ -262,7 +241,7 @@ function EmailComposePreviewForm({
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-md border bg-background text-sm text-muted-foreground">
-                Generate a preview to review the email.
+                Preview will appear when the email fields are valid.
               </div>
             )}
           </div>
@@ -304,11 +283,7 @@ function EmailComposePreviewForm({
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="outline" disabled={isPreviewing} onClick={handlePreview}>
-          <Eye className="size-4" />
-          {isPreviewing ? 'Previewing...' : 'Preview'}
-        </Button>
-        <Button disabled={!canSend || isSending || isPreviewing} onClick={handleSend}>
+        <Button disabled={!canSend || isSending} onClick={handleSend}>
           <Send className="size-4" />
           {isSending ? 'Sending...' : 'Send Email'}
         </Button>
@@ -328,6 +303,38 @@ function LabeledControl({ label, children }: { label: string; children: ReactNod
 
 function getDraftKey(draft: FeatureMailDraft): string {
   return [draft.from, draft.to.join(','), draft.subject, draft.attachmentIds.join(',')].join('|');
+}
+
+function buildLocalPreview(
+  draft: FeatureMailDraft,
+  payload: FeatureMailDraftPayload
+): FeatureMailDraft {
+  const selectedIds = new Set(payload.attachmentIds);
+
+  return {
+    ...draft,
+    ...payload,
+    html: buildLocalPreviewHtml(payload.body, draft.html, payload.signature),
+    attachments: draft.attachments.filter((attachment) => selectedIds.has(attachment.id)),
+  };
+}
+
+function buildLocalPreviewHtml(
+  body: string,
+  draftHtml: string,
+  signature: MailSignature
+): string {
+  return [
+    '<div style="font-family:Aptos, Arial, sans-serif;font-size:15px;color:#111827;line-height:1.5;">',
+    textToHtml(body),
+    '</div>',
+    getSignatureHtml(draftHtml) || buildFallbackSignatureHtml(signature),
+  ].join('');
+}
+
+function getSignatureHtml(html: string): string {
+  const bodyEnd = html.indexOf('</div>');
+  return bodyEnd >= 0 ? html.slice(bodyEnd + '</div>'.length) : '';
 }
 
 function toFormState(draft: FeatureMailDraft): EmailFormState {
@@ -366,4 +373,38 @@ function parseEmailList(value: string): string[] {
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function textToHtml(value: string): string {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map(
+      (paragraph) =>
+        `<p style="margin:0 0 12px;">${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`
+    )
+    .join('');
+}
+
+function buildFallbackSignatureHtml(signature: MailSignature): string {
+  return [
+    '<div style="margin-top:20px;font-family:Aptos, Arial, sans-serif;">',
+    '<p style="margin:0 0 8px;">Thank you,</p>',
+    `<p style="margin:0 0 8px;">${escapeHtml(signature.name)}</p>`,
+    `<p style="margin:0 0 8px;">${escapeHtml(signature.role)}</p>`,
+    `<p style="margin:0 0 8px;">Email: <a href="mailto:${escapeHtml(signature.email)}">${escapeHtml(
+      signature.email
+    )}</a></p>`,
+    '</div>',
+  ].join('');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }

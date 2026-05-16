@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
@@ -11,7 +11,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -37,7 +36,11 @@ import {
   useUpdateRFQMutation,
 } from '@/modules/project/hooks/rfq';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import { createRFQInputSchema, type CreateRFQInput } from '@/modules/project/schemas/rfq';
+import {
+  createRFQInputSchema,
+  type CreateRFQInput,
+  type RFQDetail,
+} from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Shuffle } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
@@ -61,6 +64,52 @@ function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]
 
 /* ---- Helpers ---- */
 
+type RFQTypeOption = {
+  id: string;
+  label?: string;
+  name?: string;
+};
+
+function normalizeLookupValue(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function resolveRFQTypeId(rfqDetail: RFQDetail, rfqTypes?: RFQTypeOption[]) {
+  const existingTypeId = rfqDetail.typeId ?? rfqDetail.type?.id;
+  if (existingTypeId) return existingTypeId;
+
+  const values = [
+    existingTypeId,
+    rfqDetail.track,
+    rfqDetail.type?.label,
+    rfqDetail.type?.id,
+  ].map(normalizeLookupValue);
+
+  return (
+    rfqTypes?.find((option) => {
+      const candidates = [option.id, option.label, option.name].map(normalizeLookupValue);
+
+      return candidates.some((candidate) => values.includes(candidate));
+    })?.id ?? ''
+  );
+}
+
+function getRFQTypeLabel(rfqDetail: RFQDetail) {
+  return rfqDetail.type?.label ?? rfqDetail.track ?? 'Current track';
+}
+
+function getRFQTypeDisplayValue(
+  typeId: string,
+  options: RFQTypeOption[],
+  rfqDetail?: RFQDetail
+) {
+  const option = options.find((item) => item.id === typeId);
+  if (option) return option.label ?? option.name ?? option.id;
+
+  const detailTypeId = rfqDetail?.typeId ?? rfqDetail?.type?.id;
+  return typeId && detailTypeId === typeId && rfqDetail ? getRFQTypeLabel(rfqDetail) : '';
+}
+
 /* ---- Page ---- */
 
 export default function RFQFormPage() {
@@ -78,6 +127,17 @@ export default function RFQFormPage() {
   const addAttachmentMutation = useAddRFQAttachmentMutation();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const rfqTypeOptions = useMemo<RFQTypeOption[]>(() => {
+    const options = rfqTypes ?? [];
+    if (!isEdit || !rfqDetail) return options;
+
+    const selectedTypeId = resolveRFQTypeId(rfqDetail, options);
+    if (!selectedTypeId || options.some((option) => option.id === selectedTypeId)) {
+      return options;
+    }
+
+    return [{ id: selectedTypeId, label: getRFQTypeLabel(rfqDetail) }, ...options];
+  }, [isEdit, rfqDetail, rfqTypes]);
 
   const defaultValues: CreateRFQInput = {
     projectId,
@@ -88,12 +148,14 @@ export default function RFQFormPage() {
     deliverables: [{ description: '', quantity: 0, unitId: '' }],
   };
 
-  const { control, handleSubmit, reset, formState } = useForm<CreateRFQInput>({
+  const { control, handleSubmit, reset, setValue, formState } = useForm<CreateRFQInput>({
     resolver: zodResolver(createRFQInputSchema),
     defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'deliverables' });
+
+  const selectedRFQTypeId = rfqDetail ? resolveRFQTypeId(rfqDetail, rfqTypeOptions) : '';
 
   // Reset form when detail loads in edit mode
   useEffect(() => {
@@ -102,7 +164,7 @@ export default function RFQFormPage() {
         projectId: rfqDetail.project?.id ?? projectId,
         title: rfqDetail.title,
         description: rfqDetail.description || '',
-        typeId: rfqDetail.typeId ?? rfqDetail.type?.id ?? '',
+        typeId: selectedRFQTypeId,
         bidDeadline: rfqDetail.bidDeadline
           ? new Date(rfqDetail.bidDeadline).toISOString().split('T')[0]
           : '',
@@ -118,7 +180,17 @@ export default function RFQFormPage() {
             : [{ description: '', specifications: '', quantity: 0, unitId: '' }],
       });
     }
-  }, [isEdit, rfqDetail, reset, projectId, rfqTypes]);
+  }, [isEdit, rfqDetail, reset, projectId, selectedRFQTypeId]);
+
+  useEffect(() => {
+    if (isEdit && selectedRFQTypeId) {
+      setValue('typeId', selectedRFQTypeId, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
+    }
+  }, [isEdit, selectedRFQTypeId, setValue]);
 
   const [activeSection, setActiveSection] = useState<string>('rfq-details');
   const [isSaving, setIsSaving] = useState(false);
@@ -265,18 +337,27 @@ export default function RFQFormPage() {
                     <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                       Track (Type)
                     </FieldLabel>
-                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value || selectedRFQTypeId}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue
-                          placeholder={
-                            rfqDetail?.track || rfqDetail?.type?.label || 'Select track...'
+                        <span
+                          className={
+                            field.value || selectedRFQTypeId ? '' : 'text-muted-foreground'
                           }
-                        />
+                        >
+                          {getRFQTypeDisplayValue(
+                            field.value || selectedRFQTypeId,
+                            rfqTypeOptions,
+                            rfqDetail
+                          ) || 'Select track...'}
+                        </span>
                       </SelectTrigger>
                       <SelectContent>
-                        {rfqTypes?.map((opt) => (
+                        {rfqTypeOptions.map((opt) => (
                           <SelectItem key={opt.id} value={opt.id}>
-                            {opt.label}
+                            {opt.label ?? opt.name ?? opt.id}
                           </SelectItem>
                         ))}
                       </SelectContent>

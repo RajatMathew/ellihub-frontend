@@ -39,7 +39,6 @@ export function useTeamMemberActions({ projectId }: UseTeamMemberActionsOptions)
       await promotePMMutation.mutateAsync({
         projectId,
         employeeId,
-        keepOldPM: true,
       });
     },
     [promotePMMutation, projectId]

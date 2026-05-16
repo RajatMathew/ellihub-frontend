@@ -158,11 +158,6 @@ export const poApi = {
     return result.data;
   },
 
-  async revertToDraft(id: string): Promise<PODetail> {
-    await api.patch(`${LIST_BASE}/set-draft`, { id });
-    return this.get(id);
-  },
-
   /* ---- line items ---- */
 
   async addLineItem(poId: string, data: Record<string, unknown>) {

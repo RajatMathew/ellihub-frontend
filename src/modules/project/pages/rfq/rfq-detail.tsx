@@ -49,10 +49,9 @@ import {
 import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
 import {
   useFeatureMailDraftQuery,
-  usePreviewFeatureMailMutation,
   useSendFeatureMailMutation,
 } from '@/modules/mail/hooks';
-import type { FeatureMailDraft, FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
+import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
@@ -184,7 +183,6 @@ export default function RFQDetailPage() {
   const unawardMutation = useUnawardRFQMutation();
   const generatePOMutation = useGeneratePOMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
-  const previewVendorEmailMutation = usePreviewFeatureMailMutation();
   const sendVendorEmailMutation = useSendFeatureMailMutation();
   const deleteMutation = useDeleteRFQMutation();
   const addVendorMutation = useAddVendorMutation();
@@ -250,7 +248,6 @@ export default function RFQDetailPage() {
   // Vendor email dialog
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTarget, setEmailTarget] = useState<FeatureMailTarget | null>(null);
-  const [emailPreview, setEmailPreview] = useState<FeatureMailDraft | null>(null);
 
   const vendorEmailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
@@ -436,16 +433,12 @@ export default function RFQDetailPage() {
 
   function handleEmailVendor(inviteId: string) {
     setEmailTarget({ feature: 'rfq.vendorRequest', entityId: inviteId });
-    setEmailPreview(null);
-    previewVendorEmailMutation.reset();
     sendVendorEmailMutation.reset();
     setEmailOpen(true);
   }
 
   function handleEmailAllVendors() {
     setEmailTarget({ feature: 'rfq.vendorRequestAll', entityId: rfqId });
-    setEmailPreview(null);
-    previewVendorEmailMutation.reset();
     sendVendorEmailMutation.reset();
     setEmailOpen(true);
   }
@@ -454,8 +447,6 @@ export default function RFQDetailPage() {
     setEmailOpen(open);
     if (!open) {
       setEmailTarget(null);
-      setEmailPreview(null);
-      previewVendorEmailMutation.reset();
       sendVendorEmailMutation.reset();
     }
   }
@@ -473,20 +464,9 @@ export default function RFQDetailPage() {
         onOpenChange={handleEmailOpenChange}
         title={emailTarget?.feature === 'rfq.vendorRequestAll' ? 'Email All Vendors' : 'Email RFQ'}
         draft={vendorEmailDraftQuery.data ?? null}
-        preview={emailPreview}
         isLoading={vendorEmailDraftQuery.isLoading}
-        isPreviewing={previewVendorEmailMutation.isPending}
         isSending={sendVendorEmailMutation.isPending}
         recipientsReadOnly
-        onPreview={async (payload) => {
-          if (!emailTarget) return;
-          const preview = await previewVendorEmailMutation.mutateAsync({
-            feature: emailTarget.feature,
-            entityId: emailTarget.entityId,
-            draft: payload,
-          });
-          setEmailPreview(preview);
-        }}
         onSend={async (payload) => {
           if (!emailTarget) return;
           await sendVendorEmailMutation.mutateAsync({
@@ -665,9 +645,7 @@ export default function RFQDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={
-                    previewVendorEmailMutation.isPending || sendVendorEmailMutation.isPending
-                  }
+                  disabled={sendVendorEmailMutation.isPending}
                   onClick={handleEmailAllVendors}
                 >
                   <Mail className="size-4" />

@@ -22,12 +22,8 @@ export const projectTeamApi = {
     await api.patch(`${BASE}/team-member/remove`, { projectId, employeeId });
   },
 
-  async promoteToLeadPM(
-    projectId: string,
-    employeeId: string,
-    keepOldPM?: boolean,
-  ): Promise<void> {
-    const params = keepOldPM != null ? { keepOldPM } : undefined;
-    await api.put(`${BASE}/${projectId}/team/${employeeId}/promote`, null, { params });
+  async promoteToLeadPM(projectId: string, employeeId: string): Promise<ProjectTeamAssignment> {
+    const res = await api.put(`${BASE}/${projectId}/team/${employeeId}/promote`);
+    return projectTeamAssignmentSchema.parse(res.data?.data ?? res.data);
   },
 };

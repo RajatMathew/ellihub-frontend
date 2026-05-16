@@ -68,7 +68,7 @@ export const useDeleteGCMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: (error) => toastApiError(error, 'Failed to archive general contractor.'),
+    onError: (error) => toastApiError(error, 'Failed to delete general contractor.'),
   });
 };
 

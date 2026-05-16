@@ -1,25 +1,19 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { poApi } from '@/modules/project/api/purchase-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
+import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreatePOInput,
   ListPOsParams,
   POLineItemInput,
 } from '@/modules/project/schemas/purchase-order';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 function invalidatePOQueries(queryClient: QueryClient, poId?: string) {
   return invalidateProjectQueries(
     queryClient,
-    poId ? [poKeys.all, poKeys.detail(poId)] : [poKeys.all],
+    poId ? [poKeys.all, poKeys.detail(poId)] : [poKeys.all]
   );
 }
 
@@ -89,7 +83,7 @@ export const useCancelPOMutation = () => {
       confirmSCOs?: boolean;
     }) => poApi.cancel(id, data),
     onSuccess: async (_, { id }) => {
-      await invalidatePOQueries(qc, id);
+      await invalidateProjectQueries(qc, [poKeys.all, poKeys.detail(id), scoKeys.all]);
     },
     onError: (err) => toastApiError(err, 'Failed to cancel purchase order.'),
   });
@@ -98,30 +92,12 @@ export const useCancelPOMutation = () => {
 export const useRecordDeliveryMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      ...data
-    }: {
-      id: string;
-      deliveryDate: string;
-      notes?: string;
-    }) => poApi.recordDelivery(id, data),
+    mutationFn: ({ id, ...data }: { id: string; deliveryDate: string; notes?: string }) =>
+      poApi.recordDelivery(id, data),
     onSuccess: async (_, { id }) => {
       await invalidatePOQueries(qc, id);
     },
     onError: (err) => toastApiError(err, 'Failed to record delivery.'),
-  });
-};
-
-export const useRevertToDraftMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => poApi.revertToDraft(id),
-    onSuccess: async (_, id) => {
-      await invalidatePOQueries(qc, id);
-      toast.success('Purchase order reverted to draft.');
-    },
-    onError: (err) => toastApiError(err, 'Failed to revert to draft.'),
   });
 };
 

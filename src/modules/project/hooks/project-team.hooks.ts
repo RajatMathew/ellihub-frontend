@@ -27,12 +27,10 @@ export const usePromoteToLeadPMMutation = () => {
     mutationFn: ({
       projectId,
       employeeId,
-      keepOldPM,
     }: {
       projectId: string;
       employeeId: string;
-      keepOldPM?: boolean;
-    }) => projectTeamApi.promoteToLeadPM(projectId, employeeId, keepOldPM),
+    }) => projectTeamApi.promoteToLeadPM(projectId, employeeId),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
     },

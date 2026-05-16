@@ -8,7 +8,7 @@ export function ProjectListLoading() {
           <Skeleton key={index} className="h-24 rounded-lg" />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 2xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="space-y-3">
             <Skeleton className="h-6 w-24" />
