@@ -15,6 +15,7 @@ export const projectTeamAssignmentSchema = z
     projectId: z.string(),
     employeeId: z.string(),
     role: z.string().nullable().optional(),
+    isLead: z.boolean().optional(),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
