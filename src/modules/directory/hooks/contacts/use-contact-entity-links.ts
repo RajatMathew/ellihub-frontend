@@ -29,7 +29,7 @@ export function useContactEntityLinks(contact?: Contact) {
       vendorLinks.push({
         id: 'root-vendor',
         vendorId: contact.vendor.id,
-        isPrimary: true,
+        isPrimary: contact.isPrimary,
         entityType: 'VENDOR',
         name: contact.vendor.name,
       });
@@ -54,7 +54,7 @@ export function useContactEntityLinks(contact?: Contact) {
       gcLinks.push({
         id: 'root-gc',
         generalContractorId: contact.generalContractor.id,
-        isPrimary: true,
+        isPrimary: contact.isPrimary,
         entityType: 'GC',
         name: contact.generalContractor.name,
       });

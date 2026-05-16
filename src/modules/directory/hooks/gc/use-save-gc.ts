@@ -95,22 +95,43 @@ async function persistGCContactLinks(
   contactLinks: LinkedContactItem[],
   originalLinks: GCContactLink[],
   mutations: {
-    link: (payload: { contactId: string; generalContractorId: string }) => Promise<unknown>;
+    link: (payload: {
+      contactId: string;
+      generalContractorId: string;
+      isPrimary?: boolean;
+    }) => Promise<unknown>;
     unlink: (contactId: string) => Promise<unknown>;
   }
 ) {
   const originalByContact = new Map(originalLinks.map((link) => [link.contactId, link]));
   const currentByContact = new Map(contactLinks.map((link) => [link.contactId, link]));
   const toRemove = originalLinks.filter((link) => !currentByContact.has(link.contactId));
-  const toAdd = contactLinks.filter((link) => !originalByContact.has(link.contactId));
+  const toPersist = contactLinks.filter((link) => {
+    const original = originalByContact.get(link.contactId);
+    return !original || original.isPrimary !== link.isPrimary;
+  });
 
-  const operations: Promise<unknown>[] = [
-    ...toRemove.map((link) => mutations.unlink(link.contactId)),
-    ...toAdd.map((link) => mutations.link({ contactId: link.contactId, generalContractorId })),
-  ];
+  let failed = 0;
 
-  if (operations.length === 0) return 0;
+  for (const link of toRemove) {
+    try {
+      await mutations.unlink(link.contactId);
+    } catch {
+      failed += 1;
+    }
+  }
 
-  const results = await Promise.allSettled(operations);
-  return results.filter((result) => result.status === 'rejected').length;
+  for (const link of toPersist) {
+    try {
+      await mutations.link({
+        contactId: link.contactId,
+        generalContractorId,
+        isPrimary: link.isPrimary,
+      });
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return failed;
 }

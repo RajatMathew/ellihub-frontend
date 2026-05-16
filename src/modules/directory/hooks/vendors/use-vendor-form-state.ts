@@ -7,7 +7,10 @@ import {
   fakeVendorWebsite,
   pickRandom,
 } from '@/lib/fake-data';
-import type { LinkedContactItem } from '@/modules/directory/components/shared';
+import type {
+  LinkedContactItem,
+  LinkedContactNameSource,
+} from '@/modules/directory/components/shared';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import {
   useContactsQuery,
@@ -47,6 +50,7 @@ export function useVendorFormState(id: string | undefined) {
   const [activeSection, setActiveSection] = useState('info');
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
+  const [createdContacts, setCreatedContacts] = useState<LinkedContactNameSource[]>([]);
   const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
   const initializedVendorIdRef = useRef<string | null>(null);
 
@@ -86,13 +90,24 @@ export function useVendorFormState(id: string | undefined) {
     };
   }, [form, isEdit, vendorQuery.data]);
 
+  const contacts = useMemo(() => {
+    const map = new Map<string, LinkedContactNameSource>();
+    for (const contact of contactsQuery.data?.data ?? []) {
+      map.set(contact.id, contact);
+    }
+    for (const contact of createdContacts) {
+      map.set(contact.id, contact);
+    }
+    return Array.from(map.values());
+  }, [contactsQuery.data?.data, createdContacts]);
+
   const contactOptions = useMemo(
     () =>
-      (contactsQuery.data?.data ?? []).map((contact) => ({
+      contacts.map((contact) => ({
         value: contact.id,
         label: contact.fullName,
       })),
-    [contactsQuery.data]
+    [contacts]
   );
 
   const fillRandom = () => {
@@ -112,14 +127,17 @@ export function useVendorFormState(id: string | undefined) {
   };
 
   const handleContactCreated = (contact: { id: string; fullName: string }) => {
-    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+    setCreatedContacts((prev) =>
+      prev.some((existing) => existing.id === contact.id) ? prev : [...prev, contact]
+    );
+    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: prev.length === 0 }]);
   };
 
   return {
     isEdit,
     form,
     vendorQuery,
-    contacts: contactsQuery.data?.data ?? [],
+    contacts,
     vendorTypes: vendorTypesQuery.data ?? [],
     contactOptions,
     activeSection,
@@ -166,7 +184,7 @@ function buildVendorContactLinks(
       id: contact.id,
       contactId: contact.id,
       vendorId,
-      isPrimary: false,
+      isPrimary: contact.isPrimary ?? false,
       contact,
     });
   });

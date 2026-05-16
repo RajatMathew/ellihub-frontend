@@ -16,6 +16,18 @@ export const contactPhoneSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
+const normalizeContactEmailValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+  return val;
+};
+
+const normalizeContactPhoneValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+  return val;
+};
+
 /** Input-only phone validation (not used for API response parsing). */
 export const contactPhoneInputSchema = z.object({
   number: z
@@ -86,15 +98,10 @@ export const contactSchema = z.object({
   fullName: z.string().min(1, 'Name is required'),
   professionalRoleId: z.string().nullable(),
   professionalRole: professionalRoleSchema.nullish(),
-  email: z.preprocess((val) => {
-    if (typeof val === 'string') return [{ email: val, label: 'Email' }];
-    return val;
-  }, z.array(contactEmailSchema).default([])),
-  phoneNumber: z.preprocess((val) => {
-    if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
-    return val;
-  }, z.array(contactPhoneSchema).default([])),
+  email: z.preprocess(normalizeContactEmailValue, z.array(contactEmailSchema).default([])),
+  phoneNumber: z.preprocess(normalizeContactPhoneValue, z.array(contactPhoneSchema).default([])),
   tags: z.array(z.string()).default([]),
+  isPrimary: z.boolean().optional().default(false),
   vendorId: z.string().nullable().optional(),
   generalContractorId: z.string().nullable().optional(),
   vendor: z
@@ -166,6 +173,7 @@ export const createContactInputSchema = z.object({
   email: z.string().email('Invalid email address').optional(),
   phoneNumber: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  isPrimary: z.boolean().optional(),
   vendorId: z.string().optional(),
   generalContractorId: z.string().optional(),
 });
@@ -178,6 +186,7 @@ export const updateContactInputSchema = z.object({
   email: z.string().email('Invalid email address').optional(),
   phoneNumber: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  isPrimary: z.boolean().optional(),
   vendorId: z.string().optional(),
   generalContractorId: z.string().optional(),
 });

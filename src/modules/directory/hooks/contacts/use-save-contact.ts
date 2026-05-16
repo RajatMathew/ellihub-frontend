@@ -18,6 +18,7 @@ interface UseSaveContactArgs {
   isEdit: boolean;
   primaryVendorId: string | undefined;
   primaryGCId: string | undefined;
+  isPrimary: boolean;
   initialAssociation: Pick<PendingContactAssociation, 'id' | 'type'> | null;
   onSaved: () => void;
 }
@@ -27,6 +28,7 @@ export function useSaveContact({
   isEdit,
   primaryVendorId,
   primaryGCId,
+  isPrimary,
   initialAssociation,
   onSaved,
 }: UseSaveContactArgs) {
@@ -53,6 +55,7 @@ export function useSaveContact({
             email,
             phoneNumber,
             tags: formData.tags,
+            isPrimary: Boolean(nextAssociation && isPrimary),
             vendorId: primaryVendorId,
             generalContractorId: primaryGCId,
           },
@@ -63,6 +66,7 @@ export function useSaveContact({
             contactId,
             vendorId: primaryVendorId,
             generalContractorId: primaryGCId,
+            isPrimary,
           });
         } else if (!nextAssociation && initialAssociation) {
           await unlinkMutation.mutateAsync(contactId);
@@ -79,6 +83,7 @@ export function useSaveContact({
         email,
         phoneNumber,
         tags: formData.tags,
+        isPrimary: Boolean(nextAssociation && isPrimary),
         vendorId: primaryVendorId,
         generalContractorId: primaryGCId,
       };
@@ -90,6 +95,7 @@ export function useSaveContact({
           contactId: newContact.id,
           vendorId: primaryVendorId,
           generalContractorId: primaryGCId,
+          isPrimary,
         });
       }
 

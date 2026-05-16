@@ -71,6 +71,7 @@ export const vendorContactLinkContactSchema = z
       return val;
     }, z.array(contactPhoneSchema).default([])),
     tags: z.array(z.string()).optional().default([]),
+    isPrimary: z.boolean().optional().default(false),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
