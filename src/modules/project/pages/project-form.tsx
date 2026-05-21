@@ -166,7 +166,7 @@ export default function ProjectForm() {
         estimatedStartDate: parseDateValue(contract?.estimatedStartDate),
         estimatedEndDate: parseDateValue(contract?.estimatedEndDate),
         setInactiveDate: parseDateValue(contract?.setInactiveDate),
-        tcoDate: parseDateValue(contract?.tcoDate),
+        tcoDate: parseDateValue(contract?.tcoDate ?? contract?.estimatedEndDate),
         actualStartDate: parseDateValue(contract?.actualStartDate),
         actualCompletionDate: parseDateValue(contract?.actualCompletionDate),
       });
@@ -254,6 +254,7 @@ export default function ProjectForm() {
         'NET_30',
       estimatedStartDate: start.toISOString().split('T')[0],
       estimatedEndDate: end.toISOString().split('T')[0],
+      tcoDate: end.toISOString().split('T')[0],
     });
   };
 
@@ -289,7 +290,7 @@ export default function ProjectForm() {
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
-          tcoDate: data.tcoDate || undefined,
+          tcoDate: data.tcoDate,
         };
         const updated = await updateMutation.mutateAsync({ id: projectId, data: updatePayload });
         resultProjectId = updated.id;
@@ -335,7 +336,7 @@ export default function ProjectForm() {
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
-          tcoDate: data.tcoDate || undefined,
+          tcoDate: data.tcoDate,
         };
         const project = await createMutation.mutateAsync(createPayload);
         resultProjectId = project.id;
@@ -1006,14 +1007,15 @@ export default function ProjectForm() {
                 <Controller
                   name="tcoDate"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         TCO Date
                       </FieldLabel>
                       <InputWrapper>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

@@ -190,7 +190,7 @@ export const createProjectInputSchema = z.object({
   taxRate: z.number().optional().default(0),
   paymentTerms: z.string().optional(),
   setInactiveDate: z.string().nullable().optional(),
-  tcoDate: z.string().nullable().optional(),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
@@ -240,7 +240,7 @@ export const projectFormSchema = z.object({
   actualStartDate: z.string().optional().default(''),
   actualCompletionDate: z.string().optional().default(''),
   setInactiveDate: z.string().optional().default(''),
-  tcoDate: z.string().optional().default(''),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
@@ -272,7 +272,7 @@ export const updateProjectInputSchema = z.object({
   taxRate: z.number().optional(),
   paymentTerms: z.string().optional(),
   setInactiveDate: z.string().nullable().optional(),
-  tcoDate: z.string().nullable().optional(),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectInputSchema>;

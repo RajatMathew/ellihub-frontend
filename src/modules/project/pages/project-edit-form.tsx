@@ -142,7 +142,7 @@ function ProjectEditFormInner({
       actualStartDate: parseDateValue(primeContract?.actualStartDate),
       actualCompletionDate: parseDateValue(primeContract?.actualCompletionDate),
       setInactiveDate: parseDateValue(project.setInactiveDate),
-      tcoDate: parseDateValue(project.tcoDate),
+      tcoDate: parseDateValue(project.tcoDate ?? project.estimatedEndDate),
     },
   });
 
@@ -191,7 +191,7 @@ function ProjectEditFormInner({
       estimatedStartDate: data.estimatedStartDate || undefined,
       estimatedEndDate: data.estimatedEndDate || undefined,
       setInactiveDate: data.setInactiveDate || undefined,
-      tcoDate: data.tcoDate || undefined,
+      tcoDate: data.tcoDate,
     };
 
     try {
@@ -809,14 +809,15 @@ function ProjectEditFormInner({
                 <Controller
                   name="tcoDate"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         TCO Date
                       </FieldLabel>
                       <InputWrapper>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
