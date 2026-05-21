@@ -257,6 +257,8 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   const apiMessage = formatApiMessage(data?.message);
   if (apiMessage) return apiMessage;
 
+  if (error instanceof Error && error.message) return error.message;
+
   return fallback;
 }
 

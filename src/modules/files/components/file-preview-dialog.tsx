@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import {
   useDownloadFile,
@@ -255,9 +256,13 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
   const canPreviewDelimited = isDelimitedSpreadsheet(file);
   const {
     data: url,
+    error: previewError,
     isLoading,
     isError,
   } = useFilePreviewQuery(isFile ? file?.id : undefined, isFile);
+  const previewErrorMessage = isError
+    ? getApiErrorMessage(previewError, 'Failed to load preview.')
+    : undefined;
   const { data: textContent } = useTextContentQuery(
     url,
     isFile && !!url && (previewType === 'text' || canPreviewDelimited)
@@ -300,7 +305,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
           {isError && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Eye className="size-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">Failed to load preview</p>
+              <p className="text-sm text-muted-foreground">{previewErrorMessage}</p>
             </div>
           )}
 

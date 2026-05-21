@@ -20,8 +20,12 @@ import {
   useUpdateScheduleEntryMutation,
 } from '@/modules/project/hooks';
 import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
-import type { ProjectScheduleEntry } from '@/modules/project/schemas/project-schedule.schema';
+import type {
+  ProjectScheduleEntry,
+  ScheduleFile,
+} from '@/modules/project/schemas/project-schedule.schema';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ScheduleTrackerCardProps {
   projectId: string;
@@ -113,6 +117,15 @@ export function ScheduleTrackerCard({
     setUploadTarget(null);
   };
 
+  const handleDownload = (file: ScheduleFile) => {
+    if (file.deletedAt) {
+      toast.error('This file no longer exists or has been deleted.');
+      return;
+    }
+
+    downloadFile.mutate(file);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -153,7 +166,7 @@ export function ScheduleTrackerCard({
         onChangeAdd={setNewEntry}
         onChangeEdit={(id, draft) => setEditingEntry({ id, draft })}
         onDelete={(id) => void deleteMutation.mutateAsync({ projectId, id })}
-        onDownload={(file) => downloadFile.mutate(file)}
+        onDownload={handleDownload}
         onEdit={(entry) =>
           setEditingEntry({
             id: entry.id,
