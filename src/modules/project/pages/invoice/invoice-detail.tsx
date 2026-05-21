@@ -39,6 +39,7 @@ import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
@@ -735,7 +736,7 @@ export function InvoiceDetailPage() {
                   },
                   { onSuccess: () => setMarkPaidOpen(false) }
                 );
-              })(event)
+              }, onInvalidFormSubmit)(event)
             }
           >
             <Controller

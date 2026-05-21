@@ -43,7 +43,11 @@ export function useContactMethodEditor(contactId: string | undefined) {
       label: newPhoneLabel,
     });
     if (!result.success) {
-      setAddPhoneError(result.error.issues[0]?.message ?? 'Enter a valid phone number.');
+      const message = result.error.issues[0]?.message ?? 'Enter a valid phone number.';
+      setAddPhoneError(message);
+      toast.error('Please complete the required fields.', {
+        description: message,
+      });
       return;
     }
     setAddPhoneError('');
@@ -56,7 +60,11 @@ export function useContactMethodEditor(contactId: string | undefined) {
       label: newEmailLabel,
     });
     if (!result.success) {
-      setAddEmailError('Enter a valid email address.');
+      const message = 'Enter a valid email address.';
+      setAddEmailError(message);
+      toast.error('Please complete the required fields.', {
+        description: message,
+      });
       return;
     }
     setAddEmailError('');

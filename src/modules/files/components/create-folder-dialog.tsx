@@ -10,6 +10,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   folderCreateInputSchema,
   type FolderCreateInput,
@@ -54,7 +55,10 @@ export function CreateFolderDialog({
         <DialogHeader>
           <DialogTitle>New Folder</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-4">
+        <form
+          onSubmit={handleSubmit((data) => onSubmit(data), onInvalidFormSubmit)}
+          className="space-y-4"
+        >
           <Controller
             name="name"
             control={control}

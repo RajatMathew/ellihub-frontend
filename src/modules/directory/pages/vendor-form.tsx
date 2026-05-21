@@ -1,5 +1,6 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
 import { VendorFormContent, VendorFormToolbar } from '@/modules/directory/components/vendors/form';
@@ -62,7 +63,7 @@ export function VendorFormPage() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveVendor)} className="container-fluid py-7.5">
+      <form onSubmit={handleSubmit(saveVendor, onInvalidFormSubmit)} className="container-fluid py-7.5">
         <VendorFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}

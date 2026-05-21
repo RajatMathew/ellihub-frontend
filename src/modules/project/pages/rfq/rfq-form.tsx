@@ -14,6 +14,7 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   fakeProjectDescription,
   fakeRFQDeliverables,
@@ -267,9 +268,7 @@ export default function RFQFormPage() {
   return (
     <form
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, () => {
-          toast.error('Please fix the highlighted RFQ fields.');
-        })(event)
+        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
       }
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >

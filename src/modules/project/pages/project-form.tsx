@@ -23,6 +23,7 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   fakeCity,
   fakeContractNumber,
@@ -66,7 +67,7 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, FileText, Sparkles, X } from 'lucide-react';
-import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -410,7 +411,7 @@ export default function ProjectForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
+      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}

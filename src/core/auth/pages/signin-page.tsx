@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@app/components/ui/form';
 import { Input } from '@app/components/ui/input';
+import { onInvalidFormSubmit } from '@app/lib/form-error-toast';
 import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-schema';
 
 export function SignInPageComponent() {
@@ -115,7 +116,10 @@ export function SignInPageComponent() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="block w-full space-y-5">
+      <form
+        onSubmit={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
+        className="block w-full space-y-5"
+      >
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
           <p className="text-sm text-muted-foreground">

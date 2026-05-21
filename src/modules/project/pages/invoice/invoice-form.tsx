@@ -11,6 +11,7 @@ import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
@@ -272,9 +273,7 @@ export function InvoiceFormPage() {
   return (
     <form
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, () => {
-          toast.error('Please fix the highlighted invoice fields.');
-        })(event)
+        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
       }
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
