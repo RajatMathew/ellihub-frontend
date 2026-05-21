@@ -25,6 +25,7 @@ export function ScheduleTrackerReadRow({
   onEdit,
 }: ScheduleTrackerReadRowProps) {
   const file = entry.file;
+  const isFileDeleted = !!file?.deletedAt;
 
   return (
     <TableRow
@@ -42,8 +43,12 @@ export function ScheduleTrackerReadRow({
         {file?.name ? (
           <button
             type="button"
-            className="inline-block max-w-full truncate text-xs text-primary hover:underline"
-            title={file.name}
+            className={`inline-block max-w-full truncate text-xs hover:underline ${
+              isFileDeleted ? 'text-destructive' : 'text-primary'
+            }`}
+            title={
+              isFileDeleted ? 'This file no longer exists or has been deleted.' : file.name
+            }
             onClick={(event) => {
               event.stopPropagation();
               onDownload(file);

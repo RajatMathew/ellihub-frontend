@@ -5,6 +5,7 @@ export const scheduleFileSchema = z
     id: z.string(),
     name: z.string().nullable().optional(),
     displayName: z.string().nullable().optional(),
+    deletedAt: z.string().nullable().optional(),
   })
   .passthrough();
 

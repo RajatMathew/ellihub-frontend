@@ -12,8 +12,10 @@ import {
   type FolderCreateInput,
   type FolderDetail,
 } from '@/modules/files/schemas/file.schema';
+import { isAxiosError } from 'axios';
 
 const BASE = '/file';
+const FILE_UNAVAILABLE_MESSAGE = 'This file no longer exists or has been deleted.';
 
 export type ProjectProtectedFolderType =
   | 'INVOICE'
@@ -76,6 +78,61 @@ function downloadBlob(blob: Blob, fileName: string): void {
   anchor.click();
   document.body.removeChild(anchor);
   window.URL.revokeObjectURL(blobUrl);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getMessageFromPayload(payload: unknown): string | undefined {
+  if (typeof payload === 'string') return payload;
+  if (!isRecord(payload)) return undefined;
+
+  const message = payload.message;
+  if (typeof message === 'string') return message;
+  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
+    return message.join('\n');
+  }
+
+  return undefined;
+}
+
+async function getBlobErrorMessage(blob: Blob): Promise<string | undefined> {
+  const text = await blob.text();
+  if (!text.trim()) return undefined;
+
+  try {
+    return getMessageFromPayload(JSON.parse(text) as unknown) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function isUnavailableFileMessage(message: string | undefined): boolean {
+  const normalized = message?.toLowerCase() ?? '';
+
+  return (
+    normalized.includes('no file found') ||
+    normalized.includes('deleted') ||
+    normalized.includes('no longer exists')
+  );
+}
+
+async function normalizeDownloadError(error: unknown): Promise<unknown> {
+  if (!isAxiosError(error)) return error;
+
+  const data = error.response?.data;
+  const status = error.response?.status;
+  const message =
+    data instanceof Blob ? await getBlobErrorMessage(data) : getMessageFromPayload(data);
+
+  if ((status === 400 || status === 404) && isUnavailableFileMessage(message)) {
+    return new Error(FILE_UNAVAILABLE_MESSAGE);
+  }
+
+  if (message) return new Error(message);
+
+  return error;
 }
 
 function parseExportJob(raw: unknown, context: string): FileExportJob {
@@ -249,13 +306,17 @@ export const filesApi = {
   },
 
   async downloadFile(file: DownloadTarget): Promise<void> {
-    const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
-      params: { disposition: 'attachment' },
-      responseType: 'blob',
-      timeout: 0,
-    });
+    try {
+      const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
+        params: { disposition: 'attachment' },
+        responseType: 'blob',
+        timeout: 0,
+      });
 
-    downloadBlob(res.data, getDownloadName(file, 'download'));
+      downloadBlob(res.data, getDownloadName(file, 'download'));
+    } catch (error: unknown) {
+      throw await normalizeDownloadError(error);
+    }
   },
 
   async startFolderExport(folder: DownloadTarget): Promise<FileExportJob> {
