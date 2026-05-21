@@ -149,11 +149,34 @@ export function InvoiceFormPage() {
     values: editValues,
   });
 
+  const selectedPurchaseOrderId = watch('purchaseOrderId');
+  const selectedVendorId = watch('vendorId');
   const totalAmount = watch('totalAmount') ?? 0;
   const taxAmount = watch('taxAmount') ?? 0;
   const taxRate = watch('taxRate') ?? 0;
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
   const isImmutable = isEdit;
+  const isVendorLocked = isImmutable || !!selectedPurchaseOrderId;
+  const selectedPurchaseOrder = useMemo(
+    () => (posData?.data ?? []).find((po) => po.id === selectedPurchaseOrderId),
+    [posData, selectedPurchaseOrderId]
+  );
+  const selectedVendorLabel =
+    selectedPurchaseOrder?.vendor?.name ??
+    (invoiceDetail?.vendorId === selectedVendorId ? invoiceDetail.vendor?.name : undefined);
+  const invoiceVendorOptions = useMemo(() => {
+    if (!selectedVendorId || vendorOptions.some((option) => option.value === selectedVendorId)) {
+      return vendorOptions;
+    }
+
+    return [
+      {
+        value: selectedVendorId,
+        label: selectedVendorLabel ?? selectedVendorId,
+      },
+      ...vendorOptions,
+    ];
+  }, [selectedVendorId, selectedVendorLabel, vendorOptions]);
 
   const enterMockData = useCallback(() => {
     const randomPo = poOptions[Math.floor(Math.random() * poOptions.length)];
@@ -319,9 +342,10 @@ export function InvoiceFormPage() {
                       onValueChange={(value) => {
                         field.onChange(value ?? '');
                         const selectedPo = (posData?.data ?? []).find((po) => po.id === value);
-                        if (selectedPo?.vendorId) {
-                          setValue('vendorId', selectedPo.vendorId, { shouldValidate: true });
-                        }
+                        setValue('vendorId', selectedPo?.vendorId ?? '', {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
                       }}
                       search={poSearch}
                       onSearchChange={setPoSearch}
@@ -345,12 +369,12 @@ export function InvoiceFormPage() {
                       Vendor
                     </FieldLabel>
                     <InfiniteSearchSelect
-                      options={vendorOptions}
+                      options={invoiceVendorOptions}
                       value={field.value || null}
                       onValueChange={(value) => field.onChange(value ?? '')}
                       search=""
                       onSearchChange={() => undefined}
-                      disabled={isImmutable}
+                      disabled={isVendorLocked}
                       placeholder="Select vendor..."
                       emptyMessage="No vendors found."
                     />
