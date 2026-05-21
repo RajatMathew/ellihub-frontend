@@ -1,5 +1,6 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   EmployeeFormContent,
   EmployeeFormLoading,
@@ -61,7 +62,7 @@ export default function EmployeeFormPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit(saveEmployee)} className="container-fluid py-7.5">
+    <form onSubmit={handleSubmit(saveEmployee, onInvalidFormSubmit)} className="container-fluid py-7.5">
       <EmployeeFormToolbar
         isEdit={state.isEdit}
         isSubmitting={isSubmitting}

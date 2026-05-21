@@ -18,6 +18,7 @@ import { Switch, SwitchWrapper } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency } from '@/app/lib/helpers';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
@@ -255,9 +256,7 @@ export function SCOFormPage() {
   return (
     <form
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, () => {
-          toast.error('Please fix the highlighted sub change order fields.');
-        })(event)
+        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
       }
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >

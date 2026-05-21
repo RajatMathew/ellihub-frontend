@@ -1,5 +1,6 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { PTOFormContent, PTOFormLoading, PTOFormToolbar } from '@/modules/hr/components/pto/form';
 import { getPTOEmployeeName, getPTOTypeLabel } from '@/modules/hr/components/pto/shared';
 import { usePTOFormState } from '@/modules/hr/hooks/pto/use-pto-form-state';
@@ -41,7 +42,7 @@ export default function PTOFormPage() {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(savePTO)} className="container-fluid py-7.5">
+    <form onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)} className="container-fluid py-7.5">
       <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} />
       <PTOFormContent
         control={form.control}

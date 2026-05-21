@@ -22,6 +22,7 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useGCsQuery } from '@/modules/directory/hooks';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
@@ -49,7 +50,7 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
-import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -141,7 +142,7 @@ function ProjectEditFormInner({
       actualStartDate: parseDateValue(primeContract?.actualStartDate),
       actualCompletionDate: parseDateValue(primeContract?.actualCompletionDate),
       setInactiveDate: parseDateValue(project.setInactiveDate),
-      tcoDate: parseDateValue(project.tcoDate),
+      tcoDate: parseDateValue(project.tcoDate ?? project.estimatedEndDate),
     },
   });
 
@@ -190,7 +191,7 @@ function ProjectEditFormInner({
       estimatedStartDate: data.estimatedStartDate || undefined,
       estimatedEndDate: data.estimatedEndDate || undefined,
       setInactiveDate: data.setInactiveDate || undefined,
-      tcoDate: data.tcoDate || undefined,
+      tcoDate: data.tcoDate,
     };
 
     try {
@@ -226,7 +227,7 @@ function ProjectEditFormInner({
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
+      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
@@ -808,14 +809,15 @@ function ProjectEditFormInner({
                 <Controller
                   name="tcoDate"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         TCO Date
                       </FieldLabel>
                       <InputWrapper>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

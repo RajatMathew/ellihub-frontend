@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ChevronDown, FileText } from 'lucide-react';
 import { Controller, useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
 
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
@@ -33,6 +32,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
@@ -155,9 +155,7 @@ export function RFQCreatePOPreviewDialog({
         <form
           className="min-h-0 flex-1 overflow-hidden"
           onSubmit={(event) =>
-            void handleSubmit(handleCreate, () =>
-              toast.error('Please fix the highlighted purchase order fields.')
-            )(event)
+            void handleSubmit(handleCreate, onInvalidFormSubmit)(event)
           }
         >
           <div className="flex max-h-[calc(90dvh-3rem)] min-h-0 flex-col">

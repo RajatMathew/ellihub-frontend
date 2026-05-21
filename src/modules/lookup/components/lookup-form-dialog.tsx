@@ -12,6 +12,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   lookupCreateSchema,
   lookupUpdateSchema,
@@ -69,7 +70,7 @@ export function LookupFormDialog({
         <form
           onSubmit={handleSubmit((data) => {
             onSubmit(data);
-          })}
+          }, onInvalidFormSubmit)}
           className="space-y-4"
         >
           {isEditing && (

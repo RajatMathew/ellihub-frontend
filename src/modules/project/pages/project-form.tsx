@@ -23,6 +23,7 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   fakeCity,
   fakeContractNumber,
@@ -66,7 +67,7 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, FileText, Sparkles, X } from 'lucide-react';
-import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -165,7 +166,7 @@ export default function ProjectForm() {
         estimatedStartDate: parseDateValue(contract?.estimatedStartDate),
         estimatedEndDate: parseDateValue(contract?.estimatedEndDate),
         setInactiveDate: parseDateValue(contract?.setInactiveDate),
-        tcoDate: parseDateValue(contract?.tcoDate),
+        tcoDate: parseDateValue(contract?.tcoDate ?? contract?.estimatedEndDate),
         actualStartDate: parseDateValue(contract?.actualStartDate),
         actualCompletionDate: parseDateValue(contract?.actualCompletionDate),
       });
@@ -253,6 +254,7 @@ export default function ProjectForm() {
         'NET_30',
       estimatedStartDate: start.toISOString().split('T')[0],
       estimatedEndDate: end.toISOString().split('T')[0],
+      tcoDate: end.toISOString().split('T')[0],
     });
   };
 
@@ -288,7 +290,7 @@ export default function ProjectForm() {
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
-          tcoDate: data.tcoDate || undefined,
+          tcoDate: data.tcoDate,
         };
         const updated = await updateMutation.mutateAsync({ id: projectId, data: updatePayload });
         resultProjectId = updated.id;
@@ -334,7 +336,7 @@ export default function ProjectForm() {
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
-          tcoDate: data.tcoDate || undefined,
+          tcoDate: data.tcoDate,
         };
         const project = await createMutation.mutateAsync(createPayload);
         resultProjectId = project.id;
@@ -410,7 +412,7 @@ export default function ProjectForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
+      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
       className="container-fluid py-7.5"
     >
       {/* ── Toolbar ── */}
@@ -1005,14 +1007,15 @@ export default function ProjectForm() {
                 <Controller
                   name="tcoDate"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         TCO Date
                       </FieldLabel>
                       <InputWrapper>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

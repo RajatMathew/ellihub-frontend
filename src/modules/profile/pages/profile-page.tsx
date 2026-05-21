@@ -23,6 +23,7 @@ import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useProfileQuery, useUpdateProfileMutation } from '@/modules/profile/hooks/profile.hooks';
 import {
   updateProfileInputSchema,
@@ -126,7 +127,10 @@ export default function ProfilePage() {
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="container-fluid py-7.5">
+    <form
+      onSubmit={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
+      className="container-fluid py-7.5"
+    >
       <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>

@@ -99,6 +99,7 @@ async function persistGCContactLinks(
       contactId: string;
       generalContractorId: string;
       isPrimary?: boolean;
+      replaceExisting?: boolean;
     }) => Promise<unknown>;
     unlink: (contactId: string) => Promise<unknown>;
   }
@@ -127,6 +128,7 @@ async function persistGCContactLinks(
         contactId: link.contactId,
         generalContractorId,
         isPrimary: link.isPrimary,
+        replaceExisting: link.replaceExisting,
       });
     } catch {
       failed += 1;

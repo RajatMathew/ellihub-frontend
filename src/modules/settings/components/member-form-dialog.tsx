@@ -14,6 +14,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { MemberRoleSelect } from '@/modules/settings/components/member-role-select';
 import {
   memberFormSchema,
@@ -110,7 +111,7 @@ export function MemberFormDialog({
               password: values.password ?? '',
               role: values.role,
             });
-          })}
+          }, onInvalidFormSubmit)}
         >
           <Controller
             name="name"

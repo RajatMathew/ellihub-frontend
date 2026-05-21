@@ -4,6 +4,7 @@ import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
@@ -253,9 +254,7 @@ export function POFormPage() {
     <form
       key={isEditMode ? (existingPO?.id ?? 'loading') : 'create'}
       onSubmit={(event) =>
-        void handleSubmit(onSubmit, () =>
-          toast.error('Please fix the highlighted purchase order fields.')
-        )(event)
+        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
       }
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >

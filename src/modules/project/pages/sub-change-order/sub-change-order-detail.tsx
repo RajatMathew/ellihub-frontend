@@ -19,12 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -44,7 +38,6 @@ import {
   useApproveSCOMutation,
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
-  useRevertSCOToDraftMutation,
   useSCODetailQuery,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
@@ -61,7 +54,6 @@ import {
   FileText,
   History,
   Link2,
-  MoreHorizontal,
   PanelRightOpen,
   Pencil,
   PlusCircle,
@@ -155,7 +147,6 @@ export function SCODetailPage() {
   const approveMutation = useApproveSCOMutation();
   const rejectMutation = useRejectSCOMutation();
   const voidMutation = useVoidSCOMutation();
-  const revertToDraftMutation = useRevertSCOToDraftMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -238,7 +229,6 @@ export function SCODetailPage() {
   const canApprove = isAdmin && isDraft;
   const canReject = isAdmin && isDraft;
   const canVoid = isAdmin && isApproved;
-  const canRevert = isAdmin && !isDraft;
   const canEdit = can('subChangeOrder', 'update') && isDraft;
 
   /* ---- Execute a workflow action ---- */
@@ -263,10 +253,7 @@ export function SCODetailPage() {
   }
 
   const isActionPending =
-    approveMutation.isPending ||
-    rejectMutation.isPending ||
-    voidMutation.isPending ||
-    revertToDraftMutation.isPending;
+    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -377,7 +364,7 @@ export function SCODetailPage() {
               </Button>
             )}
 
-            {/* Revert to Draft - on APPROVED */}
+            {/* Reject - only on DRAFT */}
             {canReject && (
               <Button
                 variant="destructive"
@@ -427,35 +414,6 @@ export function SCODetailPage() {
               </Button>
             )}
 
-            {/* More menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  mode="icon"
-                  aria-label="Sub change order actions"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canRevert && (
-                  <DropdownMenuItem onClick={() => revertToDraftMutation.mutate(scoId)}>
-                    <Clock className="size-4" />
-                    Revert to Draft
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
             {!sidebarOpen && (
               <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
                 <PanelRightOpen className="size-4" />

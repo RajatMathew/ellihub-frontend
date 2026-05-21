@@ -113,6 +113,7 @@ async function persistVendorContactLinks(
       contactId: string;
       vendorId: string;
       isPrimary?: boolean;
+      replaceExisting?: boolean;
     }) => Promise<unknown>;
     unlink: (contactId: string) => Promise<unknown>;
   }
@@ -137,7 +138,12 @@ async function persistVendorContactLinks(
 
   for (const link of toPersist) {
     try {
-      await mutations.link({ contactId: link.contactId, vendorId, isPrimary: link.isPrimary });
+      await mutations.link({
+        contactId: link.contactId,
+        vendorId,
+        isPrimary: link.isPrimary,
+        replaceExisting: link.replaceExisting,
+      });
     } catch {
       failed += 1;
     }

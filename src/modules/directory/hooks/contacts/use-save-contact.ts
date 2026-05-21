@@ -55,18 +55,16 @@ export function useSaveContact({
             email,
             phoneNumber,
             tags: formData.tags,
-            isPrimary: Boolean(nextAssociation && isPrimary),
-            vendorId: primaryVendorId,
-            generalContractorId: primaryGCId,
           },
         });
 
-        if (nextAssociation && hasAssociationChanged(initialAssociation, nextAssociation)) {
+        if (nextAssociation) {
           await linkEntityMutation.mutateAsync({
             contactId,
             vendorId: primaryVendorId,
             generalContractorId: primaryGCId,
             isPrimary,
+            replaceExisting: hasAssociationChanged(initialAssociation, nextAssociation),
           });
         } else if (!nextAssociation && initialAssociation) {
           await unlinkMutation.mutateAsync(contactId);
@@ -83,9 +81,6 @@ export function useSaveContact({
         email,
         phoneNumber,
         tags: formData.tags,
-        isPrimary: Boolean(nextAssociation && isPrimary),
-        vendorId: primaryVendorId,
-        generalContractorId: primaryGCId,
       };
 
       const newContact = await createMutation.mutateAsync(payload);
@@ -133,5 +128,5 @@ function hasAssociationChanged(
   current: Pick<PendingContactAssociation, 'id' | 'type'> | null,
   next: Pick<PendingContactAssociation, 'id' | 'type'>
 ) {
-  return !current || current.id !== next.id || current.type !== next.type;
+  return Boolean(current && (current.id !== next.id || current.type !== next.type));
 }

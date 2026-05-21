@@ -25,6 +25,7 @@ import type {
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
 import { Check, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {
   title: string;
@@ -105,6 +106,12 @@ export function ProjectToolbarHeader({
       return dateStr.split('T')[0];
     };
     const optionalString = (value?: string | null) => value ?? undefined;
+    const tcoDate = formatDate(project.tcoDate ?? project.estimatedEndDate);
+
+    if (!tcoDate) {
+      toast.error('TCO date is required before updating the project stage.');
+      return;
+    }
 
     // PUT /project is a full replace, so we must send all required fields
     const fullPayload: UpdateProjectInput = {
@@ -132,7 +139,7 @@ export function ProjectToolbarHeader({
       estimatedStartDate: formatDate(project.estimatedStartDate),
       estimatedEndDate: formatDate(project.estimatedEndDate),
       setInactiveDate: formatDate(project.setInactiveDate),
-      tcoDate: formatDate(project.tcoDate),
+      tcoDate,
     };
 
     updateMutation.mutate({ id: project.id, data: fullPayload });

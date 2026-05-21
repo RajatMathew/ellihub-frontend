@@ -1,5 +1,6 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   DepartmentFormContent,
   DepartmentFormLoading,
@@ -37,7 +38,7 @@ export default function DepartmentFormPage() {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(saveDepartment)} className="container-fluid py-7.5">
+    <form onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)} className="container-fluid py-7.5">
       <DepartmentFormToolbar
         isEdit={isEdit}
         isSubmitting={isSubmitting}

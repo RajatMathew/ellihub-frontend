@@ -158,15 +158,3 @@ export const useVoidSCOMutation = () => {
     onError: (err) => toastApiError(err, 'Failed to void SCO.'),
   });
 };
-
-export const useRevertSCOToDraftMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => scoApi.revertToDraft(id),
-    onSuccess: async (_, id) => {
-      await invalidateSCOQueries(qc, id);
-      toast.success('SCO reverted to draft.');
-    },
-    onError: (err) => toastApiError(err, 'Failed to revert SCO to draft.'),
-  });
-};

@@ -10,6 +10,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   Select,
   SelectContent,
@@ -88,7 +89,7 @@ export function QuickCreateVendorDialog({
             New Vendor
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)} className="space-y-4">
           <Controller
             name="name"
             control={control}

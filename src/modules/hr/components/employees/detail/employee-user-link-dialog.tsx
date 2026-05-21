@@ -14,6 +14,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   Select,
   SelectContent,
@@ -64,7 +65,7 @@ export function EmployeeUserLinkDialog({
           <DialogTitle>Link Auth User</DialogTitle>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <form className="space-y-4" onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}>
           <Field>
             <FieldLabel>Email</FieldLabel>
             <Input value={employee.email} readOnly />

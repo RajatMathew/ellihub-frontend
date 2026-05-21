@@ -1,5 +1,6 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
@@ -62,7 +63,7 @@ export function GCFormPage() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveGC)} className="container-fluid py-7.5">
+      <form onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)} className="container-fluid py-7.5">
         <GCFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}
@@ -77,6 +78,7 @@ export function GCFormPage() {
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
+          targetEntityId={id}
           onSectionChange={state.setActiveSection}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}

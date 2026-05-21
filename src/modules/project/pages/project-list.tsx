@@ -23,11 +23,24 @@ import { Link } from 'react-router-dom';
 
 const currentYear = new Date().getFullYear();
 
-const getProjectYear = (project: ProjectListItem): number | null => {
-  if (!project.estimatedEndDate) return null;
+const getProjectYearDate = (project: ProjectListItem): string | null | undefined => {
+  return project.tcoDate ?? project.estimatedEndDate;
+};
 
-  const year = Number.parseInt(project.estimatedEndDate.slice(0, 4), 10);
+const getProjectYear = (project: ProjectListItem): number | null => {
+  const projectYearDate = getProjectYearDate(project);
+  if (!projectYearDate) return null;
+
+  const year = Number.parseInt(projectYearDate.slice(0, 4), 10);
   return Number.isInteger(year) ? year : null;
+};
+
+const getProjectYearSortValue = (project: ProjectListItem): number => {
+  const projectYearDate = getProjectYearDate(project);
+  if (!projectYearDate) return 0;
+
+  const value = new Date(projectYearDate).getTime();
+  return Number.isFinite(value) ? value : 0;
 };
 
 const getProjectStatusId = (project: ProjectListItem): string | undefined => {
@@ -43,13 +56,16 @@ export function ProjectList() {
 
   const { data, isLoading, isError, refetch } = useProjectsQuery({
     size: 100,
-    sortBy: 'estimatedEndDate',
+    sortBy: 'tcoDate',
     sortOrder: 'desc',
     year,
   });
 
   const summaryProjects = useMemo(
-    () => (data?.data ?? []).filter((project) => getProjectYear(project) === year),
+    () =>
+      (data?.data ?? [])
+        .filter((project) => getProjectYear(project) === year)
+        .sort((a, b) => getProjectYearSortValue(b) - getProjectYearSortValue(a)),
     [data?.data, year]
   );
   const projects = useMemo(

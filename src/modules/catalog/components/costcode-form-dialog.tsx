@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   Select,
   SelectContent,
@@ -77,7 +78,10 @@ export function CostCodeFormDialog({
           </DialogTitle>
         </DialogHeader>
         <form
-          onSubmit={handleSubmit((data) => onSubmit(data as CostCodeCreate | CostCode))}
+          onSubmit={handleSubmit(
+            (data) => onSubmit(data as CostCodeCreate | CostCode),
+            onInvalidFormSubmit
+          )}
           className="space-y-4"
         >
           {isEditing && (
