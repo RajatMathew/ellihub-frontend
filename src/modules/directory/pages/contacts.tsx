@@ -1,31 +1,32 @@
 import { useCallback, useMemo } from 'react';
 
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  type SortingState,
-  useReactTable,
-} from '@tanstack/react-table';
-
-import {
-  CONTACTS_DEFAULT_PAGE_SIZE,
-  isContactsSortByField,
-} from '@/modules/directory/constants/contacts/contact-list.constants';
+import { useAccess } from '@/app/contexts/access-context';
 import {
   ContactsPageHeader,
   ContactsTableCard,
   useContactListColumns,
 } from '@/modules/directory/components/contacts';
-import { useContactListParams } from '@/modules/directory/hooks/contacts/use-contact-list-params';
+import {
+  CONTACTS_DEFAULT_PAGE_SIZE,
+  isContactsSortByField,
+} from '@/modules/directory/constants/contacts/contact-list.constants';
 import {
   useContactsQuery,
   useDeleteContactMutation,
   useProfessionalRolesQuery,
   useVendorsQuery,
 } from '@/modules/directory/hooks';
+import { useContactListParams } from '@/modules/directory/hooks/contacts/use-contact-list-params';
 import type { ListContactsParams } from '@/modules/directory/schemas/contact.schema';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
 
 export function ContactsListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -48,12 +49,11 @@ export function ContactsListPage() {
       search: searchQuery || undefined,
       professionalRoleId: roleFilter,
     }),
-    [page, roleFilter, searchQuery, size, sortBy, sortOrder],
+    [page, roleFilter, searchQuery, size, sortBy, sortOrder]
   );
 
   const { data, isLoading, isError, refetch } = useContactsQuery(filters);
-  const { data: professionalRoles = [], isLoading: isRolesLoading } =
-    useProfessionalRolesQuery();
+  const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const deleteMutation = useDeleteContactMutation();
 
@@ -73,17 +73,19 @@ export function ContactsListPage() {
     (id: string) => {
       deleteMutation.mutate(id);
     },
-    [deleteMutation],
+    [deleteMutation]
   );
 
   const columns = useContactListColumns({
     vendorNames,
+    canUpdate: can('contact', 'update'),
+    canDelete: can('contact', 'delete'),
     onDelete: handleDelete,
   });
 
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
 
   const table = useReactTable({
@@ -137,7 +139,11 @@ export function ContactsListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ContactsPageHeader totalCount={totalCount} hasActiveFilters={hasActiveFilters} />
+      <ContactsPageHeader
+        totalCount={totalCount}
+        hasActiveFilters={hasActiveFilters}
+        canCreate={can('contact', 'create')}
+      />
 
       <ContactsTableCard
         table={table}

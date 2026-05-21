@@ -1,10 +1,5 @@
+import { PODetailPage, POFormPage, ProjectPOs } from '@/modules/project/pages/purchase-order';
 import { Route, Routes } from 'react-router-dom';
-
-import {
-  PODetailPage,
-  POFormPage,
-  ProjectPOs,
-} from '@/modules/project/pages/purchase-order';
 
 const PORoutes = () => {
   return (

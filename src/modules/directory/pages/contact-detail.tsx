@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   ContactDetailDialogs,
@@ -22,6 +23,7 @@ import { useContactTags } from '@/modules/directory/hooks/contacts/use-contact-t
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function ContactDetailPage() {
+  const { can } = useAccess();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -30,7 +32,10 @@ export function ContactDetailPage() {
   const { data: contact, isLoading, isError, refetch } = useContactDetailQuery(id ?? '');
   const deleteMutation = useDeleteContactMutation();
 
-  useBreadcrumbLabel(id ? `/app/directory/contacts/${id}` : undefined, contact?.fullName ?? 'Contact');
+  useBreadcrumbLabel(
+    id ? `/app/directory/contacts/${id}` : undefined,
+    contact?.fullName ?? 'Contact'
+  );
 
   const roleName = contact?.professionalRole?.label ?? contact?.professionalRole?.name ?? null;
   const { allMergedLinks, primaryCompanyName } = useContactEntityLinks(contact);
@@ -67,6 +72,8 @@ export function ContactDetailPage() {
   }
 
   const companyNames = allMergedLinks.map((link) => link.name);
+  const canUpdateContact = can('contact', 'update');
+  const canDeleteContact = can('contact', 'delete');
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
@@ -75,6 +82,8 @@ export function ContactDetailPage() {
         roleName={roleName}
         primaryCompanyName={primaryCompanyName}
         sidebarOpen={sidebarOpen}
+        canUpdate={canUpdateContact}
+        canDelete={canDeleteContact}
         onOpenSidebar={() => setSidebarOpen(true)}
         onDelete={() => setDeleteOpen(true)}
       />
@@ -112,11 +121,11 @@ export function ContactDetailPage() {
       <ContactDetailDialogs
         contact={contact}
         methods={methodEditor}
-        deleteOpen={deleteOpen}
+        deleteOpen={deleteOpen && canDeleteContact}
         isDeleting={deleteMutation.isPending}
         onDeleteOpenChange={setDeleteOpen}
         onDelete={() => {
-          if (!id) return;
+          if (!id || !canDeleteContact) return;
           deleteMutation.mutate(id, {
             onSuccess: () => navigate('..', { relative: 'path' }),
           });

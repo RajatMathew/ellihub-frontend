@@ -1,3 +1,4 @@
+import { AdminRoute } from '@/app/components/access/admin-route';
 import ProjectContractOverview from '@/modules/project/pages/project-contract-overview';
 import ProjectEditForm from '@/modules/project/pages/project-edit-form';
 import ProjectFilesPage from '@/modules/project/pages/project-files';
@@ -12,7 +13,14 @@ const ProjectRoutes = () => {
   return (
     <Routes>
       <Route index element={<Navigate to="overview" replace />} />
-      <Route path="edit" element={<ProjectEditForm />} />
+      <Route
+        path="edit"
+        element={
+          <AdminRoute>
+            <ProjectEditForm />
+          </AdminRoute>
+        }
+      />
       <Route path="overview" element={<ProjectContractOverview />} />
       <Route path="files" element={<ProjectFilesPage />} />
       <Route path="prime-change-orders/*" element={<PrimeChangeOrderRoutes />} />

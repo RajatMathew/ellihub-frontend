@@ -19,6 +19,7 @@ interface FilesPageToolbarProps {
   searchMode: FilesSearchMode;
   canMutateFolder: boolean;
   canExport: boolean;
+  showMutationActions?: boolean;
   onSearchChange: (value: string) => void;
   onSearchModeChange: (value: FilesSearchMode) => void;
   onExport: () => void;
@@ -32,6 +33,7 @@ export function FilesPageToolbar({
   searchMode,
   canMutateFolder,
   canExport,
+  showMutationActions = true,
   onSearchChange,
   onSearchModeChange,
   onExport,
@@ -111,14 +113,23 @@ export function FilesPageToolbar({
             <Download className="size-4" />
             Export ZIP
           </Button>
-          <Button variant="outline" size="sm" onClick={onCreateFolder} disabled={!canMutateFolder}>
-            <FolderPlus className="size-4" />
-            New Folder
-          </Button>
-          <Button size="sm" onClick={onUploadFile} disabled={!canMutateFolder}>
-            <Upload className="size-4" />
-            Upload
-          </Button>
+          {showMutationActions && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCreateFolder}
+                disabled={!canMutateFolder}
+              >
+                <FolderPlus className="size-4" />
+                New Folder
+              </Button>
+              <Button size="sm" onClick={onUploadFile} disabled={!canMutateFolder}>
+                <Upload className="size-4" />
+                Upload
+              </Button>
+            </>
+          )}
         </ToolbarActions>
       </ToolbarWrapper>
     </Toolbar>

@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-import { UserPlus } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -10,12 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+import { UserPlus } from 'lucide-react';
 
 import { AddTeamMemberForm } from './add-team-member-form';
 import { EmptyTeamState } from './empty-team-state';
 import { TeamMemberGrid } from './team-member-grid';
-import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
-import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface EmployeeOption {
   value: string;
@@ -27,9 +26,9 @@ interface ProjectTeamDialogProps {
   onOpenChange: (open: boolean) => void;
   project: ProjectDetail;
   employeeOptions: EmployeeOption[];
-  onAddMember: (employeeId: string) => Promise<void>;
-  onRemoveMember: (employeeId: string) => Promise<void>;
-  onPromoteToPM: (employeeId: string) => Promise<void>;
+  onAddMember?: (employeeId: string) => Promise<void>;
+  onRemoveMember?: (employeeId: string) => Promise<void>;
+  onPromoteToPM?: (employeeId: string) => Promise<void>;
   isRemovingMember?: boolean;
   isPromoting?: boolean;
 }
@@ -49,9 +48,11 @@ export function ProjectTeamDialog({
   const { teamMembers, totalMembers, hasMembers } = useFilteredTeamMembers({ project });
 
   const handleAddMember = async (employeeId: string) => {
+    if (!onAddMember) return;
     await onAddMember(employeeId);
     setShowAddMember(false);
   };
+  const canManageTeam = Boolean(onAddMember && onRemoveMember && onPromoteToPM);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,14 +60,12 @@ export function ProjectTeamDialog({
         <DialogHeader className="pb-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <DialogTitle className="text-lg font-semibold">
-                Project Team
-              </DialogTitle>
+              <DialogTitle className="text-lg font-semibold">Project Team</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Manage team members and their roles
               </p>
             </div>
-            {!showAddMember && hasMembers && (
+            {canManageTeam && !showAddMember && hasMembers && (
               <Button
                 variant="outline"
                 size="sm"
@@ -80,7 +79,7 @@ export function ProjectTeamDialog({
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
-          {showAddMember && (
+          {canManageTeam && showAddMember && (
             <div className="pb-4 border-b">
               <AddTeamMemberForm
                 employeeOptions={employeeOptions}
@@ -106,8 +105,10 @@ export function ProjectTeamDialog({
                 isRemoving={isRemovingMember}
               />
             </div>
-          ) : (
+          ) : canManageTeam ? (
             <EmptyTeamState onAddMember={() => setShowAddMember(true)} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No team members assigned.</p>
           )}
         </DialogBody>
       </DialogContent>

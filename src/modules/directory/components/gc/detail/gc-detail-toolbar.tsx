@@ -28,6 +28,8 @@ import { getGCTypeCode, getGCTypeName } from './gc-detail-utils';
 interface GCDetailToolbarProps {
   gc: GeneralContractorDetail;
   sidebarOpen: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
   onDelete: () => void;
   onOpenSidebar: () => void;
 }
@@ -35,6 +37,8 @@ interface GCDetailToolbarProps {
 export function GCDetailToolbar({
   gc,
   sidebarOpen,
+  canUpdate,
+  canDelete,
   onDelete,
   onOpenSidebar,
 }: GCDetailToolbarProps) {
@@ -75,32 +79,42 @@ export function GCDetailToolbar({
           </div>
         </ToolbarHeading>
         <ToolbarActions className="w-full sm:w-auto sm:justify-end">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-            <Link to="edit">
-              <Pencil className="size-4" />
-              Edit Profile
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" mode="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-4" />
-                Archive GC
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canUpdate && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+              <Link to="edit">
+                <Pencil className="size-4" />
+                Edit Profile
+              </Link>
+            </Button>
+          )}
+          {(canUpdate || canDelete) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" mode="icon">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {canUpdate && (
+                  <DropdownMenuItem asChild>
+                    <Link to="edit">
+                      <Pencil className="size-4" />
+                      Edit Profile
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <>
+                    {canUpdate && <DropdownMenuSeparator />}
+                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                      <Trash2 className="size-4" />
+                      Archive GC
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {!sidebarOpen && (
             <Button
               variant="outline"

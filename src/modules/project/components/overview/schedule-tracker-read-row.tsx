@@ -1,5 +1,3 @@
-import { Pencil, Trash2 } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatDate } from '@/app/lib/helpers';
@@ -7,10 +5,12 @@ import type {
   ProjectScheduleEntry,
   ScheduleFile,
 } from '@/modules/project/schemas/project-schedule.schema';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface ScheduleTrackerReadRowProps {
   entry: ProjectScheduleEntry;
   isDeleting: boolean;
+  isReadOnly?: boolean;
   onDelete: (entryId: string) => void;
   onDownload: (file: ScheduleFile) => void;
   onEdit: (entry: ProjectScheduleEntry) => void;
@@ -19,6 +19,7 @@ interface ScheduleTrackerReadRowProps {
 export function ScheduleTrackerReadRow({
   entry,
   isDeleting,
+  isReadOnly = false,
   onDelete,
   onDownload,
   onEdit,
@@ -26,7 +27,10 @@ export function ScheduleTrackerReadRow({
   const file = entry.file;
 
   return (
-    <TableRow className="cursor-pointer" onClick={() => onEdit(entry)}>
+    <TableRow
+      className={isReadOnly ? undefined : 'cursor-pointer'}
+      onClick={() => !isReadOnly && onEdit(entry)}
+    >
       <TableCell className="whitespace-nowrap">
         {entry.date ? formatDate(entry.date) : '-'}
       </TableCell>
@@ -53,35 +57,37 @@ export function ScheduleTrackerReadRow({
       </TableCell>
       <TableCell className="text-muted-foreground">{entry.notes || '-'}</TableCell>
       <TableCell>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            mode="icon"
-            size="sm"
-            aria-label="Edit schedule entry"
-            title="Edit schedule entry"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(entry);
-            }}
-          >
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            mode="icon"
-            size="sm"
-            aria-label="Delete schedule entry"
-            title="Delete schedule entry"
-            disabled={isDeleting}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(entry.id);
-            }}
-          >
-            <Trash2 className="size-3.5 text-destructive" />
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              mode="icon"
+              size="sm"
+              aria-label="Edit schedule entry"
+              title="Edit schedule entry"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(entry);
+              }}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              mode="icon"
+              size="sm"
+              aria-label="Delete schedule entry"
+              title="Delete schedule entry"
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(entry.id);
+              }}
+            >
+              <Trash2 className="size-3.5 text-destructive" />
+            </Button>
+          </div>
+        )}
       </TableCell>
     </TableRow>
   );

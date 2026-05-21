@@ -16,9 +16,16 @@ import { type ColumnDef } from '@tanstack/react-table';
 interface UseGCListColumnsOptions {
   typeLabels: Map<string, string>;
   onDelete: (id: string) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
-export function useGCListColumns({ typeLabels, onDelete }: UseGCListColumnsOptions) {
+export function useGCListColumns({
+  typeLabels,
+  onDelete,
+  canUpdate,
+  canDelete,
+}: UseGCListColumnsOptions) {
   return useMemo<ColumnDef<GeneralContractor>[]>(
     () => [
       {
@@ -91,7 +98,14 @@ export function useGCListColumns({ typeLabels, onDelete }: UseGCListColumnsOptio
       {
         id: 'actions',
         header: () => null,
-        cell: ({ row }) => <GCActionsCell gc={row.original} onDelete={onDelete} />,
+        cell: ({ row }) => (
+          <GCActionsCell
+            gc={row.original}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onDelete={onDelete}
+          />
+        ),
         meta: {
           headerClassName: 'w-16',
           skeleton: <Skeleton className="size-7 rounded-md" />,
@@ -99,6 +113,6 @@ export function useGCListColumns({ typeLabels, onDelete }: UseGCListColumnsOptio
         enableSorting: false,
       },
     ],
-    [onDelete, typeLabels]
+    [canDelete, canUpdate, onDelete, typeLabels]
   );
 }

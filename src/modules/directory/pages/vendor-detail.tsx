@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import {
@@ -18,6 +19,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function VendorDetailPage() {
+  const { can } = useAccess();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -58,12 +60,16 @@ export function VendorDetailPage() {
   }
 
   const contacts = mergeLinkedContacts(vendor.contacts, vendor.contactLinks);
+  const canUpdateVendor = can('vendor', 'update');
+  const canDeleteVendor = can('vendor', 'delete');
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <VendorDetailToolbar
         vendor={vendor}
         sidebarOpen={sidebarOpen}
+        canUpdate={canUpdateVendor}
+        canDelete={canDeleteVendor}
         onDelete={() => setDeleteOpen(true)}
         onOpenSidebar={() => setSidebarOpen(true)}
       />
@@ -87,11 +93,11 @@ export function VendorDetailPage() {
 
       <VendorDetailDialogs
         vendor={vendor}
-        open={deleteOpen}
+        open={deleteOpen && canDeleteVendor}
         isDeleting={deleteMutation.isPending}
         onOpenChange={setDeleteOpen}
         onDelete={() => {
-          if (!id) return;
+          if (!id || !canDeleteVendor) return;
           deleteMutation.mutate(id, {
             onSuccess: () => navigate('..', { relative: 'path' }),
           });

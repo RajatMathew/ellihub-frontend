@@ -20,6 +20,8 @@ interface ContactDetailToolbarProps {
   roleName: string | null;
   primaryCompanyName: string | null;
   sidebarOpen: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
   onOpenSidebar: () => void;
   onDelete: () => void;
 }
@@ -29,6 +31,8 @@ export function ContactDetailToolbar({
   roleName,
   primaryCompanyName,
   sidebarOpen,
+  canUpdate,
+  canDelete,
   onOpenSidebar,
   onDelete,
 }: ContactDetailToolbarProps) {
@@ -56,25 +60,29 @@ export function ContactDetailToolbar({
         </ToolbarHeading>
 
         <ToolbarActions className="w-full sm:w-auto sm:justify-end">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-            <Link to="edit">
-              <Pencil className="size-4" />
-              Edit Contact
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" mode="icon" aria-label="Contact actions">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-4" />
-                Delete Permanently
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canUpdate && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+              <Link to="edit">
+                <Pencil className="size-4" />
+                Edit Contact
+              </Link>
+            </Button>
+          )}
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" mode="icon" aria-label="Contact actions">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2 className="size-4" />
+                  Delete Permanently
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {!sidebarOpen && (
             <Button
               variant="outline"

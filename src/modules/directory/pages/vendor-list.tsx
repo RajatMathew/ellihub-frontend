@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { useAccess } from '@/app/contexts/access-context';
 import {
   useVendorListColumns,
   VendorsTableCard,
@@ -27,6 +28,7 @@ import {
 import { Plus } from 'lucide-react';
 
 export function VendorListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -81,6 +83,8 @@ export function VendorListPage() {
 
   const columns = useVendorListColumns({
     typeLabels,
+    canUpdate: can('vendor', 'update'),
+    canDelete: can('vendor', 'delete'),
     onDelete: handleDelete,
   });
 
@@ -145,9 +149,9 @@ export function VendorListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="Vendors"
-        addLabel="Add Vendor"
-        addTo="create"
-        addIcon={<Plus className="size-4" />}
+        addLabel={can('vendor', 'create') ? 'Add Vendor' : undefined}
+        addTo={can('vendor', 'create') ? 'create' : undefined}
+        addIcon={can('vendor', 'create') ? <Plus className="size-4" /> : undefined}
       />
 
       <VendorStatsCards

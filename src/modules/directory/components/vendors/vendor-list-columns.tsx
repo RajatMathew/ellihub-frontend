@@ -16,9 +16,16 @@ import { type ColumnDef } from '@tanstack/react-table';
 interface UseVendorListColumnsOptions {
   typeLabels: Map<string, string>;
   onDelete: (id: string) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
-export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColumnsOptions) {
+export function useVendorListColumns({
+  typeLabels,
+  onDelete,
+  canUpdate,
+  canDelete,
+}: UseVendorListColumnsOptions) {
   return useMemo<ColumnDef<Vendor>[]>(
     () => [
       {
@@ -93,7 +100,14 @@ export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColu
       {
         id: 'actions',
         header: () => null,
-        cell: ({ row }) => <VendorActionsCell vendor={row.original} onDelete={onDelete} />,
+        cell: ({ row }) => (
+          <VendorActionsCell
+            vendor={row.original}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onDelete={onDelete}
+          />
+        ),
         meta: {
           headerClassName: 'w-16',
           skeleton: <Skeleton className="size-7 rounded-md" />,
@@ -101,6 +115,6 @@ export function useVendorListColumns({ typeLabels, onDelete }: UseVendorListColu
         enableSorting: false,
       },
     ],
-    [onDelete, typeLabels]
+    [canDelete, canUpdate, onDelete, typeLabels]
   );
 }

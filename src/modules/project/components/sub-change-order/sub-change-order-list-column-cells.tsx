@@ -1,6 +1,3 @@
-import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -9,8 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { useAccess } from '@/app/contexts/access-context';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
+import { MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import {
   formatOptionalSubChangeOrderCurrency,
@@ -54,21 +54,13 @@ export function SubChangeOrderPurchaseOrderCell({
         <span className="text-sm text-foreground">{purchaseOrderLabel}</span>
       )}
       {sco.purchaseOrder?.status && (
-        <span className="text-2sm text-muted-foreground">
-          PO {sco.purchaseOrder.status}
-        </span>
+        <span className="text-2sm text-muted-foreground">PO {sco.purchaseOrder.status}</span>
       )}
     </div>
   );
 }
 
-export function SubChangeOrderTypeCell({
-  sco,
-  fallback,
-}: {
-  sco: SCOListItem;
-  fallback?: string;
-}) {
+export function SubChangeOrderTypeCell({ sco, fallback }: { sco: SCOListItem; fallback?: string }) {
   return (
     <div className="flex flex-col items-start gap-1">
       <Badge variant="primary" appearance="outline" size="sm">
@@ -112,9 +104,7 @@ export function SubChangeOrderStatusCell({ sco }: { sco: SCOListItem }) {
 export function SubChangeOrderDateCell({ sco }: { sco: SCOListItem }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-sm text-foreground">
-        {formatOptionalSubChangeOrderDate(sco.date)}
-      </span>
+      <span className="text-sm text-foreground">{formatOptionalSubChangeOrderDate(sco.date)}</span>
       <span className="text-2sm text-muted-foreground">
         {sco.impactsSchedule ? 'Schedule impact' : 'No schedule impact'}
       </span>
@@ -136,6 +126,9 @@ export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
 }
 
 export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
+  const { can } = useAccess();
+  const canEdit = can('subChangeOrder', 'update') && sco.status === 'DRAFT';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -154,7 +147,7 @@ export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
         <DropdownMenuItem asChild>
           <Link to={`${sco.id}`}>View</Link>
         </DropdownMenuItem>
-        {sco.status === 'DRAFT' && (
+        {canEdit && (
           <DropdownMenuItem asChild>
             <Link to={`${sco.id}/edit`}>Edit</Link>
           </DropdownMenuItem>

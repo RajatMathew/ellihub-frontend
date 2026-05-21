@@ -118,9 +118,13 @@ export function GCActiveProjectsCell({ gc }: { gc: GeneralContractor }) {
 
 export function GCActionsCell({
   gc,
+  canUpdate,
+  canDelete,
   onDelete,
 }: {
   gc: GeneralContractor;
+  canUpdate: boolean;
+  canDelete: boolean;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -141,16 +145,22 @@ export function GCActionsCell({
         <DropdownMenuItem asChild>
           <Link to={`${gc.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${gc.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(gc.id)}
-        >
-          Archive
-        </DropdownMenuItem>
+        {canUpdate && (
+          <DropdownMenuItem asChild>
+            <Link to={`${gc.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(gc.id)}
+            >
+              Archive
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/componen
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
@@ -47,16 +48,13 @@ import {
   useUploadFileMutation,
 } from '@/modules/files/hooks/files.hooks';
 import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
-import {
-  useFeatureMailDraftQuery,
-  useSendFeatureMailMutation,
-} from '@/modules/mail/hooks';
+import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import {
+  RFQCreatePOPreviewDialog,
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
-  RFQCreatePOPreviewDialog,
 } from '@/modules/project/components/rfq';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
@@ -167,6 +165,7 @@ function QuoteDocPreview({
 /* ---- Page ---- */
 
 export default function RFQDetailPage() {
+  const { can } = useAccess();
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
@@ -325,6 +324,11 @@ export default function RFQDetailPage() {
   const isEvaluation = statusName === 'EVALUATION';
   const isAwarded = statusName === 'AWARDED';
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
+  const canEditDraftRfq = can('rfq', 'update') && isDraft;
+  const canManagePublishedRfq = can('rfq', 'update') && isPublished;
+  const canWorkflowRfq = can('rfq', 'workflow');
+  const canCreatePurchaseOrder = can('purchaseOrder', 'create') && isAwarded;
+  const canEmailVendors = can('mail', 'send');
 
   const isActionPending =
     publishMutation.isPending ||
@@ -529,7 +533,7 @@ export default function RFQDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {!isTerminal && (
+            {canEditDraftRfq && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -537,20 +541,20 @@ export default function RFQDetailPage() {
                 </Link>
               </Button>
             )}
-            {isDraft && (
+            {canWorkflowRfq && isDraft && (
               <Button size="sm" onClick={() => setPublishOpen(true)}>
                 <Send className="size-4" />
                 Publish
               </Button>
             )}
-            {(isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
+            {canWorkflowRfq && (isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
               <Button size="sm" onClick={() => setAwardOpen(true)}>
                 <Trophy className="size-4" />
                 Award
               </Button>
             )}
 
-            {!isTerminal && (
+            {canWorkflowRfq && !isTerminal && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -634,7 +638,7 @@ export default function RFQDetailPage() {
           </div>
 
           {/* Quick Actions */}
-          {!isDraft && (
+          {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {quotes.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
@@ -642,7 +646,7 @@ export default function RFQDetailPage() {
                   Compare {quotes.length} Quotes
                 </Button>
               )}
-              {invites.length > 0 && (
+              {canEmailVendors && invites.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -665,6 +669,11 @@ export default function RFQDetailPage() {
             isPublished={isPublished}
             isEvaluation={isEvaluation}
             isAwarded={isAwarded}
+            canManageVendors={canManagePublishedRfq}
+            canManageQuotes={canManagePublishedRfq}
+            canAwardQuotes={canWorkflowRfq}
+            canCreatePurchaseOrder={canCreatePurchaseOrder}
+            canEmailVendors={canEmailVendors}
             onInviteVendor={() => {
               setInviteVendorIds([]);
               setInviteOpen(true);
@@ -685,8 +694,8 @@ export default function RFQDetailPage() {
 
           <RFQDetailAttachmentsCard
             attachments={attachments}
-            canEdit={!isTerminal}
-            canUpload={!!rfqFolderQuery.data}
+            canEdit={canEditDraftRfq}
+            canUpload={canEditDraftRfq && !!rfqFolderQuery.data}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
             onDownload={(document) => downloadFile.mutate(document)}
@@ -698,7 +707,7 @@ export default function RFQDetailPage() {
             }}
           />
 
-          {rfqFolderQuery.data && (
+          {canEditDraftRfq && rfqFolderQuery.data && (
             <UploadFileDialog
               open={uploadOpen}
               onOpenChange={setUploadOpen}
@@ -986,16 +995,20 @@ export default function RFQDetailPage() {
                             const isBcQuoteAwarded = quotes.find(
                               (q) => q.id === bcQuote.quoteId
                             )?.isAwarded;
-                            return isBcQuoteAwarded ? (
-                              <Badge
-                                variant="success"
-                                appearance="light"
-                                size="sm"
-                                className="shrink-0"
-                              >
-                                Awarded
-                              </Badge>
-                            ) : (
+                            if (isBcQuoteAwarded) {
+                              return (
+                                <Badge
+                                  variant="success"
+                                  appearance="light"
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  Awarded
+                                </Badge>
+                              );
+                            }
+
+                            return canWorkflowRfq ? (
                               <Button
                                 size="sm"
                                 className="shrink-0"
@@ -1007,9 +1020,9 @@ export default function RFQDetailPage() {
                               >
                                 Award Bid
                               </Button>
-                            );
+                            ) : null;
                           })()
-                        ) : !hasQuote && !declined ? (
+                        ) : canWorkflowRfq && !hasQuote && !declined ? (
                           <Button variant="outline" size="sm" className="shrink-0" disabled>
                             Award Bid
                           </Button>

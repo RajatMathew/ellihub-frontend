@@ -122,9 +122,13 @@ export function VendorCurrencyCell({ value }: { value: number }) {
 
 export function VendorActionsCell({
   vendor,
+  canUpdate,
+  canDelete,
   onDelete,
 }: {
   vendor: Vendor;
+  canUpdate: boolean;
+  canDelete: boolean;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -145,16 +149,22 @@ export function VendorActionsCell({
         <DropdownMenuItem asChild>
           <Link to={`${vendor.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${vendor.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(vendor.id)}
-        >
-          Archive
-        </DropdownMenuItem>
+        {canUpdate && (
+          <DropdownMenuItem asChild>
+            <Link to={`${vendor.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(vendor.id)}
+            >
+              Archive
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

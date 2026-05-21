@@ -37,6 +37,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -134,6 +135,7 @@ function relatedSCOBadgeVariant(status: string | null | undefined) {
 }
 
 export function InvoiceDetailPage() {
+  const { can, isAdmin } = useAccess();
   const { projectId = '', invoiceId = '' } = useParams<{
     projectId: string;
     invoiceId: string;
@@ -238,6 +240,7 @@ export function InvoiceDetailPage() {
   const relatedSCOCount = relatedSCOs.length || invoice.relatedSCOIds.length;
   const isPaid = invoice.isPaid === true;
   const isDisputed = invoice.isDisputed === true;
+  const canEditInvoice = can('invoice', 'update') && !isPaid;
   const totalAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
   const subtotal = Math.max(0, totalAmount - taxAmount);
@@ -283,7 +286,7 @@ export function InvoiceDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {!isPaid && (
+            {isAdmin && !isPaid && (
               <Button
                 size="sm"
                 disabled={isActionPending}
@@ -301,7 +304,7 @@ export function InvoiceDetailPage() {
                 Mark Paid
               </Button>
             )}
-            {isPaid && (
+            {isAdmin && isPaid && (
               <Button
                 variant="outline"
                 size="sm"
@@ -312,7 +315,7 @@ export function InvoiceDetailPage() {
                 Mark Unpaid
               </Button>
             )}
-            {!isDisputed && (
+            {isAdmin && !isDisputed && (
               <Button
                 variant="outline"
                 size="sm"
@@ -326,7 +329,7 @@ export function InvoiceDetailPage() {
                 Dispute
               </Button>
             )}
-            {isDisputed && (
+            {isAdmin && isDisputed && (
               <Button
                 variant="outline"
                 size="sm"
@@ -337,7 +340,7 @@ export function InvoiceDetailPage() {
                 Resolve Dispute
               </Button>
             )}
-            {!isPaid && (
+            {canEditInvoice && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -352,7 +355,7 @@ export function InvoiceDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                {!isPaid && (
+                {canEditInvoice && (
                   <DropdownMenuItem asChild>
                     <Link to="edit">
                       <Pencil className="size-4" />
@@ -360,7 +363,7 @@ export function InvoiceDetailPage() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {!isPaid && invoiceFolderId && (
+                {canEditInvoice && invoiceFolderId && (
                   <DropdownMenuItem onClick={() => setUploadOpen(true)}>
                     <Upload className="size-4" />
                     Upload Document
@@ -475,8 +478,8 @@ export function InvoiceDetailPage() {
 
               <ProjectDetailDocumentsCard
                 documents={attachments}
-                canUpload={!isPaid && !!invoiceFolderId}
-                canRemove={!isPaid}
+                canUpload={canEditInvoice && !!invoiceFolderId}
+                canRemove={canEditInvoice}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
                 onRemove={(attachment) =>
@@ -881,7 +884,7 @@ export function InvoiceDetailPage() {
         isPending={resolveDisputeMutation.isPending}
       />
 
-      {invoiceFolderId && (
+      {canEditInvoice && invoiceFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   GCDetailDialogs,
@@ -18,6 +19,7 @@ import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function GCDetailPage() {
+  const { can } = useAccess();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -61,12 +63,16 @@ export function GCDetailPage() {
   }
 
   const contacts = mergeLinkedContacts(gc.contacts, gc.contactLinks);
+  const canUpdateGc = can('generalContractor', 'update');
+  const canDeleteGc = can('generalContractor', 'delete');
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <GCDetailToolbar
         gc={gc}
         sidebarOpen={sidebarOpen}
+        canUpdate={canUpdateGc}
+        canDelete={canDeleteGc}
         onDelete={() => setDeleteOpen(true)}
         onOpenSidebar={() => setSidebarOpen(true)}
       />
@@ -107,11 +113,11 @@ export function GCDetailPage() {
 
       <GCDetailDialogs
         gc={gc}
-        open={deleteOpen}
+        open={deleteOpen && canDeleteGc}
         isDeleting={deleteMutation.isPending}
         onOpenChange={setDeleteOpen}
         onDelete={() => {
-          if (!id) return;
+          if (!id || !canDeleteGc) return;
           deleteMutation.mutate(id, {
             onSuccess: () => navigate('..', { relative: 'path' }),
           });

@@ -1,7 +1,8 @@
-import { memo, Suspense } from 'react';
+import { memo, Suspense, type ReactNode } from 'react';
 
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
+import { AdminRoute } from '@app/components/access/admin-route';
 import { NotFound } from '@app/components/error/not-found';
 import { ModuleLoader } from '@app/components/loader/elegant';
 import { DebugViteConfig } from '@app/lib/debug';
@@ -10,19 +11,30 @@ import type { RouteDef } from '@app/routing/config/types';
 
 const isDev = import.meta.env.DEV;
 
+function AccessRoute({ access, children }: { access?: RouteDef['access']; children: ReactNode }) {
+  if (!access) return <>{children}</>;
+  if (access === 'admin') return <AdminRoute>{children}</AdminRoute>;
+
+  return <>{children}</>;
+}
+
 function routeTreeToRoutes(nodes: RouteDef[]): React.ReactNode {
   return nodes.map((def, i) => {
     const hasChildren = def.children && def.children.length > 0;
     const key = `${def.path}-${def.title ?? i}`;
     const Element = def.component;
+    const routeContent = Element ? <Element /> : hasChildren ? <Outlet /> : null;
+    const element = routeContent ? (
+      <AccessRoute access={def.access}>{routeContent}</AccessRoute>
+    ) : null;
     if (hasChildren) {
       return (
-        <Route key={key} path={def.path} element={Element ? <Element /> : <Outlet />}>
+        <Route key={key} path={def.path} element={element}>
           {routeTreeToRoutes(def.children!)}
         </Route>
       );
     }
-    return <Route key={key} path={def.path} element={Element ? <Element /> : null} />;
+    return <Route key={key} path={def.path} element={element} />;
   });
 }
 

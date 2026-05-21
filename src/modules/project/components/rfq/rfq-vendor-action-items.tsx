@@ -1,5 +1,15 @@
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/app/components/ui/dropdown-menu';
-import { Eye, FileDown, FileText, Mail, Pencil, Trash2, Trophy, Upload, XCircle } from 'lucide-react';
+import {
+  Eye,
+  FileDown,
+  FileText,
+  Mail,
+  Pencil,
+  Trash2,
+  Trophy,
+  Upload,
+  XCircle,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { RFQVendorActionContext, RFQVendorRowModel } from './rfq-detail-vendor-types';
@@ -14,6 +24,11 @@ export function RFQVendorActionItems({
   isEvaluation,
   isAwarded,
   isGeneratingVendorPdf,
+  canManageVendors,
+  canManageQuotes,
+  canAwardQuotes,
+  canCreatePurchaseOrder,
+  canEmailVendors,
   onOpenQuote,
   onGenerateVendorPdf,
   onEmailVendor,
@@ -35,12 +50,22 @@ export function RFQVendorActionItems({
     purchaseOrder,
   } = row;
   const canAward =
+    canAwardQuotes &&
     !isVendorAwarded &&
     hasQuote &&
     quote &&
     grandTotal != null &&
     grandTotal > 0 &&
     (isPublished || isEvaluation || isAwarded);
+
+  const canUploadQuote =
+    canManageQuotes && !isVendorAwarded && !hasQuote && !declined && !!vendorId;
+  const canEditQuote = canManageQuotes && !isVendorAwarded && hasQuote && !!quote && !!vendorId;
+  const canRemoveQuote = canManageQuotes && hasQuote && !!quote && !isVendorAwarded;
+  const canRemoveVendor = canManageVendors && !isVendorAwarded;
+  const canDeclineInvite = canManageQuotes && !declined && !isVendorAwarded;
+  const canUnaward = canAwardQuotes && isVendorAwarded;
+  const hasDangerActions = canRemoveQuote || canUnaward || canRemoveVendor || canDeclineInvite;
 
   return (
     <>
@@ -50,14 +75,14 @@ export function RFQVendorActionItems({
           View Quote
         </DropdownMenuItem>
       )}
-      {!isVendorAwarded && !hasQuote && !declined && vendorId && (
-        <DropdownMenuItem onClick={() => onOpenQuote(invite.id, vendorId)}>
+      {canUploadQuote && (
+        <DropdownMenuItem onClick={() => onOpenQuote(invite.id, vendorId!)}>
           <Upload className="size-4" />
           Upload Quote
         </DropdownMenuItem>
       )}
-      {!isVendorAwarded && hasQuote && quote && vendorId && (
-        <DropdownMenuItem onClick={() => onOpenQuote(invite.id, vendorId, quote.id)}>
+      {canEditQuote && (
+        <DropdownMenuItem onClick={() => onOpenQuote(invite.id, vendorId!, quote!.id)}>
           <Pencil className="size-4" />
           Edit Quote
         </DropdownMenuItem>
@@ -68,7 +93,7 @@ export function RFQVendorActionItems({
           Award
         </DropdownMenuItem>
       )}
-      {isVendorAwarded && (
+      {canCreatePurchaseOrder && isVendorAwarded && (
         <DropdownMenuItem onClick={onGeneratePO}>
           <FileText className="size-4" />
           Create PO
@@ -89,30 +114,32 @@ export function RFQVendorActionItems({
         <FileDown className="size-4" />
         {isGeneratingVendorPdf ? 'Generating PDF...' : 'Generate PDF'}
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onEmailVendor(invite.id)}>
-        <Mail className="size-4" />
-        Email
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      {hasQuote && quote && !isVendorAwarded && (
-        <DropdownMenuItem variant="destructive" onClick={() => onRemoveQuote(quote.id)}>
+      {canEmailVendors && (
+        <DropdownMenuItem onClick={() => onEmailVendor(invite.id)}>
+          <Mail className="size-4" />
+          Email
+        </DropdownMenuItem>
+      )}
+      {hasDangerActions && <DropdownMenuSeparator />}
+      {canRemoveQuote && (
+        <DropdownMenuItem variant="destructive" onClick={() => onRemoveQuote(quote!.id)}>
           <Trash2 className="size-4" />
           Remove Quote
         </DropdownMenuItem>
       )}
-      {isVendorAwarded && (
+      {canUnaward && (
         <DropdownMenuItem variant="destructive" onClick={onUnaward}>
           <XCircle className="size-4" />
           Unaward
         </DropdownMenuItem>
       )}
-      {!isVendorAwarded && (
+      {canRemoveVendor && (
         <DropdownMenuItem variant="destructive" onClick={() => onRemoveVendor(invite.id)}>
           <Trash2 className="size-4" />
           Remove Vendor
         </DropdownMenuItem>
       )}
-      {!declined && !isVendorAwarded && (
+      {canDeclineInvite && (
         <DropdownMenuItem variant="destructive" onClick={() => onDeclineInvite(invite.id)}>
           <XCircle className="size-4" />
           Decline

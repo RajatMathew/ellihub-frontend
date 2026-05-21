@@ -1,6 +1,5 @@
-import { Route, Routes } from 'react-router-dom';
-
 import { RFQDetailPage, RFQFormPage, RFQListPage } from '@/modules/project/pages/rfq';
+import { Route, Routes } from 'react-router-dom';
 
 const RFQRoutes = () => {
   return (

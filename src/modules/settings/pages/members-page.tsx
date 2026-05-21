@@ -1,26 +1,18 @@
 import { useMemo, useState } from 'react';
 
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
-
-import { useSession } from '@/app/api';
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { useAccess } from '@/app/contexts/access-context';
 import { MemberFormDialog } from '@/modules/settings/components/member-form-dialog';
 import { MembersTableCard } from '@/modules/settings/components/members-table-card';
 import { useMemberListColumns } from '@/modules/settings/components/use-member-list-columns';
 import {
+  isMembersSortByField,
   MEMBERS_DEFAULT_PAGE_SIZE,
   MEMBERS_DEFAULT_SORT_BY,
   MEMBERS_DEFAULT_SORT_ORDER,
-  isMembersSortByField,
 } from '@/modules/settings/constants/members-list.constants';
 import {
   useCreateMemberMutation,
@@ -30,19 +22,18 @@ import {
   useUpdateMemberRoleMutation,
 } from '@/modules/settings/hooks/members.hooks';
 import { useMemberListParams } from '@/modules/settings/hooks/use-member-list-params';
-import { hasAdminRole } from '@/modules/settings/lib/members.utils';
 import type { MemberRole, MemberUser } from '@/modules/settings/schemas/members.schema';
-
-function getSessionRole(user: unknown) {
-  if (typeof user !== 'object' || user === null || !('role' in user)) return undefined;
-  const role = (user as { role?: string | string[] | null }).role;
-  return role;
-}
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { Plus } from 'lucide-react';
 
 export default function MembersPage() {
-  const { data: sessionData, isPending: isSessionPending } = useSession();
-  const currentUserId = sessionData?.user?.id;
-  const isAdmin = hasAdminRole(getSessionRole(sessionData?.user));
+  const { access, isAdmin, isLoading: isAccessLoading } = useAccess();
+  const currentUserId = access?.userId;
   const listParams = useMemberListParams();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,9 +54,9 @@ export default function MembersPage() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const hasActiveFilters = Boolean(
     listParams.searchQuery ||
-      listParams.roleFilter ||
-      listParams.statusFilter ||
-      listParams.emailStatusFilter
+    listParams.roleFilter ||
+    listParams.statusFilter ||
+    listParams.emailStatusFilter
   );
 
   const columns = useMemberListColumns({
@@ -130,7 +121,7 @@ export default function MembersPage() {
     },
   });
 
-  if (isSessionPending) {
+  if (isAccessLoading) {
     return (
       <div className="container-fluid py-7.5">
         <Skeleton className="h-8 w-56" />
