@@ -91,6 +91,7 @@ import {
   History,
   Mail,
   PanelRightOpen,
+  Paperclip,
   Pencil,
   PlusCircle,
   Send,
@@ -241,6 +242,8 @@ export default function RFQDetailPage() {
 
   // Bid comparison dialog
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [selectedCompareVendorId, setSelectedCompareVendorId] = useState<string | null>(null);
+  const [activePreviewDocId, setActivePreviewDocId] = useState<string | null>(null);
 
   // Generated PDF preview
   const [vendorPdfPreviewOpen, setVendorPdfPreviewOpen] = useState(false);
@@ -257,6 +260,37 @@ export default function RFQDetailPage() {
     isLoading: isComparisonLoading,
     isError: isComparisonError,
   } = useBidComparisonQuery(rfqId, comparisonOpen);
+
+  const comparisonRows = useMemo(() => {
+    const detailInvites = rfq?.invites ?? [];
+    const detailQuotes = rfq?.quotes ?? [];
+    const comparisonQuotes = bidComparison?.quotes ?? [];
+
+    return detailInvites.map((invite) => {
+      const vendorId = invite.vendor?.id ?? invite.vendorId ?? '';
+      const quote = comparisonQuotes.find((item) => item.vendorId === vendorId);
+      const detailQuote = quote ? detailQuotes.find((item) => item.id === quote.quoteId) : null;
+
+      return {
+        invite,
+        vendorId,
+        vendorName: invite.vendor?.name ?? 'Unknown Vendor',
+        vendorEmail: invite.vendor?.email ?? undefined,
+        declined: !!invite.declinedToQuote,
+        quote,
+        hasQuote: !!quote,
+        isAwarded: !!detailQuote?.isAwarded || quote?.status?.name === 'AWARDED',
+      };
+    });
+  }, [bidComparison?.quotes, rfq?.invites, rfq?.quotes]);
+
+  const selectedComparisonRow =
+    comparisonRows.find((row) => row.vendorId && row.vendorId === selectedCompareVendorId) ?? null;
+  const selectedComparisonQuote = selectedComparisonRow?.quote ?? null;
+  const selectedComparisonAttachments = selectedComparisonQuote?.attachments ?? [];
+  const selectedPreviewAttachment =
+    selectedComparisonAttachments.find((attachment) => attachment.id === activePreviewDocId) ??
+    selectedComparisonAttachments[0];
 
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'rfq',
@@ -893,152 +927,380 @@ export default function RFQDetailPage() {
       </div>
 
       {/* ---- Bid Comparison Dialog ---- */}
-      <Dialog open={comparisonOpen} onOpenChange={setComparisonOpen}>
-        <DialogContent className="flex max-h-dvh max-w-7xl flex-col overflow-hidden">
-          <DialogHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <DialogTitle className="text-lg">Bid Comparison</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Comparing {bidComparison?.quotes.length ?? 0} quote
-                {(bidComparison?.quotes.length ?? 0) !== 1 ? 's' : ''} from {invites.length} vendor
-                {invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 text-sm sm:gap-6">
-              {rfq.createdAt && (
-                <div>
-                  <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Issue Date
+      <Dialog
+        open={comparisonOpen}
+        onOpenChange={(open) => {
+          setComparisonOpen(open);
+          if (!open) {
+            setSelectedCompareVendorId(null);
+            setActivePreviewDocId(null);
+          }
+        }}
+      >
+        <DialogContent
+          variant="fullscreen"
+          showCloseButton={false}
+          className="inset-4 gap-0 overflow-hidden p-0"
+        >
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 flex-col gap-4 border-b px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : rfq.title}
+                  {' - '}
+                  {bidComparison?.quotes.length ?? quotes.length} quote
+                  {(bidComparison?.quotes.length ?? quotes.length) !== 1 ? 's' : ''} from{' '}
+                  {invites.length} vendor{invites.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              <div className="flex items-start justify-between gap-4 lg:justify-end">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
+                  {rfq.createdAt && (
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Issue Date
+                      </div>
+                      <div className="font-medium">{formatDate(rfq.createdAt)}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Due Date
+                    </div>
+                    <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
                   </div>
-                  <div className="font-medium">{formatDate(rfq.createdAt)}</div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Submitted
+                    </div>
+                    <div className="font-medium">
+                      {bidComparison?.statistics.quotesSubmitted ?? quotes.length}/
+                      {bidComparison?.statistics.quotesExpected ?? invites.length}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Range
+                    </div>
+                    <div className="font-medium">
+                      {bidComparison?.statistics.lowestQuote != null &&
+                      bidComparison.statistics.highestQuote != null
+                        ? `${formatCurrency(bidComparison.statistics.lowestQuote)} - ${formatCurrency(
+                            bidComparison.statistics.highestQuote
+                          )}`
+                        : 'No quotes'}
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div>
-                <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                  Due Date
-                </div>
-                <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  mode="icon"
+                  className="size-8 shrink-0"
+                  onClick={() => setComparisonOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
               </div>
             </div>
-          </DialogHeader>
 
-          <div className="mt-4 flex-1 overflow-x-auto overflow-y-auto">
             {isComparisonLoading ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                <div className="size-8 rounded-full border-2 border-t-primary border-muted-foreground/10 animate-spin mb-4" />
+              <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+                <div className="mb-4 size-8 animate-spin rounded-full border-2 border-muted-foreground/10 border-t-primary" />
                 <p className="text-sm">Loading comparison...</p>
               </div>
             ) : isComparisonError ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                <ShieldAlert className="size-10 text-destructive/40 mb-4" />
-                <p className="text-sm text-destructive">Failed to load comparison data</p>
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
+                <ShieldAlert className="mb-4 size-10 text-destructive/50" />
+                <p className="text-sm font-medium text-destructive">
+                  Failed to load comparison data.
+                </p>
               </div>
             ) : bidComparison ? (
-              <div className="flex min-w-max gap-4 pb-4">
-                {/* Show all invites — vendors with quotes, without quotes, and declined */}
-                {invites.map((inv) => {
-                  const vendor = inv.vendor;
-                  const declined = !!inv.declinedToQuote;
-                  const bcQuote = bidComparison.quotes.find((q) => q.vendorId === vendor?.id);
-                  const hasQuote = !!bcQuote;
-
-                  return (
-                    <div
-                      key={inv.id}
-                      className="flex w-72 shrink-0 flex-col rounded-lg border bg-card"
-                    >
-                      {/* Quote document area */}
-                      <div className="flex h-64 items-center justify-center overflow-hidden rounded-t-lg border-b bg-muted/30">
-                        {hasQuote && bcQuote?.attachments?.length ? (
-                          <QuoteDocPreview
-                            documentId={bcQuote.attachments[0].document.id}
-                            name={bcQuote.attachments[0].document.name}
-                            mimeType={bcQuote.attachments[0].document.mimeType}
-                          />
-                        ) : hasQuote ? (
-                          <div className="text-center p-4">
-                            <FileText className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">No document attached</p>
-                          </div>
-                        ) : declined ? (
-                          <div className="text-center">
-                            <XCircle className="size-12 text-destructive/40 mx-auto mb-2" />
-                            <p className="text-sm font-medium text-destructive">Declined Bid</p>
-                          </div>
-                        ) : (
-                          <div className="text-center">
-                            <Clock className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Not Submitted</p>
-                          </div>
-                        )}
+              <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+                <div className="flex min-h-0 shrink-0 flex-col border-b bg-muted/20 lg:w-80 lg:border-b-0 lg:border-r">
+                  <div className="grid shrink-0 grid-cols-3 gap-px border-b bg-border">
+                    <div className="bg-background px-3 py-3">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Lowest
                       </div>
-
-                      {/* Vendor info footer */}
-                      <div className="p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm truncate">{vendor?.name ?? '—'}</div>
-                          {hasQuote && bcQuote ? (
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                              <span>Total: {formatCurrency(Number(bcQuote.grandTotal ?? 0))}</span>
-                              {bcQuote.leadTimeDays && (
-                                <span>Lead: {bcQuote.leadTimeDays} days</span>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {declined ? '(Declined)' : '(Not Submitted)'}
-                            </p>
-                          )}
-                        </div>
-                        {hasQuote && bcQuote ? (
-                          (() => {
-                            const isBcQuoteAwarded = quotes.find(
-                              (q) => q.id === bcQuote.quoteId
-                            )?.isAwarded;
-                            if (isBcQuoteAwarded) {
-                              return (
-                                <Badge
-                                  variant="success"
-                                  appearance="light"
-                                  size="sm"
-                                  className="shrink-0"
-                                >
-                                  Awarded
-                                </Badge>
-                              );
-                            }
-
-                            return canWorkflowRfq ? (
-                              <Button
-                                size="sm"
-                                className="shrink-0"
-                                onClick={() => {
-                                  setComparisonOpen(false);
-                                  setAwardQuoteIds([bcQuote.quoteId]);
-                                  setAwardOpen(true);
-                                }}
-                              >
-                                Award Bid
-                              </Button>
-                            ) : null;
-                          })()
-                        ) : canWorkflowRfq && !hasQuote && !declined ? (
-                          <Button variant="outline" size="sm" className="shrink-0" disabled>
-                            Award Bid
-                          </Button>
-                        ) : declined ? (
-                          <span className="text-xs text-destructive font-medium shrink-0">
-                            Declined
-                          </span>
-                        ) : null}
+                      <div className="mt-1 truncate text-sm font-semibold">
+                        {bidComparison.statistics.lowestQuote != null
+                          ? formatCurrency(bidComparison.statistics.lowestQuote)
+                          : '-'}
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="bg-background px-3 py-3">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Average
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold">
+                        {bidComparison.statistics.averageQuote != null
+                          ? formatCurrency(bidComparison.statistics.averageQuote)
+                          : '-'}
+                      </div>
+                    </div>
+                    <div className="bg-background px-3 py-3">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Highest
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold">
+                        {bidComparison.statistics.highestQuote != null
+                          ? formatCurrency(bidComparison.statistics.highestQuote)
+                          : '-'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+                    <div className="text-xs font-semibold uppercase text-muted-foreground">
+                      Vendors
+                    </div>
+                    <Badge variant="secondary" appearance="light" size="sm">
+                      {comparisonRows.length}
+                    </Badge>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                    {comparisonRows.length > 0 ? (
+                      <div className="space-y-2">
+                        {comparisonRows.map((row) => {
+                          const isSelected = row.vendorId === selectedCompareVendorId;
+                          return (
+                            <button
+                              key={row.invite.id}
+                              type="button"
+                              className={`w-full rounded-lg border bg-background p-3 text-left transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'hover:border-muted-foreground/30 hover:bg-muted/40'
+                              }`}
+                              onClick={() => {
+                                setSelectedCompareVendorId(row.vendorId || null);
+                                setActivePreviewDocId(null);
+                              }}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold">
+                                    {row.vendorName}
+                                  </div>
+                                  {row.vendorEmail && (
+                                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                      {row.vendorEmail}
+                                    </div>
+                                  )}
+                                </div>
+                                {row.isAwarded ? (
+                                  <Badge variant="success" appearance="light" size="sm">
+                                    Awarded
+                                  </Badge>
+                                ) : row.hasQuote ? (
+                                  <Badge variant="primary" appearance="light" size="sm">
+                                    Quoted
+                                  </Badge>
+                                ) : row.declined ? (
+                                  <Badge variant="destructive" appearance="light" size="sm">
+                                    Declined
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" appearance="light" size="sm">
+                                    Waiting
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {row.quote ? (
+                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                  <span className="font-semibold text-foreground">
+                                    {row.quote.grandTotal != null
+                                      ? formatCurrency(row.quote.grandTotal)
+                                      : 'No total'}
+                                  </span>
+                                  {row.quote.leadTimeDays != null && (
+                                    <span>{row.quote.leadTimeDays} days lead</span>
+                                  )}
+                                  {row.quote.attachments && row.quote.attachments.length > 0 && (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Paperclip className="size-3" />
+                                      {row.quote.attachments.length}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="mt-3 text-xs text-muted-foreground">
+                                  {row.declined ? 'Declined to bid' : 'No quote submitted'}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center text-sm text-muted-foreground">
+                        <Users className="mb-3 size-8 text-muted-foreground/40" />
+                        No vendors invited.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col bg-background">
+                  <div className="min-h-0 flex-1 bg-muted/20">
+                    {!selectedComparisonRow ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <PanelRightOpen className="mb-4 size-10 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">Select a vendor</p>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          Choose a vendor to preview the quote document and compare bid details.
+                        </p>
+                      </div>
+                    ) : selectedComparisonQuote && selectedPreviewAttachment ? (
+                      <QuoteDocPreview
+                        documentId={selectedPreviewAttachment.document.id}
+                        name={selectedPreviewAttachment.document.name}
+                        mimeType={selectedPreviewAttachment.document.mimeType}
+                      />
+                    ) : selectedComparisonQuote ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <FileText className="mb-4 size-12 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">No document attached</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          The quote has pricing but no uploaded file.
+                        </p>
+                      </div>
+                    ) : selectedComparisonRow.declined ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <XCircle className="mb-4 size-12 text-destructive/40" />
+                        <p className="text-sm font-semibold text-destructive">Declined to bid</p>
+                      </div>
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <Clock className="mb-4 size-12 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">Waiting for quote</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="shrink-0 border-t bg-background px-5 py-4">
+                    {selectedComparisonRow ? (
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-sm font-semibold">
+                              {selectedComparisonRow.vendorName}
+                            </h3>
+                            {selectedComparisonRow.isAwarded ? (
+                              <Badge variant="success" appearance="light" size="sm">
+                                Awarded
+                              </Badge>
+                            ) : selectedComparisonRow.hasQuote ? (
+                              <Badge variant="primary" appearance="light" size="sm">
+                                Quoted
+                              </Badge>
+                            ) : selectedComparisonRow.declined ? (
+                              <Badge variant="destructive" appearance="light" size="sm">
+                                Declined
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" appearance="light" size="sm">
+                                Waiting
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                            <div>
+                              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                                Quote Total
+                              </div>
+                              <div className="mt-1 font-medium">
+                                {selectedComparisonQuote?.grandTotal != null
+                                  ? formatCurrency(selectedComparisonQuote.grandTotal)
+                                  : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                                Lead Time
+                              </div>
+                              <div className="mt-1 font-medium">
+                                {selectedComparisonQuote?.leadTimeDays != null
+                                  ? `${selectedComparisonQuote.leadTimeDays} days`
+                                  : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                                Attachments
+                              </div>
+                              <div className="mt-1 font-medium">
+                                {selectedComparisonAttachments.length}
+                              </div>
+                            </div>
+                          </div>
+
+                          {selectedComparisonAttachments.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {selectedComparisonAttachments.map((attachment) => {
+                                const isActive =
+                                  selectedPreviewAttachment?.id === attachment.id ||
+                                  (!activePreviewDocId &&
+                                    selectedComparisonAttachments[0]?.id === attachment.id);
+
+                                return (
+                                  <button
+                                    key={attachment.id}
+                                    type="button"
+                                    className={`inline-flex max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                      isActive
+                                        ? 'border-primary bg-primary/10 text-primary'
+                                        : 'bg-background text-muted-foreground hover:bg-muted/50'
+                                    }`}
+                                    onClick={() => setActivePreviewDocId(attachment.id)}
+                                  >
+                                    <Paperclip className="size-3 shrink-0" />
+                                    <span className="truncate">{attachment.document.name}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          {selectedComparisonRow.isAwarded ? (
+                            <Badge variant="success" appearance="light">
+                              Awarded Bid
+                            </Badge>
+                          ) : canWorkflowRfq && selectedComparisonQuote ? (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setComparisonOpen(false);
+                                setAwardQuoteIds([selectedComparisonQuote.quoteId]);
+                                setAwardOpen(true);
+                              }}
+                            >
+                              <Trophy className="size-4" />
+                              Award Bid
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Select a vendor to see quote details.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-                No comparison data available
+              <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                No comparison data available.
               </div>
             )}
           </div>
