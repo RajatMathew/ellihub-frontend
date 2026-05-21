@@ -21,6 +21,7 @@ interface GCFormContentProps {
   originalLinks: LinkedContactOriginalLink[];
   contacts: LinkedContactNameSource[];
   contactOptions: { value: string; label: string }[];
+  targetEntityId?: string;
   onSectionChange: (section: string) => void;
   onContactLinksChange: (links: LinkedContactItem[]) => void;
   onCreateContact: () => void;
@@ -34,6 +35,7 @@ export function GCFormContent({
   originalLinks,
   contacts,
   contactOptions,
+  targetEntityId,
   onSectionChange,
   onContactLinksChange,
   onCreateContact,
@@ -57,6 +59,8 @@ export function GCFormContent({
           originalLinks={originalLinks}
           contacts={contacts}
           contactOptions={contactOptions}
+          targetEntityId={targetEntityId}
+          targetType="GC"
           onChange={onContactLinksChange}
           onCreateContact={onCreateContact}
         />

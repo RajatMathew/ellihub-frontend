@@ -19,6 +19,7 @@ interface VendorFormContentProps {
   originalLinks: LinkedContactOriginalLink[];
   contacts: LinkedContactNameSource[];
   contactOptions: { value: string; label: string }[];
+  targetEntityId?: string;
   onSectionChange: (section: string) => void;
   onContactLinksChange: (links: LinkedContactItem[]) => void;
   onCreateContact: () => void;
@@ -32,6 +33,7 @@ export function VendorFormContent({
   originalLinks,
   contacts,
   contactOptions,
+  targetEntityId,
   onSectionChange,
   onContactLinksChange,
   onCreateContact,
@@ -55,6 +57,8 @@ export function VendorFormContent({
           originalLinks={originalLinks}
           contacts={contacts}
           contactOptions={contactOptions}
+          targetEntityId={targetEntityId}
+          targetType="VENDOR"
           onChange={onContactLinksChange}
           onCreateContact={onCreateContact}
         />

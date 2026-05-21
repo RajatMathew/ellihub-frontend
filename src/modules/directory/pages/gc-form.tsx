@@ -77,6 +77,7 @@ export function GCFormPage() {
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
+          targetEntityId={id}
           onSectionChange={state.setActiveSection}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}

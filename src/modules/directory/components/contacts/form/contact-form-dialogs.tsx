@@ -34,12 +34,14 @@ export function ContactFormDialogs({
         title="Change Association?"
         description={
           <>
-            This contact is already linked to{' '}
-            <strong>{associations.currentAssociation?.name}</strong>. Do you want to replace it with{' '}
-            <strong>{replacementName}</strong>?
+            This contact is already linked to a{' '}
+            {associations.currentAssociation?.type === 'GC' ? 'GC' : 'vendor'}. Do you want to
+            replace it?
             <br />
             <br />
-            Contacts can only be linked to one vendor or GC at a time.
+            Current link: <strong>{associations.currentAssociation?.name}</strong>
+            <br />
+            New link: <strong>{replacementName}</strong>
           </>
         }
         confirmLabel="Replace Association"

@@ -64,6 +64,7 @@ export function useSaveContact({
             vendorId: primaryVendorId,
             generalContractorId: primaryGCId,
             isPrimary,
+            replaceExisting: hasAssociationChanged(initialAssociation, nextAssociation),
           });
         } else if (!nextAssociation && initialAssociation) {
           await unlinkMutation.mutateAsync(contactId);
@@ -121,4 +122,11 @@ function getSelectedAssociation(
   if (primaryGCId) return { id: primaryGCId, type: 'GC' };
 
   return null;
+}
+
+function hasAssociationChanged(
+  current: Pick<PendingContactAssociation, 'id' | 'type'> | null,
+  next: Pick<PendingContactAssociation, 'id' | 'type'>
+) {
+  return Boolean(current && (current.id !== next.id || current.type !== next.type));
 }

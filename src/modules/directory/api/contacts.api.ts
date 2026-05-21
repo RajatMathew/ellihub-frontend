@@ -110,6 +110,7 @@ export const contactsApi = {
     vendorId?: string | null;
     generalContractorId?: string | null;
     isPrimary?: boolean;
+    replaceExisting?: boolean;
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/link`, data);
     return res.data?.data ?? res.data;
