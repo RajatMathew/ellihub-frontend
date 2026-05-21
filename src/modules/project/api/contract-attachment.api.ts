@@ -22,6 +22,10 @@ export const contractAttachmentApi = {
     });
   },
 
+  async setPrimary(projectId: string, attachmentId: string): Promise<void> {
+    await api.patch(`${BASE}/${projectId}/contract/attachments/${attachmentId}/primary`);
+  },
+
   async remove(projectId: string, attachmentId: string): Promise<void> {
     await api.delete(`${BASE}/${projectId}/contract/attachments/${attachmentId}`);
   },

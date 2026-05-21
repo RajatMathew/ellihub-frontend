@@ -13,6 +13,7 @@ export const contractAttachmentSchema = z
     id: z.string(),
     projectId: z.string().optional(),
     fileId: z.string().nullable().optional(),
+    isPrimary: z.boolean().optional().default(false),
     uploadedAt: z.string().nullable().optional(),
     file: contractAttachmentFileSchema.nullable().optional(),
     documentId: z.string().nullable().optional(),

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { contractAttachmentKeys } from '@/modules/project/constants/contract-attachment.keys';
 import { projectContractKeys } from '@/modules/project/constants/project-contract.keys';
+import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 
 export const useContractAttachmentsQuery = (projectId: string) =>
@@ -47,5 +48,26 @@ export const useRemoveContractAttachmentMutation = () => {
       await invalidateProjectQueries(qc, [contractAttachmentKeys.list(projectId)]);
     },
     onError: () => toast.error('Failed to remove attachment.'),
+  });
+};
+
+export const useSetPrimaryContractAttachmentMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      attachmentId,
+    }: {
+      projectId: string;
+      attachmentId: string;
+    }) => contractAttachmentApi.setPrimary(projectId, attachmentId),
+    onSuccess: async (_, { projectId }) => {
+      await invalidateProjectQueries(qc, [
+        contractAttachmentKeys.list(projectId),
+        projectContractKeys.detail(projectId),
+        projectKeys.detail(projectId),
+      ]);
+    },
+    onError: () => toast.error('Failed to set primary contract.'),
   });
 };

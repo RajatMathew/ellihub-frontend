@@ -37,6 +37,7 @@ import {
   useAddContractAttachmentMutation,
   useContractAttachmentsQuery,
   useRemoveContractAttachmentMutation,
+  useSetPrimaryContractAttachmentMutation,
 } from '@/modules/project/hooks/contract-attachment.hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
@@ -78,6 +79,7 @@ export default function ProjectContractOverview() {
   const deleteMutation = useDeleteProjectMutation();
   const addAttachmentMutation = useAddContractAttachmentMutation();
   const removeAttachmentMutation = useRemoveContractAttachmentMutation();
+  const setPrimaryAttachmentMutation = useSetPrimaryContractAttachmentMutation();
 
   /* ---- Custom Hooks ---- */
   const { totalPOCommitted, activePOsCount } = usePOCalculations({
@@ -118,6 +120,9 @@ export default function ProjectContractOverview() {
   };
   const handleRemoveContractDocument = (attachmentId: string) => {
     removeAttachmentMutation.mutate({ projectId, attachmentId });
+  };
+  const handleSetPrimaryContractDocument = (attachmentId: string) => {
+    setPrimaryAttachmentMutation.mutate({ projectId, attachmentId });
   };
 
   /* ---- Derived Data ---- */
@@ -206,9 +211,11 @@ export default function ProjectContractOverview() {
             isLoading={isLoadingAttachments}
             parentFolderId={primeContractFolderId}
             onAdd={isAdmin ? handleAddContractDocument : undefined}
+            onSetPrimary={isAdmin ? handleSetPrimaryContractDocument : undefined}
             onRemove={isAdmin ? handleRemoveContractDocument : undefined}
             isAdding={addAttachmentMutation.isPending}
             isRemoving={removeAttachmentMutation.isPending}
+            isSettingPrimary={setPrimaryAttachmentMutation.isPending}
           />
           <PaymentsPlaceholderCard />
           <PrimeChangeOrdersCard projectId={projectId} pcos={recentPCOs} isLoading={false} />
