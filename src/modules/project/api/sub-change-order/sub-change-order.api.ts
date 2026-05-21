@@ -156,9 +156,4 @@ export const scoApi = {
     await api.patch(`${LIST_BASE}/set-void`, { id, voidReason: data.reason });
     return this.getById(id);
   },
-
-  async revertToDraft(id: string): Promise<SCODetail> {
-    await api.patch(`${LIST_BASE}/set-draft`, { id });
-    return this.getById(id);
-  },
 };
