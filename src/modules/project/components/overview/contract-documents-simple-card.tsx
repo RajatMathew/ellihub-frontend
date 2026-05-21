@@ -1,21 +1,13 @@
 import { useState } from 'react';
 
-import { FileText, Plus, Trash2 } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardToolbar,
-} from '@/app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
-
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
+import { FileText, Plus, Trash2 } from 'lucide-react';
 
 interface ContractDocumentsSimpleCardProps {
   documents: ContractAttachment[];
@@ -52,17 +44,19 @@ export function ContractDocumentsSimpleCard({
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Contract Documents ({documents.length})
         </CardTitle>
-        <CardToolbar>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!onAdd || !parentFolderId || isAdding || uploadMutation.isPending}
-            onClick={() => setUploadOpen(true)}
-          >
-            <Plus className="size-4" />
-            Add
-          </Button>
-        </CardToolbar>
+        {onAdd && (
+          <CardToolbar>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!parentFolderId || isAdding || uploadMutation.isPending}
+              onClick={() => setUploadOpen(true)}
+            >
+              <Plus className="size-4" />
+              Add
+            </Button>
+          </CardToolbar>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -108,9 +102,7 @@ export function ContractDocumentsSimpleCard({
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
             <FileText className="size-8 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              No documents attached.
-            </p>
+            <p className="text-sm text-muted-foreground">No documents attached.</p>
           </div>
         )}
       </CardContent>

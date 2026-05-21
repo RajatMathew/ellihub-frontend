@@ -1,12 +1,13 @@
-import { TeamMemberCard, LeadPMCard } from './team-member-card';
-import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 import type { ProjectTeamAssignment } from '@/modules/project/schemas/project-team.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+
+import { LeadPMCard, TeamMemberCard } from './team-member-card';
 
 interface TeamMemberGridProps {
   leadPM: ProjectDetail['leadPM'];
   teamMembers: ProjectTeamAssignment[];
-  onPromoteToPM: (employeeId: string) => Promise<void>;
-  onRemoveMember: (employeeId: string) => Promise<void>;
+  onPromoteToPM?: (employeeId: string) => Promise<void>;
+  onRemoveMember?: (employeeId: string) => Promise<void>;
   isPromoting?: boolean;
   isRemoving?: boolean;
 }

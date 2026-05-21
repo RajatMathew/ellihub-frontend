@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { Switch } from '@app/components/ui/switch';
+import { useAccess } from '@app/contexts/access-context';
 
 const I18N_LANGUAGES = [
   {
@@ -54,6 +55,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   };
 
   const { data } = useSession();
+  const { isAdmin } = useAccess();
   const userImage = data?.user?.image ?? 'https://i.pravatar.cc/300';
 
   return (
@@ -69,7 +71,10 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
               alt="User avatar"
             />
             <div className="flex flex-col">
-              <Link to="/app/profile" className="text-sm text-mono hover:text-primary font-semibold">
+              <Link
+                to="/app/profile"
+                className="text-sm text-mono hover:text-primary font-semibold"
+              >
                 {data?.user?.name}
               </Link>
               <a
@@ -125,12 +130,14 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 Security
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/app/settings/members" className="flex items-center gap-2">
-                <Users />
-                Members & Roles
-              </Link>
-            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings/members" className="flex items-center gap-2">
+                  <Users />
+                  Members & Roles
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link to="#" className="flex items-center gap-2">
                 <BetweenHorizontalStart />

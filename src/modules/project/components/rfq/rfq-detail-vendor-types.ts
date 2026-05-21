@@ -30,6 +30,11 @@ export interface RFQDetailVendorsCardProps {
   isEvaluation: boolean;
   isAwarded: boolean;
   isGeneratingVendorPdf: boolean;
+  canManageVendors: boolean;
+  canManageQuotes: boolean;
+  canAwardQuotes: boolean;
+  canCreatePurchaseOrder: boolean;
+  canEmailVendors: boolean;
   onInviteVendor: () => void;
   onOpenQuote: (inviteId: string, vendorId: string, quoteId?: string, viewOnly?: boolean) => void;
   onGenerateVendorPdf: (inviteId: string, vendorName: string) => void;
@@ -58,4 +63,9 @@ export interface RFQVendorActionContext extends Pick<
   isEvaluation: boolean;
   isAwarded: boolean;
   isGeneratingVendorPdf: boolean;
+  canManageVendors: boolean;
+  canManageQuotes: boolean;
+  canAwardQuotes: boolean;
+  canCreatePurchaseOrder: boolean;
+  canEmailVendors: boolean;
 }

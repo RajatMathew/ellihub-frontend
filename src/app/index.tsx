@@ -8,6 +8,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { AppLayout } from './components/layouts';
 import { AppLoadingScreen } from './components/loader/app';
+import { AccessProvider } from './contexts/access';
 import DelayForDemo from './lib/delay';
 import { BreadcrumbLabelsProvider } from './providers/breadcrumbs';
 import { QueryProvider } from './providers/query';
@@ -29,16 +30,18 @@ export function App() {
   }, []);
   return (
     <QueryProvider>
-      <BreadcrumbLabelsProvider>
-        <LoadingBarContainer>
-          <Suspense fallback={<AppLoadingScreen />}>
-            <AppLayout>
-              <AppRouting />
-            </AppLayout>
-          </Suspense>
-          <Toaster position="top-center" />
-        </LoadingBarContainer>
-      </BreadcrumbLabelsProvider>
+      <AccessProvider>
+        <BreadcrumbLabelsProvider>
+          <LoadingBarContainer>
+            <Suspense fallback={<AppLoadingScreen />}>
+              <AppLayout>
+                <AppRouting />
+              </AppLayout>
+            </Suspense>
+            <Toaster position="top-center" />
+          </LoadingBarContainer>
+        </BreadcrumbLabelsProvider>
+      </AccessProvider>
       {showDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtoolsProduction initialIsOpen={true} />

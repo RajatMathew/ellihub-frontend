@@ -1,9 +1,8 @@
 import { useState } from 'react';
 
-import { Plus } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import { useAccess } from '@/app/contexts/access-context';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
@@ -22,6 +21,7 @@ import {
 } from '@/modules/project/hooks';
 import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
 import type { ProjectScheduleEntry } from '@/modules/project/schemas/project-schedule.schema';
+import { Plus } from 'lucide-react';
 
 interface ScheduleTrackerCardProps {
   projectId: string;
@@ -38,6 +38,7 @@ export function ScheduleTrackerCard({
   isLoading,
   parentFolderId,
 }: ScheduleTrackerCardProps) {
+  const { isAdmin } = useAccess();
   const [isAdding, setIsAdding] = useState(false);
   const [newEntry, setNewEntry] = useState(createEmptyScheduleTrackerDraft);
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
@@ -105,7 +106,7 @@ export function ScheduleTrackerCard({
                 fileName: fileItem.name ?? '',
               },
             }
-          : prev,
+          : prev
       );
     }
 
@@ -118,17 +119,19 @@ export function ScheduleTrackerCard({
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Schedule Tracker
         </CardTitle>
-        <CardToolbar>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isAdding}
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="size-4" />
-            Add Entry
-          </Button>
-        </CardToolbar>
+        {isAdmin && (
+          <CardToolbar>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isAdding}
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="size-4" />
+              Add Entry
+            </Button>
+          </CardToolbar>
+        )}
       </CardHeader>
 
       <ScheduleTrackerContractDates contract={contract} />
@@ -143,6 +146,7 @@ export function ScheduleTrackerCard({
         isCreating={createMutation.isPending}
         isUpdating={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
+        isReadOnly={!isAdmin}
         onAttach={setUploadTarget}
         onCancelAdd={resetNewEntry}
         onCancelEdit={() => setEditingEntry(null)}
@@ -160,7 +164,7 @@ export function ScheduleTrackerCard({
         onSaveEdit={() => void handleSaveEdit()}
       />
 
-      {parentFolderId && (
+      {isAdmin && parentFolderId && (
         <UploadFileDialog
           open={uploadTarget !== null}
           onOpenChange={(open) => {

@@ -1,6 +1,9 @@
+import {
+  InvoiceDetailPage,
+  InvoiceFormPage,
+  InvoiceListPage,
+} from '@/modules/project/pages/invoice';
 import { Route, Routes } from 'react-router-dom';
-
-import { InvoiceDetailPage, InvoiceFormPage, InvoiceListPage } from '@/modules/project/pages/invoice';
 
 const InvoiceRoutes = () => {
   return (

@@ -1,6 +1,3 @@
-import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -9,9 +6,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { useAccess } from '@/app/contexts/access-context';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
+import { MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function formatOptionalDate(value: string | null | undefined) {
   return value ? formatDate(value) : '-';
@@ -66,16 +66,12 @@ export function PurchaseOrderCell({
     );
   }
 
-  return (
-    <span className="text-sm text-muted-foreground">{invoice.purchaseOrderId ?? '-'}</span>
-  );
+  return <span className="text-sm text-muted-foreground">{invoice.purchaseOrderId ?? '-'}</span>;
 }
 
 export function InvoiceDateCell({ invoice }: { invoice: InvoiceListItem }) {
   return (
-    <span className="text-sm text-muted-foreground">
-      {formatOptionalDate(invoice.invoiceDate)}
-    </span>
+    <span className="text-sm text-muted-foreground">{formatOptionalDate(invoice.invoiceDate)}</span>
   );
 }
 
@@ -86,7 +82,7 @@ export function DueDateCell({ invoice }: { invoice: InvoiceListItem }) {
     <span
       className={cn(
         'text-sm',
-        isPastDue ? 'font-medium text-destructive' : 'text-muted-foreground',
+        isPastDue ? 'font-medium text-destructive' : 'text-muted-foreground'
       )}
     >
       {formatOptionalDate(invoice.dueDate)}
@@ -123,9 +119,7 @@ export function PaymentCell({ invoice }: { invoice: InvoiceListItem }) {
         )}
       </div>
       {invoice.paidDate && (
-        <span className="text-2sm text-muted-foreground">
-          Paid {formatDate(invoice.paidDate)}
-        </span>
+        <span className="text-2sm text-muted-foreground">Paid {formatDate(invoice.paidDate)}</span>
       )}
     </div>
   );
@@ -133,13 +127,14 @@ export function PaymentCell({ invoice }: { invoice: InvoiceListItem }) {
 
 export function CreatedAtCell({ invoice }: { invoice: InvoiceListItem }) {
   return (
-    <span className="text-sm text-muted-foreground">
-      {formatOptionalDate(invoice.createdAt)}
-    </span>
+    <span className="text-sm text-muted-foreground">{formatOptionalDate(invoice.createdAt)}</span>
   );
 }
 
 export function InvoiceActionsCell({ invoice }: { invoice: InvoiceListItem }) {
+  const { can } = useAccess();
+  const canEdit = can('invoice', 'update') && !invoice.isPaid;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -158,7 +153,7 @@ export function InvoiceActionsCell({ invoice }: { invoice: InvoiceListItem }) {
         <DropdownMenuItem asChild>
           <Link to={`${invoice.id}`}>View</Link>
         </DropdownMenuItem>
-        {!invoice.isPaid && (
+        {canEdit && (
           <DropdownMenuItem asChild>
             <Link to={`${invoice.id}/edit`}>Edit</Link>
           </DropdownMenuItem>

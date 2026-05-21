@@ -29,6 +29,7 @@ import { Field, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -97,6 +98,7 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
 /* ---- Page ---- */
 
 export function PODetailPage() {
+  const { can, isAdmin } = useAccess();
   const { projectId = '', poId = '' } = useParams<{ projectId: string; poId: string }>();
 
   const { data: po, isLoading } = usePODetailQuery(poId);
@@ -186,10 +188,10 @@ export function PODetailPage() {
   const isCancelled = statusName === 'CANCELLED';
   const isDelivered = statusName === 'DELIVERED';
 
-  const canEdit = isDraft;
-  const canIssue = isDraft;
-  const canCancel = !isCancelled && !isDelivered;
-  const canRecordDelivery = isIssued && !isDelivered;
+  const canEdit = can('purchaseOrder', 'update') && isDraft;
+  const canIssue = isAdmin && isDraft;
+  const canCancel = isAdmin && !isCancelled && !isDelivered;
+  const canRecordDelivery = isAdmin && isIssued && !isDelivered;
 
   const isOverdue =
     !!po?.expectedDate &&
@@ -199,9 +201,7 @@ export function PODetailPage() {
   const overdueDays = isOverdue ? calcOverdueDays(po.expectedDate) : 0;
 
   const isActionPending =
-    issueMutation.isPending ||
-    cancelMutation.isPending ||
-    recordDeliveryMutation.isPending;
+    issueMutation.isPending || cancelMutation.isPending || recordDeliveryMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -838,7 +838,7 @@ export function PODetailPage() {
       </Dialog>
 
       {/* ---- Upload file dialog ---- */}
-      {poFolderId && (
+      {canEdit && poFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}

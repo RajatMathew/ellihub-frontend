@@ -9,6 +9,7 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { useAccess } from '@/app/contexts/access-context';
 import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
 import { ProjectListEmptyState } from '@/modules/project/components/project-list-empty-state';
@@ -34,6 +35,7 @@ const getProjectStatusId = (project: ProjectListItem): string | undefined => {
 };
 
 export function ProjectList() {
+  const { isAdmin } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
 
   const year = Number(searchParams.get('year')) || currentYear;
@@ -86,14 +88,16 @@ export function ProjectList() {
             </div>
             <ToolbarPageTitle>Active Projects</ToolbarPageTitle>
           </ToolbarHeading>
-          <ToolbarActions>
-            <Button variant="primary" asChild>
-              <Link to="new">
-                <Plus className="size-4" />
-                New Project
-              </Link>
-            </Button>
-          </ToolbarActions>
+          {isAdmin && (
+            <ToolbarActions>
+              <Button variant="primary" asChild>
+                <Link to="new">
+                  <Plus className="size-4" />
+                  New Project
+                </Link>
+              </Button>
+            </ToolbarActions>
+          )}
         </ToolbarWrapper>
 
         <ProjectYearTabs

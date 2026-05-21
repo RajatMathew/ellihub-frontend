@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 
-import { type ColumnDef } from '@tanstack/react-table';
-
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -13,13 +11,21 @@ import {
   ContactRoleCell,
 } from '@/modules/directory/components/contacts/contact-list-column-cells';
 import type { Contact } from '@/modules/directory/schemas/contact.schema';
+import { type ColumnDef } from '@tanstack/react-table';
 
 interface UseContactListColumnsOptions {
   vendorNames: Map<string, string>;
   onDelete: (id: string) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
-export function useContactListColumns({ vendorNames, onDelete }: UseContactListColumnsOptions) {
+export function useContactListColumns({
+  vendorNames,
+  onDelete,
+  canUpdate,
+  canDelete,
+}: UseContactListColumnsOptions) {
   return useMemo<ColumnDef<Contact>[]>(
     () => [
       {
@@ -94,7 +100,14 @@ export function useContactListColumns({ vendorNames, onDelete }: UseContactListC
       {
         id: 'actions',
         header: () => null,
-        cell: ({ row }) => <ContactActionsCell contact={row.original} onDelete={onDelete} />,
+        cell: ({ row }) => (
+          <ContactActionsCell
+            contact={row.original}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onDelete={onDelete}
+          />
+        ),
         meta: {
           headerClassName: 'w-16',
           skeleton: <Skeleton className="size-7 rounded-md" />,
@@ -102,6 +115,6 @@ export function useContactListColumns({ vendorNames, onDelete }: UseContactListC
         enableSorting: false,
       },
     ],
-    [onDelete, vendorNames],
+    [canDelete, canUpdate, onDelete, vendorNames]
   );
 }

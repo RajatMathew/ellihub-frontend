@@ -22,6 +22,11 @@ export function RFQDetailVendorsCard({
   isPublished,
   isEvaluation,
   isAwarded,
+  canManageVendors,
+  canManageQuotes,
+  canAwardQuotes,
+  canCreatePurchaseOrder,
+  canEmailVendors,
   onInviteVendor,
   onOpenQuote,
   onGenerateVendorPdf,
@@ -68,6 +73,11 @@ export function RFQDetailVendorsCard({
     isEvaluation,
     isAwarded,
     isGeneratingVendorPdf,
+    canManageVendors,
+    canManageQuotes,
+    canAwardQuotes,
+    canCreatePurchaseOrder,
+    canEmailVendors,
     onOpenQuote,
     onGenerateVendorPdf,
     onEmailVendor,
@@ -85,7 +95,7 @@ export function RFQDetailVendorsCard({
         <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Vendors
         </CardTitle>
-        {!isTerminal && (
+        {!isTerminal && canManageVendors && (
           <Button variant="outline" size="sm" onClick={onInviteVendor}>
             <Plus className="size-4" />
             Invite Vendor

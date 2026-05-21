@@ -28,6 +28,7 @@ interface UseFilesTableParams {
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
   onExportFolder: (item: FileItem) => void;
+  canMutate?: boolean;
 }
 
 export function useFilesTable({
@@ -45,6 +46,7 @@ export function useFilesTable({
   onRename,
   onDelete,
   onExportFolder,
+  canMutate = true,
 }: UseFilesTableParams) {
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -58,6 +60,7 @@ export function useFilesTable({
     onRename,
     onDelete,
     onExportFolder,
+    canMutate,
   });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
 

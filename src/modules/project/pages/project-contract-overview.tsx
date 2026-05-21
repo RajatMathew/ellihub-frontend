@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { useAccess } from '@/app/contexts/access-context';
 import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import {
   BudgetCard,
@@ -46,6 +47,7 @@ import { EllipsisVertical, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProjectContractOverview() {
+  const { isAdmin } = useAccess();
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,7 +88,7 @@ export default function ProjectContractOverview() {
       (allSCOs?.data ?? [])
         .filter((sco) => sco.status === 'APPROVED')
         .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0),
-    [allSCOs?.data],
+    [allSCOs?.data]
   );
   const totalSpent = totalPOCommitted + approvedSCOTotal;
 
@@ -146,31 +148,35 @@ export default function ProjectContractOverview() {
             <Share2 className="size-4" />
             Share
           </Button> */}
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/app/project/${projectId}/edit`}>
-              <Pencil className="size-4" />
-              Edit Project
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" mode="icon" size="sm">
-                <EllipsisVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
+          {isAdmin && (
+            <>
+              <Button variant="outline" size="sm" asChild>
                 <Link to={`/app/project/${projectId}/edit`}>
                   <Pencil className="size-4" />
                   Edit Project
                 </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-                Delete Project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" mode="icon" size="sm">
+                    <EllipsisVertical className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to={`/app/project/${projectId}/edit`}>
+                      <Pencil className="size-4" />
+                      Edit Project
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                    Delete Project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </ProjectToolbarHeader>
 
         {/* ---- Financial Metrics Banner ---- */}
@@ -199,8 +205,8 @@ export default function ProjectContractOverview() {
             documents={docs}
             isLoading={isLoadingAttachments}
             parentFolderId={primeContractFolderId}
-            onAdd={handleAddContractDocument}
-            onRemove={handleRemoveContractDocument}
+            onAdd={isAdmin ? handleAddContractDocument : undefined}
+            onRemove={isAdmin ? handleRemoveContractDocument : undefined}
             isAdding={addAttachmentMutation.isPending}
             isRemoving={removeAttachmentMutation.isPending}
           />
@@ -214,9 +220,9 @@ export default function ProjectContractOverview() {
           onOpenChange={setTeamDialogOpen}
           project={project}
           employeeOptions={employeeOptions}
-          onAddMember={teamActions.addMember}
-          onRemoveMember={teamActions.removeMember}
-          onPromoteToPM={teamActions.promoteToPM}
+          onAddMember={isAdmin ? teamActions.addMember : undefined}
+          onRemoveMember={isAdmin ? teamActions.removeMember : undefined}
+          onPromoteToPM={isAdmin ? teamActions.promoteToPM : undefined}
           isRemovingMember={teamActions.isRemovingMember}
           isPromoting={teamActions.isPromoting}
         />

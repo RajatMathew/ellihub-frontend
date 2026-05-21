@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { useAccess } from '@/app/contexts/access-context';
 import { GCStatsCards, GCTableCard, useGCListColumns } from '@/modules/directory/components/gc';
 import {
   GCS_DEFAULT_PAGE_SIZE,
@@ -23,6 +24,7 @@ import {
 import { Plus } from 'lucide-react';
 
 export function GCListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -78,6 +80,8 @@ export function GCListPage() {
 
   const columns = useGCListColumns({
     typeLabels,
+    canUpdate: can('generalContractor', 'update'),
+    canDelete: can('generalContractor', 'delete'),
     onDelete: handleDelete,
   });
 
@@ -141,9 +145,9 @@ export function GCListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="GCs"
-        addLabel="Add GC"
-        addTo="create"
-        addIcon={<Plus className="size-4" />}
+        addLabel={can('generalContractor', 'create') ? 'Add GC' : undefined}
+        addTo={can('generalContractor', 'create') ? 'create' : undefined}
+        addIcon={can('generalContractor', 'create') ? <Plus className="size-4" /> : undefined}
       />
 
       <GCStatsCards

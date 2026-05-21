@@ -1,6 +1,3 @@
-import { FilePlus2, MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -10,21 +7,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { useAccess } from '@/app/contexts/access-context';
 import { formatDate } from '@/app/lib/helpers';
-import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
-import type { RFQListItem } from '@/modules/project/schemas/rfq';
 import {
   getRFQStatusLabel,
   getRFQStatusName,
   getRFQTrackLabel,
 } from '@/modules/project/components/rfq/rfq-list-utils';
+import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
+import type { RFQListItem } from '@/modules/project/schemas/rfq';
+import { FilePlus2, MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function RFQNumberCell({ rfq }: { rfq: RFQListItem }) {
   return (
-    <Link
-      to={`${rfq.id}`}
-      className="text-sm font-semibold text-foreground hover:text-primary"
-    >
+    <Link to={`${rfq.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
       {rfq.rfqNumber ?? '-'}
     </Link>
   );
@@ -43,9 +40,7 @@ export function RFQTitleCell({ rfq }: { rfq: RFQListItem }) {
 
 export function RFQTrackCell({ rfq }: { rfq: RFQListItem }) {
   return (
-    <span className="text-xs font-semibold uppercase tracking-normal">
-      {getRFQTrackLabel(rfq)}
-    </span>
+    <span className="text-xs font-semibold uppercase tracking-normal">{getRFQTrackLabel(rfq)}</span>
   );
 }
 
@@ -102,7 +97,10 @@ interface RFQActionsCellProps {
 }
 
 export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProps) {
+  const { can, isAdmin } = useAccess();
   const statusName = getRFQStatusName(rfq);
+  const canEdit = can('rfq', 'update') && statusName === 'DRAFT';
+  const canCreatePO = can('purchaseOrder', 'create') && statusName === 'AWARDED';
 
   return (
     <DropdownMenu>
@@ -122,10 +120,12 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
         <DropdownMenuItem asChild>
           <Link to={`${rfq.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${rfq.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        {statusName === 'AWARDED' && (
+        {canEdit && (
+          <DropdownMenuItem asChild>
+            <Link to={`${rfq.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canCreatePO && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onCreatePO(rfq)}>
@@ -134,7 +134,7 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
             </DropdownMenuItem>
           </>
         )}
-        {statusName === 'DRAFT' && (
+        {isAdmin && statusName === 'DRAFT' && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => onDelete(rfq)}>

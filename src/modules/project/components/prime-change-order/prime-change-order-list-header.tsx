@@ -1,5 +1,6 @@
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
+import { useAccess } from '@/app/contexts/access-context';
 import { formatPrimeChangeOrderDateTime } from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
 import type { PrimeChangeOrderSyncStatusResponse } from '@/modules/project/schemas/prime-change-order';
 import { ExternalLink, RefreshCcw } from 'lucide-react';
@@ -28,6 +29,7 @@ export function PrimeChangeOrderListHeader({
   isSyncPending,
   onSync,
 }: PrimeChangeOrderListHeaderProps) {
+  const { isAdmin } = useAccess();
   const fieldwireProjectLabel = fieldwireProjectName || syncStatus?.fieldwireProjectId || '-';
 
   return (
@@ -47,7 +49,7 @@ export function PrimeChangeOrderListHeader({
       }
       actions={
         <>
-          {!isMapped && (
+          {isAdmin && !isMapped && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/app/project/${projectId}/edit`}>Add Fieldwire Project</Link>
             </Button>
@@ -64,10 +66,12 @@ export function PrimeChangeOrderListHeader({
               </a>
             </Button>
           )}
-          <Button size="sm" onClick={onSync} disabled={isSyncDisabled}>
-            <RefreshCcw className={`size-4 ${isSyncPending ? 'animate-spin' : ''}`} />
-            Sync Fieldwire
-          </Button>
+          {isAdmin && (
+            <Button size="sm" onClick={onSync} disabled={isSyncDisabled}>
+              <RefreshCcw className={`size-4 ${isSyncPending ? 'animate-spin' : ''}`} />
+              Sync Fieldwire
+            </Button>
+          )}
         </>
       }
     />

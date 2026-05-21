@@ -1,6 +1,3 @@
-import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -9,11 +6,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { useAccess } from '@/app/contexts/access-context';
 import {
   PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
+import { MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import {
   formatOptionalPurchaseOrderCurrency,
@@ -30,9 +30,7 @@ export function PurchaseOrderNumberCell({ po }: { po: POListItem }) {
       <Link to={`${po.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
         {po.poNumber ?? '-'}
       </Link>
-      <span className="line-clamp-1 text-2sm text-muted-foreground">
-        {po.description ?? '-'}
-      </span>
+      <span className="line-clamp-1 text-2sm text-muted-foreground">{po.description ?? '-'}</span>
     </div>
   );
 }
@@ -52,13 +50,7 @@ export function PurchaseOrderVendorCell({ po }: { po: POListItem }) {
   );
 }
 
-export function PurchaseOrderRfqCell({
-  po,
-  projectId,
-}: {
-  po: POListItem;
-  projectId: string;
-}) {
+export function PurchaseOrderRfqCell({ po, projectId }: { po: POListItem; projectId: string }) {
   const rfqLabel = getPurchaseOrderRfqLabel(po);
 
   if (!po.rfqId) {
@@ -151,9 +143,7 @@ export function PurchaseOrderTimelineCell({ po }: { po: POListItem }) {
 
 export function PurchaseOrderCreatedAtCell({ po }: { po: POListItem }) {
   return (
-    <span className="text-sm text-foreground">
-      {formatOptionalPurchaseOrderDate(po.createdAt)}
-    </span>
+    <span className="text-sm text-foreground">{formatOptionalPurchaseOrderDate(po.createdAt)}</span>
   );
 }
 
@@ -164,6 +154,9 @@ export function PurchaseOrderActionsCell({
   po: POListItem;
   onCancel: (po: POListItem) => void;
 }) {
+  const { can, isAdmin } = useAccess();
+  const canEdit = can('purchaseOrder', 'update') && po.status === 'DRAFT';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -182,12 +175,12 @@ export function PurchaseOrderActionsCell({
         <DropdownMenuItem asChild>
           <Link to={`${po.id}`}>View</Link>
         </DropdownMenuItem>
-        {po.status === 'DRAFT' && (
+        {canEdit && (
           <DropdownMenuItem asChild>
             <Link to={`${po.id}/edit`}>Edit</Link>
           </DropdownMenuItem>
         )}
-        {po.status !== 'CANCELLED' && po.status !== 'DELIVERED' && (
+        {isAdmin && po.status !== 'CANCELLED' && po.status !== 'DELIVERED' && (
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={() => onCancel(po)}

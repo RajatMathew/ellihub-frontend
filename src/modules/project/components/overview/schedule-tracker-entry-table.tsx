@@ -25,6 +25,7 @@ interface ScheduleTrackerEntryTableProps {
   isCreating: boolean;
   isUpdating: boolean;
   isDeleting: boolean;
+  isReadOnly?: boolean;
   onAttach: (target: Exclude<ScheduleTrackerUploadTarget, null>) => void;
   onCancelAdd: () => void;
   onCancelEdit: () => void;
@@ -47,6 +48,7 @@ export function ScheduleTrackerEntryTable({
   isCreating,
   isUpdating,
   isDeleting,
+  isReadOnly = false,
   onAttach,
   onCancelAdd,
   onCancelEdit,
@@ -89,14 +91,15 @@ export function ScheduleTrackerEntryTable({
                   key={entry.id}
                   entry={entry}
                   isDeleting={isDeleting}
+                  isReadOnly={isReadOnly}
                   onDelete={onDelete}
                   onDownload={onDownload}
                   onEdit={onEdit}
                 />
-              ),
+              )
             )}
 
-            {isAdding && (
+            {isAdding && !isReadOnly && (
               <ScheduleTrackerFormRow
                 draft={newEntry}
                 isSaving={isCreating}

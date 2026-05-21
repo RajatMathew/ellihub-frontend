@@ -28,6 +28,7 @@ interface UseFilesColumnsOptions {
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
   onExportFolder: (item: FileItem) => void;
+  canMutate?: boolean;
 }
 
 export function useFilesColumns({
@@ -38,6 +39,7 @@ export function useFilesColumns({
   onRename,
   onDelete,
   onExportFolder,
+  canMutate = true,
 }: UseFilesColumnsOptions) {
   const downloadFile = useDownloadFile();
 
@@ -129,7 +131,8 @@ export function useFilesColumns({
         cell: ({ row }) => {
           const isFile = row.original.type === 'FILE';
           const isFolder = row.original.type === 'FOLDER';
-          const showMenu = isFile || isFolder || row.original.isDeletable;
+          const canRenameOrDelete = canMutate && row.original.isDeletable;
+          const showMenu = isFile || isFolder || canRenameOrDelete;
 
           return (
             <div
@@ -195,14 +198,14 @@ export function useFilesColumns({
                         Export ZIP
                       </DropdownMenuItem>
                     )}
-                    {row.original.isDeletable && (
+                    {canRenameOrDelete && (
                       <DropdownMenuItem onClick={() => onRename(row.original)}>
                         <Pencil className="size-3.5" />
                         Rename
                       </DropdownMenuItem>
                     )}
-                    {row.original.isDeletable && <DropdownMenuSeparator />}
-                    {row.original.isDeletable && (
+                    {canRenameOrDelete && <DropdownMenuSeparator />}
+                    {canRenameOrDelete && (
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => onDelete(row.original)}
@@ -232,6 +235,7 @@ export function useFilesColumns({
       onExportFolder,
       onPreview,
       onRename,
+      canMutate,
       showLocation,
     ]
   );

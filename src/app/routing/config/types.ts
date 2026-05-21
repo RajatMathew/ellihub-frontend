@@ -16,6 +16,7 @@ export interface RouteDef {
   /** For document title and breadcrumb */
   title?: string;
   breadcrumb?: BreadcrumbMeta;
+  access?: 'admin';
   /** Nested routes (e.g. project children) */
   children?: RouteDef[];
 }

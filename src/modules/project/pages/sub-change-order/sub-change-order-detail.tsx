@@ -28,6 +28,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -137,6 +138,7 @@ function DetailField({
 /* ---- Page ---- */
 
 export function SCODetailPage() {
+  const { can, isAdmin } = useAccess();
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
@@ -233,11 +235,11 @@ export function SCODetailPage() {
   const isRejected = statusName === 'REJECTED';
   const isVoid = statusName === 'VOID';
 
-  const canApprove = isDraft;
-  const canReject = isDraft;
-  const canVoid = isApproved;
-  const canRevert = !isDraft;
-  const canEdit = isDraft;
+  const canApprove = isAdmin && isDraft;
+  const canReject = isAdmin && isDraft;
+  const canVoid = isAdmin && isApproved;
+  const canRevert = isAdmin && !isDraft;
+  const canEdit = can('subChangeOrder', 'update') && isDraft;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -832,7 +834,7 @@ export function SCODetailPage() {
               <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
                 Documents ({attachments.length})
               </CardTitle>
-              {isDraft && scoFolderId && (
+              {canEdit && scoFolderId && (
                 <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
                   <Upload className="size-4" />
                   Upload
@@ -865,7 +867,7 @@ export function SCODetailPage() {
                             <Download className="size-3.5" />
                           </Button>
                         )}
-                        {isDraft && (
+                        {canEdit && (
                           <Button
                             variant="ghost"
                             mode="icon"
@@ -1091,7 +1093,7 @@ export function SCODetailPage() {
       )}
 
       {/* ---- Upload file dialog ---- */}
-      {scoFolderId && (
+      {canEdit && scoFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
