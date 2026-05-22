@@ -8,8 +8,11 @@ import { BrandedLayout } from '@core/auth/layouts/branded';
 import SignOutPage from '@core/auth/pages/sign-out';
 import { SignInPage } from '@core/auth/pages/signin-page';
 import HelpApp from '@core/help';
-
+import { CompanyLandingPage } from '@/modules/public/pages/company-landing-page';
 import { App } from './app';
+import { PrivacyPolicyPage, EndUserLicenseAgreementPage } from './modules/public/pages/legal-pages';
+
+
 
 function FrameWork() {
   return (
@@ -24,6 +27,16 @@ function FrameWork() {
       <HelmetProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<CompanyLandingPage />} />
+            <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route
+              path="end-user-license-agreement"
+              element={<EndUserLicenseAgreementPage />}
+            />
+            <Route
+              path="eula"
+              element={<Navigate to="/end-user-license-agreement" replace />}
+            />
             <Route element={<ProtectedLayout />}>
               <Route path="app/*" element={<App />} />
               <Route path="profile" element={<Navigate to="/app/profile" replace />} />
