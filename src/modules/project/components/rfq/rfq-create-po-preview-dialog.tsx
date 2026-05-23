@@ -70,7 +70,7 @@ const emptyDefaultValues: CreatePOFromRFQInput = {
   expectedDate: '',
   shipToAddress: '',
   address: '',
-  markupAmount: 0,
+  shippingHandlingFee: 0,
   taxPercent: 0,
   paymentTerms: 'NET_30',
   retainagePercent: 10,
@@ -125,10 +125,10 @@ export function RFQCreatePOPreviewDialog({
     (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
-  const markupAmount = useWatch({ control, name: 'markupAmount' }) ?? 0;
+  const shippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const taxPercent = useWatch({ control, name: 'taxPercent' }) ?? 0;
   const taxAmount = (subtotal * taxPercent) / 100;
-  const total = subtotal + markupAmount + taxAmount;
+  const total = subtotal + shippingHandlingFee + taxAmount;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -262,7 +262,7 @@ export function RFQCreatePOPreviewDialog({
                     <div className="flex justify-end pt-4">
                       <div className="w-full max-w-sm space-y-3">
                         <AmountRow label="Subtotal" value={subtotal} />
-                        <AmountRow label="Markup" value={markupAmount} />
+                        <AmountRow label="Shipping and Handling Fee" value={shippingHandlingFee} />
                         <AmountRow label={`Tax (${taxPercent}%)`} value={taxAmount} />
                         <Separator />
                         <AmountRow label="Total" value={total} emphasis />
@@ -346,11 +346,11 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
           )}
         />
         <Controller
-          name="markupAmount"
+          name="shippingHandlingFee"
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel className={fieldLabelClassName}>Markup</FieldLabel>
+              <FieldLabel className={fieldLabelClassName}>Shipping and Handling Fee</FieldLabel>
               <InputWrapper>
                 <Input
                   type="number"
@@ -615,7 +615,7 @@ function cleanPOFromRFQInput(formData: CreatePOFromRFQInput): CreatePOFromRFQInp
     shipToAddress: formData.shipToAddress || undefined,
     address: formData.address || undefined,
     notes: formData.notes || undefined,
-    markupAmount: formData.markupAmount ?? undefined,
+    shippingHandlingFee: formData.shippingHandlingFee ?? undefined,
     taxPercent: formData.taxPercent ?? undefined,
     retainagePercent: formData.retainagePercent ?? undefined,
     lineItems: formData.lineItems.map((lineItem) => ({

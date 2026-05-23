@@ -80,9 +80,9 @@ export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
       <span className="text-sm font-medium text-foreground">
         {formatOptionalSubChangeOrderCurrency(sco.amount)}
       </span>
-      {Number(sco.markupAmount ?? 0) !== 0 && (
+      {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
         <span className="text-2sm text-muted-foreground">
-          Markup {formatOptionalSubChangeOrderCurrency(sco.markupAmount)}
+          Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(sco.shippingHandlingFee)}
         </span>
       )}
     </div>

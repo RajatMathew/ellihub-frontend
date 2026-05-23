@@ -129,7 +129,7 @@ export function SCOFormPage() {
     date: new Date().toISOString().slice(0, 10),
     title: '',
     description: '',
-    markupAmount: 0,
+    shippingHandlingFee: 0,
     scheduleImpactDays: 0,
     requestedBy: '',
     changeTypeId: '',
@@ -154,7 +154,7 @@ export function SCOFormPage() {
       date: scoDetail.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       title: scoDetail.title ?? '',
       description: scoDetail.description ?? '',
-      markupAmount: toNonNegativeNumber(scoDetail.markupAmount),
+      shippingHandlingFee: toNonNegativeNumber(scoDetail.shippingHandlingFee),
       scheduleImpactDays: toNonNegativeNumber(scoDetail.scheduleImpactDays),
       requestedBy: scoDetail.requestedBy ?? '',
       changeTypeId: scoDetail.changeTypeId ?? scoDetail.changeType?.id ?? '',
@@ -175,7 +175,7 @@ export function SCOFormPage() {
 
   const watchedLineItems = watch('lineItems');
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
-  const watchedMarkup = watch('markupAmount') ?? 0;
+  const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
   const subtotal = useMemo(
     () =>
       lineItemsForTotals.reduce(
@@ -184,7 +184,7 @@ export function SCOFormPage() {
       ),
     [lineItemsForTotals]
   );
-  const total = subtotal + toNumber(watchedMarkup);
+  const total = subtotal + toNumber(watchedShippingHandlingFee);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   async function uploadFilesAndAttach(targetScoId: string, folderId: string, files: File[]) {
@@ -213,7 +213,7 @@ export function SCOFormPage() {
       purchaseOrderId: formData.purchaseOrderId,
       description: formData.description || undefined,
       requestedBy: formData.requestedBy || undefined,
-      markupAmount: toNonNegativeNumber(formData.markupAmount),
+      shippingHandlingFee: toNonNegativeNumber(formData.shippingHandlingFee),
       scheduleImpactDays: formData.impactsSchedule
         ? Math.trunc(toNonNegativeNumber(formData.scheduleImpactDays))
         : 0,
@@ -288,7 +288,7 @@ export function SCOFormPage() {
                   date: d.date,
                   title: d.title,
                   description: [d.reasonForChange, d.detailedScope].filter(Boolean).join('\n\n'),
-                  markupAmount: 0,
+                  shippingHandlingFee: 0,
                   scheduleImpactDays: ['HIGH', 'URGENT'].includes(d.priority) ? 3 : 0,
                   requestedBy: fakeContactName(),
                   changeTypeId: randomChangeType,
@@ -448,12 +448,12 @@ export function SCOFormPage() {
                 />
 
                 <Controller
-                  name="markupAmount"
+                  name="shippingHandlingFee"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Markup Amount
+                        Shipping and Handling Fee
                       </FieldLabel>
                       <InputWrapper>
                         <Input
@@ -867,8 +867,8 @@ export function SCOFormPage() {
                     <span className="tabular-nums">{formatCurrency(subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Markup</span>
-                    <span className="tabular-nums">{formatCurrency(toNumber(watchedMarkup))}</span>
+                    <span className="text-muted-foreground">Shipping and Handling Fee</span>
+                    <span className="tabular-nums">{formatCurrency(toNumber(watchedShippingHandlingFee))}</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between font-semibold">

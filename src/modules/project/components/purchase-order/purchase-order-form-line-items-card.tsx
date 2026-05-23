@@ -72,9 +72,9 @@ export function PurchaseOrderFormLineItemsCard({
             <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Markup</span>
+            <span className="text-muted-foreground">Shipping and Handling Fee</span>
             <Controller
-              name="markupAmount"
+              name="shippingHandlingFee"
               control={control}
               render={({ field }) => (
                 <InputWrapper className="w-32">

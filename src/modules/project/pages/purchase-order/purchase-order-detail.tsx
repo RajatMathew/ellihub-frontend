@@ -598,7 +598,7 @@ export function PODetailPage() {
                 lineItems={po.lineItems ?? []}
                 costCodeMap={costCodeMap}
                 subtotal={subtotal}
-                markupAmount={po.markupAmount}
+                shippingHandlingFee={po.shippingHandlingFee}
                 taxAmount={taxAmount}
                 taxPercent={po.taxPercent}
                 total={poTotal}
@@ -669,8 +669,8 @@ export function PODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                  {Number(po.markupAmount ?? 0) !== 0 && (
-                    <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
+                  {Number(po.shippingHandlingFee ?? 0) !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(po.shippingHandlingFee))}</InfoRow>
                   )}
                   {taxAmount > 0 && (
                     <InfoRow label={`Tax (${po.taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
