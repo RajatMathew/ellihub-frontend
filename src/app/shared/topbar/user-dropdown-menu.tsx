@@ -1,8 +1,10 @@
 import { type ReactNode } from 'react';
 
+import { forceCheckForUpdate } from '@/core/pwa/usePwaUpdater';
 import {
   BetweenHorizontalStart,
   Bug,
+  Check,
   Coffee,
   CreditCard,
   FileText,
@@ -17,8 +19,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { useSession } from '@app/api';
+import { debugForceUpdate, useSession } from '@app/api';
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
@@ -57,6 +60,16 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { data } = useSession();
   const { isAdmin } = useAccess();
   const userImage = data?.user?.image ?? 'https://i.pravatar.cc/300';
+
+  async function handleCheckUpdate() {
+    const hasUpdate = await forceCheckForUpdate();
+
+    if (!hasUpdate) {
+      toast(` Your app is up to date! v${__APP_VERSION__}`, {
+        icon: <Check className="size-4 text-success" />,
+      });
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -182,6 +195,40 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 Query Devtools
               </a>
             </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <Bug /> Debug
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48" slot="content" avoidCollisions={true}>
+                <DropdownMenuItem asChild>
+                  <a href="#" onClick={handleCheckUpdate} className="flex items-center gap-2">
+                    <HistoryIcon />
+                    Check for Updates
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('pwa-update-available'));
+                    }}
+                  >
+                    <Bug />
+                    Fake PWA Update
+                  </button>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <button
+                    onClick={() => {
+                      debugForceUpdate();
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Bug />
+                    Force Update(API)
+                  </button>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
