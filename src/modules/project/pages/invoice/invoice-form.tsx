@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fakeInvoiceNumber } from '@/lib/fake-data';
 
@@ -45,6 +45,10 @@ function toDateInput(value: string | null | undefined) {
 
 function getInvoiceDetailPath(projectId: string, invoiceId: string) {
   return `/app/project/${projectId}/invoices/${invoiceId}`;
+}
+
+function calculateTaxAmount(totalAmount: number, taxRate: number) {
+  return Math.round(((totalAmount || 0) * (taxRate || 0) * 100) / 100) / 100;
 }
 
 export function InvoiceFormPage() {
@@ -152,8 +156,8 @@ export function InvoiceFormPage() {
   const selectedPurchaseOrderId = watch('purchaseOrderId');
   const selectedVendorId = watch('vendorId');
   const totalAmount = watch('totalAmount') ?? 0;
-  const taxAmount = watch('taxAmount') ?? 0;
   const taxRate = watch('taxRate') ?? 0;
+  const taxAmount = calculateTaxAmount(totalAmount, taxRate);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
   const isImmutable = isEdit;
   const isVendorLocked = isImmutable || !!selectedPurchaseOrderId;
@@ -178,11 +182,19 @@ export function InvoiceFormPage() {
     ];
   }, [selectedVendorId, selectedVendorLabel, vendorOptions]);
 
+  useEffect(() => {
+    setValue('taxAmount', taxAmount, {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+  }, [setValue, taxAmount]);
+
   const enterMockData = useCallback(() => {
     const randomPo = poOptions[Math.floor(Math.random() * poOptions.length)];
     const randomPoData = (posData?.data ?? []).find((po) => po.id === randomPo?.value);
     const subtotal = Math.floor(Math.random() * 15000) + 1500;
-    const tax = Math.round(subtotal * 0.085 * 100) / 100;
+    const taxRate = 8.5;
+    const tax = calculateTaxAmount(subtotal, taxRate);
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30);
 
@@ -195,7 +207,7 @@ export function InvoiceFormPage() {
       dueDate: dueDate.toISOString().slice(0, 10),
       totalAmount: subtotal + tax,
       taxAmount: tax,
-      taxRate: 8.5,
+      taxRate,
       notes: 'Progress billing for approved work.',
       relatedSCOIds: scoOptions.slice(0, 2).map((option) => option.value),
       attachments: [],
@@ -247,6 +259,7 @@ export function InvoiceFormPage() {
       }
 
       if (isEdit && invoiceId) {
+        const calculatedTaxAmount = calculateTaxAmount(formData.totalAmount, formData.taxRate);
         const updated = await updateMutation.mutateAsync({
           id: invoiceId,
           data: {
@@ -258,7 +271,7 @@ export function InvoiceFormPage() {
             invoiceDate: formData.invoiceDate,
             dueDate: formData.dueDate,
             totalAmount: formData.totalAmount,
-            taxAmount: formData.taxAmount,
+            taxAmount: calculatedTaxAmount,
             taxRate: formData.taxRate,
             notes: formData.notes,
             relatedSCOIds: formData.relatedSCOIds,
@@ -281,6 +294,7 @@ export function InvoiceFormPage() {
 
       const created = await createMutation.mutateAsync({
         ...formData,
+        taxAmount: calculateTaxAmount(formData.totalAmount, formData.taxRate),
         attachments: attachmentIds,
       });
       navigate(getInvoiceDetailPath(projectId, created.id));
@@ -454,13 +468,13 @@ export function InvoiceFormPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">Financial</h2>
               <p className="text-sm text-muted-foreground">
-                Enter the invoice total and tax values.
+                Enter the invoice total and tax rate.
               </p>
             </div>
 
             <Separator />
 
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <Controller
                 name="totalAmount"
                 control={control}
@@ -474,27 +488,6 @@ export function InvoiceFormPage() {
                         type="number"
                         step="0.01"
                         value={field.value}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="taxAmount"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Tax Amount
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={field.value ?? 0}
                         onChange={(event) => field.onChange(Number(event.target.value))}
                       />
                     </InputWrapper>
