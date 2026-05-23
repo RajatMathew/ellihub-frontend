@@ -33,6 +33,13 @@ export const usePODetailQuery = (id: string) =>
     enabled: !!id,
   });
 
+export const usePOPdfDefaultTermsQuery = () =>
+  useQuery({
+    queryKey: poKeys.pdfDefaultTerms(),
+    queryFn: () => poApi.getPdfDefaultTerms(),
+    staleTime: 5 * 60 * 1000,
+  });
+
 /* ---- mutations ---- */
 
 export const useCreatePOMutation = () => {

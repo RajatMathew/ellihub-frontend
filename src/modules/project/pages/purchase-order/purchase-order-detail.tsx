@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
-import { PdfPreviewDialog } from '@/app/components/pdf-preview-dialog';
 import {
   Toolbar,
   ToolbarActions,
@@ -64,12 +63,13 @@ import {
   useGeneratePOPdfMutation,
   useIssuePOMutation,
   usePODetailQuery,
+  usePOPdfDefaultTermsQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
 } from '@/modules/project/hooks/purchase-order';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import type { POStatusName } from '@/modules/project/schemas/purchase-order';
+import type { GeneratePOPdfInput, POStatusName } from '@/modules/project/schemas/purchase-order';
 import {
   AlertTriangle,
   Calendar,
@@ -100,6 +100,13 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
+
 /* ---- Page ---- */
 
 export function PODetailPage() {
@@ -122,6 +129,7 @@ export function PODetailPage() {
   );
   const { data: costCodesData } = useCostCodesQuery();
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
+  const { data: pdfDefaultTerms } = usePOPdfDefaultTermsQuery();
 
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
@@ -141,10 +149,10 @@ export function PODetailPage() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
-  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
   const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
   const [pdfTermsHtml, setPdfTermsHtml] = useState('');
+  const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -153,9 +161,50 @@ export function PODetailPage() {
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  function handlePdfPreviewOpenChange(open: boolean) {
-    setPdfPreviewOpen(open);
+  function handlePdfOptionsOpenChange(open: boolean) {
+    setPdfOptionsOpen(open);
     if (!open) setPdfPreview(null);
+  }
+
+  function applyDefaultPdfTermsIfEmpty() {
+    if (!pdfDefaultTerms?.html || hasHtmlText(pdfTermsHtml)) return false;
+    setPdfTermsHtml(pdfDefaultTerms.html);
+    setPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function generatePdfPreview(data: GeneratePOPdfInput) {
+    generatePdfMutation.mutate(
+      { id: poId, poNumber: po?.poNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function openPdfOptions() {
+    const defaultTermsApplied = !pdfDefaultTermsApplied && applyDefaultPdfTermsIfEmpty();
+    const nextIncludeTerms = defaultTermsApplied ? true : pdfIncludeTerms;
+    const nextTermsHtml = defaultTermsApplied && pdfDefaultTerms?.html ? pdfDefaultTerms.html : pdfTermsHtml;
+
+    if (defaultTermsApplied) {
+      setPdfIncludeTerms(true);
+    }
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview({
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    });
+  }
+
+  function handlePdfIncludeTermsChange(includeTerms: boolean) {
+    setPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultPdfTermsIfEmpty();
+    }
   }
 
   const activityItems = useMemo<ActivityItem[]>(() => {
@@ -303,7 +352,7 @@ export function PODetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            <Button variant="outline" size="sm" onClick={() => setPdfOptionsOpen(true)}>
+            <Button variant="outline" size="sm" onClick={openPdfOptions}>
               <FileText className="size-4" />
               Generate PDF
             </Button>
@@ -762,33 +811,18 @@ export function PODetailPage() {
       {pdfOptionsOpen && (
         <PurchaseOrderPdfDialog
           open={pdfOptionsOpen}
-          onOpenChange={setPdfOptionsOpen}
+          onOpenChange={handlePdfOptionsOpenChange}
           includeTerms={pdfIncludeTerms}
           termsHtml={pdfTermsHtml}
+          previewFile={pdfPreview}
           isGenerating={generatePdfMutation.isPending}
-          onIncludeTermsChange={setPdfIncludeTerms}
+          onIncludeTermsChange={handlePdfIncludeTermsChange}
           onTermsHtmlChange={setPdfTermsHtml}
           onGenerate={(data) => {
-            generatePdfMutation.mutate(
-              { id: poId, poNumber: po.poNumber, data },
-              {
-                onSuccess: (file) => {
-                  setPdfOptionsOpen(false);
-                  setPdfPreview(file);
-                  setPdfPreviewOpen(true);
-                },
-              }
-            );
+            generatePdfPreview(data);
           }}
         />
       )}
-
-      <PdfPreviewDialog
-        open={pdfPreviewOpen}
-        onOpenChange={handlePdfPreviewOpenChange}
-        file={pdfPreview}
-        title={pdfPreview?.fileName ?? `${po.poNumber ?? 'Purchase Order'} PDF`}
-      />
 
       {/* ---- Issue PO confirmation ---- */}
       <ConfirmDialog

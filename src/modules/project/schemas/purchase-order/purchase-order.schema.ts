@@ -310,3 +310,9 @@ export const generatePOPdfInputSchema = z.object({
 });
 
 export type GeneratePOPdfInput = z.infer<typeof generatePOPdfInputSchema>;
+
+export const poPdfDefaultTermsSchema = z.object({
+  html: z.string(),
+});
+
+export type POPdfDefaultTerms = z.infer<typeof poPdfDefaultTermsSchema>;

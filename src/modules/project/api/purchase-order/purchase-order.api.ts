@@ -8,10 +8,12 @@ import { PURCHASE_ORDER_PDF_PROFILE } from '@/modules/project/constants/purchase
 import {
   poDetailSchema,
   poPaginatedResponseSchema,
+  poPdfDefaultTermsSchema,
   type CreatePOInput,
   type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
+  type POPdfDefaultTerms,
   type POPaginatedResponse,
 } from '@/modules/project/schemas/purchase-order';
 
@@ -63,6 +65,16 @@ export const poApi = {
     const res = await api.get(`${LIST_BASE}/${id}`);
     const raw = normalizePODetail(res.data?.data ?? res.data);
     const result = poDetailSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async getPdfDefaultTerms(): Promise<POPdfDefaultTerms> {
+    const res = await api.get(`${LIST_BASE}/pdf/default-terms`);
+    const raw = res.data?.data ?? res.data;
+    const result = poPdfDefaultTermsSchema.safeParse(raw);
     if (!result.success) {
       throw result.error;
     }
