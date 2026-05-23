@@ -303,3 +303,10 @@ export const createPOInputSchema = z.object({
 });
 
 export type CreatePOInput = z.infer<typeof createPOInputSchema>;
+
+export const generatePOPdfInputSchema = z.object({
+  addTermsAndConditions: z.boolean(),
+  termsAndConditionsHtml: z.string().optional(),
+});
+
+export type GeneratePOPdfInput = z.infer<typeof generatePOPdfInputSchema>;

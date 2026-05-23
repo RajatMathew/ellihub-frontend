@@ -1,9 +1,15 @@
 import api from '@/app/api';
-
+import {
+  getPdfDownloadName,
+  sanitizeDownloadName,
+  type GeneratedPdfFile,
+} from '@/app/lib/generated-pdf';
+import { PURCHASE_ORDER_PDF_PROFILE } from '@/modules/project/constants/purchase-order';
 import {
   poDetailSchema,
   poPaginatedResponseSchema,
   type CreatePOInput,
+  type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
   type POPaginatedResponse,
@@ -38,7 +44,7 @@ function normalizePODetail(item: unknown) {
   const tradeCategoryLabel =
     getLookupValue(tradeCategoryRef, 'label') ?? getLookupValue(tradeCategoryRef, 'name');
   const tradeCategory = ['MATERIAL', 'FABRICATION', 'INSTALLATION', 'LABOR', 'EQUIPMENT'].includes(
-    tradeCategoryLabel ?? '',
+    tradeCategoryLabel ?? ''
   )
     ? tradeCategoryLabel
     : undefined;
@@ -63,6 +69,32 @@ export const poApi = {
     return result.data;
   },
 
+  async generatePdf(
+    id: string,
+    data: GeneratePOPdfInput,
+    poNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(
+      `${LIST_BASE}/${id}/pdf`,
+      {
+        ...PURCHASE_ORDER_PDF_PROFILE,
+        ...data,
+      },
+      { responseType: 'blob', timeout: 0 }
+    );
+    const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
+    const fileName = getPdfDownloadName(
+      String(res.headers['content-disposition'] ?? ''),
+      fallbackName
+    );
+
+    return {
+      blob: res.data,
+      fileName,
+      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
+    };
+  },
+
   async issue(id: string, data?: { emailVendor?: boolean }): Promise<PODetail> {
     void data;
     await api.patch(`${LIST_BASE}/set-issued`, { id });
@@ -76,7 +108,7 @@ export const poApi = {
       notifyVendor?: boolean;
       confirmInvoices?: boolean;
       confirmSCOs?: boolean;
-    },
+    }
   ): Promise<PODetail> {
     await api.patch(`${LIST_BASE}/set-cancelled`, {
       id,
@@ -87,7 +119,7 @@ export const poApi = {
 
   async recordDelivery(
     id: string,
-    data: { deliveryDate: string; notes?: string },
+    data: { deliveryDate: string; notes?: string }
   ): Promise<PODetail> {
     await api.patch(`${LIST_BASE}/set-delivered`, { id, deliveryDate: data.deliveryDate });
     return this.get(id);

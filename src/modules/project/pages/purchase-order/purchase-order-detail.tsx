@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { PdfPreviewDialog } from '@/app/components/pdf-preview-dialog';
 import {
   Toolbar,
   ToolbarActions,
@@ -31,6 +32,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useCostCodesQuery } from '@/modules/catalog/hooks';
@@ -42,6 +44,7 @@ import {
   PurchaseOrderDetailLineItemsCard,
   PurchaseOrderDetailLinkedInvoicesCard,
   PurchaseOrderDetailLinkedSCOsCard,
+  PurchaseOrderPdfDialog,
 } from '@/modules/project/components/purchase-order';
 import {
   InfoRow,
@@ -58,6 +61,7 @@ import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice
 import {
   useAddPOAttachmentMutation,
   useCancelPOMutation,
+  useGeneratePOPdfMutation,
   useIssuePOMutation,
   usePODetailQuery,
   useRecordDeliveryMutation,
@@ -74,6 +78,7 @@ import {
   Clock,
   DollarSign,
   ExternalLink,
+  FileText,
   History,
   MoreHorizontal,
   PanelRightOpen,
@@ -121,6 +126,7 @@ export function PODetailPage() {
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
+  const generatePdfMutation = useGeneratePOPdfMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -134,6 +140,11 @@ export function PODetailPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [issueOpen, setIssueOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
+  const [pdfTermsHtml, setPdfTermsHtml] = useState('');
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -141,6 +152,11 @@ export function PODetailPage() {
 
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  function handlePdfPreviewOpenChange(open: boolean) {
+    setPdfPreviewOpen(open);
+    if (!open) setPdfPreview(null);
+  }
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     if (!activityData?.data) return [];
@@ -287,6 +303,10 @@ export function PODetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" onClick={() => setPdfOptionsOpen(true)}>
+              <FileText className="size-4" />
+              Generate PDF
+            </Button>
             {canIssue && (
               <Button size="sm" onClick={() => setIssueOpen(true)}>
                 <CheckCircle2 className="size-4" />
@@ -738,6 +758,37 @@ export function PODetailPage() {
           </div>
         </DetailSidebar>
       </div>
+
+      {pdfOptionsOpen && (
+        <PurchaseOrderPdfDialog
+          open={pdfOptionsOpen}
+          onOpenChange={setPdfOptionsOpen}
+          includeTerms={pdfIncludeTerms}
+          termsHtml={pdfTermsHtml}
+          isGenerating={generatePdfMutation.isPending}
+          onIncludeTermsChange={setPdfIncludeTerms}
+          onTermsHtmlChange={setPdfTermsHtml}
+          onGenerate={(data) => {
+            generatePdfMutation.mutate(
+              { id: poId, poNumber: po.poNumber, data },
+              {
+                onSuccess: (file) => {
+                  setPdfOptionsOpen(false);
+                  setPdfPreview(file);
+                  setPdfPreviewOpen(true);
+                },
+              }
+            );
+          }}
+        />
+      )}
+
+      <PdfPreviewDialog
+        open={pdfPreviewOpen}
+        onOpenChange={handlePdfPreviewOpenChange}
+        file={pdfPreview}
+        title={pdfPreview?.fileName ?? `${po.poNumber ?? 'Purchase Order'} PDF`}
+      />
 
       {/* ---- Issue PO confirmation ---- */}
       <ConfirmDialog

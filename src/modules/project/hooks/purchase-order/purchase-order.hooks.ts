@@ -5,6 +5,7 @@ import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreatePOInput,
+  GeneratePOPdfInput,
   ListPOsParams,
   POLineItemInput,
 } from '@/modules/project/schemas/purchase-order';
@@ -100,6 +101,20 @@ export const useRecordDeliveryMutation = () => {
     onError: (err) => toastApiError(err, 'Failed to record delivery.'),
   });
 };
+
+export const useGeneratePOPdfMutation = () =>
+  useMutation({
+    mutationFn: ({
+      id,
+      data,
+      poNumber,
+    }: {
+      id: string;
+      data: GeneratePOPdfInput;
+      poNumber?: string | null;
+    }) => poApi.generatePdf(id, data, poNumber),
+    onError: (err) => toastApiError(err, 'Failed to generate purchase order PDF.'),
+  });
 
 /* ---- line item mutations ---- */
 
