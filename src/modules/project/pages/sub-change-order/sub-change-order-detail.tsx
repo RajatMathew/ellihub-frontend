@@ -268,8 +268,8 @@ export function SCODetailPage() {
   }
 
   const amount = Number(sco.amount ?? 0);
-  const markupAmount = Number(sco.markupAmount ?? 0);
-  const totalAmount = amount + markupAmount;
+  const shippingHandlingFee = Number(sco.shippingHandlingFee ?? 0);
+  const totalAmount = amount + shippingHandlingFee;
   const embeddedPurchaseOrder = sco.purchaseOrder as
     | {
         id?: string;
@@ -437,9 +437,9 @@ export function SCODetailPage() {
             <StatsCard
               icon={<TrendingUp className="size-5 text-muted-foreground" />}
               bgClass="bg-muted/60"
-              label="Markup"
-              value={money(markupAmount)}
-              description="Added markup"
+              label="Shipping and Handling Fee"
+              value={money(shippingHandlingFee)}
+              description="Added shipping and handling fee"
             />
             <StatsCard
               icon={<ClipboardList className="size-5 text-info" />}
@@ -671,14 +671,14 @@ export function SCODetailPage() {
                     ))}
                     <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                       <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                      {Number(sco.markupAmount ?? 0) !== 0 && (
-                        <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
+                      {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
+                        <InfoRow label="Shipping and Handling Fee">{money(sco.shippingHandlingFee)}</InfoRow>
                       )}
                       {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                       <Separator className="my-2" />
                       <InfoRow label="Total">
                         <span className="font-semibold">
-                          {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
+                          {money(Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0))}
                         </span>
                       </InfoRow>
                     </div>
@@ -746,16 +746,16 @@ export function SCODetailPage() {
                             {formatCurrency(sco.amount)}
                           </td>
                         </tr>
-                        {Number(sco.markupAmount ?? 0) !== 0 && (
+                        {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
                           <tr>
                             <td
                               colSpan={6}
                               className="pt-1 text-right text-xs text-muted-foreground"
                             >
-                              Markup
+                              Shipping and Handling Fee
                             </td>
                             <td className="pt-1 text-right tabular-nums text-sm">
-                              {money(sco.markupAmount)}
+                              {money(sco.shippingHandlingFee)}
                             </td>
                           </tr>
                         )}
@@ -769,7 +769,7 @@ export function SCODetailPage() {
                           </td>
                           <td className="pt-2 text-right font-semibold tabular-nums">
                             {formatCurrency(
-                              Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0)
+                              Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0)
                             )}
                           </td>
                         </tr>
@@ -884,14 +884,14 @@ export function SCODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                  {Number(sco.markupAmount ?? 0) !== 0 && (
-                    <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
+                  {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">{money(sco.shippingHandlingFee)}</InfoRow>
                   )}
                   {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">
-                      {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
+                      {money(Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0))}
                     </span>
                   </InfoRow>
                   {/* Hidden until /sub-change-order/{id} includes retainagePercent. */}

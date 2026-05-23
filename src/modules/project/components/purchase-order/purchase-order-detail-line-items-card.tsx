@@ -10,7 +10,7 @@ interface PurchaseOrderDetailLineItemsCardProps {
   lineItems: PODetail['lineItems'];
   costCodeMap: Map<string, string>;
   subtotal: number;
-  markupAmount: string | null | undefined;
+  shippingHandlingFee: string | null | undefined;
   taxAmount: number;
   taxPercent: string | null | undefined;
   total: number;
@@ -20,7 +20,7 @@ export function PurchaseOrderDetailLineItemsCard({
   lineItems,
   costCodeMap,
   subtotal,
-  markupAmount,
+  shippingHandlingFee,
   taxAmount,
   taxPercent,
   total,
@@ -86,8 +86,8 @@ export function PurchaseOrderDetailLineItemsCard({
               ))}
               <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                 <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                {Number(markupAmount ?? 0) !== 0 && (
-                  <InfoRow label="Markup">{formatCurrency(Number(markupAmount))}</InfoRow>
+                {Number(shippingHandlingFee ?? 0) !== 0 && (
+                  <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(shippingHandlingFee))}</InfoRow>
                 )}
                 {taxAmount > 0 && (
                   <InfoRow label={`Tax (${taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
@@ -167,13 +167,13 @@ export function PurchaseOrderDetailLineItemsCard({
                       {formatCurrency(subtotal)}
                     </td>
                   </tr>
-                  {Number(markupAmount ?? 0) !== 0 && (
+                  {Number(shippingHandlingFee ?? 0) !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Markup
+                        Shipping and Handling Fee
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
-                        {formatCurrency(Number(markupAmount))}
+                        {formatCurrency(Number(shippingHandlingFee))}
                       </td>
                     </tr>
                   )}

@@ -368,7 +368,7 @@ export const createPOFromRFQInputSchema = z.object({
   expectedDate: z.string().optional(),
   shipToAddress: z.string().optional(),
   address: z.string().optional(),
-  markupAmount: z.number().min(0).optional(),
+  shippingHandlingFee: z.number().min(0).optional(),
   taxPercent: z.number().min(0).max(100).optional(),
   paymentTerms: paymentTermsSchema.optional(),
   retainagePercent: z.number().min(0).max(100).optional(),

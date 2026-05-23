@@ -53,7 +53,7 @@ function createDefaultPOValues(projectId: string): CreatePOInput {
     expectedDate: '',
     shipToAddress: '',
     address: '',
-    markupAmount: 0,
+    shippingHandlingFee: 0,
     taxPercent: 0,
     paymentTerms: 'NET_30',
     retainagePercent: 10,
@@ -86,7 +86,7 @@ function getPOFormValues(projectId: string, po?: PODetail): CreatePOInput {
     expectedDate: po.expectedDate?.split('T')[0] ?? '',
     shipToAddress: po.shipToAddress ?? '',
     address: po.address ?? '',
-    markupAmount: Number(po.markupAmount ?? 0),
+    shippingHandlingFee: Number(po.shippingHandlingFee ?? 0),
     taxPercent: Number(po.taxPercent) || 0,
     paymentTerms: po.paymentTerms ?? 'NET_30',
     retainagePercent: Number(po.retainagePercent) || 10,
@@ -160,10 +160,10 @@ export function POFormPage() {
     (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
-  const watchedMarkup = watch('markupAmount') ?? 0;
+  const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
   const taxPercent = watch('taxPercent') ?? 0;
   const taxAmount = (subtotal * taxPercent) / 100;
-  const total = subtotal + watchedMarkup + taxAmount;
+  const total = subtotal + watchedShippingHandlingFee + taxAmount;
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -200,7 +200,7 @@ export function POFormPage() {
       shipToAddress: rest.shipToAddress || undefined,
       address: rest.address || undefined,
       notes: rest.notes || undefined,
-      markupAmount: rest.markupAmount || undefined,
+      shippingHandlingFee: rest.shippingHandlingFee || undefined,
       taxPercent: rest.taxPercent ?? undefined,
       retainagePercent: rest.retainagePercent ?? undefined,
       lineItems: lineItems.map((item) => ({
