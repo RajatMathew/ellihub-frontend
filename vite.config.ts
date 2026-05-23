@@ -54,15 +54,22 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       injectRegister: false,
+      useCredentials: true,
       devOptions: {
         enabled: false,
       },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: false,
+      },
       manifest: {
-        name: 'Elle Hub',
-        short_name: 'Elle',
-        description: 'construction company erp',
+        name: 'Elli Hub',
+        short_name: 'Elli Hub',
+        description:
+          'Elli Hub is a powerful and user-friendly platform designed to streamline your workflow and enhance productivity.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         start_url: '/',
