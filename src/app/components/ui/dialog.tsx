@@ -69,20 +69,37 @@ function DialogContent({
   }) {
   return (
     <DialogPortal>
-      {overlay && <DialogOverlay />}
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(dialogContentVariants({ variant }), className)}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogClose className="cursor-pointer outline-0 absolute end-5 top-5 rounded-sm opacity-60 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="size-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-        )}
-      </DialogPrimitive.Content>
+      {overlay ? (
+        <DialogOverlay>
+          <DialogPrimitive.Content
+            data-slot="dialog-content"
+            className={cn(dialogContentVariants({ variant }), className)}
+            {...props}
+          >
+            {children}
+            {showCloseButton && (
+              <DialogClose className="cursor-pointer outline-0 absolute end-5 top-5 rounded-sm opacity-60 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                <X className="size-4" />
+                <span className="sr-only">Close</span>
+              </DialogClose>
+            )}
+          </DialogPrimitive.Content>
+        </DialogOverlay>
+      ) : (
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(dialogContentVariants({ variant }), className)}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogClose className="cursor-pointer outline-0 absolute end-5 top-5 rounded-sm opacity-60 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+              <X className="size-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          )}
+        </DialogPrimitive.Content>
+      )}
     </DialogPortal>
   );
 }
