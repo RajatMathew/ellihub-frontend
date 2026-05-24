@@ -1,11 +1,15 @@
 import { useState } from 'react';
 
-import { useUpdateContactMutation } from '@/modules/directory/hooks/contacts.hooks';
+import {
+  useAddContactTagMutation,
+  useRemoveContactTagMutation,
+} from '@/modules/directory/hooks/contacts.hooks';
 import type { Contact } from '@/modules/directory/schemas/contact.schema';
 import { toast } from 'sonner';
 
 export function useContactTags(contact: Contact | undefined, contactId: string | undefined) {
-  const updateMutation = useUpdateContactMutation();
+  const addTagMutation = useAddContactTagMutation();
+  const removeTagMutation = useRemoveContactTagMutation();
   const [showAddTag, setShowAddTag] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
 
@@ -18,14 +22,13 @@ export function useContactTags(contact: Contact | undefined, contactId: string |
       return;
     }
 
-    updateMutation.mutate(
-      { id: contactId, data: { tags: [...contact.tags, trimmed] } },
+    addTagMutation.mutate(
+      { contactId, tag: trimmed },
       {
         onSuccess: () => {
           setNewTagValue('');
           toast.success('Tag added.');
         },
-        onError: () => toast.error('Failed to add tag.'),
       }
     );
   };
@@ -33,11 +36,10 @@ export function useContactTags(contact: Contact | undefined, contactId: string |
   const handleRemoveTag = (tag: string) => {
     if (!contactId || !contact) return;
 
-    updateMutation.mutate(
-      { id: contactId, data: { tags: contact.tags.filter((item) => item !== tag) } },
+    removeTagMutation.mutate(
+      { contactId, tag },
       {
         onSuccess: () => toast.success('Tag removed.'),
-        onError: () => toast.error('Failed to remove tag.'),
       }
     );
   };
@@ -54,7 +56,7 @@ export function useContactTags(contact: Contact | undefined, contactId: string |
   return {
     showAddTag,
     newTagValue,
-    isUpdatingTags: updateMutation.isPending,
+    isUpdatingTags: addTagMutation.isPending || removeTagMutation.isPending,
     setNewTagValue,
     toggleAddTag,
     closeAddTag,
