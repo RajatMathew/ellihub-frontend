@@ -32,6 +32,7 @@ function filterMenuForAccess(
 
   const filtered = menuConfig
     .map((item) => {
+      if (item.type === 'separator') return item;
       if (!item.children) return null;
 
       const children = item.children.filter((child) => {
