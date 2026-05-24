@@ -33,6 +33,7 @@ export interface RFQDetailVendorsCardProps {
   canManageVendors: boolean;
   canManageQuotes: boolean;
   canAwardQuotes: boolean;
+  canUnawardQuotes: boolean;
   canCreatePurchaseOrder: boolean;
   canEmailVendors: boolean;
   onInviteVendor: () => void;
@@ -66,6 +67,7 @@ export interface RFQVendorActionContext extends Pick<
   canManageVendors: boolean;
   canManageQuotes: boolean;
   canAwardQuotes: boolean;
+  canUnawardQuotes: boolean;
   canCreatePurchaseOrder: boolean;
   canEmailVendors: boolean;
 }

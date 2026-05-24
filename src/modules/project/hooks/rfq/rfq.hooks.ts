@@ -196,8 +196,13 @@ export const useRemoveQuoteMutation = () => {
 export const useChangeRFQStatusMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, statusId }: { id: string; statusId: string }) =>
-      rfqApi.changeStatus(id, statusId),
+    mutationFn: ({
+      id,
+      statusName,
+    }: {
+      id: string;
+      statusName: 'DRAFT' | 'PUBLISHED';
+    }) => rfqApi.changeStatus(id, statusName),
     onSuccess: async (_, { id }) => {
       await invalidateRFQQueries(qc, id);
       toast.success('Status updated.');

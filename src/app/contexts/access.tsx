@@ -24,7 +24,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     () => ({
       access: accessQuery.data,
       isLoading: accessQuery.isLoading,
-      isAdmin: accessQuery.data?.role === 'admin',
+      isDev: accessQuery.data?.isDev ?? accessQuery.data?.role === 'dev',
+      isAdmin: accessQuery.data?.isAdmin ?? ['dev', 'admin'].includes(accessQuery.data?.role ?? ''),
       can,
     }),
     [accessQuery.data, accessQuery.isLoading, can]

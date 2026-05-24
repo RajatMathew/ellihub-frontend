@@ -37,7 +37,6 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
-import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
@@ -60,6 +59,7 @@ import {
   useRemoveInvoiceAttachmentMutation,
   useResolveDisputeInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import {
@@ -136,13 +136,13 @@ function relatedSCOBadgeVariant(status: string | null | undefined) {
 }
 
 export function InvoiceDetailPage() {
-  const { can, isAdmin } = useAccess();
   const { projectId = '', invoiceId = '' } = useParams<{
     projectId: string;
     invoiceId: string;
   }>();
 
   const { data: invoice, isLoading } = useInvoiceDetailQuery(invoiceId);
+  const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && invoiceId ? `/app/project/${projectId}/invoices/${invoiceId}` : undefined,
     invoice?.invoiceNumber ?? undefined
@@ -241,7 +241,12 @@ export function InvoiceDetailPage() {
   const relatedSCOCount = relatedSCOs.length || invoice.relatedSCOIds.length;
   const isPaid = invoice.isPaid === true;
   const isDisputed = invoice.isDisputed === true;
-  const canEditInvoice = can('invoice', 'update') && !isPaid;
+  const projectActions = project?.capabilities?.actions;
+  const canMarkInvoicePaid = projectActions?.invoice?.['mark-paid'] === true;
+  const canMarkInvoiceUnpaid = projectActions?.invoice?.['mark-unpaid'] === true;
+  const canDisputeInvoice = projectActions?.invoice?.dispute === true;
+  const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
+  const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
   const totalAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
   const subtotal = Math.max(0, totalAmount - taxAmount);
@@ -287,7 +292,7 @@ export function InvoiceDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {isAdmin && !isPaid && (
+            {canMarkInvoicePaid && !isPaid && (
               <Button
                 size="sm"
                 disabled={isActionPending}
@@ -305,7 +310,7 @@ export function InvoiceDetailPage() {
                 Mark Paid
               </Button>
             )}
-            {isAdmin && isPaid && (
+            {canMarkInvoiceUnpaid && isPaid && (
               <Button
                 variant="outline"
                 size="sm"
@@ -316,7 +321,7 @@ export function InvoiceDetailPage() {
                 Mark Unpaid
               </Button>
             )}
-            {isAdmin && !isDisputed && (
+            {canDisputeInvoice && !isDisputed && (
               <Button
                 variant="outline"
                 size="sm"
@@ -330,7 +335,7 @@ export function InvoiceDetailPage() {
                 Dispute
               </Button>
             )}
-            {isAdmin && isDisputed && (
+            {canResolveInvoiceDispute && isDisputed && (
               <Button
                 variant="outline"
                 size="sm"

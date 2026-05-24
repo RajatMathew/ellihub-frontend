@@ -79,6 +79,7 @@ import {
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
   useVoidAwardMutation,
 } from '@/modules/project/hooks/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
@@ -171,6 +172,7 @@ export default function RFQDetailPage() {
   const navigate = useNavigate();
 
   const { data: rfq, isLoading, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
+  const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
     rfq?.rfqNumber ?? undefined
@@ -358,10 +360,26 @@ export default function RFQDetailPage() {
   const isEvaluation = statusName === 'EVALUATION';
   const isAwarded = statusName === 'AWARDED';
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
-  const canEditDraftRfq = can('rfq', 'update') && isDraft;
-  const canManagePublishedRfq = can('rfq', 'update') && isPublished;
-  const canWorkflowRfq = can('rfq', 'workflow');
-  const canCreatePurchaseOrder = can('purchaseOrder', 'create') && isAwarded;
+  const draftPublishedStatuses =
+    rfqStatuses?.filter(
+      (status): status is RFQStatus & { id: string; name: 'DRAFT' | 'PUBLISHED' } =>
+        typeof status.id === 'string' &&
+        status.id.length > 0 &&
+        (status.name === 'DRAFT' || status.name === 'PUBLISHED')
+    ) ?? [];
+  const projectActions = project?.capabilities?.actions;
+  const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
+  const canManagePublishedRfq = projectActions?.rfq?.update === true && isPublished;
+  const canStateRfq = projectActions?.rfq?.state === true;
+  const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
+  const canPublishRfq = projectActions?.rfq?.update === true && canStateRfq && isDraft;
+  const canAwardRfq = projectActions?.rfq?.award === true;
+  const canUnawardRfq = projectActions?.rfq?.unaward === true;
+  const canCancelRfq = projectActions?.rfq?.void === true && (isPublished || isEvaluation);
+  const canVoidAwardRfq = projectActions?.rfq?.void === true && isAwarded;
+  const canDeleteDraftRfq = projectActions?.rfq?.delete === true && isDraft;
+  const canUseRfqActions = !isTerminal && (canCancelRfq || canVoidAwardRfq || canDeleteDraftRfq);
+  const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
 
   const isActionPending =
@@ -529,12 +547,21 @@ export default function RFQDetailPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
-              {rfq.status && rfqStatuses && rfqStatuses.length > 0 ? (
+              {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
                 <Select
+                  disabled={updateStatusMutation.isPending}
                   value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
                   onValueChange={(statusId) => {
                     if (statusId !== (statusObj?.id || rfq.status)) {
-                      updateStatusMutation.mutate({ id: rfqId, statusId });
+                      const selectedStatus = draftPublishedStatuses.find(
+                        (status) => status.id === statusId
+                      );
+                      if (selectedStatus) {
+                        updateStatusMutation.mutate({
+                          id: rfqId,
+                          statusName: selectedStatus.name,
+                        });
+                      }
                     }
                   }}
                 >
@@ -544,16 +571,11 @@ export default function RFQDetailPage() {
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    {rfqStatuses
-                      .filter(
-                        (status): status is RFQStatus & { id: string } =>
-                          typeof status.id === 'string' && status.id.length > 0
-                      )
-                      .map((status) => (
-                        <SelectItem key={status.id} value={status.id}>
-                          {status.label ?? status.name ?? status.id}
-                        </SelectItem>
-                      ))}
+                    {draftPublishedStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.label ?? status.name ?? status.id}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : rfq.status ? (
@@ -575,20 +597,20 @@ export default function RFQDetailPage() {
                 </Link>
               </Button>
             )}
-            {canWorkflowRfq && isDraft && (
+            {canPublishRfq && (
               <Button size="sm" onClick={() => setPublishOpen(true)}>
                 <Send className="size-4" />
                 Publish
               </Button>
             )}
-            {canWorkflowRfq && (isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
+            {canAwardRfq && (isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
               <Button size="sm" onClick={() => setAwardOpen(true)}>
                 <Trophy className="size-4" />
                 Award
               </Button>
             )}
 
-            {canWorkflowRfq && !isTerminal && (
+            {canUseRfqActions && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -597,7 +619,7 @@ export default function RFQDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {(isPublished || isEvaluation) && (
+                  {canCancelRfq && (
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
@@ -608,7 +630,7 @@ export default function RFQDetailPage() {
                       Cancel RFQ
                     </DropdownMenuItem>
                   )}
-                  {isAwarded && (
+                  {canVoidAwardRfq && (
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
@@ -619,7 +641,7 @@ export default function RFQDetailPage() {
                       Void Award
                     </DropdownMenuItem>
                   )}
-                  {isDraft && (
+                  {canDeleteDraftRfq && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
@@ -705,7 +727,8 @@ export default function RFQDetailPage() {
             isAwarded={isAwarded}
             canManageVendors={canManagePublishedRfq}
             canManageQuotes={canManagePublishedRfq}
-            canAwardQuotes={canWorkflowRfq}
+            canAwardQuotes={canAwardRfq}
+            canUnawardQuotes={canUnawardRfq}
             canCreatePurchaseOrder={canCreatePurchaseOrder}
             canEmailVendors={canEmailVendors}
             onInviteVendor={() => {
@@ -1275,7 +1298,7 @@ export default function RFQDetailPage() {
                             <Badge variant="success" appearance="light">
                               Awarded Bid
                             </Badge>
-                          ) : canWorkflowRfq && selectedComparisonQuote ? (
+                          ) : canAwardRfq && selectedComparisonQuote ? (
                             <Button
                               size="sm"
                               onClick={() => {

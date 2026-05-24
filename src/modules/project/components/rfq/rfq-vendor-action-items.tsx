@@ -27,6 +27,7 @@ export function RFQVendorActionItems({
   canManageVendors,
   canManageQuotes,
   canAwardQuotes,
+  canUnawardQuotes,
   canCreatePurchaseOrder,
   canEmailVendors,
   onOpenQuote,
@@ -64,7 +65,7 @@ export function RFQVendorActionItems({
   const canRemoveQuote = canManageQuotes && hasQuote && !!quote && !isVendorAwarded;
   const canRemoveVendor = canManageVendors && !isVendorAwarded;
   const canDeclineInvite = canManageQuotes && !declined && !isVendorAwarded;
-  const canUnaward = canAwardQuotes && isVendorAwarded;
+  const canUnaward = canUnawardQuotes && isVendorAwarded;
   const hasDangerActions = canRemoveQuote || canUnaward || canRemoveVendor || canDeclineInvite;
 
   return (

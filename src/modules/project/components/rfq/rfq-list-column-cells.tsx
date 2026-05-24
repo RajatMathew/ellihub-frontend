@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useAccess } from '@/app/contexts/access-context';
 import { formatDate } from '@/app/lib/helpers';
 import {
   getRFQStatusLabel,
@@ -15,9 +14,10 @@ import {
   getRFQTrackLabel,
 } from '@/modules/project/components/rfq/rfq-list-utils';
 import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { RFQListItem } from '@/modules/project/schemas/rfq';
 import { FilePlus2, MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 export function RFQNumberCell({ rfq }: { rfq: RFQListItem }) {
   return (
@@ -97,10 +97,13 @@ interface RFQActionsCellProps {
 }
 
 export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProps) {
-  const { can, isAdmin } = useAccess();
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const projectActions = project?.capabilities?.actions;
   const statusName = getRFQStatusName(rfq);
-  const canEdit = can('rfq', 'update') && statusName === 'DRAFT';
-  const canCreatePO = can('purchaseOrder', 'create') && statusName === 'AWARDED';
+  const canEdit = projectActions?.rfq?.update === true && statusName === 'DRAFT';
+  const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
+  const canDelete = projectActions?.rfq?.delete === true && statusName === 'DRAFT';
 
   return (
     <DropdownMenu>
@@ -134,7 +137,7 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
             </DropdownMenuItem>
           </>
         )}
-        {isAdmin && statusName === 'DRAFT' && (
+        {canDelete && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => onDelete(rfq)}>

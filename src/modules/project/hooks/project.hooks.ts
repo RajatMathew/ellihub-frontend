@@ -36,6 +36,20 @@ export const useFieldwireProjectsQuery = () =>
     refetchOnWindowFocus: false,
   });
 
+export const useProjectCostCodesQuery = (id: string) =>
+  useQuery({
+    queryKey: projectKeys.costCodes(id),
+    queryFn: () => projectApi.listProjectCostCodes(id),
+    enabled: !!id,
+  });
+
+export const useProjectEmployeeOptionsQuery = (id: string) =>
+  useQuery({
+    queryKey: projectKeys.employeeOptions(id),
+    queryFn: () => projectApi.listProjectEmployeeOptions(id),
+    enabled: !!id,
+  });
+
 export const useInvoiceAgingQuery = (
   id: string,
   params?: { asOfDate?: string; vendorId?: string }

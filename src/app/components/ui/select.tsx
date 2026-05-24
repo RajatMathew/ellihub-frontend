@@ -121,6 +121,8 @@ function SelectContent({
   position = 'popper',
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -132,10 +134,18 @@ function SelectContent({
           className
         )}
         position={position}
+        onWheelCapture={(event) => {
+          const viewport = viewportRef.current;
+          if (!viewport) return;
+          viewport.scrollTop += event.deltaY;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         {...props}
       >
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
+          ref={viewportRef}
           className={cn(
             'p-1.5',
             position === 'popper' &&

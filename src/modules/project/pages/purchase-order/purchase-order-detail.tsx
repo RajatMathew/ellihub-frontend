@@ -29,12 +29,10 @@ import { Field, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
-import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
@@ -57,6 +55,7 @@ import {
   TRADE_CATEGORY_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
+import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddPOAttachmentMutation,
   useCancelPOMutation,
@@ -110,10 +109,10 @@ function hasHtmlText(value: string): boolean {
 /* ---- Page ---- */
 
 export function PODetailPage() {
-  const { can, isAdmin } = useAccess();
   const { projectId = '', poId = '' } = useParams<{ projectId: string; poId: string }>();
 
   const { data: po, isLoading } = usePODetailQuery(poId);
+  const { data: project } = useProjectDetailQuery(projectId);
   const { data: linkedInvoices = [], isLoading: isLinkedInvoicesLoading } =
     useInvoicesByPurchaseOrderQuery(poId);
   const { data: linkedSCOs = [], isLoading: isLinkedSCOsLoading } =
@@ -127,7 +126,7 @@ export function PODetailPage() {
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
     po?.poNumber ?? undefined
   );
-  const { data: costCodesData } = useCostCodesQuery();
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
   const { data: pdfDefaultTerms } = usePOPdfDefaultTermsQuery();
 
@@ -141,7 +140,7 @@ export function PODetailPage() {
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
+    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
   );
   const attachments = po?.attachments ?? [];
 
@@ -253,10 +252,13 @@ export function PODetailPage() {
   const isCancelled = statusName === 'CANCELLED';
   const isDelivered = statusName === 'DELIVERED';
 
-  const canEdit = can('purchaseOrder', 'update') && isDraft;
-  const canIssue = isAdmin && isDraft;
-  const canCancel = isAdmin && !isCancelled && !isDelivered;
-  const canRecordDelivery = isAdmin && isIssued && !isDelivered;
+  const projectActions = project?.capabilities?.actions;
+  const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
+  const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
+  const canCancel =
+    projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
+  const canRecordDelivery =
+    projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
 
   const isOverdue =
     !!po?.expectedDate &&

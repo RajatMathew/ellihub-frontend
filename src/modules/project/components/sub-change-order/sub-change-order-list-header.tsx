@@ -1,6 +1,7 @@
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
-import { useAccess } from '@/app/contexts/access-context';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { Plus } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 interface SubChangeOrderListHeaderProps {
   hasActiveFilters: boolean;
@@ -11,8 +12,9 @@ export function SubChangeOrderListHeader({
   hasActiveFilters,
   totalCount,
 }: SubChangeOrderListHeaderProps) {
-  const { can } = useAccess();
-  const canCreate = can('subChangeOrder', 'create');
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canCreate = project?.capabilities?.actions?.subChangeOrder?.create === true;
 
   return (
     <ResourcePageHeader

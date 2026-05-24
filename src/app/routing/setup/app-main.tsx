@@ -3,8 +3,10 @@ import { memo, Suspense, type ReactNode } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AdminRoute } from '@app/components/access/admin-route';
+import { Forbidden } from '@app/components/error/forbidden';
 import { NotFound } from '@app/components/error/not-found';
 import { ModuleLoader } from '@app/components/loader/elegant';
+import { useAccess } from '@app/contexts/access-context';
 import { DebugViteConfig } from '@app/lib/debug';
 import { routeTree } from '@app/routing/config/routes';
 import type { RouteDef } from '@app/routing/config/types';
@@ -12,8 +14,17 @@ import type { RouteDef } from '@app/routing/config/types';
 const isDev = import.meta.env.DEV;
 
 function AccessRoute({ access, children }: { access?: RouteDef['access']; children: ReactNode }) {
+  const accessContext = useAccess();
   if (!access) return <>{children}</>;
   if (access === 'admin') return <AdminRoute>{children}</AdminRoute>;
+  if (access === 'dev') {
+    if (accessContext.isLoading) return <ModuleLoader />;
+    return accessContext.isDev ? <>{children}</> : <Forbidden />;
+  }
+  if (typeof access === 'object') {
+    if (accessContext.isLoading) return <ModuleLoader />;
+    return accessContext.can(access.resource, access.action) ? <>{children}</> : <Forbidden />;
+  }
 
   return <>{children}</>;
 }

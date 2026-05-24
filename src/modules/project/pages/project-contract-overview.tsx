@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { useAccess } from '@/app/contexts/access-context';
-import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -30,6 +29,7 @@ import {
   usePrimeChangeOrderFinancialSummaryQuery,
   usePrimeChangeOrdersQuery,
   useProjectDetailQuery,
+  useProjectEmployeeOptionsQuery,
   useProjectFolderQuery,
   useProjectScheduleQuery,
 } from '@/modules/project/hooks';
@@ -72,7 +72,7 @@ export default function ProjectContractOverview() {
     projectId || undefined,
     'prime contract'
   );
-  const employeesQuery = useEmployeesQuery({ size: 1000 });
+  const employeesQuery = useProjectEmployeeOptionsQuery(projectId);
   const contract = project?.primeContract ?? undefined;
 
   /* ---- Mutations ---- */
@@ -106,7 +106,7 @@ export default function ProjectContractOverview() {
   const teamActions = useTeamMemberActions({ projectId });
 
   const employeeOptions = useEmployeeOptions({
-    employees: employeesQuery.data?.data,
+    employees: employeesQuery.data,
     project,
   });
 
@@ -128,6 +128,7 @@ export default function ProjectContractOverview() {
   /* ---- Derived Data ---- */
   const recentPCOs = pcoList?.data ?? [];
   const docs = attachments ?? [];
+  const canManageProject = project?.capabilities?.canManage ?? false;
 
   /* ---- Loading & Error States ---- */
   if (isLoading) return <ProjectOverviewLoading />;
@@ -153,7 +154,7 @@ export default function ProjectContractOverview() {
             <Share2 className="size-4" />
             Share
           </Button> */}
-          {isAdmin && (
+          {canManageProject && (
             <>
               <Button variant="outline" size="sm" asChild>
                 <Link to={`/app/project/${projectId}/edit`}>
@@ -174,10 +175,17 @@ export default function ProjectContractOverview() {
                       Edit Project
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-                    Delete Project
-                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteDialogOpen(true)}
+                      >
+                        Delete Project
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -210,9 +218,9 @@ export default function ProjectContractOverview() {
             documents={docs}
             isLoading={isLoadingAttachments}
             parentFolderId={primeContractFolderId}
-            onAdd={isAdmin ? handleAddContractDocument : undefined}
-            onSetPrimary={isAdmin ? handleSetPrimaryContractDocument : undefined}
-            onRemove={isAdmin ? handleRemoveContractDocument : undefined}
+            onAdd={canManageProject ? handleAddContractDocument : undefined}
+            onSetPrimary={canManageProject ? handleSetPrimaryContractDocument : undefined}
+            onRemove={canManageProject ? handleRemoveContractDocument : undefined}
             isAdding={addAttachmentMutation.isPending}
             isRemoving={removeAttachmentMutation.isPending}
             isSettingPrimary={setPrimaryAttachmentMutation.isPending}
@@ -227,9 +235,9 @@ export default function ProjectContractOverview() {
           onOpenChange={setTeamDialogOpen}
           project={project}
           employeeOptions={employeeOptions}
-          onAddMember={isAdmin ? teamActions.addMember : undefined}
-          onRemoveMember={isAdmin ? teamActions.removeMember : undefined}
-          onPromoteToPM={isAdmin ? teamActions.promoteToPM : undefined}
+          onAddMember={canManageProject ? teamActions.addMember : undefined}
+          onRemoveMember={canManageProject ? teamActions.removeMember : undefined}
+          onPromoteToPM={canManageProject ? teamActions.promoteToPM : undefined}
           isRemovingMember={teamActions.isRemovingMember}
           isPromoting={teamActions.isPromoting}
         />
@@ -241,6 +249,7 @@ export default function ProjectContractOverview() {
           entries={scheduleData ?? []}
           isLoading={isLoadingSchedule}
           parentFolderId={primeContractFolderId}
+          canManage={canManageProject}
         />
       </div>
 

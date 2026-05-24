@@ -42,11 +42,25 @@ export function MemberActionsMenu({
           Edit
         </DropdownMenuItem>
         <DropdownMenuItem
+          disabled={isSelf || role === 'dev'}
+          onClick={() => onRoleChange(member, 'dev')}
+        >
+          <ShieldCheck className="size-4" />
+          Make Dev
+        </DropdownMenuItem>
+        <DropdownMenuItem
           disabled={isSelf || role === 'admin'}
           onClick={() => onRoleChange(member, 'admin')}
         >
           <ShieldCheck className="size-4" />
           Make Admin
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={isSelf || role === 'accountant'}
+          onClick={() => onRoleChange(member, 'accountant')}
+        >
+          <UserRound className="size-4" />
+          Make Accountant
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={isSelf || role === 'user'}

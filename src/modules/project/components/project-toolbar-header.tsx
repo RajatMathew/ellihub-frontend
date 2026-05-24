@@ -15,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useAccess } from '@/app/contexts/access-context';
 import { cn } from '@/app/lib/utils';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
@@ -93,9 +92,9 @@ export function ProjectToolbarHeader({
   children,
   onTeamClick,
 }: ProjectToolbarHeaderProps) {
-  const { isAdmin } = useAccess();
   const { data: stages } = useProjectStagesQuery();
   const updateMutation = useUpdateProjectMutation();
+  const canManageProject = project?.capabilities?.canManage ?? false;
 
   const handleStageChange = (stageId: string) => {
     if (!project || stageId === project.stageId) return;
@@ -186,7 +185,7 @@ export function ProjectToolbarHeader({
                   </Badge>
                 );
               })()}
-            {project?.stage && stages && stages.length > 0 && isAdmin ? (
+            {project?.stage && stages && stages.length > 0 && canManageProject ? (
               (() => {
                 const name = project.stage.name || project.stage.label || '';
                 const dotClassName = getStageDotClassName(name);

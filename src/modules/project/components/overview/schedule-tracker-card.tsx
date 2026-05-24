@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { useAccess } from '@/app/contexts/access-context';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
@@ -33,6 +32,7 @@ interface ScheduleTrackerCardProps {
   entries: ProjectScheduleEntry[];
   isLoading: boolean;
   parentFolderId?: string;
+  canManage?: boolean;
 }
 
 export function ScheduleTrackerCard({
@@ -41,8 +41,8 @@ export function ScheduleTrackerCard({
   entries,
   isLoading,
   parentFolderId,
+  canManage = false,
 }: ScheduleTrackerCardProps) {
-  const { isAdmin } = useAccess();
   const [isAdding, setIsAdding] = useState(false);
   const [newEntry, setNewEntry] = useState(createEmptyScheduleTrackerDraft);
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
@@ -132,7 +132,7 @@ export function ScheduleTrackerCard({
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Schedule Tracker
         </CardTitle>
-        {isAdmin && (
+        {canManage && (
           <CardToolbar>
             <Button
               size="sm"
@@ -159,7 +159,7 @@ export function ScheduleTrackerCard({
         isCreating={createMutation.isPending}
         isUpdating={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
-        isReadOnly={!isAdmin}
+        isReadOnly={!canManage}
         onAttach={setUploadTarget}
         onCancelAdd={resetNewEntry}
         onCancelEdit={() => setEditingEntry(null)}
@@ -177,7 +177,7 @@ export function ScheduleTrackerCard({
         onSaveEdit={() => void handleSaveEdit()}
       />
 
-      {isAdmin && parentFolderId && (
+      {canManage && parentFolderId && (
         <UploadFileDialog
           open={uploadTarget !== null}
           onOpenChange={(open) => {

@@ -77,6 +77,66 @@ export const projectListItemSchema = z
 
 export type ProjectListItem = z.infer<typeof projectListItemSchema>;
 
+const projectActionCapabilitiesSchema = z
+  .object({
+    rfq: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        award: z.boolean().optional(),
+        unaward: z.boolean().optional(),
+        void: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    purchaseOrder: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        issue: z.boolean().optional(),
+        deliver: z.boolean().optional(),
+        cancel: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    subChangeOrder: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        approve: z.boolean().optional(),
+        reject: z.boolean().optional(),
+        void: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    invoice: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        'mark-paid': z.boolean().optional(),
+        'mark-unpaid': z.boolean().optional(),
+        dispute: z.boolean().optional(),
+        'resolve-dispute': z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+  })
+  .passthrough()
+  .optional()
+  .default({});
+
 export const projectDetailSchema = z
   .object({
     id: z.string(),
@@ -135,6 +195,17 @@ export const projectDetailSchema = z
     primeContract: primeContractSchema.nullable().optional(),
     projectScheduleEntries: z.array(projectScheduleEntrySchema).optional().default([]),
     teamMembers: z.array(projectTeamAssignmentSchema).optional().default([]),
+    currentUserProjectRole: z.string().nullable().optional(),
+    capabilities: z
+      .object({
+        canManage: z.boolean().optional().default(false),
+        canEdit: z.boolean().optional().default(false),
+        canCreateProjectDocuments: z.boolean().optional().default(false),
+        canManageTeam: z.boolean().optional().default(false),
+        actions: projectActionCapabilitiesSchema,
+      })
+      .optional()
+      .default({}),
   })
   .passthrough();
 

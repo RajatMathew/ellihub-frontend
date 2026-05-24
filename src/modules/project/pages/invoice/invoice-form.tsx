@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fakeInvoiceNumber } from '@/lib/fake-data';
 
+import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -27,6 +28,7 @@ import {
   useInvoiceDetailQuery,
   useUpdateInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
@@ -59,6 +61,7 @@ export function InvoiceFormPage() {
   const { data: invoiceDetail, isLoading: isLoadingDetail } = useInvoiceDetailQuery(
     invoiceId ?? ''
   );
+  const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
 
@@ -303,9 +306,14 @@ export function InvoiceFormPage() {
     }
   }
 
-  if (isEdit && isLoadingDetail) {
+  if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={INVOICE_FORM_SECTIONS.length} />;
   }
+
+  const canSubmitInvoice = isEdit
+    ? project?.capabilities?.actions?.invoice?.update === true
+    : project?.capabilities?.actions?.invoice?.create === true;
+  if (!canSubmitInvoice) return <Forbidden />;
 
   return (
     <form

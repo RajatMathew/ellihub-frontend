@@ -1,12 +1,16 @@
 import type { MemberRole, MemberUser } from '@/modules/settings/schemas/members.schema';
 
 export function normalizeMemberRole(role: string | null | undefined): MemberRole {
-  return role?.split(',').map((item) => item.trim()).includes('admin') ? 'admin' : 'user';
+  const roles = role?.split(',').map((item) => item.trim()) ?? [];
+  if (roles.includes('dev')) return 'dev';
+  if (roles.includes('admin') || roles.includes('owner')) return 'admin';
+  if (roles.includes('accountant')) return 'accountant';
+  return 'user';
 }
 
 export function hasAdminRole(role: string | string[] | null | undefined) {
-  if (Array.isArray(role)) return role.includes('admin');
-  return normalizeMemberRole(role) === 'admin';
+  if (Array.isArray(role)) return role.includes('dev') || role.includes('admin');
+  return ['dev', 'admin'].includes(normalizeMemberRole(role));
 }
 
 export function formatMemberDate(value: Date | string | null | undefined) {

@@ -6,11 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useAccess } from '@/app/contexts/access-context';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import {
   formatOptionalSubChangeOrderCurrency,
@@ -126,8 +126,10 @@ export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
 }
 
 export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
-  const { can } = useAccess();
-  const canEdit = can('subChangeOrder', 'update') && sco.status === 'DRAFT';
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canEdit =
+    project?.capabilities?.actions?.subChangeOrder?.update === true && sco.status === 'DRAFT';
 
   return (
     <DropdownMenu>

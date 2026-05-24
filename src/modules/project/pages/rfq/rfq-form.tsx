@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
@@ -29,6 +30,7 @@ import {
   ProjectFormToolbar,
 } from '@/modules/project/components/shared';
 import { RFQ_FORM_SECTIONS } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddRFQAttachmentMutation,
@@ -119,6 +121,7 @@ export default function RFQFormPage() {
   const isEdit = !!rfqId;
 
   const { data: rfqDetail, isLoading: isLoadingDetail } = useRFQDetailQuery(rfqId ?? '');
+  const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   const { data: rfqFolderId } = useProjectFolderQuery(projectId || undefined, 'rfq');
   const { data: rfqTypes } = useLookupsQuery('TRADE_CATEGORY');
   const { data: units } = useLookupsQuery('UNIT');
@@ -261,9 +264,14 @@ export default function RFQFormPage() {
     }
   }
 
-  if (isEdit && isLoadingDetail) {
+  if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={RFQ_FORM_SECTIONS.length} />;
   }
+
+  const canSubmitRfq = isEdit
+    ? project?.capabilities?.actions?.rfq?.update === true
+    : project?.capabilities?.actions?.rfq?.create === true;
+  if (!canSubmitRfq) return <Forbidden />;
 
   return (
     <form
