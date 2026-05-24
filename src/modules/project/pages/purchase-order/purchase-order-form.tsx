@@ -24,6 +24,7 @@ import poMockData from '@/modules/project/constants/purchase-order/purchase-orde
 import {
   useProjectCostCodesQuery,
   useProjectDetailQuery,
+  useRFQDetailQuery,
   useRFQListQuery,
 } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
@@ -148,17 +149,53 @@ export function POFormPage() {
       label: rfq.rfqNumber ?? rfq.title,
     }));
 
-  const { control, handleSubmit, formState, reset, watch } = useForm<CreatePOInput>({
+  const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
     defaultValues: getPOFormValues(projectId, isEditMode ? existingPO : undefined),
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
+  const selectedRfqId = watch('rfqId');
+  const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
+
+  const selectedRfqAwardedQuote = selectedRfq?.quotes.find((quote) => quote.isAwarded);
+  const selectedRfqAwardedVendorId =
+    selectedRfq?.awardedVendorId ??
+    selectedRfq?.awardedVendor?.id ??
+    selectedRfqAwardedQuote?.vendorId ??
+    selectedRfqAwardedQuote?.vendor?.id;
+  const selectedRfqAwardedVendorName =
+    selectedRfq?.awardedVendor?.name ?? selectedRfqAwardedQuote?.vendor?.name;
+  const isAwardedRfqSelected =
+    !!selectedRfqId &&
+    (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
+  const isVendorLocked = isAwardedRfqSelected;
+  const effectiveVendorOptions =
+    selectedRfqAwardedVendorName &&
+    selectedRfqAwardedVendorId &&
+    !vendorOptions.some((option) => option.value === selectedRfqAwardedVendorId)
+      ? [
+          ...vendorOptions,
+          {
+            value: selectedRfqAwardedVendorId,
+            label: selectedRfqAwardedVendorName,
+          },
+        ]
+      : vendorOptions;
 
   useEffect(() => {
     if (isEditMode && existingPO) {
       reset(getPOFormValues(projectId, existingPO));
     }
   }, [existingPO, isEditMode, projectId, reset]);
+
+  useEffect(() => {
+    if (!isVendorLocked || !selectedRfqAwardedVendorId) return;
+
+    setValue('vendorId', selectedRfqAwardedVendorId, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }, [isVendorLocked, selectedRfqAwardedVendorId, setValue]);
 
   const watchedLineItems = watch('lineItems');
   const subtotal = (watchedLineItems ?? []).reduce(
@@ -320,9 +357,10 @@ export function POFormPage() {
         <FormContent>
           <PurchaseOrderFormDetailsCard
             control={control}
-            vendorOptions={vendorOptions}
+            vendorOptions={effectiveVendorOptions}
             tradeCategoryOptions={tradeCategoryOptions}
             rfqOptions={rfqOptions}
+            isVendorLocked={isVendorLocked}
           />
           <PurchaseOrderFormFinancialCard control={control} />
           <PurchaseOrderFormLineItemsCard
