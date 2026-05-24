@@ -1,4 +1,5 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { scoApi } from '@/modules/project/api/sub-change-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
@@ -24,6 +25,7 @@ function invalidateSCOQueries(queryClient: QueryClient, scoId?: string, purchase
     scoKeys.byPurchaseOrder(purchaseOrderId),
     poKeys.all,
     poKeys.detail(purchaseOrderId),
+    activityLogKeys.all,
   ]);
 }
 

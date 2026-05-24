@@ -260,6 +260,7 @@ export function PODetailPage() {
   const canRecordDelivery =
     projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
   const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
+  const canUseActionsMenu = canEdit || canCancel;
 
   const isOverdue =
     !!po?.expectedDate &&
@@ -386,34 +387,41 @@ export function PODetailPage() {
                 </Link>
               </Button>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon" aria-label="Purchase order actions">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canCancel && (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setCancelReason('');
-                      setCancelOpen(true);
-                    }}
+            {canUseActionsMenu && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Purchase order actions"
                   >
-                    <XCircle className="size-4" />
-                    Cancel PO
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {canEdit && (
+                    <DropdownMenuItem asChild>
+                      <Link to="edit">
+                        <Pencil className="size-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {canCancel && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setCancelReason('');
+                        setCancelOpen(true);
+                      }}
+                    >
+                      <XCircle className="size-4" />
+                      Cancel PO
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {!sidebarOpen && (
               <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
                 <PanelRightOpen className="size-4" />
