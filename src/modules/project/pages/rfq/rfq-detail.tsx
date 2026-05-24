@@ -77,7 +77,6 @@ import {
   useUnawardRFQMutation,
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
-  useVoidAwardMutation,
 } from '@/modules/project/hooks/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
@@ -181,7 +180,6 @@ export default function RFQDetailPage() {
   const publishMutation = usePublishRFQMutation();
   const cancelMutation = useCancelRFQMutation();
   const awardMutation = useAwardRFQMutation();
-  const voidMutation = useVoidAwardMutation();
   const unawardMutation = useUnawardRFQMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
   const sendVendorEmailMutation = useSendFeatureMailMutation();
@@ -227,10 +225,6 @@ export default function RFQDetailPage() {
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-
-  // Void award dialog
-  const [voidOpen, setVoidOpen] = useState(false);
-  const [voidReason, setVoidReason] = useState('');
 
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
@@ -373,12 +367,11 @@ export default function RFQDetailPage() {
   const canStateRfq = projectActions?.rfq?.state === true;
   const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
   const canPublishRfq = projectActions?.rfq?.update === true && canStateRfq && isDraft;
-  const canAwardRfq = projectActions?.rfq?.award === true;
+  const canAwardRfq = projectActions?.rfq?.award === true && !isAwarded;
   const canUnawardRfq = projectActions?.rfq?.unaward === true;
   const canCancelRfq = projectActions?.rfq?.void === true && (isPublished || isEvaluation);
-  const canVoidAwardRfq = projectActions?.rfq?.void === true && isAwarded;
   const canDeleteDraftRfq = projectActions?.rfq?.delete === true && isDraft;
-  const canUseRfqActions = !isTerminal && (canCancelRfq || canVoidAwardRfq || canDeleteDraftRfq);
+  const canUseRfqActions = !isTerminal && (canCancelRfq || canDeleteDraftRfq);
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
 
@@ -386,7 +379,6 @@ export default function RFQDetailPage() {
     publishMutation.isPending ||
     cancelMutation.isPending ||
     awardMutation.isPending ||
-    voidMutation.isPending ||
     addVendorMutation.isPending ||
     submitQuoteMutation.isPending ||
     unawardMutation.isPending ||
@@ -603,7 +595,7 @@ export default function RFQDetailPage() {
                 Publish
               </Button>
             )}
-            {canAwardRfq && (isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
+            {canAwardRfq && (isPublished || isEvaluation) && quotes.length > 0 && (
               <Button size="sm" onClick={() => setAwardOpen(true)}>
                 <Trophy className="size-4" />
                 Award
@@ -628,17 +620,6 @@ export default function RFQDetailPage() {
                       }}
                     >
                       Cancel RFQ
-                    </DropdownMenuItem>
-                  )}
-                  {canVoidAwardRfq && (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => {
-                        setVoidReason('');
-                        setVoidOpen(true);
-                      }}
-                    >
-                      Void Award
                     </DropdownMenuItem>
                   )}
                   {canDeleteDraftRfq && (
@@ -1762,63 +1743,6 @@ export default function RFQDetailPage() {
               }}
             >
               {cancelMutation.isPending ? 'Cancelling...' : 'Cancel RFQ'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Void award dialog ---- */}
-      <Dialog
-        open={voidOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setVoidOpen(false);
-            setVoidReason('');
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Void Award</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Provide a reason for voiding the award on{' '}
-              <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
-            </p>
-            <Textarea
-              placeholder="Void reason..."
-              value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setVoidOpen(false);
-                setVoidReason('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={voidReason.length < 1 || isActionPending}
-              onClick={() => {
-                voidMutation.mutate(
-                  { id: rfqId, data: { voidReason } },
-                  {
-                    onSuccess: () => {
-                      setVoidOpen(false);
-                      setVoidReason('');
-                    },
-                  }
-                );
-              }}
-            >
-              {voidMutation.isPending ? 'Voiding...' : 'Void Award'}
             </Button>
           </DialogFooter>
         </DialogContent>
