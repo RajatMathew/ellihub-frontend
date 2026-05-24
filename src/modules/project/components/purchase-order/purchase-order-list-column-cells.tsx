@@ -6,14 +6,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useAccess } from '@/app/contexts/access-context';
 import {
   PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import {
   formatOptionalPurchaseOrderCurrency,
@@ -154,8 +154,14 @@ export function PurchaseOrderActionsCell({
   po: POListItem;
   onCancel: (po: POListItem) => void;
 }) {
-  const { can, isAdmin } = useAccess();
-  const canEdit = can('purchaseOrder', 'update') && po.status === 'DRAFT';
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const projectActions = project?.capabilities?.actions;
+  const canEdit = projectActions?.purchaseOrder?.update === true && po.status === 'DRAFT';
+  const canCancel =
+    projectActions?.purchaseOrder?.cancel === true &&
+    po.status !== 'CANCELLED' &&
+    po.status !== 'DELIVERED';
 
   return (
     <DropdownMenu>
@@ -180,7 +186,7 @@ export function PurchaseOrderActionsCell({
             <Link to={`${po.id}/edit`}>Edit</Link>
           </DropdownMenuItem>
         )}
-        {isAdmin && po.status !== 'CANCELLED' && po.status !== 'DELIVERED' && (
+        {canCancel && (
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={() => onCancel(po)}

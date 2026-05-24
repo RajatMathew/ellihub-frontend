@@ -80,6 +80,7 @@ export type BidComparison = {
 };
 
 const BASE = '/rfq';
+type RFQMutableState = 'DRAFT' | 'PUBLISHED';
 
 type RFQApiObject = Record<string, unknown>;
 type RFQApiType = RFQApiObject & { id?: string; label?: string };
@@ -173,6 +174,7 @@ function normalizeRFQ(item: unknown) {
     track,
     typeId,
     deliverables,
+    voidReason: record.voidReason ?? record.cancellationReason,
     attachments: record.attachments ?? record.rfqattachments,
     invites: normalizedInvites,
     quotes: normalizedQuotes,
@@ -383,8 +385,9 @@ export const rfqApi = {
 
   /* ---- Status ---- */
 
-  async changeStatus(id: string, statusId: string): Promise<RFQDetail> {
-    const res = await api.put(`${BASE}/${id}/status`, { statusId });
+  async changeStatus(id: string, statusName: RFQMutableState): Promise<RFQDetail> {
+    const endpoint = statusName === 'DRAFT' ? 'set-draft' : 'set-published';
+    const res = await api.patch(`${BASE}/${id}/${endpoint}`);
     const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {

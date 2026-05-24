@@ -1,6 +1,7 @@
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
-import { useAccess } from '@/app/contexts/access-context';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { Plus } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 interface InvoiceListHeaderProps {
   hasActiveFilters: boolean;
@@ -8,8 +9,9 @@ interface InvoiceListHeaderProps {
 }
 
 export function InvoiceListHeader({ hasActiveFilters, totalCount }: InvoiceListHeaderProps) {
-  const { can } = useAccess();
-  const canCreate = can('invoice', 'create');
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canCreate = project?.capabilities?.actions?.invoice?.create === true;
 
   return (
     <ResourcePageHeader

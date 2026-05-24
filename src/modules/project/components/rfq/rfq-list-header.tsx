@@ -1,6 +1,7 @@
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
-import { useAccess } from '@/app/contexts/access-context';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { Plus } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 interface RFQListHeaderProps {
   hasActiveFilters: boolean;
@@ -8,8 +9,9 @@ interface RFQListHeaderProps {
 }
 
 export function RFQListHeader({ hasActiveFilters, totalCount }: RFQListHeaderProps) {
-  const { can } = useAccess();
-  const canCreate = can('rfq', 'create');
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canCreate = project?.capabilities?.actions?.rfq?.create === true;
 
   return (
     <ResourcePageHeader

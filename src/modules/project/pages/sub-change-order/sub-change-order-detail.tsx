@@ -22,16 +22,15 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
-import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
+import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
   useAddSCOAttachmentMutation,
@@ -130,10 +129,10 @@ function DetailField({
 /* ---- Page ---- */
 
 export function SCODetailPage() {
-  const { can, isAdmin } = useAccess();
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
+  const { data: project } = useProjectDetailQuery(projectId);
   const purchaseOrderId = sco?.purchaseOrderId ?? sco?.purchaseOrder?.id ?? '';
   const { data: purchaseOrderDetail, isFetching: isPurchaseOrderFetching } =
     usePODetailQuery(purchaseOrderId);
@@ -141,7 +140,7 @@ export function SCODetailPage() {
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
     sco?.scoNumber ?? sco?.title ?? undefined
   );
-  const { data: costCodesData } = useCostCodesQuery();
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
 
   const approveMutation = useApproveSCOMutation();
@@ -153,7 +152,7 @@ export function SCODetailPage() {
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
+    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
   );
   const attachments = (sco?.attachments ?? []) as {
     id: string;
@@ -226,10 +225,11 @@ export function SCODetailPage() {
   const isRejected = statusName === 'REJECTED';
   const isVoid = statusName === 'VOID';
 
-  const canApprove = isAdmin && isDraft;
-  const canReject = isAdmin && isDraft;
-  const canVoid = isAdmin && isApproved;
-  const canEdit = can('subChangeOrder', 'update') && isDraft;
+  const projectActions = project?.capabilities?.actions;
+  const canApprove = projectActions?.subChangeOrder?.approve === true && isDraft;
+  const canReject = projectActions?.subChangeOrder?.reject === true && isDraft;
+  const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
+  const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {

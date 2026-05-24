@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
+import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -21,7 +21,11 @@ import {
 } from '@/modules/project/components/shared';
 import { PO_FORM_SECTIONS } from '@/modules/project/constants/purchase-order';
 import poMockData from '@/modules/project/constants/purchase-order/purchase-order-create.mock.json';
-import { useRFQListQuery } from '@/modules/project/hooks';
+import {
+  useProjectCostCodesQuery,
+  useProjectDetailQuery,
+  useRFQListQuery,
+} from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddPOAttachmentMutation,
@@ -108,9 +112,10 @@ export function POFormPage() {
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
     existingPO?.poNumber ?? undefined
   );
+  const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
 
   const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
-  const { data: costCodesData } = useCostCodesQuery();
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: rfqsData } = useRFQListQuery({ projectId, size: 100 });
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: units } = useLookupsQuery('UNIT');
@@ -124,7 +129,7 @@ export function POFormPage() {
     value: vendor.id,
     label: vendor.name,
   }));
-  const costCodeOptions = (costCodesData?.data ?? []).map((costCode) => ({
+  const costCodeOptions = costCodes.map((costCode) => ({
     value: costCode.id,
     label: `${costCode.code} - ${costCode.name}`,
   }));
@@ -246,9 +251,14 @@ export function POFormPage() {
     });
   };
 
-  if (isEditMode && isLoadingPO) {
+  if ((isEditMode && isLoadingPO) || isLoadingProject) {
     return <ProjectFormPageLoading sections={PO_FORM_SECTIONS.length} />;
   }
+
+  const canSubmitPurchaseOrder = isEditMode
+    ? project?.capabilities?.actions?.purchaseOrder?.update === true
+    : project?.capabilities?.actions?.purchaseOrder?.create === true;
+  if (!canSubmitPurchaseOrder) return <Forbidden />;
 
   return (
     <form

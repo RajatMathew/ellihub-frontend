@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
@@ -24,7 +25,6 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useGCsQuery } from '@/modules/directory/hooks';
-import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
@@ -34,6 +34,7 @@ import {
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
   useDivisionsQuery,
+  useProjectEmployeeOptionsQuery,
   useProjectDetailQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
@@ -72,6 +73,7 @@ export default function ProjectEditForm() {
       </div>
     );
   }
+  if (!project.capabilities?.canEdit) return <Forbidden />;
 
   return <ProjectEditFormInner project={project} projectId={projectId} navigate={navigate} />;
 }
@@ -94,7 +96,7 @@ function ProjectEditFormInner({
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
-  const employeesQuery = useEmployeesQuery({ size: 1000 });
+  const employeesQuery = useProjectEmployeeOptionsQuery(projectId);
 
   /* ---- Build dropdown options ---- */
 
@@ -105,7 +107,7 @@ function ProjectEditFormInner({
       label: d.label || d.name || 'Unknown',
     })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const pmOptions = employeesQuery.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
 
   /* ---- Form setup with existing values ---- */
 

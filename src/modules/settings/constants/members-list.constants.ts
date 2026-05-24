@@ -20,7 +20,9 @@ export const MEMBERS_SORT_BY_FIELDS: readonly MembersSortBy[] = [
 ];
 
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
+  dev: 'Dev',
   admin: 'Admin',
+  accountant: 'Accountant',
   user: 'User',
 };
 

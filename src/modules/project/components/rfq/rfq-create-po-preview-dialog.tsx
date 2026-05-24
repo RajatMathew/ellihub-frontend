@@ -35,8 +35,8 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
+import { useProjectCostCodesQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import { useGeneratePOMutation, useRFQDetailQuery } from '@/modules/project/hooks/rfq';
 import {
@@ -86,7 +86,8 @@ export function RFQCreatePOPreviewDialog({
 }: RFQCreatePOPreviewDialogProps) {
   const [moreDetailsOpen, setMoreDetailsOpen] = useState(false);
   const { data: rfq, isLoading, isError, refetch } = useRFQDetailQuery(open ? (rfqId ?? '') : '');
-  const { data: costCodesData, isLoading: isLoadingCostCodes } = useCostCodesQuery();
+  const { data: costCodes = [], isLoading: isLoadingCostCodes } =
+    useProjectCostCodesQuery(projectId);
   const { data: unitsData, isLoading: isLoadingUnits } = useLookupsQuery('UNIT');
   const generatePOMutation = useGeneratePOMutation();
 
@@ -104,11 +105,11 @@ export function RFQCreatePOPreviewDialog({
 
   const costCodeOptions = useMemo(
     () =>
-      (costCodesData?.data ?? []).map((costCode) => ({
+      costCodes.map((costCode) => ({
         value: costCode.id,
         label: `${costCode.code} - ${costCode.name}`,
       })),
-    [costCodesData?.data]
+    [costCodes]
   );
   const unitOptions = useMemo(
     () =>

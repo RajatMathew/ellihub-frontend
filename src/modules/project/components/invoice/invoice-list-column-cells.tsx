@@ -6,12 +6,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useAccess } from '@/app/contexts/access-context';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
 import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 function formatOptionalDate(value: string | null | undefined) {
   return value ? formatDate(value) : '-';
@@ -132,8 +132,9 @@ export function CreatedAtCell({ invoice }: { invoice: InvoiceListItem }) {
 }
 
 export function InvoiceActionsCell({ invoice }: { invoice: InvoiceListItem }) {
-  const { can } = useAccess();
-  const canEdit = can('invoice', 'update') && !invoice.isPaid;
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canEdit = project?.capabilities?.actions?.invoice?.update === true && !invoice.isPaid;
 
   return (
     <DropdownMenu>

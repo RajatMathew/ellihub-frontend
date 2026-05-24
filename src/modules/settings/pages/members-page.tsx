@@ -13,6 +13,7 @@ import {
   MEMBERS_DEFAULT_PAGE_SIZE,
   MEMBERS_DEFAULT_SORT_BY,
   MEMBERS_DEFAULT_SORT_ORDER,
+  MEMBER_ROLE_LABELS,
 } from '@/modules/settings/constants/members-list.constants';
 import {
   useCreateMemberMutation,
@@ -206,7 +207,7 @@ export default function MembersPage() {
         description={
           <>
             Change <strong>{roleTarget?.member.name}</strong> to{' '}
-            <strong>{roleTarget?.role === 'admin' ? 'Admin' : 'User'}</strong>?
+            <strong>{roleTarget?.role ? MEMBER_ROLE_LABELS[roleTarget.role] : 'User'}</strong>?
           </>
         }
         confirmLabel="Update"

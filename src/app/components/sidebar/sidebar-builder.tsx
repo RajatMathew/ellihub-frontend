@@ -23,7 +23,11 @@ function compactSeparators(menu: MenuConfig): MenuConfig {
   });
 }
 
-function filterMenuForUser(menuConfig: MenuConfig, isProjectSidebar: boolean): MenuConfig {
+function filterMenuForAccess(
+  menuConfig: MenuConfig,
+  isProjectSidebar: boolean,
+  access: ReturnType<typeof useAccess>
+): MenuConfig {
   if (isProjectSidebar) return menuConfig;
 
   const filtered = menuConfig
@@ -32,13 +36,20 @@ function filterMenuForUser(menuConfig: MenuConfig, isProjectSidebar: boolean): M
 
       const children = item.children.filter((child) => {
         const path = child.path ?? '';
-        return (
-          path.includes('projects') ||
-          path.includes('hr/pto') ||
-          path.includes('directory/contacts') ||
-          path.includes('directory/general-contractors') ||
-          path.includes('directory/vendors')
-        );
+        if (path.includes('projects')) return access.access?.projectScope !== 'none';
+        if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
+        if (path.includes('directory/contacts')) return access.can('contact', 'read');
+        if (path.includes('directory/general-contractors')) {
+          return access.can('generalContractor', 'read');
+        }
+        if (path.includes('directory/vendors')) return access.can('vendor', 'read');
+        if (path.includes('hr/employees')) return access.can('employee', 'read');
+        if (path.includes('hr/departments')) return access.can('department', 'read');
+        if (path.includes('hr/pto')) return access.can('leave', 'view') || access.can('leave', 'create');
+        if (path.includes('files')) return access.isAdmin;
+        if (path.includes('lookup')) return access.isDev;
+        if (path.includes('ui')) return access.isDev;
+        return false;
       });
 
       if (children.length === 0) return null;
@@ -50,12 +61,12 @@ function filterMenuForUser(menuConfig: MenuConfig, isProjectSidebar: boolean): M
 }
 
 const SidebarBuilder = ({ menuConfig }: Props) => {
-  const { isAdmin } = useAccess();
+  const access = useAccess();
   const location = useLocation();
   const isProjectSidebar = location.pathname.includes('/app/project/');
   const accessibleMenuConfig = useMemo(
-    () => (isAdmin ? menuConfig : filterMenuForUser(menuConfig, isProjectSidebar)),
-    [isAdmin, isProjectSidebar, menuConfig]
+    () => filterMenuForAccess(menuConfig, isProjectSidebar, access),
+    [access, isProjectSidebar, menuConfig]
   );
 
   const renderedMenu = useMemo(() => {

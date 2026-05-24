@@ -5,6 +5,7 @@ import type { CurrentAccess } from '@app/api/access';
 export type AccessContextValue = {
   access: CurrentAccess | undefined;
   isLoading: boolean;
+  isDev: boolean;
   isAdmin: boolean;
   can: (resource: string, action: string) => boolean;
 };

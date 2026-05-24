@@ -70,7 +70,7 @@ export const employeePaginatedResponseSchema = z.object({
 
 export type EmployeePaginatedResponse = z.infer<typeof employeePaginatedResponseSchema>;
 
-export const employeeAuthRoleSchema = z.enum(['admin', 'user']);
+export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'user']);
 export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
 
 // Input schema for creation

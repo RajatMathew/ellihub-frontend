@@ -7,6 +7,7 @@ import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-heade
 import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { MemberActionsMenu } from '@/modules/settings/components/member-actions-menu';
+import { MEMBER_ROLE_LABELS } from '@/modules/settings/constants/members-list.constants';
 import {
   formatMemberDate,
   getMemberInitials,
@@ -66,11 +67,11 @@ export function useMemberListColumns({
           const role = normalizeMemberRole(row.original.role);
           return (
             <Badge
-              variant={role === 'admin' ? 'primary' : 'secondary'}
+              variant={role === 'dev' || role === 'admin' ? 'primary' : 'secondary'}
               appearance="light"
               size="sm"
             >
-              {role === 'admin' ? 'Admin' : 'User'}
+              {MEMBER_ROLE_LABELS[role]}
             </Badge>
           );
         },

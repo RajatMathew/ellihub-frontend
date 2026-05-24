@@ -32,18 +32,23 @@ export const routeTree: RouteDef[] = [
     path: '/',
     component: Outlet,
     children: [
-      { path: 'lookup/*', component: LookupRoutes, title: 'Lookups', access: 'admin' },
-      ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit', access: 'admin' }] : []),
+      { path: 'lookup/*', component: LookupRoutes, title: 'Lookups', access: 'dev' },
+      ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit', access: 'dev' }] : []),
 
       { path: 'profile', component: ProfilePage, title: 'My Profile' },
-      { path: 'settings/*', component: SettingsRoutes, title: 'Settings', access: 'admin' },
+      {
+        path: 'settings/*',
+        component: SettingsRoutes,
+        title: 'Settings',
+        access: { resource: 'user', action: 'manage-permissions' },
+      },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
 
       {
         path: 'catalog/*',
         title: 'Catalog',
-        access: 'admin',
+        access: { resource: 'costCode', action: 'read' },
         children: [
           {
             path: '',
@@ -76,13 +81,13 @@ export const routeTree: RouteDef[] = [
         path: 'hr/employees/*',
         component: HrEmployees,
         title: 'Employees',
-        access: 'admin',
+        access: { resource: 'employee', action: 'read' },
       },
       {
         path: 'hr/departments/*',
         component: HrDepartments,
         title: 'Departments',
-        access: 'admin',
+        access: { resource: 'department', action: 'read' },
       },
       {
         path: 'hr/pto/*',

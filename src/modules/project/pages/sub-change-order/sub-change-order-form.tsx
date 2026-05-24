@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { fakeContactName } from '@/lib/fake-data';
+import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
@@ -19,7 +20,6 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency } from '@/app/lib/helpers';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
 import {
@@ -31,6 +31,7 @@ import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order'
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddSCOAttachmentMutation,
   useCreateSCOMutation,
@@ -75,12 +76,13 @@ export function SCOFormPage() {
   const isEdit = !!scoId;
 
   const { data: scoDetail, isLoading: isLoadingDetail } = useSCODetailQuery(scoId ?? '');
+  const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
     scoDetail?.scoNumber ?? undefined
   );
 
-  const { data: costCodesData } = useCostCodesQuery();
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
   const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
@@ -110,7 +112,7 @@ export function SCOFormPage() {
   const [activeSection, setActiveSection] = useState<string>('sco-details');
   const [isSaving, setIsSaving] = useState(false);
 
-  const costCodeOptions = (costCodesData?.data ?? []).map((costCode) => ({
+  const costCodeOptions = costCodes.map((costCode) => ({
     value: costCode.id,
     label: `${costCode.code} - ${costCode.name}`,
   }));
@@ -249,9 +251,14 @@ export function SCOFormPage() {
     }
   };
 
-  if (isEdit && isLoadingDetail) {
+  if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={SCO_FORM_SECTIONS.length} />;
   }
+
+  const canSubmitSubChangeOrder = isEdit
+    ? project?.capabilities?.actions?.subChangeOrder?.update === true
+    : project?.capabilities?.actions?.subChangeOrder?.create === true;
+  if (!canSubmitSubChangeOrder) return <Forbidden />;
 
   return (
     <form
