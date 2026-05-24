@@ -6,6 +6,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { NotFound } from '@app/components/error/not-found';
 import ProtectedLayout from '@app/components/layouts/protected';
 import { BrandedLayout } from '@core/auth/layouts/branded';
+import { ForgotPasswordPage } from '@core/auth/pages/forgot-password-page';
+import { ResetPasswordPage } from '@core/auth/pages/reset-password-page';
 import SignOutPage from '@core/auth/pages/sign-out';
 import { SignInPage } from '@core/auth/pages/signin-page';
 import HelpApp from '@core/help';
@@ -39,6 +41,8 @@ function FrameWork() {
             </Route>
             <Route element={<BrandedLayout />}>
               <Route path="sign-in" element={<SignInPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="sign-out" element={<SignOutPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -80,6 +80,22 @@ export const memberUpdateSchema = z.object({
 
 export type MemberUpdateInput = z.infer<typeof memberUpdateSchema>;
 
+export const memberPasswordResetSchema = z.object({
+  id: z.string().min(1),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  revokeSessions: z.boolean().default(true),
+});
+
+export type MemberPasswordResetInput = z.infer<typeof memberPasswordResetSchema>;
+
+export const memberSuspendSchema = z.object({
+  id: z.string().min(1),
+  banReason: z.string().trim().max(500).optional(),
+  banExpiresIn: z.number().int().positive().optional(),
+});
+
+export type MemberSuspendInput = z.infer<typeof memberSuspendSchema>;
+
 export const memberFormSchema = z
   .object({
     id: z.string().optional(),

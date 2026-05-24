@@ -2,6 +2,8 @@ import api from '@/app/api';
 import {
   memberUserSchema,
   type MemberCreateInput,
+  type MemberPasswordResetInput,
+  type MemberSuspendInput,
   type MemberUpdateInput,
   type MemberUser,
   type MembersListParams,
@@ -97,6 +99,38 @@ export const membersApi = {
       return parseApiMember(response.data);
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Failed to update member role.'));
+    }
+  },
+
+  async resetPassword(input: MemberPasswordResetInput): Promise<void> {
+    try {
+      await api.post(`/users/${input.id}/reset-password`, {
+        newPassword: input.newPassword,
+        revokeSessions: input.revokeSessions,
+      });
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Failed to reset member password.'));
+    }
+  },
+
+  async suspend(input: MemberSuspendInput): Promise<MemberUser> {
+    try {
+      const response = await api.post<ApiResponse<unknown>>(`/users/${input.id}/suspend`, {
+        banReason: input.banReason,
+        banExpiresIn: input.banExpiresIn,
+      });
+      return parseApiMember(response.data);
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Failed to suspend member.'));
+    }
+  },
+
+  async unsuspend(userId: string): Promise<MemberUser> {
+    try {
+      const response = await api.post<ApiResponse<unknown>>(`/users/${userId}/unsuspend`);
+      return parseApiMember(response.data);
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Failed to unsuspend member.'));
     }
   },
 

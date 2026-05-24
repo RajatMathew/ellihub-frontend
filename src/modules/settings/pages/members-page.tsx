@@ -6,6 +6,8 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
 import { MemberFormDialog } from '@/modules/settings/components/member-form-dialog';
+import { MemberResetPasswordDialog } from '@/modules/settings/components/member-reset-password-dialog';
+import { MemberSuspendDialog } from '@/modules/settings/components/member-suspend-dialog';
 import { MembersTableCard } from '@/modules/settings/components/members-table-card';
 import { useMemberListColumns } from '@/modules/settings/components/use-member-list-columns';
 import {
@@ -19,6 +21,9 @@ import {
   useCreateMemberMutation,
   useMembersQuery,
   useRemoveMemberMutation,
+  useResetMemberPasswordMutation,
+  useSuspendMemberMutation,
+  useUnsuspendMemberMutation,
   useUpdateMemberMutation,
   useUpdateMemberRoleMutation,
 } from '@/modules/settings/hooks/members.hooks';
@@ -39,6 +44,9 @@ export default function MembersPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberUser | null>(null);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<MemberUser | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<MemberUser | null>(null);
+  const [unsuspendTarget, setUnsuspendTarget] = useState<MemberUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<MemberUser | null>(null);
   const [roleTarget, setRoleTarget] = useState<{ member: MemberUser; role: MemberRole } | null>(
     null
@@ -48,6 +56,9 @@ export default function MembersPage() {
   const createMutation = useCreateMemberMutation();
   const updateMutation = useUpdateMemberMutation();
   const updateRoleMutation = useUpdateMemberRoleMutation();
+  const resetPasswordMutation = useResetMemberPasswordMutation();
+  const suspendMutation = useSuspendMemberMutation();
+  const unsuspendMutation = useUnsuspendMemberMutation();
   const removeMutation = useRemoveMemberMutation();
 
   const members = membersQuery.data?.data ?? [];
@@ -67,6 +78,9 @@ export default function MembersPage() {
       setDialogOpen(true);
     },
     onRoleChange: (member, role) => setRoleTarget({ member, role }),
+    onResetPassword: setResetPasswordTarget,
+    onSuspend: setSuspendTarget,
+    onUnsuspend: setUnsuspendTarget,
     onRemove: setRemoveTarget,
   });
   const sorting = useMemo<SortingState>(
@@ -198,6 +212,49 @@ export default function MembersPage() {
             },
           })
         }
+      />
+
+      <MemberResetPasswordDialog
+        open={!!resetPasswordTarget}
+        onOpenChange={(open) => !open && setResetPasswordTarget(null)}
+        member={resetPasswordTarget}
+        isSubmitting={resetPasswordMutation.isPending}
+        onReset={(input) =>
+          resetPasswordMutation.mutate(input, {
+            onSuccess: () => setResetPasswordTarget(null),
+          })
+        }
+      />
+
+      <MemberSuspendDialog
+        open={!!suspendTarget}
+        onOpenChange={(open) => !open && setSuspendTarget(null)}
+        member={suspendTarget}
+        isSubmitting={suspendMutation.isPending}
+        onSuspend={(input) =>
+          suspendMutation.mutate(input, {
+            onSuccess: () => setSuspendTarget(null),
+          })
+        }
+      />
+
+      <ConfirmDialog
+        open={!!unsuspendTarget}
+        onOpenChange={(open) => !open && setUnsuspendTarget(null)}
+        title="Unsuspend Member"
+        description={
+          <>
+            Restore access for <strong>{unsuspendTarget?.name}</strong>?
+          </>
+        }
+        confirmLabel="Unsuspend"
+        onConfirm={() => {
+          if (!unsuspendTarget) return;
+          unsuspendMutation.mutate(unsuspendTarget.id, {
+            onSuccess: () => setUnsuspendTarget(null),
+          });
+        }}
+        isPending={unsuspendMutation.isPending}
       />
 
       <ConfirmDialog
