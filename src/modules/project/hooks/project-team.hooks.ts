@@ -16,6 +16,7 @@ export const useAddTeamMemberMutation = () => {
     }) => projectTeamApi.addMember(data),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      toast.success('Team member added.');
     },
     onError: () => toast.error('Failed to add team member.'),
   });
