@@ -17,6 +17,8 @@ export const activityLogItemSchema = z.object({
   entityId: z.string(),
   action: z.string(),
   description: z.string(),
+  note: z.string().optional().nullable(),
+  affectedEntityIds: z.array(z.string()).optional(),
   createdAt: z.string(),
   user: activityUserSchema,
 });
@@ -43,6 +45,11 @@ export interface ListActivityLogParams {
   sortOrder?: 'asc' | 'desc';
   entityType?: string;
   entityId?: string;
+  action?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
 }
 
 const BASE = '/activity-log';
@@ -63,6 +70,11 @@ export const activityLogApi = {
       if (params?.sortOrder) query.sortOrder = params.sortOrder;
       if (params?.entityType) query.entityType = params.entityType;
       if (params?.entityId) query.entityId = params.entityId;
+      if (params?.action) query.action = params.action;
+      if (params?.userId) query.userId = params.userId;
+      if (params?.from) query.from = params.from;
+      if (params?.to) query.to = params.to;
+      if (params?.search) query.search = params.search;
     }
 
     const res = await api.get(endpoint, { params: query });

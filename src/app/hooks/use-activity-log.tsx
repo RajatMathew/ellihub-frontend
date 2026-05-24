@@ -8,11 +8,14 @@ import { CheckCircle2, Clock, Pencil, PlusCircle, Trash2 } from 'lucide-react';
 
 export { activityLogKeys };
 
-export function useActivityLogQuery(params?: ListActivityLogParams) {
+export function useActivityLogQuery(
+  params?: ListActivityLogParams,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: activityLogKeys.list(params),
     queryFn: () => activityLogApi.list(params),
-    enabled: !params?.entityType || Boolean(params.entityId),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -23,7 +26,7 @@ export function useActivityPanelItems(entityType: string, entityId: string | und
     sortBy: 'createdAt',
     sortOrder: 'desc',
     size: 50,
-  });
+  }, { enabled: Boolean(entityId) });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
     return (query.data?.data ?? []).map((log) => activityLogToPanelItem(log));

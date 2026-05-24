@@ -45,6 +45,13 @@ export const mainSidebarMenu: MenuConfig = [
   },
   {
     type: 'menu',
+    children: [{ title: 'Activity Logger', path: '../activity-log' }],
+  },
+  {
+    type: 'separator',
+  },
+  {
+    type: 'menu',
     children: [{ title: 'Lookups', path: '../lookup' }],
   },
 
