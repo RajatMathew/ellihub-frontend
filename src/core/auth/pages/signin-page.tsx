@@ -19,6 +19,7 @@ import {
 } from '@app/components/ui/form';
 import { Input } from '@app/components/ui/input';
 import { onInvalidFormSubmit } from '@app/lib/form-error-toast';
+import { getApiErrorMessage } from '@app/lib/toast-api-error';
 import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-schema';
 
 export function SignInPageComponent() {
@@ -82,7 +83,7 @@ export function SignInPageComponent() {
             setSuccessMessage('Successfully signed in! Redirecting...');
           },
           onError: (err) => {
-            setError(err instanceof Error ? err.message : 'Failed to sign in. Please try again.');
+            setError(getApiErrorMessage(err, 'Failed to sign in. Please try again.'));
           },
         }
       );
@@ -204,7 +205,7 @@ export function SignInPageComponent() {
                   <FormLabel className="text-sm font-normal cursor-pointer">Remember me</FormLabel>
                 </div>
                 <Link
-                  to="/auth/reset-password"
+                  to="/forgot-password"
                   className="text-sm font-semibold text-foreground hover:text-primary"
                 >
                   Forgot Password?
@@ -225,15 +226,6 @@ export function SignInPageComponent() {
           )}
         </Button>
 
-        <div className="text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
-          <Link
-            to="/auth/signup"
-            className="text-sm font-semibold text-foreground hover:text-primary"
-          >
-            Sign Up
-          </Link>
-        </div>
       </form>
     </Form>
   );

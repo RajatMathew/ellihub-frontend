@@ -1,4 +1,13 @@
-import { MoreHorizontal, Pencil, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import {
+  KeyRound,
+  MoreHorizontal,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserRound,
+  UserX,
+} from 'lucide-react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -16,6 +25,9 @@ interface MemberActionsMenuProps {
   currentUserId?: string;
   onEdit: (member: MemberUser) => void;
   onRoleChange: (member: MemberUser, role: MemberRole) => void;
+  onResetPassword: (member: MemberUser) => void;
+  onSuspend: (member: MemberUser) => void;
+  onUnsuspend: (member: MemberUser) => void;
   onRemove: (member: MemberUser) => void;
 }
 
@@ -24,10 +36,14 @@ export function MemberActionsMenu({
   currentUserId,
   onEdit,
   onRoleChange,
+  onResetPassword,
+  onSuspend,
+  onUnsuspend,
   onRemove,
 }: MemberActionsMenuProps) {
   const role = normalizeMemberRole(member.role);
   const isSelf = member.id === currentUserId;
+  const isSuspended = !!member.banned;
 
   return (
     <DropdownMenu>
@@ -41,6 +57,22 @@ export function MemberActionsMenu({
           <Pencil className="size-4" />
           Edit
         </DropdownMenuItem>
+        <DropdownMenuItem disabled={isSelf} onClick={() => onResetPassword(member)}>
+          <KeyRound className="size-4" />
+          Reset Password
+        </DropdownMenuItem>
+        {isSuspended ? (
+          <DropdownMenuItem disabled={isSelf} onClick={() => onUnsuspend(member)}>
+            <UserCheck className="size-4" />
+            Unsuspend
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled={isSelf} onClick={() => onSuspend(member)}>
+            <UserX className="size-4" />
+            Suspend
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={isSelf || role === 'dev'}
           onClick={() => onRoleChange(member, 'dev')}

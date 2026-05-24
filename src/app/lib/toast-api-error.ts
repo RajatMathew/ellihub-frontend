@@ -244,6 +244,28 @@ function formatApiMessage(message: string | string[] | undefined): string | unde
   return parseRawValidationMessage(message) ?? message;
 }
 
+function getRecordApiMessage(record: Record<string, unknown>): string | undefined {
+  const message = record.message;
+  if (typeof message === 'string' || Array.isArray(message)) {
+    const apiMessage = formatApiMessage(message);
+    if (apiMessage) return apiMessage;
+  }
+
+  const error = record.error;
+  if (isRecord(error)) {
+    const errorMessage = getRecordApiMessage(error);
+    if (errorMessage) return errorMessage;
+  }
+
+  const data = record.data;
+  if (isRecord(data)) {
+    const dataMessage = getRecordApiMessage(data);
+    if (dataMessage) return dataMessage;
+  }
+
+  return undefined;
+}
+
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   const axiosErr = error as AxiosError<ApiErrorResponse>;
   const data = axiosErr?.response?.data;
@@ -256,6 +278,11 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
   const apiMessage = formatApiMessage(data?.message);
   if (apiMessage) return apiMessage;
+
+  if (isRecord(error)) {
+    const recordMessage = getRecordApiMessage(error);
+    if (recordMessage) return recordMessage;
+  }
 
   if (error instanceof Error && error.message) return error.message;
 

@@ -24,6 +24,7 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { ProfileSecurityCard } from '@/modules/profile/components/profile-security-card';
 import { useProfileQuery, useUpdateProfileMutation } from '@/modules/profile/hooks/profile.hooks';
 import {
   updateProfileInputSchema,
@@ -127,10 +128,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <form
-      onSubmit={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
-      className="container-fluid py-7.5"
-    >
+    <div className="container-fluid py-7.5">
       <Toolbar sticky={false}>
         <ToolbarWrapper>
           <ToolbarHeading>
@@ -153,7 +151,12 @@ export default function ProfilePage() {
               <RotateCcw className="size-4" />
               Reset
             </Button>
-            <Button size="sm" type="submit" disabled={updateProfile.isPending}>
+            <Button
+              size="sm"
+              type="button"
+              disabled={updateProfile.isPending}
+              onClick={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
+            >
               <Check className="size-4" />
               Save Profile
             </Button>
@@ -297,8 +300,10 @@ export default function ProfilePage() {
             />
           </div>
         </ProfileSection>
+
+        <ProfileSecurityCard />
       </div>
-    </form>
+    </div>
   );
 }
 

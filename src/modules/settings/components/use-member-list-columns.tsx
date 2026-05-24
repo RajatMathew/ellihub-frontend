@@ -19,6 +19,9 @@ interface UseMemberListColumnsArgs {
   currentUserId?: string;
   onEdit: (member: MemberUser) => void;
   onRoleChange: (member: MemberUser, role: MemberRole) => void;
+  onResetPassword: (member: MemberUser) => void;
+  onSuspend: (member: MemberUser) => void;
+  onUnsuspend: (member: MemberUser) => void;
   onRemove: (member: MemberUser) => void;
 }
 
@@ -26,6 +29,9 @@ export function useMemberListColumns({
   currentUserId,
   onEdit,
   onRoleChange,
+  onResetPassword,
+  onSuspend,
+  onUnsuspend,
   onRemove,
 }: UseMemberListColumnsArgs) {
   return useMemo<ColumnDef<MemberUser>[]>(
@@ -141,6 +147,9 @@ export function useMemberListColumns({
               currentUserId={currentUserId}
               onEdit={onEdit}
               onRoleChange={onRoleChange}
+              onResetPassword={onResetPassword}
+              onSuspend={onSuspend}
+              onUnsuspend={onUnsuspend}
               onRemove={onRemove}
             />
           </div>
@@ -152,6 +161,6 @@ export function useMemberListColumns({
         enableSorting: false,
       },
     ],
-    [currentUserId, onEdit, onRemove, onRoleChange]
+    [currentUserId, onEdit, onRemove, onResetPassword, onRoleChange, onSuspend, onUnsuspend]
   );
 }

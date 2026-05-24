@@ -2,7 +2,9 @@ import { membersApi } from '@/modules/settings/api/members.api';
 import { membersKeys } from '@/modules/settings/constants/members.keys';
 import type {
   MemberCreateInput,
+  MemberPasswordResetInput,
   MemberRole,
+  MemberSuspendInput,
   MemberUpdateInput,
   MembersListParams,
 } from '@/modules/settings/schemas/members.schema';
@@ -58,6 +60,45 @@ export const useUpdateMemberRoleMutation = () => {
       toast.success('Role updated.');
     },
     onError: (error) => toast.error(getErrorMessage(error, 'Failed to update role.')),
+  });
+};
+
+export const useResetMemberPasswordMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: MemberPasswordResetInput) => membersApi.resetPassword(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
+      toast.success('Password reset.');
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Failed to reset password.')),
+  });
+};
+
+export const useSuspendMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: MemberSuspendInput) => membersApi.suspend(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
+      toast.success('Member suspended.');
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Failed to suspend member.')),
+  });
+};
+
+export const useUnsuspendMemberMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => membersApi.unsuspend(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
+      toast.success('Member unsuspended.');
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'Failed to unsuspend member.')),
   });
 };
 
