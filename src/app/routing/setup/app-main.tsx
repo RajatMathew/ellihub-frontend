@@ -31,7 +31,10 @@ function AccessRoute({ access, children }: { access?: RouteDef['access']; childr
 
 function routeTreeToRoutes(nodes: RouteDef[]): React.ReactNode {
   return nodes.map((def, i) => {
-    const hasChildren = def.children && def.children.length > 0;
+    // Only consider children that have a component as renderable routes.
+    // Title-only children (no component) are used purely for document title resolution.
+    const renderableChildren = def.children?.filter((c) => c.component);
+    const hasChildren = renderableChildren && renderableChildren.length > 0;
     const key = `${def.path}-${def.title ?? i}`;
     const Element = def.component;
     const routeContent = Element ? <Element /> : hasChildren ? <Outlet /> : null;
@@ -41,7 +44,7 @@ function routeTreeToRoutes(nodes: RouteDef[]): React.ReactNode {
     if (hasChildren) {
       return (
         <Route key={key} path={def.path} element={element}>
-          {routeTreeToRoutes(def.children!)}
+          {routeTreeToRoutes(renderableChildren)}
         </Route>
       );
     }
