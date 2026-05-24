@@ -18,6 +18,12 @@ import type { RFQListParamPatch } from '@/modules/project/hooks/rfq';
 import type { Lookup } from '@/modules/project/schemas/lookup.schema';
 import type { RFQStatus } from '@/modules/project/schemas/rfq';
 
+const RFQ_STATUS_FILTER_OPTIONS = [
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'AWARDED', label: 'Awarded' },
+] as const;
+
 interface RFQListFiltersProps {
   trackFilter?: string;
   statusFilter?: string;
@@ -36,7 +42,6 @@ export function RFQListFilters({
   hasActiveFilters,
   searchInput,
   tradeCategories,
-  statuses,
   onSearchChange,
   onUpdateParams,
   onClearFilters,
@@ -52,12 +57,6 @@ export function RFQListFilters({
       };
     }),
   ];
-  const statusOptions =
-    statuses?.filter(
-      (status): status is RFQStatus & { id: string } =>
-        typeof status.id === 'string' && status.id.length > 0,
-    ) ?? [];
-
   return (
     <CardHeader className="items-stretch sm:items-center">
       <CardTitle className="w-full overflow-x-auto sm:w-auto">
@@ -92,9 +91,9 @@ export function RFQListFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {statusOptions.map((status) => (
-                <SelectItem key={status.id} value={status.id}>
-                  {status.label ?? status.name ?? status.id}
+              {RFQ_STATUS_FILTER_OPTIONS.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
                 </SelectItem>
               ))}
             </SelectContent>
