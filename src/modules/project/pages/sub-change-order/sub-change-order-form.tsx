@@ -38,6 +38,7 @@ import {
   useSCODetailQuery,
   useUpdateSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
+import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import {
@@ -49,7 +50,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const defaultLineItem: SCOLineItemInput = {
@@ -72,10 +73,13 @@ function toNonNegativeNumber(value: unknown) {
 
 export function SCOFormPage() {
   const { projectId = '', scoId } = useParams<{ projectId: string; scoId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isEdit = !!scoId;
+  const sourcePurchaseOrderId = !isEdit ? (searchParams.get('purchaseOrderId') ?? '') : '';
 
   const { data: scoDetail, isLoading: isLoadingDetail } = useSCODetailQuery(scoId ?? '');
+  const { data: sourcePurchaseOrder } = usePODetailQuery(sourcePurchaseOrderId);
   const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
@@ -86,12 +90,28 @@ export function SCOFormPage() {
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
   const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
+  const sourcePurchaseOrderStatus =
+    typeof sourcePurchaseOrder?.status === 'string'
+      ? sourcePurchaseOrder.status
+      : sourcePurchaseOrder?.status?.name;
+  const sourcePurchaseOrderIsIssued = sourcePurchaseOrderStatus === 'ISSUED';
   const selectedPurchaseOrderOption =
     scoDetail?.purchaseOrder?.id && currentPurchaseOrderIsIssued
       ? {
           value: scoDetail.purchaseOrder.id,
           label: scoDetail.purchaseOrder.poNumber ?? scoDetail.purchaseOrder.id,
         }
+      : sourcePurchaseOrder?.id && sourcePurchaseOrderIsIssued
+        ? {
+            value: sourcePurchaseOrder.id,
+            label: sourcePurchaseOrder.poNumber ?? sourcePurchaseOrder.id,
+            description: [
+              sourcePurchaseOrder.vendor?.name,
+              sourcePurchaseOrder.total ? formatCurrency(Number(sourcePurchaseOrder.total)) : undefined,
+            ]
+              .filter(Boolean)
+              .join(' - '),
+          }
       : undefined;
   const purchaseOrderPicker = usePurchaseOrderOptions({
     projectId,
@@ -139,7 +159,7 @@ export function SCOFormPage() {
     lineItems: [defaultLineItem],
   };
 
-  const { control, handleSubmit, reset, watch, formState } = useForm<CreateSCOInput>({
+  const { control, handleSubmit, reset, setValue, watch, formState } = useForm<CreateSCOInput>({
     resolver: zodResolver(createSCOInputSchema),
     defaultValues,
   });
@@ -174,6 +194,16 @@ export function SCOFormPage() {
           : [defaultLineItem],
     });
   }, [currentPurchaseOrderIsIssued, isEdit, projectId, reset, scoDetail]);
+
+  useEffect(() => {
+    if (isEdit || !sourcePurchaseOrderIsIssued || !sourcePurchaseOrder?.id) return;
+
+    setValue('purchaseOrderId', sourcePurchaseOrder.id, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: true,
+    });
+  }, [isEdit, setValue, sourcePurchaseOrder?.id, sourcePurchaseOrderIsIssued]);
 
   const watchedLineItems = watch('lineItems');
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);

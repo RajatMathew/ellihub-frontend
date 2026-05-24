@@ -1,11 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
 import {
   ContactsPageHeader,
   ContactsTableCard,
   useContactListColumns,
 } from '@/modules/directory/components/contacts';
+import { getContactLinkedEntities } from '@/modules/directory/components/contacts/contact-list-utils';
 import {
   CONTACTS_DEFAULT_PAGE_SIZE,
   isContactsSortByField,
@@ -17,13 +19,14 @@ import {
   useVendorsQuery,
 } from '@/modules/directory/hooks';
 import { useContactListParams } from '@/modules/directory/hooks/contacts/use-contact-list-params';
-import type { ListContactsParams } from '@/modules/directory/schemas/contact.schema';
+import type { Contact, ListContactsParams } from '@/modules/directory/schemas/contact.schema';
 import {
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
+import { toast } from 'sonner';
 
 export function ContactsListPage() {
   const { can } = useAccess();
@@ -56,6 +59,7 @@ export function ContactsListPage() {
   const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const deleteMutation = useDeleteContactMutation();
+  const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
@@ -70,10 +74,21 @@ export function ContactsListPage() {
   }, [vendorsData]);
 
   const handleDelete = useCallback(
-    (id: string) => {
-      deleteMutation.mutate(id);
+    (contact: Contact) => {
+      const links = getContactLinkedEntities(contact, vendorNames);
+      if (links.length > 0) {
+        const linkedNames = links
+          .map((link) => `${link.type === 'GC' ? 'GC' : 'vendor'} ${link.name}`)
+          .join(', ');
+        toast.error(
+          `Cannot delete this contact because it is linked to ${linkedNames}. Unlink it before deleting.`
+        );
+        return;
+      }
+
+      setPendingDeleteContact(contact);
     },
-    [deleteMutation]
+    [vendorNames]
   );
 
   const columns = useContactListColumns({
@@ -159,6 +174,29 @@ export function ContactsListPage() {
         onRoleChange={(roleId) => updateParams({ professionalRoleId: roleId, page: undefined })}
         onClearFilters={clearFilters}
         onRetry={() => void refetch()}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteContact)}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteContact(null);
+        }}
+        title="Delete Contact Permanently"
+        description={
+          <>
+            This action cannot be undone. This will permanently delete{' '}
+            <strong>{pendingDeleteContact?.fullName ?? 'this contact'}</strong>.
+          </>
+        }
+        confirmLabel="Delete Permanently"
+        onConfirm={() => {
+          if (!pendingDeleteContact) return;
+          deleteMutation.mutate(pendingDeleteContact.id, {
+            onSuccess: () => setPendingDeleteContact(null),
+          });
+        }}
+        variant="destructive"
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

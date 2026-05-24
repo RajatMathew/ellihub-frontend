@@ -1,5 +1,6 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { scoApi } from '@/modules/project/api/sub-change-order';
+import { poKeys } from '@/modules/project/constants/purchase-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
@@ -11,11 +12,19 @@ import type {
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-function invalidateSCOQueries(queryClient: QueryClient, scoId?: string) {
-  return invalidateProjectQueries(
-    queryClient,
-    scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all]
-  );
+function invalidateSCOQueries(queryClient: QueryClient, scoId?: string, purchaseOrderId?: string | null) {
+  const queryKeys = scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all];
+
+  if (!purchaseOrderId) {
+    return invalidateProjectQueries(queryClient, queryKeys);
+  }
+
+  return invalidateProjectQueries(queryClient, [
+    ...queryKeys,
+    scoKeys.byPurchaseOrder(purchaseOrderId),
+    poKeys.all,
+    poKeys.detail(purchaseOrderId),
+  ]);
 }
 
 /* ---- queries ---- */
@@ -60,8 +69,8 @@ export const useCreateSCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateSCOInput) => scoApi.create(data),
-    onSuccess: async () => {
-      await invalidateSCOQueries(qc);
+    onSuccess: async (created, data) => {
+      await invalidateSCOQueries(qc, created.id, created.purchaseOrderId ?? data.purchaseOrderId);
       toast.success('SCO created.');
     },
     onError: (err) => toastApiError(err, 'Failed to create SCO.'),
@@ -72,8 +81,8 @@ export const useUpdateSCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateSCOInput }) => scoApi.update(id, data),
-    onSuccess: async (_, { id }) => {
-      await invalidateSCOQueries(qc, id);
+    onSuccess: async (updated, { id, data }) => {
+      await invalidateSCOQueries(qc, id, updated.purchaseOrderId ?? data.purchaseOrderId);
       toast.success('SCO updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update SCO.'),
@@ -87,6 +96,7 @@ export const useAddSCOLineItemMutation = () => {
       scoApi.addLineItem(scoId, data),
     onSuccess: async (_, { scoId }) => {
       await invalidateSCOQueries(qc, scoId);
+      await invalidateProjectQueries(qc, [poKeys.all]);
     },
   });
 };
@@ -105,6 +115,7 @@ export const useUpdateSCOLineItemMutation = () => {
     }) => scoApi.updateLineItem(scoId, lineItemId, data),
     onSuccess: async (_, { scoId }) => {
       await invalidateSCOQueries(qc, scoId);
+      await invalidateProjectQueries(qc, [poKeys.all]);
     },
   });
 };
@@ -116,6 +127,7 @@ export const useRemoveSCOLineItemMutation = () => {
       scoApi.removeLineItem(scoId, lineItemId),
     onSuccess: async (_, { scoId }) => {
       await invalidateSCOQueries(qc, scoId);
+      await invalidateProjectQueries(qc, [poKeys.all]);
     },
   });
 };
@@ -126,8 +138,8 @@ export const useApproveSCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => scoApi.approve(id),
-    onSuccess: async (_, id) => {
-      await invalidateSCOQueries(qc, id);
+    onSuccess: async (updated, id) => {
+      await invalidateSCOQueries(qc, id, updated.purchaseOrderId);
       toast.success('SCO approved.');
     },
     onError: (err) => toastApiError(err, 'Failed to approve SCO.'),
@@ -138,8 +150,8 @@ export const useRejectSCOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: { reason: string } }) => scoApi.reject(id, data),
-    onSuccess: async (_, { id }) => {
-      await invalidateSCOQueries(qc, id);
+    onSuccess: async (updated, { id }) => {
+      await invalidateSCOQueries(qc, id, updated.purchaseOrderId);
       toast.success('SCO rejected.');
     },
     onError: (err) => toastApiError(err, 'Failed to reject SCO.'),
@@ -151,8 +163,8 @@ export const useVoidSCOMutation = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: { reason: string } }) =>
       scoApi.voidSCO(id, data),
-    onSuccess: async (_, { id }) => {
-      await invalidateSCOQueries(qc, id);
+    onSuccess: async (updated, { id }) => {
+      await invalidateSCOQueries(qc, id, updated.purchaseOrderId);
       toast.success('SCO voided.');
     },
     onError: (err) => toastApiError(err, 'Failed to void SCO.'),

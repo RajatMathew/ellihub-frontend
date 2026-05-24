@@ -190,7 +190,7 @@ export const rfqApi = {
     if (params.sortBy) query.sortBy = params.sortBy;
     if (params.sortOrder) query.sortOrder = params.sortOrder;
     if (params.search) query.search = params.search;
-    if (params.statusId) query.statusId = params.statusId;
+    if (params.statusId) query.status = params.statusId;
 
     const res = await api.get(BASE, { params: query });
     const body = res.data;

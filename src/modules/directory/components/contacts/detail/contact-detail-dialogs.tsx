@@ -19,6 +19,9 @@ export function ContactDetailDialogs({
   onDeleteOpenChange,
   onDelete,
 }: ContactDetailDialogsProps) {
+  const linkedEntityName = getLinkedEntityName(contact);
+  const isLinked = Boolean(linkedEntityName);
+
   return (
     <>
       <ConfirmDialog
@@ -78,18 +81,35 @@ export function ContactDetailDialogs({
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={onDeleteOpenChange}
-        title="Delete Contact Permanently"
+        title={isLinked ? 'Cannot Delete Contact' : 'Delete Contact Permanently'}
         description={
-          <>
-            This action cannot be undone. This will permanently delete{' '}
-            <strong>{contact.fullName}</strong> and remove all associated data.
-          </>
+          isLinked ? (
+            <>
+              <strong>{contact.fullName}</strong> is already linked to{' '}
+              <strong>{linkedEntityName}</strong>. Unlink this contact from the vendor or GC before
+              deleting it.
+            </>
+          ) : (
+            <>
+              This action cannot be undone. This will permanently delete{' '}
+              <strong>{contact.fullName}</strong> and remove all associated data.
+            </>
+          )
         }
-        confirmLabel="Delete Permanently"
+        confirmLabel={isLinked ? 'Unlink First' : 'Delete Permanently'}
         onConfirm={onDelete}
         variant="destructive"
         isPending={isDeleting}
+        confirmDisabled={isLinked}
       />
     </>
   );
+}
+
+function getLinkedEntityName(contact: Contact) {
+  if (contact.vendor?.name) return `vendor ${contact.vendor.name}`;
+  if (contact.generalContractor?.name) return `GC ${contact.generalContractor.name}`;
+  if (contact.vendorId) return 'a vendor';
+  if (contact.generalContractorId) return 'a GC';
+  return null;
 }

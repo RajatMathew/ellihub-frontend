@@ -19,6 +19,7 @@ const HrEmployees = lazy(() => import('@/modules/hr/routes/employees.route'));
 const HrDepartments = lazy(() => import('@/modules/hr/routes/departments.route'));
 const HrPTO = lazy(() => import('@/modules/hr/routes/pto.route'));
 const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
+const ActivityLogRoutes = lazy(() => import('@/modules/activity-log/routes/activity-log.route'));
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
 const ProjectsRoutes = lazy(() => import('@/modules/project/routes/projects.route'));
 const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.route'));
@@ -95,6 +96,12 @@ export const routeTree: RouteDef[] = [
         title: 'Time Off',
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files', access: 'admin' },
+      {
+        path: 'activity-log/*',
+        component: ActivityLogRoutes,
+        title: 'Activity Logger',
+        access: { resource: 'activityLog', action: 'read' },
+      },
       {
         path: 'project/:projectId/*',
         component: ProjectRoutes,

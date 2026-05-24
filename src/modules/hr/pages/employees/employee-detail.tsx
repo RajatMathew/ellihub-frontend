@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
+import { useEmployeeActivityPanelItems } from '@/app/hooks/use-activity-log';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import {
@@ -44,7 +44,7 @@ export default function EmployeeDetailPage() {
   const unlinkUserMutation = useUnlinkEmployeeUserMutation();
   const removeDocumentMutation = useRemoveEmployeeDocumentMutation();
   const downloadFileMutation = useDownloadFile();
-  const activity = useActivityPanelItems('employee', id);
+  const activity = useEmployeeActivityPanelItems(id);
 
   useBreadcrumbLabel(id ? `/app/hr/employees/${id}` : undefined, employee?.name ?? 'Employee');
 

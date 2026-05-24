@@ -81,6 +81,32 @@ export const useDeleteContactMutation = () => {
   });
 };
 
+export const useAddContactTagMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, tag }: { contactId: string; tag: string }) =>
+      contactsApi.addTag(contactId, tag),
+    onSuccess: (_, { contactId }) => {
+      qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
+    },
+    onError: () => toast.error('Failed to add tag.'),
+  });
+};
+
+export const useRemoveContactTagMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, tag }: { contactId: string; tag: string }) =>
+      contactsApi.removeTag(contactId, tag),
+    onSuccess: (_, { contactId }) => {
+      qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
+    },
+    onError: () => toast.error('Failed to remove tag.'),
+  });
+};
+
 /* ---- phone mutations ---- */
 
 export const useAddPhoneMutation = () => {

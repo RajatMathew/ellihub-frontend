@@ -15,7 +15,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 
 interface UseContactListColumnsOptions {
   vendorNames: Map<string, string>;
-  onDelete: (id: string) => void;
+  onDelete: (contact: Contact) => void;
   canUpdate: boolean;
   canDelete: boolean;
 }

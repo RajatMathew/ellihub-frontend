@@ -32,6 +32,7 @@ function filterMenuForAccess(
 
   const filtered = menuConfig
     .map((item) => {
+      if (item.type === 'separator') return item;
       if (!item.children) return null;
 
       const children = item.children.filter((child) => {
@@ -47,6 +48,7 @@ function filterMenuForAccess(
         if (path.includes('hr/departments')) return access.can('department', 'read');
         if (path.includes('hr/pto')) return access.can('leave', 'view') || access.can('leave', 'create');
         if (path.includes('files')) return access.isAdmin;
+        if (path.includes('activity-log')) return access.can('activityLog', 'read');
         if (path.includes('lookup')) return access.isDev;
         if (path.includes('ui')) return access.isDev;
         return false;

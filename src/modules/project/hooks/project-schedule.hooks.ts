@@ -31,6 +31,7 @@ export const useCreateScheduleEntryMutation = () => {
         projectScheduleKeys.list(projectId),
         projectKeys.detail(projectId),
       ]);
+      toast.success('Schedule entry deleted.');
     },
     onError: () => toast.error('Failed to create schedule entry.'),
   });

@@ -149,7 +149,7 @@ export function ContactActionsCell({
   contact: Contact;
   canUpdate: boolean;
   canDelete: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (contact: Contact) => void;
 }) {
   return (
     <DropdownMenu>
@@ -177,7 +177,7 @@ export function ContactActionsCell({
         {canDelete && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
+            <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact)}>
               <Trash2 className="size-4" />
               Delete
             </DropdownMenuItem>

@@ -20,6 +20,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   variant?: 'default' | 'destructive' | 'primary';
   isPending?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export function ConfirmDialog({
@@ -31,6 +32,7 @@ export function ConfirmDialog({
   onConfirm,
   variant = 'default',
   isPending = false,
+  confirmDisabled = false,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +46,7 @@ export function ConfirmDialog({
           <AlertDialogAction
             variant={variant === 'destructive' ? 'destructive' : undefined}
             onClick={onConfirm}
-            disabled={isPending}
+            disabled={isPending || confirmDisabled}
           >
             {confirmLabel}
           </AlertDialogAction>

@@ -7,7 +7,7 @@ interface TeamMemberGridProps {
   leadPM: ProjectDetail['leadPM'];
   teamMembers: ProjectTeamAssignment[];
   onPromoteToPM?: (employeeId: string) => Promise<void>;
-  onRemoveMember?: (employeeId: string) => Promise<void>;
+  onRemoveMember?: (employeeId: string) => void;
   isPromoting?: boolean;
   isRemoving?: boolean;
 }

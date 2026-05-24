@@ -45,6 +45,13 @@ export const mainSidebarMenu: MenuConfig = [
   },
   {
     type: 'menu',
+    children: [{ title: 'Activity Logger', path: '../activity-log' }],
+  },
+  {
+    type: 'separator',
+  },
+  {
+    type: 'menu',
     children: [{ title: 'Lookups', path: '../lookup' }],
   },
 
@@ -69,7 +76,6 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'menu',
     children: [
       { title: 'Overview', path: '../overview' },
-      { title: 'Files', path: '../files' },
     ],
   },
   { type: 'separator' },
@@ -88,5 +94,10 @@ export const projectSidebarMenu: MenuConfig = [
       { title: 'Sub Change Order', path: '../sub-change-order' },
       { title: 'Invoices', path: '../invoices' },
     ],
+  },
+  { type: 'separator' },
+  {
+    type: 'menu',
+    children: [{ title: 'Files', path: '../files' }],
   },
 ];
