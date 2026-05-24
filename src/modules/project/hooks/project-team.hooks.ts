@@ -51,6 +51,7 @@ export const useRemoveTeamMemberMutation = () => {
     }) => projectTeamApi.removeMember(projectId, employeeId),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      toast.success('Team member removed.');
     },
     onError: () => toast.error('Failed to remove team member.'),
   });
