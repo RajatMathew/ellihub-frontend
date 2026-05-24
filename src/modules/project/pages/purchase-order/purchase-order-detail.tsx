@@ -259,6 +259,7 @@ export function PODetailPage() {
     projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
   const canRecordDelivery =
     projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
+  const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
 
   const isOverdue =
     !!po?.expectedDate &&
@@ -634,6 +635,8 @@ export function PODetailPage() {
                 scos={linkedSCOs}
                 isLoading={isLinkedSCOsLoading}
                 approvedTotal={scoTotal}
+                canCreate={canCreateSCO}
+                createTo={`/app/project/${projectId}/sub-change-order/create?purchaseOrderId=${poId}`}
               />
             </div>
           </div>

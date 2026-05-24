@@ -1,7 +1,8 @@
-import { Link2 } from 'lucide-react';
+import { Plus, Link2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
@@ -12,6 +13,8 @@ interface PurchaseOrderDetailLinkedSCOsCardProps {
   scos: SCOListItem[];
   isLoading: boolean;
   approvedTotal: number;
+  canCreate?: boolean;
+  createTo?: string;
 }
 
 export function PurchaseOrderDetailLinkedSCOsCard({
@@ -19,6 +22,8 @@ export function PurchaseOrderDetailLinkedSCOsCard({
   scos,
   isLoading,
   approvedTotal,
+  canCreate = false,
+  createTo,
 }: PurchaseOrderDetailLinkedSCOsCardProps) {
   return (
     <Card>
@@ -26,11 +31,21 @@ export function PurchaseOrderDetailLinkedSCOsCard({
         <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Sub Change Orders ({scos.length})
         </CardTitle>
-        {approvedTotal > 0 && (
-          <span className="text-xs font-semibold text-muted-foreground">
-            Approved {formatCurrency(approvedTotal)}
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {approvedTotal > 0 && (
+            <span className="text-xs font-semibold text-muted-foreground">
+              Approved {formatCurrency(approvedTotal)}
+            </span>
+          )}
+          {canCreate && createTo && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={createTo}>
+                <Plus className="size-4" />
+                Add SCO
+              </Link>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
