@@ -81,4 +81,29 @@ export const activityLogApi = {
       },
     });
   },
+
+  async listForEmployee(
+    employeeId: string,
+    params?: Pick<ListActivityLogParams, 'page' | 'size'>
+  ): Promise<ActivityLogPaginatedResponse> {
+    const query: Record<string, string | number> = {};
+    if (params?.page != null) query.page = params.page;
+    if (params?.size != null) query.size = params.size;
+
+    const res = await api.get(`${BASE}/employee/${employeeId}`, { params: query });
+    const rows = res.data?.data ?? res.data ?? [];
+    const pagination = res.data?.pagination ?? {};
+
+    return activityLogPaginatedResponseSchema.parse({
+      data: rows,
+      pagination: {
+        currentPage: pagination.currentPage ?? params?.page ?? 1,
+        totalPages: pagination.totalPages ?? 1,
+        hasNextPage: pagination.hasNextPage ?? false,
+        hasPreviousPage: pagination.hasPreviousPage ?? false,
+        totalItems: pagination.totalItems ?? rows.length,
+        itemsPerPage: pagination.itemsPerPage ?? params?.size ?? 100,
+      },
+    });
+  },
 };
