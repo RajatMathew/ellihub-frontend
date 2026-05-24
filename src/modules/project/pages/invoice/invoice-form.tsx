@@ -73,6 +73,7 @@ export function InvoiceFormPage() {
 
   const { data: posData, isLoading: isLoadingPOs } = usePOsQuery({
     projectId,
+    status: 'ISSUED',
     search: poSearch || undefined,
     page: 1,
     size: 25,
@@ -375,7 +376,7 @@ export function InvoiceFormPage() {
                       disabled={isImmutable}
                       placeholder="Select purchase order..."
                       searchPlaceholder="Search purchase orders..."
-                      emptyMessage="No purchase orders found."
+                      emptyMessage="No issued purchase orders found."
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
