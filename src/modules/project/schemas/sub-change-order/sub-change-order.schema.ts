@@ -134,6 +134,7 @@ export type SCOPaginatedResponse = z.infer<typeof scoPaginatedResponseSchema>;
 
 export const listSCOsParamsSchema = z.object({
   projectId: z.string().optional(),
+  purchaseOrderId: z.string().optional(),
   status: scoStatusNameSchema.optional(),
   changeTypeId: z.string().optional(),
   search: z.string().optional(),

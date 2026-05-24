@@ -460,13 +460,14 @@ export function PODetailPage() {
           )}
 
           {/* ---- Stat cards ---- */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             <StatsCard
               icon={<DollarSign className="size-5 text-primary" />}
               bgClass="bg-primary/10"
               label="PO Total"
               value={formatCurrency(poTotal)}
               description="Base contract amount"
+              compactValue
             />
             <StatsCard
               icon={<TrendingUp className="size-5 text-muted-foreground" />}
@@ -474,6 +475,7 @@ export function PODetailPage() {
               label="SCO Total"
               value={scoTotal > 0 ? `+${formatCurrency(scoTotal)}` : formatCurrency(0)}
               description="Approved change orders"
+              compactValue
             />
             <StatsCard
               icon={<ClipboardList className="size-5 text-info" />}
@@ -481,6 +483,7 @@ export function PODetailPage() {
               label="Total Commitment"
               value={formatCurrency(totalCommitment)}
               description="PO + approved SCOs"
+              compactValue
             />
             <StatsCard
               icon={<CheckCircle2 className="size-5 text-success" />}
@@ -488,6 +491,7 @@ export function PODetailPage() {
               label="Amount Paid"
               value={formatCurrency(amountPaid)}
               description="Via linked invoices"
+              compactValue
             />
             <StatsCard
               icon={<Receipt className="size-5 text-warning" />}
@@ -495,6 +499,7 @@ export function PODetailPage() {
               label="Balance Due"
               value={formatCurrency(balanceDue)}
               description="Remaining balance"
+              compactValue
             />
           </div>
 

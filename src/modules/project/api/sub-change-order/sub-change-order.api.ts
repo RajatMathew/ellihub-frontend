@@ -40,6 +40,7 @@ export const scoApi = {
     if (params?.sortBy) query.sortBy = params.sortBy;
     if (params?.sortOrder) query.sortOrder = params.sortOrder;
     if (params?.projectId) query.projectId = params.projectId;
+    if (params?.purchaseOrderId) query.purchaseOrderId = params.purchaseOrderId;
     if (params?.status) query.status = params.status;
     if (params?.changeTypeId) query.changeTypeId = params.changeTypeId;
     if (params?.search) query.search = params.search;

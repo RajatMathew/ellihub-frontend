@@ -145,9 +145,16 @@ export type ListEmployeesParams = z.infer<typeof listEmployeesParamsSchema>;
 export const employeeProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
+  jobNumber: z.string().optional().nullable(),
   status: z.string(),
-  role: z.string().optional(),
+  role: z.string().optional().nullable(),
+  isLead: z.boolean().optional().default(false),
   assignedAt: z.string().optional(),
+  startDate: z.string().optional().nullable(),
+  estimatedStartDate: z.string().optional().nullable(),
+  estimatedEndDate: z.string().optional().nullable(),
+  tcoDate: z.string().optional().nullable(),
+  gcName: z.string().optional().nullable(),
 });
 
 export type EmployeeProject = z.infer<typeof employeeProjectSchema>;

@@ -22,6 +22,7 @@ interface PurchaseOrderFormDetailsCardProps {
   vendorOptions: PurchaseOrderFormOption[];
   tradeCategoryOptions: PurchaseOrderFormOption[];
   rfqOptions: PurchaseOrderFormOption[];
+  isVendorLocked?: boolean;
 }
 
 const fieldLabelClassName = 'text-xs font-semibold uppercase tracking-normal';
@@ -31,6 +32,7 @@ export function PurchaseOrderFormDetailsCard({
   vendorOptions,
   tradeCategoryOptions,
   rfqOptions,
+  isVendorLocked = false,
 }: PurchaseOrderFormDetailsCardProps) {
   return (
     <Card id="po-details">
@@ -58,7 +60,13 @@ export function PurchaseOrderFormDetailsCard({
                   placeholder="Select vendor..."
                   searchPlaceholder="Search vendors..."
                   emptyMessage="No vendors found."
+                  disabled={isVendorLocked}
                 />
+                {isVendorLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Vendor is locked to the awarded RFQ vendor.
+                  </p>
+                )}
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}

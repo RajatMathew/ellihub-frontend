@@ -73,17 +73,11 @@ export function InvoiceFormPage() {
 
   const { data: posData, isLoading: isLoadingPOs } = usePOsQuery({
     projectId,
+    status: 'ISSUED',
     search: poSearch || undefined,
     page: 1,
     size: 25,
   });
-  const { data: scosData, isLoading: isLoadingSCOs } = useSCOsQuery({
-    projectId,
-    search: scoSearch || undefined,
-    page: 1,
-    size: 50,
-  });
-
   const createMutation = useCreateInvoiceMutation();
   const updateMutation = useUpdateInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
@@ -105,16 +99,6 @@ export function InvoiceFormPage() {
         label: vendor.name,
       })),
     [vendorsData]
-  );
-
-  const scoOptions = useMemo(
-    () =>
-      (scosData?.data ?? []).map((sco) => ({
-        value: sco.id,
-        label: sco.scoNumber ?? sco.title ?? sco.id,
-        description: sco.title ?? sco.purchaseOrder?.poNumber ?? undefined,
-      })),
-    [scosData]
   );
 
   const defaultValues: CreateInvoiceInput = {
@@ -160,6 +144,22 @@ export function InvoiceFormPage() {
   const selectedVendorId = watch('vendorId');
   const totalAmount = watch('totalAmount') ?? 0;
   const taxRate = watch('taxRate') ?? 0;
+  const { data: scosData, isLoading: isLoadingSCOs } = useSCOsQuery({
+    projectId: selectedPurchaseOrderId ? projectId : '',
+    purchaseOrderId: selectedPurchaseOrderId || undefined,
+    search: scoSearch || undefined,
+    page: 1,
+    size: 50,
+  });
+  const scoOptions = useMemo(
+    () =>
+      (scosData?.data ?? []).map((sco) => ({
+        value: sco.id,
+        label: sco.scoNumber ?? sco.title ?? sco.id,
+        description: sco.title ?? sco.purchaseOrder?.poNumber ?? undefined,
+      })),
+    [scosData]
+  );
   const taxAmount = calculateTaxAmount(totalAmount, taxRate);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
   const isImmutable = isEdit;
@@ -368,6 +368,10 @@ export function InvoiceFormPage() {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
+                        setValue('relatedSCOIds', [], {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
                       }}
                       search={poSearch}
                       onSearchChange={setPoSearch}
@@ -375,7 +379,7 @@ export function InvoiceFormPage() {
                       disabled={isImmutable}
                       placeholder="Select purchase order..."
                       searchPlaceholder="Search purchase orders..."
-                      emptyMessage="No purchase orders found."
+                      emptyMessage="No issued purchase orders found."
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
@@ -571,9 +575,18 @@ export function InvoiceFormPage() {
                     search={scoSearch}
                     onSearchChange={setScoSearch}
                     isLoading={isLoadingSCOs}
-                    placeholder="Select related SCOs..."
-                    searchPlaceholder="Search SCOs..."
-                    emptyMessage="No SCOs found."
+                    disabled={!selectedPurchaseOrderId}
+                    placeholder={
+                      selectedPurchaseOrderId
+                        ? 'Select related SCOs...'
+                        : 'Select a purchase order first...'
+                    }
+                    searchPlaceholder="Search related SCOs..."
+                    emptyMessage={
+                      selectedPurchaseOrderId
+                        ? 'No SCOs found for this purchase order.'
+                        : 'Select a purchase order first.'
+                    }
                   />
                 </Field>
               )}
