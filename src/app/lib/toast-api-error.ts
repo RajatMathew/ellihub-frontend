@@ -38,6 +38,7 @@ const FIELD_LABELS: Record<string, string> = {
   lineItems: 'Line items',
   name: 'Name',
   notes: 'Notes',
+  paidDate: 'Paid date',
   paymentMethodId: 'Payment method',
   paymentReference: 'Payment reference',
   projectId: 'Project',
@@ -50,6 +51,7 @@ const FIELD_LABELS: Record<string, string> = {
   subject: 'Subject',
   taxAmount: 'Tax amount',
   taxPercent: 'Tax percent',
+  tcoDate: 'TCO date',
   title: 'Title',
   totalAmount: 'Total amount',
   tradeCategoryId: 'Trade category',
@@ -168,9 +170,20 @@ function normalizeValidationMessage(message: string | undefined, fieldLabel: str
     lowerMessage === 'required' ||
     (lowerMessage.includes('too small') &&
       lowerMessage.includes('string') &&
-      lowerMessage.includes('>=1'))
+      lowerMessage.includes('>=1')) ||
+    (lowerMessage.includes('expected string') && lowerMessage.includes('received undefined')) ||
+    (lowerMessage.includes('expected number') && lowerMessage.includes('received undefined')) ||
+    (lowerMessage.includes('expected array') && lowerMessage.includes('received undefined'))
   ) {
     return fieldLabel ? `${fieldLabel} is required.` : 'This field is required.';
+  }
+
+  if (lowerMessage.includes('expected string')) {
+    return fieldLabel ? `${fieldLabel} must be text.` : 'This must be text.';
+  }
+
+  if (lowerMessage.includes('expected array')) {
+    return fieldLabel ? `${fieldLabel} must be a list.` : 'This must be a list.';
   }
 
   if (lowerMessage.includes('invalid ulid') || lowerMessage.includes('invalid uuid')) {

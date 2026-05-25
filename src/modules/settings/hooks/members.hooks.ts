@@ -1,3 +1,4 @@
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { membersApi } from '@/modules/settings/api/members.api';
 import { membersKeys } from '@/modules/settings/constants/members.keys';
 import type {
@@ -10,10 +11,6 @@ import type {
 } from '@/modules/settings/schemas/members.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
 
 export const useMembersQuery = (params: MembersListParams, enabled = true) => {
   return useQuery({
@@ -32,7 +29,7 @@ export const useCreateMemberMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Member created.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to create member.')),
+    onError: (error) => toastApiError(error, 'Failed to create member.'),
   });
 };
 
@@ -45,7 +42,7 @@ export const useUpdateMemberMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Member updated.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to update member.')),
+    onError: (error) => toastApiError(error, 'Failed to update member.'),
   });
 };
 
@@ -59,7 +56,7 @@ export const useUpdateMemberRoleMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Role updated.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to update role.')),
+    onError: (error) => toastApiError(error, 'Failed to update role.'),
   });
 };
 
@@ -72,7 +69,7 @@ export const useResetMemberPasswordMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Password reset.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to reset password.')),
+    onError: (error) => toastApiError(error, 'Failed to reset password.'),
   });
 };
 
@@ -85,7 +82,7 @@ export const useSuspendMemberMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Member suspended.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to suspend member.')),
+    onError: (error) => toastApiError(error, 'Failed to suspend member.'),
   });
 };
 
@@ -98,7 +95,7 @@ export const useUnsuspendMemberMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Member unsuspended.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to unsuspend member.')),
+    onError: (error) => toastApiError(error, 'Failed to unsuspend member.'),
   });
 };
 
@@ -111,7 +108,7 @@ export const useRemoveMemberMutation = () => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
       toast.success('Member removed.');
     },
-    onError: (error) => toast.error(getErrorMessage(error, 'Failed to remove member.')),
+    onError: (error) => toastApiError(error, 'Failed to remove member.'),
   });
 };
 

@@ -14,6 +14,7 @@ import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
@@ -64,7 +65,7 @@ export function ProfileSecurityCard() {
       form.reset(emptyPasswordValues);
       toast.success('Password updated. Other sessions were signed out.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to change password.');
+      toast.error(getApiErrorMessage(error, 'Failed to change password.'));
     } finally {
       setIsSubmitting(false);
     }

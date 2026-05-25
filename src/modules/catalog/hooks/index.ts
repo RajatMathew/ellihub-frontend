@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
 import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
 import { costCodeCategoriesKeys } from '@/modules/catalog/constants/costcode-categories.keys';
@@ -32,7 +33,7 @@ export const useCreateCostCodeCategoryMutation = () => {
   return useMutation({
     mutationFn: costCodeCategoriesApi.create,
     onSuccess: () => qc.invalidateQueries({ queryKey: costCodeCategoriesKeys.all }),
-    onError: () => toast.error('Failed to create category.'),
+    onError: (error) => toastApiError(error, 'Failed to create category.'),
   });
 };
 
@@ -41,7 +42,7 @@ export const useUpdateCostCodeCategoryMutation = () => {
   return useMutation({
     mutationFn: costCodeCategoriesApi.update,
     onSuccess: () => qc.invalidateQueries({ queryKey: costCodeCategoriesKeys.all }),
-    onError: () => toast.error('Failed to update category.'),
+    onError: (error) => toastApiError(error, 'Failed to update category.'),
   });
 };
 
@@ -53,7 +54,7 @@ export const useDeleteCostCodeCategoryMutation = () => {
       qc.invalidateQueries({ queryKey: costCodeCategoriesKeys.all });
       qc.invalidateQueries({ queryKey: costCodesKeys.all });
     },
-    onError: () => toast.error('Failed to delete category.'),
+    onError: (error) => toastApiError(error, 'Failed to delete category.'),
   });
 };
 
@@ -70,7 +71,7 @@ export const useCreateCostCodeMutation = () => {
   return useMutation({
     mutationFn: costCodesApi.create,
     onSuccess: () => qc.invalidateQueries({ queryKey: costCodesKeys.all }),
-    onError: () => toast.error('Failed to create cost code. Please try again.'),
+    onError: (error) => toastApiError(error, 'Failed to create cost code. Please try again.'),
   });
 };
 
@@ -83,7 +84,7 @@ export const useUpdateCostCodeMutation = () => {
       qc.invalidateQueries({ queryKey: costCodesKeys.detail(data.id) });
       toast.success('Cost code updated successfully.');
     },
-    onError: () => toast.error('Failed to update cost code. Please try again.'),
+    onError: (error) => toastApiError(error, 'Failed to update cost code. Please try again.'),
   });
 };
 
@@ -92,7 +93,7 @@ export const useDeleteCostCodeMutation = () => {
   return useMutation({
     mutationFn: costCodesApi.remove,
     onSuccess: () => qc.invalidateQueries({ queryKey: costCodesKeys.all }),
-    onError: () => toast.error('Failed to delete cost code. Please try again.'),
+    onError: (error) => toastApiError(error, 'Failed to delete cost code. Please try again.'),
   });
 };
 

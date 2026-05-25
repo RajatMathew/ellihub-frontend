@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { contractAttachmentKeys } from '@/modules/project/constants/contract-attachment.keys';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -41,7 +42,7 @@ export const usePinPrimeContractsMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
       toast.success('Prime contract pinned.');
     },
-    onError: () => toast.error('Failed to pin prime contract.'),
+    onError: (error) => toastApiError(error, 'Failed to pin prime contract.'),
   });
 };
 
@@ -90,7 +91,7 @@ export const useUnpinPrimeContractsMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
       toast.success('Prime contract unpinned.');
     },
-    onError: () => toast.error('Failed to unpin prime contract.'),
+    onError: (error) => toastApiError(error, 'Failed to unpin prime contract.'),
   });
 };
 
@@ -116,7 +117,7 @@ export const useSetPrimeContractPrimaryMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
       toast.success(isPrimary ? 'Prime contract marked primary.' : 'Primary mark removed.');
     },
-    onError: () => toast.error('Failed to update primary contract.'),
+    onError: (error) => toastApiError(error, 'Failed to update primary contract.'),
   });
 };
 

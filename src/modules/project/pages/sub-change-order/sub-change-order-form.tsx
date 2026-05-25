@@ -20,6 +20,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency } from '@/app/lib/helpers';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
 import {
@@ -232,8 +233,8 @@ export function SCOFormPage() {
           scoId: targetScoId,
           data: { documentId: uploaded.id },
         });
-      } catch {
-        toast.error(`Failed to upload file: ${file.name}`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
       }
     }
   }
