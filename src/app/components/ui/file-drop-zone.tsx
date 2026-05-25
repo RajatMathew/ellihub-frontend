@@ -23,63 +23,16 @@ import {
 
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
-
-function formatFileBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  const size = bytes / Math.pow(1024, index);
-
-  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
-}
-
-const BLOCKED_EXTENSIONS = new Set([
-  'exe',
-  'bat',
-  'cmd',
-  'com',
-  'msi',
-  'scr',
-  'pif',
-  'vbs',
-  'vbe',
-  'js',
-  'jse',
-  'wsf',
-  'wsh',
-  'ps1',
-  'reg',
-  'dll',
-  'sys',
-  'cpl',
-  'inf',
-  'hta',
-  'lnk',
-  'sh',
-  'bash',
-  'csh',
-  'ksh',
-]);
+import {
+  FILE_UPLOAD_ACCEPT,
+  MAX_UPLOAD_BYTES,
+  formatUploadFileSize,
+  getUploadFileExtension,
+  getUploadFileValidationError,
+} from '@/modules/files/lib/file-upload-policy';
 
 function getExtension(name: string): string {
-  const dotIdx = name.lastIndexOf('.');
-
-  return dotIdx > 0 ? name.slice(dotIdx + 1).toLowerCase() : '';
-}
-
-function validateFile(file: File, maxSize?: number): string | null {
-  const ext = getExtension(file.name);
-
-  if (BLOCKED_EXTENSIONS.has(ext)) {
-    return `File type ".${ext}" is not allowed for security reasons.`;
-  }
-
-  if (maxSize && file.size > maxSize) {
-    return `File is too large. Maximum size is ${formatFileBytes(maxSize)}.`;
-  }
-
-  return null;
+  return getUploadFileExtension(name);
 }
 
 function isImageType(file: File): boolean {
@@ -207,10 +160,10 @@ export function FileDropZone(props: SingleFileDropZoneProps): ReactElement;
 export function FileDropZone(props: MultipleFileDropZoneProps): ReactElement;
 export function FileDropZone(props: FileDropZoneProps): ReactElement {
   const {
-    accept,
+    accept = FILE_UPLOAD_ACCEPT,
     className,
     disabled = false,
-    maxSize,
+    maxSize = MAX_UPLOAD_BYTES,
     showSelectedPreview = true,
   } = props;
   const [isDragOver, setIsDragOver] = useState(false);
@@ -229,7 +182,7 @@ export function FileDropZone(props: FileDropZoneProps): ReactElement {
     const rejectedMessages: string[] = [];
 
     for (const file of files) {
-      const validationError = validateFile(file, maxSize);
+      const validationError = getUploadFileValidationError(file, { accept, maxSize });
 
       if (validationError) {
         rejectedMessages.push(`${file.name}: ${validationError}`);
@@ -353,7 +306,7 @@ export function FileDropZone(props: FileDropZoneProps): ReactElement {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{file.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatFileBytes(file.size)}
+                  {formatUploadFileSize(file.size)}
                   {file.type && ` · ${file.type}`}
                 </p>
               </div>

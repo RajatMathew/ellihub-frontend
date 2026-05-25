@@ -12,6 +12,7 @@ import {
   type FolderCreateInput,
   type FolderDetail,
 } from '@/modules/files/schemas/file.schema';
+import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
 import { isAxiosError } from 'axios';
 
 const BASE = '/file';
@@ -251,6 +252,8 @@ export const filesApi = {
   },
 
   async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
+    assertUploadFileIsValid(file, data);
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', data.name);
