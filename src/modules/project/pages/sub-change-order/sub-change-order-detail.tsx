@@ -979,7 +979,7 @@ export function SCODetailPage() {
               {activeAction.endpoint === 'approve' ? (
                 <>
                   {' '}
-                  for <strong>{formatCurrency(sco.amount)}</strong>
+                  for <strong>{formatCurrency(totalAmount)}</strong>
                 </>
               ) : null}
               ?

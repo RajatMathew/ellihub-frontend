@@ -50,6 +50,7 @@ import {
   ProjectDetailField,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
@@ -585,7 +586,7 @@ export function InvoiceDetailPage() {
                               </div>
                               <div className="shrink-0 text-left sm:text-right">
                                 <div className="text-sm font-semibold tabular-nums text-foreground">
-                                  {money(sco.amount)}
+                                  {money(getSubChangeOrderTotalAmount(sco))}
                                 </div>
                                 {sco.impactsSchedule && (
                                   <div className="mt-1 text-xs text-warning">

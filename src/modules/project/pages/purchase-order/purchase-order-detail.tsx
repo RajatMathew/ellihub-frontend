@@ -49,6 +49,7 @@ import {
   ProjectDetailField,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   PO_STATUS_COLORS,
   TRADE_CATEGORY_BADGE_VARIANTS,
@@ -287,7 +288,7 @@ export function PODetailPage() {
   const poTotal = parseFloat(po.total ?? '0');
   const scoTotal = linkedSCOs
     .filter((sco) => sco.status === 'APPROVED')
-    .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0);
+    .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0);
   const totalCommitment = poTotal + scoTotal;
   const amountPaid = linkedInvoices
     .filter((invoice) => invoice.isPaid)
