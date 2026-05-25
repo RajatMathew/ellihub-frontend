@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import {
   BetweenHorizontalStart,
@@ -9,6 +9,7 @@ import {
   Globe,
   HistoryIcon,
   Moon,
+  RefreshCcw,
   Settings,
   Shield,
   SquareCode,
@@ -35,6 +36,8 @@ import {
 } from '@app/components/ui/dropdown-menu';
 import { Switch } from '@app/components/ui/switch';
 import { useAccess } from '@app/contexts/access-context';
+import { FieldwireSyncDialog } from '@/modules/synchronization/components/fieldwire-sync-dialog';
+import { useFieldwireSyncStatusQuery } from '@/modules/synchronization/hooks/synchronization.hooks';
 
 const I18N_LANGUAGES = [
   {
@@ -45,23 +48,46 @@ const I18N_LANGUAGES = [
   },
 ];
 
+function formatFieldwireSyncLabel(value: string | null | undefined, isLoading: boolean) {
+  if (isLoading) return 'Loading sync status...';
+  if (!value) return 'Never synced';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Last sync unknown';
+
+  return `Last global sync: ${new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)}`;
+}
+
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const navigate = useNavigate();
   const currenLanguage = I18N_LANGUAGES[0];
   const { theme, setTheme } = useTheme();
+  const [fieldwireSyncOpen, setFieldwireSyncOpen] = useState(false);
 
   const handleThemeToggle = (checked: boolean) => {
     setTheme(checked ? 'dark' : 'light');
   };
 
   const { data } = useSession();
-  const { isAdmin } = useAccess();
+  const { isAdmin, can } = useAccess();
+  const canSyncFieldwire = can('primeChangeOrder', 'sync');
+  const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
+  const fieldwireSyncLabel = formatFieldwireSyncLabel(
+    fieldwireSyncStatusQuery.data?.lastSyncedAt,
+    fieldwireSyncStatusQuery.isLoading
+  );
   const userImage = data?.user?.image ?? 'https://i.pravatar.cc/300';
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64 shadow-2xl" side="bottom" align="end">
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        <DropdownMenuContent className="w-64 shadow-2xl" side="bottom" align="end">
         {/* Header */}
         <div className="flex items-center justify-between p-3">
           <div className="flex items-center gap-2">
@@ -147,12 +173,38 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuItem asChild>
-          <Link to="/changes-log" className="flex items-center gap-2">
-            <HistoryIcon />
-            Changes Log
-          </Link>
-        </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/changes-log" className="flex items-center gap-2">
+              <HistoryIcon />
+              Changes Log
+            </Link>
+          </DropdownMenuItem>
+
+          {canSyncFieldwire && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <RefreshCcw />
+                Synchronization
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                <DropdownMenuItem
+                  className="items-start gap-2"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setFieldwireSyncOpen(true);
+                  }}
+                >
+                  <RefreshCcw className="mt-0.5 size-4" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm">Fieldwire</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {fieldwireSyncLabel}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
 
         <DropdownMenuItem asChild>
           <Link to="/help" className="flex items-center gap-2">
@@ -242,7 +294,12 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             Sign Out
           </Button>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {canSyncFieldwire && (
+        <FieldwireSyncDialog open={fieldwireSyncOpen} onOpenChange={setFieldwireSyncOpen} />
+      )}
+    </>
   );
 }
