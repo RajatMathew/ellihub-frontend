@@ -248,9 +248,9 @@ export function InvoiceDetailPage() {
   const canDisputeInvoice = projectActions?.invoice?.dispute === true;
   const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
   const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
-  const totalAmount = Number(invoice.totalAmount ?? 0);
+  const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
-  const subtotal = Math.max(0, totalAmount - taxAmount);
+  const totalAmount = invoiceAmount + taxAmount;
   const isPastDue = !isPaid && !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
   const paymentMethodLabel =
     invoice.paymentMethod?.label ??
@@ -394,15 +394,8 @@ export function InvoiceDetailPage() {
             <StatsCard
               icon={<Receipt className="size-5 text-primary" />}
               bgClass="bg-primary/10"
-              label="Invoice Total"
-              value={money(totalAmount)}
-              description="Submitted amount"
-            />
-            <StatsCard
-              icon={<Receipt className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
-              label="Subtotal"
-              value={money(subtotal)}
+              label="Invoice Amount"
+              value={money(invoiceAmount)}
               description="Before tax"
             />
             <StatsCard
@@ -411,6 +404,13 @@ export function InvoiceDetailPage() {
               label="Tax"
               value={money(taxAmount)}
               description={`${invoice.taxRate ?? 0}%`}
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="Total"
+              value={money(totalAmount)}
+              description="Amount + tax"
             />
             <StatsCard
               icon={<CreditCard className="size-5 text-success" />}
@@ -667,7 +667,7 @@ export function InvoiceDetailPage() {
               </div>
               <Card>
                 <CardContent className="space-y-1 p-4">
-                  <InfoRow label="Subtotal">{money(subtotal)}</InfoRow>
+                  <InfoRow label="Invoice Amount">{money(invoiceAmount)}</InfoRow>
                   <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>{money(taxAmount)}</InfoRow>
                   <Separator className="my-2" />
                   <InfoRow label="Total">

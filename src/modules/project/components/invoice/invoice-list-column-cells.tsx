@@ -91,14 +91,21 @@ export function DueDateCell({ invoice }: { invoice: InvoiceListItem }) {
 }
 
 export function TotalAmountCell({ invoice }: { invoice: InvoiceListItem }) {
+  const invoiceAmount = Number(invoice.totalAmount ?? 0);
+  const taxAmount = Number(invoice.taxAmount ?? 0);
+  const grandTotal = invoiceAmount + taxAmount;
+
   return (
     <div className="flex flex-col gap-0.5 text-right">
       <span className="text-sm font-medium tabular-nums">
-        {formatOptionalCurrency(invoice.totalAmount)}
+        {formatOptionalCurrency(grandTotal)}
       </span>
-      {Number(invoice.taxAmount ?? 0) > 0 && (
+      <span className="text-2sm text-muted-foreground">
+        Amount {formatOptionalCurrency(invoiceAmount)}
+      </span>
+      {taxAmount > 0 && (
         <span className="text-2sm text-muted-foreground">
-          Tax {formatOptionalCurrency(invoice.taxAmount)}
+          Tax {formatOptionalCurrency(taxAmount)}
         </span>
       )}
     </div>
