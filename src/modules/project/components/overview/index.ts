@@ -1,6 +1,7 @@
 export { BudgetCard } from './budget-card';
 export { ContractDetailsSimpleCard } from './contract-details-simple-card';
 export { ContractDocumentsSimpleCard } from './contract-documents-simple-card';
+export { PinPrimeContractDialog } from './pin-prime-contract-dialog';
 export { FinancialStatsBar } from './financial-stats-bar';
 export { FinancialSummarySimpleCard } from './financial-summary-simple-card';
 export { PaymentsPlaceholderCard } from './payments-placeholder-card';

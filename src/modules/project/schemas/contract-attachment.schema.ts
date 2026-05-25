@@ -14,6 +14,7 @@ export const contractAttachmentSchema = z
     projectId: z.string().optional(),
     fileId: z.string().nullable().optional(),
     isPrimary: z.boolean().optional().default(false),
+    isPinned: z.boolean().optional().default(true),
     uploadedAt: z.string().nullable().optional(),
     file: contractAttachmentFileSchema.nullable().optional(),
     documentId: z.string().nullable().optional(),

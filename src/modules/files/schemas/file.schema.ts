@@ -32,6 +32,14 @@ export const fileSchema = z
     type: fileTypeSchema,
     isDeletable: z.boolean(),
     private: z.boolean(),
+    primeContract: z
+      .object({
+        id: z.string(),
+        isPinned: z.boolean(),
+        isPrimary: z.boolean(),
+      })
+      .nullable()
+      .optional(),
     createdBy: z.string().nullable().optional(),
     createdByUser: z
       .object({
