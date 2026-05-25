@@ -79,6 +79,16 @@ export type ProjectListItem = z.infer<typeof projectListItemSchema>;
 
 const projectActionCapabilitiesSchema = z
   .object({
+    primeContract: z
+      .object({
+        read: z.boolean().optional(),
+        pin: z.boolean().optional(),
+        unpin: z.boolean().optional(),
+        primary: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
     rfq: z
       .object({
         create: z.boolean().optional(),

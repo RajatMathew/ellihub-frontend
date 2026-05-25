@@ -17,6 +17,7 @@ import {
   FinancialStatsBar,
   FinancialSummarySimpleCard,
   PaymentsPlaceholderCard,
+  PinPrimeContractDialog,
   PrimeChangeOrdersCard,
   ProjectOverviewLoading,
   ProjectTeamDialog,
@@ -34,10 +35,11 @@ import {
   useProjectScheduleQuery,
 } from '@/modules/project/hooks';
 import {
-  useAddContractAttachmentMutation,
   useContractAttachmentsQuery,
-  useRemoveContractAttachmentMutation,
-  useSetPrimaryContractAttachmentMutation,
+  usePinPrimeContractsMutation,
+  usePrimeContractCandidatesQuery,
+  useSetPrimeContractPrimaryMutation,
+  useUnpinPrimeContractsMutation,
 } from '@/modules/project/hooks/contract-attachment.hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
@@ -53,6 +55,7 @@ export default function ProjectContractOverview() {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
 
   /* ---- Queries ---- */
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
@@ -67,6 +70,8 @@ export default function ProjectContractOverview() {
   const { data: allSCOs } = useSCOsQuery({ projectId, size: 1000 });
   const { data: attachments, isLoading: isLoadingAttachments } =
     useContractAttachmentsQuery(projectId);
+  const { data: primeContractCandidates = [], isLoading: isLoadingPrimeContractCandidates } =
+    usePrimeContractCandidatesQuery(projectId, pinDialogOpen);
   const { data: scheduleData, isLoading: isLoadingSchedule } = useProjectScheduleQuery(projectId);
   const { data: primeContractFolderId } = useProjectFolderQuery(
     projectId || undefined,
@@ -77,9 +82,9 @@ export default function ProjectContractOverview() {
 
   /* ---- Mutations ---- */
   const deleteMutation = useDeleteProjectMutation();
-  const addAttachmentMutation = useAddContractAttachmentMutation();
-  const removeAttachmentMutation = useRemoveContractAttachmentMutation();
-  const setPrimaryAttachmentMutation = useSetPrimaryContractAttachmentMutation();
+  const pinPrimeContractsMutation = usePinPrimeContractsMutation();
+  const unpinPrimeContractsMutation = useUnpinPrimeContractsMutation();
+  const setPrimeContractPrimaryMutation = useSetPrimeContractPrimaryMutation();
 
   /* ---- Custom Hooks ---- */
   const { totalPOCommitted, activePOsCount } = usePOCalculations({
@@ -115,20 +120,34 @@ export default function ProjectContractOverview() {
     await deleteMutation.mutateAsync(projectId);
     navigate('/app/projects');
   };
-  const handleAddContractDocument = async (fileId: string) => {
-    await addAttachmentMutation.mutateAsync({ projectId, data: { fileId } });
+  const handlePinContractDocuments = (fileIds: string[]) => {
+    pinPrimeContractsMutation.mutate(
+      { projectId, fileIds },
+      { onSuccess: () => setPinDialogOpen(false) }
+    );
   };
-  const handleRemoveContractDocument = (attachmentId: string) => {
-    removeAttachmentMutation.mutate({ projectId, attachmentId });
+  const handleUploadAndPinContractDocument = async (fileId: string) => {
+    await pinPrimeContractsMutation.mutateAsync({ projectId, fileIds: [fileId] });
   };
-  const handleSetPrimaryContractDocument = (attachmentId: string) => {
-    setPrimaryAttachmentMutation.mutate({ projectId, attachmentId });
+  const handleUnpinContractDocument = (attachmentId: string) => {
+    unpinPrimeContractsMutation.mutate({ projectId, primeContractIds: [attachmentId] });
+  };
+  const handleSetPrimaryContractDocument = (attachmentId: string, isPrimary: boolean) => {
+    setPrimeContractPrimaryMutation.mutate({
+      projectId,
+      primeContractIds: [attachmentId],
+      isPrimary,
+    });
   };
 
   /* ---- Derived Data ---- */
   const recentPCOs = pcoList?.data ?? [];
   const docs = attachments ?? [];
   const canManageProject = project?.capabilities?.canManage ?? false;
+  const primeContractActions = project?.capabilities?.actions?.primeContract;
+  const canPinPrimeContracts = primeContractActions?.pin === true;
+  const canUnpinPrimeContracts = primeContractActions?.unpin === true;
+  const canSetPrimaryPrimeContracts = primeContractActions?.primary === true;
 
   /* ---- Loading & Error States ---- */
   if (isLoading) return <ProjectOverviewLoading />;
@@ -218,12 +237,15 @@ export default function ProjectContractOverview() {
             documents={docs}
             isLoading={isLoadingAttachments}
             parentFolderId={primeContractFolderId}
-            onAdd={canManageProject ? handleAddContractDocument : undefined}
-            onSetPrimary={canManageProject ? handleSetPrimaryContractDocument : undefined}
-            onRemove={canManageProject ? handleRemoveContractDocument : undefined}
-            isAdding={addAttachmentMutation.isPending}
-            isRemoving={removeAttachmentMutation.isPending}
-            isSettingPrimary={setPrimaryAttachmentMutation.isPending}
+            onUploadAndPin={canPinPrimeContracts ? handleUploadAndPinContractDocument : undefined}
+            onPinClick={canPinPrimeContracts ? () => setPinDialogOpen(true) : undefined}
+            onUnpin={canUnpinPrimeContracts ? handleUnpinContractDocument : undefined}
+            onSetPrimary={
+              canSetPrimaryPrimeContracts ? handleSetPrimaryContractDocument : undefined
+            }
+            isAdding={pinPrimeContractsMutation.isPending}
+            isRemoving={unpinPrimeContractsMutation.isPending}
+            isSettingPrimary={setPrimeContractPrimaryMutation.isPending}
           />
           <PaymentsPlaceholderCard />
           <PrimeChangeOrdersCard projectId={projectId} pcos={recentPCOs} isLoading={false} />
@@ -250,6 +272,15 @@ export default function ProjectContractOverview() {
           isLoading={isLoadingSchedule}
           parentFolderId={primeContractFolderId}
           canManage={canManageProject}
+        />
+
+        <PinPrimeContractDialog
+          open={pinDialogOpen}
+          onOpenChange={setPinDialogOpen}
+          candidates={primeContractCandidates}
+          isLoading={isLoadingPrimeContractCandidates}
+          isSubmitting={pinPrimeContractsMutation.isPending}
+          onPin={handlePinContractDocuments}
         />
       </div>
 

@@ -33,6 +33,14 @@ interface FilesExplorerProps {
   rootFolderId?: string;
   rootLabel?: string;
   readOnly?: boolean;
+  primeContractPinning?: {
+    folderId?: string;
+    pinnedFileIds: string[];
+    canPin: boolean;
+    onPin: (file: FileItem) => void;
+    canSetPrimary?: boolean;
+    onSetPrimary?: (file: FileItem, isPrimary: boolean) => void;
+  };
 }
 
 function getFileName(file: FileItem) {
@@ -60,6 +68,7 @@ export function FilesExplorer({
   rootFolderId,
   rootLabel = 'Files',
   readOnly = false,
+  primeContractPinning,
 }: FilesExplorerProps) {
   const listParams = useFilesListParams();
   const {
@@ -135,6 +144,27 @@ export function FilesExplorer({
   const navigationRootId = rootFolderId ?? rootFolder?.id;
   const showResultLocation = isSearchActive && searchMode === 'global';
   const canMutate = !readOnly;
+  const pinnedPrimeContractFileIds = useMemo(
+    () => new Set(primeContractPinning?.pinnedFileIds ?? []),
+    [primeContractPinning?.pinnedFileIds]
+  );
+  const canPinPrimeContract = useCallback(
+    (item: FileItem) =>
+      !!primeContractPinning?.canPin &&
+      item.type === 'FILE' &&
+      item.parentId === primeContractPinning.folderId &&
+      !item.primeContract?.isPinned &&
+      !pinnedPrimeContractFileIds.has(item.id),
+    [pinnedPrimeContractFileIds, primeContractPinning]
+  );
+  const canSetPrimeContractPrimary = useCallback(
+    (item: FileItem) =>
+      !!primeContractPinning?.canSetPrimary &&
+      item.type === 'FILE' &&
+      item.parentId === primeContractPinning.folderId &&
+      item.primeContract?.isPinned === true,
+    [primeContractPinning]
+  );
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploadFileOpen, setUploadFileOpen] = useState(false);
@@ -214,6 +244,10 @@ export function FilesExplorer({
     onRename: setRenameItem,
     onDelete: setDeleteItem,
     onExportFolder: (item) => void folderZipExport.startExport(item),
+    onPinPrimeContract: primeContractPinning?.onPin,
+    canPinPrimeContract,
+    onSetPrimeContractPrimary: primeContractPinning?.onSetPrimary,
+    canSetPrimeContractPrimary,
     canMutate,
   });
 
@@ -294,6 +328,10 @@ export function FilesExplorer({
                 onFolderClick={handleFolderClick}
                 onFilePreview={setPreviewItem}
                 onFolderExport={(item) => void folderZipExport.startExport(item)}
+                onPinPrimeContract={primeContractPinning?.onPin}
+                canPinPrimeContract={canPinPrimeContract}
+                onSetPrimeContractPrimary={primeContractPinning?.onSetPrimary}
+                canSetPrimeContractPrimary={canSetPrimeContractPrimary}
               />
             )}
             <CardFooter>
