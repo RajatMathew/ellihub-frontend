@@ -3,6 +3,10 @@
 
 declare const __APP_VERSION__: string;
 
+interface ImportMetaEnv {
+  readonly VITE_ENABLE_MOCK_DATA_FILL?: string;
+}
+
 interface Window {
   toggleDevtools: () => void;
 }

@@ -7,15 +7,11 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/app/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
   fakeProjectDescription,
@@ -82,12 +78,9 @@ function resolveRFQTypeId(rfqDetail: RFQDetail, rfqTypes?: RFQTypeOption[]) {
   const existingTypeId = rfqDetail.typeId ?? rfqDetail.type?.id;
   if (existingTypeId) return existingTypeId;
 
-  const values = [
-    existingTypeId,
-    rfqDetail.track,
-    rfqDetail.type?.label,
-    rfqDetail.type?.id,
-  ].map(normalizeLookupValue);
+  const values = [existingTypeId, rfqDetail.track, rfqDetail.type?.label, rfqDetail.type?.id].map(
+    normalizeLookupValue
+  );
 
   return (
     rfqTypes?.find((option) => {
@@ -102,11 +95,7 @@ function getRFQTypeLabel(rfqDetail: RFQDetail) {
   return rfqDetail.type?.label ?? rfqDetail.track ?? 'Current track';
 }
 
-function getRFQTypeDisplayValue(
-  typeId: string,
-  options: RFQTypeOption[],
-  rfqDetail?: RFQDetail
-) {
+function getRFQTypeDisplayValue(typeId: string, options: RFQTypeOption[], rfqDetail?: RFQDetail) {
   const option = options.find((item) => item.id === typeId);
   if (option) return option.label ?? option.name ?? option.id;
 
@@ -276,9 +265,7 @@ export default function RFQFormPage() {
 
   return (
     <form
-      onSubmit={(event) =>
-        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
-      }
+      onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
@@ -290,7 +277,7 @@ export default function RFQFormPage() {
         submitLabel={isEdit ? 'Save Changes' : 'Create RFQ'}
         isSubmitting={isSubmitting}
         extraActions={
-          !isEdit ? (
+          isMockDataFillEnabled && !isEdit ? (
             <Button variant="ghost" size="sm" type="button" onClick={fillRandom}>
               <Shuffle className="size-4" />
               Fill Random
@@ -345,10 +332,7 @@ export default function RFQFormPage() {
                     <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                       Track (Type)
                     </FieldLabel>
-                    <Select
-                      value={field.value || selectedRFQTypeId}
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value || selectedRFQTypeId} onValueChange={field.onChange}>
                       <SelectTrigger aria-invalid={fieldState.invalid}>
                         <span
                           className={

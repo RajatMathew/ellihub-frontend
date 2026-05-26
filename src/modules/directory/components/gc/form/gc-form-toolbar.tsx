@@ -6,6 +6,7 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -37,9 +38,11 @@ export function GCFormToolbar({ isEdit, isSubmitting, onFillRandom }: GCFormTool
           </span>
         </ToolbarHeading>
         <ToolbarActions>
-          <Button variant="outline" size="sm" type="button" onClick={onFillRandom}>
-            Fill Random
-          </Button>
+          {isMockDataFillEnabled && (
+            <Button variant="outline" size="sm" type="button" onClick={onFillRandom}>
+              Fill Random
+            </Button>
+          )}
           <Button variant="outline" size="sm" type="button" asChild>
             <Link to=".." relative="path">
               Cancel

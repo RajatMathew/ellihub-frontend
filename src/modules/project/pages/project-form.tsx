@@ -24,6 +24,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import {
   fakeCity,
   fakeContractNumber,
@@ -423,7 +424,7 @@ export default function ProjectForm() {
                 Cancel
               </Link>
             </Button>
-            {!isEditMode && (
+            {isMockDataFillEnabled && !isEditMode && (
               <>
                 <Button
                   variant="outline"
