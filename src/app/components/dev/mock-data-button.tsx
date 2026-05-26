@@ -1,8 +1,7 @@
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { FlaskConical } from 'lucide-react';
 
 import { Button } from '@app/components/ui/button';
-
-const isDev = import.meta.env.DEV;
 
 interface MockDataButtonProps<T> {
   data: T;
@@ -10,8 +9,12 @@ interface MockDataButtonProps<T> {
   label?: string;
 }
 
-export function MockDataButton<T>({ data, onLoad, label = 'Enter Mock Data' }: MockDataButtonProps<T>) {
-  if (!isDev) return null;
+export function MockDataButton<T>({
+  data,
+  onLoad,
+  label = 'Enter Mock Data',
+}: MockDataButtonProps<T>) {
+  if (!isMockDataFillEnabled) return null;
   return (
     <Button
       variant="outline"

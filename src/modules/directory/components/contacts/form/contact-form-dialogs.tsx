@@ -1,7 +1,8 @@
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
-import { QuickCreateVendorDialog } from '@/modules/directory/components/quick-create-vendor-dialog';
 import type { ContactAssociationsState } from '@/modules/directory/hooks/contacts/use-contact-associations';
+
+import { ContactCompanyCreateDialog } from './contact-company-create-dialog';
 
 interface ContactFormDialogsProps {
   associations: ContactAssociationsState;
@@ -22,10 +23,18 @@ export function ContactFormDialogs({
 
   return (
     <>
-      <QuickCreateVendorDialog
+      <ContactCompanyCreateDialog
+        type="VENDOR"
         open={associations.vendorDialogOpen}
         onOpenChange={associations.setVendorDialogOpen}
         onCreated={associations.handleVendorCreated}
+      />
+
+      <ContactCompanyCreateDialog
+        type="GC"
+        open={associations.gcDialogOpen}
+        onOpenChange={associations.setGCDialogOpen}
+        onCreated={associations.handleGCCreated}
       />
 
       <ConfirmDialog

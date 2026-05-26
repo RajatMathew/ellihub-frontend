@@ -2,6 +2,7 @@ import { LineItems } from '@/app/components/line-items';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
   Control,
@@ -82,8 +83,8 @@ export function PurchaseOrderFormLineItemsCard({
                     type="number"
                     step="0.01"
                     {...field}
-                    value={field.value ?? 0}
-                    onChange={(event) => field.onChange(Number(event.target.value))}
+                    value={numberInputValue(field.value)}
+                    onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                     className="text-right"
                   />
                 </InputWrapper>

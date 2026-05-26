@@ -79,6 +79,15 @@ export type ProjectListItem = z.infer<typeof projectListItemSchema>;
 
 const projectActionCapabilitiesSchema = z
   .object({
+    projectTeam: z
+      .object({
+        add: z.boolean().optional(),
+        remove: z.boolean().optional(),
+        promote: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
     primeContract: z
       .object({
         read: z.boolean().optional(),
@@ -305,7 +314,7 @@ export const projectFormSchema = z.object({
   status: ProjectStatusSchema.default('ACTIVE'),
   divisionId: z.string().min(1, 'Division is required'),
   gcId: z.string().min(1, 'General contractor is required'),
-  leadPMId: z.string().optional(),
+  leadPMId: z.string().min(1, 'Project manager is required'),
   streetAddress: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

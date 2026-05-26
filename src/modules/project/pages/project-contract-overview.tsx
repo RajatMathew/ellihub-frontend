@@ -78,7 +78,6 @@ export default function ProjectContractOverview() {
     projectId || undefined,
     'prime contract'
   );
-  const employeesQuery = useProjectEmployeeOptionsQuery(projectId);
   const contract = project?.primeContract ?? undefined;
 
   /* ---- Mutations ---- */
@@ -111,6 +110,20 @@ export default function ProjectContractOverview() {
 
   const teamActions = useTeamMemberActions({ projectId });
 
+  /* ---- Derived Data ---- */
+  const recentPCOs = pcoList?.data ?? [];
+  const docs = attachments ?? [];
+  const canManageProject = project?.capabilities?.canManage ?? false;
+  const projectTeamActions = project?.capabilities?.actions?.projectTeam;
+  const canAddTeamMembers = projectTeamActions?.add === true;
+  const canRemoveTeamMembers = projectTeamActions?.remove === true;
+  const canPromoteTeamMembers = projectTeamActions?.promote === true;
+  const primeContractActions = project?.capabilities?.actions?.primeContract;
+  const canPinPrimeContracts = primeContractActions?.pin === true;
+  const canUnpinPrimeContracts = primeContractActions?.unpin === true;
+  const canSetPrimaryPrimeContracts = primeContractActions?.primary === true;
+  const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canAddTeamMembers);
+
   const employeeOptions = useEmployeeOptions({
     employees: employeesQuery.data,
     project,
@@ -140,15 +153,6 @@ export default function ProjectContractOverview() {
       isPrimary,
     });
   };
-
-  /* ---- Derived Data ---- */
-  const recentPCOs = pcoList?.data ?? [];
-  const docs = attachments ?? [];
-  const canManageProject = project?.capabilities?.canManage ?? false;
-  const primeContractActions = project?.capabilities?.actions?.primeContract;
-  const canPinPrimeContracts = primeContractActions?.pin === true;
-  const canUnpinPrimeContracts = primeContractActions?.unpin === true;
-  const canSetPrimaryPrimeContracts = primeContractActions?.primary === true;
 
   /* ---- Loading & Error States ---- */
   if (isLoading) return <ProjectOverviewLoading />;
@@ -258,9 +262,9 @@ export default function ProjectContractOverview() {
           onOpenChange={setTeamDialogOpen}
           project={project}
           employeeOptions={employeeOptions}
-          onAddMember={canManageProject ? teamActions.addMember : undefined}
-          onRemoveMember={canManageProject ? teamActions.removeMember : undefined}
-          onPromoteToPM={canManageProject ? teamActions.promoteToPM : undefined}
+          onAddMember={canAddTeamMembers ? teamActions.addMember : undefined}
+          onRemoveMember={canRemoveTeamMembers ? teamActions.removeMember : undefined}
+          onPromoteToPM={canPromoteTeamMembers ? teamActions.promoteToPM : undefined}
           isRemovingMember={teamActions.isRemovingMember}
           isPromoting={teamActions.isPromoting}
         />

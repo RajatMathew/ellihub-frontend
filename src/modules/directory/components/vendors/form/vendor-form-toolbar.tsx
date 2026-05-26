@@ -6,6 +6,7 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -35,7 +36,7 @@ export function VendorFormToolbar({ isEdit, isSubmitting, onFillRandom }: Vendor
           </span>
         </ToolbarHeading>
         <ToolbarActions>
-          {!isEdit && (
+          {isMockDataFillEnabled && !isEdit && (
             <Button variant="outline" size="sm" type="button" onClick={onFillRandom}>
               Fill Random
             </Button>

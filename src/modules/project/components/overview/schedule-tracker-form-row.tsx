@@ -6,7 +6,7 @@ import type {
   ScheduleTrackerDraft,
   ScheduleTrackerPrimeChangeOrderOption,
 } from '@/modules/project/components/overview/schedule-tracker-types';
-import { Paperclip } from 'lucide-react';
+import { Paperclip, X } from 'lucide-react';
 
 interface ScheduleTrackerFormRowProps {
   draft: ScheduleTrackerDraft;
@@ -60,23 +60,46 @@ export function ScheduleTrackerFormRow({
         />
       </TableCell>
       <TableCell>
-        <SearchableSelect
-          options={primeChangeOrderOptions}
-          value={draft.primeChangeOrderId || null}
-          onValueChange={(value) => {
-            const selected = primeChangeOrderOptions.find((option) => option.value === value);
-            onChange({
-              ...draft,
-              primeChangeOrderId: value ?? '',
-              primeChangeOrderLabel: selected?.label ?? '',
-            });
-          }}
-          placeholder="Prime CO"
-          searchPlaceholder="Search Prime CO..."
-          emptyMessage={isLoadingPrimeChangeOrders ? 'Loading Prime COs...' : 'No Prime COs found.'}
-          disabled={isSaving}
-          className="min-w-56"
-        />
+        <div className="flex min-w-64 items-center gap-1.5">
+          <SearchableSelect
+            options={primeChangeOrderOptions}
+            value={draft.primeChangeOrderId || null}
+            onValueChange={(value) => {
+              const selected = primeChangeOrderOptions.find((option) => option.value === value);
+              onChange({
+                ...draft,
+                primeChangeOrderId: value ?? '',
+                primeChangeOrderLabel: selected?.label ?? '',
+              });
+            }}
+            placeholder="Prime CO"
+            searchPlaceholder="Search Prime CO..."
+            emptyMessage={
+              isLoadingPrimeChangeOrders ? 'Loading Prime COs...' : 'No Prime COs found.'
+            }
+            disabled={isSaving}
+            className="min-w-0"
+          />
+          {draft.primeChangeOrderId && (
+            <Button
+              variant="ghost"
+              mode="icon"
+              size="sm"
+              type="button"
+              aria-label="Clear prime change order"
+              disabled={isSaving}
+              onClick={() =>
+                onChange({
+                  ...draft,
+                  primeChangeOrderId: '',
+                  primeChangeOrderLabel: '',
+                })
+              }
+            >
+              <X className="size-3.5" />
+            </Button>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         {draft.fileName ? (
@@ -98,8 +121,8 @@ export function ScheduleTrackerFormRow({
           onChange={(event) => onChange({ ...draft, notes: event.target.value })}
         />
       </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
+      <TableCell className="whitespace-nowrap">
+        <div className="flex items-center justify-end gap-2">
           <Button variant="primary" size="sm" type="button" onClick={onSave} disabled={!canSave}>
             Save
           </Button>

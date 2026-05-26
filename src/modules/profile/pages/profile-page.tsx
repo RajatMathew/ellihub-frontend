@@ -44,6 +44,7 @@ import {
   User,
 } from 'lucide-react';
 import { Controller, useForm, type Control } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 
 const emptyValues: UpdateProfileInput = {
   name: '',
@@ -89,6 +90,7 @@ const getProfileFormValues = (profile: UserProfile): UpdateProfileInput => ({
 });
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const profileQuery = useProfileQuery();
   const updateProfile = useUpdateProfileMutation();
   const form = useForm<UpdateProfileInput>({
@@ -123,7 +125,10 @@ export default function ProfilePage() {
 
   const onSubmit = (values: UpdateProfileInput) => {
     updateProfile.mutate(values, {
-      onSuccess: (nextProfile) => form.reset(getProfileFormValues(nextProfile)),
+      onSuccess: (nextProfile) => {
+        form.reset(getProfileFormValues(nextProfile));
+        navigate('/app');
+      },
     });
   };
 

@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popo
 import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
 import { formatCurrency } from '@app/lib/helpers';
+import { numberInputValue, parseNumberInputValue } from '@app/lib/number-input';
 import { cn } from '@app/lib/utils';
 
 /* ---- Unit options ---- */
@@ -349,7 +350,8 @@ export function LineItems({
                             type="number"
                             step="0.01"
                             {...f}
-                            onChange={(e) => f.onChange(Number(e.target.value))}
+                            value={numberInputValue(f.value)}
+                            onChange={(e) => f.onChange(parseNumberInputValue(e.target.value))}
                             aria-invalid={fieldState.invalid}
                             className="text-right"
                           />
@@ -391,7 +393,8 @@ export function LineItems({
                               type="number"
                               step="0.01"
                               {...f}
-                              onChange={(e) => f.onChange(Number(e.target.value))}
+                              value={numberInputValue(f.value)}
+                              onChange={(e) => f.onChange(parseNumberInputValue(e.target.value))}
                               aria-invalid={fieldState.invalid}
                               className="text-right"
                             />

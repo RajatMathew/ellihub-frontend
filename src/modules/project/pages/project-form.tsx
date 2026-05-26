@@ -24,6 +24,8 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import {
   fakeCity,
   fakeContractNumber,
@@ -276,7 +278,7 @@ export default function ProjectForm() {
           status: data.status,
           divisionId: data.divisionId,
           gcId: data.gcId,
-          leadPMId: data.leadPMId || undefined,
+          leadPMId: data.leadPMId,
           streetAddress: data.streetAddress || undefined,
           city: data.city || undefined,
           state: data.state || undefined,
@@ -300,13 +302,12 @@ export default function ProjectForm() {
         const newStatus = data.status;
 
         if (oldStatus !== newStatus) {
-          if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
-          else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
-          else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
-          else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
+          const statusInput = { id: projectId, silent: true };
+          if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(statusInput);
+          else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(statusInput);
+          else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(statusInput);
+          else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(statusInput);
         }
-
-        toast.success('Project updated.');
       } else {
         // Create new project (flat payload matching Swagger)
         const createPayload: CreateProjectInput = {
@@ -322,7 +323,7 @@ export default function ProjectForm() {
           divisionId: data.divisionId,
           status: data.status,
           gcId: data.gcId,
-          leadPMId: data.leadPMId || undefined,
+          leadPMId: data.leadPMId,
           streetAddress: data.streetAddress || undefined,
           city: data.city || undefined,
           state: data.state || undefined,
@@ -411,10 +412,7 @@ export default function ProjectForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
-      className="container-fluid py-7.5"
-    >
+    <form onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)} className="container-fluid py-7.5">
       {/* ── Toolbar ── */}
       <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>
@@ -427,7 +425,7 @@ export default function ProjectForm() {
                 Cancel
               </Link>
             </Button>
-            {!isEditMode && (
+            {isMockDataFillEnabled && !isEditMode && (
               <>
                 <Button
                   variant="outline"
@@ -843,8 +841,8 @@ export default function ProjectForm() {
                         type="number"
                         step="0.01"
                         min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -871,8 +869,8 @@ export default function ProjectForm() {
                         step="0.1"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -903,8 +901,8 @@ export default function ProjectForm() {
                         step="0.1"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -932,8 +930,8 @@ export default function ProjectForm() {
                         step="0.001"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
