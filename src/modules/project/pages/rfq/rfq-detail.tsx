@@ -58,6 +58,7 @@ import {
 } from '@/modules/project/components/rfq';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -78,7 +79,6 @@ import {
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
 } from '@/modules/project/hooks/rfq';
-import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
@@ -1588,12 +1588,12 @@ export default function RFQDetailPage() {
                 try {
                   await Promise.all(
                     inviteVendorIds.map((vendorId) =>
-                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
+                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId, silent: true })
                     )
                   );
                   setInviteOpen(false);
                   setInviteVendorIds([]);
-                  toast.success('Vendors added successfully.');
+                  toast.success(inviteVendorIds.length === 1 ? 'Vendor added.' : 'Vendors added.');
                 } catch {
                   // error toast already shown by mutation
                 }
@@ -1674,7 +1674,7 @@ export default function RFQDetailPage() {
                   if (selectedVendorIds.length > 0) {
                     await Promise.all(
                       selectedVendorIds.map((vendorId) =>
-                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
+                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId, silent: true })
                       )
                     );
                   }

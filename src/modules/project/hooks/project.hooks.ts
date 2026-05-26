@@ -12,6 +12,25 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+const hasProjectCapabilities = (project: ProjectDetail) =>
+  Boolean(
+    project.capabilities?.canManage ||
+    project.capabilities?.canEdit ||
+    project.capabilities?.canCreateProjectDocuments ||
+    project.capabilities?.canManageTeam ||
+    Object.values(project.capabilities?.actions ?? {}).some((actions) =>
+      Object.values(actions ?? {}).some(Boolean)
+    )
+  );
+
+type ProjectStatusMutationInput = string | { id: string; silent?: boolean };
+
+const getProjectStatusMutationId = (input: ProjectStatusMutationInput) =>
+  typeof input === 'string' ? input : input.id;
+
+const isProjectStatusMutationSilent = (input: ProjectStatusMutationInput) =>
+  typeof input !== 'string' && input.silent === true;
+
 /* ---- QUERY HOOKS ---- */
 
 export const useProjectsQuery = (params?: ListProjectsParams) =>
@@ -88,7 +107,15 @@ export const useUpdateProjectMutation = () => {
     onSuccess: async (updated: ProjectDetail) => {
       // Merge update into cache to prevent UI flicker/disappearing nested fields.
       qc.setQueryData<ProjectDetail | undefined>(projectKeys.detail(updated.id), (old) =>
-        old ? { ...old, ...updated } : updated
+        old
+          ? {
+              ...old,
+              ...updated,
+              capabilities: hasProjectCapabilities(updated)
+                ? updated.capabilities
+                : old.capabilities,
+            }
+          : updated
       );
 
       await invalidateProjectQueries(qc, [
@@ -118,11 +145,15 @@ export const useDeleteProjectMutation = () => {
 export const useSetProjectActiveMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => projectApi.setActive(id),
-    onSuccess: (_updated, id) => {
+    mutationFn: (input: ProjectStatusMutationInput) =>
+      projectApi.setActive(getProjectStatusMutationId(input)),
+    onSuccess: (_updated, input) => {
+      const id = getProjectStatusMutationId(input);
       if (!id) return;
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
-        toast.success('Project is now Active.');
+        if (!isProjectStatusMutationSilent(input)) {
+          toast.success('Project is now Active.');
+        }
       });
     },
     onError: (error) => toastApiError(error, 'Failed to set project active.'),
@@ -132,11 +163,15 @@ export const useSetProjectActiveMutation = () => {
 export const useSetProjectInactiveMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => projectApi.setInactive(id),
-    onSuccess: (_updated, id) => {
+    mutationFn: (input: ProjectStatusMutationInput) =>
+      projectApi.setInactive(getProjectStatusMutationId(input)),
+    onSuccess: (_updated, input) => {
+      const id = getProjectStatusMutationId(input);
       if (!id) return;
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
-        toast.success('Project is now Inactive.');
+        if (!isProjectStatusMutationSilent(input)) {
+          toast.success('Project is now Inactive.');
+        }
       });
     },
     onError: (error) => toastApiError(error, 'Failed to set project inactive.'),
@@ -146,11 +181,15 @@ export const useSetProjectInactiveMutation = () => {
 export const useSetProjectClosedMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => projectApi.setClosed(id),
-    onSuccess: (_updated, id) => {
+    mutationFn: (input: ProjectStatusMutationInput) =>
+      projectApi.setClosed(getProjectStatusMutationId(input)),
+    onSuccess: (_updated, input) => {
+      const id = getProjectStatusMutationId(input);
       if (!id) return;
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
-        toast.success('Project closed successfully.');
+        if (!isProjectStatusMutationSilent(input)) {
+          toast.success('Project closed successfully.');
+        }
       });
     },
     onError: (error) => toastApiError(error, 'Failed to close project.'),
@@ -160,11 +199,15 @@ export const useSetProjectClosedMutation = () => {
 export const useSetProjectCompletedMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => projectApi.setCompleted(id),
-    onSuccess: (_updated, id) => {
+    mutationFn: (input: ProjectStatusMutationInput) =>
+      projectApi.setCompleted(getProjectStatusMutationId(input)),
+    onSuccess: (_updated, input) => {
+      const id = getProjectStatusMutationId(input);
       if (!id) return;
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
-        toast.success('Project marked as Completed.');
+        if (!isProjectStatusMutationSilent(input)) {
+          toast.success('Project marked as Completed.');
+        }
       });
     },
     onError: (error) => toastApiError(error, 'Failed to set project completed.'),

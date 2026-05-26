@@ -300,13 +300,12 @@ export default function ProjectForm() {
         const newStatus = data.status;
 
         if (oldStatus !== newStatus) {
-          if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
-          else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
-          else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
-          else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
+          const statusInput = { id: projectId, silent: true };
+          if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(statusInput);
+          else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(statusInput);
+          else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(statusInput);
+          else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(statusInput);
         }
-
-        toast.success('Project updated.');
       } else {
         // Create new project (flat payload matching Swagger)
         const createPayload: CreateProjectInput = {
@@ -411,10 +410,7 @@ export default function ProjectForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
-      className="container-fluid py-7.5"
-    >
+    <form onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)} className="container-fluid py-7.5">
       {/* ── Toolbar ── */}
       <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>

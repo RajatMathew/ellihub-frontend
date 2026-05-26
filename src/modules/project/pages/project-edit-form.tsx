@@ -34,8 +34,8 @@ import {
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
   useDivisionsQuery,
-  useProjectEmployeeOptionsQuery,
   useProjectDetailQuery,
+  useProjectEmployeeOptionsQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
   useSetProjectClosedMutation,
@@ -54,7 +54,6 @@ import { Check } from 'lucide-react';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
-import { toast } from 'sonner';
 
 const parseDateValue = (value: unknown): string =>
   typeof value === 'string' ? value.split('T')[0] : '';
@@ -205,13 +204,13 @@ function ProjectEditFormInner({
       const newStatus = data.status;
 
       if (oldStatus !== newStatus) {
-        if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
-        else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
-        else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
-        else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
+        const statusInput = { id: projectId, silent: true };
+        if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(statusInput);
+        else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(statusInput);
+        else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(statusInput);
+        else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(statusInput);
       }
 
-      toast.success('Project updated.');
       navigate(`/app/project/${projectId}/overview`);
     } catch {
       /* error toast from mutation */
@@ -228,10 +227,7 @@ function ProjectEditFormInner({
   }, []);
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}
-      className="container-fluid py-7.5"
-    >
+    <form onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)} className="container-fluid py-7.5">
       {/* ── Toolbar ── */}
       <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>

@@ -3,8 +3,8 @@ import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
-  CreateRFQInput,
   CreatePOFromRFQInput,
+  CreateRFQInput,
   ListRFQParams,
   RFQDeliverableInput,
   UpdateRFQInput,
@@ -196,13 +196,8 @@ export const useRemoveQuoteMutation = () => {
 export const useChangeRFQStatusMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      statusName,
-    }: {
-      id: string;
-      statusName: 'DRAFT' | 'PUBLISHED';
-    }) => rfqApi.changeStatus(id, statusName),
+    mutationFn: ({ id, statusName }: { id: string; statusName: 'DRAFT' | 'PUBLISHED' }) =>
+      rfqApi.changeStatus(id, statusName),
     onSuccess: async (_, { id }) => {
       await invalidateRFQQueries(qc, id);
       toast.success('Status updated.');
@@ -231,10 +226,13 @@ export const useDeclineInviteMutation = () => {
 export const useAddVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { rfqId: string; vendorId: string }) => rfqApi.addVendor(data),
-    onSuccess: async (_, { rfqId }) => {
+    mutationFn: ({ rfqId, vendorId }: { rfqId: string; vendorId: string; silent?: boolean }) =>
+      rfqApi.addVendor({ rfqId, vendorId }),
+    onSuccess: async (_, { rfqId, silent }) => {
       await invalidateRFQQueries(qc, rfqId);
-      toast.success('Vendor added.');
+      if (!silent) {
+        toast.success('Vendor added.');
+      }
     },
     onError: (err) => toastApiError(err, 'Failed to add vendor.'),
   });
