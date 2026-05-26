@@ -9,10 +9,14 @@ import type {
 } from '@/modules/hr/schemas/employee.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-export const useEmployeesQuery = (params: ListEmployeesParams) => {
+export const useEmployeesQuery = (
+  params: ListEmployeesParams,
+  options: { enabled?: boolean } = {}
+) => {
   return useQuery({
     queryKey: employeesKeys.list(params),
     queryFn: () => employeesApi.list(params),
+    enabled: options.enabled ?? true,
   });
 };
 

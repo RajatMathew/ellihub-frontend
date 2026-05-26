@@ -13,7 +13,10 @@ interface PTOFormContentProps {
   control: Control<CreatePTOInput>;
   employeeOptions: SearchableSelectOption[];
   typeOptions: SearchableSelectOption[];
+  showEmployeeSelector: boolean;
+  hasCurrentEmployee: boolean;
   isEmployeesLoading: boolean;
+  isAccessLoading: boolean;
   isTypesLoading: boolean;
 }
 
@@ -21,7 +24,10 @@ export function PTOFormContent({
   control,
   employeeOptions,
   typeOptions,
+  showEmployeeSelector,
+  hasCurrentEmployee,
   isEmployeesLoading,
+  isAccessLoading,
   isTypesLoading,
 }: PTOFormContentProps) {
   return (
@@ -39,26 +45,35 @@ export function PTOFormContent({
 
           <Separator />
 
+          {!hasCurrentEmployee && !isAccessLoading && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              Your user account is not linked to an employee profile. Please contact an admin before
+              submitting a time off request.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Controller
-              name="employeeId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                    Employee Selection
-                  </FieldLabel>
-                  <SearchableSelect
-                    options={employeeOptions}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Search and select staff..."
-                    disabled={isEmployeesLoading}
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+            {showEmployeeSelector && (
+              <Controller
+                name="employeeId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel className="text-xs font-bold uppercase tracking-widest">
+                      Employee Selection
+                    </FieldLabel>
+                    <SearchableSelect
+                      options={employeeOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Search and select staff..."
+                      disabled={isEmployeesLoading}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
+            )}
 
             <Controller
               name="typeId"
