@@ -1,6 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { projectScheduleApi } from '@/modules/project/api/project-schedule.api';
 import { projectScheduleKeys } from '@/modules/project/constants/project-schedule.keys';
@@ -10,6 +7,8 @@ import type {
   CreateScheduleEntryInput,
   UpdateScheduleEntryInput,
 } from '@/modules/project/schemas/project-schedule.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 type UpdateScheduleEntryMutationInput = UpdateScheduleEntryInput & {
   projectId: string;
@@ -50,6 +49,7 @@ export const useUpdateScheduleEntryMutation = () => {
         adjustedFinishDate: data.adjustedFinishDate,
         notes: data.notes,
         fileId: data.fileId,
+        primeChangeOrderId: data.primeChangeOrderId,
       }),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(queryClient, [

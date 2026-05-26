@@ -1,14 +1,19 @@
-import { Paperclip } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { TableCell, TableRow } from '@/app/components/ui/table';
-import type { ScheduleTrackerDraft } from '@/modules/project/components/overview/schedule-tracker-types';
+import type {
+  ScheduleTrackerDraft,
+  ScheduleTrackerPrimeChangeOrderOption,
+} from '@/modules/project/components/overview/schedule-tracker-types';
+import { Paperclip } from 'lucide-react';
 
 interface ScheduleTrackerFormRowProps {
   draft: ScheduleTrackerDraft;
   isSaving: boolean;
   parentFolderId?: string;
+  primeChangeOrderOptions: ScheduleTrackerPrimeChangeOrderOption[];
+  isLoadingPrimeChangeOrders: boolean;
   onAttach: () => void;
   onCancel: () => void;
   onChange: (draft: ScheduleTrackerDraft) => void;
@@ -19,6 +24,8 @@ export function ScheduleTrackerFormRow({
   draft,
   isSaving,
   parentFolderId,
+  primeChangeOrderOptions,
+  isLoadingPrimeChangeOrders,
   onAttach,
   onCancel,
   onChange,
@@ -41,9 +48,7 @@ export function ScheduleTrackerFormRow({
           variant="sm"
           placeholder="Description"
           value={draft.description}
-          onChange={(event) =>
-            onChange({ ...draft, description: event.target.value })
-          }
+          onChange={(event) => onChange({ ...draft, description: event.target.value })}
         />
       </TableCell>
       <TableCell>
@@ -51,16 +56,31 @@ export function ScheduleTrackerFormRow({
           type="date"
           variant="sm"
           value={draft.adjustedFinishDate}
-          onChange={(event) =>
-            onChange({ ...draft, adjustedFinishDate: event.target.value })
-          }
+          onChange={(event) => onChange({ ...draft, adjustedFinishDate: event.target.value })}
+        />
+      </TableCell>
+      <TableCell>
+        <SearchableSelect
+          options={primeChangeOrderOptions}
+          value={draft.primeChangeOrderId || null}
+          onValueChange={(value) => {
+            const selected = primeChangeOrderOptions.find((option) => option.value === value);
+            onChange({
+              ...draft,
+              primeChangeOrderId: value ?? '',
+              primeChangeOrderLabel: selected?.label ?? '',
+            });
+          }}
+          placeholder="Prime CO"
+          searchPlaceholder="Search Prime CO..."
+          emptyMessage={isLoadingPrimeChangeOrders ? 'Loading Prime COs...' : 'No Prime COs found.'}
+          disabled={isSaving}
+          className="min-w-56"
         />
       </TableCell>
       <TableCell>
         {draft.fileName ? (
-          <span className="inline-block max-w-full truncate text-xs">
-            {draft.fileName}
-          </span>
+          <span className="inline-block max-w-full truncate text-xs">{draft.fileName}</span>
         ) : parentFolderId ? (
           <Button variant="ghost" size="sm" type="button" onClick={onAttach}>
             <Paperclip className="size-3.5" />
@@ -80,13 +100,7 @@ export function ScheduleTrackerFormRow({
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
-          <Button
-            variant="primary"
-            size="sm"
-            type="button"
-            onClick={onSave}
-            disabled={!canSave}
-          >
+          <Button variant="primary" size="sm" type="button" onClick={onSave} disabled={!canSave}>
             Save
           </Button>
           <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

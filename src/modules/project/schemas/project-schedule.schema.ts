@@ -11,6 +11,19 @@ export const scheduleFileSchema = z
 
 export type ScheduleFile = z.infer<typeof scheduleFileSchema>;
 
+export const schedulePrimeChangeOrderSchema = z
+  .object({
+    id: z.string(),
+    referenceNumber: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    statusName: z.string().nullable().optional(),
+    deletedAt: z.string().nullable().optional(),
+    fieldwireDeletedAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export type SchedulePrimeChangeOrder = z.infer<typeof schedulePrimeChangeOrderSchema>;
+
 export const projectScheduleEntrySchema = z
   .object({
     id: z.string(),
@@ -21,6 +34,8 @@ export const projectScheduleEntrySchema = z
     notes: z.string().nullable().optional(),
     fileId: z.string().nullable().optional(),
     file: scheduleFileSchema.nullable().optional(),
+    primeChangeOrderId: z.string().nullable().optional(),
+    primeChangeOrder: schedulePrimeChangeOrderSchema.nullable().optional(),
     changeOrderId: z.string().nullable().optional(),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
@@ -37,6 +52,7 @@ export const createScheduleEntryInputSchema = z.object({
   adjustedFinishDate: z.string().optional(),
   notes: z.string().max(2000).optional(),
   fileId: z.string().optional(),
+  primeChangeOrderId: z.string().optional(),
 });
 
 export type CreateScheduleEntryInput = z.infer<typeof createScheduleEntryInputSchema>;
@@ -48,6 +64,7 @@ export const updateScheduleEntryInputSchema = z.object({
   adjustedFinishDate: z.string().nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
   fileId: z.string().nullable().optional(),
+  primeChangeOrderId: z.string().nullable().optional(),
 });
 
 export type UpdateScheduleEntryInput = z.infer<typeof updateScheduleEntryInputSchema>;

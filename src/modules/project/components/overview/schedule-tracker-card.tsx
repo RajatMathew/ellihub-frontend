@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -10,12 +10,15 @@ import { ScheduleTrackerEntryTable } from '@/modules/project/components/overview
 import {
   createEmptyScheduleTrackerDraft,
   createScheduleTrackerDraftFromEntry,
+  formatSchedulePrimeChangeOrderLabel,
   type ScheduleTrackerEditingEntry,
+  type ScheduleTrackerPrimeChangeOrderOption,
   type ScheduleTrackerUploadTarget,
 } from '@/modules/project/components/overview/schedule-tracker-types';
 import {
   useCreateScheduleEntryMutation,
   useDeleteScheduleEntryMutation,
+  usePrimeChangeOrdersQuery,
   useUpdateScheduleEntryMutation,
 } from '@/modules/project/hooks';
 import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
@@ -53,6 +56,30 @@ export function ScheduleTrackerCard({
   const deleteMutation = useDeleteScheduleEntryMutation();
   const uploadMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
+  const primeChangeOrdersQuery = usePrimeChangeOrdersQuery({
+    projectId,
+    page: 1,
+    size: 100,
+  });
+
+  const primeChangeOrderOptions = useMemo<ScheduleTrackerPrimeChangeOrderOption[]>(() => {
+    const options = new Map<string, string>();
+
+    for (const primeChangeOrder of primeChangeOrdersQuery.data?.data ?? []) {
+      options.set(primeChangeOrder.id, formatSchedulePrimeChangeOrderLabel(primeChangeOrder));
+    }
+
+    for (const entry of entries) {
+      if (entry.primeChangeOrderId && entry.primeChangeOrder) {
+        options.set(
+          entry.primeChangeOrderId,
+          formatSchedulePrimeChangeOrderLabel(entry.primeChangeOrder)
+        );
+      }
+    }
+
+    return Array.from(options, ([value, label]) => ({ value, label }));
+  }, [entries, primeChangeOrdersQuery.data?.data]);
 
   const resetNewEntry = () => {
     setNewEntry(createEmptyScheduleTrackerDraft());
@@ -69,6 +96,7 @@ export function ScheduleTrackerCard({
       adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
       notes: newEntry.notes || undefined,
       fileId: newEntry.fileId || undefined,
+      primeChangeOrderId: newEntry.primeChangeOrderId || undefined,
     });
     resetNewEntry();
   };
@@ -84,6 +112,7 @@ export function ScheduleTrackerCard({
       adjustedFinishDate: editingEntry.draft.adjustedFinishDate || undefined,
       notes: editingEntry.draft.notes || undefined,
       fileId: editingEntry.draft.fileId || undefined,
+      primeChangeOrderId: editingEntry.draft.primeChangeOrderId || null,
     });
     setEditingEntry(null);
   };
@@ -156,9 +185,11 @@ export function ScheduleTrackerCard({
         editingEntry={editingEntry}
         newEntry={newEntry}
         parentFolderId={parentFolderId}
+        primeChangeOrderOptions={primeChangeOrderOptions}
         isCreating={createMutation.isPending}
         isUpdating={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
+        isLoadingPrimeChangeOrders={primeChangeOrdersQuery.isLoading}
         isReadOnly={!canManage}
         onAttach={setUploadTarget}
         onCancelAdd={resetNewEntry}

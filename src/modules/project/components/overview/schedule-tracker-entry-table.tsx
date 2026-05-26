@@ -8,6 +8,7 @@ import { ScheduleTrackerTableHeader } from '@/modules/project/components/overvie
 import type {
   ScheduleTrackerDraft,
   ScheduleTrackerEditingEntry,
+  ScheduleTrackerPrimeChangeOrderOption,
   ScheduleTrackerUploadTarget,
 } from '@/modules/project/components/overview/schedule-tracker-types';
 import type {
@@ -22,9 +23,11 @@ interface ScheduleTrackerEntryTableProps {
   editingEntry: ScheduleTrackerEditingEntry | null;
   newEntry: ScheduleTrackerDraft;
   parentFolderId?: string;
+  primeChangeOrderOptions: ScheduleTrackerPrimeChangeOrderOption[];
   isCreating: boolean;
   isUpdating: boolean;
   isDeleting: boolean;
+  isLoadingPrimeChangeOrders: boolean;
   isReadOnly?: boolean;
   onAttach: (target: Exclude<ScheduleTrackerUploadTarget, null>) => void;
   onCancelAdd: () => void;
@@ -45,9 +48,11 @@ export function ScheduleTrackerEntryTable({
   editingEntry,
   newEntry,
   parentFolderId,
+  primeChangeOrderOptions,
   isCreating,
   isUpdating,
   isDeleting,
+  isLoadingPrimeChangeOrders,
   isReadOnly = false,
   onAttach,
   onCancelAdd,
@@ -81,6 +86,8 @@ export function ScheduleTrackerEntryTable({
                   draft={editingEntry.draft}
                   isSaving={isUpdating}
                   parentFolderId={parentFolderId}
+                  primeChangeOrderOptions={primeChangeOrderOptions}
+                  isLoadingPrimeChangeOrders={isLoadingPrimeChangeOrders}
                   onAttach={() => onAttach('edit')}
                   onCancel={onCancelEdit}
                   onChange={(draft) => onChangeEdit(entry.id, draft)}
@@ -104,6 +111,8 @@ export function ScheduleTrackerEntryTable({
                 draft={newEntry}
                 isSaving={isCreating}
                 parentFolderId={parentFolderId}
+                primeChangeOrderOptions={primeChangeOrderOptions}
+                isLoadingPrimeChangeOrders={isLoadingPrimeChangeOrders}
                 onAttach={() => onAttach('add')}
                 onCancel={onCancelAdd}
                 onChange={onChangeAdd}
