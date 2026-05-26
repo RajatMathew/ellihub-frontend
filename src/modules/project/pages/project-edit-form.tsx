@@ -177,7 +177,7 @@ function ProjectEditFormInner({
       stageId: data.stageId,
       divisionId: data.divisionId,
       gcId: data.gcId,
-      leadPMId: data.leadPMId || undefined,
+      leadPMId: data.leadPMId,
       status: data.status,
       streetAddress: data.streetAddress || undefined,
       city: data.city || undefined,
