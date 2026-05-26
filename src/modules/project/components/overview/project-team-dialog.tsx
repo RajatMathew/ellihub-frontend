@@ -62,8 +62,6 @@ export function ProjectTeamDialog({
     await onRemoveMember(pendingRemoveMember.employeeId);
     setPendingRemoveMember(null);
   };
-  const canManageTeam = Boolean(onAddMember && onRemoveMember && onPromoteToPM);
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +74,7 @@ export function ProjectTeamDialog({
                   Manage team members and their roles
                 </p>
               </div>
-              {canManageTeam && !showAddMember && hasMembers && (
+              {onAddMember && !showAddMember && hasMembers && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -90,7 +88,7 @@ export function ProjectTeamDialog({
             </div>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            {canManageTeam && showAddMember && (
+            {onAddMember && showAddMember && (
               <div className="pb-4 border-b">
                 <AddTeamMemberForm
                   employeeOptions={employeeOptions}
@@ -111,18 +109,22 @@ export function ProjectTeamDialog({
                   leadPM={project.leadPM}
                   teamMembers={teamMembers}
                   onPromoteToPM={onPromoteToPM}
-                  onRemoveMember={(employeeId) => {
-                    const member = teamMembers.find((item) => item.employeeId === employeeId);
-                    setPendingRemoveMember({
-                      employeeId,
-                      name: member?.employee?.name ?? 'this team member',
-                    });
-                  }}
+                  onRemoveMember={
+                    onRemoveMember
+                      ? (employeeId) => {
+                          const member = teamMembers.find((item) => item.employeeId === employeeId);
+                          setPendingRemoveMember({
+                            employeeId,
+                            name: member?.employee?.name ?? 'this team member',
+                          });
+                        }
+                      : undefined
+                  }
                   isPromoting={isPromoting}
                   isRemoving={isRemovingMember}
                 />
               </div>
-            ) : canManageTeam ? (
+            ) : onAddMember ? (
               <EmptyTeamState onAddMember={() => setShowAddMember(true)} />
             ) : (
               <p className="text-sm text-muted-foreground">No team members assigned.</p>

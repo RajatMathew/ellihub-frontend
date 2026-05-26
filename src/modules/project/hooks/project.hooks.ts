@@ -62,11 +62,11 @@ export const useProjectCostCodesQuery = (id: string) =>
     enabled: !!id,
   });
 
-export const useProjectEmployeeOptionsQuery = (id: string) =>
+export const useProjectEmployeeOptionsQuery = (id: string, enabled = true) =>
   useQuery({
     queryKey: projectKeys.employeeOptions(id),
     queryFn: () => projectApi.listProjectEmployeeOptions(id),
-    enabled: !!id,
+    enabled: !!id && enabled,
   });
 
 export const useInvoiceAgingQuery = (
