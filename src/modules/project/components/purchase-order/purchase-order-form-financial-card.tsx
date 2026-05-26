@@ -1,6 +1,3 @@
-import type { Control } from 'react-hook-form';
-import { Controller } from 'react-hook-form';
-
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -12,16 +9,15 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
+import type { Control } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 
 const fieldLabelClassName = 'text-xs font-semibold uppercase tracking-normal';
 
-export function PurchaseOrderFormFinancialCard({
-  control,
-}: {
-  control: Control<CreatePOInput>;
-}) {
+export function PurchaseOrderFormFinancialCard({ control }: { control: Control<CreatePOInput> }) {
   return (
     <Card id="financial">
       <CardContent className="space-y-6">
@@ -69,8 +65,8 @@ export function PurchaseOrderFormFinancialCard({
                     min={0}
                     max={100}
                     step={0.001}
-                    value={field.value ?? 0}
-                    onChange={(event) => field.onChange(Number(event.target.value))}
+                    value={numberInputValue(field.value)}
+                    onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                     aria-invalid={fieldState.invalid}
                   />
                 </InputWrapper>
@@ -91,8 +87,8 @@ export function PurchaseOrderFormFinancialCard({
                     min={0}
                     max={100}
                     step={0.5}
-                    value={field.value ?? 10}
-                    onChange={(event) => field.onChange(Number(event.target.value))}
+                    value={numberInputValue(field.value)}
+                    onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                     aria-invalid={fieldState.invalid}
                   />
                 </InputWrapper>

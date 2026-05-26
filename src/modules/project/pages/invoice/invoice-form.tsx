@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fakeInvoiceNumber } from '@/lib/fake-data';
-
-import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
@@ -14,6 +12,8 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
+import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -22,13 +22,13 @@ import {
   ProjectFormToolbar,
 } from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddInvoiceAttachmentMutation,
   useCreateInvoiceMutation,
   useInvoiceDetailQuery,
   useUpdateInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
-import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
@@ -322,9 +322,7 @@ export function InvoiceFormPage() {
 
   return (
     <form
-      onSubmit={(event) =>
-        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
-      }
+      onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
@@ -504,8 +502,10 @@ export function InvoiceFormPage() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={field.value}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
+                        value={numberInputValue(field.value)}
+                        onChange={(event) =>
+                          field.onChange(parseNumberInputValue(event.target.value))
+                        }
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -525,8 +525,10 @@ export function InvoiceFormPage() {
                       <Input
                         type="number"
                         step="0.01"
-                        value={field.value ?? 0}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
+                        value={numberInputValue(field.value)}
+                        onChange={(event) =>
+                          field.onChange(parseNumberInputValue(event.target.value))
+                        }
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

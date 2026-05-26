@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { fakeContactName } from '@/lib/fake-data';
-import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Button } from '@/app/components/ui/button';
@@ -18,9 +17,16 @@ import { Separator } from '@/app/components/ui/separator';
 import { Switch, SwitchWrapper } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency } from '@/app/lib/helpers';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { formatCurrency } from '@/app/lib/helpers';
+import {
+  numberInputValue,
+  parseNonNegativeNumberInputValue,
+  parseNumberInputValue,
+} from '@/app/lib/number-input';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import { fakeContactName } from '@/lib/fake-data';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
 import {
@@ -30,16 +36,15 @@ import {
 } from '@/modules/project/components/shared';
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
-import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
+import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
+import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
   useAddSCOAttachmentMutation,
   useCreateSCOMutation,
   useSCODetailQuery,
   useUpdateSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
-import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import {
@@ -108,12 +113,14 @@ export function SCOFormPage() {
             label: sourcePurchaseOrder.poNumber ?? sourcePurchaseOrder.id,
             description: [
               sourcePurchaseOrder.vendor?.name,
-              sourcePurchaseOrder.total ? formatCurrency(Number(sourcePurchaseOrder.total)) : undefined,
+              sourcePurchaseOrder.total
+                ? formatCurrency(Number(sourcePurchaseOrder.total))
+                : undefined,
             ]
               .filter(Boolean)
               .join(' - '),
           }
-      : undefined;
+        : undefined;
   const purchaseOrderPicker = usePurchaseOrderOptions({
     projectId,
     selectedOption: selectedPurchaseOrderOption,
@@ -300,9 +307,7 @@ export function SCOFormPage() {
 
   return (
     <form
-      onSubmit={(event) =>
-        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
-      }
+      onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar
@@ -505,9 +510,9 @@ export function SCOFormPage() {
                           type="number"
                           min={0}
                           step="0.01"
-                          value={field.value ?? 0}
+                          value={numberInputValue(field.value)}
                           onChange={(event) =>
-                            field.onChange(toNonNegativeNumber(event.target.value))
+                            field.onChange(parseNonNegativeNumberInputValue(event.target.value))
                           }
                           aria-invalid={fieldState.invalid}
                         />
@@ -530,8 +535,10 @@ export function SCOFormPage() {
                           type="number"
                           min={0}
                           step={1}
-                          value={field.value ?? 0}
-                          onChange={(event) => field.onChange(Number(event.target.value))}
+                          value={numberInputValue(field.value)}
+                          onChange={(event) =>
+                            field.onChange(parseNumberInputValue(event.target.value))
+                          }
                           aria-invalid={fieldState.invalid}
                         />
                       </InputWrapper>
@@ -645,9 +652,9 @@ export function SCOFormPage() {
                               type="number"
                               min={0}
                               step="0.01"
-                              value={field.value ?? 0}
+                              value={numberInputValue(field.value)}
                               onChange={(event) =>
-                                field.onChange(toNonNegativeNumber(event.target.value))
+                                field.onChange(parseNonNegativeNumberInputValue(event.target.value))
                               }
                               aria-invalid={fieldState.invalid}
                             />
@@ -688,8 +695,10 @@ export function SCOFormPage() {
                             <Input
                               type="number"
                               step="0.01"
-                              value={field.value ?? 0}
-                              onChange={(event) => field.onChange(Number(event.target.value))}
+                              value={numberInputValue(field.value)}
+                              onChange={(event) =>
+                                field.onChange(parseNumberInputValue(event.target.value))
+                              }
                               aria-invalid={fieldState.invalid}
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -802,9 +811,11 @@ export function SCOFormPage() {
                                   type="number"
                                   min={0}
                                   step="0.01"
-                                  value={field.value ?? 0}
+                                  value={numberInputValue(field.value)}
                                   onChange={(event) =>
-                                    field.onChange(toNonNegativeNumber(event.target.value))
+                                    field.onChange(
+                                      parseNonNegativeNumberInputValue(event.target.value)
+                                    )
                                   }
                                   className="text-right"
                                   aria-invalid={fieldState.invalid}
@@ -842,8 +853,10 @@ export function SCOFormPage() {
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  value={field.value ?? 0}
-                                  onChange={(event) => field.onChange(Number(event.target.value))}
+                                  value={numberInputValue(field.value)}
+                                  onChange={(event) =>
+                                    field.onChange(parseNumberInputValue(event.target.value))
+                                  }
                                   className="text-right"
                                   aria-invalid={fieldState.invalid}
                                 />

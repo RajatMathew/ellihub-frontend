@@ -25,6 +25,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import {
   fakeCity,
   fakeContractNumber,
@@ -840,8 +841,8 @@ export default function ProjectForm() {
                         type="number"
                         step="0.01"
                         min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -868,8 +869,8 @@ export default function ProjectForm() {
                         step="0.1"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -900,8 +901,8 @@ export default function ProjectForm() {
                         step="0.1"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
@@ -929,8 +930,8 @@ export default function ProjectForm() {
                         step="0.001"
                         min={0}
                         max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                        value={numberInputValue(field.value)}
+                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}

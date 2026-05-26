@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, ChevronDown, FileText } from 'lucide-react';
-import { Controller, useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
-import { Link } from 'react-router-dom';
-
 import { LineItems } from '@/app/components/line-items';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -34,6 +29,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
+import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { cn } from '@/app/lib/utils';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import { useProjectCostCodesQuery } from '@/modules/project/hooks';
@@ -44,6 +40,10 @@ import {
   type CreatePOFromRFQInput,
   type RFQDetail,
 } from '@/modules/project/schemas/rfq';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AlertCircle, ChevronDown, FileText } from 'lucide-react';
+import { Controller, useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 
 interface RFQCreatePOPreviewDialogProps {
   open: boolean;
@@ -155,9 +155,7 @@ export function RFQCreatePOPreviewDialog({
       <DialogContent className="max-h-[90dvh] max-w-6xl overflow-hidden">
         <form
           className="min-h-0 flex-1 overflow-hidden"
-          onSubmit={(event) =>
-            void handleSubmit(handleCreate, onInvalidFormSubmit)(event)
-          }
+          onSubmit={(event) => void handleSubmit(handleCreate, onInvalidFormSubmit)(event)}
         >
           <div className="flex max-h-[calc(90dvh-3rem)] min-h-0 flex-col">
             <DialogHeader>
@@ -337,8 +335,8 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
                   min={0}
                   max={100}
                   step={0.001}
-                  value={field.value ?? 0}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                   aria-invalid={fieldState.invalid}
                 />
               </InputWrapper>
@@ -357,8 +355,8 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
                   type="number"
                   min={0}
                   step={0.01}
-                  value={field.value ?? 0}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                   aria-invalid={fieldState.invalid}
                 />
               </InputWrapper>
@@ -378,8 +376,8 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
                   min={0}
                   max={100}
                   step={0.5}
-                  value={field.value ?? 10}
-                  onChange={(event) => field.onChange(Number(event.target.value))}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                   aria-invalid={fieldState.invalid}
                 />
               </InputWrapper>
@@ -635,7 +633,8 @@ function getDeliverableUnitId(deliverable: RFQDetail['deliverables'][number]) {
 
 function getAwardedQuoteLeadTime(rfq: RFQDetail) {
   const quote = rfq.quotes.find((item) => item.isAwarded || item.vendorId === rfq.awardedVendorId);
-  const rawLeadTime = (quote as { leadTime?: unknown } | undefined)?.leadTime ?? quote?.leadTimeDays;
+  const rawLeadTime =
+    (quote as { leadTime?: unknown } | undefined)?.leadTime ?? quote?.leadTimeDays;
   return rawLeadTime == null ? '' : String(rawLeadTime);
 }
 
