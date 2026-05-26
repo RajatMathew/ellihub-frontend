@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { formatDecimal } from '@/app/lib/helpers';
 import type { RFQDeliverable } from '@/modules/project/schemas/rfq';
 import { FileText } from 'lucide-react';
 
@@ -48,7 +49,9 @@ export function RFQDetailDeliverablesCard({ deliverables }: RFQDetailDeliverable
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <div className="text-muted-foreground">Qty</div>
-                      <div className="font-medium tabular-nums">{deliverable.quantity ?? '-'}</div>
+                      <div className="font-medium tabular-nums">
+                        {deliverable.quantity != null ? formatDecimal(deliverable.quantity) : '-'}
+                      </div>
                     </div>
                     <div>
                       <div className="text-muted-foreground">Unit</div>
@@ -92,7 +95,7 @@ export function RFQDetailDeliverablesCard({ deliverables }: RFQDetailDeliverable
                         )}
                       </td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
-                        {deliverable.quantity ?? '-'}
+                        {deliverable.quantity != null ? formatDecimal(deliverable.quantity) : '-'}
                       </td>
                       <td className="py-2.5">{getUnitLabel(deliverable.unit)}</td>
                     </tr>

@@ -31,7 +31,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -692,14 +692,16 @@ export function PODetailPage() {
                     <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(po.shippingHandlingFee))}</InfoRow>
                   )}
                   {taxAmount > 0 && (
-                    <InfoRow label={`Tax (${po.taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
+                    <InfoRow label={`Tax (${formatPercent(po.taxPercent)})`}>
+                      {formatCurrency(taxAmount)}
+                    </InfoRow>
                   )}
                   <Separator className="my-1" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{formatCurrency(poTotal)}</span>
                   </InfoRow>
                   {retainagePercent > 0 && (
-                    <InfoRow label={`Retainage (${retainagePercent}%)`}>
+                    <InfoRow label={`Retainage (${formatPercent(retainagePercent)})`}>
                       {formatCurrency(poTotal * (retainagePercent / 100))}
                     </InfoRow>
                   )}

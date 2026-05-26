@@ -1,7 +1,7 @@
 import { LineItems } from '@/app/components/line-items';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
   Control,
@@ -91,7 +91,7 @@ export function PurchaseOrderFormLineItemsCard({
             />
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Tax ({taxPercent}%)</span>
+            <span className="text-muted-foreground">Tax ({formatPercent(taxPercent)})</span>
             <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
           </div>
           <Separator />

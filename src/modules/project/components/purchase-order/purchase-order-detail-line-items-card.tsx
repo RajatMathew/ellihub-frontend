@@ -2,7 +2,7 @@ import { FileText } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatDecimal, formatPercent } from '@/app/lib/helpers';
 import { InfoRow } from '@/modules/project/components/shared';
 import type { PODetail } from '@/modules/project/schemas/purchase-order';
 
@@ -61,7 +61,9 @@ export function PurchaseOrderDetailLineItemsCard({
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <div className="text-muted-foreground">Qty</div>
-                      <div className="font-medium tabular-nums">{lineItem.quantity}</div>
+                      <div className="font-medium tabular-nums">
+                        {formatDecimal(lineItem.quantity)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-muted-foreground">Unit</div>
@@ -90,7 +92,9 @@ export function PurchaseOrderDetailLineItemsCard({
                   <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(shippingHandlingFee))}</InfoRow>
                 )}
                 {taxAmount > 0 && (
-                  <InfoRow label={`Tax (${taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
+                  <InfoRow label={`Tax (${formatPercent(taxPercent)})`}>
+                    {formatCurrency(taxAmount)}
+                  </InfoRow>
                 )}
                 <Separator className="my-2" />
                 <InfoRow label="Total">
@@ -146,7 +150,7 @@ export function PurchaseOrderDetailLineItemsCard({
                           : '-'}
                       </td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
-                        {lineItem.quantity}
+                        {formatDecimal(lineItem.quantity)}
                       </td>
                       <td className="py-2.5 pr-3">{lineItem.unit}</td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
@@ -180,7 +184,7 @@ export function PurchaseOrderDetailLineItemsCard({
                   {taxAmount > 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Tax ({taxPercent}%)
+                        Tax ({formatPercent(taxPercent)})
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
                         {formatCurrency(taxAmount)}

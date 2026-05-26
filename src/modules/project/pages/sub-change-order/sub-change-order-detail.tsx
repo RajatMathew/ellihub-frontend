@@ -23,7 +23,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -599,7 +599,9 @@ export function SCODetailPage() {
                               <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
                             )}
                           </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{item.quantity}</td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums">
+                            {formatDecimal(item.quantity)}
+                          </td>
                           <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
                           <td className="py-2.5 text-right font-medium tabular-nums">
                             {money(item.amount)}
@@ -666,7 +668,9 @@ export function SCODetailPage() {
                           <div>
                             <div className="text-muted-foreground">Qty</div>
                             <div className="font-medium tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </div>
                           </div>
                           <div>
@@ -740,7 +744,9 @@ export function SCODetailPage() {
                               {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
                             </td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </td>
                             <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">

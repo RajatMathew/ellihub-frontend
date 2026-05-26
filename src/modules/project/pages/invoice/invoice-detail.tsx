@@ -39,7 +39,7 @@ import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -403,7 +403,7 @@ export function InvoiceDetailPage() {
               bgClass="bg-info/10"
               label="Tax"
               value={money(taxAmount)}
-              description={`${invoice.taxRate ?? 0}%`}
+              description={formatPercent(invoice.taxRate)}
             />
             <StatsCard
               icon={<Receipt className="size-5 text-muted-foreground" />}
@@ -668,7 +668,9 @@ export function InvoiceDetailPage() {
               <Card>
                 <CardContent className="space-y-1 p-4">
                   <InfoRow label="Invoice Amount">{money(invoiceAmount)}</InfoRow>
-                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>{money(taxAmount)}</InfoRow>
+                  <InfoRow label={`Tax (${formatPercent(invoice.taxRate)})`}>
+                    {money(taxAmount)}
+                  </InfoRow>
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{money(totalAmount)}</span>

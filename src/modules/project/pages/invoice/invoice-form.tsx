@@ -13,7 +13,7 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -552,7 +552,7 @@ export function InvoiceFormPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tax Rate</span>
-                  <span className="font-medium tabular-nums">{taxRate}%</span>
+                  <span className="font-medium tabular-nums">{formatPercent(taxRate)}</span>
                 </div>
               </div>
             </div>
