@@ -39,7 +39,7 @@ import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -50,6 +50,7 @@ import {
   ProjectDetailField,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
@@ -247,9 +248,9 @@ export function InvoiceDetailPage() {
   const canDisputeInvoice = projectActions?.invoice?.dispute === true;
   const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
   const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
-  const totalAmount = Number(invoice.totalAmount ?? 0);
+  const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
-  const subtotal = Math.max(0, totalAmount - taxAmount);
+  const totalAmount = invoiceAmount + taxAmount;
   const isPastDue = !isPaid && !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
   const paymentMethodLabel =
     invoice.paymentMethod?.label ??
@@ -393,15 +394,8 @@ export function InvoiceDetailPage() {
             <StatsCard
               icon={<Receipt className="size-5 text-primary" />}
               bgClass="bg-primary/10"
-              label="Invoice Total"
-              value={money(totalAmount)}
-              description="Submitted amount"
-            />
-            <StatsCard
-              icon={<Receipt className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
-              label="Subtotal"
-              value={money(subtotal)}
+              label="Invoice Amount"
+              value={money(invoiceAmount)}
               description="Before tax"
             />
             <StatsCard
@@ -409,7 +403,14 @@ export function InvoiceDetailPage() {
               bgClass="bg-info/10"
               label="Tax"
               value={money(taxAmount)}
-              description={`${invoice.taxRate ?? 0}%`}
+              description={formatPercent(invoice.taxRate)}
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="Total"
+              value={money(totalAmount)}
+              description="Amount + tax"
             />
             <StatsCard
               icon={<CreditCard className="size-5 text-success" />}
@@ -585,7 +586,7 @@ export function InvoiceDetailPage() {
                               </div>
                               <div className="shrink-0 text-left sm:text-right">
                                 <div className="text-sm font-semibold tabular-nums text-foreground">
-                                  {money(sco.amount)}
+                                  {money(getSubChangeOrderTotalAmount(sco))}
                                 </div>
                                 {sco.impactsSchedule && (
                                   <div className="mt-1 text-xs text-warning">
@@ -666,8 +667,10 @@ export function InvoiceDetailPage() {
               </div>
               <Card>
                 <CardContent className="space-y-1 p-4">
-                  <InfoRow label="Subtotal">{money(subtotal)}</InfoRow>
-                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>{money(taxAmount)}</InfoRow>
+                  <InfoRow label="Invoice Amount">{money(invoiceAmount)}</InfoRow>
+                  <InfoRow label={`Tax (${formatPercent(invoice.taxRate)})`}>
+                    {money(taxAmount)}
+                  </InfoRow>
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{money(totalAmount)}</span>

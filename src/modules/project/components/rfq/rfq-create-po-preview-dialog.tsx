@@ -33,7 +33,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import { useProjectCostCodesQuery } from '@/modules/project/hooks';
@@ -264,7 +264,7 @@ export function RFQCreatePOPreviewDialog({
                       <div className="w-full max-w-sm space-y-3">
                         <AmountRow label="Subtotal" value={subtotal} />
                         <AmountRow label="Shipping and Handling Fee" value={shippingHandlingFee} />
-                        <AmountRow label={`Tax (${taxPercent}%)`} value={taxAmount} />
+                        <AmountRow label={`Tax (${formatPercent(taxPercent)})`} value={taxAmount} />
                         <Separator />
                         <AmountRow label="Total" value={total} emphasis />
                       </div>

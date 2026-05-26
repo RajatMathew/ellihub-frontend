@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 
 import { InfoRow } from '@/modules/project/components/shared';
 import type { PrimeContractComputations } from '@/modules/project/components/overview/use-prime-contract-computations';
@@ -65,7 +65,7 @@ export function FinancialSummarySimpleCard({
         </div>
         <div className="mt-auto p-5 border-t bg-muted/20">
           <div className="flex flex-col gap-y-2">
-            <InfoRow label="Retainage %:">{computations.retainagePercent}%</InfoRow>
+            <InfoRow label="Retainage %:">{formatPercent(computations.retainagePercent)}</InfoRow>
             <InfoRow label="Retainage Amount:">
               {formatCurrency(computations.retainageAmount)}
             </InfoRow>

@@ -23,7 +23,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -102,9 +102,25 @@ function lookupLabel(value: unknown): string {
   return String(value);
 }
 
-function money(value: unknown): string {
+function numeric(value: unknown): number {
   const numeric = Number(value ?? 0);
-  return formatCurrency(Number.isFinite(numeric) ? numeric : 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function money(value: unknown): string {
+  return formatCurrency(numeric(value));
+}
+
+function lineItemAmount(item: {
+  amount?: unknown;
+  quantity?: unknown;
+  qty?: unknown;
+  unitPrice?: unknown;
+}): number {
+  const storedAmount = numeric(item.amount);
+  if (storedAmount !== 0) return storedAmount;
+
+  return numeric(item.quantity ?? item.qty) * numeric(item.unitPrice);
 }
 
 function DetailField({
@@ -267,8 +283,9 @@ export function SCODetailPage() {
     );
   }
 
-  const amount = Number(sco.amount ?? 0);
-  const shippingHandlingFee = Number(sco.shippingHandlingFee ?? 0);
+  const lineItemSubtotal = sco.lineItems.reduce((sum, item) => sum + lineItemAmount(item), 0);
+  const amount = sco.lineItems.length > 0 ? lineItemSubtotal : numeric(sco.amount);
+  const shippingHandlingFee = numeric(sco.shippingHandlingFee);
   const totalAmount = amount + shippingHandlingFee;
   const embeddedPurchaseOrder = sco.purchaseOrder as
     | {
@@ -582,7 +599,9 @@ export function SCODetailPage() {
                               <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
                             )}
                           </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{item.quantity}</td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums">
+                            {formatDecimal(item.quantity)}
+                          </td>
                           <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
                           <td className="py-2.5 text-right font-medium tabular-nums">
                             {money(item.amount)}
@@ -649,7 +668,9 @@ export function SCODetailPage() {
                           <div>
                             <div className="text-muted-foreground">Qty</div>
                             <div className="font-medium tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </div>
                           </div>
                           <div>
@@ -670,16 +691,14 @@ export function SCODetailPage() {
                       </div>
                     ))}
                     <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                      <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                      {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
-                        <InfoRow label="Shipping and Handling Fee">{money(sco.shippingHandlingFee)}</InfoRow>
+                      <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                      {shippingHandlingFee !== 0 && (
+                        <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                       )}
                       {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                       <Separator className="my-2" />
                       <InfoRow label="Total">
-                        <span className="font-semibold">
-                          {money(Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0))}
-                        </span>
+                        <span className="font-semibold">{money(totalAmount)}</span>
                       </InfoRow>
                     </div>
                   </div>
@@ -725,7 +744,9 @@ export function SCODetailPage() {
                               {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
                             </td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </td>
                             <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">
@@ -743,10 +764,10 @@ export function SCODetailPage() {
                             Subtotal
                           </td>
                           <td className="pt-3 text-right tabular-nums text-sm">
-                            {formatCurrency(sco.amount)}
+                            {money(amount)}
                           </td>
                         </tr>
-                        {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
+                        {shippingHandlingFee !== 0 && (
                           <tr>
                             <td
                               colSpan={6}
@@ -755,7 +776,7 @@ export function SCODetailPage() {
                               Shipping and Handling Fee
                             </td>
                             <td className="pt-1 text-right tabular-nums text-sm">
-                              {money(sco.shippingHandlingFee)}
+                              {money(shippingHandlingFee)}
                             </td>
                           </tr>
                         )}
@@ -768,9 +789,7 @@ export function SCODetailPage() {
                             Total
                           </td>
                           <td className="pt-2 text-right font-semibold tabular-nums">
-                            {formatCurrency(
-                              Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0)
-                            )}
+                            {money(totalAmount)}
                           </td>
                         </tr>
                       </tfoot>
@@ -883,16 +902,14 @@ export function SCODetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                  {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
-                    <InfoRow label="Shipping and Handling Fee">{money(sco.shippingHandlingFee)}</InfoRow>
+                  <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                  {shippingHandlingFee !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                   )}
                   {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
                   <Separator className="my-2" />
                   <InfoRow label="Total">
-                    <span className="font-semibold">
-                      {money(Number(sco.amount ?? 0) + Number(sco.shippingHandlingFee ?? 0))}
-                    </span>
+                    <span className="font-semibold">{money(totalAmount)}</span>
                   </InfoRow>
                   {/* Hidden until /sub-change-order/{id} includes retainagePercent. */}
                   {/* Hidden until /sub-change-order/{id} includes paymentTerms. */}
@@ -979,7 +996,7 @@ export function SCODetailPage() {
               {activeAction.endpoint === 'approve' ? (
                 <>
                   {' '}
-                  for <strong>{formatCurrency(sco.amount)}</strong>
+                  for <strong>{formatCurrency(totalAmount)}</strong>
                 </>
               ) : null}
               ?

@@ -16,6 +16,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
   fakeProjectDescription,
   fakeRFQDeliverables,
@@ -258,8 +259,8 @@ export default function RFQFormPage() {
           rfqId: targetRfqId,
           documentId: uploaded.id,
         });
-      } catch {
-        toast.error(`Failed to upload file: ${file.name}`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
       }
     }
   }

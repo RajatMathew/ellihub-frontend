@@ -18,6 +18,11 @@ import { Input } from '@/app/components/ui/input';
 import { Progress } from '@/app/components/ui/progress';
 import type { FileUploadProgress } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
+import {
+  FILE_UPLOAD_ACCEPT,
+  MAX_UPLOAD_BYTES,
+  getUploadDisplayNameValidationError,
+} from '@/modules/files/lib/file-upload-policy';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 
 export interface UploadFilePayload {
@@ -36,6 +41,8 @@ interface UploadFileDialogBaseProps {
   onOpenChange: (open: boolean) => void;
   parentId: string;
   isSubmitting: boolean;
+  accept?: string;
+  maxSize?: number;
   uploadProgress?: FileUploadProgress | null;
 }
 
@@ -111,8 +118,13 @@ export function UploadFileDialog({
 }: UploadFileDialogProps) {
   const [drafts, setDrafts] = useState<UploadDraft[]>([]);
   const isMultiple = props.multiple === true;
+  const accept = props.accept ?? FILE_UPLOAD_ACCEPT;
+  const maxSize = props.maxSize ?? MAX_UPLOAD_BYTES;
   const selectedFiles = useMemo(() => drafts.map((draft) => draft.file), [drafts]);
-  const canUpload = drafts.length > 0 && drafts.every((draft) => draft.name.trim()) && !isSubmitting;
+  const canUpload =
+    drafts.length > 0 &&
+    drafts.every((draft) => getUploadDisplayNameValidationError(draft.name, draft.file) === null) &&
+    !isSubmitting;
   const progressValue =
     uploadProgress && uploadProgress.total > 0
       ? Math.round((uploadProgress.completed / uploadProgress.total) * 100)
@@ -185,6 +197,8 @@ export function UploadFileDialog({
               multiple
               value={selectedFiles}
               onChange={handleMultipleFilesChange}
+              accept={accept}
+              maxSize={maxSize}
               disabled={isSubmitting}
               showSelectedPreview={false}
             />
@@ -192,6 +206,8 @@ export function UploadFileDialog({
             <FileDropZone
               value={drafts[0]?.file ?? null}
               onChange={handleSingleFileChange}
+              accept={accept}
+              maxSize={maxSize}
               disabled={isSubmitting}
               showSelectedPreview={false}
             />
@@ -204,18 +220,28 @@ export function UploadFileDialog({
                   key={draft.id}
                   className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background">
                       <FileIconDisplay file={draft.file} className="size-5" />
                     </div>
-                    <Input
-                      value={draft.name}
-                      onChange={(event) => handleDraftNameChange(draft.id, event.target.value)}
-                      placeholder="Document name"
-                      aria-label={`Rename ${draft.file.name}`}
-                      disabled={isSubmitting}
-                      className="font-medium"
-                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <Input
+                        value={draft.name}
+                        onChange={(event) => handleDraftNameChange(draft.id, event.target.value)}
+                        placeholder="Document name"
+                        aria-label={`Rename ${draft.file.name}`}
+                        aria-invalid={
+                          getUploadDisplayNameValidationError(draft.name, draft.file) !== null
+                        }
+                        disabled={isSubmitting}
+                        className="font-medium"
+                      />
+                      {getUploadDisplayNameValidationError(draft.name, draft.file) && (
+                        <p className="text-xs text-destructive">
+                          {getUploadDisplayNameValidationError(draft.name, draft.file)}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-3 sm:shrink-0">

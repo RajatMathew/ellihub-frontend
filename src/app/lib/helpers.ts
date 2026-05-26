@@ -115,12 +115,32 @@ export function formatDateTime(input: Date | string | number): string {
 }
 
 export function formatCurrency(value: number | string): string {
+  const numericValue = typeof value === 'string' ? Number.parseFloat(value) : value;
+  const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(typeof value === 'string' ? parseFloat(value) : value);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(safeValue);
+}
+
+export function formatDecimal(
+  value: number | string | null | undefined,
+  fractionDigits = 2
+): string {
+  const numericValue = typeof value === 'string' ? Number.parseFloat(value) : Number(value ?? 0);
+  const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
+
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(safeValue);
+}
+
+export function formatPercent(value: number | string | null | undefined): string {
+  return `${formatDecimal(value)}%`;
 }
 
 export function parsePageParam(v: string | null): number {

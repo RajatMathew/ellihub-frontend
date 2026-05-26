@@ -13,7 +13,7 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -51,6 +51,10 @@ function getInvoiceDetailPath(projectId: string, invoiceId: string) {
 
 function calculateTaxAmount(totalAmount: number, taxRate: number) {
   return Math.round(((totalAmount || 0) * (taxRate || 0) * 100) / 100) / 100;
+}
+
+function getInvoiceGrandTotal(totalAmount: number, taxAmount: number) {
+  return totalAmount + taxAmount;
 }
 
 export function InvoiceFormPage() {
@@ -161,6 +165,7 @@ export function InvoiceFormPage() {
     [scosData]
   );
   const taxAmount = calculateTaxAmount(totalAmount, taxRate);
+  const grandTotal = getInvoiceGrandTotal(totalAmount, taxAmount);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
   const isImmutable = isEdit;
   const isVendorLocked = isImmutable || !!selectedPurchaseOrderId;
@@ -208,7 +213,7 @@ export function InvoiceFormPage() {
       invoiceNumber: fakeInvoiceNumber(),
       invoiceDate: new Date().toISOString().slice(0, 10),
       dueDate: dueDate.toISOString().slice(0, 10),
-      totalAmount: subtotal + tax,
+      totalAmount: subtotal,
       taxAmount: tax,
       taxRate,
       notes: 'Progress billing for approved work.',
@@ -480,7 +485,7 @@ export function InvoiceFormPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">Financial</h2>
               <p className="text-sm text-muted-foreground">
-                Enter the invoice total and tax rate.
+                Enter the invoice amount and tax rate.
               </p>
             </div>
 
@@ -493,7 +498,7 @@ export function InvoiceFormPage() {
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Total Amount
+                      Invoice Amount
                     </FieldLabel>
                     <InputWrapper>
                       <Input
@@ -533,16 +538,21 @@ export function InvoiceFormPage() {
             <div className="flex justify-end">
               <div className="w-full max-w-sm rounded-lg border bg-muted/20 p-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total</span>
+                  <span className="text-muted-foreground">Invoice Amount</span>
                   <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tax</span>
                   <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
                 </div>
+                <Separator className="my-3" />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">Grand Total</span>
+                  <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
+                </div>
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Tax Rate</span>
-                  <span className="font-medium tabular-nums">{taxRate}%</span>
+                  <span className="font-medium tabular-nums">{formatPercent(taxRate)}</span>
                 </div>
               </div>
             </div>

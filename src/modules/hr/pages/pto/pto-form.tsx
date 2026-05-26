@@ -15,7 +15,10 @@ export default function PTOFormPage() {
     ptoQuery,
     employeeOptions,
     typeOptions,
+    showEmployeeSelector,
+    hasCurrentEmployee,
     isEmployeesLoading,
+    isAccessLoading,
     isTypesLoading,
   } = usePTOFormState(id);
   const { savePTO, isPending } = useSavePTO({ id, isEdit });
@@ -24,10 +27,7 @@ export default function PTOFormPage() {
     ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
     : undefined;
 
-  useBreadcrumbLabel(
-    id ? `/app/hr/pto/${id}` : undefined,
-    ptoBreadcrumbLabel ?? 'PTO Request'
-  );
+  useBreadcrumbLabel(id ? `/app/hr/pto/${id}` : undefined, ptoBreadcrumbLabel ?? 'PTO Request');
 
   if (isEdit && ptoQuery.isLoading) {
     return <PTOFormLoading />;
@@ -42,13 +42,19 @@ export default function PTOFormPage() {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)} className="container-fluid py-7.5">
+    <form
+      onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)}
+      className="container-fluid py-7.5"
+    >
       <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} />
       <PTOFormContent
         control={form.control}
         employeeOptions={employeeOptions}
         typeOptions={typeOptions}
+        showEmployeeSelector={showEmployeeSelector}
+        hasCurrentEmployee={hasCurrentEmployee}
         isEmployeesLoading={isEmployeesLoading}
+        isAccessLoading={isAccessLoading}
         isTypesLoading={isTypesLoading}
       />
     </form>

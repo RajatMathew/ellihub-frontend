@@ -15,6 +15,9 @@ import { Link, useParams } from 'react-router-dom';
 import {
   formatOptionalSubChangeOrderCurrency,
   formatOptionalSubChangeOrderDate,
+  getSubChangeOrderShippingHandlingFee,
+  getSubChangeOrderSubtotal,
+  getSubChangeOrderTotalAmount,
   getSubChangeOrderPurchaseOrderLabel,
   getSubChangeOrderTypeLabel,
 } from './sub-change-order-list-utils';
@@ -75,15 +78,24 @@ export function SubChangeOrderRequestedByCell({ sco }: { sco: SCOListItem }) {
 }
 
 export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
+  const subtotal = getSubChangeOrderSubtotal(sco);
+  const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
+  const total = getSubChangeOrderTotalAmount(sco);
+
   return (
     <div className="flex flex-col gap-0.5 text-right">
       <span className="text-sm font-medium text-foreground">
-        {formatOptionalSubChangeOrderCurrency(sco.amount)}
+        {formatOptionalSubChangeOrderCurrency(total)}
       </span>
-      {Number(sco.shippingHandlingFee ?? 0) !== 0 && (
-        <span className="text-2sm text-muted-foreground">
-          Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(sco.shippingHandlingFee)}
-        </span>
+      {shippingHandlingFee !== 0 && (
+        <>
+          <span className="text-2sm text-muted-foreground">
+            Subtotal {formatOptionalSubChangeOrderCurrency(subtotal)}
+          </span>
+          <span className="text-2sm text-muted-foreground">
+            Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(shippingHandlingFee)}
+          </span>
+        </>
       )}
     </div>
   );

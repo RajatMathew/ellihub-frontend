@@ -1,3 +1,4 @@
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { contactsApi } from '@/modules/directory/api/contacts.api';
 import { contactsKeys } from '@/modules/directory/constants/contacts.keys';
 import { gcKeys } from '@/modules/directory/constants/gc.keys';
@@ -15,7 +16,6 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 
 /* ---- contact queries ---- */
 
@@ -53,7 +53,7 @@ export const useCreateContactMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
     },
-    onError: () => toast.error('Failed to create contact.'),
+    onError: (error) => toastApiError(error, 'Failed to create contact.'),
   });
 };
 
@@ -66,7 +66,7 @@ export const useUpdateContactMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to update contact.'),
+    onError: (error) => toastApiError(error, 'Failed to update contact.'),
   });
 };
 
@@ -77,7 +77,7 @@ export const useDeleteContactMutation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
     },
-    onError: () => toast.error('Failed to delete contact.'),
+    onError: (error) => toastApiError(error, 'Failed to delete contact.'),
   });
 };
 
@@ -90,7 +90,7 @@ export const useAddContactTagMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
     },
-    onError: () => toast.error('Failed to add tag.'),
+    onError: (error) => toastApiError(error, 'Failed to add tag.'),
   });
 };
 
@@ -103,7 +103,7 @@ export const useRemoveContactTagMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(contactId) });
     },
-    onError: () => toast.error('Failed to remove tag.'),
+    onError: (error) => toastApiError(error, 'Failed to remove tag.'),
   });
 };
 
@@ -118,7 +118,7 @@ export const useAddPhoneMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to add phone number.'),
+    onError: (error) => toastApiError(error, 'Failed to add phone number.'),
   });
 };
 
@@ -130,7 +130,7 @@ export const useRemovePhoneMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to remove phone number.'),
+    onError: (error) => toastApiError(error, 'Failed to remove phone number.'),
   });
 };
 
@@ -145,7 +145,7 @@ export const useAddEmailMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to add email.'),
+    onError: (error) => toastApiError(error, 'Failed to add email.'),
   });
 };
 
@@ -157,7 +157,7 @@ export const useRemoveEmailMutation = () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
     },
-    onError: () => toast.error('Failed to remove email.'),
+    onError: (error) => toastApiError(error, 'Failed to remove email.'),
   });
 };
 
@@ -174,7 +174,7 @@ export const useLinkEntityMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: () => toast.error('Failed to update entity link.'),
+    onError: (error) => toastApiError(error, 'Failed to update entity link.'),
   });
 };
 
@@ -189,7 +189,7 @@ export const useUnlinkEntityMutation = () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.all });
     },
-    onError: () => toast.error('Failed to remove entity link.'),
+    onError: (error) => toastApiError(error, 'Failed to remove entity link.'),
   });
 };
 

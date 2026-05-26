@@ -6,6 +6,7 @@ import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -225,8 +226,8 @@ export function POFormPage() {
           poId: targetPoId,
           data: { documentId: uploaded.id },
         });
-      } catch {
-        toast.error(`Failed to upload ${file.name}.`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
       }
     }
   }

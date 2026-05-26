@@ -12,6 +12,7 @@ import {
 } from '@/modules/project/constants/purchase-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import { MoreHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -102,7 +103,7 @@ export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
   const poTotal = Number(po.total ?? 0);
   const approvedScoTotal = (po.subChangeOrders ?? [])
     .filter((sco) => sco.status === 'APPROVED')
-    .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0);
+    .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0);
   const totalCommitment = poTotal + approvedScoTotal;
 
   return (

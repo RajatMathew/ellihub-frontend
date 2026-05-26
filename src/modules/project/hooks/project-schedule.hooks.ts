@@ -1,6 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { projectScheduleApi } from '@/modules/project/api/project-schedule.api';
 import { projectScheduleKeys } from '@/modules/project/constants/project-schedule.keys';
 import { projectKeys } from '@/modules/project/constants/project.keys';
@@ -9,6 +7,8 @@ import type {
   CreateScheduleEntryInput,
   UpdateScheduleEntryInput,
 } from '@/modules/project/schemas/project-schedule.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 type UpdateScheduleEntryMutationInput = UpdateScheduleEntryInput & {
   projectId: string;
@@ -31,9 +31,9 @@ export const useCreateScheduleEntryMutation = () => {
         projectScheduleKeys.list(projectId),
         projectKeys.detail(projectId),
       ]);
-      toast.success('Schedule entry deleted.');
+      toast.success('Schedule entry created.');
     },
-    onError: () => toast.error('Failed to create schedule entry.'),
+    onError: (error) => toastApiError(error, 'Failed to create schedule entry.'),
   });
 };
 
@@ -49,6 +49,7 @@ export const useUpdateScheduleEntryMutation = () => {
         adjustedFinishDate: data.adjustedFinishDate,
         notes: data.notes,
         fileId: data.fileId,
+        primeChangeOrderId: data.primeChangeOrderId,
       }),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(queryClient, [
@@ -56,7 +57,7 @@ export const useUpdateScheduleEntryMutation = () => {
         projectKeys.detail(projectId),
       ]);
     },
-    onError: () => toast.error('Failed to update schedule entry.'),
+    onError: (error) => toastApiError(error, 'Failed to update schedule entry.'),
   });
 };
 
@@ -70,7 +71,8 @@ export const useDeleteScheduleEntryMutation = () => {
         projectScheduleKeys.list(projectId),
         projectKeys.detail(projectId),
       ]);
+      toast.success('Schedule entry deleted.');
     },
-    onError: () => toast.error('Failed to delete schedule entry.'),
+    onError: (error) => toastApiError(error, 'Failed to delete schedule entry.'),
   });
 };

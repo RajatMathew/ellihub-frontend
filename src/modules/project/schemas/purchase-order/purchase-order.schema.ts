@@ -78,6 +78,7 @@ const poSubChangeOrderRefSchema = z
   .object({
     id: z.string(),
     amount: z.coerce.number().nullable().optional(),
+    shippingHandlingFee: z.coerce.number().nullable().optional(),
     status: z.string().nullable().optional(),
   })
   .passthrough();

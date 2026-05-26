@@ -20,6 +20,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { formatCurrency } from '@/app/lib/helpers';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
 import {
@@ -49,7 +50,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -159,7 +160,7 @@ export function SCOFormPage() {
     lineItems: [defaultLineItem],
   };
 
-  const { control, handleSubmit, reset, setValue, watch, formState } = useForm<CreateSCOInput>({
+  const { control, handleSubmit, reset, setValue, formState } = useForm<CreateSCOInput>({
     resolver: zodResolver(createSCOInputSchema),
     defaultValues,
   });
@@ -205,19 +206,26 @@ export function SCOFormPage() {
     });
   }, [isEdit, setValue, sourcePurchaseOrder?.id, sourcePurchaseOrderIsIssued]);
 
-  const watchedLineItems = watch('lineItems');
+  const watchedLineItems = useWatch({ control, name: 'lineItems' });
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
-  const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
+  const watchedShippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const subtotal = useMemo(
     () =>
       lineItemsForTotals.reduce(
-        (sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitPrice),
+        (sum, item) =>
+          sum + toNonNegativeNumber(item?.quantity) * toNonNegativeNumber(item?.unitPrice),
         0
       ),
     [lineItemsForTotals]
   );
-  const total = subtotal + toNumber(watchedShippingHandlingFee);
+  const shippingHandlingFee = toNonNegativeNumber(watchedShippingHandlingFee);
+  const total = subtotal + shippingHandlingFee;
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
+
+  function getLineItemAmount(index: number) {
+    const item = lineItemsForTotals[index];
+    return toNonNegativeNumber(item?.quantity) * toNonNegativeNumber(item?.unitPrice);
+  }
 
   async function uploadFilesAndAttach(targetScoId: string, folderId: string, files: File[]) {
     for (const file of files) {
@@ -232,8 +240,8 @@ export function SCOFormPage() {
           scoId: targetScoId,
           data: { documentId: uploaded.id },
         });
-      } catch {
-        toast.error(`Failed to upload file: ${file.name}`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
       }
     }
   }
@@ -694,10 +702,7 @@ export function SCOFormPage() {
                           Amount
                         </span>
                         <div className="mt-1 text-sm font-semibold tabular-nums">
-                          {formatCurrency(
-                            toNumber(lineItemsForTotals[index]?.quantity) *
-                              toNumber(lineItemsForTotals[index]?.unitPrice)
-                          )}
+                          {formatCurrency(getLineItemAmount(index))}
                         </div>
                       </div>
 
@@ -857,10 +862,7 @@ export function SCOFormPage() {
                           />
                         </td>
                         <td className="py-2.5 pt-3.5 text-right text-sm font-medium tabular-nums">
-                          {formatCurrency(
-                            toNumber(lineItemsForTotals[index]?.quantity) *
-                              toNumber(lineItemsForTotals[index]?.unitPrice)
-                          )}
+                          {formatCurrency(getLineItemAmount(index))}
                         </td>
                         <td className="py-2.5 pl-1 pt-3">
                           <Button
@@ -905,7 +907,7 @@ export function SCOFormPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Shipping and Handling Fee</span>
-                    <span className="tabular-nums">{formatCurrency(toNumber(watchedShippingHandlingFee))}</span>
+                    <span className="tabular-nums">{formatCurrency(shippingHandlingFee)}</span>
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between font-semibold">

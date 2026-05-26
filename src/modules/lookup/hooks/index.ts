@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { lookupApi } from '@/modules/lookup/api/lookup.api';
 import { lookupKeys } from '@/modules/lookup/constants/lookup.keys';
 import {
@@ -36,7 +37,7 @@ export const useCreateLookupMutation = () => {
       qc.invalidateQueries({ queryKey: lookupKeys.all });
       toast.success('Lookup created successfully.');
     },
-    onError: () => toast.error('Failed to create lookup.'),
+    onError: (error) => toastApiError(error, 'Failed to create lookup.'),
   });
 };
 
@@ -49,7 +50,7 @@ export const useUpdateLookupMutation = () => {
       qc.invalidateQueries({ queryKey: lookupKeys.detail(data.id) });
       toast.success('Lookup updated successfully.');
     },
-    onError: () => toast.error('Failed to update lookup.'),
+    onError: (error) => toastApiError(error, 'Failed to update lookup.'),
   });
 };
 
@@ -61,7 +62,7 @@ export const useDeleteLookupMutation = () => {
       qc.invalidateQueries({ queryKey: lookupKeys.all });
       toast.success('Lookup deleted successfully.');
     },
-    onError: () => toast.error('Failed to delete lookup.'),
+    onError: (error) => toastApiError(error, 'Failed to delete lookup.'),
   });
 };
 

@@ -25,6 +25,7 @@ import {
   usePrimeContractComputations,
 } from '@/modules/project/components/overview';
 import { ProjectToolbarHeader } from '@/modules/project/components/project-toolbar-header';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   useDeleteProjectMutation,
   usePrimeChangeOrderFinancialSummaryQuery,
@@ -94,7 +95,7 @@ export default function ProjectContractOverview() {
     () =>
       (allSCOs?.data ?? [])
         .filter((sco) => sco.status === 'APPROVED')
-        .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0),
+        .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0),
     [allSCOs?.data]
   );
   const totalSpent = totalPOCommitted + approvedSCOTotal;
