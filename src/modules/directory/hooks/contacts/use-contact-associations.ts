@@ -31,6 +31,7 @@ export function useContactAssociations({
     buildGCLinks(isEdit ? contact : undefined)
   );
   const [vendorDialogOpen, setVendorDialogOpen] = useState(false);
+  const [gcDialogOpen, setGCDialogOpen] = useState(false);
   const [pendingAssociation, setPendingAssociation] = useState<PendingContactAssociation | null>(
     null
   );
@@ -66,8 +67,7 @@ export function useContactAssociations({
 
   const primaryVendorId = vendorLinks[0]?.vendorId;
   const primaryGCId = gcLinks[0]?.generalContractorId;
-  const selectedAssociationIsPrimary =
-    vendorLinks[0]?.isPrimary ?? gcLinks[0]?.isPrimary ?? false;
+  const selectedAssociationIsPrimary = vendorLinks[0]?.isPrimary ?? gcLinks[0]?.isPrimary ?? false;
 
   const replaceAssociation = (next: PendingContactAssociation) => {
     setVendorLinks(next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true }] : []);
@@ -114,11 +114,17 @@ export function useContactAssociations({
     handleAddAssociation(vendor.id, 'VENDOR');
   };
 
+  const handleGCCreated = (gc: { id: string; name: string }) => {
+    handleAddAssociation(gc.id, 'GC');
+  };
+
   return {
     vendorLinks,
     gcLinks,
     vendorDialogOpen,
     setVendorDialogOpen,
+    gcDialogOpen,
+    setGCDialogOpen,
     pendingAssociation,
     showReplaceConfirm,
     setShowReplaceConfirm,
@@ -137,6 +143,7 @@ export function useContactAssociations({
     confirmReplace,
     confirmUnlink,
     handleVendorCreated,
+    handleGCCreated,
   };
 }
 

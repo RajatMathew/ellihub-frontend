@@ -127,6 +127,15 @@ export function ContactAssociationSection({
                   emptyMessage="No GCs found."
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => associations.setGCDialogOpen(true)}
+              >
+                <Plus className="size-4" />
+                Create GC
+              </Button>
             </Field>
           </TabsContent>
         </Tabs>
