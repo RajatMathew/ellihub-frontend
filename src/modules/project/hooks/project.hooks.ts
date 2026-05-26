@@ -46,10 +46,11 @@ export const useProjectDetailQuery = (id: string) =>
     enabled: !!id,
   });
 
-export const useFieldwireProjectsQuery = () =>
+export const useFieldwireProjectsQuery = (enabled = true) =>
   useQuery({
     queryKey: projectKeys.fieldwireProjects(),
     queryFn: () => projectApi.listFieldwireProjects(),
+    enabled,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useAccess } from '@/app/contexts/access-context';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { useFieldwireProjectsQuery } from '@/modules/project/hooks';
 import type { FieldwireProjectOption } from '@/modules/project/schemas/project.schema';
@@ -19,7 +20,9 @@ export function FieldwireProjectSelect({
   currentName,
   onValueChange,
 }: FieldwireProjectSelectProps) {
-  const fieldwireProjectsQuery = useFieldwireProjectsQuery();
+  const { can } = useAccess();
+  const canLoadFieldwireProjects = can('primeChangeOrder', 'fieldwire-projects');
+  const fieldwireProjectsQuery = useFieldwireProjectsQuery(canLoadFieldwireProjects);
   const projects = useMemo(() => fieldwireProjectsQuery.data ?? [], [fieldwireProjectsQuery.data]);
 
   const options = useMemo(() => {
@@ -41,24 +44,37 @@ export function FieldwireProjectSelect({
         options={options}
         value={value}
         onValueChange={(nextValue) => {
+          if (!canLoadFieldwireProjects) return;
+
           const selectedProject = nextValue
             ? projects.find((project) => project.id === nextValue)
             : undefined;
 
           onValueChange(nextValue, selectedProject);
         }}
-        disabled={fieldwireProjectsQuery.isLoading}
+        disabled={!canLoadFieldwireProjects || fieldwireProjectsQuery.isLoading}
         placeholder={
-          fieldwireProjectsQuery.isLoading ? 'Loading Fieldwire projects...' : 'Select project...'
+          !canLoadFieldwireProjects
+            ? 'Fieldwire mapping is read-only'
+            : fieldwireProjectsQuery.isLoading
+              ? 'Loading Fieldwire projects...'
+              : 'Select project...'
         }
         searchPlaceholder="Search Fieldwire projects..."
         emptyMessage={
-          fieldwireProjectsQuery.isError
+          !canLoadFieldwireProjects
+            ? 'Fieldwire project mapping requires Fieldwire project access.'
+            : fieldwireProjectsQuery.isError
             ? 'Unable to load Fieldwire projects.'
             : 'No Fieldwire projects found.'
         }
       />
-      {fieldwireProjectsQuery.isError && (
+      {!canLoadFieldwireProjects && (
+        <p className="text-xs text-muted-foreground">
+          Fieldwire project mapping can only be changed by users with Fieldwire project access.
+        </p>
+      )}
+      {canLoadFieldwireProjects && fieldwireProjectsQuery.isError && (
         <p className="text-xs text-destructive">Unable to load Fieldwire projects.</p>
       )}
     </div>
