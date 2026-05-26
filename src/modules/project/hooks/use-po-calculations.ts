@@ -16,17 +16,17 @@ export function usePOCalculations({ pos }: UsePOCalculationsOptions) {
       };
     }
 
-    const issuedPOs = pos.filter((po) => po.status === 'ISSUED');
+    const committedPOs = pos.filter((po) => po.status === 'ISSUED' || po.status === 'DELIVERED');
 
-    const totalPOCommitted = issuedPOs.reduce(
+    const totalPOCommitted = committedPOs.reduce(
       (sum, po) => sum + (parseFloat(po.total ?? '0') || 0),
       0
     );
 
     return {
-      activePOs: issuedPOs,
+      activePOs: committedPOs,
       totalPOCommitted,
-      activePOsCount: issuedPOs.length,
+      activePOsCount: committedPOs.length,
     };
   }, [pos]);
 }
