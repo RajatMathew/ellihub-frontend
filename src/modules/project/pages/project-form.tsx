@@ -23,6 +23,7 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
@@ -80,6 +81,8 @@ export default function ProjectForm() {
   const { projectId } = useParams<{ projectId: string }>();
   const isEditMode = !!projectId;
   const navigate = useNavigate();
+  const { access } = useAccess();
+  const isAuthPMCreatingProject = !isEditMode && access?.role === 'pm';
 
   /* ---- Queries ---- */
 
@@ -90,7 +93,10 @@ export default function ProjectForm() {
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
-  const employeesQuery = useEmployeesQuery({ size: 1000 });
+  const employeesQuery = useEmployeesQuery(
+    { size: 1000 },
+    { enabled: !!access && !isAuthPMCreatingProject }
+  );
 
   /* ---- Build dropdown options ---- */
 
@@ -101,11 +107,17 @@ export default function ProjectForm() {
       label: d.label || d.name || 'Unknown',
     })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const pmOptions = isAuthPMCreatingProject
+    ? access?.employeeId
+      ? [{ value: access.employeeId, label: 'Current PM' }]
+      : []
+    : (employeesQuery.data?.data
+        ?.filter((employee) => employee.authRole === 'pm')
+        .map((employee) => ({ value: employee.id, label: employee.name })) ?? []);
 
   /* ---- Form setup ---- */
 
-  const { control, handleSubmit, reset } = useForm<ProjectFormValues>({
+  const { control, handleSubmit, reset, setValue } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema) as Resolver<ProjectFormValues>,
     defaultValues: {
       name: '',
@@ -137,6 +149,15 @@ export default function ProjectForm() {
       tcoDate: '',
     },
   });
+
+  useEffect(() => {
+    if (isAuthPMCreatingProject && access?.employeeId) {
+      setValue('leadPMId', access.employeeId, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [access?.employeeId, isAuthPMCreatingProject, setValue]);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -714,15 +735,16 @@ export default function ProjectForm() {
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project Manager
+                        Lead PM
                       </FieldLabel>
                       <SearchableSelect
                         options={pmOptions}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
-                        placeholder="Select PM..."
+                        placeholder="Select Lead PM..."
                         searchPlaceholder="Search people..."
-                        emptyMessage="No contacts found."
+                        emptyMessage="No PM users found."
+                        disabled={isAuthPMCreatingProject}
                       />
                     </Field>
                   )}

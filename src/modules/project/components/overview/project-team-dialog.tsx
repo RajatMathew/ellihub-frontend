@@ -11,6 +11,10 @@ import {
 } from '@/app/components/ui/dialog';
 import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
 import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+import type {
+  ProjectTeamAssignment,
+  ProjectTeamRole,
+} from '@/modules/project/schemas/project-team.schema';
 import { UserPlus } from 'lucide-react';
 
 import { AddTeamMemberForm } from './add-team-member-form';
@@ -29,9 +33,9 @@ interface ProjectTeamDialogProps {
   employeeOptions: EmployeeOption[];
   onAddMember?: (employeeId: string) => Promise<void>;
   onRemoveMember?: (employeeId: string) => Promise<void>;
-  onPromoteToPM?: (employeeId: string) => Promise<void>;
+  onUpdateRole?: (employeeId: string, role: ProjectTeamRole) => Promise<void>;
   isRemovingMember?: boolean;
-  isPromoting?: boolean;
+  isUpdatingRole?: boolean;
 }
 
 export function ProjectTeamDialog({
@@ -41,16 +45,37 @@ export function ProjectTeamDialog({
   employeeOptions,
   onAddMember,
   onRemoveMember,
-  onPromoteToPM,
+  onUpdateRole,
   isRemovingMember = false,
-  isPromoting = false,
+  isUpdatingRole = false,
 }: ProjectTeamDialogProps) {
   const [showAddMember, setShowAddMember] = useState(false);
   const [pendingRemoveMember, setPendingRemoveMember] = useState<{
     employeeId: string;
     name: string;
   } | null>(null);
-  const { teamMembers, totalMembers, hasMembers } = useFilteredTeamMembers({ project });
+  const [pendingLeadTransfer, setPendingLeadTransfer] = useState<ProjectTeamAssignment | null>(
+    null
+  );
+  const { totalMembers, hasMembers } = useFilteredTeamMembers({ project });
+  const allTeamMembers =
+    project.teamMembers?.length || !project.leadPM
+      ? (project.teamMembers ?? [])
+      : [
+          {
+            projectId: project.id,
+            employeeId: project.leadPM.id,
+            role: 'Lead PM' as const,
+            isLead: true,
+            employee: project.leadPM,
+          },
+        ];
+  const teamActions = project.capabilities?.actions?.projectTeam;
+  const canAssignRole = teamActions?.['assign-role'] === true;
+  const canTransferLead = teamActions?.['transfer-lead'] === true;
+  const canRemoveMember = teamActions?.removeMember === true || teamActions?.remove === true;
+  const canRemovePM = teamActions?.removePM === true;
+  const canRemoveLeadPM = teamActions?.removeLeadPM === true;
 
   const handleAddMember = async (employeeId: string) => {
     if (!onAddMember) return;
@@ -61,6 +86,20 @@ export function ProjectTeamDialog({
     if (!onRemoveMember || !pendingRemoveMember) return;
     await onRemoveMember(pendingRemoveMember.employeeId);
     setPendingRemoveMember(null);
+  };
+  const handleRoleChange = (member: ProjectTeamAssignment, role: ProjectTeamRole) => {
+    if (!onUpdateRole) return;
+    if (role === 'Lead PM') {
+      setPendingLeadTransfer(member);
+      return;
+    }
+    void onUpdateRole(member.employeeId, role);
+  };
+
+  const handleConfirmLeadTransfer = async () => {
+    if (!onUpdateRole || !pendingLeadTransfer) return;
+    await onUpdateRole(pendingLeadTransfer.employeeId, 'Lead PM');
+    setPendingLeadTransfer(null);
   };
   return (
     <>
@@ -106,13 +145,19 @@ export function ProjectTeamDialog({
                   </p>
                 </div>
                 <TeamMemberGrid
-                  leadPM={project.leadPM}
-                  teamMembers={teamMembers}
-                  onPromoteToPM={onPromoteToPM}
+                  teamMembers={allTeamMembers}
+                  canAssignRole={canAssignRole}
+                  canTransferLead={canTransferLead}
+                  canRemoveMember={canRemoveMember}
+                  canRemovePM={canRemovePM}
+                  canRemoveLeadPM={canRemoveLeadPM}
+                  onRoleChange={onUpdateRole ? handleRoleChange : undefined}
                   onRemoveMember={
                     onRemoveMember
                       ? (employeeId) => {
-                          const member = teamMembers.find((item) => item.employeeId === employeeId);
+                          const member = allTeamMembers.find(
+                            (item) => item.employeeId === employeeId
+                          );
                           setPendingRemoveMember({
                             employeeId,
                             name: member?.employee?.name ?? 'this team member',
@@ -120,7 +165,7 @@ export function ProjectTeamDialog({
                         }
                       : undefined
                   }
-                  isPromoting={isPromoting}
+                  isUpdatingRole={isUpdatingRole}
                   isRemoving={isRemovingMember}
                 />
               </div>
@@ -149,6 +194,23 @@ export function ProjectTeamDialog({
         onConfirm={handleConfirmRemoveMember}
         variant="destructive"
         isPending={isRemovingMember}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingLeadTransfer)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPendingLeadTransfer(null);
+        }}
+        title="Transfer Lead PM"
+        description={
+          <>
+            Transfer Lead PM from <strong>{project.leadPM?.name ?? 'the current Lead PM'}</strong>{' '}
+            to <strong>{pendingLeadTransfer?.employee?.name ?? 'this team member'}</strong>? The
+            current Lead PM will become PM.
+          </>
+        }
+        confirmLabel="Transfer"
+        onConfirm={handleConfirmLeadTransfer}
+        isPending={isUpdatingRole}
       />
     </>
   );

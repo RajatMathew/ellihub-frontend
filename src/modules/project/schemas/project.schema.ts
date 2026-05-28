@@ -84,6 +84,11 @@ const projectActionCapabilitiesSchema = z
         add: z.boolean().optional(),
         remove: z.boolean().optional(),
         promote: z.boolean().optional(),
+        'assign-role': z.boolean().optional(),
+        'transfer-lead': z.boolean().optional(),
+        removeMember: z.boolean().optional(),
+        removePM: z.boolean().optional(),
+        removeLeadPM: z.boolean().optional(),
       })
       .passthrough()
       .optional()
@@ -314,7 +319,7 @@ export const projectFormSchema = z.object({
   status: ProjectStatusSchema.default('ACTIVE'),
   divisionId: z.string().min(1, 'Division is required'),
   gcId: z.string().min(1, 'General contractor is required'),
-  leadPMId: z.string().min(1, 'Project manager is required'),
+  leadPMId: z.string().min(1, 'Lead PM is required'),
   streetAddress: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

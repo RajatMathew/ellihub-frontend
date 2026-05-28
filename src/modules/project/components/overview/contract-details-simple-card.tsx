@@ -92,7 +92,7 @@ export function ContractDetailsSimpleCard({
               {project.gc?.name ?? '-'}
             </InfoRow>
             <InfoRow
-              label="Project Manager"
+              label="Lead PM"
               labelVariant="lighter"
               labelClassName="font-medium"
               valueClassName="font-bold"

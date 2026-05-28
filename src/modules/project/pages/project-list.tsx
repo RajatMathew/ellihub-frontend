@@ -48,7 +48,7 @@ const getProjectStatusId = (project: ProjectListItem): string | undefined => {
 };
 
 export function ProjectList() {
-  const { isAdmin } = useAccess();
+  const { can } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
 
   const year = Number(searchParams.get('year')) || currentYear;
@@ -104,7 +104,7 @@ export function ProjectList() {
             </div>
             <ToolbarPageTitle>Active Projects</ToolbarPageTitle>
           </ToolbarHeading>
-          {isAdmin && (
+          {can('project', 'create') && (
             <ToolbarActions>
               <Button variant="primary" asChild>
                 <Link to="new">

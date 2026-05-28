@@ -6,6 +6,7 @@ import { employeesKeys } from '@/modules/hr/constants/employees.keys';
 import { projectTeamApi } from '@/modules/project/api/project-team.api';
 import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
+import type { ProjectTeamRole } from '@/modules/project/schemas/project-team.schema';
 
 export const useAddTeamMemberMutation = () => {
   const queryClient = useQueryClient();
@@ -42,6 +43,28 @@ export const usePromoteToLeadPMMutation = () => {
       void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to promote team member.'),
+  });
+};
+
+export const useUpdateTeamMemberRoleMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      employeeId,
+      role,
+    }: {
+      projectId: string;
+      employeeId: string;
+      role: ProjectTeamRole;
+    }) => projectTeamApi.updateMemberRole(projectId, employeeId, role),
+    onSuccess: async (_, { projectId, employeeId }) => {
+      await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      await queryClient.invalidateQueries({ queryKey: employeesKeys.projects(employeeId) });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      toast.success('Team member role updated.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to update team member role.'),
   });
 };
 

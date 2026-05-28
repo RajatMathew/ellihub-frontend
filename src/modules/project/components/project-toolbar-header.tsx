@@ -23,7 +23,7 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {
@@ -256,35 +256,40 @@ export function ProjectToolbarHeader({
             )}
             {project?.leadPM && (
               <span>
-                <span className="font-medium">PM:</span> {project.leadPM.name}
+                <span className="font-medium">Lead PM:</span> {project.leadPM.name}
               </span>
             )}
           </div>
         </ToolbarHeading>
         <ToolbarActions>
           {/* Team Avatar Group Button */}
-          {project && onTeamClick && allTeamMembers.length > 0 && (
+          {project && onTeamClick && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onTeamClick}
               className="gap-2 hover:bg-muted/50"
             >
-              <AvatarGroup className="-space-x-2">
-                {displayedMembers.map((member) => (
-                  <AvatarGroupItem key={member.id}>
-                    <Avatar className="size-7 border-2 border-background">
-                      <AvatarImage src="" alt={member.name} />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </AvatarGroupItem>
-                ))}
-              </AvatarGroup>
+              {displayedMembers.length > 0 ? (
+                <AvatarGroup className="-space-x-2">
+                  {displayedMembers.map((member) => (
+                    <AvatarGroupItem key={member.id}>
+                      <Avatar className="size-7 border-2 border-background">
+                        <AvatarImage src="" alt={member.name} />
+                        <AvatarFallback className="text-xs">
+                          {getInitials(member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </AvatarGroupItem>
+                  ))}
+                </AvatarGroup>
+              ) : (
+                <Users className="size-4" />
+              )}
               {remainingCount > 0 && (
                 <span className="text-xs text-muted-foreground">+{remainingCount}</span>
               )}
+              {displayedMembers.length === 0 && <span>Project Team</span>}
             </Button>
           )}
           {children}

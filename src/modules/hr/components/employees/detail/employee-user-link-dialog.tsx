@@ -89,6 +89,7 @@ export function EmployeeUserLinkDialog({
                     <SelectItem value="dev">Dev</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="accountant">Accountant</SelectItem>
+                    <SelectItem value="pm">PM</SelectItem>
                     <SelectItem value="user">User</SelectItem>
                   </SelectContent>
                 </Select>
