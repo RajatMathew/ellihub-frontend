@@ -66,6 +66,11 @@ export function EmployeeUserLinkDialog({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)}>
+          <p className="text-sm text-muted-foreground">
+            If an auth user already exists with this email, access will be restored and the
+            temporary password below will replace the old password.
+          </p>
+
           <Field>
             <FieldLabel>Email</FieldLabel>
             <Input value={employee.email} readOnly />
