@@ -95,6 +95,13 @@ export function MemberActionsMenu({
           Make Accountant
         </DropdownMenuItem>
         <DropdownMenuItem
+          disabled={isSelf || role === 'pm'}
+          onClick={() => onRoleChange(member, 'pm')}
+        >
+          <UserRound className="size-4" />
+          Make PM
+        </DropdownMenuItem>
+        <DropdownMenuItem
           disabled={isSelf || role === 'user'}
           onClick={() => onRoleChange(member, 'user')}
         >

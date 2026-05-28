@@ -96,7 +96,8 @@ function ProjectEditFormInner({
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
-  const employeesQuery = useProjectEmployeeOptionsQuery(projectId);
+  const canTransferLeadPM = project.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
+  const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canTransferLeadPM);
 
   /* ---- Build dropdown options ---- */
 
@@ -107,7 +108,12 @@ function ProjectEditFormInner({
       label: d.label || d.name || 'Unknown',
     })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions = employeesQuery.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const pmOptions = [
+    ...(project.leadPM ? [{ value: project.leadPM.id, label: project.leadPM.name }] : []),
+    ...(employeesQuery.data
+      ?.filter((employee) => employee.authRole === 'pm' && employee.id !== project.leadPMId)
+      .map((employee) => ({ value: employee.id, label: employee.name })) ?? []),
+  ];
 
   /* ---- Form setup with existing values ---- */
 
@@ -518,15 +524,16 @@ function ProjectEditFormInner({
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project Manager
+                        Lead PM
                       </FieldLabel>
                       <SearchableSelect
                         options={pmOptions}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
-                        placeholder="Select PM..."
+                        placeholder="Select Lead PM..."
                         searchPlaceholder="Search people..."
-                        emptyMessage="No contacts found."
+                        emptyMessage="No PM users found."
+                        disabled={!canTransferLeadPM}
                       />
                     </Field>
                   )}

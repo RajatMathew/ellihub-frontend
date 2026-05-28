@@ -16,7 +16,13 @@ import type {
 } from '@/modules/settings/schemas/members.schema';
 
 function isMemberRole(value: string | null): value is MemberRole {
-  return value === 'admin' || value === 'user';
+  return (
+    value === 'dev' ||
+    value === 'admin' ||
+    value === 'accountant' ||
+    value === 'pm' ||
+    value === 'user'
+  );
 }
 
 function isMemberStatus(value: string | null): value is MemberStatus {

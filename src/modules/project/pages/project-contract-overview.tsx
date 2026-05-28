@@ -117,7 +117,8 @@ export default function ProjectContractOverview() {
   const projectTeamActions = project?.capabilities?.actions?.projectTeam;
   const canAddTeamMembers = projectTeamActions?.add === true;
   const canRemoveTeamMembers = projectTeamActions?.remove === true;
-  const canPromoteTeamMembers = projectTeamActions?.promote === true;
+  const canUpdateTeamRoles =
+    projectTeamActions?.['assign-role'] === true || projectTeamActions?.['transfer-lead'] === true;
   const primeContractActions = project?.capabilities?.actions?.primeContract;
   const canPinPrimeContracts = primeContractActions?.pin === true;
   const canUnpinPrimeContracts = primeContractActions?.unpin === true;
@@ -264,9 +265,9 @@ export default function ProjectContractOverview() {
           employeeOptions={employeeOptions}
           onAddMember={canAddTeamMembers ? teamActions.addMember : undefined}
           onRemoveMember={canRemoveTeamMembers ? teamActions.removeMember : undefined}
-          onPromoteToPM={canPromoteTeamMembers ? teamActions.promoteToPM : undefined}
+          onUpdateRole={canUpdateTeamRoles ? teamActions.updateRole : undefined}
           isRemovingMember={teamActions.isRemovingMember}
-          isPromoting={teamActions.isPromoting}
+          isUpdatingRole={teamActions.isUpdatingRole}
         />
 
         {/* ---- Schedule Tracker ---- */}

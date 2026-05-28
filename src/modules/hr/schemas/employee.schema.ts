@@ -18,6 +18,16 @@ export const employeeDepartmentSchema = z
   })
   .passthrough();
 
+export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'pm', 'user']);
+export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
+
+export const employeeAuthUserSchema = z
+  .object({
+    id: z.string(),
+    role: z.string().optional().nullable(),
+  })
+  .passthrough();
+
 export const employeeDocumentSchema = z
   .object({
     id: z.string(),
@@ -43,6 +53,8 @@ export const employeeSchema = z
     emergencyContactPhone: z.string().optional().nullable(),
     emergencyContactRelation: z.string().optional().nullable(),
     userId: z.string().optional().nullable(),
+    authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+    authUser: employeeAuthUserSchema.optional().nullable(),
     departmentId: z.string().optional().nullable(),
     roleId: z.string().optional().nullable(),
     role: employeeRoleSchema.optional().nullable(),
@@ -69,9 +81,6 @@ export const employeePaginatedResponseSchema = z.object({
 });
 
 export type EmployeePaginatedResponse = z.infer<typeof employeePaginatedResponseSchema>;
-
-export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'user']);
-export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
 
 // Input schema for creation
 const createEmployeeBaseSchema = z.object({

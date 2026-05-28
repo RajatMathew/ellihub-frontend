@@ -61,7 +61,7 @@ export function EmployeeProjectsTab({ projects, isLoading }: EmployeeProjectsTab
                         </Badge>
                         {project.isLead && (
                           <Badge variant="primary" appearance="light" size="sm">
-                            Team PM
+                            Lead PM
                           </Badge>
                         )}
                       </div>
