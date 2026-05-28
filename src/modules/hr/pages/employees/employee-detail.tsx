@@ -170,8 +170,8 @@ export default function EmployeeDetailPage() {
         title="Unlink User Account"
         description={
           <>
-            Remove the auth user linked to <strong>{employee.name}</strong>? This deletes their
-            login access.
+            Remove the auth user linked to <strong>{employee.name}</strong>? Their login access will
+            be suspended and can be restored by linking this employee again.
           </>
         }
         confirmLabel="Unlink"
@@ -181,7 +181,7 @@ export default function EmployeeDetailPage() {
           unlinkUserMutation.mutate(employee.id, {
             onSuccess: () => {
               setUnlinkUserOpen(false);
-              toast.success('User account unlinked.');
+              toast.success('User account unlinked and access suspended.');
             },
           });
         }}
