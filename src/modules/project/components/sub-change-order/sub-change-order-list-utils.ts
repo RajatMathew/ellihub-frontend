@@ -14,6 +14,7 @@ export function formatOptionalSubChangeOrderCurrency(
 
 type SubChangeOrderAmountLike = {
   amount?: string | number | null;
+  negotiatedDiscount?: string | number | null;
   shippingHandlingFee?: string | number | null;
 };
 
@@ -29,8 +30,18 @@ export function getSubChangeOrderShippingHandlingFee(
   return Number.isFinite(fee) ? fee : 0;
 }
 
+export function getSubChangeOrderNegotiatedDiscount(
+  sco: Pick<SubChangeOrderAmountLike, 'negotiatedDiscount'>
+) {
+  const discount = Number(sco.negotiatedDiscount ?? 0);
+  return Number.isFinite(discount) ? discount : 0;
+}
+
 export function getSubChangeOrderTotalAmount(sco: SubChangeOrderAmountLike) {
-  return getSubChangeOrderSubtotal(sco) + getSubChangeOrderShippingHandlingFee(sco);
+  return (
+    Math.max(getSubChangeOrderSubtotal(sco) - getSubChangeOrderNegotiatedDiscount(sco), 0) +
+    getSubChangeOrderShippingHandlingFee(sco)
+  );
 }
 
 export function getSubChangeOrderTypeLabel(sco: SCOListItem, fallback?: string) {

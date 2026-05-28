@@ -119,6 +119,11 @@ export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
       <span className="text-2sm text-muted-foreground">
         Subtotal {formatOptionalPurchaseOrderCurrency(po.subtotal)}
       </span>
+      {Number(po.negotiatedDiscount ?? 0) !== 0 && (
+        <span className="text-2sm text-muted-foreground">
+          Discount -{formatOptionalPurchaseOrderCurrency(po.negotiatedDiscount)}
+        </span>
+      )}
       <span className="text-2sm text-muted-foreground">
         Tax {formatOptionalPurchaseOrderCurrency(po.taxAmount)}
       </span>

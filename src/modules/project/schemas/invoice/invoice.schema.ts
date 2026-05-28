@@ -42,6 +42,8 @@ export const invoiceRelatedSCOSchema = z
     title: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     amount: z.coerce.number().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
+    shippingHandlingFee: z.coerce.number().nullable().optional(),
     status: z.string().nullable().optional(),
     requestedBy: z.string().nullable().optional(),
     changeType: z

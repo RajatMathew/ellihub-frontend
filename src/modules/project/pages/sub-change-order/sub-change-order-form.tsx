@@ -159,6 +159,7 @@ export function SCOFormPage() {
     date: new Date().toISOString().slice(0, 10),
     title: '',
     description: '',
+    negotiatedDiscount: 0,
     shippingHandlingFee: 0,
     scheduleImpactDays: 0,
     requestedBy: '',
@@ -184,6 +185,7 @@ export function SCOFormPage() {
       date: scoDetail.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       title: scoDetail.title ?? '',
       description: scoDetail.description ?? '',
+      negotiatedDiscount: toNonNegativeNumber(scoDetail.negotiatedDiscount),
       shippingHandlingFee: toNonNegativeNumber(scoDetail.shippingHandlingFee),
       scheduleImpactDays: toNonNegativeNumber(scoDetail.scheduleImpactDays),
       requestedBy: scoDetail.requestedBy ?? '',
@@ -215,6 +217,7 @@ export function SCOFormPage() {
 
   const watchedLineItems = useWatch({ control, name: 'lineItems' });
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
+  const watchedNegotiatedDiscount = useWatch({ control, name: 'negotiatedDiscount' }) ?? 0;
   const watchedShippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const subtotal = useMemo(
     () =>
@@ -225,8 +228,9 @@ export function SCOFormPage() {
       ),
     [lineItemsForTotals]
   );
+  const negotiatedDiscount = Math.min(toNonNegativeNumber(watchedNegotiatedDiscount), subtotal);
   const shippingHandlingFee = toNonNegativeNumber(watchedShippingHandlingFee);
-  const total = subtotal + shippingHandlingFee;
+  const total = Math.max(subtotal - negotiatedDiscount, 0) + shippingHandlingFee;
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   function getLineItemAmount(index: number) {
@@ -260,6 +264,7 @@ export function SCOFormPage() {
       purchaseOrderId: formData.purchaseOrderId,
       description: formData.description || undefined,
       requestedBy: formData.requestedBy || undefined,
+      negotiatedDiscount: toNonNegativeNumber(formData.negotiatedDiscount),
       shippingHandlingFee: toNonNegativeNumber(formData.shippingHandlingFee),
       scheduleImpactDays: formData.impactsSchedule
         ? Math.trunc(toNonNegativeNumber(formData.scheduleImpactDays))
@@ -481,7 +486,7 @@ export function SCOFormPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
                   name="requestedBy"
                   control={control}
@@ -493,31 +498,6 @@ export function SCOFormPage() {
                       <InputWrapper>
                         <Input {...field} placeholder="Requester name" autoComplete="off" />
                       </InputWrapper>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="shippingHandlingFee"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Shipping and Handling Fee
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={numberInputValue(field.value)}
-                          onChange={(event) =>
-                            field.onChange(parseNonNegativeNumberInputValue(event.target.value))
-                          }
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
@@ -918,9 +898,47 @@ export function SCOFormPage() {
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="tabular-nums">{formatCurrency(subtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">Negotiated Discount</span>
+                    <Controller
+                      name="negotiatedDiscount"
+                      control={control}
+                      render={({ field }) => (
+                        <InputWrapper className="w-32">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={numberInputValue(field.value)}
+                            onChange={(event) =>
+                              field.onChange(parseNonNegativeNumberInputValue(event.target.value))
+                            }
+                            className="text-right"
+                          />
+                        </InputWrapper>
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Shipping and Handling Fee</span>
-                    <span className="tabular-nums">{formatCurrency(shippingHandlingFee)}</span>
+                    <Controller
+                      name="shippingHandlingFee"
+                      control={control}
+                      render={({ field }) => (
+                        <InputWrapper className="w-32">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={numberInputValue(field.value)}
+                            onChange={(event) =>
+                              field.onChange(parseNonNegativeNumberInputValue(event.target.value))
+                            }
+                            className="text-right"
+                          />
+                        </InputWrapper>
+                      )}
+                    />
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between font-semibold">

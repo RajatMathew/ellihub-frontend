@@ -59,6 +59,7 @@ function createDefaultPOValues(projectId: string): CreatePOInput {
     expectedDate: '',
     shipToAddress: '',
     address: '',
+    negotiatedDiscount: 0,
     shippingHandlingFee: 0,
     taxPercent: 0,
     paymentTerms: 'NET_30',
@@ -92,6 +93,7 @@ function getPOFormValues(projectId: string, po?: PODetail): CreatePOInput {
     expectedDate: po.expectedDate?.split('T')[0] ?? '',
     shipToAddress: po.shipToAddress ?? '',
     address: po.address ?? '',
+    negotiatedDiscount: Number(po.negotiatedDiscount ?? 0),
     shippingHandlingFee: Number(po.shippingHandlingFee ?? 0),
     taxPercent: Number(po.taxPercent) || 0,
     paymentTerms: po.paymentTerms ?? 'NET_30',
@@ -203,10 +205,13 @@ export function POFormPage() {
     (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
+  const watchedNegotiatedDiscount = watch('negotiatedDiscount') ?? 0;
   const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
   const taxPercent = watch('taxPercent') ?? 0;
-  const taxAmount = (subtotal * taxPercent) / 100;
-  const total = subtotal + watchedShippingHandlingFee + taxAmount;
+  const discount = Math.min(Math.max(watchedNegotiatedDiscount, 0), subtotal);
+  const taxableSubtotal = Math.max(subtotal - discount, 0);
+  const taxAmount = (taxableSubtotal * taxPercent) / 100;
+  const total = taxableSubtotal + watchedShippingHandlingFee + taxAmount;
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -242,6 +247,7 @@ export function POFormPage() {
       expectedDate: rest.expectedDate || undefined,
       shipToAddress: rest.shipToAddress || undefined,
       address: rest.address || undefined,
+      negotiatedDiscount: rest.negotiatedDiscount || undefined,
       notes: rest.notes || undefined,
       shippingHandlingFee: rest.shippingHandlingFee || undefined,
       taxPercent: rest.taxPercent ?? undefined,

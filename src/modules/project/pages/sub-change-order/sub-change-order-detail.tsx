@@ -285,8 +285,9 @@ export function SCODetailPage() {
 
   const lineItemSubtotal = sco.lineItems.reduce((sum, item) => sum + lineItemAmount(item), 0);
   const amount = sco.lineItems.length > 0 ? lineItemSubtotal : numeric(sco.amount);
+  const negotiatedDiscount = Math.min(numeric(sco.negotiatedDiscount), amount);
   const shippingHandlingFee = numeric(sco.shippingHandlingFee);
-  const totalAmount = amount + shippingHandlingFee;
+  const totalAmount = Math.max(amount - negotiatedDiscount, 0) + shippingHandlingFee;
   const embeddedPurchaseOrder = sco.purchaseOrder as
     | {
         id?: string;
@@ -692,6 +693,9 @@ export function SCODetailPage() {
                     ))}
                     <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                       <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                      {negotiatedDiscount !== 0 && (
+                        <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
+                      )}
                       {shippingHandlingFee !== 0 && (
                         <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                       )}
@@ -767,6 +771,19 @@ export function SCODetailPage() {
                             {money(amount)}
                           </td>
                         </tr>
+                        {negotiatedDiscount !== 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="pt-1 text-right text-xs text-muted-foreground"
+                            >
+                              Negotiated Discount
+                            </td>
+                            <td className="pt-1 text-right tabular-nums text-sm">
+                              -{money(negotiatedDiscount)}
+                            </td>
+                          </tr>
+                        )}
                         {shippingHandlingFee !== 0 && (
                           <tr>
                             <td
@@ -903,6 +920,9 @@ export function SCODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                  {negotiatedDiscount !== 0 && (
+                    <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
+                  )}
                   {shippingHandlingFee !== 0 && (
                     <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                   )}

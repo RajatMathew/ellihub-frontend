@@ -70,6 +70,7 @@ const emptyDefaultValues: CreatePOFromRFQInput = {
   expectedDate: '',
   shipToAddress: '',
   address: '',
+  negotiatedDiscount: 0,
   shippingHandlingFee: 0,
   taxPercent: 0,
   paymentTerms: 'NET_30',
@@ -126,10 +127,13 @@ export function RFQCreatePOPreviewDialog({
     (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
     0
   );
+  const negotiatedDiscount = useWatch({ control, name: 'negotiatedDiscount' }) ?? 0;
   const shippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const taxPercent = useWatch({ control, name: 'taxPercent' }) ?? 0;
-  const taxAmount = (subtotal * taxPercent) / 100;
-  const total = subtotal + shippingHandlingFee + taxAmount;
+  const discount = Math.min(Math.max(negotiatedDiscount, 0), subtotal);
+  const taxableSubtotal = Math.max(subtotal - discount, 0);
+  const taxAmount = (taxableSubtotal * taxPercent) / 100;
+  const total = taxableSubtotal + shippingHandlingFee + taxAmount;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -261,6 +265,7 @@ export function RFQCreatePOPreviewDialog({
                     <div className="flex justify-end pt-4">
                       <div className="w-full max-w-sm space-y-3">
                         <AmountRow label="Subtotal" value={subtotal} />
+                        <AmountRow label="Negotiated Discount" value={discount} negative />
                         <AmountRow label="Shipping and Handling Fee" value={shippingHandlingFee} />
                         <AmountRow label={`Tax (${formatPercent(taxPercent)})`} value={taxAmount} />
                         <Separator />
@@ -301,7 +306,7 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Controller
           name="paymentTerms"
           control={control}
@@ -335,6 +340,26 @@ function POFinancialFields({ control }: { control: Control<CreatePOFromRFQInput>
                   min={0}
                   max={100}
                   step={0.001}
+                  value={numberInputValue(field.value)}
+                  onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
+                  aria-invalid={fieldState.invalid}
+                />
+              </InputWrapper>
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            </Field>
+          )}
+        />
+        <Controller
+          name="negotiatedDiscount"
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel className={fieldLabelClassName}>Negotiated Discount</FieldLabel>
+              <InputWrapper>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
                   value={numberInputValue(field.value)}
                   onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
                   aria-invalid={fieldState.invalid}
@@ -552,10 +577,12 @@ function AmountRow({
   label,
   value,
   emphasis,
+  negative,
 }: {
   label: string;
   value: number;
   emphasis?: boolean;
+  negative?: boolean;
 }) {
   return (
     <div
@@ -565,7 +592,10 @@ function AmountRow({
       )}
     >
       <span className={cn(!emphasis && 'text-muted-foreground')}>{label}</span>
-      <span className="tabular-nums">{formatCurrency(value)}</span>
+      <span className="tabular-nums">
+        {negative && value !== 0 ? '-' : ''}
+        {formatCurrency(value)}
+      </span>
     </div>
   );
 }
@@ -613,6 +643,7 @@ function cleanPOFromRFQInput(formData: CreatePOFromRFQInput): CreatePOFromRFQInp
     expectedDate: formData.expectedDate || undefined,
     shipToAddress: formData.shipToAddress || undefined,
     address: formData.address || undefined,
+    negotiatedDiscount: formData.negotiatedDiscount ?? undefined,
     notes: formData.notes || undefined,
     shippingHandlingFee: formData.shippingHandlingFee ?? undefined,
     taxPercent: formData.taxPercent ?? undefined,

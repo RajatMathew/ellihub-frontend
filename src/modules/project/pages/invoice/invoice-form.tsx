@@ -489,72 +489,58 @@ export function InvoiceFormPage() {
 
             <Separator />
 
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <Controller
-                name="totalAmount"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Invoice Amount
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={numberInputValue(field.value)}
-                        onChange={(event) =>
-                          field.onChange(parseNumberInputValue(event.target.value))
-                        }
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="taxRate"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Tax Rate (%)
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={numberInputValue(field.value)}
-                        onChange={(event) =>
-                          field.onChange(parseNumberInputValue(event.target.value))
-                        }
-                      />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-            </div>
-
             <div className="flex justify-end">
-              <div className="w-full max-w-sm rounded-lg border bg-muted/20 p-4">
-                <div className="flex items-center justify-between text-sm">
+              <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
+                <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-muted-foreground">Invoice Amount</span>
-                  <span className="font-semibold tabular-nums">{formatCurrency(totalAmount)}</span>
+                  <Controller
+                    name="totalAmount"
+                    control={control}
+                    render={({ field }) => (
+                      <InputWrapper className="w-32">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={numberInputValue(field.value)}
+                          onChange={(event) =>
+                            field.onChange(parseNumberInputValue(event.target.value))
+                          }
+                          className="text-right"
+                        />
+                      </InputWrapper>
+                    )}
+                  />
                 </div>
-                <div className="mt-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tax</span>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Tax Rate (%)</span>
+                  <Controller
+                    name="taxRate"
+                    control={control}
+                    render={({ field }) => (
+                      <InputWrapper className="w-32">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={numberInputValue(field.value)}
+                          onChange={(event) =>
+                            field.onChange(parseNumberInputValue(event.target.value))
+                          }
+                          className="text-right"
+                        />
+                      </InputWrapper>
+                    )}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tax ({formatPercent(taxRate)})</span>
                   <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
                 </div>
                 <Separator className="my-3" />
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-foreground">Grand Total</span>
                   <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tax Rate</span>
-                  <span className="font-medium tabular-nums">{formatPercent(taxRate)}</span>
                 </div>
               </div>
             </div>

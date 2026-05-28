@@ -299,6 +299,7 @@ export function PODetailPage() {
   );
   const balanceDue = Math.max(totalCommitment - amountPaid, 0);
   const subtotal = parseFloat(po.subtotal ?? '0');
+  const negotiatedDiscount = parseFloat(po.negotiatedDiscount ?? '0');
   const taxAmount = parseFloat(po.taxAmount ?? '0');
   const retainagePercent = parseFloat(po.retainagePercent ?? '0');
   const readableRfq = po.rfq?.rfqNumber ?? po.rfq?.title ?? po.rfqId;
@@ -615,6 +616,7 @@ export function PODetailPage() {
                 lineItems={po.lineItems ?? []}
                 costCodeMap={costCodeMap}
                 subtotal={subtotal}
+                negotiatedDiscount={po.negotiatedDiscount}
                 shippingHandlingFee={po.shippingHandlingFee}
                 taxAmount={taxAmount}
                 taxPercent={po.taxPercent}
@@ -688,6 +690,11 @@ export function PODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
+                  {negotiatedDiscount !== 0 && (
+                    <InfoRow label="Negotiated Discount">
+                      -{formatCurrency(negotiatedDiscount)}
+                    </InfoRow>
+                  )}
                   {Number(po.shippingHandlingFee ?? 0) !== 0 && (
                     <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(po.shippingHandlingFee))}</InfoRow>
                   )}

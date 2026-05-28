@@ -90,6 +90,7 @@ export const scoListItemSchema = z
     amount: z.string().nullable().optional(),
     status: scoStatusNameSchema,
     createdBy: z.string().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
     scheduleImpactDays: z.coerce.number().nullable().optional(),
     requestedBy: z.string().nullable().optional(),
@@ -213,12 +214,13 @@ export type SCOLineItemInput = z.infer<typeof scoLineItemInputSchema>;
 
 // --- Create SCO input ---
 
-export const createSCOInputSchema = z.object({
+const baseSCOInputSchema = z.object({
   projectId: z.string().min(1, 'Project is required'),
   purchaseOrderId: z.string().min(1, 'Purchase order is required'),
   date: z.string().min(1, 'Date is required'),
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
+  negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
   shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
   scheduleImpactDays: z.number().int().min(0, 'Schedule impact days must be >= 0').optional(),
   requestedBy: z.string().optional(),
@@ -227,12 +229,32 @@ export const createSCOInputSchema = z.object({
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
 
+function validateSCODiscount(
+  value: z.infer<typeof baseSCOInputSchema>,
+  ctx: z.RefinementCtx
+) {
+    const subtotal = value.lineItems.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0
+    );
+    if ((value.negotiatedDiscount ?? 0) > subtotal) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['negotiatedDiscount'],
+        message: 'Negotiated discount cannot exceed subtotal',
+      });
+    }
+}
+
+export const createSCOInputSchema = baseSCOInputSchema.superRefine(validateSCODiscount);
+
 export type CreateSCOInput = z.infer<typeof createSCOInputSchema>;
 
 // --- Update SCO input ---
 
-export const updateSCOInputSchema = createSCOInputSchema
-  .extend({ id: z.string().optional() });
+export const updateSCOInputSchema = baseSCOInputSchema
+  .extend({ id: z.string().optional() })
+  .superRefine(validateSCODiscount);
 
 export type UpdateSCOInput = z.infer<typeof updateSCOInputSchema>;
 
@@ -289,6 +311,7 @@ export const scoDetailSchema = z
     reasonForChange: z.string().nullable().optional(),
     detailedScope: z.string().nullable().optional(),
     scheduleImpactDays: z.number().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
     changeTypeId: z.string().nullable().optional(),
     impactsSchedule: z.boolean().nullable().optional(),
