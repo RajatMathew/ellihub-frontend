@@ -59,6 +59,15 @@ import type { NavigateFunction } from 'react-router-dom';
 const parseDateValue = (value: unknown): string =>
   typeof value === 'string' ? value.split('T')[0] : '';
 
+function uniqueOptions(options: Array<{ value: string; label: string }>) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
+
 export default function ProjectEditForm() {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -108,12 +117,15 @@ function ProjectEditFormInner({
       label: d.label || d.name || 'Unknown',
     })) ?? [];
   const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions = [
+  const pmOptions = uniqueOptions([
     ...(project.leadPM ? [{ value: project.leadPM.id, label: project.leadPM.name }] : []),
+    ...(project.leadPMId && !project.leadPM
+      ? [{ value: project.leadPMId, label: 'Current Lead PM' }]
+      : []),
     ...(employeesQuery.data
       ?.filter((employee) => employee.authRole === 'pm' && employee.id !== project.leadPMId)
       .map((employee) => ({ value: employee.id, label: employee.name })) ?? []),
-  ];
+  ]);
 
   /* ---- Form setup with existing values ---- */
 

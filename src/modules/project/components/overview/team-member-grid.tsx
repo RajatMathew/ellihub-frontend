@@ -45,9 +45,19 @@ function getMemberRole(member: ProjectTeamAssignment): ProjectTeamRole {
   return 'Member';
 }
 
-function getRoleOptions(member: ProjectTeamAssignment, canTransferLead: boolean): ProjectTeamRole[] {
-  if (member.employee?.authRole !== 'pm') return ['Member'];
-  return canTransferLead ? ROLE_OPTIONS : ROLE_OPTIONS.filter((role) => role !== 'Lead PM');
+function getRoleOptions(
+  member: ProjectTeamAssignment,
+  role: ProjectTeamRole,
+  canTransferLead: boolean
+): ProjectTeamRole[] {
+  const allowedOptions =
+    member.employee?.authRole === 'pm'
+      ? canTransferLead
+        ? ROLE_OPTIONS
+        : ROLE_OPTIONS.filter((option) => option !== 'Lead PM')
+      : (['Member'] satisfies ProjectTeamRole[]);
+
+  return allowedOptions.includes(role) ? allowedOptions : [role, ...allowedOptions];
 }
 
 function canRemoveRole(
@@ -85,7 +95,7 @@ export function TeamMemberGrid({
         const email = member.employee?.email;
         const role = getMemberRole(member);
         const authRole = member.employee?.authRole ?? 'unlinked';
-        const roleOptions = getRoleOptions(member, canTransferLead);
+        const roleOptions = getRoleOptions(member, role, canTransferLead);
         const canChangeThisRole =
           !!onRoleChange && canAssignRole && role !== 'Lead PM' && roleOptions.length > 1;
         const canRemoveThisRole =
