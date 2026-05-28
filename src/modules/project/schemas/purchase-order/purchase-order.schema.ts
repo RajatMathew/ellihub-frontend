@@ -78,6 +78,7 @@ const poSubChangeOrderRefSchema = z
   .object({
     id: z.string(),
     amount: z.coerce.number().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
     status: z.string().nullable().optional(),
   })
@@ -122,6 +123,7 @@ export const poListItemSchema = z
     expectedDate: z.string().nullable().optional(),
     deliveryDate: z.string().nullable().optional(),
     subtotal: z.string().nullable().optional(),
+    negotiatedDiscount: z.string().nullable().optional(),
     shippingHandlingFee: z.string().nullable().optional(),
     taxPercent: z.string().nullable().optional(),
     taxAmount: z.string().nullable().optional(),
@@ -233,6 +235,7 @@ export const poDetailSchema = z
     shipToAddress: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     subtotal: z.string().nullable().optional(),
+    negotiatedDiscount: z.string().nullable().optional(),
     shippingHandlingFee: z.string().nullable().optional(),
     taxPercent: z.string().nullable().optional(),
     taxAmount: z.string().nullable().optional(),
@@ -285,23 +288,38 @@ export type POLineItemInput = z.infer<typeof poLineItemInputSchema>;
 
 // --- Create input ---
 
-export const createPOInputSchema = z.object({
-  projectId: z.string().min(1, 'Project is required'),
-  vendorId: z.string().min(1, 'Vendor is required'),
-  rfqId: z.string().optional(),
-  tradeCategoryId: z.string().min(1, 'Trade category is required'),
-  description: z.string().optional(),
-  leadTime: z.string().optional(),
-  address: z.string().optional(),
-  expectedDate: z.string().optional(),
-  shipToAddress: z.string().optional(),
-  shippingHandlingFee: z.number().optional(),
-  taxPercent: z.number().min(0).max(100).optional(),
-  paymentTerms: paymentTermsSchema,
-  retainagePercent: z.number().min(0).max(100).optional(),
-  notes: z.string().optional(),
-  lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
-});
+export const createPOInputSchema = z
+  .object({
+    projectId: z.string().min(1, 'Project is required'),
+    vendorId: z.string().min(1, 'Vendor is required'),
+    rfqId: z.string().optional(),
+    tradeCategoryId: z.string().min(1, 'Trade category is required'),
+    description: z.string().optional(),
+    leadTime: z.string().optional(),
+    address: z.string().optional(),
+    expectedDate: z.string().optional(),
+    shipToAddress: z.string().optional(),
+    negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
+    shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
+    taxPercent: z.number().min(0).max(100).optional(),
+    paymentTerms: paymentTermsSchema,
+    retainagePercent: z.number().min(0).max(100).optional(),
+    notes: z.string().optional(),
+    lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
+  })
+  .superRefine((value, ctx) => {
+    const subtotal = value.lineItems.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0
+    );
+    if ((value.negotiatedDiscount ?? 0) > subtotal) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['negotiatedDiscount'],
+        message: 'Negotiated discount cannot exceed subtotal',
+      });
+    }
+  });
 
 export type CreatePOInput = z.infer<typeof createPOInputSchema>;
 

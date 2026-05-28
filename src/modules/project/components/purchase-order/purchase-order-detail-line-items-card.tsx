@@ -10,6 +10,7 @@ interface PurchaseOrderDetailLineItemsCardProps {
   lineItems: PODetail['lineItems'];
   costCodeMap: Map<string, string>;
   subtotal: number;
+  negotiatedDiscount: string | null | undefined;
   shippingHandlingFee: string | null | undefined;
   taxAmount: number;
   taxPercent: string | null | undefined;
@@ -20,12 +21,14 @@ export function PurchaseOrderDetailLineItemsCard({
   lineItems,
   costCodeMap,
   subtotal,
+  negotiatedDiscount,
   shippingHandlingFee,
   taxAmount,
   taxPercent,
   total,
 }: PurchaseOrderDetailLineItemsCardProps) {
   const lineItemCount = lineItems.length;
+  const discount = Number(negotiatedDiscount ?? 0);
 
   return (
     <Card>
@@ -88,6 +91,9 @@ export function PurchaseOrderDetailLineItemsCard({
               ))}
               <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                 <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
+                {discount !== 0 && (
+                  <InfoRow label="Negotiated Discount">-{formatCurrency(discount)}</InfoRow>
+                )}
                 {Number(shippingHandlingFee ?? 0) !== 0 && (
                   <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(shippingHandlingFee))}</InfoRow>
                 )}
@@ -171,6 +177,16 @@ export function PurchaseOrderDetailLineItemsCard({
                       {formatCurrency(subtotal)}
                     </td>
                   </tr>
+                  {discount !== 0 && (
+                    <tr>
+                      <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                        Negotiated Discount
+                      </td>
+                      <td className="pt-1 text-right text-sm tabular-nums">
+                        -{formatCurrency(discount)}
+                      </td>
+                    </tr>
+                  )}
                   {Number(shippingHandlingFee ?? 0) !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">

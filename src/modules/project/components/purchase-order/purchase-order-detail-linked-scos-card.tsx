@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import {
   getSubChangeOrderShippingHandlingFee,
+  getSubChangeOrderNegotiatedDiscount,
   getSubChangeOrderSubtotal,
   getSubChangeOrderTotalAmount,
 } from '@/modules/project/components/sub-change-order';
@@ -59,6 +60,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
           <div className="space-y-2">
             {scos.map((sco) => {
               const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
+              const negotiatedDiscount = getSubChangeOrderNegotiatedDiscount(sco);
 
               return (
                 <Link
@@ -100,10 +102,13 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                       <div className="font-semibold tabular-nums">
                         {formatCurrency(getSubChangeOrderTotalAmount(sco))}
                       </div>
-                      {shippingHandlingFee !== 0 && (
+                      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0) && (
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Subtotal {formatCurrency(getSubChangeOrderSubtotal(sco))} + Shipping and
-                          Handling Fee {formatCurrency(shippingHandlingFee)}
+                          Subtotal {formatCurrency(getSubChangeOrderSubtotal(sco))}
+                          {negotiatedDiscount !== 0 &&
+                            ` - Discount ${formatCurrency(negotiatedDiscount)}`}
+                          {shippingHandlingFee !== 0 &&
+                            ` + Shipping and Handling Fee ${formatCurrency(shippingHandlingFee)}`}
                         </div>
                       )}
                       {sco.impactsSchedule && (

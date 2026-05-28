@@ -73,6 +73,26 @@ export function PurchaseOrderFormLineItemsCard({
             <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Negotiated Discount</span>
+            <Controller
+              name="negotiatedDiscount"
+              control={control}
+              render={({ field }) => (
+                <InputWrapper className="w-32">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    {...field}
+                    value={numberInputValue(field.value)}
+                    onChange={(event) => field.onChange(parseNumberInputValue(event.target.value))}
+                    className="text-right"
+                  />
+                </InputWrapper>
+              )}
+            />
+          </div>
+          <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Shipping and Handling Fee</span>
             <Controller
               name="shippingHandlingFee"
