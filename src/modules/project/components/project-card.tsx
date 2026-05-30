@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
-
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Progress } from '@/app/components/ui/progress';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order/sub-change-order-list-utils';
+import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
+import { Link } from 'react-router-dom';
 
 const formatSignedCurrency = (value: number): string => {
   if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
@@ -21,15 +22,25 @@ const getUtilizationColor = (utilization: number): string => {
 };
 
 export function ProjectCard({ project }: { project: ProjectListItem }) {
+  const { data: approvedSCOs } = useSCOsQuery({
+    projectId: project.id,
+    status: 'APPROVED',
+    page: 1,
+    size: 100,
+  });
   const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
   const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
   const revisedContractValue =
     project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
   const totalPOCommitted = project.totalPOCommitted ?? 0;
+  const approvedSCOTotal = (approvedSCOs?.data ?? []).reduce(
+    (sum, sco) => sum + getSubChangeOrderTotalAmount(sco),
+    0
+  );
+  const totalSpent = totalPOCommitted + approvedSCOTotal;
   const targetBudgetPercent = project.targetBudgetPercent ?? 100;
   const budgetLimit = project.budgetLimit ?? revisedContractValue * (targetBudgetPercent / 100);
-  const spendUtilization =
-    project.spendUtilization ?? (budgetLimit > 0 ? (totalPOCommitted / budgetLimit) * 100 : 0);
+  const spendUtilization = budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0;
   const progressValue = Math.min(Math.max(spendUtilization, 0), 100);
   const spendUtilizationLabel = `${Math.round(spendUtilization)}%`;
   const approvedChangeOrdersValueClassName = cn(
@@ -61,13 +72,17 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
               <p className="mb-1 text-xs uppercase leading-none text-muted-foreground">
                 Contract Sum
               </p>
-              <p className="truncate text-sm font-semibold">{formatCurrency(revisedContractValue)}</p>
+              <p className="truncate text-sm font-semibold">
+                {formatCurrency(revisedContractValue)}
+              </p>
             </div>
             <div className="min-w-0 text-right">
               <p className="mb-1 text-xs uppercase leading-none text-muted-foreground">
                 Approved COs
               </p>
-              <p className={cn('truncate text-sm font-semibold', approvedChangeOrdersValueClassName)}>
+              <p
+                className={cn('truncate text-sm font-semibold', approvedChangeOrdersValueClassName)}
+              >
                 {formatSignedCurrency(approvedChangeOrdersTotal)}
               </p>
             </div>

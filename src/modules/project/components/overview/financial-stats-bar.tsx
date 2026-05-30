@@ -8,8 +8,9 @@ interface FinancialStatsBarProps {
   computations: PrimeContractComputations;
   contract: PrimeContract | undefined;
   primeChangeOrderSummary: PrimeChangeOrderFinancialSummary | undefined;
-  totalPOCommitted: number;
+  totalCommitted: number;
   activePOsCount: number;
+  approvedSCOsCount: number;
 }
 
 const formatSignedCurrency = (value: number): string => {
@@ -21,14 +22,14 @@ export function FinancialStatsBar({
   computations,
   contract,
   primeChangeOrderSummary,
-  totalPOCommitted,
+  totalCommitted,
   activePOsCount,
+  approvedSCOsCount,
 }: FinancialStatsBarProps) {
   const approvedCOsCount = primeChangeOrderSummary?.approvedChangeOrdersCount ?? 0;
   const positiveApprovedCOs = primeChangeOrderSummary?.approvedChangeOrdersPositiveTotal ?? 0;
   const negativeApprovedCOs = primeChangeOrderSummary?.approvedChangeOrdersNegativeTotal ?? 0;
-  const approvedCOsValueColor =
-    computations.approvedCOs < 0 ? 'text-destructive' : 'text-success';
+  const approvedCOsValueColor = computations.approvedCOs < 0 ? 'text-destructive' : 'text-success';
   const approvedCOsParts = [
     positiveApprovedCOs !== 0 ? formatSignedCurrency(positiveApprovedCOs) : '',
     negativeApprovedCOs !== 0 ? formatSignedCurrency(negativeApprovedCOs) : '',
@@ -65,9 +66,9 @@ export function FinancialStatsBar({
         className="border-b md:border-b-0"
       />
       <StatsBarItem
-        label="Committed (POs)"
-        value={formatCurrency(totalPOCommitted)}
-        description={`${activePOsCount} issued/delivered purchase orders`}
+        label="Committed"
+        value={formatCurrency(totalCommitted)}
+        description={`${activePOsCount} issued/delivered POs + ${approvedSCOsCount} approved SCOs`}
         dotColor="bg-warning"
         valueColor="text-warning"
       />

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Forbidden } from '@/app/components/error/forbidden';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
@@ -41,6 +41,7 @@ import {
   type CreatePOInput,
   type PODetail,
 } from '@/modules/project/schemas/purchase-order';
+import type { RFQDeliverable } from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -77,6 +78,24 @@ function mapPOLineItemToInput(item: PODetail['lineItems'][number]): PurchaseOrde
     unitPrice: Number(item.unitPrice),
     costCodeId: item.costCodeId ?? '',
     notes: item.notes ?? undefined,
+  };
+}
+
+function mapRFQDeliverableToPOLineItem(deliverable: RFQDeliverable): PurchaseOrderLineItemInput {
+  const quantity = Number(deliverable.quantity ?? 0);
+  const estimatedUnitPrice =
+    deliverable.estimatedUnitPrice ??
+    (deliverable.estimatedTotal != null && quantity > 0
+      ? deliverable.estimatedTotal / quantity
+      : 0);
+
+  return {
+    description: deliverable.description ?? deliverable.name ?? '',
+    quantity: quantity > 0 ? quantity : 1,
+    unitId: deliverable.unitId ?? '',
+    unitPrice: Number(estimatedUnitPrice ?? 0),
+    costCodeId: deliverable.costCodeId ?? '',
+    notes: deliverable.specifications ?? undefined,
   };
 }
 
@@ -156,9 +175,10 @@ export function POFormPage() {
     resolver: zodResolver(createPOInputSchema),
     defaultValues: getPOFormValues(projectId, isEditMode ? existingPO : undefined),
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'lineItems' });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
+  const populatedLineItemsFromRfqId = useRef<string | null>(null);
 
   const selectedRfqAwardedQuote = selectedRfq?.quotes.find((quote) => quote.isAwarded);
   const selectedRfqAwardedVendorId =
@@ -169,8 +189,7 @@ export function POFormPage() {
   const selectedRfqAwardedVendorName =
     selectedRfq?.awardedVendor?.name ?? selectedRfqAwardedQuote?.vendor?.name;
   const isAwardedRfqSelected =
-    !!selectedRfqId &&
-    (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
+    !!selectedRfqId && (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
   const isVendorLocked = isAwardedRfqSelected;
   const effectiveVendorOptions =
     selectedRfqAwardedVendorName &&
@@ -199,6 +218,21 @@ export function POFormPage() {
       shouldValidate: true,
     });
   }, [isVendorLocked, selectedRfqAwardedVendorId, setValue]);
+
+  useEffect(() => {
+    if (isEditMode || !selectedRfqId || !selectedRfq) return;
+    if (populatedLineItemsFromRfqId.current === selectedRfqId) return;
+
+    const rfqLineItems = selectedRfq.deliverables
+      .filter((deliverable) => !deliverable.deletedAt)
+      .map(mapRFQDeliverableToPOLineItem)
+      .filter((item) => item.description.trim());
+
+    if (!rfqLineItems.length) return;
+
+    replace(rfqLineItems);
+    populatedLineItemsFromRfqId.current = selectedRfqId;
+  }, [isEditMode, replace, selectedRfq, selectedRfqId]);
 
   const watchedLineItems = watch('lineItems');
   const subtotal = (watchedLineItems ?? []).reduce(
@@ -307,9 +341,7 @@ export function POFormPage() {
   return (
     <form
       key={isEditMode ? (existingPO?.id ?? 'loading') : 'create'}
-      onSubmit={(event) =>
-        void handleSubmit(onSubmit, onInvalidFormSubmit)(event)
-      }
+      onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
       className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
     >
       <ProjectFormToolbar

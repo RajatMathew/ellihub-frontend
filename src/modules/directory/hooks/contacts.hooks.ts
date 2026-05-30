@@ -13,6 +13,7 @@ import {
   type ListContactsParams,
   type UpdateContactInput,
 } from '@/modules/directory/schemas/contact.schema';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -52,6 +53,7 @@ export const useCreateContactMutation = () => {
     mutationFn: contactsApi.create,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to create contact.'),
   });
@@ -65,6 +67,7 @@ export const useUpdateContactMutation = () => {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
       qc.invalidateQueries({ queryKey: contactsKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update contact.'),
   });
@@ -76,6 +79,7 @@ export const useDeleteContactMutation = () => {
     mutationFn: contactsApi.remove,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactsKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to delete contact.'),
   });

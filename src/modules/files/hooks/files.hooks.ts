@@ -6,10 +6,7 @@ import {
   type FileUploadPayload,
 } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import type {
-  FileFolderRenameInput,
-  FolderCreateInput,
-} from '@/modules/files/schemas/file.schema';
+import type { FileFolderRenameInput, FolderCreateInput } from '@/modules/files/schemas/file.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const PREVIEW_STALE_TIME = 5 * 60 * 1000;
@@ -18,6 +15,7 @@ export const useRootFolderQuery = (enabled = true) =>
     queryKey: filesKeys.root(),
     queryFn: () => filesApi.getRootFolder(),
     enabled,
+    refetchOnMount: 'always',
   });
 
 export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
@@ -29,6 +27,7 @@ export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
       return filesApi.getFolderDetails(id);
     },
     enabled: enabled && !!id,
+    refetchOnMount: 'always',
   });
 
 export const useFilesSearchQuery = (params: FileSearchParams, enabled: boolean) =>

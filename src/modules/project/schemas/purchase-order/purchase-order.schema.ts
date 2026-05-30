@@ -191,16 +191,13 @@ export const poLineItemSchema = z
     description: z.string(),
     unitId: z.string().nullable().optional(),
     quantity: z.string(),
-    unit: z.preprocess(
-      (value) => {
-        if (typeof value === 'object' && value !== null) {
-          const ref = value as { label?: unknown; name?: unknown; id?: unknown };
-          return ref.label ?? ref.name ?? ref.id ?? undefined;
-        }
-        return value;
-      },
-      z.string().nullable().optional(),
-    ),
+    unit: z.preprocess((value) => {
+      if (typeof value === 'object' && value !== null) {
+        const ref = value as { label?: unknown; name?: unknown; id?: unknown };
+        return ref.label ?? ref.name ?? ref.id ?? undefined;
+      }
+      return value;
+    }, z.string().nullable().optional()),
     unitPrice: z.string(),
     amount: z.string(),
     costCodeId: z.string().nullable().optional(),
@@ -279,7 +276,7 @@ export const poLineItemInputSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().positive('Quantity must be > 0'),
   unitId: z.string().min(1, 'Unit is required'),
-  unitPrice: z.number().min(0, 'Unit price must be >= 0'),
+  unitPrice: z.number().positive('Unit price must be greater than 0'),
   costCodeId: z.string().min(1, 'Cost code is required'),
   notes: z.string().optional(),
 });
@@ -308,10 +305,7 @@ export const createPOInputSchema = z
     lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
   })
   .superRefine((value, ctx) => {
-    const subtotal = value.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
+    const subtotal = value.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     if ((value.negotiatedDiscount ?? 0) > subtotal) {
       ctx.addIssue({
         code: 'custom',

@@ -90,14 +90,16 @@ export default function ProjectContractOverview() {
   const { totalPOCommitted, activePOsCount } = usePOCalculations({
     pos: allPOs?.data,
   });
-  const approvedSCOTotal = useMemo(
-    () =>
-      (allSCOs?.data ?? [])
-        .filter((sco) => sco.status === 'APPROVED')
-        .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0),
+  const approvedSCOs = useMemo(
+    () => (allSCOs?.data ?? []).filter((sco) => sco.status === 'APPROVED'),
     [allSCOs?.data]
   );
-  const totalSpent = totalPOCommitted + approvedSCOTotal;
+  const approvedSCOTotal = useMemo(
+    () => approvedSCOs.reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0),
+    [approvedSCOs]
+  );
+  const totalCommitted = totalPOCommitted + approvedSCOTotal;
+  const totalSpent = totalCommitted;
 
   const computations = usePrimeContractComputations({
     project,
@@ -222,8 +224,9 @@ export default function ProjectContractOverview() {
           computations={computations}
           contract={contract}
           primeChangeOrderSummary={primeChangeOrderSummary}
-          totalPOCommitted={totalPOCommitted}
+          totalCommitted={totalCommitted}
           activePOsCount={activePOsCount}
+          approvedSCOsCount={approvedSCOs.length}
         />
 
         {/* ---- Contract Details + Financial Summary + Budget ---- */}

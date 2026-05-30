@@ -61,7 +61,7 @@ function TermsEditor({ value, disabled, onChange }: TermsEditorProps) {
     editorProps: {
       attributes: {
         class:
-          'min-h-48 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'h-full min-h-full px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       },
     },
     extensions: [
@@ -123,8 +123,8 @@ function TermsEditor({ value, disabled, onChange }: TermsEditorProps) {
   ];
 
   return (
-    <div className="overflow-hidden rounded-md border bg-background">
-      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/40 p-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-background">
+      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b bg-muted/40 p-2">
         {commands.map(({ action, active, disabled: commandDisabled, label, icon: Icon }) => (
           <Button
             key={label}
@@ -145,7 +145,7 @@ function TermsEditor({ value, disabled, onChange }: TermsEditorProps) {
       <EditorContent
         editor={editor}
         className={cn(
-          'max-h-80 overflow-y-auto',
+          'min-h-0 flex-1 overflow-y-auto',
           '[&_ol]:ml-5 [&_ol]:list-decimal [&_ul]:ml-5 [&_ul]:list-disc [&_p]:mb-2',
           disabled && 'cursor-not-allowed opacity-60'
         )}
@@ -271,7 +271,7 @@ export function PurchaseOrderPdfDialog({
               <DialogTitle>Generate Purchase Order PDF</DialogTitle>
             </DialogHeader>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
               <Field orientation="horizontal" className="items-start rounded-md border p-3">
                 <Checkbox
                   id="po-pdf-terms"
@@ -287,7 +287,7 @@ export function PurchaseOrderPdfDialog({
               </Field>
 
               {includeTerms && (
-                <Field>
+                <Field className="min-h-0 flex-1">
                   <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                     Terms and Condition
                   </FieldLabel>

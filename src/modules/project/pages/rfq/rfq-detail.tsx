@@ -403,6 +403,7 @@ export default function RFQDetailPage() {
   const invites = rfq.invites ?? [];
   const quotes = rfq.quotes ?? [];
   const attachments = rfq.attachments ?? [];
+  const comparisonSubtitle = rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : rfq.title;
 
   const quoteGrandTotals = quotes.map((q) => q.grandTotal).filter((v): v is number => v != null);
   const lowestQuote = quoteGrandTotals.length > 0 ? Math.min(...quoteGrandTotals) : null;
@@ -947,124 +948,100 @@ export default function RFQDetailPage() {
           className="inset-4 gap-0 overflow-hidden p-0"
         >
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex shrink-0 flex-col gap-4 border-b px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : rfq.title}
-                  {' - '}
-                  {bidComparison?.quotes.length ?? quotes.length} quote
-                  {(bidComparison?.quotes.length ?? quotes.length) !== 1 ? 's' : ''} from{' '}
-                  {invites.length} vendor{invites.length !== 1 ? 's' : ''}
-                </p>
-              </div>
+            {isComparisonLoading ? (
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
 
-              <div className="flex items-start justify-between gap-4 lg:justify-end">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-                  {rfq.createdAt && (
-                    <div>
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">
-                        Issue Date
-                      </div>
-                      <div className="font-medium">{formatDate(rfq.createdAt)}</div>
-                    </div>
-                  )}
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">
-                      Due Date
-                    </div>
-                    <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">
-                      Submitted
-                    </div>
-                    <div className="font-medium">
-                      {bidComparison?.statistics.quotesSubmitted ?? quotes.length}/
-                      {bidComparison?.statistics.quotesExpected ?? invites.length}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">
-                      Range
-                    </div>
-                    <div className="font-medium">
-                      {bidComparison?.statistics.lowestQuote != null &&
-                      bidComparison.statistics.highestQuote != null
-                        ? `${formatCurrency(bidComparison.statistics.lowestQuote)} - ${formatCurrency(
-                            bidComparison.statistics.highestQuote
-                          )}`
-                        : 'No quotes'}
-                    </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  mode="icon"
-                  className="size-8 shrink-0"
-                  onClick={() => setComparisonOpen(false)}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            </div>
-
-            {isComparisonLoading ? (
-              <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
-                <div className="mb-4 size-8 animate-spin rounded-full border-2 border-muted-foreground/10 border-t-primary" />
-                <p className="text-sm">Loading comparison...</p>
-              </div>
+                <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+                  <div className="mb-4 size-8 animate-spin rounded-full border-2 border-muted-foreground/10 border-t-primary" />
+                  <p className="text-sm">Loading comparison...</p>
+                </div>
+              </>
             ) : isComparisonError ? (
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <ShieldAlert className="mb-4 size-10 text-destructive/50" />
-                <p className="text-sm font-medium text-destructive">
-                  Failed to load comparison data.
-                </p>
-              </div>
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <ShieldAlert className="mb-4 size-10 text-destructive/50" />
+                  <p className="text-sm font-medium text-destructive">
+                    Failed to load comparison data.
+                  </p>
+                </div>
+              </>
             ) : bidComparison ? (
               <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
                 <div className="flex min-h-0 shrink-0 flex-col border-b bg-muted/20 lg:w-80 lg:border-b-0 lg:border-r">
-                  <div className="grid shrink-0 grid-cols-3 gap-px border-b bg-border">
-                    <div className="bg-background px-3 py-3">
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">
-                        Lowest
-                      </div>
-                      <div className="mt-1 truncate text-sm font-semibold">
-                        {bidComparison.statistics.lowestQuote != null
-                          ? formatCurrency(bidComparison.statistics.lowestQuote)
-                          : '-'}
-                      </div>
-                    </div>
-                    <div className="bg-background px-3 py-3">
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">
-                        Average
-                      </div>
-                      <div className="mt-1 truncate text-sm font-semibold">
-                        {bidComparison.statistics.averageQuote != null
-                          ? formatCurrency(bidComparison.statistics.averageQuote)
-                          : '-'}
-                      </div>
-                    </div>
-                    <div className="bg-background px-3 py-3">
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">
-                        Highest
-                      </div>
-                      <div className="mt-1 truncate text-sm font-semibold">
-                        {bidComparison.statistics.highestQuote != null
-                          ? formatCurrency(bidComparison.statistics.highestQuote)
-                          : '-'}
-                      </div>
+                  <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      aria-label="Close bid comparison"
+                      className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => setComparisonOpen(false)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+
+                    <div className="min-w-0">
+                      <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {comparisonSubtitle}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">
-                      Vendors
+                  <div className="shrink-0 border-b bg-background px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Vendors
+                      </div>
+                      <Badge variant="secondary" appearance="light" size="sm">
+                        {bidComparison.statistics.quotesSubmitted}/
+                        {bidComparison.statistics.quotesExpected} submitted
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" appearance="light" size="sm">
-                      {comparisonRows.length}
-                    </Badge>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      Range:{' '}
+                      <span className="font-medium text-foreground">
+                        {bidComparison.statistics.lowestQuote != null &&
+                        bidComparison.statistics.highestQuote != null
+                          ? `${formatCurrency(bidComparison.statistics.lowestQuote)} - ${formatCurrency(
+                              bidComparison.statistics.highestQuote
+                            )}`
+                          : 'No quotes'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -1072,73 +1049,125 @@ export default function RFQDetailPage() {
                       <div className="space-y-2">
                         {comparisonRows.map((row) => {
                           const isSelected = row.vendorId === selectedCompareVendorId;
+                          const comparisonQuote = row.quote;
+                          const comparisonAttachments = comparisonQuote?.attachments ?? [];
+                          const canAwardComparisonRow =
+                            canAwardRfq && isSelected && !!comparisonQuote && !row.isAwarded;
+
+                          const selectComparisonRow = () => {
+                            setSelectedCompareVendorId(row.vendorId || null);
+                            setActivePreviewDocId(null);
+                          };
+
                           return (
-                            <button
+                            <div
                               key={row.invite.id}
-                              type="button"
                               className={`w-full rounded-lg border bg-background p-3 text-left transition-colors ${
                                 isSelected
                                   ? 'border-primary bg-primary/5'
                                   : 'hover:border-muted-foreground/30 hover:bg-muted/40'
                               }`}
-                              onClick={() => {
-                                setSelectedCompareVendorId(row.vendorId || null);
-                                setActivePreviewDocId(null);
-                              }}
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-semibold">
-                                    {row.vendorName}
-                                  </div>
-                                  {row.vendorEmail && (
-                                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                                      {row.vendorEmail}
+                              <button
+                                type="button"
+                                className="w-full cursor-pointer text-left"
+                                onClick={selectComparisonRow}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold">
+                                      {row.vendorName}
                                     </div>
+                                    {row.vendorEmail && (
+                                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                        {row.vendorEmail}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {row.isAwarded ? (
+                                    <Badge variant="success" appearance="light" size="sm">
+                                      Awarded
+                                    </Badge>
+                                  ) : row.hasQuote ? (
+                                    <Badge variant="primary" appearance="light" size="sm">
+                                      Quoted
+                                    </Badge>
+                                  ) : row.declined ? (
+                                    <Badge variant="destructive" appearance="light" size="sm">
+                                      Declined
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" appearance="light" size="sm">
+                                      Waiting
+                                    </Badge>
                                   )}
                                 </div>
-                                {row.isAwarded ? (
-                                  <Badge variant="success" appearance="light" size="sm">
-                                    Awarded
-                                  </Badge>
-                                ) : row.hasQuote ? (
-                                  <Badge variant="primary" appearance="light" size="sm">
-                                    Quoted
-                                  </Badge>
-                                ) : row.declined ? (
-                                  <Badge variant="destructive" appearance="light" size="sm">
-                                    Declined
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="secondary" appearance="light" size="sm">
-                                    Waiting
-                                  </Badge>
-                                )}
-                              </div>
 
-                              {row.quote ? (
-                                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                  <span className="font-semibold text-foreground">
-                                    {row.quote.grandTotal != null
-                                      ? formatCurrency(row.quote.grandTotal)
-                                      : 'No total'}
-                                  </span>
-                                  {row.quote.leadTimeDays != null && (
-                                    <span>{row.quote.leadTimeDays} days lead</span>
-                                  )}
-                                  {row.quote.attachments && row.quote.attachments.length > 0 && (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Paperclip className="size-3" />
-                                      {row.quote.attachments.length}
+                                {comparisonQuote ? (
+                                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    <span className="font-semibold text-foreground">
+                                      {comparisonQuote.grandTotal != null
+                                        ? formatCurrency(comparisonQuote.grandTotal)
+                                        : 'No total'}
                                     </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="mt-3 text-xs text-muted-foreground">
-                                  {row.declined ? 'Declined to bid' : 'No quote submitted'}
+                                    {comparisonQuote.leadTimeDays != null && (
+                                      <span>{comparisonQuote.leadTimeDays} days lead</span>
+                                    )}
+                                    {comparisonAttachments.length > 0 && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <Paperclip className="size-3" />
+                                        {comparisonAttachments.length}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="mt-3 text-xs text-muted-foreground">
+                                    {row.declined ? 'Declined to bid' : 'No quote submitted'}
+                                  </div>
+                                )}
+                              </button>
+
+                              {isSelected && comparisonAttachments.length > 1 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {comparisonAttachments.map((attachment) => {
+                                    const isActive =
+                                      selectedPreviewAttachment?.id === attachment.id ||
+                                      (!activePreviewDocId &&
+                                        comparisonAttachments[0]?.id === attachment.id);
+
+                                    return (
+                                      <button
+                                        key={attachment.id}
+                                        type="button"
+                                        className={`inline-flex max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                          isActive
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : 'bg-background text-muted-foreground hover:bg-muted/50'
+                                        }`}
+                                        onClick={() => setActivePreviewDocId(attachment.id)}
+                                      >
+                                        <Paperclip className="size-3 shrink-0" />
+                                        <span className="truncate">{attachment.document.name}</span>
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
-                            </button>
+
+                              {canAwardComparisonRow && comparisonQuote && (
+                                <Button
+                                  size="sm"
+                                  className="mt-3 w-full"
+                                  onClick={() => {
+                                    setAwardQuoteIds([comparisonQuote.quoteId]);
+                                    setAwardOpen(true);
+                                  }}
+                                >
+                                  <Trophy className="size-4" />
+                                  Award Bid
+                                </Button>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
@@ -1149,6 +1178,44 @@ export default function RFQDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  <details className="group shrink-0 border-t bg-background px-4 py-3 text-sm">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase text-muted-foreground">
+                      RFQ Details
+                      <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                    </summary>
+
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Issue</div>
+                        <div className="mt-0.5 font-medium">
+                          {rfq.createdAt ? formatDate(rfq.createdAt) : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Due</div>
+                        <div className="mt-0.5 font-medium">
+                          {formatDate(rfq.bidDeadline || '')}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Lowest</div>
+                        <div className="mt-0.5 font-medium">
+                          {bidComparison.statistics.lowestQuote != null
+                            ? formatCurrency(bidComparison.statistics.lowestQuote)
+                            : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Average</div>
+                        <div className="mt-0.5 font-medium">
+                          {bidComparison.statistics.averageQuote != null
+                            ? formatCurrency(bidComparison.statistics.averageQuote)
+                            : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </details>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -1187,125 +1254,31 @@ export default function RFQDetailPage() {
                       </div>
                     )}
                   </div>
-
-                  <div className="shrink-0 border-t bg-background px-5 py-4">
-                    {selectedComparisonRow ? (
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-sm font-semibold">
-                              {selectedComparisonRow.vendorName}
-                            </h3>
-                            {selectedComparisonRow.isAwarded ? (
-                              <Badge variant="success" appearance="light" size="sm">
-                                Awarded
-                              </Badge>
-                            ) : selectedComparisonRow.hasQuote ? (
-                              <Badge variant="primary" appearance="light" size="sm">
-                                Quoted
-                              </Badge>
-                            ) : selectedComparisonRow.declined ? (
-                              <Badge variant="destructive" appearance="light" size="sm">
-                                Declined
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" appearance="light" size="sm">
-                                Waiting
-                              </Badge>
-                            )}
-                          </div>
-
-                          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-                            <div>
-                              <div className="text-xs font-semibold uppercase text-muted-foreground">
-                                Quote Total
-                              </div>
-                              <div className="mt-1 font-medium">
-                                {selectedComparisonQuote?.grandTotal != null
-                                  ? formatCurrency(selectedComparisonQuote.grandTotal)
-                                  : '-'}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold uppercase text-muted-foreground">
-                                Lead Time
-                              </div>
-                              <div className="mt-1 font-medium">
-                                {selectedComparisonQuote?.leadTimeDays != null
-                                  ? `${selectedComparisonQuote.leadTimeDays} days`
-                                  : '-'}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold uppercase text-muted-foreground">
-                                Attachments
-                              </div>
-                              <div className="mt-1 font-medium">
-                                {selectedComparisonAttachments.length}
-                              </div>
-                            </div>
-                          </div>
-
-                          {selectedComparisonAttachments.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {selectedComparisonAttachments.map((attachment) => {
-                                const isActive =
-                                  selectedPreviewAttachment?.id === attachment.id ||
-                                  (!activePreviewDocId &&
-                                    selectedComparisonAttachments[0]?.id === attachment.id);
-
-                                return (
-                                  <button
-                                    key={attachment.id}
-                                    type="button"
-                                    className={`inline-flex max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                                      isActive
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'bg-background text-muted-foreground hover:bg-muted/50'
-                                    }`}
-                                    onClick={() => setActivePreviewDocId(attachment.id)}
-                                  >
-                                    <Paperclip className="size-3 shrink-0" />
-                                    <span className="truncate">{attachment.document.name}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-2">
-                          {selectedComparisonRow.isAwarded ? (
-                            <Badge variant="success" appearance="light">
-                              Awarded Bid
-                            </Badge>
-                          ) : canAwardRfq && selectedComparisonQuote ? (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setComparisonOpen(false);
-                                setAwardQuoteIds([selectedComparisonQuote.quoteId]);
-                                setAwardOpen(true);
-                              }}
-                            >
-                              <Trophy className="size-4" />
-                              Award Bid
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        Select a vendor to see quote details.
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-                No comparison data available.
-              </div>
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                  No comparison data available.
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

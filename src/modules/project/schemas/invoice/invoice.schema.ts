@@ -302,7 +302,7 @@ export const createInvoiceInputSchema = z.object({
   invoiceNumber: z.string().min(1, 'Invoice number is required'),
   invoiceDate: z.string().min(1, 'Invoice date is required'),
   dueDate: z.string().min(1, 'Due date is required'),
-  totalAmount: z.number().min(0, 'Total amount must be >= 0'),
+  totalAmount: z.number().gt(0, 'Invoice amount must be greater than 0'),
   taxAmount: z.number().min(0, 'Tax amount must be >= 0'),
   taxRate: z.number().min(0, 'Tax rate must be >= 0'),
   notes: z.string(),

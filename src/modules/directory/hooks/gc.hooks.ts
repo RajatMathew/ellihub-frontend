@@ -7,6 +7,7 @@ import type {
   ListGCsParams,
   UpdateGCInput,
 } from '@/modules/directory/schemas/gc.schema';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
@@ -44,6 +45,7 @@ export const useCreateGCMutation = () => {
     mutationFn: (data: CreateGCInput) => gcApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to create general contractor.'),
   });
@@ -56,6 +58,7 @@ export const useUpdateGCMutation = () => {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
       qc.invalidateQueries({ queryKey: gcKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update general contractor.'),
   });
@@ -67,6 +70,7 @@ export const useDeleteGCMutation = () => {
     mutationFn: (id: string) => gcApi.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: gcKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to delete general contractor.'),
   });

@@ -13,6 +13,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
@@ -225,13 +226,18 @@ export function InvoiceFormPage() {
   async function uploadFiles(folderId: string, files: File[]) {
     const documentIds: string[] = [];
     for (const file of files) {
-      const uploaded = await filesApi.uploadFile(file, {
-        name: file.name,
-        parentId: folderId,
-        mimeType: file.type || undefined,
-        size: file.size,
-      });
-      documentIds.push(uploaded.id);
+      try {
+        const uploaded = await filesApi.uploadFile(file, {
+          name: file.name,
+          parentId: folderId,
+          mimeType: file.type || undefined,
+          size: file.size,
+        });
+        documentIds.push(uploaded.id);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
+        throw error;
+      }
     }
     return documentIds;
   }
@@ -306,6 +312,8 @@ export function InvoiceFormPage() {
         attachments: attachmentIds,
       });
       navigate(getInvoiceDetailPath(projectId, created.id));
+    } catch {
+      // Mutation hooks and file uploads surface their own toasts.
     } finally {
       setIsSaving(false);
     }
@@ -491,27 +499,30 @@ export function InvoiceFormPage() {
 
             <div className="flex justify-end">
               <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">Invoice Amount</span>
-                  <Controller
-                    name="totalAmount"
-                    control={control}
-                    render={({ field }) => (
-                      <InputWrapper className="w-32">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={numberInputValue(field.value)}
-                          onChange={(event) =>
-                            field.onChange(parseNumberInputValue(event.target.value))
-                          }
-                          className="text-right"
-                        />
-                      </InputWrapper>
-                    )}
-                  />
-                </div>
+                <Controller
+                  name="totalAmount"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid} className="gap-1">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <FieldLabel className="text-muted-foreground">Invoice Amount</FieldLabel>
+                        <InputWrapper className="w-32">
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={numberInputValue(field.value)}
+                            aria-invalid={fieldState.invalid}
+                            onChange={(event) =>
+                              field.onChange(parseNumberInputValue(event.target.value))
+                            }
+                            className="text-right"
+                          />
+                        </InputWrapper>
+                      </div>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-muted-foreground">Tax Rate (%)</span>
                   <Controller
@@ -520,9 +531,8 @@ export function InvoiceFormPage() {
                     render={({ field }) => (
                       <InputWrapper className="w-32">
                         <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           value={numberInputValue(field.value)}
                           onChange={(event) =>
                             field.onChange(parseNumberInputValue(event.target.value))
