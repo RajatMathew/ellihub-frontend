@@ -12,6 +12,7 @@ import type { FieldwireProjectOption } from '@/modules/project/schemas/project.s
 type FieldwireProjectSelectProps = {
   value: string | null;
   currentName?: string | null;
+  currentProjectId?: string | null;
   onValueChange: (value: string | null, project?: FieldwireProjectOption) => void;
 };
 
@@ -22,9 +23,11 @@ function getFieldwireProjectLabel(project: Pick<FieldwireProjectOption, 'name' |
 export function FieldwireProjectSelect({
   value,
   currentName,
+  currentProjectId,
   onValueChange,
 }: FieldwireProjectSelectProps) {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const { can } = useAccess();
   const canLoadFieldwireProjects = can('primeChangeOrder', 'fieldwire-projects');
   const fieldwireProjectsQuery = useFieldwireProjectsQuery(canLoadFieldwireProjects);
@@ -53,11 +56,28 @@ export function FieldwireProjectSelect({
           value={value}
           onValueChange={(nextValue) => {
             if (!canLoadFieldwireProjects) return;
+            if (!nextValue && value) {
+              setIsClearDialogOpen(true);
+              return;
+            }
 
             const selectedProject = nextValue
               ? projects.find((project) => project.id === nextValue)
               : undefined;
+            const linkedProject = selectedProject?.linkedProject;
 
+            if (
+              linkedProject &&
+              (!currentProjectId || linkedProject.id !== currentProjectId)
+            ) {
+              const linkedProjectLabel = linkedProject.jobNumber
+                ? `${linkedProject.name} (${linkedProject.jobNumber})`
+                : linkedProject.name;
+              setLinkError(`Already linked to ${linkedProjectLabel} project.`);
+              return;
+            }
+
+            setLinkError(null);
             onValueChange(nextValue, selectedProject);
           }}
           disabled={isDisabled}
@@ -106,10 +126,12 @@ export function FieldwireProjectSelect({
         confirmLabel="Remove Fieldwire Project"
         variant="destructive"
         onConfirm={() => {
+          setLinkError(null);
           onValueChange(null);
           setIsClearDialogOpen(false);
         }}
       />
+      {linkError && <p className="text-xs text-destructive">{linkError}</p>}
       {!canLoadFieldwireProjects && (
         <p className="text-xs text-muted-foreground">
           Fieldwire project mapping can only be changed by users with Fieldwire project access.

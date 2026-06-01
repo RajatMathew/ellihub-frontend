@@ -577,6 +577,7 @@ export default function ProjectForm() {
                         <FieldwireProjectSelect
                           value={field.value || null}
                           currentName={nameField.value}
+                          currentProjectId={projectId}
                           onValueChange={(value, selectedProject) => {
                             field.onChange(value ?? '');
                             nameField.onChange(selectedProject?.name ?? '');

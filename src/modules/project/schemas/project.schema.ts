@@ -242,6 +242,14 @@ export const fieldwireProjectOptionSchema = z
     code: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     accountId: z.coerce.number(),
+    linkedProject: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        jobNumber: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
   })
   .passthrough();
 
