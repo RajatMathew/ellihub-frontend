@@ -43,6 +43,7 @@ export function DepartmentDetailDialogs({
         open={assignOpen}
         onOpenChange={onAssignOpenChange}
         departmentId={department.id}
+        departmentName={department.name}
         assignedEmployees={department.employees ?? []}
       />
     </>

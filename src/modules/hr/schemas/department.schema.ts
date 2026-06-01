@@ -86,7 +86,6 @@ export type UpdateDepartmentInput = z.infer<typeof updateDepartmentInputSchema>;
 export const assignEmployeeInputSchema = z.object({
   departmentId: z.string(),
   employeeId: z.string(),
-  roleId: z.string().optional().nullable(),
 });
 
 export type AssignEmployeeInput = z.infer<typeof assignEmployeeInputSchema>;

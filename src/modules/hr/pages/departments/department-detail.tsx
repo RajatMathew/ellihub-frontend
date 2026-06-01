@@ -10,7 +10,6 @@ import {
   DepartmentDetailSidebar,
   DepartmentDetailToolbar,
   DepartmentEmployeesTab,
-  DepartmentPlaceholderTab,
 } from '@/modules/hr/components/departments/detail';
 import {
   useDeleteDepartmentMutation,
@@ -86,8 +85,6 @@ export default function DepartmentDetailPage() {
           <Tabs defaultValue="employees" className="min-w-0">
             <TabsList variant="line" className="max-w-full overflow-x-auto">
               <TabsTrigger value="employees">Employees</TabsTrigger>
-              <TabsTrigger value="roles">Roles</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="employees">
@@ -99,12 +96,6 @@ export default function DepartmentDetailPage() {
                   removeEmployeeMutation.mutate({ departmentId: department.id, employeeId })
                 }
               />
-            </TabsContent>
-            <TabsContent value="roles">
-              <DepartmentPlaceholderTab label="Role management" />
-            </TabsContent>
-            <TabsContent value="settings">
-              <DepartmentPlaceholderTab label="Department settings" />
             </TabsContent>
           </Tabs>
         </div>
