@@ -1,10 +1,19 @@
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  formPageContainerClassName,
+  unifiedFormHeaderClassName,
+  unifiedFormNavClassName,
+  unifiedFormPageClassName,
+  unifiedFormToolbarClassName,
+} from '@/app/components/form-page-layout';
+import { FormSectionNav } from '@/app/components/form-section-nav';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
+import { GC_FORM_SECTIONS } from '@/modules/directory/constants/gc.constants';
 import { useGCFormState } from '@/modules/directory/hooks/gc/use-gc-form-state';
 import { useSaveGC } from '@/modules/directory/hooks/gc/use-save-gc';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -14,6 +23,7 @@ export function GCFormPage() {
   const navigate = useNavigate();
   const state = useGCFormState(id);
   const { handleSubmit, control } = state.form;
+  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
 
   useBreadcrumbLabel(
     id ? `/app/directory/general-contractors/${id}` : undefined,
@@ -66,24 +76,34 @@ export function GCFormPage() {
     <>
       <form
         onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)}
-        className={formPageContainerClassName}
+        className={unifiedFormPageClassName}
       >
-        <GCFormToolbar
-          isEdit={state.isEdit}
-          isSubmitting={isSubmitting}
-          onFillRandom={state.fillRandom}
-        />
+        <div ref={headerRef} className={unifiedFormHeaderClassName}>
+          <GCFormToolbar
+            isEdit={state.isEdit}
+            isSubmitting={isSubmitting}
+            onFillRandom={state.fillRandom}
+            className={unifiedFormToolbarClassName}
+          />
+          <FormSectionNav
+            sections={GC_FORM_SECTIONS}
+            activeSection={state.activeSection}
+            onSectionChange={state.setActiveSection}
+            scrollOffset={headerHeight}
+            density="compact"
+            appearance="stepper"
+            className={unifiedFormNavClassName}
+          />
+        </div>
 
         <GCFormContent
           control={control}
-          activeSection={state.activeSection}
           gcTypeOptions={state.gcTypeOptions}
           contactLinks={state.contactLinks}
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
           targetEntityId={id}
-          onSectionChange={state.setActiveSection}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}
         />

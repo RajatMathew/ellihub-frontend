@@ -1,3 +1,10 @@
+import type { ReactNode } from 'react';
+
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -15,7 +22,9 @@ import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type { Control } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 
-const fieldLabelClassName = 'text-xs font-semibold uppercase tracking-normal';
+const fieldLabelClassName = formFieldLabelClassName;
+
+const invalidControlClassName = formInvalidControlClassName;
 
 export function PurchaseOrderFormFinancialCard({ control }: { control: Control<CreatePOInput> }) {
   return (
@@ -34,11 +43,14 @@ export function PurchaseOrderFormFinancialCard({ control }: { control: Control<C
           <Controller
             name="paymentTerms"
             control={control}
-            render={({ field }) => (
-              <Field>
-                <FieldLabel className={fieldLabelClassName}>Payment Terms</FieldLabel>
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <RequiredFieldLabel>Payment Terms</RequiredFieldLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? invalidControlClassName : undefined}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -49,6 +61,7 @@ export function PurchaseOrderFormFinancialCard({ control }: { control: Control<C
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
@@ -59,7 +72,7 @@ export function PurchaseOrderFormFinancialCard({ control }: { control: Control<C
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Tax %</FieldLabel>
-                <InputWrapper>
+                <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
                   <Input
                     type="number"
                     min={0}
@@ -81,7 +94,7 @@ export function PurchaseOrderFormFinancialCard({ control }: { control: Control<C
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Retainage %</FieldLabel>
-                <InputWrapper>
+                <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
                   <Input
                     type="number"
                     min={0}
@@ -100,4 +113,8 @@ export function PurchaseOrderFormFinancialCard({ control }: { control: Control<C
       </CardContent>
     </Card>
   );
+}
+
+function RequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }

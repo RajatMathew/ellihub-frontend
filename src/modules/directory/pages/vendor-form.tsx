@@ -1,10 +1,19 @@
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  formPageContainerClassName,
+  unifiedFormHeaderClassName,
+  unifiedFormNavClassName,
+  unifiedFormPageClassName,
+  unifiedFormToolbarClassName,
+} from '@/app/components/form-page-layout';
+import { FormSectionNav } from '@/app/components/form-section-nav';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
 import { VendorFormContent, VendorFormToolbar } from '@/modules/directory/components/vendors/form';
+import { VENDOR_FORM_SECTIONS } from '@/modules/directory/constants/vendors.constants';
 import { useSaveVendor } from '@/modules/directory/hooks/vendors/use-save-vendor';
 import { useVendorFormState } from '@/modules/directory/hooks/vendors/use-vendor-form-state';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -14,6 +23,7 @@ export function VendorFormPage() {
   const navigate = useNavigate();
   const state = useVendorFormState(id);
   const { handleSubmit, control } = state.form;
+  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
 
   useBreadcrumbLabel(
     id ? `/app/directory/vendors/${id}` : undefined,
@@ -66,24 +76,34 @@ export function VendorFormPage() {
     <>
       <form
         onSubmit={handleSubmit(saveVendor, onInvalidFormSubmit)}
-        className={formPageContainerClassName}
+        className={unifiedFormPageClassName}
       >
-        <VendorFormToolbar
-          isEdit={state.isEdit}
-          isSubmitting={isSubmitting}
-          onFillRandom={state.fillRandom}
-        />
+        <div ref={headerRef} className={unifiedFormHeaderClassName}>
+          <VendorFormToolbar
+            isEdit={state.isEdit}
+            isSubmitting={isSubmitting}
+            onFillRandom={state.fillRandom}
+            className={unifiedFormToolbarClassName}
+          />
+          <FormSectionNav
+            sections={VENDOR_FORM_SECTIONS}
+            activeSection={state.activeSection}
+            onSectionChange={state.setActiveSection}
+            scrollOffset={headerHeight}
+            density="compact"
+            appearance="stepper"
+            className={unifiedFormNavClassName}
+          />
+        </div>
 
         <VendorFormContent
           control={control}
-          activeSection={state.activeSection}
           vendorTypes={state.vendorTypes}
           contactLinks={state.contactLinks}
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
           targetEntityId={id}
-          onSectionChange={state.setActiveSection}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}
         />

@@ -1,3 +1,10 @@
+import type { ReactNode } from 'react';
+
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -25,7 +32,9 @@ interface PurchaseOrderFormDetailsCardProps {
   isVendorLocked?: boolean;
 }
 
-const fieldLabelClassName = 'text-xs font-semibold uppercase tracking-normal';
+const fieldLabelClassName = formFieldLabelClassName;
+
+const invalidControlClassName = formInvalidControlClassName;
 
 export function PurchaseOrderFormDetailsCard({
   control,
@@ -52,7 +61,7 @@ export function PurchaseOrderFormDetailsCard({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className={fieldLabelClassName}>Vendor</FieldLabel>
+                <RequiredFieldLabel>Vendor</RequiredFieldLabel>
                 <SearchableSelect
                   options={vendorOptions}
                   value={field.value || null}
@@ -61,6 +70,7 @@ export function PurchaseOrderFormDetailsCard({
                   searchPlaceholder="Search vendors..."
                   emptyMessage="No vendors found."
                   disabled={isVendorLocked}
+                  className={fieldState.invalid ? invalidControlClassName : undefined}
                 />
                 {isVendorLocked && (
                   <p className="text-xs text-muted-foreground">
@@ -77,9 +87,12 @@ export function PurchaseOrderFormDetailsCard({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className={fieldLabelClassName}>Trade Category</FieldLabel>
+                <RequiredFieldLabel>Trade Category</RequiredFieldLabel>
                 <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                  <SelectTrigger aria-invalid={fieldState.invalid}>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? invalidControlClassName : undefined}
+                  >
                     <SelectValue placeholder="Select trade..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -125,6 +138,7 @@ export function PurchaseOrderFormDetailsCard({
                 placeholder="Describe the purchase order..."
                 rows={3}
                 aria-invalid={fieldState.invalid}
+                className={fieldState.invalid ? invalidControlClassName : undefined}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -135,12 +149,13 @@ export function PurchaseOrderFormDetailsCard({
           <Controller
             name="expectedDate"
             control={control}
-            render={({ field }) => (
-              <Field>
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Expected Delivery Date</FieldLabel>
-                <InputWrapper>
-                  <Input type="date" {...field} />
+                <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
+                  <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                 </InputWrapper>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
@@ -150,10 +165,10 @@ export function PurchaseOrderFormDetailsCard({
           <Controller
             name="leadTime"
             control={control}
-            render={({ field }) => (
-              <Field>
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Lead Time (Days)</FieldLabel>
-                <InputWrapper>
+                <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
                   <Input
                     type="number"
                     min={1}
@@ -167,8 +182,10 @@ export function PurchaseOrderFormDetailsCard({
                       }
                     }}
                     autoComplete="off"
+                    aria-invalid={fieldState.invalid}
                   />
                 </InputWrapper>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
@@ -176,12 +193,18 @@ export function PurchaseOrderFormDetailsCard({
           <Controller
             name="address"
             control={control}
-            render={({ field }) => (
-              <Field>
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Address</FieldLabel>
-                <InputWrapper>
-                  <Input {...field} placeholder="Vendor or billing address" autoComplete="off" />
+                <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
+                  <Input
+                    {...field}
+                    placeholder="Vendor or billing address"
+                    autoComplete="off"
+                    aria-invalid={fieldState.invalid}
+                  />
                 </InputWrapper>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
@@ -190,12 +213,18 @@ export function PurchaseOrderFormDetailsCard({
         <Controller
           name="shipToAddress"
           control={control}
-          render={({ field }) => (
-            <Field>
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
               <FieldLabel className={fieldLabelClassName}>Ship To Address</FieldLabel>
-              <InputWrapper>
-                <Input {...field} placeholder="123 Job Site Rd, City ST 00000" autoComplete="off" />
+              <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
+                <Input
+                  {...field}
+                  placeholder="123 Job Site Rd, City ST 00000"
+                  autoComplete="off"
+                  aria-invalid={fieldState.invalid}
+                />
               </InputWrapper>
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
         />
@@ -203,14 +232,25 @@ export function PurchaseOrderFormDetailsCard({
         <Controller
           name="notes"
           control={control}
-          render={({ field }) => (
-            <Field>
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
               <FieldLabel className={fieldLabelClassName}>Internal Notes</FieldLabel>
-              <Textarea {...field} placeholder="Internal notes..." rows={2} />
+              <Textarea
+                {...field}
+                placeholder="Internal notes..."
+                rows={2}
+                aria-invalid={fieldState.invalid}
+                className={fieldState.invalid ? invalidControlClassName : undefined}
+              />
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}
         />
       </CardContent>
     </Card>
   );
+}
+
+function RequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }

@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
 import { LineItems } from '@/app/components/line-items';
-import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
   fakeProjectDescription,
@@ -25,7 +24,7 @@ import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
-  ProjectFormToolbar,
+  ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { RFQ_FORM_SECTIONS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
@@ -43,10 +42,11 @@ import {
   type RFQDetail,
 } from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Shuffle } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const rfqInvalidControlClassName = formInvalidControlClassName;
 
 /* ---- Random data for dev ---- */
 
@@ -90,6 +90,10 @@ function resolveRFQTypeId(rfqDetail: RFQDetail, rfqTypes?: RFQTypeOption[]) {
       return candidates.some((candidate) => values.includes(candidate));
     })?.id ?? ''
   );
+}
+
+function RFQRequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }
 
 function getRFQTypeLabel(rfqDetail: RFQDetail) {
@@ -265,35 +269,17 @@ export default function RFQFormPage() {
   if (!canSubmitRfq) return <Forbidden />;
 
   return (
-    <form
+    <ProjectFormShell
       onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
-      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
+      title={isEdit ? 'Edit RFQ' : 'New RFQ'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create RFQ'}
+      isSubmitting={isSubmitting}
+      sections={RFQ_FORM_SECTIONS}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      extraActions={!isEdit ? <MockDataButton onClick={fillRandom} /> : undefined}
     >
-      <ProjectFormToolbar
-        backLabel="RFQs"
-        title={isEdit ? 'Edit RFQ' : 'New RFQ'}
-        description={
-          isEdit ? 'Update the RFQ details below.' : 'Create a new request for quotation.'
-        }
-        submitLabel={isEdit ? 'Save Changes' : 'Create RFQ'}
-        isSubmitting={isSubmitting}
-        extraActions={
-          isMockDataFillEnabled && !isEdit ? (
-            <Button variant="ghost" size="sm" type="button" onClick={fillRandom}>
-              <Shuffle className="size-4" />
-              Fill Random
-            </Button>
-          ) : undefined
-        }
-      />
-
-      <FormLayout>
-        <FormSectionNav
-          sections={RFQ_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
+      <FormLayout className="pt-4 pb-8 lg:pb-10">
         <FormContent>
           {/* ---- Section 1: RFQ Details ---- */}
           <Card id="rfq-details">
@@ -314,10 +300,10 @@ export default function RFQFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Bid Deadline
-                      </FieldLabel>
-                      <InputWrapper>
+                      <RFQRequiredFieldLabel>Bid Deadline</RFQRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                      >
                         <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -330,14 +316,15 @@ export default function RFQFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Track (Type)
-                      </FieldLabel>
+                      <RFQRequiredFieldLabel>Track (Type)</RFQRequiredFieldLabel>
                       <Select
                         value={field.value || selectedRFQTypeId}
                         onValueChange={field.onChange}
                       >
-                        <SelectTrigger aria-invalid={fieldState.invalid}>
+                        <SelectTrigger
+                          aria-invalid={fieldState.invalid}
+                          className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                        >
                           <span
                             className={
                               field.value || selectedRFQTypeId ? '' : 'text-muted-foreground'
@@ -370,10 +357,10 @@ export default function RFQFormPage() {
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Title
-                    </FieldLabel>
-                    <InputWrapper>
+                    <RFQRequiredFieldLabel>Title</RFQRequiredFieldLabel>
+                    <InputWrapper
+                      className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                    >
                       <Input
                         {...field}
                         placeholder="e.g. Structural Steel Supply"
@@ -392,14 +379,13 @@ export default function RFQFormPage() {
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Description
-                    </FieldLabel>
+                    <RFQRequiredFieldLabel>Description</RFQRequiredFieldLabel>
                     <Textarea
                       {...field}
                       placeholder="Describe the scope of work..."
                       rows={4}
                       aria-invalid={fieldState.invalid}
+                      className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
@@ -442,6 +428,6 @@ export default function RFQFormPage() {
           />
         </FormContent>
       </FormLayout>
-    </form>
+    </ProjectFormShell>
   );
 }

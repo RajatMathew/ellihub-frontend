@@ -1,11 +1,21 @@
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { cn } from '@/app/lib/utils';
 import type { CreateDepartmentInput } from '@/modules/hr/schemas/department.schema';
 import { Building2 } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
+
+const departmentInvalidControlClassName = formInvalidControlClassName;
+
+const departmentFieldLabelClassName = formFieldLabelClassName;
 
 interface DepartmentGeneralInfoSectionProps {
   control: Control<CreateDepartmentInput>;
@@ -16,10 +26,8 @@ export function DepartmentGeneralInfoSection({ control }: DepartmentGeneralInfoS
     <Card id="info">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold uppercase tracking-wide text-foreground">
-            General Information
-          </h2>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-lg font-semibold text-foreground">General Information</h2>
+          <p className="text-sm text-muted-foreground">
             Basic details that identify the department.
           </p>
         </div>
@@ -31,10 +39,10 @@ export function DepartmentGeneralInfoSection({ control }: DepartmentGeneralInfoS
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Department Name
-              </FieldLabel>
-              <InputWrapper>
+              <FormFieldLabel required>Department Name</FormFieldLabel>
+              <InputWrapper
+                className={fieldState.invalid ? departmentInvalidControlClassName : undefined}
+              >
                 <Building2 className="size-4 text-muted-foreground" />
                 <Input
                   {...field}
@@ -53,13 +61,14 @@ export function DepartmentGeneralInfoSection({ control }: DepartmentGeneralInfoS
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Description
-              </FieldLabel>
+              <FieldLabel className={departmentFieldLabelClassName}>Description</FieldLabel>
               <Textarea
                 {...field}
                 placeholder="Describe the department's core responsibilities and functions..."
-                className="min-h-32 resize-none"
+                className={cn(
+                  'min-h-32 resize-none',
+                  fieldState.invalid && departmentInvalidControlClassName
+                )}
                 aria-invalid={fieldState.invalid}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

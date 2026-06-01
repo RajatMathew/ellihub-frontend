@@ -1,7 +1,13 @@
 import { useState } from 'react';
 
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  unifiedFormHeaderClassName,
+  unifiedFormNavClassName,
+  unifiedFormPageClassName,
+  unifiedFormToolbarClassName,
+} from '@/app/components/form-page-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
+import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
@@ -41,6 +47,7 @@ export function ContactFormContent({
 }: ContactFormContentProps) {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('contact-info');
+  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
   const form = useContactFormState({ contact, isEdit, roles });
   const { control, handleSubmit, reset, formState } = form;
 
@@ -80,21 +87,28 @@ export function ContactFormContent({
     <>
       <form
         onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)}
-        className={formPageContainerClassName}
+        className={unifiedFormPageClassName}
       >
-        <ContactFormToolbar
-          isEdit={isEdit}
-          isSubmitting={isSubmitting}
-          onFillRandom={handleFillRandom}
-        />
+        <div ref={headerRef} className={unifiedFormHeaderClassName}>
+          <ContactFormToolbar
+            isEdit={isEdit}
+            isSubmitting={isSubmitting}
+            onFillRandom={handleFillRandom}
+            className={unifiedFormToolbarClassName}
+          />
 
-        <FormSectionNav
-          sections={CONTACT_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
+          <FormSectionNav
+            sections={CONTACT_FORM_SECTIONS}
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            scrollOffset={headerHeight}
+            density="compact"
+            appearance="stepper"
+            className={unifiedFormNavClassName}
+          />
+        </div>
 
-        <div className="space-y-6 pt-6">
+        <div className="space-y-6 pt-4 pb-8 lg:pb-10">
           <ContactInfoFormSection
             control={control}
             formState={formState}

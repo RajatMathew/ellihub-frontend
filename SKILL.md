@@ -18,6 +18,7 @@ Treat these files as the source of truth before changing another form:
 - `src/modules/hr/components/employees/form/employee-basic-info-section.tsx`
 - `src/modules/hr/components/employees/form/employee-employment-section.tsx`
 - `src/modules/hr/components/employees/form/employee-emergency-section.tsx`
+- `src/app/components/field-info-tooltip.tsx`
 - `src/app/components/form-section-nav.tsx`
 - `src/app/components/form-page-layout.ts`
 
@@ -34,19 +35,17 @@ Do not change project create/edit forms unless explicitly requested. They are th
 
 Each unified form page should use:
 
-- Main form container based on `formPageContainerClassName`.
-- Page background `bg-gray-100`.
+- Main form container should use `unifiedFormPageClassName`, `unifiedFullHeightFormPageClassName`, or `unifiedProjectFormPageClassName` from `src/app/components/form-page-layout.ts`.
+- Page background `bg-form-background`; do not use hardcoded `bg-gray-100` for form pages because it breaks dark mode.
 - Top padding removed on the form container: `pt-0 lg:pt-0`.
 - A sticky header block containing the form title/actions and the section nav.
-- Sticky header block:
-  - `sticky top-0 z-20`
-  - white/background layer: `bg-background/95 backdrop-blur-md`
-  - bottom separator only: `border-b border-border`
-  - no top border, to avoid double-border flashes with app breadcrumbs.
+- Sticky header block should use `unifiedFormHeaderClassName`.
+- Toolbar spacing should use `unifiedFormToolbarClassName`; single-section forms should use `unifiedSingleSectionFormToolbarClassName`.
+- Section nav wrapper should use `unifiedFormNavClassName`.
 - Form content below the sticky header:
   - `space-y-6 pt-4 pb-8 lg:pb-10`
 
-Use constants for long class strings when the page owns the full form shell. This makes later rollout cleaner.
+For project forms, prefer `ProjectFormShell` from `src/modules/project/components/shared/project-form-shell.tsx` instead of recreating the sticky toolbar/nav wrapper in every page.
 
 ## Header / Toolbar
 
@@ -61,6 +60,13 @@ For the unified compact form header:
   - compact top spacing: `pt-4`
   - compact bottom spacing: `pb-2`
   - transparent background inside sticky wrapper.
+- Mock/sample data actions should use `src/app/components/dev/mock-data-button.tsx` so the label, shuffle icon, and button style stay consistent.
+- Form headers should use `src/app/components/form-page-toolbar.tsx` directly or through a thin domain toolbar wrapper.
+- Submit actions should use `src/app/components/form-submit-button.tsx`; it shows a check icon normally and a spinning loader while `isSubmitting` is true.
+
+## Browser Tab Titles
+
+Set create/edit form tab titles in `src/app/routing/config/routes.tsx` with `formRouteTitles('Resource Name')`. Use titles like `Create RFQ` and `Edit Vendor`. Do not change project create/edit titles unless explicitly requested.
 
 ## Section Nav
 
@@ -87,7 +93,7 @@ Rules:
 - Do not add a top border to the nav.
 - The shared `FormSectionNav` scroll detection is scroll-position based; preserve it unless a bug is observed.
 
-Measure sticky header height with a `ResizeObserver` as in `employee-form.tsx`, and pass that height as `scrollOffset`.
+Measure sticky header height with `useStickyHeaderHeight` from `src/app/hooks/use-sticky-header-height.ts`, and pass that height as `scrollOffset`.
 
 ## Section Cards
 
@@ -107,19 +113,13 @@ Avoid the older heavy style:
 
 ## Field Labels And Required Marks
 
-Use the employee helper pattern for labels on converted forms.
-
-For employee form this is:
+Use `FormFieldLabel` from `src/app/components/form-field-label.tsx` directly, or through an existing domain alias such as:
 
 ```tsx
 <EmployeeFormFieldLabel required>Field Name</EmployeeFormFieldLabel>
 ```
 
-When applying to another domain, create or reuse a local form field helper if needed. The target label style is:
-
-```tsx
-text-xs font-semibold uppercase tracking-normal
-```
+The shared component owns the target label style: `text-xs font-semibold uppercase tracking-normal`.
 
 Required field marker:
 
@@ -128,15 +128,34 @@ Required field marker:
 - Only mark fields that the schema actually requires.
 - Conditionally required fields should show `*` only when the condition makes them required and visible.
 
+## Field Info Tooltips
+
+Use `src/app/components/field-info-tooltip.tsx` only when the user explicitly asks for an
+info tooltip beside a field label. Do not add a separate tooltip system.
+
+```tsx
+<VendorFormFieldLabel
+  required
+  info="Choose Inactive if the vendor is currently out of operation or unavailable for new work."
+  infoLabel="Default status information"
+>
+  Default Status
+</VendorFormFieldLabel>
+```
+
+## Numeric Inputs
+
+Use `src/app/components/ui/number-input.tsx` only when the user explicitly asks for improved numeric input behavior. Prefer `NumberInput` over native `type="number"` for sane clearing, decimal-place control, max/min clamping, and avoiding scroll-wheel value changes. Omit `decimalPlaces` or set it to `0` for integer-only fields; use `decimalPlaces={2}` only when decimals are valid.
+
+```tsx
+<NumberInput value={field.value} onValueChange={field.onChange} min={0} max={100} decimalPlaces={2} />
+```
+
 ## Validation Styling
 
 Error text alone is not enough. Invalid controls need a red border/ring.
 
-Use the same class pattern:
-
-```tsx
-border-destructive/60 ring-[3px] ring-destructive/10 dark:border-destructive dark:ring-destructive/20
-```
+Use `formInvalidControlClassName` from `src/app/components/form-field-label.tsx`.
 
 Apply it to the actual visible control:
 
@@ -167,10 +186,11 @@ Do not make the nav manage active section internally; keep state at page/hook le
 4. Compact the toolbar and remove old in-form breadcrumbs/subtitles.
 5. Update section typography to PO-style.
 6. Add required `*` markers only where schema requires.
-7. Add invalid red border/ring to every visible control type in that form.
-8. Ensure click nav scrolls to the correct section and scroll updates the active step.
-9. Add bottom padding after the final section.
-10. Format touched files with `bunx prettier --write`.
+7. Add info tooltips only if the user explicitly asks for them.
+8. Add invalid red border/ring to every visible control type in that form.
+9. Ensure click nav scrolls to the correct section and scroll updates the active step.
+10. Add bottom padding after the final section.
+11. Format touched files with `bunx prettier --write`.
 
 ## Verification
 
@@ -189,5 +209,6 @@ For visual verification, check:
 - Exactly one separator between breadcrumbs/header and form header during hard scroll.
 - Stepper active state changes one section at a time.
 - Required markers match schema.
+- Field info tooltips use sentence case, a visible `i` icon, a dark bubble, and a bottom arrow.
 - Invalid inputs and dropdowns show red border/ring.
 - Final card has bottom breathing room.

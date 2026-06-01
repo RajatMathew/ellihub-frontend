@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
@@ -15,13 +19,14 @@ import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
-  ProjectFormToolbar,
+  ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
@@ -42,6 +47,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const invoiceFieldLabelClassName = formFieldLabelClassName;
+
+const invoiceInvalidControlClassName = formInvalidControlClassName;
 
 function toDateInput(value: string | null | undefined) {
   return value ? value.slice(0, 10) : '';
@@ -330,26 +339,17 @@ export function InvoiceFormPage() {
   if (!canSubmitInvoice) return <Forbidden />;
 
   return (
-    <form
+    <ProjectFormShell
       onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
-      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
+      title={isEdit ? 'Edit Invoice' : 'New Invoice'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create Invoice'}
+      isSubmitting={isSubmitting}
+      sections={INVOICE_FORM_SECTIONS}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      extraActions={!isEdit ? <MockDataButton data={null} onLoad={enterMockData} /> : undefined}
     >
-      <ProjectFormToolbar
-        backLabel="Invoices"
-        title={isEdit ? 'Edit Invoice' : 'New Invoice'}
-        description={isEdit ? 'Update unpaid invoice details.' : 'Create a new invoice.'}
-        submitLabel={isEdit ? 'Save Changes' : 'Create Invoice'}
-        isSubmitting={isSubmitting}
-        extraActions={!isEdit ? <MockDataButton data={null} onLoad={enterMockData} /> : undefined}
-      />
-
-      <FormLayout>
-        <FormSectionNav
-          sections={INVOICE_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
+      <FormLayout className="pt-4 pb-8 lg:pb-10">
         <FormContent>
           <Card id="invoice-details">
             <CardContent className="space-y-6">
@@ -368,9 +368,7 @@ export function InvoiceFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                        Purchase Order
-                      </FieldLabel>
+                      <InvoiceRequiredFieldLabel>Purchase Order</InvoiceRequiredFieldLabel>
                       <InfiniteSearchSelect
                         options={poOptions}
                         value={field.value || null}
@@ -393,6 +391,9 @@ export function InvoiceFormPage() {
                         placeholder="Select purchase order..."
                         searchPlaceholder="Search purchase orders..."
                         emptyMessage="No issued purchase orders found."
+                        triggerClassName={
+                          fieldState.invalid ? invoiceInvalidControlClassName : undefined
+                        }
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -404,9 +405,7 @@ export function InvoiceFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                        Vendor
-                      </FieldLabel>
+                      <InvoiceRequiredFieldLabel>Vendor</InvoiceRequiredFieldLabel>
                       <InfiniteSearchSelect
                         options={invoiceVendorOptions}
                         value={field.value || null}
@@ -416,6 +415,9 @@ export function InvoiceFormPage() {
                         disabled={isVendorLocked}
                         placeholder="Select vendor..."
                         emptyMessage="No vendors found."
+                        triggerClassName={
+                          fieldState.invalid ? invoiceInvalidControlClassName : undefined
+                        }
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -429,11 +431,16 @@ export function InvoiceFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                        Invoice Number
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input {...field} placeholder="INV-001" autoComplete="off" />
+                      <InvoiceRequiredFieldLabel>Invoice Number</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
+                        <Input
+                          {...field}
+                          placeholder="INV-001"
+                          autoComplete="off"
+                          aria-invalid={fieldState.invalid}
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -445,11 +452,11 @@ export function InvoiceFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                        Invoice Date
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input type="date" {...field} />
+                      <InvoiceRequiredFieldLabel>Invoice Date</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -461,11 +468,11 @@ export function InvoiceFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                        Due Date
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input type="date" {...field} />
+                      <InvoiceRequiredFieldLabel>Due Date</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -478,9 +485,7 @@ export function InvoiceFormPage() {
                 control={control}
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Notes
-                    </FieldLabel>
+                    <FieldLabel className={invoiceFieldLabelClassName}>Notes</FieldLabel>
                     <Textarea {...field} placeholder="Additional notes..." rows={4} />
                   </Field>
                 )}
@@ -507,8 +512,13 @@ export function InvoiceFormPage() {
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid} className="gap-1">
                         <div className="flex items-center justify-between gap-3 text-sm">
-                          <FieldLabel className="text-muted-foreground">Invoice Amount</FieldLabel>
-                          <InputWrapper className="w-32">
+                          <InvoiceRequiredFieldLabel>Invoice Amount</InvoiceRequiredFieldLabel>
+                          <InputWrapper
+                            className={cn(
+                              'w-32',
+                              fieldState.invalid && invoiceInvalidControlClassName
+                            )}
+                          >
                             <Input
                               type="text"
                               inputMode="decimal"
@@ -530,12 +540,18 @@ export function InvoiceFormPage() {
                     <Controller
                       name="taxRate"
                       control={control}
-                      render={({ field }) => (
-                        <InputWrapper className="w-32">
+                      render={({ field, fieldState }) => (
+                        <InputWrapper
+                          className={cn(
+                            'w-32',
+                            fieldState.invalid && invoiceInvalidControlClassName
+                          )}
+                        >
                           <Input
                             type="text"
                             inputMode="decimal"
                             value={numberInputValue(field.value)}
+                            aria-invalid={fieldState.invalid}
                             onChange={(event) =>
                               field.onChange(parseNumberInputValue(event.target.value))
                             }
@@ -575,7 +591,7 @@ export function InvoiceFormPage() {
                 control={control}
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
+                    <FieldLabel className={invoiceFieldLabelClassName}>
                       Sub Change Orders
                     </FieldLabel>
                     <InfiniteMultiSearchSelect
@@ -614,6 +630,10 @@ export function InvoiceFormPage() {
           />
         </FormContent>
       </FormLayout>
-    </form>
+    </ProjectFormShell>
   );
+}
+
+function InvoiceRequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }

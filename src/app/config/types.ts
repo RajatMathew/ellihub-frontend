@@ -11,6 +11,8 @@ export interface MenuItem {
   img?: string;
   icon?: LucideIcon;
   path?: string;
+  createPath?: string | true;
+  createTitle?: string;
   rootPath?: string;
   childrenIndex?: number;
   heading?: string;

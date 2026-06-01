@@ -28,6 +28,13 @@ const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'))
 
 const UIKit = lazy(() => DelayForDemo(import('@/core/ui/pages/page'), 5000));
 
+function formRouteTitles(resourceName: string) {
+  return [
+    { path: 'create', title: `Create ${resourceName}` },
+    { path: ':id/edit', title: `Edit ${resourceName}` },
+  ];
+}
+
 export const routeTree: RouteDef[] = [
   {
     path: '/',
@@ -67,33 +74,39 @@ export const routeTree: RouteDef[] = [
         path: 'directory/contacts/*',
         component: DirectoryContacts,
         title: 'Contacts',
+        children: formRouteTitles('Contact'),
       },
       {
         path: 'directory/general-contractors/*',
         component: DirectoryGC,
         title: 'General Contractors',
+        children: formRouteTitles('General Contractor'),
       },
       {
         path: 'directory/vendors/*',
         component: DirectoryVendors,
         title: 'Vendors',
+        children: formRouteTitles('Vendor'),
       },
       {
         path: 'hr/employees/*',
         component: HrEmployees,
         title: 'Employees',
         access: { resource: 'employee', action: 'read' },
+        children: formRouteTitles('Employee'),
       },
       {
         path: 'hr/departments/*',
         component: HrDepartments,
         title: 'Departments',
         access: { resource: 'department', action: 'read' },
+        children: formRouteTitles('Department'),
       },
       {
         path: 'hr/pto/*',
         component: HrPTO,
         title: 'Time Off',
+        children: formRouteTitles('Time Off Request'),
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files', access: 'admin' },
       {
@@ -111,11 +124,19 @@ export const routeTree: RouteDef[] = [
           { path: 'overview', title: 'Project Overview' },
           { path: 'edit', title: 'Edit Project' },
           { path: 'files', title: 'Project Files' },
-          { path: 'rfqs/*', title: 'RFQs' },
-          { path: 'invoices/*', title: 'Invoices' },
-          { path: 'purchase-orders/*', title: 'Purchase Orders' },
+          { path: 'rfqs/*', title: 'RFQs', children: formRouteTitles('RFQ') },
+          { path: 'invoices/*', title: 'Invoices', children: formRouteTitles('Invoice') },
+          {
+            path: 'purchase-orders/*',
+            title: 'Purchase Orders',
+            children: formRouteTitles('Purchase Order'),
+          },
           { path: 'prime-change-orders/*', title: 'Prime Change Orders' },
-          { path: 'sub-change-order/*', title: 'Sub Change Orders' },
+          {
+            path: 'sub-change-order/*',
+            title: 'Sub Change Orders',
+            children: formRouteTitles('Sub Change Order'),
+          },
         ],
       },
       { path: '*', component: NotFound, title: 'Not Found' },

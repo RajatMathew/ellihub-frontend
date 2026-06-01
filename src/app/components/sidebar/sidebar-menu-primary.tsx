@@ -5,12 +5,14 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   AccordionMenu,
   AccordionMenuGroup,
-  AccordionMenuItem,
   AccordionMenuLabel,
+  AccordionMenuLinkItem,
 } from '@app/components/ui/accordion-menu';
 import { Badge } from '@app/components/ui/badge';
 import type { MenuConfig } from '@app/config/types';
 import { getSidebarResolutionBase, resolvePath } from '@app/lib/utils';
+
+import { SidebarMenuCreateAction } from './sidebar-menu-create-action';
 
 export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
   const { pathname } = useLocation();
@@ -47,7 +49,13 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
             {item.title && <AccordionMenuLabel>{item.title}</AccordionMenuLabel>}
             {item.children?.map((child, index) => {
               return (
-                <AccordionMenuItem key={index} value={child.path || '#'}>
+                <AccordionMenuLinkItem
+                  key={index}
+                  value={child.path || '#'}
+                  asChild
+                  className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
+                  trailing={child.createPath ? <SidebarMenuCreateAction item={child} /> : undefined}
+                >
                   <Link to={child.path || '#'}>
                     {child.icon && <child.icon />}
                     <span>{child.title}</span>
@@ -61,7 +69,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                       </Badge>
                     )}
                   </Link>
-                </AccordionMenuItem>
+                </AccordionMenuLinkItem>
               );
             })}
           </AccordionMenuGroup>

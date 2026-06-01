@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   AccordionMenu,
   AccordionMenuIndicator,
-  AccordionMenuItem,
+  AccordionMenuLinkItem,
   AccordionMenuSub,
   AccordionMenuSubContent,
   AccordionMenuSubTrigger,
@@ -13,6 +13,8 @@ import {
 import { Badge } from '@app/components/ui/badge';
 import type { MenuConfig } from '@app/config/types';
 import { getSidebarResolutionBase, resolvePath } from '@app/lib/utils';
+
+import { SidebarMenuCreateAction } from './sidebar-menu-create-action';
 
 interface SidebarGroupMenuProps {
   /** Menu configuration array */
@@ -96,7 +98,13 @@ export function SidebarGroupMenu({
 
           <AccordionMenuSubContent type="single" collapsible parentValue={`${name}-trigger`}>
             {item.children?.map((child, index) => (
-              <AccordionMenuItem key={index} value={child.path || '#'}>
+              <AccordionMenuLinkItem
+                key={index}
+                value={child.path || '#'}
+                asChild
+                className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
+                trailing={child.createPath ? <SidebarMenuCreateAction item={child} /> : undefined}
+              >
                 <Link to={child.path || '#'}>
                   {child.icon && <child.icon />}
                   <span>{child.title}</span>
@@ -110,7 +118,7 @@ export function SidebarGroupMenu({
                     </Badge>
                   )}
                 </Link>
-              </AccordionMenuItem>
+              </AccordionMenuLinkItem>
             ))}
           </AccordionMenuSubContent>
         </AccordionMenuSub>

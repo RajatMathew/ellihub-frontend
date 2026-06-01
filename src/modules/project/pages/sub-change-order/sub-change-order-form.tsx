@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
@@ -32,7 +36,7 @@ import { poApi } from '@/modules/project/api/purchase-order';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
-  ProjectFormToolbar,
+  ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
@@ -67,6 +71,10 @@ const defaultLineItem: SCOLineItemInput = {
   costCodeId: undefined,
   notes: '',
 };
+
+const scoFieldLabelClassName = formFieldLabelClassName;
+
+const scoInvalidControlClassName = formInvalidControlClassName;
 
 function toNumber(value: unknown) {
   const numeric = Number(value ?? 0);
@@ -311,68 +319,56 @@ export function SCOFormPage() {
   if (!canSubmitSubChangeOrder) return <Forbidden />;
 
   return (
-    <form
+    <ProjectFormShell
       onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
-      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
+      title={isEdit ? `Edit ${scoDetail?.scoNumber ?? 'SCO'}` : 'New Sub Change Order'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create SCO'}
+      isSubmitting={isSubmitting}
+      sections={SCO_FORM_SECTIONS}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      extraActions={
+        !isEdit ? (
+          <MockDataButton
+            data={scoMockData}
+            onLoad={(entries) => {
+              const d = entries[Math.floor(Math.random() * entries.length)];
+              const randomPO =
+                purchaseOrderPicker.options[
+                  Math.floor(Math.random() * purchaseOrderPicker.options.length)
+                ]?.value ?? '';
+              const randomChangeType =
+                changeTypeOptions[Math.floor(Math.random() * changeTypeOptions.length)]?.value ??
+                '';
+
+              reset({
+                projectId,
+                purchaseOrderId: randomPO,
+                date: d.date,
+                title: d.title,
+                description: [d.reasonForChange, d.detailedScope].filter(Boolean).join('\n\n'),
+                shippingHandlingFee: 0,
+                scheduleImpactDays: ['HIGH', 'URGENT'].includes(d.priority) ? 3 : 0,
+                requestedBy: fakeContactName(),
+                changeTypeId: randomChangeType,
+                impactsSchedule: ['HIGH', 'URGENT'].includes(d.priority),
+                lineItems: d.lineItems.map((item) => ({
+                  description: item.description,
+                  quantity: item.qty,
+                  unitId: unitOptions[Math.floor(Math.random() * unitOptions.length)]?.value ?? '',
+                  unitPrice: Math.abs(toNumber(item.unitPrice)),
+                  costCodeId:
+                    costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ??
+                    undefined,
+                  notes: '',
+                })),
+              });
+            }}
+          />
+        ) : undefined
+      }
     >
-      <ProjectFormToolbar
-        backLabel="Sub Change Order"
-        title={isEdit ? `Edit ${scoDetail?.scoNumber ?? 'SCO'}` : 'New Sub Change Order'}
-        description={
-          isEdit ? 'Update the draft sub change order.' : 'Create a project sub change order.'
-        }
-        submitLabel={isEdit ? 'Save Changes' : 'Create SCO'}
-        isSubmitting={isSubmitting}
-        extraActions={
-          !isEdit ? (
-            <MockDataButton
-              data={scoMockData}
-              onLoad={(entries) => {
-                const d = entries[Math.floor(Math.random() * entries.length)];
-                const randomPO =
-                  purchaseOrderPicker.options[
-                    Math.floor(Math.random() * purchaseOrderPicker.options.length)
-                  ]?.value ?? '';
-                const randomChangeType =
-                  changeTypeOptions[Math.floor(Math.random() * changeTypeOptions.length)]?.value ??
-                  '';
-
-                reset({
-                  projectId,
-                  purchaseOrderId: randomPO,
-                  date: d.date,
-                  title: d.title,
-                  description: [d.reasonForChange, d.detailedScope].filter(Boolean).join('\n\n'),
-                  shippingHandlingFee: 0,
-                  scheduleImpactDays: ['HIGH', 'URGENT'].includes(d.priority) ? 3 : 0,
-                  requestedBy: fakeContactName(),
-                  changeTypeId: randomChangeType,
-                  impactsSchedule: ['HIGH', 'URGENT'].includes(d.priority),
-                  lineItems: d.lineItems.map((item) => ({
-                    description: item.description,
-                    quantity: item.qty,
-                    unitId:
-                      unitOptions[Math.floor(Math.random() * unitOptions.length)]?.value ?? '',
-                    unitPrice: Math.abs(toNumber(item.unitPrice)),
-                    costCodeId:
-                      costCodeOptions[Math.floor(Math.random() * costCodeOptions.length)]?.value ??
-                      undefined,
-                    notes: '',
-                  })),
-                });
-              }}
-            />
-          ) : undefined
-        }
-      />
-
-      <FormLayout>
-        <FormSectionNav
-          sections={SCO_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
+      <FormLayout className="pt-4 pb-8 lg:pb-10">
         <FormContent>
           <Card id="sco-details">
             <CardContent className="space-y-6">
@@ -390,9 +386,7 @@ export function SCOFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid} className="lg:col-span-3">
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Purchase Order
-                      </FieldLabel>
+                      <SCORequiredFieldLabel>Purchase Order</SCORequiredFieldLabel>
                       <InfiniteSearchSelect
                         options={purchaseOrderPicker.options}
                         value={field.value || null}
@@ -408,6 +402,9 @@ export function SCOFormPage() {
                         searchPlaceholder="Search purchase orders..."
                         emptyMessage="No issued purchase orders found."
                         loadingMessage="Loading purchase orders..."
+                        triggerClassName={
+                          fieldState.invalid ? scoInvalidControlClassName : undefined
+                        }
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -419,10 +416,10 @@ export function SCOFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Date
-                      </FieldLabel>
-                      <InputWrapper>
+                      <SCORequiredFieldLabel>Date</SCORequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? scoInvalidControlClassName : undefined}
+                      >
                         <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -435,9 +432,7 @@ export function SCOFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Change Type
-                      </FieldLabel>
+                      <SCORequiredFieldLabel>Change Type</SCORequiredFieldLabel>
                       <SearchableSelect
                         options={changeTypeOptions}
                         value={field.value || null}
@@ -445,6 +440,7 @@ export function SCOFormPage() {
                         placeholder="Select change type..."
                         searchPlaceholder="Search change types..."
                         emptyMessage="No change types found."
+                        className={fieldState.invalid ? scoInvalidControlClassName : undefined}
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -457,10 +453,10 @@ export function SCOFormPage() {
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Title
-                    </FieldLabel>
-                    <InputWrapper>
+                    <SCORequiredFieldLabel>Title</SCORequiredFieldLabel>
+                    <InputWrapper
+                      className={fieldState.invalid ? scoInvalidControlClassName : undefined}
+                    >
                       <Input
                         {...field}
                         placeholder="e.g. Added electrical rough-in"
@@ -478,9 +474,7 @@ export function SCOFormPage() {
                 control={control}
                 render={({ field }) => (
                   <Field>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Description
-                    </FieldLabel>
+                    <FieldLabel className={scoFieldLabelClassName}>Description</FieldLabel>
                     <Textarea {...field} placeholder="Describe the requested change..." rows={3} />
                   </Field>
                 )}
@@ -492,9 +486,7 @@ export function SCOFormPage() {
                   control={control}
                   render={({ field }) => (
                     <Field>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                        Requested By
-                      </FieldLabel>
+                      <FieldLabel className={scoFieldLabelClassName}>Requested By</FieldLabel>
                       <InputWrapper>
                         <Input {...field} placeholder="Requester name" autoComplete="off" />
                       </InputWrapper>
@@ -507,7 +499,7 @@ export function SCOFormPage() {
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
+                      <FieldLabel className={scoFieldLabelClassName}>
                         Schedule Impact Days
                       </FieldLabel>
                       <InputWrapper>
@@ -535,9 +527,7 @@ export function SCOFormPage() {
                   <Field className="rounded-lg border p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                          Impacts Schedule
-                        </FieldLabel>
+                        <FieldLabel className={scoFieldLabelClassName}>Impacts Schedule</FieldLabel>
                         <p className="text-xs text-muted-foreground">
                           Mark this change as having schedule impact.
                         </p>
@@ -587,13 +577,14 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field, fieldState }) => (
                           <Field data-invalid={fieldState.invalid} className="sm:col-span-2">
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Description
-                            </FieldLabel>
+                            <SCORequiredFieldLabel>Description</SCORequiredFieldLabel>
                             <Input
                               {...field}
                               placeholder="Line item description"
                               aria-invalid={fieldState.invalid}
+                              className={
+                                fieldState.invalid ? scoInvalidControlClassName : undefined
+                              }
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                           </Field>
@@ -605,9 +596,7 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field }) => (
                           <Field>
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Cost Code
-                            </FieldLabel>
+                            <FieldLabel className={scoFieldLabelClassName}>Cost Code</FieldLabel>
                             <SearchableSelect
                               options={costCodeOptions}
                               value={field.value ?? null}
@@ -625,9 +614,7 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field, fieldState }) => (
                           <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Quantity
-                            </FieldLabel>
+                            <SCORequiredFieldLabel>Quantity</SCORequiredFieldLabel>
                             <Input
                               type="number"
                               min={0}
@@ -637,6 +624,9 @@ export function SCOFormPage() {
                                 field.onChange(parseNonNegativeNumberInputValue(event.target.value))
                               }
                               aria-invalid={fieldState.invalid}
+                              className={
+                                fieldState.invalid ? scoInvalidControlClassName : undefined
+                              }
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                           </Field>
@@ -648,9 +638,7 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field, fieldState }) => (
                           <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Unit
-                            </FieldLabel>
+                            <SCORequiredFieldLabel>Unit</SCORequiredFieldLabel>
                             <SearchableSelect
                               options={unitOptions}
                               value={field.value || null}
@@ -658,6 +646,9 @@ export function SCOFormPage() {
                               placeholder="Unit..."
                               searchPlaceholder="Search..."
                               emptyMessage="None found."
+                              className={
+                                fieldState.invalid ? scoInvalidControlClassName : undefined
+                              }
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                           </Field>
@@ -669,9 +660,7 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field, fieldState }) => (
                           <Field data-invalid={fieldState.invalid}>
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Unit Price
-                            </FieldLabel>
+                            <SCORequiredFieldLabel>Unit Price</SCORequiredFieldLabel>
                             <Input
                               type="number"
                               step="0.01"
@@ -680,6 +669,9 @@ export function SCOFormPage() {
                                 field.onChange(parseNumberInputValue(event.target.value))
                               }
                               aria-invalid={fieldState.invalid}
+                              className={
+                                fieldState.invalid ? scoInvalidControlClassName : undefined
+                              }
                             />
                             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                           </Field>
@@ -700,9 +692,7 @@ export function SCOFormPage() {
                         control={control}
                         render={({ field }) => (
                           <Field className="sm:col-span-2">
-                            <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                              Notes
-                            </FieldLabel>
+                            <FieldLabel className={scoFieldLabelClassName}>Notes</FieldLabel>
                             <Textarea {...field} placeholder="Line item notes..." rows={2} />
                           </Field>
                         )}
@@ -818,6 +808,9 @@ export function SCOFormPage() {
                                   placeholder="Unit..."
                                   searchPlaceholder="Search..."
                                   emptyMessage="None found."
+                                  className={
+                                    fieldState.invalid ? scoInvalidControlClassName : undefined
+                                  }
                                 />
                                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                               </div>
@@ -960,12 +953,16 @@ export function SCOFormPage() {
           />
         </FormContent>
       </FormLayout>
-    </form>
+    </ProjectFormShell>
   );
 }
 
 function useSCOChangeTypesForForm() {
   return useLookupsQuery('SCO_CHANGE_TYPE');
+}
+
+function SCORequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }
 
 function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {

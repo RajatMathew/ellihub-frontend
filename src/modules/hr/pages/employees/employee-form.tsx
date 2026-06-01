@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  formPageContainerClassName,
+  unifiedFormHeaderClassName,
+  unifiedFormNavClassName,
+  unifiedFormPageClassName,
+  unifiedFormToolbarClassName,
+} from '@/app/components/form-page-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { cn } from '@/app/lib/utils';
 import {
   EmployeeFormContent,
   EmployeeFormLoading,
@@ -16,27 +20,12 @@ import { useEmployeeFormState } from '@/modules/hr/hooks/employees/use-employee-
 import { useSaveEmployee } from '@/modules/hr/hooks/employees/use-save-employee';
 import { useNavigate, useParams } from 'react-router-dom';
 
-const employeeFormPageClassName = cn(
-  formPageContainerClassName,
-  'min-h-full overflow-x-visible bg-gray-100 pt-0 lg:pt-0'
-);
-
-const employeeFormHeaderClassName =
-  'sticky top-0 z-20 -mx-4 border-b border-border bg-background/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-7.5 lg:px-7.5';
-
-const employeeFormToolbarClassName =
-  'mx-0 mt-0 mb-0 gap-2 bg-transparent px-0 pt-4 pb-2 lg:mx-0 lg:mt-0 lg:px-0 lg:pt-4 lg:pb-2';
-
-const employeeFormNavClassName =
-  'static -mx-4 bg-transparent backdrop-blur-none sm:-mx-6 lg:-mx-7.5';
-
 export default function EmployeeFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const state = useEmployeeFormState(id);
   const { handleSubmit, control } = state.form;
-  const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
+  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
 
   useBreadcrumbLabel(
     id ? `/app/hr/employees/${id}` : undefined,
@@ -54,19 +43,6 @@ export default function EmployeeFormPage() {
       navigate('..', { relative: 'path' });
     },
   });
-
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header) return;
-
-    const updateHeaderHeight = () => setHeaderHeight(header.offsetHeight);
-    updateHeaderHeight();
-
-    const observer = new ResizeObserver(updateHeaderHeight);
-    observer.observe(header);
-
-    return () => observer.disconnect();
-  }, []);
 
   if (state.isEdit && state.employeeQuery.isLoading) {
     return <EmployeeFormLoading />;
@@ -99,14 +75,14 @@ export default function EmployeeFormPage() {
   return (
     <form
       onSubmit={handleSubmit(saveEmployee, onInvalidFormSubmit)}
-      className={employeeFormPageClassName}
+      className={unifiedFormPageClassName}
     >
-      <div ref={headerRef} className={employeeFormHeaderClassName}>
+      <div ref={headerRef} className={unifiedFormHeaderClassName}>
         <EmployeeFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}
           onFillSample={state.fillSample}
-          className={employeeFormToolbarClassName}
+          className={unifiedFormToolbarClassName}
         />
         <FormSectionNav
           sections={EMPLOYEE_FORM_SECTIONS}
@@ -115,7 +91,7 @@ export default function EmployeeFormPage() {
           scrollOffset={headerHeight}
           density="compact"
           appearance="stepper"
-          className={employeeFormNavClassName}
+          className={unifiedFormNavClassName}
         />
       </div>
 

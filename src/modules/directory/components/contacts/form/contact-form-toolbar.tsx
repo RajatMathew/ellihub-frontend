@@ -1,66 +1,28 @@
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { Button } from '@/app/components/ui/button';
-import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
-import { Check, Shuffle, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { FormPageToolbar } from '@/app/components/form-page-toolbar';
+import { X } from 'lucide-react';
 
 interface ContactFormToolbarProps {
   isEdit: boolean;
   isSubmitting: boolean;
   onFillRandom: () => void;
+  className?: string;
 }
 
 export function ContactFormToolbar({
   isEdit,
   isSubmitting,
   onFillRandom,
+  className,
 }: ContactFormToolbarProps) {
   return (
-    <Toolbar sticky={false}>
-      <ToolbarWrapper>
-        <ToolbarHeading>
-          <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <Link to="/app/directory/contacts" className="hover:text-foreground">
-              Directory
-            </Link>
-            {' / '}
-            <Link to="/app/directory/contacts" className="hover:text-foreground">
-              Contacts
-            </Link>
-          </div>
-          <ToolbarPageTitle>{isEdit ? 'Edit Contact' : 'Add New Contact'}</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">
-            {isEdit
-              ? 'Update the contact information below.'
-              : 'Register a new individual and associate them with a company.'}
-          </span>
-        </ToolbarHeading>
-
-        <ToolbarActions>
-          {isMockDataFillEnabled && (
-            <Button variant="outline" size="sm" type="button" onClick={onFillRandom}>
-              <Shuffle className="size-4" />
-              Fill Random
-            </Button>
-          )}
-          <Button variant="outline" size="sm" type="button" asChild>
-            <Link to=".." relative="path">
-              <X className="size-4" />
-              Cancel
-            </Link>
-          </Button>
-          <Button size="sm" type="submit" disabled={isSubmitting}>
-            <Check className="size-4" />
-            {isEdit ? 'Save Changes' : 'Create Contact'}
-          </Button>
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+    <FormPageToolbar
+      title={isEdit ? 'Edit Contact' : 'Add New Contact'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create Contact'}
+      isSubmitting={isSubmitting}
+      extraActions={<MockDataButton onClick={onFillRandom} />}
+      cancelIcon={<X className="size-4" />}
+      className={className}
+    />
   );
 }

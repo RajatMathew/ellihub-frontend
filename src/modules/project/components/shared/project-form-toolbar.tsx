@@ -1,23 +1,15 @@
 import type { ReactNode } from 'react';
 
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { Button } from '@/app/components/ui/button';
-import { Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { FormPageToolbar } from '@/app/components/form-page-toolbar';
 
 interface ProjectFormToolbarProps {
-  backLabel: string;
+  backLabel?: string;
   title: string;
-  description: string;
+  description?: string;
   submitLabel: string;
   isSubmitting: boolean;
   extraActions?: ReactNode;
+  className?: string;
 }
 
 export function ProjectFormToolbar({
@@ -27,32 +19,17 @@ export function ProjectFormToolbar({
   submitLabel,
   isSubmitting,
   extraActions,
+  className,
 }: ProjectFormToolbarProps) {
   return (
-    <Toolbar sticky={false}>
-      <ToolbarWrapper>
-        <ToolbarHeading className="min-w-0">
-          <div className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-            <Link to=".." relative="path" className="hover:text-foreground">
-              {backLabel}
-            </Link>
-          </div>
-          <ToolbarPageTitle>{title}</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">{description}</span>
-        </ToolbarHeading>
-        <ToolbarActions className="flex-wrap">
-          {extraActions}
-          <Button variant="outline" size="sm" type="button" asChild>
-            <Link to=".." relative="path">
-              Cancel
-            </Link>
-          </Button>
-          <Button size="sm" type="submit" disabled={isSubmitting}>
-            <Check className="size-4" />
-            {submitLabel}
-          </Button>
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+    <FormPageToolbar
+      backLabel={backLabel}
+      title={title}
+      description={description}
+      submitLabel={submitLabel}
+      isSubmitting={isSubmitting}
+      extraActions={extraActions}
+      className={className}
+    />
   );
 }

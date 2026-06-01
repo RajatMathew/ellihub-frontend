@@ -82,9 +82,7 @@ export function LinkedContactsSection({
       <Card id="contacts">
         <CardContent className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold uppercase tracking-wide text-foreground">
-              {title}
-            </h2>
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
 
@@ -144,7 +142,7 @@ export function LinkedContactsSection({
           )}
 
           <Field>
-            <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
+            <FieldLabel className="text-xs font-semibold uppercase tracking-normal">
               Add Contact
             </FieldLabel>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -223,8 +221,7 @@ function getExistingAssociationLabel(
   if (!contact) return null;
 
   const vendorId = contact.vendorId ?? contact.vendor?.id ?? null;
-  const generalContractorId =
-    contact.generalContractorId ?? contact.generalContractor?.id ?? null;
+  const generalContractorId = contact.generalContractorId ?? contact.generalContractor?.id ?? null;
 
   if (targetType === 'VENDOR' && generalContractorId) {
     return 'GC';

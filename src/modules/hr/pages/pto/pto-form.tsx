@@ -1,4 +1,9 @@
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  formPageContainerClassName,
+  unifiedFormHeaderClassName,
+  unifiedFullHeightFormPageClassName,
+  unifiedSingleSectionFormToolbarClassName,
+} from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -45,9 +50,15 @@ export default function PTOFormPage() {
   return (
     <form
       onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)}
-      className={formPageContainerClassName}
+      className={unifiedFullHeightFormPageClassName}
     >
-      <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} />
+      <div className={unifiedFormHeaderClassName}>
+        <PTOFormToolbar
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          className={unifiedSingleSectionFormToolbarClassName}
+        />
+      </div>
       <PTOFormContent
         control={form.control}
         employeeOptions={employeeOptions}
