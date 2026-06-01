@@ -190,6 +190,7 @@ function ProjectEditFormInner({
     const payload: UpdateProjectInput = {
       name: data.name,
       description: data.description,
+      jobNumber: data.jobNumber || undefined,
       contractNumber: data.contractNumber || undefined,
       fieldwireProjectId: data.fieldwireProjectId || null,
       fieldwireProjectName: data.fieldwireProjectId ? data.fieldwireProjectName || undefined : null,
@@ -339,7 +340,7 @@ function ProjectEditFormInner({
               />
             </div>
 
-            {/* Row: Job Number (read-only) */}
+            {/* Row: Job Number */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Controller
                 name="jobNumber"
@@ -355,7 +356,6 @@ function ProjectEditFormInner({
                         placeholder="P-2026-9299"
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
-                        disabled
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

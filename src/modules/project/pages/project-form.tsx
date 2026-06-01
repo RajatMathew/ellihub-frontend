@@ -290,6 +290,7 @@ export default function ProjectForm() {
         const updatePayload: UpdateProjectInput = {
           name: data.name,
           description: data.description,
+          jobNumber: data.jobNumber || undefined,
           contractNumber: data.contractNumber || undefined,
           fieldwireProjectId: data.fieldwireProjectId || null,
           fieldwireProjectName: data.fieldwireProjectId
@@ -554,7 +555,6 @@ export default function ProjectForm() {
                         placeholder="P-2026-9299"
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
-                        disabled={isEditMode}
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
