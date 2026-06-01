@@ -12,6 +12,7 @@ import {
   VendorDetailToolbar,
   VendorOverviewTab,
   VendorProjectsTab,
+  VendorPurchaseOrdersTab,
 } from '@/modules/directory/components/vendors/detail';
 import { VENDOR_DETAIL_TABS } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
@@ -96,6 +97,10 @@ export function VendorDetailPage() {
 
             <TabsContent value="projects">
               <VendorProjectsTab vendor={vendor} />
+            </TabsContent>
+
+            <TabsContent value="purchase-orders">
+              <VendorPurchaseOrdersTab vendor={vendor} />
             </TabsContent>
           </Tabs>
         </div>

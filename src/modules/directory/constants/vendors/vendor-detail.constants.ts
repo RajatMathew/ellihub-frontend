@@ -20,4 +20,5 @@ export const VENDOR_STATUS_LABELS: Record<VendorStatus, string> = {
 export const VENDOR_DETAIL_TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'projects', label: 'Projects' },
+  { value: 'purchase-orders', label: 'Purchase Orders' },
 ] as const;
