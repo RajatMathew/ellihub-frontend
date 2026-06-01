@@ -1,7 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-import { useAccess } from '@/app/contexts/access-context';
+import { X } from 'lucide-react';
+
+import { Button } from '@/app/components/ui/button';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import { useAccess } from '@/app/contexts/access-context';
 import { useFieldwireProjectsQuery } from '@/modules/project/hooks';
 import type { FieldwireProjectOption } from '@/modules/project/schemas/project.schema';
 
@@ -20,6 +24,7 @@ export function FieldwireProjectSelect({
   currentName,
   onValueChange,
 }: FieldwireProjectSelectProps) {
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const { can } = useAccess();
   const canLoadFieldwireProjects = can('primeChangeOrder', 'fieldwire-projects');
   const fieldwireProjectsQuery = useFieldwireProjectsQuery(canLoadFieldwireProjects);
@@ -38,36 +43,72 @@ export function FieldwireProjectSelect({
     return baseOptions;
   }, [currentName, projects, value]);
 
+  const isDisabled = !canLoadFieldwireProjects || fieldwireProjectsQuery.isLoading;
+
   return (
     <div className="space-y-1.5">
-      <SearchableSelect
-        options={options}
-        value={value}
-        onValueChange={(nextValue) => {
-          if (!canLoadFieldwireProjects) return;
+      <div className="flex gap-2">
+        <SearchableSelect
+          options={options}
+          value={value}
+          onValueChange={(nextValue) => {
+            if (!canLoadFieldwireProjects) return;
 
-          const selectedProject = nextValue
-            ? projects.find((project) => project.id === nextValue)
-            : undefined;
+            const selectedProject = nextValue
+              ? projects.find((project) => project.id === nextValue)
+              : undefined;
 
-          onValueChange(nextValue, selectedProject);
+            onValueChange(nextValue, selectedProject);
+          }}
+          disabled={isDisabled}
+          placeholder={
+            !canLoadFieldwireProjects
+              ? 'Fieldwire mapping is read-only'
+              : fieldwireProjectsQuery.isLoading
+                ? 'Loading Fieldwire projects...'
+                : 'Select project...'
+          }
+          searchPlaceholder="Search Fieldwire projects..."
+          emptyMessage={
+            !canLoadFieldwireProjects
+              ? 'Fieldwire project mapping requires Fieldwire project access.'
+              : fieldwireProjectsQuery.isError
+                ? 'Unable to load Fieldwire projects.'
+                : 'No Fieldwire projects found.'
+          }
+        />
+        {value && (
+          <Button
+            type="button"
+            variant="outline"
+            mode="icon"
+            size="md"
+            aria-label="Clear Fieldwire project"
+            title="Clear Fieldwire project"
+            disabled={isDisabled}
+            onClick={() => setIsClearDialogOpen(true)}
+          >
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
+      <ConfirmDialog
+        open={isClearDialogOpen}
+        onOpenChange={setIsClearDialogOpen}
+        title="Remove Fieldwire Project?"
+        description={
+          <>
+            This will unlink {currentName || 'the selected Fieldwire project'} from this project.
+            Existing synced Fieldwire change order data for the previous mapping may be reset after
+            you save.
+          </>
+        }
+        confirmLabel="Remove Fieldwire Project"
+        variant="destructive"
+        onConfirm={() => {
+          onValueChange(null);
+          setIsClearDialogOpen(false);
         }}
-        disabled={!canLoadFieldwireProjects || fieldwireProjectsQuery.isLoading}
-        placeholder={
-          !canLoadFieldwireProjects
-            ? 'Fieldwire mapping is read-only'
-            : fieldwireProjectsQuery.isLoading
-              ? 'Loading Fieldwire projects...'
-              : 'Select project...'
-        }
-        searchPlaceholder="Search Fieldwire projects..."
-        emptyMessage={
-          !canLoadFieldwireProjects
-            ? 'Fieldwire project mapping requires Fieldwire project access.'
-            : fieldwireProjectsQuery.isError
-            ? 'Unable to load Fieldwire projects.'
-            : 'No Fieldwire projects found.'
-        }
       />
       {!canLoadFieldwireProjects && (
         <p className="text-xs text-muted-foreground">
