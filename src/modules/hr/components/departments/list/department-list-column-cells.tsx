@@ -17,7 +17,7 @@ interface DepartmentCellProps {
 }
 
 interface DepartmentActionsCellProps extends DepartmentCellProps {
-  onDelete: (department: { id: string; name: string }) => void;
+  onDelete: (department: { id: string; name: string; employeeCount?: number }) => void;
 }
 
 export function DepartmentNameCell({ department }: DepartmentCellProps) {
@@ -63,6 +63,9 @@ export function DepartmentCreatedCell({ department }: DepartmentCellProps) {
 }
 
 export function DepartmentActionsCell({ department, onDelete }: DepartmentActionsCellProps) {
+  const employeeCount = department.employeeCount ?? 0;
+  const canDelete = employeeCount === 0;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -87,7 +90,19 @@ export function DepartmentActionsCell({ department, onDelete }: DepartmentAction
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={() => onDelete({ id: department.id, name: department.name })}
+          disabled={!canDelete}
+          title={
+            canDelete
+              ? undefined
+              : 'Remove employees from this department before deleting it.'
+          }
+          onClick={() =>
+            onDelete({
+              id: department.id,
+              name: department.name,
+              employeeCount,
+            })
+          }
         >
           Delete
         </DropdownMenuItem>

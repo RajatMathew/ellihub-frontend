@@ -64,6 +64,7 @@ export default function DepartmentDetailPage() {
 
   const handleConfirmDelete = () => {
     if (!id) return;
+    if (employees.length > 0) return;
 
     deleteMutation.mutate(id, {
       onSuccess: () => navigate('../..', { relative: 'path' }),

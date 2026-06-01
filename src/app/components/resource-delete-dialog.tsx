@@ -9,6 +9,7 @@ interface ResourceDeleteDialogProps {
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  confirmDisabled?: boolean;
   children: ReactNode;
 }
 
@@ -19,6 +20,7 @@ export function ResourceDeleteDialog({
   isPending,
   onOpenChange,
   onConfirm,
+  confirmDisabled = false,
   children,
 }: ResourceDeleteDialogProps) {
   return (
@@ -31,6 +33,7 @@ export function ResourceDeleteDialog({
       onConfirm={onConfirm}
       variant="destructive"
       isPending={isPending}
+      confirmDisabled={confirmDisabled}
     />
   );
 }

@@ -32,6 +32,8 @@ export function DepartmentDetailToolbar({
   onOpenSidebar,
   onDelete,
 }: DepartmentDetailToolbarProps) {
+  const canDelete = employeeCount === 0;
+
   return (
     <Toolbar>
       <ToolbarWrapper>
@@ -80,6 +82,12 @@ export function DepartmentDetailToolbar({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
+                disabled={!canDelete}
+                title={
+                  canDelete
+                    ? undefined
+                    : 'Remove employees from this department before deleting it.'
+                }
                 onClick={onDelete}
               >
                 <Trash2 className="size-4" />

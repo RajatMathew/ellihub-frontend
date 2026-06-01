@@ -21,6 +21,9 @@ export function DepartmentDetailDialogs({
   onAssignOpenChange,
   onConfirmDelete,
 }: DepartmentDetailDialogsProps) {
+  const employeeCount = department.employees?.length ?? 0;
+  const hasEmployees = employeeCount > 0;
+
   return (
     <>
       <ConfirmDialog
@@ -28,15 +31,24 @@ export function DepartmentDetailDialogs({
         onOpenChange={onDeleteOpenChange}
         title="Delete Department"
         description={
-          <>
-            Are you sure you want to delete <strong>{department.name}</strong>? This action cannot
-            be undone. All employee assignments will be removed.
-          </>
+          hasEmployees ? (
+            <>
+              <strong>{department.name}</strong> cannot be deleted while it has {employeeCount}{' '}
+              {employeeCount === 1 ? 'employee' : 'employees'} assigned. Remove the employees from
+              this department first.
+            </>
+          ) : (
+            <>
+              Are you sure you want to delete <strong>{department.name}</strong>? This action cannot
+              be undone.
+            </>
+          )
         }
         confirmLabel="Delete"
         onConfirm={onConfirmDelete}
         variant="destructive"
         isPending={isDeletePending}
+        confirmDisabled={hasEmployees}
       />
 
       <EmployeeAssignDialog
