@@ -278,9 +278,9 @@ export const useCancelRFQMutation = () => {
       rfqApi.cancel(id, cancellationReason),
     onSuccess: async (_, { id }) => {
       await invalidateRFQQueries(qc, id);
-      toast.success('RFQ cancelled.');
+      toast.success('RFQ voided.');
     },
-    onError: (err) => toastApiError(err, 'Failed to cancel RFQ.'),
+    onError: (err) => toastApiError(err, 'Failed to void RFQ.'),
   });
 };
 

@@ -1,38 +1,35 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import {
-  type SortingState,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
-
 import { Card } from '@/app/components/ui/card';
 import {
+  getRFQStatusName,
+  getRFQTrackValue,
+  RFQCreatePOPreviewDialog,
   RFQListConfirmDialogs,
   RFQListFilters,
   RFQListHeader,
   RFQListStats,
   RFQListTable,
-  RFQCreatePOPreviewDialog,
-  getRFQStatusName,
-  getRFQTrackValue,
   useRFQListColumns,
 } from '@/modules/project/components/rfq';
+import { isRFQSortByField, RFQ_DEFAULT_PAGE_SIZE } from '@/modules/project/constants/rfq';
+import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
-  RFQ_DEFAULT_PAGE_SIZE,
-  isRFQSortByField,
-} from '@/modules/project/constants/rfq';
-import {
+  useCancelRFQMutation,
   useDeleteRFQMutation,
   useRFQListParams,
   useRFQListQuery,
   useRFQStatusesQuery,
   type RFQListParamPatch,
 } from '@/modules/project/hooks/rfq';
-import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import type { ListRFQParams, RFQListItem } from '@/modules/project/schemas/rfq';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { useParams } from 'react-router-dom';
 
 export default function RFQListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -65,7 +62,10 @@ export default function RFQListPage() {
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: allData } = useRFQListQuery({ projectId, size: 100 });
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
+  const { mutate: voidRFQ, isPending: isVoidPending } = useCancelRFQMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
+  const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
+  const [voidReason, setVoidReason] = useState('');
   const [createPOTarget, setCreatePOTarget] = useState<RFQListItem | null>(null);
 
   const rawListData = useMemo(() => data?.data ?? [], [data?.data]);
@@ -74,7 +74,7 @@ export default function RFQListPage() {
       trackFilter
         ? rawListData.filter((rfq) => getRFQTrackValue(rfq) === trackFilter)
         : rawListData,
-    [rawListData, trackFilter],
+    [rawListData, trackFilter]
   );
   const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
   const allRfqs = useMemo(() => allData?.data ?? [], [allData?.data]);
@@ -91,17 +91,22 @@ export default function RFQListPage() {
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!trackFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
 
   const handleDeleteTarget = useCallback((rfq: RFQListItem) => {
     setDeleteTarget(rfq);
+  }, []);
+  const handleVoidTarget = useCallback((rfq: RFQListItem) => {
+    setVoidTarget(rfq);
+    setVoidReason('');
   }, []);
   const handleCreatePOTarget = useCallback((rfq: RFQListItem) => {
     setCreatePOTarget(rfq);
   }, []);
   const columns = useRFQListColumns({
     onDelete: handleDeleteTarget,
+    onVoid: handleVoidTarget,
     onCreatePO: handleCreatePOTarget,
   });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -160,6 +165,22 @@ export default function RFQListPage() {
     });
   }, [deleteRFQ, deleteTarget]);
 
+  const handleCloseVoid = useCallback(() => {
+    setVoidTarget(null);
+    setVoidReason('');
+  }, []);
+
+  const handleConfirmVoid = useCallback(() => {
+    if (!voidTarget) return;
+
+    voidRFQ(
+      { id: voidTarget.id, cancellationReason: voidReason },
+      {
+        onSuccess: handleCloseVoid,
+      }
+    );
+  }, [handleCloseVoid, voidRFQ, voidReason, voidTarget]);
+
   return (
     <div className="container-fluid py-7.5">
       <RFQListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
@@ -188,9 +209,15 @@ export default function RFQListPage() {
 
       <RFQListConfirmDialogs
         deleteTarget={deleteTarget}
+        voidTarget={voidTarget}
+        voidReason={voidReason}
         isDeletePending={isDeletePending}
+        isVoidPending={isVoidPending}
         onCloseDelete={() => setDeleteTarget(null)}
+        onCloseVoid={handleCloseVoid}
         onConfirmDelete={handleConfirmDelete}
+        onConfirmVoid={handleConfirmVoid}
+        onVoidReasonChange={setVoidReason}
       />
       <RFQCreatePOPreviewDialog
         open={!!createPOTarget}

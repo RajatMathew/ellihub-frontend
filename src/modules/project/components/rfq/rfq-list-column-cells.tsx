@@ -93,10 +93,11 @@ export function RFQQuotesCell({ rfq }: { rfq: RFQListItem }) {
 interface RFQActionsCellProps {
   rfq: RFQListItem;
   onDelete: (rfq: RFQListItem) => void;
+  onVoid: (rfq: RFQListItem) => void;
   onCreatePO: (rfq: RFQListItem) => void;
 }
 
-export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProps) {
+export function RFQActionsCell({ rfq, onDelete, onVoid, onCreatePO }: RFQActionsCellProps) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const projectActions = project?.capabilities?.actions;
@@ -104,6 +105,8 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
   const canEdit = projectActions?.rfq?.update === true && statusName === 'DRAFT';
   const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
   const canDelete = projectActions?.rfq?.delete === true && statusName === 'DRAFT';
+  const canVoid =
+    projectActions?.rfq?.void === true && (statusName === 'PUBLISHED' || statusName === 'AWARDED');
 
   return (
     <DropdownMenu>
@@ -142,6 +145,14 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => onDelete(rfq)}>
               Delete
+            </DropdownMenuItem>
+          </>
+        )}
+        {canVoid && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onVoid(rfq)}>
+              Void
             </DropdownMenuItem>
           </>
         )}

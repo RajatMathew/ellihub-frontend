@@ -369,9 +369,9 @@ export default function RFQDetailPage() {
   const canPublishRfq = projectActions?.rfq?.update === true && canStateRfq && isDraft;
   const canAwardRfq = projectActions?.rfq?.award === true && !isAwarded;
   const canUnawardRfq = projectActions?.rfq?.unaward === true;
-  const canCancelRfq = projectActions?.rfq?.void === true && (isPublished || isEvaluation);
+  const canVoidRfq = projectActions?.rfq?.void === true && (isPublished || isAwarded);
   const canDeleteDraftRfq = projectActions?.rfq?.delete === true && isDraft;
-  const canUseRfqActions = !isTerminal && (canCancelRfq || canDeleteDraftRfq);
+  const canUseRfqActions = !isTerminal && (canVoidRfq || canDeleteDraftRfq);
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
 
@@ -612,7 +612,7 @@ export default function RFQDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {canCancelRfq && (
+                  {canVoidRfq && (
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
@@ -620,7 +620,7 @@ export default function RFQDetailPage() {
                         setCancelOpen(true);
                       }}
                     >
-                      Cancel RFQ
+                      Void RFQ
                     </DropdownMenuItem>
                   )}
                   {canDeleteDraftRfq && (
@@ -1665,7 +1665,7 @@ export default function RFQDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ---- Cancel dialog ---- */}
+      {/* ---- Void dialog ---- */}
       <Dialog
         open={cancelOpen}
         onOpenChange={(open) => {
@@ -1677,14 +1677,14 @@ export default function RFQDetailPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel RFQ</DialogTitle>
+            <DialogTitle>Void RFQ</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Provide a reason for cancelling <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
+              Provide a reason for voiding <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
             </p>
             <Textarea
-              placeholder="Cancellation reason..."
+              placeholder="Void reason..."
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               rows={4}
@@ -1715,7 +1715,7 @@ export default function RFQDetailPage() {
                 );
               }}
             >
-              {cancelMutation.isPending ? 'Cancelling...' : 'Cancel RFQ'}
+              {cancelMutation.isPending ? 'Voiding...' : 'Void RFQ'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1819,8 +1819,7 @@ export default function RFQDetailPage() {
         title="Delete RFQ"
         description={
           <>
-            This will permanently delete <strong>{rfq.rfqNumber ?? rfq.title}</strong>. This cannot
-            be undone.
+            This will delete <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
           </>
         }
         confirmLabel="Delete"
