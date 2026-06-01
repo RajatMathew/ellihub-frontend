@@ -10,6 +10,7 @@ import {
   VendorNameCell,
   VendorTypeCell,
 } from '@/modules/directory/components/vendors/vendor-list-column-cells';
+import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
 import { type ColumnDef } from '@tanstack/react-table';
 
@@ -18,6 +19,7 @@ interface UseVendorListColumnsOptions {
   onDelete: (id: string) => void;
   canUpdate: boolean;
   canDelete: boolean;
+  commitmentsByVendorId?: Map<string, VendorCommitmentSummary>;
 }
 
 export function useVendorListColumns({
@@ -25,6 +27,7 @@ export function useVendorListColumns({
   onDelete,
   canUpdate,
   canDelete,
+  commitmentsByVendorId,
 }: UseVendorListColumnsOptions) {
   return useMemo<ColumnDef<Vendor>[]>(
     () => [
@@ -80,7 +83,14 @@ export function useVendorListColumns({
       {
         id: 'totalCommitted',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Total Committed" />,
-        cell: ({ row }) => <VendorCurrencyCell value={row.original.totalCommitted} />,
+        cell: ({ row }) => (
+          <VendorCurrencyCell
+            value={
+              commitmentsByVendorId?.get(row.original.id)?.totalCommitted ??
+              row.original.totalCommitted
+            }
+          />
+        ),
         meta: {
           headerClassName: 'min-w-44',
           skeleton: <Skeleton className="h-3.5 w-20" />,
@@ -90,7 +100,14 @@ export function useVendorListColumns({
       {
         id: 'balance',
         header: ({ column }) => <DataGridColumnHeader column={column} title="Balance" />,
-        cell: ({ row }) => <VendorCurrencyCell value={row.original.currentBalance} />,
+        cell: ({ row }) => {
+          const commitment = commitmentsByVendorId?.get(row.original.id);
+          const balance = commitment
+            ? commitment.totalCommitted - row.original.totalPaid
+            : row.original.currentBalance;
+
+          return <VendorCurrencyCell value={balance} />;
+        },
         meta: {
           headerClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-16" />,
@@ -115,6 +132,6 @@ export function useVendorListColumns({
         enableSorting: false,
       },
     ],
-    [canDelete, canUpdate, onDelete, typeLabels]
+    [canDelete, canUpdate, commitmentsByVendorId, onDelete, typeLabels]
   );
 }

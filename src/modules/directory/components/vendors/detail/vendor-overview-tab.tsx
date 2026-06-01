@@ -6,6 +6,10 @@ import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency } from '@/app/lib/helpers';
 import { ContactCard } from '@/modules/directory/components/contact-card';
 import type { DirectoryContactSnapshot } from '@/modules/directory/components/shared';
+import {
+  getPurchaseOrderTotalCommitment,
+  getVendorCommitmentSummaries,
+} from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
 import {
   VENDOR_STATUS_COLORS,
@@ -25,14 +29,41 @@ interface VendorOverviewTabProps {
 }
 
 export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) {
+  const purchaseOrdersQuery = usePOsQuery({
+    vendorId: vendor.id,
+    page: 1,
+    size: 1000,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  });
+  const committedProjects = useMemo(
+    () => getCommittedProjectsFromPurchaseOrders(purchaseOrdersQuery.data?.data ?? []),
+    [purchaseOrdersQuery.data?.data]
+  );
+  const commitment = useMemo(
+    () => getVendorCommitmentSummaries(purchaseOrdersQuery.data?.data ?? []).get(vendor.id),
+    [purchaseOrdersQuery.data?.data, vendor.id]
+  );
+  const totalCommitted = commitment?.totalCommitted ?? vendor.totalCommitted;
+  const currentBalance = totalCommitted - vendor.totalPaid;
+
   return (
     <div className="space-y-5">
       <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
-        <VendorFinancialCard vendor={vendor} />
+        <VendorFinancialCard
+          vendor={vendor}
+          totalCommitted={totalCommitted}
+          currentBalance={currentBalance}
+        />
         <VendorInfoCard vendor={vendor} />
       </div>
 
-      <VendorCommittedProjectsCard vendor={vendor} />
+      <VendorCommittedProjectsCard
+        totalCommitted={totalCommitted}
+        committedProjects={committedProjects}
+        isLoading={purchaseOrdersQuery.isLoading}
+        isError={purchaseOrdersQuery.isError}
+      />
 
       <Card>
         <CardHeader>
@@ -75,20 +106,17 @@ type VendorCommittedProject = {
   purchaseOrderCount: number;
 };
 
-function VendorCommittedProjectsCard({ vendor }: { vendor: VendorDetail }) {
-  const purchaseOrdersQuery = usePOsQuery({
-    vendorId: vendor.id,
-    page: 1,
-    size: 1000,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-  });
-
-  const committedProjects = useMemo(
-    () => getCommittedProjectsFromPurchaseOrders(purchaseOrdersQuery.data?.data ?? []),
-    [purchaseOrdersQuery.data?.data]
-  );
-
+function VendorCommittedProjectsCard({
+  totalCommitted,
+  committedProjects,
+  isLoading,
+  isError,
+}: {
+  totalCommitted: number;
+  committedProjects: VendorCommittedProject[];
+  isLoading: boolean;
+  isError: boolean;
+}) {
   return (
     <Card>
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -106,16 +134,16 @@ function VendorCommittedProjectsCard({ vendor }: { vendor: VendorDetail }) {
             Total Committed
           </div>
           <div className="text-lg font-semibold text-foreground">
-            {formatCurrency(vendor.totalCommitted)}
+            {formatCurrency(totalCommitted)}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        {purchaseOrdersQuery.isLoading ? (
+        {isLoading ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
             Loading committed projects...
           </div>
-        ) : purchaseOrdersQuery.isError ? (
+        ) : isError ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
             Unable to load committed projects.
           </div>
@@ -193,7 +221,7 @@ function getCommittedProjectsFromPurchaseOrders(purchaseOrders: POListItem[]) {
 
     const projectId = purchaseOrder.project?.id ?? purchaseOrder.projectId;
     const existing = projectsById.get(projectId);
-    const total = Number(purchaseOrder.total ?? 0);
+    const total = getPurchaseOrderTotalCommitment(purchaseOrder);
 
     if (existing) {
       existing.totalCommitted += total;
@@ -216,12 +244,20 @@ function getCommittedProjectsFromPurchaseOrders(purchaseOrders: POListItem[]) {
   );
 }
 
-function VendorFinancialCard({ vendor }: { vendor: VendorDetail }) {
+function VendorFinancialCard({
+  vendor,
+  totalCommitted,
+  currentBalance,
+}: {
+  vendor: VendorDetail;
+  totalCommitted: number;
+  currentBalance: number;
+}) {
   const rows = [
-    { label: 'Total Committed', value: formatCurrency(vendor.totalCommitted) },
+    { label: 'Total Committed', value: formatCurrency(totalCommitted) },
     { label: 'Paid to Date', value: formatCurrency(vendor.totalPaid) },
     { label: 'Outstanding', value: formatCurrency(vendor.outstandingBalance) },
-    { label: 'Current Balance', value: formatCurrency(vendor.currentBalance) },
+    { label: 'Current Balance', value: formatCurrency(currentBalance) },
   ];
 
   return (
