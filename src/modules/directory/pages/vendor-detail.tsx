@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
@@ -10,7 +11,9 @@ import {
   VendorDetailStats,
   VendorDetailToolbar,
   VendorOverviewTab,
+  VendorProjectsTab,
 } from '@/modules/directory/components/vendors/detail';
+import { VENDOR_DETAIL_TABS } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
 import {
   useDeleteVendorMutation,
@@ -77,7 +80,24 @@ export function VendorDetailPage() {
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
           <VendorDetailStats vendor={vendor} />
-          <VendorOverviewTab vendor={vendor} contacts={contacts} />
+
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
+              {VENDOR_DETAIL_TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="overview">
+              <VendorOverviewTab vendor={vendor} contacts={contacts} />
+            </TabsContent>
+
+            <TabsContent value="projects">
+              <VendorProjectsTab vendor={vendor} />
+            </TabsContent>
+          </Tabs>
         </div>
 
         <VendorDetailSidebar
