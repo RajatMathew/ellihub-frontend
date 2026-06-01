@@ -1,3 +1,4 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -39,7 +40,7 @@ export function VendorFormPage() {
 
   if (state.isEdit && state.vendorQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load vendor."
           description="The vendor details could not be loaded."
@@ -51,7 +52,7 @@ export function VendorFormPage() {
 
   if (state.isEdit && !state.vendorQuery.data) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Vendor not found."
           description="This vendor may have been deleted or moved."
@@ -63,7 +64,10 @@ export function VendorFormPage() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveVendor, onInvalidFormSubmit)} className="container-fluid py-7.5">
+      <form
+        onSubmit={handleSubmit(saveVendor, onInvalidFormSubmit)}
+        className={formPageContainerClassName}
+      >
         <VendorFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}

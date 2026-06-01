@@ -1,3 +1,4 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -28,7 +29,7 @@ export default function DepartmentFormPage() {
 
   if (isEdit && departmentQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load department."
           onRetry={() => void departmentQuery.refetch()}
@@ -38,7 +39,10 @@ export default function DepartmentFormPage() {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)} className="container-fluid py-7.5">
+    <form
+      onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)}
+      className={formPageContainerClassName}
+    >
       <DepartmentFormToolbar
         isEdit={isEdit}
         isSubmitting={isSubmitting}

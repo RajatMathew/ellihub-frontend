@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
-
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
 import { CONTACT_FORM_SECTIONS } from '@/modules/directory/constants/contacts/contact-form.constants';
 import { useContactAssociations } from '@/modules/directory/hooks/contacts/use-contact-associations';
@@ -78,7 +78,10 @@ export function ContactFormContent({
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)} className="container-fluid py-7.5">
+      <form
+        onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)}
+        className={formPageContainerClassName}
+      >
         <ContactFormToolbar
           isEdit={isEdit}
           isSubmitting={isSubmitting}

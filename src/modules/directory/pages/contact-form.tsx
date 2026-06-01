@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
@@ -63,7 +64,7 @@ export function ContactFormPage() {
 
   if (isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load contact form."
           description="The contact form options could not be loaded."
@@ -80,7 +81,7 @@ export function ContactFormPage() {
 
   if (isEdit && !contactQuery.data) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Contact not found."
           description="This contact may have been deleted or moved."

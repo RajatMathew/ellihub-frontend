@@ -1,9 +1,10 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function EmployeeFormLoading() {
   return (
-    <div className="container-fluid py-7.5">
+    <div className={formPageContainerClassName}>
       <div className="mb-6 space-y-3">
         <Skeleton className="h-3 w-44" />
         <Skeleton className="h-8 w-full max-w-sm" />

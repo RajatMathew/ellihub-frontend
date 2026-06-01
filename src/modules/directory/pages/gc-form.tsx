@@ -1,3 +1,4 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -39,7 +40,7 @@ export function GCFormPage() {
 
   if (state.isEdit && state.gcQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load general contractor."
           description="The general contractor details could not be loaded."
@@ -51,7 +52,7 @@ export function GCFormPage() {
 
   if (state.isEdit && !state.gcQuery.data) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="General contractor not found."
           description="This general contractor may have been deleted or moved."
@@ -63,7 +64,10 @@ export function GCFormPage() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)} className="container-fluid py-7.5">
+      <form
+        onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)}
+        className={formPageContainerClassName}
+      >
         <GCFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}

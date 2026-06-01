@@ -14,30 +14,20 @@ interface EmployeeFormToolbarProps {
   isEdit: boolean;
   isSubmitting: boolean;
   onFillSample: () => void;
+  className?: string;
 }
 
 export function EmployeeFormToolbar({
   isEdit,
   isSubmitting,
   onFillSample,
+  className,
 }: EmployeeFormToolbarProps) {
   return (
-    <Toolbar sticky={false}>
+    <Toolbar sticky={false} className={className}>
       <ToolbarWrapper>
-        <ToolbarHeading>
-          <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <Link to="../.." relative="path" className="hover:text-foreground">
-              HR / Employees
-            </Link>
-            {' / '}
-            <span>{isEdit ? 'Edit Profile' : 'New Induction'}</span>
-          </div>
+        <ToolbarHeading className="gap-1 lg:gap-1">
           <ToolbarPageTitle>{isEdit ? 'Update Profile' : 'Add New Employee'}</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">
-            {isEdit
-              ? 'Modify personal details and employment configuration.'
-              : 'Induct a staff member into workforce management.'}
-          </span>
         </ToolbarHeading>
         <ToolbarActions>
           {isMockDataFillEnabled && !isEdit && (

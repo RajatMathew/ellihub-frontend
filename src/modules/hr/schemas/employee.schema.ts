@@ -93,9 +93,8 @@ const createEmployeeBaseSchema = z.object({
   emergencyContactPhone: z.string().optional(),
   emergencyContactRelation: z.string().optional(),
   roleId: z
-    .string()
-    .optional()
-    .nullable()
+    .string({ required_error: 'Professional role is required' })
+    .min(1, 'Professional role is required')
     .transform((value) => (value === '' ? undefined : value)),
   createAccount: z.boolean().default(false),
   authRole: employeeAuthRoleSchema.optional(),
