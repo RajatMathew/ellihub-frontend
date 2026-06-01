@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 
-import { activityLogApi, type ListActivityLogParams } from '@/app/api/activity-log.api';
+import {
+  activityLogApi,
+  type ActivityLogItem,
+  type ListActivityLogParams,
+} from '@/app/api/activity-log.api';
 import type { ActivityPanelItem } from '@/app/components/activity-panel';
 import { activityLogKeys } from '@/app/hooks/activity-log.keys';
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +33,9 @@ export function useActivityPanelItems(entityType: string, entityId: string | und
   }, { enabled: Boolean(entityId) });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
-    return (query.data?.data ?? []).map((log) => activityLogToPanelItem(log));
+    return dedupeMirroredContactActivity(query.data?.data ?? []).map((log) =>
+      activityLogToPanelItem(log)
+    );
   }, [query.data]);
 
   return {
@@ -48,7 +54,9 @@ export function useEmployeeActivityPanelItems(employeeId: string | undefined) {
   });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
-    return (query.data?.data ?? []).map((log) => activityLogToPanelItem(log));
+    return dedupeMirroredContactActivity(query.data?.data ?? []).map((log) =>
+      activityLogToPanelItem(log)
+    );
   }, [query.data]);
 
   return {
@@ -57,6 +65,44 @@ export function useEmployeeActivityPanelItems(employeeId: string | undefined) {
     isError: query.isError,
     refetch: query.refetch,
   };
+}
+
+function dedupeMirroredContactActivity(logs: ActivityLogItem[]) {
+  const seen = new Set<string>();
+
+  return logs.filter((log) => {
+    const key = getMirroredContactActivityKey(log);
+    if (!key) return true;
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function getMirroredContactActivityKey(log: ActivityLogItem) {
+  if (!isContactLinkActivity(log)) return null;
+
+  const timestamp = log.createdAt ? new Date(log.createdAt).getTime() : 0;
+  const timestampBucket = Number.isFinite(timestamp) ? Math.floor(timestamp / 5000) : 0;
+
+  return [
+    log.action.toLowerCase(),
+    log.description.trim().toLowerCase(),
+    log.user?.id ?? log.user?.name ?? 'system',
+    timestampBucket,
+  ].join('|');
+}
+
+function isContactLinkActivity(log: ActivityLogItem) {
+  const description = log.description.trim().toLowerCase();
+
+  return (
+    description.startsWith('linked contact ') ||
+    description.startsWith('unlinked contact ') ||
+    description.startsWith('marked contact ') ||
+    description.startsWith('removed contact ')
+  );
 }
 
 function activityLogToPanelItem(log: {
