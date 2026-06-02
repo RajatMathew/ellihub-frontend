@@ -31,6 +31,7 @@ import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { cn } from '@/app/lib/utils';
+import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import { useProjectCostCodesQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
@@ -123,17 +124,20 @@ export function RFQCreatePOPreviewDialog({
 
   const existingPO = useMemo(() => getExistingPurchaseOrder(rfq), [rfq]);
   const watchedLineItems = useWatch({ control, name: 'lineItems' }) ?? [];
-  const subtotal = watchedLineItems.reduce(
-    (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
-    0
-  );
   const negotiatedDiscount = useWatch({ control, name: 'negotiatedDiscount' }) ?? 0;
   const shippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const taxPercent = useWatch({ control, name: 'taxPercent' }) ?? 0;
-  const discount = Math.min(Math.max(negotiatedDiscount, 0), subtotal);
-  const taxableSubtotal = Math.max(subtotal - discount, 0);
-  const taxAmount = (taxableSubtotal * taxPercent) / 100;
-  const total = taxableSubtotal + shippingHandlingFee + taxAmount;
+  const {
+    subtotal,
+    negotiatedDiscount: discount,
+    taxAmount,
+    total,
+  } = calculatePurchaseOrderTotals({
+    lineItems: watchedLineItems,
+    negotiatedDiscount,
+    shippingHandlingFee,
+    taxPercent,
+  });
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {

@@ -10,9 +10,9 @@ import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   PurchaseOrderFormDetailsCard,
-  PurchaseOrderFormFinancialCard,
   PurchaseOrderFormLineItemsCard,
 } from '@/modules/project/components/purchase-order';
+import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { getRFQStatusName } from '@/modules/project/components/rfq';
 import {
   ProjectFormDocumentsCard,
@@ -234,17 +234,15 @@ export function POFormPage() {
   }, [isEditMode, replace, selectedRfq, selectedRfqId]);
 
   const watchedLineItems = watch('lineItems');
-  const subtotal = (watchedLineItems ?? []).reduce(
-    (sum, item) => sum + (item.quantity ?? 0) * (item.unitPrice ?? 0),
-    0
-  );
   const watchedNegotiatedDiscount = watch('negotiatedDiscount') ?? 0;
   const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
   const taxPercent = watch('taxPercent') ?? 0;
-  const discount = Math.min(Math.max(watchedNegotiatedDiscount, 0), subtotal);
-  const taxableSubtotal = Math.max(subtotal - discount, 0);
-  const taxAmount = (taxableSubtotal * taxPercent) / 100;
-  const total = taxableSubtotal + watchedShippingHandlingFee + taxAmount;
+  const { subtotal, taxAmount, total } = calculatePurchaseOrderTotals({
+    lineItems: watchedLineItems,
+    negotiatedDiscount: watchedNegotiatedDiscount,
+    shippingHandlingFee: watchedShippingHandlingFee,
+    taxPercent,
+  });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -386,7 +384,6 @@ export function POFormPage() {
             rfqOptions={rfqOptions}
             isVendorLocked={isVendorLocked}
           />
-          <PurchaseOrderFormFinancialCard control={control} />
           <PurchaseOrderFormLineItemsCard
             control={control}
             fields={fields}
@@ -401,6 +398,8 @@ export function POFormPage() {
             total={total}
           />
           <ProjectFormDocumentsCard
+            title="Backup Documents"
+            existingTitle="Existing Backup Documents"
             selectedFiles={selectedFiles}
             existingDocuments={isEditMode ? existingPO?.attachments : undefined}
             onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}

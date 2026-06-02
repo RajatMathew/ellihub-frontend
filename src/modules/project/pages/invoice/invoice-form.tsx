@@ -13,11 +13,11 @@ import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
-import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
@@ -519,14 +519,16 @@ export function InvoiceFormPage() {
                               fieldState.invalid && invoiceInvalidControlClassName
                             )}
                           >
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={numberInputValue(field.value)}
+                            <NumberInput
+                              value={field.value ?? 0}
+                              onValueChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              min={0.01}
+                              decimalPlaces={2}
+                              placeholder="0.00"
                               aria-invalid={fieldState.invalid}
-                              onChange={(event) =>
-                                field.onChange(parseNumberInputValue(event.target.value))
-                              }
                               className="text-right"
                             />
                           </InputWrapper>
@@ -547,14 +549,17 @@ export function InvoiceFormPage() {
                             fieldState.invalid && invoiceInvalidControlClassName
                           )}
                         >
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={numberInputValue(field.value)}
+                          <NumberInput
+                            value={field.value ?? 0}
+                            onValueChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            min={0}
+                            max={100}
+                            decimalPlaces={3}
+                            placeholder="0"
                             aria-invalid={fieldState.invalid}
-                            onChange={(event) =>
-                              field.onChange(parseNumberInputValue(event.target.value))
-                            }
                             className="text-right"
                           />
                         </InputWrapper>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 
 // --- Enums ---
 
@@ -315,7 +316,10 @@ export const createPOInputSchema = z
     lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
   })
   .superRefine((value, ctx) => {
-    const subtotal = value.lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    const subtotal = value.lineItems.reduce(
+      (sum, item) => sum + calculateRoundedLineAmount(item),
+      0
+    );
     if ((value.negotiatedDiscount ?? 0) > subtotal) {
       ctx.addIssue({
         code: 'custom',

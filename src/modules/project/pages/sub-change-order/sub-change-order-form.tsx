@@ -8,7 +8,7 @@ import {
   formInvalidControlClassName,
 } from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
-import { Button } from '@/app/components/ui/button';
+import { LineItems } from '@/app/components/line-items';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import {
@@ -18,19 +18,12 @@ import {
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
-import { Switch, SwitchWrapper } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
-import {
-  numberInputValue,
-  parseNonNegativeNumberInputValue,
-  parseNumberInputValue,
-} from '@/app/lib/number-input';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import { fakeContactName } from '@/lib/fake-data';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
 import {
@@ -38,6 +31,8 @@ import {
   ProjectFormPageLoading,
   ProjectFormShell,
 } from '@/modules/project/components/shared';
+import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
+import { PurchaseOrderFormTotalsFooter } from '@/modules/project/components/purchase-order/purchase-order-form-totals-footer';
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
@@ -58,7 +53,6 @@ import {
 } from '@/modules/project/schemas/sub-change-order';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -169,10 +163,8 @@ export function SCOFormPage() {
     description: '',
     negotiatedDiscount: 0,
     shippingHandlingFee: 0,
-    scheduleImpactDays: 0,
-    requestedBy: '',
+    taxPercent: 0,
     changeTypeId: '',
-    impactsSchedule: false,
     lineItems: [defaultLineItem],
   };
 
@@ -195,10 +187,8 @@ export function SCOFormPage() {
       description: scoDetail.description ?? '',
       negotiatedDiscount: toNonNegativeNumber(scoDetail.negotiatedDiscount),
       shippingHandlingFee: toNonNegativeNumber(scoDetail.shippingHandlingFee),
-      scheduleImpactDays: toNonNegativeNumber(scoDetail.scheduleImpactDays),
-      requestedBy: scoDetail.requestedBy ?? '',
+      taxPercent: toNonNegativeNumber(scoDetail.taxPercent),
       changeTypeId: scoDetail.changeTypeId ?? scoDetail.changeType?.id ?? '',
-      impactsSchedule: !!scoDetail.impactsSchedule,
       lineItems:
         scoDetail.lineItems.length > 0
           ? scoDetail.lineItems.map((item) => ({
@@ -227,24 +217,15 @@ export function SCOFormPage() {
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
   const watchedNegotiatedDiscount = useWatch({ control, name: 'negotiatedDiscount' }) ?? 0;
   const watchedShippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
-  const subtotal = useMemo(
-    () =>
-      lineItemsForTotals.reduce(
-        (sum, item) =>
-          sum + toNonNegativeNumber(item?.quantity) * toNonNegativeNumber(item?.unitPrice),
-        0
-      ),
-    [lineItemsForTotals]
-  );
-  const negotiatedDiscount = Math.min(toNonNegativeNumber(watchedNegotiatedDiscount), subtotal);
-  const shippingHandlingFee = toNonNegativeNumber(watchedShippingHandlingFee);
-  const total = Math.max(subtotal - negotiatedDiscount, 0) + shippingHandlingFee;
+  const watchedTaxPercent = useWatch({ control, name: 'taxPercent' }) ?? 0;
+  const taxPercent = toNonNegativeNumber(watchedTaxPercent);
+  const { subtotal, taxAmount, total } = calculatePurchaseOrderTotals({
+    lineItems: lineItemsForTotals,
+    negotiatedDiscount: watchedNegotiatedDiscount,
+    shippingHandlingFee: watchedShippingHandlingFee,
+    taxPercent,
+  });
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
-
-  function getLineItemAmount(index: number) {
-    const item = lineItemsForTotals[index];
-    return toNonNegativeNumber(item?.quantity) * toNonNegativeNumber(item?.unitPrice);
-  }
 
   async function uploadFilesAndAttach(targetScoId: string, folderId: string, files: File[]) {
     for (const file of files) {
@@ -271,13 +252,9 @@ export function SCOFormPage() {
       projectId,
       purchaseOrderId: formData.purchaseOrderId,
       description: formData.description || undefined,
-      requestedBy: formData.requestedBy || undefined,
       negotiatedDiscount: toNonNegativeNumber(formData.negotiatedDiscount),
       shippingHandlingFee: toNonNegativeNumber(formData.shippingHandlingFee),
-      scheduleImpactDays: formData.impactsSchedule
-        ? Math.trunc(toNonNegativeNumber(formData.scheduleImpactDays))
-        : 0,
-      impactsSchedule: !!formData.impactsSchedule,
+      taxPercent: toNonNegativeNumber(formData.taxPercent),
       lineItems: formData.lineItems.map((item) => ({
         description: item.description,
         quantity: toNonNegativeNumber(item.quantity),
@@ -347,11 +324,10 @@ export function SCOFormPage() {
                 date: d.date,
                 title: d.title,
                 description: [d.reasonForChange, d.detailedScope].filter(Boolean).join('\n\n'),
+                negotiatedDiscount: 0,
                 shippingHandlingFee: 0,
-                scheduleImpactDays: ['HIGH', 'URGENT'].includes(d.priority) ? 3 : 0,
-                requestedBy: fakeContactName(),
+                taxPercent: 0,
                 changeTypeId: randomChangeType,
-                impactsSchedule: ['HIGH', 'URGENT'].includes(d.priority),
                 lineItems: d.lineItems.map((item) => ({
                   description: item.description,
                   quantity: item.qty,
@@ -480,468 +456,34 @@ export function SCOFormPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Controller
-                  name="requestedBy"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel className={scoFieldLabelClassName}>Requested By</FieldLabel>
-                      <InputWrapper>
-                        <Input {...field} placeholder="Requester name" autoComplete="off" />
-                      </InputWrapper>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  name="scheduleImpactDays"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className={scoFieldLabelClassName}>
-                        Schedule Impact Days
-                      </FieldLabel>
-                      <InputWrapper>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={numberInputValue(field.value)}
-                          onChange={(event) =>
-                            field.onChange(parseNumberInputValue(event.target.value))
-                          }
-                          aria-invalid={fieldState.invalid}
-                        />
-                      </InputWrapper>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
-                />
-              </div>
-
-              <Controller
-                name="impactsSchedule"
-                control={control}
-                render={({ field }) => (
-                  <Field className="rounded-lg border p-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <FieldLabel className={scoFieldLabelClassName}>Impacts Schedule</FieldLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Mark this change as having schedule impact.
-                        </p>
-                      </div>
-                      <SwitchWrapper className="shrink-0 self-start sm:self-center">
-                        <Switch checked={!!field.value} onCheckedChange={field.onChange} />
-                      </SwitchWrapper>
-                    </div>
-                  </Field>
-                )}
-              />
             </CardContent>
           </Card>
 
-          <Card id="line-items">
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Line Items</h2>
-                <p className="text-sm text-muted-foreground">
-                  Add one or more priced change order line items.
-                </p>
-              </div>
-              <Separator />
-
-              <div className="space-y-4 md:hidden">
-                {fields.map((item, index) => (
-                  <div key={item.id} className="rounded-lg border p-3">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold">Line Item {index + 1}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        aria-label={`Remove line item ${index + 1}`}
-                        className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                        disabled={fields.length <= 1}
-                        onClick={() => remove(index)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Controller
-                        name={`lineItems.${index}.description`}
-                        control={control}
-                        render={({ field, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid} className="sm:col-span-2">
-                            <SCORequiredFieldLabel>Description</SCORequiredFieldLabel>
-                            <Input
-                              {...field}
-                              placeholder="Line item description"
-                              aria-invalid={fieldState.invalid}
-                              className={
-                                fieldState.invalid ? scoInvalidControlClassName : undefined
-                              }
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`lineItems.${index}.costCodeId`}
-                        control={control}
-                        render={({ field }) => (
-                          <Field>
-                            <FieldLabel className={scoFieldLabelClassName}>Cost Code</FieldLabel>
-                            <SearchableSelect
-                              options={costCodeOptions}
-                              value={field.value ?? null}
-                              onValueChange={(value) => field.onChange(value ?? undefined)}
-                              placeholder="Cost code..."
-                              searchPlaceholder="Search..."
-                              emptyMessage="None found."
-                            />
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`lineItems.${index}.quantity`}
-                        control={control}
-                        render={({ field, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <SCORequiredFieldLabel>Quantity</SCORequiredFieldLabel>
-                            <Input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={numberInputValue(field.value)}
-                              onChange={(event) =>
-                                field.onChange(parseNonNegativeNumberInputValue(event.target.value))
-                              }
-                              aria-invalid={fieldState.invalid}
-                              className={
-                                fieldState.invalid ? scoInvalidControlClassName : undefined
-                              }
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`lineItems.${index}.unitId`}
-                        control={control}
-                        render={({ field, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <SCORequiredFieldLabel>Unit</SCORequiredFieldLabel>
-                            <SearchableSelect
-                              options={unitOptions}
-                              value={field.value || null}
-                              onValueChange={(value) => field.onChange(value ?? '')}
-                              placeholder="Unit..."
-                              searchPlaceholder="Search..."
-                              emptyMessage="None found."
-                              className={
-                                fieldState.invalid ? scoInvalidControlClassName : undefined
-                              }
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <Controller
-                        name={`lineItems.${index}.unitPrice`}
-                        control={control}
-                        render={({ field, fieldState }) => (
-                          <Field data-invalid={fieldState.invalid}>
-                            <SCORequiredFieldLabel>Unit Price</SCORequiredFieldLabel>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={numberInputValue(field.value)}
-                              onChange={(event) =>
-                                field.onChange(parseNumberInputValue(event.target.value))
-                              }
-                              aria-invalid={fieldState.invalid}
-                              className={
-                                fieldState.invalid ? scoInvalidControlClassName : undefined
-                              }
-                            />
-                            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                          </Field>
-                        )}
-                      />
-
-                      <div className="rounded-md bg-muted/30 p-3">
-                        <span className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Amount
-                        </span>
-                        <div className="mt-1 text-sm font-semibold tabular-nums">
-                          {formatCurrency(getLineItemAmount(index))}
-                        </div>
-                      </div>
-
-                      <Controller
-                        name={`lineItems.${index}.notes`}
-                        control={control}
-                        render={({ field }) => (
-                          <Field className="sm:col-span-2">
-                            <FieldLabel className={scoFieldLabelClassName}>Notes</FieldLabel>
-                            <Textarea {...field} placeholder="Line item notes..." rows={2} />
-                          </Field>
-                        )}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-max">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="w-8 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        #
-                      </th>
-                      <th className="pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Description
-                      </th>
-                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Cost Code
-                      </th>
-                      <th className="w-24 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Quantity
-                      </th>
-                      <th className="w-28 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Unit
-                      </th>
-                      <th className="w-32 pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Unit Price
-                      </th>
-                      <th className="w-44 pb-2 pr-3 text-left text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Notes
-                      </th>
-                      <th className="w-32 pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                        Amount
-                      </th>
-                      <th className="w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fields.map((item, index) => (
-                      <tr key={item.id} className="border-b last:border-0 align-top">
-                        <td className="py-2.5 pr-3 pt-3.5 text-sm text-muted-foreground">
-                          {index + 1}
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.description`}
-                            control={control}
-                            render={({ field, fieldState }) => (
-                              <div>
-                                <Input
-                                  {...field}
-                                  placeholder="Line item description"
-                                  aria-invalid={fieldState.invalid}
-                                />
-                                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                              </div>
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.costCodeId`}
-                            control={control}
-                            render={({ field }) => (
-                              <SearchableSelect
-                                options={costCodeOptions}
-                                value={field.value ?? null}
-                                onValueChange={(value) => field.onChange(value ?? undefined)}
-                                placeholder="Cost code..."
-                                searchPlaceholder="Search..."
-                                emptyMessage="None found."
-                              />
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.quantity`}
-                            control={control}
-                            render={({ field, fieldState }) => (
-                              <div>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  value={numberInputValue(field.value)}
-                                  onChange={(event) =>
-                                    field.onChange(
-                                      parseNonNegativeNumberInputValue(event.target.value)
-                                    )
-                                  }
-                                  className="text-right"
-                                  aria-invalid={fieldState.invalid}
-                                />
-                                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                              </div>
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.unitId`}
-                            control={control}
-                            render={({ field, fieldState }) => (
-                              <div>
-                                <SearchableSelect
-                                  options={unitOptions}
-                                  value={field.value || null}
-                                  onValueChange={(value) => field.onChange(value ?? '')}
-                                  placeholder="Unit..."
-                                  searchPlaceholder="Search..."
-                                  emptyMessage="None found."
-                                  className={
-                                    fieldState.invalid ? scoInvalidControlClassName : undefined
-                                  }
-                                />
-                                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                              </div>
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.unitPrice`}
-                            control={control}
-                            render={({ field, fieldState }) => (
-                              <div>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={numberInputValue(field.value)}
-                                  onChange={(event) =>
-                                    field.onChange(parseNumberInputValue(event.target.value))
-                                  }
-                                  className="text-right"
-                                  aria-invalid={fieldState.invalid}
-                                />
-                                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                              </div>
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <Controller
-                            name={`lineItems.${index}.notes`}
-                            control={control}
-                            render={({ field }) => (
-                              <Input {...field} placeholder="Notes" autoComplete="off" />
-                            )}
-                          />
-                        </td>
-                        <td className="py-2.5 pt-3.5 text-right text-sm font-medium tabular-nums">
-                          {formatCurrency(getLineItemAmount(index))}
-                        </td>
-                        <td className="py-2.5 pl-1 pt-3">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            mode="icon"
-                            aria-label={`Remove line item ${index + 1}`}
-                            className="size-8 text-muted-foreground hover:text-destructive"
-                            disabled={fields.length <= 1}
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {formState.errors.lineItems?.root && (
-                <p className="text-sm text-destructive">
-                  {formState.errors.lineItems.root.message}
-                </p>
-              )}
-
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append(defaultLineItem)}
-                >
-                  <Plus className="size-4" />
-                  Add Line Item
-                </Button>
-                <div className="w-full space-y-2 rounded-lg border bg-muted/20 p-3 text-sm sm:max-w-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="tabular-nums">{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Negotiated Discount</span>
-                    <Controller
-                      name="negotiatedDiscount"
-                      control={control}
-                      render={({ field }) => (
-                        <InputWrapper className="w-32">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={numberInputValue(field.value)}
-                            onChange={(event) =>
-                              field.onChange(parseNonNegativeNumberInputValue(event.target.value))
-                            }
-                            className="text-right"
-                          />
-                        </InputWrapper>
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Shipping and Handling Fee</span>
-                    <Controller
-                      name="shippingHandlingFee"
-                      control={control}
-                      render={({ field }) => (
-                        <InputWrapper className="w-32">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={numberInputValue(field.value)}
-                            onChange={(event) =>
-                              field.onChange(parseNonNegativeNumberInputValue(event.target.value))
-                            }
-                            className="text-right"
-                          />
-                        </InputWrapper>
-                      )}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between font-semibold">
-                    <span>Total</span>
-                    <span className="tabular-nums">{formatCurrency(total)}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <LineItems
+            control={control}
+            fieldPrefix="lineItems"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={costCodeOptions}
+            fieldNames={{ unit: 'unitId' }}
+            unitOptions={unitOptions}
+            allowCustomUnit={false}
+            defaultItem={defaultLineItem}
+            rootError={formState.errors.lineItems?.root}
+            showLineTotal
+          >
+            <PurchaseOrderFormTotalsFooter
+              control={control}
+              subtotal={subtotal}
+              taxPercent={taxPercent}
+              taxAmount={taxAmount}
+              total={total}
+              negotiatedDiscountName="negotiatedDiscount"
+              shippingHandlingFeeName="shippingHandlingFee"
+              taxPercentName="taxPercent"
+            />
+          </LineItems>
 
           <ProjectFormDocumentsCard
             selectedFiles={selectedFiles}

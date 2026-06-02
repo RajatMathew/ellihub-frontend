@@ -2,8 +2,12 @@ import { FileText } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
-import { formatCurrency, formatDecimal, formatPercent } from '@/app/lib/helpers';
+import { formatCurrency, formatDecimal } from '@/app/lib/helpers';
 import { InfoRow } from '@/modules/project/components/shared';
+import {
+  calculateRoundedLineAmount,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import type { PODetail } from '@/modules/project/schemas/purchase-order';
 
 interface PurchaseOrderDetailLineItemsCardProps {
@@ -11,7 +15,7 @@ interface PurchaseOrderDetailLineItemsCardProps {
   costCodeMap: Map<string, string>;
   subtotal: number;
   negotiatedDiscount: string | null | undefined;
-  shippingHandlingFee: string | null | undefined;
+  shippingHandlingFee: string | number | null | undefined;
   taxAmount: number;
   taxPercent: string | null | undefined;
   total: number;
@@ -29,6 +33,7 @@ export function PurchaseOrderDetailLineItemsCard({
 }: PurchaseOrderDetailLineItemsCardProps) {
   const lineItemCount = lineItems.length;
   const discount = Number(negotiatedDiscount ?? 0);
+  const shippingHandling = Number(shippingHandlingFee ?? 0);
 
   return (
     <Card>
@@ -58,7 +63,7 @@ export function PurchaseOrderDetailLineItemsCard({
                       )}
                     </div>
                     <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                      {formatCurrency(parseFloat(lineItem.amount ?? '0'))}
+                      {formatCurrency(calculateRoundedLineAmount(lineItem))}
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
@@ -94,11 +99,13 @@ export function PurchaseOrderDetailLineItemsCard({
                 {discount !== 0 && (
                   <InfoRow label="Negotiated Discount">-{formatCurrency(discount)}</InfoRow>
                 )}
-                {Number(shippingHandlingFee ?? 0) !== 0 && (
-                  <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(shippingHandlingFee))}</InfoRow>
+                {shippingHandling !== 0 && (
+                  <InfoRow label="Shipping and Handling Fee">
+                    {formatCurrency(shippingHandling)}
+                  </InfoRow>
                 )}
-                {taxAmount > 0 && (
-                  <InfoRow label={`Tax (${formatPercent(taxPercent)})`}>
+                {taxAmount !== 0 && (
+                  <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
                     {formatCurrency(taxAmount)}
                   </InfoRow>
                 )}
@@ -163,7 +170,7 @@ export function PurchaseOrderDetailLineItemsCard({
                         {formatCurrency(parseFloat(lineItem.unitPrice ?? '0'))}
                       </td>
                       <td className="py-2.5 text-right font-medium tabular-nums">
-                        {formatCurrency(parseFloat(lineItem.amount ?? '0'))}
+                        {formatCurrency(calculateRoundedLineAmount(lineItem))}
                       </td>
                     </tr>
                   ))}
@@ -187,20 +194,20 @@ export function PurchaseOrderDetailLineItemsCard({
                       </td>
                     </tr>
                   )}
-                  {Number(shippingHandlingFee ?? 0) !== 0 && (
+                  {shippingHandling !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
                         Shipping and Handling Fee
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
-                        {formatCurrency(Number(shippingHandlingFee))}
+                        {formatCurrency(shippingHandling)}
                       </td>
                     </tr>
                   )}
-                  {taxAmount > 0 && (
+                  {taxAmount !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Tax ({formatPercent(taxPercent)})
+                        {formatPurchaseOrderTaxLabel(taxPercent)}
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
                         {formatCurrency(taxAmount)}

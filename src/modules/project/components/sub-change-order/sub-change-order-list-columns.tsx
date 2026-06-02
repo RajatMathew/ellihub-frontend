@@ -13,7 +13,6 @@ import {
   SubChangeOrderDateCell,
   SubChangeOrderNumberCell,
   SubChangeOrderPurchaseOrderCell,
-  SubChangeOrderRequestedByCell,
   SubChangeOrderStatusCell,
   SubChangeOrderTypeCell,
 } from './sub-change-order-list-column-cells';
@@ -74,16 +73,6 @@ export function useSubChangeOrderListColumns({
         meta: {
           headerClassName: 'min-w-36',
           skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'requestedBy',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Requested By" />,
-        cell: ({ row }) => <SubChangeOrderRequestedByCell sco={row.original} />,
-        meta: {
-          headerClassName: 'min-w-36',
-          skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,
       },

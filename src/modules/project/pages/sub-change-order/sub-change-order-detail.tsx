@@ -30,6 +30,12 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
+import {
+  calculateEffectivePurchaseOrderTotals,
+  calculateRoundedLineAmount,
+  formatPurchaseOrderTaxLabel,
+  type PurchaseOrderLineAmountLike,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -111,16 +117,8 @@ function money(value: unknown): string {
   return formatCurrency(numeric(value));
 }
 
-function lineItemAmount(item: {
-  amount?: unknown;
-  quantity?: unknown;
-  qty?: unknown;
-  unitPrice?: unknown;
-}): number {
-  const storedAmount = numeric(item.amount);
-  if (storedAmount !== 0) return storedAmount;
-
-  return numeric(item.quantity ?? item.qty) * numeric(item.unitPrice);
+function lineAmount(value: PurchaseOrderLineAmountLike): number {
+  return calculateRoundedLineAmount(value);
 }
 
 function DetailField({
@@ -283,11 +281,20 @@ export function SCODetailPage() {
     );
   }
 
-  const lineItemSubtotal = sco.lineItems.reduce((sum, item) => sum + lineItemAmount(item), 0);
-  const amount = sco.lineItems.length > 0 ? lineItemSubtotal : numeric(sco.amount);
-  const negotiatedDiscount = Math.min(numeric(sco.negotiatedDiscount), amount);
-  const shippingHandlingFee = numeric(sco.shippingHandlingFee);
-  const totalAmount = Math.max(amount - negotiatedDiscount, 0) + shippingHandlingFee;
+  const taxPercent = numeric(sco.taxPercent);
+  const detailTotals = calculateEffectivePurchaseOrderTotals({
+    lineItems: sco.lineItems.length > 0 ? sco.lineItems : undefined,
+    subtotal: sco.lineItems.length > 0 ? undefined : sco.amount,
+    negotiatedDiscount: sco.negotiatedDiscount,
+    shippingHandlingFee: sco.shippingHandlingFee,
+    taxPercent,
+    taxAmount: sco.taxAmount,
+  });
+  const amount = detailTotals.subtotal;
+  const negotiatedDiscount = detailTotals.negotiatedDiscount;
+  const shippingHandlingFee = detailTotals.shippingHandlingFee;
+  const taxAmount = detailTotals.taxAmount;
+  const totalAmount = detailTotals.total;
   const embeddedPurchaseOrder = sco.purchaseOrder as
     | {
         id?: string;
@@ -306,7 +313,6 @@ export function SCODetailPage() {
     | undefined;
   const linkedPurchaseOrder = purchaseOrderDetail ?? embeddedPurchaseOrder;
   const purchaseOrderTotal = Number(linkedPurchaseOrder?.total ?? 0);
-  const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
   const purchaseOrderLabel = linkedPurchaseOrder?.poNumber ?? sco.purchaseOrderId ?? '-';
   const purchaseOrderVendor =
     purchaseOrderDetail?.vendor?.name ??
@@ -358,11 +364,6 @@ export function SCODetailPage() {
               {sco.changeType && (
                 <Badge variant="primary" appearance="outline" size="sm">
                   {lookupLabel(sco.changeType)}
-                </Badge>
-              )}
-              {sco.impactsSchedule && (
-                <Badge variant="warning" appearance="outline" size="sm">
-                  Schedule Impact
                 </Badge>
               )}
             </div>
@@ -444,7 +445,7 @@ export function SCODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard
               icon={<DollarSign className="size-5 text-primary" />}
               bgClass="bg-primary/10"
@@ -472,13 +473,6 @@ export function SCODetailPage() {
               label="Linked PO"
               value={purchaseOrderLabel}
               description={String(purchaseOrderStatus)}
-            />
-            <StatsCard
-              icon={<Calendar className="size-5 text-warning" />}
-              bgClass="bg-warning/10"
-              label="Schedule"
-              value={`${scheduleImpactDays} day${scheduleImpactDays === 1 ? '' : 's'}`}
-              description={sco.impactsSchedule ? 'Impacts schedule' : 'No schedule impact'}
             />
           </div>
 
@@ -521,11 +515,6 @@ export function SCODetailPage() {
               {/* Hidden until /sub-change-order/{id} includes vendorContactName. */}
               {/* Hidden until /sub-change-order/{id} includes vendorContactEmail. */}
               {/* Hidden until /sub-change-order/{id} includes vendorReferenceNumber. */}
-              {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
-                <InfoRow label="Schedule Impact">
-                  {sco.scheduleImpactDays} day{sco.scheduleImpactDays !== 1 ? 's' : ''}
-                </InfoRow>
-              )}
             </CardContent>
           </Card>
 
@@ -662,7 +651,7 @@ export function SCODetailPage() {
                             )}
                           </div>
                           <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                            {money(li.amount)}
+                            {money(lineAmount(li))}
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
@@ -699,7 +688,11 @@ export function SCODetailPage() {
                       {shippingHandlingFee !== 0 && (
                         <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                       )}
-                      {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                      {taxAmount !== 0 && (
+                        <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
+                          {money(taxAmount)}
+                        </InfoRow>
+                      )}
                       <Separator className="my-2" />
                       <InfoRow label="Total">
                         <span className="font-semibold">{money(totalAmount)}</span>
@@ -757,7 +750,7 @@ export function SCODetailPage() {
                               {money(li.unitPrice)}
                             </td>
                             <td className="py-2.5 text-right font-medium tabular-nums">
-                              {money(li.amount)}
+                              {money(lineAmount(li))}
                             </td>
                           </tr>
                         ))}
@@ -797,7 +790,19 @@ export function SCODetailPage() {
                             </td>
                           </tr>
                         )}
-                        {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                        {taxAmount !== 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="pt-1 text-right text-xs text-muted-foreground"
+                            >
+                              {formatPurchaseOrderTaxLabel(taxPercent)}
+                            </td>
+                            <td className="pt-1 text-right tabular-nums text-sm">
+                              {money(taxAmount)}
+                            </td>
+                          </tr>
+                        )}
                         <tr className="border-t">
                           <td
                             colSpan={6}
@@ -926,7 +931,11 @@ export function SCODetailPage() {
                   {shippingHandlingFee !== 0 && (
                     <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
                   )}
-                  {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                  {taxAmount !== 0 && (
+                    <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
+                      {money(taxAmount)}
+                    </InfoRow>
+                  )}
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{money(totalAmount)}</span>
