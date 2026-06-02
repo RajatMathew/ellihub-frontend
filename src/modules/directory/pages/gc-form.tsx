@@ -1,14 +1,7 @@
-import {
-  formPageContainerClassName,
-  unifiedFormHeaderClassName,
-  unifiedFormNavClassName,
-  unifiedFormPageClassName,
-  unifiedFormToolbarClassName,
-} from '@/app/components/form-page-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
@@ -23,7 +16,6 @@ export function GCFormPage() {
   const navigate = useNavigate();
   const state = useGCFormState(id);
   const { handleSubmit, control } = state.form;
-  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
 
   useBreadcrumbLabel(
     id ? `/app/directory/general-contractors/${id}` : undefined,
@@ -74,28 +66,20 @@ export function GCFormPage() {
 
   return (
     <>
-      <form
+      <FormPageShell
         onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)}
-        className={unifiedFormPageClassName}
-      >
-        <div ref={headerRef} className={unifiedFormHeaderClassName}>
+        sections={GC_FORM_SECTIONS}
+        activeSection={state.activeSection}
+        onSectionChange={state.setActiveSection}
+        renderToolbar={(className) => (
           <GCFormToolbar
             isEdit={state.isEdit}
             isSubmitting={isSubmitting}
             onFillRandom={state.fillRandom}
-            className={unifiedFormToolbarClassName}
+            className={className}
           />
-          <FormSectionNav
-            sections={GC_FORM_SECTIONS}
-            activeSection={state.activeSection}
-            onSectionChange={state.setActiveSection}
-            scrollOffset={headerHeight}
-            density="compact"
-            appearance="stepper"
-            className={unifiedFormNavClassName}
-          />
-        </div>
-
+        )}
+      >
         <GCFormContent
           control={control}
           gcTypeOptions={state.gcTypeOptions}
@@ -107,7 +91,7 @@ export function GCFormPage() {
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}
         />
-      </form>
+      </FormPageShell>
 
       <QuickCreateContactDialog
         open={state.contactDialogOpen}

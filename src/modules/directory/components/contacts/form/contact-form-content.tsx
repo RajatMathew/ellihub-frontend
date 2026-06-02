@@ -1,13 +1,6 @@
 import { useState } from 'react';
 
-import {
-  unifiedFormHeaderClassName,
-  unifiedFormNavClassName,
-  unifiedFormPageClassName,
-  unifiedFormToolbarClassName,
-} from '@/app/components/form-page-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
-import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
@@ -47,7 +40,6 @@ export function ContactFormContent({
 }: ContactFormContentProps) {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('contact-info');
-  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
   const form = useContactFormState({ contact, isEdit, roles });
   const { control, handleSubmit, reset, formState } = form;
 
@@ -85,29 +77,20 @@ export function ContactFormContent({
 
   return (
     <>
-      <form
+      <FormPageShell
         onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)}
-        className={unifiedFormPageClassName}
-      >
-        <div ref={headerRef} className={unifiedFormHeaderClassName}>
+        sections={CONTACT_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        renderToolbar={(className) => (
           <ContactFormToolbar
             isEdit={isEdit}
             isSubmitting={isSubmitting}
             onFillRandom={handleFillRandom}
-            className={unifiedFormToolbarClassName}
+            className={className}
           />
-
-          <FormSectionNav
-            sections={CONTACT_FORM_SECTIONS}
-            activeSection={activeSection}
-            onSectionChange={setActiveSection}
-            scrollOffset={headerHeight}
-            density="compact"
-            appearance="stepper"
-            className={unifiedFormNavClassName}
-          />
-        </div>
-
+        )}
+      >
         <div className="space-y-6 pt-4 pb-8 lg:pb-10">
           <ContactInfoFormSection
             control={control}
@@ -121,7 +104,7 @@ export function ContactFormContent({
             gcOptions={gcOptions}
           />
         </div>
-      </form>
+      </FormPageShell>
 
       <ContactFormDialogs
         associations={associations}

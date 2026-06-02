@@ -1,13 +1,6 @@
 import type { FormEventHandler, ReactNode } from 'react';
 
-import {
-  unifiedFormHeaderClassName,
-  unifiedFormNavClassName,
-  unifiedFormToolbarClassName,
-  unifiedProjectFormPageClassName,
-} from '@/app/components/form-page-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
-import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
+import { FormPageShell } from '@/app/components/form-page-shell';
 
 import { ProjectFormToolbar } from './project-form-toolbar';
 
@@ -36,30 +29,25 @@ export function ProjectFormShell({
   extraActions,
   formKey,
 }: ProjectFormShellProps) {
-  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
-
   return (
-    <form key={formKey} onSubmit={onSubmit} className={unifiedProjectFormPageClassName}>
-      <div ref={headerRef} className={unifiedFormHeaderClassName}>
+    <FormPageShell
+      formKey={formKey}
+      onSubmit={onSubmit}
+      sections={sections}
+      activeSection={activeSection}
+      onSectionChange={onSectionChange}
+      className="min-h-[calc(100dvh-5rem)]"
+      renderToolbar={(className) => (
         <ProjectFormToolbar
           title={title}
           submitLabel={submitLabel}
           isSubmitting={isSubmitting}
-          className={unifiedFormToolbarClassName}
+          className={className}
           extraActions={extraActions}
         />
-        <FormSectionNav
-          sections={sections}
-          activeSection={activeSection}
-          onSectionChange={onSectionChange}
-          scrollOffset={headerHeight}
-          density="compact"
-          appearance="stepper"
-          className={unifiedFormNavClassName}
-        />
-      </div>
-
+      )}
+    >
       {children}
-    </form>
+    </FormPageShell>
   );
 }

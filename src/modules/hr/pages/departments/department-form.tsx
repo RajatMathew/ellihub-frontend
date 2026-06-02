@@ -1,9 +1,5 @@
-import {
-  formPageContainerClassName,
-  unifiedFormHeaderClassName,
-  unifiedFullHeightFormPageClassName,
-  unifiedSingleSectionFormToolbarClassName,
-} from '@/app/components/form-page-layout';
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -43,19 +39,19 @@ export default function DepartmentFormPage() {
   }
 
   return (
-    <form
+    <FormPageShell
       onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)}
-      className={unifiedFullHeightFormPageClassName}
-    >
-      <div className={unifiedFormHeaderClassName}>
+      fullHeight
+      renderToolbar={(className) => (
         <DepartmentFormToolbar
           isEdit={isEdit}
           isSubmitting={isSubmitting}
           onFillSample={fillSample}
-          className={unifiedSingleSectionFormToolbarClassName}
+          className={className}
         />
-      </div>
+      )}
+    >
       <DepartmentFormContent control={form.control} />
-    </form>
+    </FormPageShell>
   );
 }

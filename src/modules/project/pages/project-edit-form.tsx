@@ -13,6 +13,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
@@ -24,7 +25,6 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { useGCsQuery } from '@/modules/directory/hooks';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
@@ -661,15 +661,14 @@ function ProjectEditFormInner({
                     </FieldLabel>
                     <InputWrapper>
                       <span className="text-muted-foreground text-sm">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={numberInputValue(field.value)}
-                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        decimalPlaces={2}
                         placeholder="0.00"
                         aria-invalid={fieldState.invalid}
                       />
@@ -688,16 +687,15 @@ function ProjectEditFormInner({
                       Retainage %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min={0}
-                        max={100}
-                        value={numberInputValue(field.value)}
-                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />
@@ -720,16 +718,15 @@ function ProjectEditFormInner({
                       Target Budget %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min={0}
-                        max={100}
-                        value={numberInputValue(field.value)}
-                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />
@@ -749,16 +746,15 @@ function ProjectEditFormInner({
                       Tax Rate %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        max={100}
-                        value={numberInputValue(field.value)}
-                        onChange={(e) => field.onChange(parseNumberInputValue(e.target.value))}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />

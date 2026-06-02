@@ -1,14 +1,7 @@
-import {
-  formPageContainerClassName,
-  unifiedFormHeaderClassName,
-  unifiedFormNavClassName,
-  unifiedFormPageClassName,
-  unifiedFormToolbarClassName,
-} from '@/app/components/form-page-layout';
-import { FormSectionNav } from '@/app/components/form-section-nav';
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { useStickyHeaderHeight } from '@/app/hooks/use-sticky-header-height';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   EmployeeFormContent,
@@ -25,7 +18,6 @@ export default function EmployeeFormPage() {
   const navigate = useNavigate();
   const state = useEmployeeFormState(id);
   const { handleSubmit, control } = state.form;
-  const { headerRef, headerHeight } = useStickyHeaderHeight<HTMLDivElement>();
 
   useBreadcrumbLabel(
     id ? `/app/hr/employees/${id}` : undefined,
@@ -73,33 +65,25 @@ export default function EmployeeFormPage() {
   }
 
   return (
-    <form
+    <FormPageShell
       onSubmit={handleSubmit(saveEmployee, onInvalidFormSubmit)}
-      className={unifiedFormPageClassName}
-    >
-      <div ref={headerRef} className={unifiedFormHeaderClassName}>
+      sections={EMPLOYEE_FORM_SECTIONS}
+      activeSection={state.activeSection}
+      onSectionChange={state.setActiveSection}
+      renderToolbar={(className) => (
         <EmployeeFormToolbar
           isEdit={state.isEdit}
           isSubmitting={isSubmitting}
           onFillSample={state.fillSample}
-          className={unifiedFormToolbarClassName}
+          className={className}
         />
-        <FormSectionNav
-          sections={EMPLOYEE_FORM_SECTIONS}
-          activeSection={state.activeSection}
-          onSectionChange={state.setActiveSection}
-          scrollOffset={headerHeight}
-          density="compact"
-          appearance="stepper"
-          className={unifiedFormNavClassName}
-        />
-      </div>
-
+      )}
+    >
       <EmployeeFormContent
         control={control}
         isEdit={state.isEdit}
         roleOptions={state.roleOptions}
       />
-    </form>
+    </FormPageShell>
   );
 }
