@@ -33,7 +33,7 @@ export function useActivityPanelItems(entityType: string, entityId: string | und
   }, { enabled: Boolean(entityId) });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
-    return dedupeMirroredContactActivity(query.data?.data ?? []).map((log) =>
+    return dedupeMirroredActivity(query.data?.data ?? []).map((log) =>
       activityLogToPanelItem(log)
     );
   }, [query.data]);
@@ -54,7 +54,7 @@ export function useEmployeeActivityPanelItems(employeeId: string | undefined) {
   });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
-    return dedupeMirroredContactActivity(query.data?.data ?? []).map((log) =>
+    return dedupeMirroredActivity(query.data?.data ?? []).map((log) =>
       activityLogToPanelItem(log)
     );
   }, [query.data]);
@@ -67,11 +67,11 @@ export function useEmployeeActivityPanelItems(employeeId: string | undefined) {
   };
 }
 
-function dedupeMirroredContactActivity(logs: ActivityLogItem[]) {
+function dedupeMirroredActivity(logs: ActivityLogItem[]) {
   const seen = new Set<string>();
 
   return logs.filter((log) => {
-    const key = getMirroredContactActivityKey(log);
+    const key = getMirroredActivityKey(log);
     if (!key) return true;
     if (seen.has(key)) return false;
 
@@ -80,8 +80,8 @@ function dedupeMirroredContactActivity(logs: ActivityLogItem[]) {
   });
 }
 
-function getMirroredContactActivityKey(log: ActivityLogItem) {
-  if (!isContactLinkActivity(log)) return null;
+function getMirroredActivityKey(log: ActivityLogItem) {
+  if (!isMirroredActivity(log)) return null;
 
   const timestamp = log.createdAt ? new Date(log.createdAt).getTime() : 0;
   const timestampBucket = Number.isFinite(timestamp) ? Math.floor(timestamp / 5000) : 0;
@@ -94,14 +94,17 @@ function getMirroredContactActivityKey(log: ActivityLogItem) {
   ].join('|');
 }
 
-function isContactLinkActivity(log: ActivityLogItem) {
+function isMirroredActivity(log: ActivityLogItem) {
   const description = log.description.trim().toLowerCase();
 
   return (
     description.startsWith('linked contact ') ||
     description.startsWith('unlinked contact ') ||
     description.startsWith('marked contact ') ||
-    description.startsWith('removed contact ')
+    description.startsWith('removed contact ') ||
+    /^assigned .+ to department\b/.test(description) ||
+    /^removed .+ from department\b/.test(description) ||
+    /^unassigned .+ from department\b/.test(description)
   );
 }
 
