@@ -22,7 +22,9 @@ export default function DepartmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const departmentQuery = useDepartmentDetailQuery(id ?? '');
-  const activityQuery = useActivityPanelItems('department', id);
+  const activityQuery = useActivityPanelItems('department', id, {
+    entityName: departmentQuery.data?.name,
+  });
   const deleteMutation = useDeleteDepartmentMutation();
   const removeEmployeeMutation = useRemoveEmployeeMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);

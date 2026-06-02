@@ -23,7 +23,11 @@ export function useActivityLogQuery(
   });
 }
 
-export function useActivityPanelItems(entityType: string, entityId: string | undefined) {
+export function useActivityPanelItems(
+  entityType: string,
+  entityId: string | undefined,
+  options?: { entityName?: string }
+) {
   const query = useActivityLogQuery({
     entityType,
     entityId,
@@ -34,9 +38,12 @@ export function useActivityPanelItems(entityType: string, entityId: string | und
 
   const items = useMemo<ActivityPanelItem[]>(() => {
     return dedupeMirroredActivity(query.data?.data ?? []).map((log) =>
-      activityLogToPanelItem(log)
+      activityLogToPanelItem(log, {
+        entityType,
+        entityName: options?.entityName,
+      })
     );
-  }, [query.data]);
+  }, [entityType, options?.entityName, query.data]);
 
   return {
     items,
@@ -108,18 +115,23 @@ function isMirroredActivity(log: ActivityLogItem) {
   );
 }
 
+interface ActivityPanelContext {
+  entityType?: string;
+  entityName?: string;
+}
+
 function activityLogToPanelItem(log: {
   id: string;
   action: string;
   description: string;
   createdAt?: string;
   user?: { name?: string | null } | null;
-}): ActivityPanelItem {
+}, context?: ActivityPanelContext): ActivityPanelItem {
   const action = log.action.toLowerCase();
   const base = {
     id: log.id,
     user: log.user?.name ?? 'System',
-    action: log.description,
+    action: formatPanelActivityDescription(log.description, context),
     timestamp: formatActivityTimestamp(log.createdAt),
   };
 
@@ -160,6 +172,24 @@ function activityLogToPanelItem(log: {
     icon: <Clock className="size-4 text-muted-foreground" />,
     toneClassName: 'border-muted-foreground/20 bg-muted/30',
   };
+}
+
+function formatPanelActivityDescription(description: string, context?: ActivityPanelContext) {
+  if (context?.entityType !== 'department' || !context.entityName) return description;
+
+  const match = description.match(/^Assigned (.+) to department (.+)$/i);
+  if (!match) return description;
+
+  const [, employeeName, assignedDepartmentName] = match;
+  if (normalizeActivityName(assignedDepartmentName) === normalizeActivityName(context.entityName)) {
+    return description;
+  }
+
+  return `Unassigned ${employeeName} from this department.`;
+}
+
+function normalizeActivityName(value: string) {
+  return value.trim().replace(/\.$/, '').toLowerCase();
 }
 
 function formatActivityTimestamp(timestamp: string | undefined) {
