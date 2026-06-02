@@ -21,12 +21,13 @@ import {
 } from '@app/components/ui/command';
 import { FieldError as FieldErr } from '@app/components/ui/field';
 import { Input } from '@app/components/ui/input';
+import { NumberInput } from '@app/components/ui/number-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
 import { formatCurrency } from '@app/lib/helpers';
-import { numberInputValue, parseNumberInputValue } from '@app/lib/number-input';
 import { cn } from '@app/lib/utils';
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 
 /* ---- Unit options ---- */
 
@@ -230,7 +231,11 @@ function LineTotalCell({
 }) {
   const qty = useWatch({ control, name: `${fieldPrefix}.${index}.${quantityField}` }) ?? 0;
   const price = useWatch({ control, name: `${fieldPrefix}.${index}.${unitPriceField}` }) ?? 0;
-  return <span className="text-sm font-medium tabular-nums">{formatCurrency(qty * price)}</span>;
+  return (
+    <span className="text-sm font-medium tabular-nums">
+      {formatCurrency(calculateRoundedLineAmount({ quantity: qty, unitPrice: price }))}
+    </span>
+  );
 }
 
 /* ---- Component ---- */
@@ -346,12 +351,15 @@ export function LineItems({
                       control={control}
                       render={({ field: f, fieldState }) => (
                         <div>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...f}
-                            value={numberInputValue(f.value)}
-                            onChange={(e) => f.onChange(parseNumberInputValue(e.target.value))}
+                          <NumberInput
+                            value={f.value ?? 0}
+                            onValueChange={f.onChange}
+                            onBlur={f.onBlur}
+                            name={f.name}
+                            ref={f.ref}
+                            min={0}
+                            decimalPlaces={2}
+                            placeholder="0"
                             aria-invalid={fieldState.invalid}
                             className="text-right"
                           />
@@ -389,12 +397,15 @@ export function LineItems({
                         control={control}
                         render={({ field: f, fieldState }) => (
                           <div>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              {...f}
-                              value={numberInputValue(f.value)}
-                              onChange={(e) => f.onChange(parseNumberInputValue(e.target.value))}
+                            <NumberInput
+                              value={f.value ?? 0}
+                              onValueChange={f.onChange}
+                              onBlur={f.onBlur}
+                              name={f.name}
+                              ref={f.ref}
+                              min={0}
+                              decimalPlaces={2}
+                              placeholder="0.00"
                               aria-invalid={fieldState.invalid}
                               className="text-right"
                             />

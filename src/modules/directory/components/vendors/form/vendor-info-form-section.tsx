@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import {
   Select,
@@ -19,6 +19,8 @@ import {
 import type { VendorFormValues, VendorTypeObject } from '@/modules/directory/schemas/vendor.schema';
 import { Globe, Mail } from 'lucide-react';
 import { Controller, useWatch, type Control } from 'react-hook-form';
+
+import { VendorFormFieldLabel, vendorInvalidControlClassName } from './vendor-form-field';
 
 interface VendorInfoFormSectionProps {
   control: Control<VendorFormValues>;
@@ -60,7 +62,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
     <Card id="info">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold uppercase tracking-wide text-foreground">Info</h2>
+          <h2 className="text-lg font-semibold text-foreground">Info</h2>
           <p className="text-sm text-muted-foreground">Corporate identity and system status.</p>
         </div>
 
@@ -72,10 +74,10 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Vendor Name
-                </FieldLabel>
-                <InputWrapper>
+                <VendorFormFieldLabel required>Vendor Name</VendorFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                >
                   <Input
                     {...field}
                     placeholder="e.g. Acme Construction Services"
@@ -93,10 +95,10 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Email
-                </FieldLabel>
-                <InputWrapper>
+                <VendorFormFieldLabel required>Email</VendorFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                >
                   <Mail className="size-4" />
                   <Input
                     {...field}
@@ -118,15 +120,16 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Vendor Type
-                </FieldLabel>
+                <VendorFormFieldLabel required>Vendor Type</VendorFormFieldLabel>
                 <Select
                   key={field.value || 'empty-type'}
                   value={field.value || ''}
                   onValueChange={field.onChange}
                 >
-                  <SelectTrigger aria-invalid={fieldState.invalid}>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  >
                     <SelectValue placeholder="Select vendor type..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -145,17 +148,24 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
           <Controller
             name="status"
             control={control}
-            render={({ field }) => (
-              <Field>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <VendorFormFieldLabel
+                  required
+                  info="Choose Inactive if the vendor is currently out of operation or unavailable for new work."
+                  infoLabel="Default status information"
+                >
                   Default Status
-                </FieldLabel>
+                </VendorFormFieldLabel>
                 <Select
                   key={field.value || 'empty-status'}
                   value={field.value || ''}
                   onValueChange={field.onChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  >
                     <SelectValue placeholder="Select status..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -166,6 +176,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />
@@ -177,10 +188,10 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Tax ID / EIN <span className="font-normal text-muted-foreground">(Optional)</span>
-                </FieldLabel>
-                <InputWrapper>
+                <VendorFormFieldLabel>Tax ID / EIN</VendorFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                >
                   <Input
                     {...field}
                     onChange={(event) => field.onChange(event.target.value.replace(/[^\d-]/g, ''))}
@@ -202,10 +213,10 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Website
-                </FieldLabel>
-                <InputWrapper>
+                <VendorFormFieldLabel>Website</VendorFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                >
                   <Globe className="size-4" />
                   <Input
                     {...field}
@@ -222,17 +233,18 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
           <Controller
             name="paymentTerms"
             control={control}
-            render={({ field }) => (
-              <Field>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Payment Terms
-                </FieldLabel>
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <VendorFormFieldLabel required>Payment Terms</VendorFormFieldLabel>
                 <Select
                   key={field.value || 'empty-payment-terms'}
                   value={field.value || ''}
                   onValueChange={field.onChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  >
                     <SelectValue placeholder="Select terms..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -243,6 +255,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />

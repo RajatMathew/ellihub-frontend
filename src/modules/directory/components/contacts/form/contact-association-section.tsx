@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldLabel } from '@/app/components/ui/field';
+import { Field } from '@/app/components/ui/field';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
@@ -11,6 +11,7 @@ import type { ContactAssociationsState } from '@/modules/directory/hooks/contact
 import { Plus } from 'lucide-react';
 
 import { ContactAssociationList } from './contact-association-list';
+import { ContactFormFieldLabel } from './contact-form-field';
 
 interface ContactAssociationSectionProps {
   associations: ContactAssociationsState;
@@ -61,9 +62,7 @@ export function ContactAssociationSection({
             />
 
             <Field>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Vendor
-              </FieldLabel>
+              <ContactFormFieldLabel>Vendor</ContactFormFieldLabel>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <SearchableSelect
@@ -105,9 +104,7 @@ export function ContactAssociationSection({
             />
 
             <Field>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                GC
-              </FieldLabel>
+              <ContactFormFieldLabel>GC</ContactFormFieldLabel>
               <div className="min-w-0">
                 <SearchableSelect
                   options={gcOptions.filter(

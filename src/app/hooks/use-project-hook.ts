@@ -4,14 +4,16 @@ export function useProjectNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ projectId: string }>();
+  const projectIdFromPath = location.pathname.match(/\/project\/([^/]+)/)?.[1];
+  const encodedProjectId = params.projectId ?? projectIdFromPath;
 
   // Decode projectId for internal usage
-  const projectId = params.projectId ? decodeURIComponent(params.projectId) : undefined;
+  const projectId = encodedProjectId ? decodeURIComponent(encodedProjectId) : undefined;
 
   const changeProject = (id: string, options?: { replace?: boolean }) => {
-    if (!params.projectId) return;
+    if (!encodedProjectId) return;
 
-    const encodedCurrentId = params.projectId;
+    const encodedCurrentId = encodedProjectId;
     const encodedNextId = encodeURIComponent(id);
 
     const newPath = location.pathname.replace(

@@ -12,6 +12,10 @@ import {
 } from '@/modules/project/constants/purchase-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
+import {
+  calculateEffectivePurchaseOrderTotals,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import { MoreHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -100,7 +104,14 @@ export function PurchaseOrderStatusCell({ po }: { po: POListItem }) {
 }
 
 export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
-  const poTotal = Number(po.total ?? 0);
+  const purchaseOrderTotals = calculateEffectivePurchaseOrderTotals({
+    subtotal: po.subtotal,
+    negotiatedDiscount: po.negotiatedDiscount,
+    shippingHandlingFee: po.shippingHandlingFee,
+    taxPercent: po.taxPercent,
+    taxAmount: po.taxAmount,
+  });
+  const poTotal = purchaseOrderTotals.total;
   const approvedScoTotal = (po.subChangeOrders ?? [])
     .filter((sco) => sco.status === 'APPROVED')
     .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0);
@@ -117,16 +128,24 @@ export function PurchaseOrderAmountCell({ po }: { po: POListItem }) {
         </span>
       )}
       <span className="text-2sm text-muted-foreground">
-        Subtotal {formatOptionalPurchaseOrderCurrency(po.subtotal)}
+        Subtotal {formatOptionalPurchaseOrderCurrency(purchaseOrderTotals.subtotal)}
       </span>
-      {Number(po.negotiatedDiscount ?? 0) !== 0 && (
+      {purchaseOrderTotals.negotiatedDiscount !== 0 && (
         <span className="text-2sm text-muted-foreground">
-          Discount -{formatOptionalPurchaseOrderCurrency(po.negotiatedDiscount)}
+          Discount -{formatOptionalPurchaseOrderCurrency(purchaseOrderTotals.negotiatedDiscount)}
         </span>
       )}
-      <span className="text-2sm text-muted-foreground">
-        Tax {formatOptionalPurchaseOrderCurrency(po.taxAmount)}
-      </span>
+      {purchaseOrderTotals.shippingHandlingFee !== 0 && (
+        <span className="text-2sm text-muted-foreground">
+          Shipping {formatOptionalPurchaseOrderCurrency(purchaseOrderTotals.shippingHandlingFee)}
+        </span>
+      )}
+      {purchaseOrderTotals.taxAmount !== 0 && (
+        <span className="text-2sm text-muted-foreground">
+          {formatPurchaseOrderTaxLabel(po.taxPercent)}{' '}
+          {formatOptionalPurchaseOrderCurrency(purchaseOrderTotals.taxAmount)}
+        </span>
+      )}
       <span className="text-2sm text-muted-foreground">
         {formatPurchaseOrderPaymentTerms(po.paymentTerms)}
       </span>

@@ -1,26 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
-import { FormSectionNav } from '@/app/components/form-section-nav';
+import {
+  FormFieldLabel,
+  formFieldLabelClassName,
+  formInvalidControlClassName,
+} from '@/app/components/form-field-label';
+import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
-import { numberInputValue, parseNumberInputValue } from '@/app/lib/number-input';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorsQuery } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
-  ProjectFormToolbar,
+  ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
@@ -41,6 +47,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const invoiceFieldLabelClassName = formFieldLabelClassName;
+
+const invoiceInvalidControlClassName = formInvalidControlClassName;
 
 function toDateInput(value: string | null | undefined) {
   return value ? value.slice(0, 10) : '';
@@ -329,288 +339,306 @@ export function InvoiceFormPage() {
   if (!canSubmitInvoice) return <Forbidden />;
 
   return (
-    <form
+    <ProjectFormShell
       onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
-      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
+      title={isEdit ? 'Edit Invoice' : 'New Invoice'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create Invoice'}
+      isSubmitting={isSubmitting}
+      sections={INVOICE_FORM_SECTIONS}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      extraActions={!isEdit ? <MockDataButton data={null} onLoad={enterMockData} /> : undefined}
     >
-      <ProjectFormToolbar
-        backLabel="Invoices"
-        title={isEdit ? 'Edit Invoice' : 'New Invoice'}
-        description={isEdit ? 'Update unpaid invoice details.' : 'Create a new invoice.'}
-        submitLabel={isEdit ? 'Save Changes' : 'Create Invoice'}
-        isSubmitting={isSubmitting}
-        extraActions={!isEdit ? <MockDataButton data={null} onLoad={enterMockData} /> : undefined}
-      />
+      <FormLayout className="pt-4 pb-8 lg:pb-10">
+        <FormContent>
+          <Card id="invoice-details">
+            <CardContent className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Invoice Details</h2>
+                <p className="text-sm text-muted-foreground">
+                  Link the invoice to a purchase order and vendor.
+                </p>
+              </div>
 
-      <FormSectionNav
-        sections={INVOICE_FORM_SECTIONS}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
+              <Separator />
 
-      <div className="space-y-6 pt-6">
-        <Card id="invoice-details">
-          <CardContent className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Invoice Details</h2>
-              <p className="text-sm text-muted-foreground">
-                Link the invoice to a purchase order and vendor.
-              </p>
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <Controller
-                name="purchaseOrderId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Purchase Order
-                    </FieldLabel>
-                    <InfiniteSearchSelect
-                      options={poOptions}
-                      value={field.value || null}
-                      onValueChange={(value) => {
-                        field.onChange(value ?? '');
-                        const selectedPo = (posData?.data ?? []).find((po) => po.id === value);
-                        setValue('vendorId', selectedPo?.vendorId ?? '', {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                        setValue('relatedSCOIds', [], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                      }}
-                      search={poSearch}
-                      onSearchChange={setPoSearch}
-                      isLoading={isLoadingPOs}
-                      disabled={isImmutable}
-                      placeholder="Select purchase order..."
-                      searchPlaceholder="Search purchase orders..."
-                      emptyMessage="No issued purchase orders found."
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="vendorId"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Vendor
-                    </FieldLabel>
-                    <InfiniteSearchSelect
-                      options={invoiceVendorOptions}
-                      value={field.value || null}
-                      onValueChange={(value) => field.onChange(value ?? '')}
-                      search=""
-                      onSearchChange={() => undefined}
-                      disabled={isVendorLocked}
-                      placeholder="Select vendor..."
-                      emptyMessage="No vendors found."
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              <Controller
-                name="invoiceNumber"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Invoice Number
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input {...field} placeholder="INV-001" autoComplete="off" />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="invoiceDate"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Invoice Date
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input type="date" {...field} />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="dueDate"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                      Due Date
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input type="date" {...field} />
-                    </InputWrapper>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-            </div>
-
-            <Controller
-              name="notes"
-              control={control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                    Notes
-                  </FieldLabel>
-                  <Textarea {...field} placeholder="Additional notes..." rows={4} />
-                </Field>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card id="financial">
-          <CardContent className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Financial</h2>
-              <p className="text-sm text-muted-foreground">
-                Enter the invoice amount and tax rate.
-              </p>
-            </div>
-
-            <Separator />
-
-            <div className="flex justify-end">
-              <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <Controller
-                  name="totalAmount"
+                  name="purchaseOrderId"
                   control={control}
                   render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid} className="gap-1">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <FieldLabel className="text-muted-foreground">Invoice Amount</FieldLabel>
-                        <InputWrapper className="w-32">
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={numberInputValue(field.value)}
-                            aria-invalid={fieldState.invalid}
-                            onChange={(event) =>
-                              field.onChange(parseNumberInputValue(event.target.value))
-                            }
-                            className="text-right"
-                          />
-                        </InputWrapper>
-                      </div>
+                    <Field data-invalid={fieldState.invalid}>
+                      <InvoiceRequiredFieldLabel>Purchase Order</InvoiceRequiredFieldLabel>
+                      <InfiniteSearchSelect
+                        options={poOptions}
+                        value={field.value || null}
+                        onValueChange={(value) => {
+                          field.onChange(value ?? '');
+                          const selectedPo = (posData?.data ?? []).find((po) => po.id === value);
+                          setValue('vendorId', selectedPo?.vendorId ?? '', {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue('relatedSCOIds', [], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        search={poSearch}
+                        onSearchChange={setPoSearch}
+                        isLoading={isLoadingPOs}
+                        disabled={isImmutable}
+                        placeholder="Select purchase order..."
+                        searchPlaceholder="Search purchase orders..."
+                        emptyMessage="No issued purchase orders found."
+                        triggerClassName={
+                          fieldState.invalid ? invoiceInvalidControlClassName : undefined
+                        }
+                      />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">Tax Rate (%)</span>
-                  <Controller
-                    name="taxRate"
-                    control={control}
-                    render={({ field }) => (
-                      <InputWrapper className="w-32">
+
+                <Controller
+                  name="vendorId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <InvoiceRequiredFieldLabel>Vendor</InvoiceRequiredFieldLabel>
+                      <InfiniteSearchSelect
+                        options={invoiceVendorOptions}
+                        value={field.value || null}
+                        onValueChange={(value) => field.onChange(value ?? '')}
+                        search=""
+                        onSearchChange={() => undefined}
+                        disabled={isVendorLocked}
+                        placeholder="Select vendor..."
+                        emptyMessage="No vendors found."
+                        triggerClassName={
+                          fieldState.invalid ? invoiceInvalidControlClassName : undefined
+                        }
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <Controller
+                  name="invoiceNumber"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <InvoiceRequiredFieldLabel>Invoice Number</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
                         <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={numberInputValue(field.value)}
-                          onChange={(event) =>
-                            field.onChange(parseNumberInputValue(event.target.value))
-                          }
-                          className="text-right"
+                          {...field}
+                          placeholder="INV-001"
+                          autoComplete="off"
+                          aria-invalid={fieldState.invalid}
                         />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="invoiceDate"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <InvoiceRequiredFieldLabel>Invoice Date</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  name="dueDate"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <InvoiceRequiredFieldLabel>Due Date</InvoiceRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
+                      >
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </div>
+
+              <Controller
+                name="notes"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className={invoiceFieldLabelClassName}>Notes</FieldLabel>
+                    <Textarea {...field} placeholder="Additional notes..." rows={4} />
+                  </Field>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card id="financial">
+            <CardContent className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Financial</h2>
+                <p className="text-sm text-muted-foreground">
+                  Enter the invoice amount and tax rate.
+                </p>
+              </div>
+
+              <Separator />
+
+              <div className="flex justify-end">
+                <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
+                  <Controller
+                    name="totalAmount"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid} className="gap-1">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <InvoiceRequiredFieldLabel>Invoice Amount</InvoiceRequiredFieldLabel>
+                          <InputWrapper
+                            className={cn(
+                              'w-32',
+                              fieldState.invalid && invoiceInvalidControlClassName
+                            )}
+                          >
+                            <NumberInput
+                              value={field.value ?? 0}
+                              onValueChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              min={0.01}
+                              decimalPlaces={2}
+                              placeholder="0.00"
+                              aria-invalid={fieldState.invalid}
+                              className="text-right"
+                            />
+                          </InputWrapper>
+                        </div>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
                     )}
                   />
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tax ({formatPercent(taxRate)})</span>
-                  <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
-                </div>
-                <Separator className="my-3" />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">Grand Total</span>
-                  <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground">Tax Rate (%)</span>
+                    <Controller
+                      name="taxRate"
+                      control={control}
+                      render={({ field, fieldState }) => (
+                        <InputWrapper
+                          className={cn(
+                            'w-32',
+                            fieldState.invalid && invoiceInvalidControlClassName
+                          )}
+                        >
+                          <NumberInput
+                            value={field.value ?? 0}
+                            onValueChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            min={0}
+                            max={100}
+                            decimalPlaces={3}
+                            placeholder="0"
+                            aria-invalid={fieldState.invalid}
+                            className="text-right"
+                          />
+                        </InputWrapper>
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Tax ({formatPercent(taxRate)})</span>
+                    <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
+                  </div>
+                  <Separator className="my-3" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-foreground">Grand Total</span>
+                    <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card id="related-scos">
-          <CardContent className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Related SCOs</h2>
-              <p className="text-sm text-muted-foreground">
-                Link sub change orders covered by this invoice.
-              </p>
-            </div>
+          <Card id="related-scos">
+            <CardContent className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Related SCOs</h2>
+                <p className="text-sm text-muted-foreground">
+                  Link sub change orders covered by this invoice.
+                </p>
+              </div>
 
-            <Separator />
+              <Separator />
 
-            <Controller
-              name="relatedSCOIds"
-              control={control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                    Sub Change Orders
-                  </FieldLabel>
-                  <InfiniteMultiSearchSelect
-                    options={scoOptions}
-                    value={field.value ?? []}
-                    onValueChange={field.onChange}
-                    search={scoSearch}
-                    onSearchChange={setScoSearch}
-                    isLoading={isLoadingSCOs}
-                    disabled={!selectedPurchaseOrderId}
-                    placeholder={
-                      selectedPurchaseOrderId
-                        ? 'Select related SCOs...'
-                        : 'Select a purchase order first...'
-                    }
-                    searchPlaceholder="Search related SCOs..."
-                    emptyMessage={
-                      selectedPurchaseOrderId
-                        ? 'No SCOs found for this purchase order.'
-                        : 'Select a purchase order first.'
-                    }
-                  />
-                </Field>
-              )}
-            />
-          </CardContent>
-        </Card>
+              <Controller
+                name="relatedSCOIds"
+                control={control}
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel className={invoiceFieldLabelClassName}>
+                      Sub Change Orders
+                    </FieldLabel>
+                    <InfiniteMultiSearchSelect
+                      options={scoOptions}
+                      value={field.value ?? []}
+                      onValueChange={field.onChange}
+                      search={scoSearch}
+                      onSearchChange={setScoSearch}
+                      isLoading={isLoadingSCOs}
+                      disabled={!selectedPurchaseOrderId}
+                      placeholder={
+                        selectedPurchaseOrderId
+                          ? 'Select related SCOs...'
+                          : 'Select a purchase order first...'
+                      }
+                      searchPlaceholder="Search related SCOs..."
+                      emptyMessage={
+                        selectedPurchaseOrderId
+                          ? 'No SCOs found for this purchase order.'
+                          : 'Select a purchase order first.'
+                      }
+                    />
+                  </Field>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-        <ProjectFormDocumentsCard
-          selectedFiles={selectedFiles}
-          existingDocuments={isEdit && invoiceDetail ? invoiceDetail.attachments : undefined}
-          onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
-          onRemoveFile={(index) =>
-            setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
-          }
-        />
-      </div>
-    </form>
+          <ProjectFormDocumentsCard
+            selectedFiles={selectedFiles}
+            existingDocuments={isEdit && invoiceDetail ? invoiceDetail.attachments : undefined}
+            onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
+            onRemoveFile={(index) =>
+              setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
+            }
+          />
+        </FormContent>
+      </FormLayout>
+    </ProjectFormShell>
   );
+}
+
+function InvoiceRequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
 }

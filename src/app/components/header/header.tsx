@@ -6,6 +6,7 @@ import { useLayout } from '@app/hooks/use-layout';
 import { UserDropdownMenu } from '@app/shared/topbar/user-dropdown-menu';
 
 import Sidebar from '../sidebar/sidebar';
+import type { SidebarMode } from '../sidebar/sidebar-animated-content';
 import { HeaderBreadcrumbs } from './header-breadcrumbs';
 import HeaderHamburger from './header-hamburger';
 import { HeaderMenu } from './header-menu';
@@ -14,9 +15,15 @@ interface HeaderProps {
   breadcrumbs?: boolean | React.ReactNode;
   toolbar?: React.ReactNode;
   menuConfig: MenuConfig;
+  sidebarMode?: SidebarMode;
 }
 
-export function Header({ breadcrumbs = true, toolbar, menuConfig }: HeaderProps) {
+export function Header({
+  breadcrumbs = true,
+  toolbar,
+  menuConfig,
+  sidebarMode = 'main',
+}: HeaderProps) {
   const { isMobile } = useLayout();
   const { data } = useSession();
 
@@ -47,7 +54,7 @@ export function Header({ breadcrumbs = true, toolbar, menuConfig }: HeaderProps)
       {!isMobile && (
         <aside className="dark fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)">
           <Suspense fallback={null}>
-            <Sidebar menuConfig={menuConfig} />
+            <Sidebar menuConfig={menuConfig} mode={sidebarMode} />
           </Suspense>
         </aside>
       )}

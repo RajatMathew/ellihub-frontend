@@ -547,7 +547,6 @@ export function InvoiceDetailPage() {
                     <div className="space-y-2">
                       {relatedSCOs.map((sco) => {
                         const changeTypeLabel = lookupLabel(sco.changeType);
-                        const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
 
                         return (
                           <Link
@@ -579,7 +578,6 @@ export function InvoiceDetailPage() {
                                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                   {sco.date && <span>{formatDate(sco.date)}</span>}
                                   {changeTypeLabel && <span>{changeTypeLabel}</span>}
-                                  {sco.requestedBy && <span>Requested by {sco.requestedBy}</span>}
                                   <span>{sco.lineItems.length} line items</span>
                                   <span>{sco.attachments.length} attachments</span>
                                 </div>
@@ -588,13 +586,6 @@ export function InvoiceDetailPage() {
                                 <div className="text-sm font-semibold tabular-nums text-foreground">
                                   {money(getSubChangeOrderTotalAmount(sco))}
                                 </div>
-                                {sco.impactsSchedule && (
-                                  <div className="mt-1 text-xs text-warning">
-                                    {scheduleImpactDays > 0
-                                      ? `${scheduleImpactDays} day schedule impact`
-                                      : 'Schedule impact'}
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </Link>

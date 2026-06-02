@@ -1,3 +1,5 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -12,8 +14,7 @@ import { useParams } from 'react-router-dom';
 
 export default function DepartmentFormPage() {
   const { id } = useParams<{ id: string }>();
-  const { isEdit, form, departmentQuery, activeSection, setActiveSection, fillSample } =
-    useDepartmentFormState(id);
+  const { isEdit, form, departmentQuery, fillSample } = useDepartmentFormState(id);
   const { saveDepartment, isPending } = useSaveDepartment({ id, isEdit });
   const isSubmitting = form.formState.isSubmitting || isPending;
 
@@ -28,7 +29,7 @@ export default function DepartmentFormPage() {
 
   if (isEdit && departmentQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load department."
           onRetry={() => void departmentQuery.refetch()}
@@ -38,17 +39,19 @@ export default function DepartmentFormPage() {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)} className="container-fluid py-7.5">
-      <DepartmentFormToolbar
-        isEdit={isEdit}
-        isSubmitting={isSubmitting}
-        onFillSample={fillSample}
-      />
-      <DepartmentFormContent
-        activeSection={activeSection}
-        control={form.control}
-        onSectionChange={setActiveSection}
-      />
-    </form>
+    <FormPageShell
+      onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)}
+      fullHeight
+      renderToolbar={(className) => (
+        <DepartmentFormToolbar
+          isEdit={isEdit}
+          isSubmitting={isSubmitting}
+          onFillSample={fillSample}
+          className={className}
+        />
+      )}
+    >
+      <DepartmentFormContent control={form.control} />
+    </FormPageShell>
   );
 }

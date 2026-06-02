@@ -1,6 +1,6 @@
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
@@ -16,6 +16,8 @@ import { generateEmployeePassword } from '@/modules/hr/lib/employee-auth.utils';
 import type { CreateEmployeeInput, EmployeeAuthRole } from '@/modules/hr/schemas/employee.schema';
 import { Calendar, KeyRound, ShieldCheck } from 'lucide-react';
 import { Controller, useWatch, type Control } from 'react-hook-form';
+
+import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
 interface EmployeeEmploymentSectionProps {
   control: Control<CreateEmployeeInput>;
@@ -34,10 +36,8 @@ export function EmployeeEmploymentSection({
     <Card id="employment">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
-            Employment Configuration
-          </h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <h2 className="text-lg font-semibold text-foreground">Employment Configuration</h2>
+          <p className="text-sm text-muted-foreground">
             Workforce placement and onboarding details.
           </p>
         </div>
@@ -50,10 +50,10 @@ export function EmployeeEmploymentSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                  Commencement Date
-                </FieldLabel>
-                <InputWrapper>
+                <EmployeeFormFieldLabel>Commencement Date</EmployeeFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                >
                   <Calendar className="size-4 text-muted-foreground" />
                   <Input {...field} type="date" value={field.value ?? ''} />
                 </InputWrapper>
@@ -68,12 +68,10 @@ export function EmployeeEmploymentSection({
               control={control}
               render={({ field }) => (
                 <Field>
-                  <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                    Link Auth User
-                  </FieldLabel>
+                  <EmployeeFormFieldLabel>Link Auth User</EmployeeFormFieldLabel>
                   <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                       Create login access for this employee
                     </span>
                   </div>
@@ -87,14 +85,13 @@ export function EmployeeEmploymentSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                  Professional Role
-                </FieldLabel>
+                <EmployeeFormFieldLabel required>Professional Role</EmployeeFormFieldLabel>
                 <SearchableSelect
                   options={roleOptions}
                   value={field.value ?? ''}
                   onValueChange={(value) => field.onChange(value || '')}
                   placeholder="Select role..."
+                  className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -108,14 +105,15 @@ export function EmployeeEmploymentSection({
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                      Auth Role
-                    </FieldLabel>
+                    <EmployeeFormFieldLabel required>Auth Role</EmployeeFormFieldLabel>
                     <Select
                       value={field.value ?? 'user'}
                       onValueChange={(value) => field.onChange(value as EmployeeAuthRole)}
                     >
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
+                      <SelectTrigger
+                        aria-invalid={fieldState.invalid}
+                        className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                      >
                         <ShieldCheck className="me-1.5 size-4 text-muted-foreground" />
                         <SelectValue placeholder="Select auth role" />
                       </SelectTrigger>
@@ -137,10 +135,10 @@ export function EmployeeEmploymentSection({
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-                      Temporary Password
-                    </FieldLabel>
-                    <InputWrapper>
+                    <EmployeeFormFieldLabel required>Temporary Password</EmployeeFormFieldLabel>
+                    <InputWrapper
+                      className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                    >
                       <Input
                         {...field}
                         type="text"

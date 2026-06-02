@@ -7,10 +7,16 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@app/components/ui/scroll-area';
 import type { MenuConfig } from '@app/config/types';
 
-import SidebarBuilder from './sidebar-builder';
+import { SidebarAnimatedContent, type SidebarMode } from './sidebar-animated-content';
 import { SidebarHeader } from './sidebar-header';
 
-export default function Sidebar({ menuConfig }: { menuConfig: MenuConfig }) {
+export default function Sidebar({
+  menuConfig,
+  mode = 'main',
+}: {
+  menuConfig: MenuConfig;
+  mode?: SidebarMode;
+}) {
   // const matches = useMatch('/app/*');
   // console.log('Sidebar match:', matches);
   async function handleCheckUpdate() {
@@ -26,7 +32,7 @@ export default function Sidebar({ menuConfig }: { menuConfig: MenuConfig }) {
     <div className="bg-background overflow-hidden border border-border">
       <SidebarHeader />
       <ScrollArea className="shrink-0 h-[calc(100vh-6rem)] lg:h-[calc(100vh-7rem)] mt-0 mb-2.5 min-w-60 ">
-        <SidebarBuilder menuConfig={menuConfig} />
+        <SidebarAnimatedContent menuConfig={menuConfig} mode={mode} />
       </ScrollArea>
       <footer
         className="shrink-0 px-3 py-2 border-t border-border"

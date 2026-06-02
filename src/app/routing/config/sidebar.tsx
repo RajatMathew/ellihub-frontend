@@ -20,9 +20,24 @@ export const mainSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'Directory',
     children: [
-      { title: 'Contacts', path: '../directory/contacts' },
-      { title: 'General Contractors', path: '../directory/general-contractors' },
-      { title: 'Vendors', path: '../directory/vendors' },
+      {
+        title: 'Contacts',
+        path: '../directory/contacts',
+        createPath: true,
+        createTitle: 'Create Contact',
+      },
+      {
+        title: 'General Contractors',
+        path: '../directory/general-contractors',
+        createPath: true,
+        createTitle: 'Create GC',
+      },
+      {
+        title: 'Vendors',
+        path: '../directory/vendors',
+        createPath: true,
+        createTitle: 'Create Vendor',
+      },
     ],
   },
   { type: 'separator' },
@@ -30,9 +45,19 @@ export const mainSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'HR',
     children: [
-      { title: 'Employees', path: '../hr/employees' },
-      { title: 'Departments', path: '../hr/departments' },
-      { title: 'Time Off', path: '../hr/pto' },
+      {
+        title: 'Employees',
+        path: '../hr/employees',
+        createPath: true,
+        createTitle: 'Create Employee',
+      },
+      {
+        title: 'Departments',
+        path: '../hr/departments',
+        createPath: true,
+        createTitle: 'Create Department',
+      },
+      { title: 'Time Off', path: '../hr/pto', createPath: true, createTitle: 'Create Time Off' },
     ],
   },
   { type: 'separator' },
@@ -74,9 +99,7 @@ export const projectSidebarMenu: MenuConfig = [
   { type: 'separator' },
   {
     type: 'menu',
-    children: [
-      { title: 'Overview', path: '../overview' },
-    ],
+    children: [{ title: 'Overview', path: '../overview' }],
   },
   { type: 'separator' },
   {
@@ -89,10 +112,20 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'group-collapsed',
     title: 'Vendor',
     children: [
-      { title: 'RFQs', path: '../rfqs' },
-      { title: 'Purchase Orders', path: '../purchase-orders' },
-      { title: 'Sub Change Order', path: '../sub-change-order' },
-      { title: 'Invoices', path: '../invoices' },
+      { title: 'RFQs', path: '../rfqs', createPath: true, createTitle: 'Create RFQ' },
+      {
+        title: 'Purchase Orders',
+        path: '../purchase-orders',
+        createPath: true,
+        createTitle: 'Create PO',
+      },
+      {
+        title: 'Sub Change Order',
+        path: '../sub-change-order',
+        createPath: true,
+        createTitle: 'Create SCO',
+      },
+      { title: 'Invoices', path: '../invoices', createPath: true, createTitle: 'Create Invoice' },
     ],
   },
   { type: 'separator' },

@@ -60,7 +60,7 @@ export const createPTOInputSchema = z.object({
   typeId: z.string().min(1, 'PTO type is required'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
-  reason: z.string().optional(),
+  reason: z.string().trim().min(1, 'Justification / Notes is required'),
 });
 
 export type CreatePTOInput = z.infer<typeof createPTOInputSchema>;
@@ -70,7 +70,7 @@ export const updatePTOInputSchema = z.object({
   typeId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  reason: z.string().optional(),
+  reason: z.string().trim().min(1, 'Justification / Notes is required').optional(),
 });
 
 export type UpdatePTOInput = z.infer<typeof updatePTOInputSchema>;

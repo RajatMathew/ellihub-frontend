@@ -44,6 +44,10 @@ import {
   PurchaseOrderPdfDialog,
 } from '@/modules/project/components/purchase-order';
 import {
+  calculateEffectivePurchaseOrderTotals,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
+import {
   InfoRow,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
@@ -285,7 +289,15 @@ export function PODetailPage() {
     );
   }
 
-  const poTotal = parseFloat(po.total ?? '0');
+  const purchaseOrderTotals = calculateEffectivePurchaseOrderTotals({
+    lineItems: po.lineItems,
+    subtotal: po.subtotal,
+    negotiatedDiscount: po.negotiatedDiscount,
+    shippingHandlingFee: po.shippingHandlingFee,
+    taxPercent: po.taxPercent,
+    taxAmount: po.taxAmount,
+  });
+  const poTotal = purchaseOrderTotals.total;
   const scoTotal = linkedSCOs
     .filter((sco) => sco.status === 'APPROVED')
     .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0);
@@ -298,9 +310,7 @@ export function PODetailPage() {
     0
   );
   const balanceDue = Math.max(totalCommitment - amountPaid, 0);
-  const subtotal = parseFloat(po.subtotal ?? '0');
-  const negotiatedDiscount = parseFloat(po.negotiatedDiscount ?? '0');
-  const taxAmount = parseFloat(po.taxAmount ?? '0');
+  const { subtotal, negotiatedDiscount, shippingHandlingFee, taxAmount } = purchaseOrderTotals;
   const retainagePercent = parseFloat(po.retainagePercent ?? '0');
   const readableRfq = po.rfq?.rfqNumber ?? po.rfq?.title ?? po.rfqId;
   const tradeLabel =
@@ -617,7 +627,7 @@ export function PODetailPage() {
                 costCodeMap={costCodeMap}
                 subtotal={subtotal}
                 negotiatedDiscount={po.negotiatedDiscount}
-                shippingHandlingFee={po.shippingHandlingFee}
+                shippingHandlingFee={shippingHandlingFee}
                 taxAmount={taxAmount}
                 taxPercent={po.taxPercent}
                 total={poTotal}
@@ -627,6 +637,8 @@ export function PODetailPage() {
             {/* Right column: Placeholder sections */}
             <div className="min-w-0 space-y-5 2xl:col-span-2">
               <ProjectDetailDocumentsCard
+                title="Backup Documents"
+                emptyMessage="No backup documents attached."
                 documents={attachments}
                 canUpload={canEdit && !!poFolderId}
                 canRemove={canEdit}
@@ -695,11 +707,13 @@ export function PODetailPage() {
                       -{formatCurrency(negotiatedDiscount)}
                     </InfoRow>
                   )}
-                  {Number(po.shippingHandlingFee ?? 0) !== 0 && (
-                    <InfoRow label="Shipping and Handling Fee">{formatCurrency(Number(po.shippingHandlingFee))}</InfoRow>
+                  {shippingHandlingFee !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">
+                      {formatCurrency(shippingHandlingFee)}
+                    </InfoRow>
                   )}
-                  {taxAmount > 0 && (
-                    <InfoRow label={`Tax (${formatPercent(po.taxPercent)})`}>
+                  {taxAmount !== 0 && (
+                    <InfoRow label={formatPurchaseOrderTaxLabel(po.taxPercent)}>
                       {formatCurrency(taxAmount)}
                     </InfoRow>
                   )}

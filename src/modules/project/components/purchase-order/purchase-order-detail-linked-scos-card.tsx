@@ -10,6 +10,7 @@ import {
   getSubChangeOrderShippingHandlingFee,
   getSubChangeOrderNegotiatedDiscount,
   getSubChangeOrderSubtotal,
+  getSubChangeOrderTaxAmount,
   getSubChangeOrderTotalAmount,
 } from '@/modules/project/components/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
@@ -61,6 +62,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
             {scos.map((sco) => {
               const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
               const negotiatedDiscount = getSubChangeOrderNegotiatedDiscount(sco);
+              const taxAmount = getSubChangeOrderTaxAmount(sco);
 
               return (
                 <Link
@@ -102,17 +104,15 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                       <div className="font-semibold tabular-nums">
                         {formatCurrency(getSubChangeOrderTotalAmount(sco))}
                       </div>
-                      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0) && (
+                      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0 || taxAmount !== 0) && (
                         <div className="mt-1 text-xs text-muted-foreground">
                           Subtotal {formatCurrency(getSubChangeOrderSubtotal(sco))}
                           {negotiatedDiscount !== 0 &&
                             ` - Discount ${formatCurrency(negotiatedDiscount)}`}
                           {shippingHandlingFee !== 0 &&
                             ` + Shipping and Handling Fee ${formatCurrency(shippingHandlingFee)}`}
+                          {taxAmount !== 0 && ` + Tax ${formatCurrency(taxAmount)}`}
                         </div>
-                      )}
-                      {sco.impactsSchedule && (
-                        <div className="mt-1 text-xs text-warning">Schedule impact</div>
                       )}
                     </div>
                   </div>

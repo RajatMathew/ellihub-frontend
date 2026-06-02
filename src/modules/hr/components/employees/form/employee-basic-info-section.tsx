@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import type { CreateEmployeeInput } from '@/modules/hr/schemas/employee.schema';
 import { Mail, MapPin, Phone, UserPlus } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
+
+import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
 type EmployeeBasicFieldName = 'name' | 'email' | 'phoneNumber' | 'address';
 
@@ -15,10 +17,8 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
     <Card id="info">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
-            Personal Identity
-          </h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <h2 className="text-lg font-semibold text-foreground">Personal Identity</h2>
+          <p className="text-sm text-muted-foreground">
             Fundamental identifying information for the employee.
           </p>
         </div>
@@ -30,6 +30,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             control={control}
             name="name"
             label="Full Legal Name"
+            required
             placeholder="e.g. Robert J. Oppenheimer"
             icon={<UserPlus className="size-4 text-muted-foreground" />}
           />
@@ -37,6 +38,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             control={control}
             name="email"
             label="Work Email Address"
+            required
             placeholder="robert@contractor-corp.com"
             type="email"
             icon={<Mail className="size-4 text-muted-foreground" />}
@@ -68,6 +70,7 @@ function EmployeeTextField({
   control,
   name,
   label,
+  required = false,
   placeholder,
   type = 'text',
   icon,
@@ -75,6 +78,7 @@ function EmployeeTextField({
   control: Control<CreateEmployeeInput>;
   name: EmployeeBasicFieldName;
   label: string;
+  required?: boolean;
   placeholder: string;
   type?: string;
   icon?: ReactNode;
@@ -85,8 +89,10 @@ function EmployeeTextField({
       control={control}
       render={({ field, fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
-          <FieldLabel className="text-xs font-bold uppercase tracking-widest">{label}</FieldLabel>
-          <InputWrapper>
+          <EmployeeFormFieldLabel required={required}>{label}</EmployeeFormFieldLabel>
+          <InputWrapper
+            className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+          >
             {icon}
             <Input
               {...field}

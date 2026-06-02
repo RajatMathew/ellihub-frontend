@@ -1,9 +1,8 @@
 import { useState } from 'react';
 
-import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
-
-import { FormSectionNav } from '@/app/components/form-section-nav';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
 import { CONTACT_FORM_SECTIONS } from '@/modules/directory/constants/contacts/contact-form.constants';
 import { useContactAssociations } from '@/modules/directory/hooks/contacts/use-contact-associations';
@@ -78,20 +77,21 @@ export function ContactFormContent({
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)} className="container-fluid py-7.5">
-        <ContactFormToolbar
-          isEdit={isEdit}
-          isSubmitting={isSubmitting}
-          onFillRandom={handleFillRandom}
-        />
-
-        <FormSectionNav
-          sections={CONTACT_FORM_SECTIONS}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-
-        <div className="space-y-6 pt-6">
+      <FormPageShell
+        onSubmit={handleSubmit(saveContact, onInvalidFormSubmit)}
+        sections={CONTACT_FORM_SECTIONS}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        renderToolbar={(className) => (
+          <ContactFormToolbar
+            isEdit={isEdit}
+            isSubmitting={isSubmitting}
+            onFillRandom={handleFillRandom}
+            className={className}
+          />
+        )}
+      >
+        <div className="space-y-6 pt-4 pb-8 lg:pb-10">
           <ContactInfoFormSection
             control={control}
             formState={formState}
@@ -104,7 +104,7 @@ export function ContactFormContent({
             gcOptions={gcOptions}
           />
         </div>
-      </form>
+      </FormPageShell>
 
       <ContactFormDialogs
         associations={associations}

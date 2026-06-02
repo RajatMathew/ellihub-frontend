@@ -18,6 +18,8 @@ import {
   getSubChangeOrderNegotiatedDiscount,
   getSubChangeOrderShippingHandlingFee,
   getSubChangeOrderSubtotal,
+  getSubChangeOrderTaxAmount,
+  getSubChangeOrderTaxLabel,
   getSubChangeOrderTotalAmount,
   getSubChangeOrderPurchaseOrderLabel,
   getSubChangeOrderTypeLabel,
@@ -74,14 +76,11 @@ export function SubChangeOrderTypeCell({ sco, fallback }: { sco: SCOListItem; fa
   );
 }
 
-export function SubChangeOrderRequestedByCell({ sco }: { sco: SCOListItem }) {
-  return <span className="text-sm text-foreground">{sco.requestedBy ?? '-'}</span>;
-}
-
 export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
   const subtotal = getSubChangeOrderSubtotal(sco);
   const negotiatedDiscount = getSubChangeOrderNegotiatedDiscount(sco);
   const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
+  const taxAmount = getSubChangeOrderTaxAmount(sco);
   const total = getSubChangeOrderTotalAmount(sco);
 
   return (
@@ -89,7 +88,7 @@ export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
       <span className="text-sm font-medium text-foreground">
         {formatOptionalSubChangeOrderCurrency(total)}
       </span>
-      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0) && (
+      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0 || taxAmount !== 0) && (
         <>
           <span className="text-2sm text-muted-foreground">
             Subtotal {formatOptionalSubChangeOrderCurrency(subtotal)}
@@ -102,6 +101,11 @@ export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
           {shippingHandlingFee !== 0 && (
             <span className="text-2sm text-muted-foreground">
               Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(shippingHandlingFee)}
+            </span>
+          )}
+          {taxAmount !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              {getSubChangeOrderTaxLabel(sco)} {formatOptionalSubChangeOrderCurrency(taxAmount)}
             </span>
           )}
         </>
@@ -126,14 +130,6 @@ export function SubChangeOrderDateCell({ sco }: { sco: SCOListItem }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-sm text-foreground">{formatOptionalSubChangeOrderDate(sco.date)}</span>
-      <span className="text-2sm text-muted-foreground">
-        {sco.impactsSchedule ? 'Schedule impact' : 'No schedule impact'}
-      </span>
-      {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
-        <span className="text-2sm text-muted-foreground">
-          {sco.scheduleImpactDays} day{sco.scheduleImpactDays === 1 ? '' : 's'}
-        </span>
-      )}
     </div>
   );
 }

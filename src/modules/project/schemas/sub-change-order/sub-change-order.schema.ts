@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 
 // --- Status ---
 
@@ -92,11 +93,10 @@ export const scoListItemSchema = z
     createdBy: z.string().nullable().optional(),
     negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
-    scheduleImpactDays: z.coerce.number().nullable().optional(),
-    requestedBy: z.string().nullable().optional(),
+    taxPercent: z.coerce.number().nullable().optional(),
+    taxAmount: z.coerce.number().nullable().optional(),
     changeTypeId: z.string().nullable().optional(),
     changeType: scoLookupRefSchema.nullable().optional(),
-    impactsSchedule: z.boolean().nullable().optional(),
     approvedBy: z.string().nullable().optional(),
     approvedAt: z.string().nullable().optional(),
     rejectedBy: z.string().nullable().optional(),
@@ -222,10 +222,8 @@ const baseSCOInputSchema = z.object({
   description: z.string().optional(),
   negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
   shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
-  scheduleImpactDays: z.number().int().min(0, 'Schedule impact days must be >= 0').optional(),
-  requestedBy: z.string().optional(),
+  taxPercent: z.number().min(0).max(100).optional(),
   changeTypeId: z.string().min(1, 'Change type is required'),
-  impactsSchedule: z.boolean().optional(),
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
 
@@ -234,7 +232,7 @@ function validateSCODiscount(
   ctx: z.RefinementCtx
 ) {
     const subtotal = value.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
+      (sum, item) => sum + calculateRoundedLineAmount(item),
       0
     );
     if ((value.negotiatedDiscount ?? 0) > subtotal) {
@@ -306,15 +304,14 @@ export const scoDetailSchema = z
     statusId: z.string().optional(),
     description: z.string().nullable().optional(),
     initiatedBy: z.string().optional(),
-    requestedBy: z.string().nullable().optional(),
     priority: z.string().optional(),
     reasonForChange: z.string().nullable().optional(),
     detailedScope: z.string().nullable().optional(),
-    scheduleImpactDays: z.number().nullable().optional(),
     negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
+    taxPercent: z.coerce.number().nullable().optional(),
+    taxAmount: z.coerce.number().nullable().optional(),
     changeTypeId: z.string().nullable().optional(),
-    impactsSchedule: z.boolean().nullable().optional(),
     vendorContactName: z.string().nullable().optional(),
     vendorContactEmail: z.string().nullable().optional(),
     vendorReferenceNumber: z.string().nullable().optional(),
@@ -369,7 +366,6 @@ export const scoDetailSchema = z
     voidedBy: z.string().nullable().optional(),
     voidedAt: z.string().nullable().optional(),
     voidReason: z.string().nullable().optional(),
-    taxPercent: z.coerce.number().optional(),
     retainagePercent: z.coerce.number().optional(),
     paymentTerms: z.string().optional(),
     lineItems: z.array(scoLineItemSchema).optional().default([]),

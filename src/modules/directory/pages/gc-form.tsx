@@ -1,9 +1,12 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
+import { GC_FORM_SECTIONS } from '@/modules/directory/constants/gc.constants';
 import { useGCFormState } from '@/modules/directory/hooks/gc/use-gc-form-state';
 import { useSaveGC } from '@/modules/directory/hooks/gc/use-save-gc';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -39,7 +42,7 @@ export function GCFormPage() {
 
   if (state.isEdit && state.gcQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load general contractor."
           description="The general contractor details could not be loaded."
@@ -51,7 +54,7 @@ export function GCFormPage() {
 
   if (state.isEdit && !state.gcQuery.data) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="General contractor not found."
           description="This general contractor may have been deleted or moved."
@@ -63,27 +66,32 @@ export function GCFormPage() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)} className="container-fluid py-7.5">
-        <GCFormToolbar
-          isEdit={state.isEdit}
-          isSubmitting={isSubmitting}
-          onFillRandom={state.fillRandom}
-        />
-
+      <FormPageShell
+        onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)}
+        sections={GC_FORM_SECTIONS}
+        activeSection={state.activeSection}
+        onSectionChange={state.setActiveSection}
+        renderToolbar={(className) => (
+          <GCFormToolbar
+            isEdit={state.isEdit}
+            isSubmitting={isSubmitting}
+            onFillRandom={state.fillRandom}
+            className={className}
+          />
+        )}
+      >
         <GCFormContent
           control={control}
-          activeSection={state.activeSection}
           gcTypeOptions={state.gcTypeOptions}
           contactLinks={state.contactLinks}
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
           targetEntityId={id}
-          onSectionChange={state.setActiveSection}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}
         />
-      </form>
+      </FormPageShell>
 
       <QuickCreateContactDialog
         open={state.contactDialogOpen}

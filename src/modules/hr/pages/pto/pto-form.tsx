@@ -1,3 +1,5 @@
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -35,18 +37,20 @@ export default function PTOFormPage() {
 
   if (isEdit && ptoQuery.isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState title="Unable to load request." onRetry={() => void ptoQuery.refetch()} />
       </div>
     );
   }
 
   return (
-    <form
+    <FormPageShell
       onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)}
-      className="container-fluid py-7.5"
+      fullHeight
+      renderToolbar={(className) => (
+        <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} className={className} />
+      )}
     >
-      <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} />
       <PTOFormContent
         control={form.control}
         employeeOptions={employeeOptions}
@@ -57,6 +61,6 @@ export default function PTOFormPage() {
         isAccessLoading={isAccessLoading}
         isTypesLoading={isTypesLoading}
       />
-    </form>
+    </FormPageShell>
   );
 }

@@ -14,6 +14,8 @@ interface ProjectFormDocumentsCardProps {
   onAddFile: (file: File) => void;
   onRemoveFile: (index: number) => void;
   disabled?: boolean;
+  title?: string;
+  existingTitle?: string;
 }
 
 function fileSizeLabel(size: number) {
@@ -32,12 +34,14 @@ export function ProjectFormDocumentsCard({
   onAddFile,
   onRemoveFile,
   disabled = false,
+  title = 'Documents',
+  existingTitle = 'Existing Documents',
 }: ProjectFormDocumentsCardProps) {
   return (
     <Card id="documents">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-          Documents
+          {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -84,7 +88,7 @@ export function ProjectFormDocumentsCard({
         {existingDocuments.length > 0 && (
           <div className="mt-4 space-y-2">
             <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-              Existing Documents
+              {existingTitle}
             </div>
             {existingDocuments.map((attachment) => (
               <div

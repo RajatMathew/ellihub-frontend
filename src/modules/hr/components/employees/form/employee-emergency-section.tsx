@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import type { CreateEmployeeInput } from '@/modules/hr/schemas/employee.schema';
 import { Contact2, Phone } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
+
+import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
 type EmployeeEmergencyFieldName =
   | 'emergencyContactName'
@@ -18,12 +20,8 @@ export function EmployeeEmergencySection({ control }: { control: Control<CreateE
     <Card id="emergency">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
-            Emergency Information
-          </h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Protocol contacts for critical incidents.
-          </p>
+          <h2 className="text-lg font-semibold text-foreground">Emergency Information</h2>
+          <p className="text-sm text-muted-foreground">Protocol contacts for critical incidents.</p>
         </div>
 
         <Separator />
@@ -74,8 +72,10 @@ function EmergencyField({
       control={control}
       render={({ field, fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
-          <FieldLabel className="text-xs font-bold uppercase tracking-widest">{label}</FieldLabel>
-          <InputWrapper>
+          <EmployeeFormFieldLabel>{label}</EmployeeFormFieldLabel>
+          <InputWrapper
+            className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+          >
             {icon}
             <Input {...field} value={String(field.value ?? '')} placeholder={placeholder} />
           </InputWrapper>

@@ -30,6 +30,7 @@ import {
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
@@ -1311,16 +1312,13 @@ export default function RFQDetailPage() {
               </FieldLabel>
               <InputWrapper>
                 <span className="text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  step="0.01"
+                <NumberInput
+                  value={typeof quoteAmount === 'number' ? quoteAmount : 0}
+                  onValueChange={setQuoteAmount}
                   min={0}
+                  decimalPlaces={2}
                   placeholder="0.00"
-                  value={quoteAmount}
                   disabled={isQuoteViewOnly}
-                  onChange={(e) =>
-                    setQuoteAmount(e.target.value === '' ? '' : e.target.valueAsNumber)
-                  }
                 />
               </InputWrapper>
             </Field>

@@ -51,15 +51,30 @@ function TooltipContent({
   className,
   sideOffset = 4,
   variant,
+  showArrow = false,
+  arrowClassName,
+  children,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content> & VariantProps<typeof tooltipVariants>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> &
+  VariantProps<typeof tooltipVariants> & {
+    showArrow?: boolean;
+    arrowClassName?: string;
+  }) {
   return (
     <TooltipPrimitive.Content
       data-slot="tooltip-content"
       sideOffset={sideOffset}
       className={cn(tooltipVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {children}
+      {showArrow && (
+        <TooltipPrimitive.Arrow
+          data-slot="tooltip-arrow"
+          className={cn('fill-zinc-950 dark:fill-zinc-300', arrowClassName)}
+        />
+      )}
+    </TooltipPrimitive.Content>
   );
 }
 

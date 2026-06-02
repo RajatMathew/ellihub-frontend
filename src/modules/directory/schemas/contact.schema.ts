@@ -43,14 +43,8 @@ export const contactPhoneFormSchema = z
     number: z.string(),
     label: z.string(),
   })
-  .refine(
-    (data) => /^[+\d\s\-().]+$/.test(data.number),
-    'Phone number contains invalid characters',
-  )
-  .refine(
-    (data) => data.number.replace(/\D/g, '').length >= 7,
-    'Enter a valid phone number',
-  );
+  .refine((data) => /^[+\d\s\-().]+$/.test(data.number), 'Phone number contains invalid characters')
+  .refine((data) => data.number.replace(/\D/g, '').length >= 7, 'Enter a valid phone number');
 
 export type ContactPhone = z.infer<typeof contactPhoneSchema>;
 
@@ -149,7 +143,7 @@ export type ContactPaginatedResponse = z.infer<typeof contactPaginatedResponseSc
 
 export const contactFormSchema = z
   .object({
-    fullName: z.string().min(1, 'Name is required'),
+    fullName: z.string().min(2, 'Full name should be at least 2 characters'),
     professionalRoleId: z.string().optional(),
     email: contactEmailSchema.nullable().optional(),
     phoneNumber: contactPhoneFormSchema.nullable().optional(),
@@ -160,7 +154,7 @@ export const contactFormSchema = z
     {
       message: 'At least one email or phone number is required',
       path: ['email'],
-    },
+    }
   );
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
@@ -168,7 +162,7 @@ export type ContactFormValues = z.infer<typeof contactFormSchema>;
 // --- Inputs ---
 
 export const createContactInputSchema = z.object({
-  fullName: z.string().min(1, 'Name is required'),
+  fullName: z.string().min(2, 'Full name should be at least 2 characters'),
   professionalRoleId: z.string().optional(),
   email: z.string().email('Invalid email address').optional(),
   phoneNumber: z.string().optional(),
@@ -201,30 +195,21 @@ export const quickCreateContactSchema = z
     professionalRoleId: z.string().optional(),
     email: z
       .string()
-      .refine(
-        (val) => !val || z.string().email().safeParse(val).success,
-        'Invalid email address',
-      )
+      .refine((val) => !val || z.string().email().safeParse(val).success, 'Invalid email address')
       .optional(),
     phone: z
       .string()
       .refine(
         (val) => !val || /^[+\d\s\-().]+$/.test(val),
-        'Phone number contains invalid characters',
+        'Phone number contains invalid characters'
       )
-      .refine(
-        (val) => !val || val.replace(/\D/g, '').length >= 7,
-        'Enter a valid phone number',
-      )
+      .refine((val) => !val || val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number')
       .optional(),
   })
-  .refine(
-    (data) => (data.email && data.email.trim()) || (data.phone && data.phone.trim()),
-    {
-      message: 'At least one email or phone number is required',
-      path: ['email'],
-    },
-  );
+  .refine((data) => (data.email && data.email.trim()) || (data.phone && data.phone.trim()), {
+    message: 'At least one email or phone number is required',
+    path: ['email'],
+  });
 
 export type QuickCreateContactValues = z.infer<typeof quickCreateContactSchema>;
 
