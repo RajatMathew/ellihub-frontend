@@ -150,7 +150,10 @@ export function POFormPage() {
   const vendorOptions = (vendorsData?.data ?? []).map((vendor) => ({
     value: vendor.id,
     label: vendor.name,
+    badge: vendor.status === 'INACTIVE' ? 'Inactive' : undefined,
+    disabled: vendor.status === 'INACTIVE',
   }));
+  const activeVendorOptions = vendorOptions.filter((option) => !option.disabled);
   const costCodeOptions = costCodes.map((costCode) => ({
     value: costCode.id,
     label: `${costCode.code} - ${costCode.name}`,
@@ -352,7 +355,8 @@ export function POFormPage() {
             onLoad={(entries) => {
               const data = entries[Math.floor(Math.random() * entries.length)];
               const randomVendor =
-                vendorOptions[Math.floor(Math.random() * vendorOptions.length)]?.value ?? '';
+                activeVendorOptions[Math.floor(Math.random() * activeVendorOptions.length)]
+                  ?.value ?? '';
 
               reset({
                 ...data,

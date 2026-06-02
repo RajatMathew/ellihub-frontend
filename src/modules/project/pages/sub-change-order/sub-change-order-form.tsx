@@ -508,12 +508,16 @@ function SCORequiredFieldLabel({ children }: { children: ReactNode }) {
 }
 
 function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {
+  const hasInactiveVendor = po.vendor?.status === 'INACTIVE';
+
   return {
     value: po.id,
     label: po.poNumber ?? po.id,
     description: [po.vendor?.name, po.total ? formatCurrency(Number(po.total)) : undefined]
       .filter(Boolean)
       .join(' - '),
+    badge: hasInactiveVendor ? 'Inactive' : undefined,
+    disabled: hasInactiveVendor,
   };
 }
 

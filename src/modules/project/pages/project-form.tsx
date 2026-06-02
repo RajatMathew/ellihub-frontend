@@ -106,7 +106,14 @@ export default function ProjectForm() {
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
-  const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
+  const gcOptions =
+    gcsQuery.data?.data?.map((gc) => ({
+      value: gc.id,
+      label: gc.name,
+      badge: gc.status === 'INACTIVE' ? 'Inactive' : undefined,
+      disabled: gc.status === 'INACTIVE',
+    })) ?? [];
+  const activeGcOptions = gcOptions.filter((option) => !option.disabled);
   const pmOptions = isAuthPMCreatingProject
     ? access?.employeeId
       ? [{ value: access.employeeId, label: 'Current PM' }]
@@ -261,7 +268,7 @@ export default function ProjectForm() {
         PROJECT_STATUS_OPTIONS[Math.floor(Math.random() * PROJECT_STATUS_OPTIONS.length)]?.value ||
         'ACTIVE',
       divisionId: divisionOptions[Math.floor(Math.random() * divisionOptions.length)]?.value || '',
-      gcId: gcOptions[Math.floor(Math.random() * gcOptions.length)]?.value || '',
+      gcId: activeGcOptions[Math.floor(Math.random() * activeGcOptions.length)]?.value || '',
       leadPMId: pmOptions[Math.floor(Math.random() * pmOptions.length)]?.value || '',
       streetAddress: fakeStreetAddress(),
       city: fakeCity(),

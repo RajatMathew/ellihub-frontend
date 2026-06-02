@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
+import { Badge } from '@app/components/ui/badge';
 import {
   Command,
   CommandCheck,
@@ -18,6 +19,8 @@ export type InfiniteSearchSelectOption = {
   value: string;
   label: string;
   description?: string;
+  badge?: string;
+  disabled?: boolean;
 };
 
 type InfiniteSearchSelectProps = {
@@ -92,6 +95,11 @@ export function InfiniteSearchSelect({
           >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
+          {selectedOption?.badge && (
+            <Badge variant="secondary" size="sm" className="shrink-0">
+              {selectedOption.badge}
+            </Badge>
+          )}
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60 -me-0.5" />
         </button>
       </PopoverTrigger>
@@ -124,13 +132,22 @@ export function InfiniteSearchSelect({
                   key={option.value}
                   value={option.value}
                   keywords={[option.label, option.description ?? '']}
+                  disabled={option.disabled}
                   onSelect={() => {
+                    if (option.disabled) return;
                     onValueChange(option.value === value ? null : option.value);
                     setOpen(false);
                   }}
                 >
-                  <div className="min-w-0">
-                    <span className="block truncate">{option.label}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{option.label}</span>
+                      {option.badge && (
+                        <Badge variant="secondary" size="sm" className="shrink-0">
+                          {option.badge}
+                        </Badge>
+                      )}
+                    </div>
                     {option.description && (
                       <span className="block truncate text-xs text-muted-foreground">
                         {option.description}

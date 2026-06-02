@@ -39,6 +39,7 @@ import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
@@ -1515,26 +1516,42 @@ export default function RFQDetailPage() {
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
               {vendors
                 .filter((v) => !alreadyInvitedIds.has(v.id))
-                .map((v) => (
-                  <label
-                    key={v.id}
-                    className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={inviteVendorIds.includes(v.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setInviteVendorIds((prev) => [...prev, v.id]);
-                        } else {
-                          setInviteVendorIds((prev) => prev.filter((id) => id !== v.id));
-                        }
-                      }}
-                    />
-                    {v.name}
-                  </label>
-                ))}
+                .map((v) => {
+                  const isInactive = v.status === 'INACTIVE';
+
+                  return (
+                    <label
+                      key={v.id}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
+                        isInactive
+                          ? 'cursor-not-allowed opacity-60'
+                          : 'cursor-pointer hover:bg-accent'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-primary disabled:cursor-not-allowed"
+                        checked={inviteVendorIds.includes(v.id)}
+                        disabled={isInactive}
+                        onChange={(e) => {
+                          if (isInactive) return;
+                          if (e.target.checked) {
+                            setInviteVendorIds((prev) => [...prev, v.id]);
+                          } else {
+                            setInviteVendorIds((prev) => prev.filter((id) => id !== v.id));
+                          }
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                      {isInactive && (
+                        <Badge variant="secondary" size="sm" className="shrink-0">
+                          Inactive
+                        </Badge>
+                      )}
+                    </label>
+                  );
+                })}
               {vendors.filter((v) => !alreadyInvitedIds.has(v.id)).length === 0 && (
                 <p className="text-sm text-muted-foreground py-2 text-center">
                   All vendors have already been invited.
@@ -1596,26 +1613,42 @@ export default function RFQDetailPage() {
               vendor(s).
             </p>
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
-              {vendors.map((v) => (
-                <label
-                  key={v.id}
-                  className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
-                >
-                  <input
-                    type="checkbox"
-                    className="accent-primary"
-                    checked={selectedVendorIds.includes(v.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedVendorIds((prev) => [...prev, v.id]);
-                      } else {
-                        setSelectedVendorIds((prev) => prev.filter((id) => id !== v.id));
-                      }
-                    }}
-                  />
-                  {v.name}
-                </label>
-              ))}
+              {vendors.map((v) => {
+                const isInactive = v.status === 'INACTIVE';
+
+                return (
+                  <label
+                    key={v.id}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
+                      isInactive
+                        ? 'cursor-not-allowed opacity-60'
+                        : 'cursor-pointer hover:bg-accent'
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-primary disabled:cursor-not-allowed"
+                      checked={selectedVendorIds.includes(v.id)}
+                      disabled={isInactive}
+                      onChange={(e) => {
+                        if (isInactive) return;
+                        if (e.target.checked) {
+                          setSelectedVendorIds((prev) => [...prev, v.id]);
+                        } else {
+                          setSelectedVendorIds((prev) => prev.filter((id) => id !== v.id));
+                        }
+                      }}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                    {isInactive && (
+                      <Badge variant="secondary" size="sm" className="shrink-0">
+                        Inactive
+                      </Badge>
+                    )}
+                  </label>
+                );
+              })}
               {vendors.length === 0 && (
                 <p className="text-sm text-muted-foreground py-2 text-center">No vendors found.</p>
               )}

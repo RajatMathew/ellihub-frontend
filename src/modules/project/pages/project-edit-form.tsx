@@ -116,7 +116,13 @@ function ProjectEditFormInner({
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
-  const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
+  const gcOptions =
+    gcsQuery.data?.data?.map((gc) => ({
+      value: gc.id,
+      label: gc.name,
+      badge: gc.status === 'INACTIVE' ? 'Inactive' : undefined,
+      disabled: gc.status === 'INACTIVE',
+    })) ?? [];
   const pmOptions = uniqueOptions([
     ...(project.leadPM ? [{ value: project.leadPM.id, label: project.leadPM.name }] : []),
     ...(project.leadPMId && !project.leadPM
