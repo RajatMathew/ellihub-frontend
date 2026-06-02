@@ -16,8 +16,14 @@ function getCreateTitle(item: MenuItem): string {
   return item.createTitle ?? `Create ${item.title ?? 'item'}`;
 }
 
-export function SidebarMenuCreateAction({ item }: { item: MenuItem }) {
-  const createPath = getCreatePath(item);
+export function SidebarMenuCreateAction({
+  item,
+  createPath: resolvedCreatePath,
+}: {
+  item: MenuItem;
+  createPath?: string;
+}) {
+  const createPath = resolvedCreatePath ?? getCreatePath(item);
   if (!createPath) return null;
 
   const title = getCreateTitle(item);

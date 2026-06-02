@@ -53,11 +53,25 @@ export function SidebarGroupMenu({
 }: SidebarGroupMenuProps) {
   const { pathname } = useLocation();
   const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
+  const resolveSidebarMenuPath = useCallback(
+    (path?: string): string => {
+      if (!path) return '#';
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
+      return resolvePath(base, toResolve);
+    },
+    [base, stripLeadingDotDotSlash]
+  );
 
   // Resolve relative menu paths (e.g. "../overview") to absolute for comparison with pathname
   const matchPath = useCallback(
     (path: string): boolean => {
-      const toResolve = stripLeadingDotDotSlash && path.startsWith('../') ? path.slice(3) : path;
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
       const resolved = resolvePath(base, toResolve);
       return (
         pathname === resolved ||
@@ -97,29 +111,44 @@ export function SidebarGroupMenu({
           </AccordionMenuSubTrigger>
 
           <AccordionMenuSubContent type="single" collapsible parentValue={`${name}-trigger`}>
-            {item.children?.map((child, index) => (
-              <AccordionMenuLinkItem
-                key={index}
-                value={child.path || '#'}
-                asChild
-                className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
-                trailing={child.createPath ? <SidebarMenuCreateAction item={child} /> : undefined}
-              >
-                <Link to={child.path || '#'}>
-                  {child.icon && <child.icon />}
-                  <span>{child.title}</span>
-                  {child.badge && (
-                    <Badge
-                      size="sm"
-                      variant={child.badge.variant}
-                      appearance={child.badge.appearance}
-                    >
-                      {child.badge.text}
-                    </Badge>
-                  )}
-                </Link>
-              </AccordionMenuLinkItem>
-            ))}
+            {item.children?.map((child, index) => {
+              const to = resolveSidebarMenuPath(child.path);
+              const createTo = child.createPath
+                ? resolveSidebarMenuPath(
+                    child.createPath === true
+                      ? `${child.path?.replace(/\/$/, '')}/create`
+                      : child.createPath
+                  )
+                : undefined;
+
+              return (
+                <AccordionMenuLinkItem
+                  key={index}
+                  value={child.path || '#'}
+                  asChild
+                  className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
+                  trailing={
+                    createTo ? (
+                      <SidebarMenuCreateAction item={child} createPath={createTo} />
+                    ) : undefined
+                  }
+                >
+                  <Link to={to}>
+                    {child.icon && <child.icon />}
+                    <span>{child.title}</span>
+                    {child.badge && (
+                      <Badge
+                        size="sm"
+                        variant={child.badge.variant}
+                        appearance={child.badge.appearance}
+                      >
+                        {child.badge.text}
+                      </Badge>
+                    )}
+                  </Link>
+                </AccordionMenuLinkItem>
+              );
+            })}
           </AccordionMenuSubContent>
         </AccordionMenuSub>
       ))}

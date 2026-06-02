@@ -17,11 +17,25 @@ import { SidebarMenuCreateAction } from './sidebar-menu-create-action';
 export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
   const { pathname } = useLocation();
   const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
+  const resolveSidebarMenuPath = useCallback(
+    (path?: string): string => {
+      if (!path) return '#';
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
+      return resolvePath(base, toResolve);
+    },
+    [base, stripLeadingDotDotSlash]
+  );
 
   // Resolve relative menu paths (e.g. "../projects") to absolute for comparison with pathname
   const matchPath = useCallback(
     (path: string): boolean => {
-      const toResolve = stripLeadingDotDotSlash && path.startsWith('../') ? path.slice(3) : path;
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
       const resolved = resolvePath(base, toResolve);
       return (
         pathname === resolved ||
@@ -48,15 +62,28 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
           <AccordionMenuGroup key={index}>
             {item.title && <AccordionMenuLabel>{item.title}</AccordionMenuLabel>}
             {item.children?.map((child, index) => {
+              const to = resolveSidebarMenuPath(child.path);
+              const createTo = child.createPath
+                ? resolveSidebarMenuPath(
+                    child.createPath === true
+                      ? `${child.path?.replace(/\/$/, '')}/create`
+                      : child.createPath
+                  )
+                : undefined;
+
               return (
                 <AccordionMenuLinkItem
                   key={index}
                   value={child.path || '#'}
                   asChild
                   className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
-                  trailing={child.createPath ? <SidebarMenuCreateAction item={child} /> : undefined}
+                  trailing={
+                    createTo ? (
+                      <SidebarMenuCreateAction item={child} createPath={createTo} />
+                    ) : undefined
+                  }
                 >
-                  <Link to={child.path || '#'}>
+                  <Link to={to}>
                     {child.icon && <child.icon />}
                     <span>{child.title}</span>
                     {child.badge && (

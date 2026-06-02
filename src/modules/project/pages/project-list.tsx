@@ -21,8 +21,6 @@ import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const currentYear = new Date().getFullYear();
-
 const getProjectYearDate = (project: ProjectListItem): string | null | undefined => {
   return project.tcoDate ?? project.estimatedEndDate;
 };
@@ -51,20 +49,21 @@ export function ProjectList() {
   const { can } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
 
-  const year = Number(searchParams.get('year')) || currentYear;
+  const yearParam = searchParams.get('year');
+  const year = yearParam ? Number(yearParam) : null;
   const statusId = searchParams.get('statusId') ?? undefined;
 
   const { data, isLoading, isError, refetch } = useProjectsQuery({
     size: 100,
     sortBy: 'tcoDate',
     sortOrder: 'desc',
-    year,
+    year: year ?? undefined,
   });
 
   const summaryProjects = useMemo(
     () =>
       (data?.data ?? [])
-        .filter((project) => getProjectYear(project) === year)
+        .filter((project) => year === null || getProjectYear(project) === year)
         .sort((a, b) => getProjectYearSortValue(b) - getProjectYearSortValue(a)),
     [data?.data, year]
   );
@@ -81,8 +80,8 @@ export function ProjectList() {
   const totalCount = data?.pagination.totalItems ?? summaryProjects.length;
 
   const handleYearChange = useCallback(
-    (y: number) => {
-      updateParams({ year: String(y), statusId: undefined });
+    (y: number | null) => {
+      updateParams({ year: y === null ? undefined : String(y), statusId: undefined });
     },
     [updateParams]
   );
@@ -96,13 +95,10 @@ export function ProjectList() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar>
+      <Toolbar className="gap-3 pt-5 pb-3 mb-4">
         <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Portfolio Overview
-            </div>
-            <ToolbarPageTitle>Active Projects</ToolbarPageTitle>
+          <ToolbarHeading className="gap-0 lg:gap-0">
+            <ToolbarPageTitle>Project Portfolio</ToolbarPageTitle>
           </ToolbarHeading>
           {can('project', 'create') && (
             <ToolbarActions>
