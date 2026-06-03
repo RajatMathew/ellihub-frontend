@@ -1,3 +1,4 @@
+import { NotFound } from '@/app/components/error/not-found';
 import ProjectContractOverview from '@/modules/project/pages/project-contract-overview';
 import ProjectFilesPage from '@/modules/project/pages/project-files';
 import ProjectForm from '@/modules/project/pages/project-form';
@@ -20,6 +21,7 @@ const ProjectRoutes = () => {
       <Route path="invoices/*" element={<InvoiceRoutes />} />
       <Route path="sub-change-order/*" element={<SCORoutes />} />
       <Route path="purchase-orders/*" element={<PORoutes />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

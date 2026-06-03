@@ -1,4 +1,5 @@
 import { PermissionRoute } from '@/app/components/access/permission-route';
+import { NotFound } from '@/app/components/error/not-found';
 import ProjectForm from '@/modules/project/pages/project-form';
 import ProjectList from '@/modules/project/pages/project-list';
 import { Route, Routes } from 'react-router-dom';
@@ -15,6 +16,7 @@ const ProjectRoutes = () => {
           </PermissionRoute>
         }
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

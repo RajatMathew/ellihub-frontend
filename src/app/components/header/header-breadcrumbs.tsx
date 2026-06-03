@@ -14,6 +14,7 @@ import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 
 const ROUTE_LABELS: Record<string, string> = {
+  rfqs: 'RFQs',
   'sub-change-order': 'Sub Change Order',
 };
 
@@ -78,16 +79,27 @@ export function HeaderBreadcrumbs() {
   }
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList>
+    <Breadcrumb className="lg:-translate-x-2">
+      <BreadcrumbList className="gap-0.5 text-sm font-medium">
         {breadcrumbs.map((crumb, index) => (
           <Fragment key={`${crumb.path}-${index}`}>
-            {index > 0 && <BreadcrumbSeparator />}
-            <BreadcrumbItem>
+            {index > 0 && (
+              <BreadcrumbSeparator className="mx-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
+            )}
+            <BreadcrumbItem className="gap-0.5">
               {crumb.isLast || index === 0 ? (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                <BreadcrumbPage
+                  className={`cursor-pointer rounded-md px-2 py-1 font-medium transition-colors hover:bg-zinc-100 hover:text-foreground ${
+                    crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {crumb.label}
+                </BreadcrumbPage>
               ) : (
-                <BreadcrumbLink asChild>
+                <BreadcrumbLink
+                  asChild
+                  className="cursor-pointer rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors hover:bg-zinc-100 hover:text-foreground"
+                >
                   <Link to={crumb.path}>{crumb.label}</Link>
                 </BreadcrumbLink>
               )}

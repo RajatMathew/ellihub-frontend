@@ -28,8 +28,8 @@ export function AppLayout({ children }: AppLayoutProps) {
           '--sidebar-width': '240px',
           '--sidebar-collapsed-width': '0px',
           '--sidebar-header-height': '54px',
-          '--header-height': '60px',
-          '--header-height-mobile': '60px',
+          '--header-height': '48px',
+          '--header-height-mobile': '48px',
         } as React.CSSProperties
       }
     >

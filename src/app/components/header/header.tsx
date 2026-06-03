@@ -37,8 +37,8 @@ export function Header({
             {toolbar && toolbar}
             <UserDropdownMenu
               trigger={
-                <div className="size-10 rounded-full shrink-0 cursor-pointer bg-muted flex items-center justify-center shadow border-2">
-                  <div className="text-xs text-primary font-extrabold">
+                <div className="size-8 rounded-full shrink-0 cursor-pointer bg-primary/10 flex items-center justify-center border border-primary/15">
+                  <div className="text-[11px] text-primary font-bold">
                     {data?.user?.name
                       ?.split(' ')
                       .map((n) => n[0])
