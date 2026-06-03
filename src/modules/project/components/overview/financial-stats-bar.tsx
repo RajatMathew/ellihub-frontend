@@ -40,32 +40,33 @@ export function FinancialStatsBar({
       : `${approvedCOsCount} approved COs`;
 
   return (
-    <StatsBar>
+    <StatsBar variant="cards" width="full">
       <StatsBarItem
+        variant="card"
         label="Original"
         value={formatCurrency(computations.original)}
         description={contract?.contractType ?? 'Original Contract'}
         dotColor="bg-label-lighter"
         valueColor="text-foreground"
-        className="border-b md:border-b-0"
       />
       <StatsBarItem
+        variant="card"
         label="Approved COs"
         value={formatSignedCurrency(computations.approvedCOs)}
         description={approvedCOsDescription}
         dotColor="bg-success"
         valueColor={approvedCOsValueColor}
-        className="border-b md:border-b-0"
       />
       <StatsBarItem
+        variant="card"
         label="Contract Sum"
         value={formatCurrency(computations.contractSum)}
         description="Revised Total"
         dotColor="bg-foreground"
         valueColor="text-foreground"
-        className="border-b md:border-b-0"
       />
       <StatsBarItem
+        variant="card"
         label="Committed"
         value={formatCurrency(totalCommitted)}
         description={`${activePOsCount} issued/delivered POs + ${approvedSCOsCount} approved SCOs`}

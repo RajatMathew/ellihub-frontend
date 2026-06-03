@@ -61,7 +61,7 @@ export function CostCodesListPage() {
   const [deleteTarget, setDeleteTarget] = useState<CostCode | null>(null);
 
   const categoryCountQueries = useQueries({
-    queries: categories.slice(0, 3).map((cat) => ({
+    queries: categories.slice(0, 4).map((cat) => ({
       queryKey: [...costCodesKeys.list(), { costCodeCategoryId: cat.id, size: 1 }],
       queryFn: () => costCodesApi.list({ costCodeCategoryId: cat.id, page: 1, size: 1 }),
     })),

@@ -30,57 +30,61 @@ export function BudgetCard({
           Budget
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col justify-between grow">
-        <div>
-          <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
-            Total Spent
-          </div>
-          <div className="text-2xl font-bold tabular-nums leading-tight">
-            {formatCurrency(totalSpent)}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
+      <CardContent className="flex grow flex-col p-0 sm:p-0">
+        <div className="flex flex-col px-5 py-5">
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase leading-tight">
-                Spent Utilization
-              </span>
-              <span className="text-sm font-semibold leading-snug">
-                {Math.round(committedUtilization)}%
-              </span>
+            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
+              Total Spent
             </div>
-            <Progress
-              value={Math.min(committedUtilization, 100)}
-              className="h-2.5"
-              indicatorClassName={getUtilizationColor(committedUtilization)}
-            />
+            <div className="text-2xl font-bold tabular-nums leading-tight">
+              {formatCurrency(totalSpent)}
+            </div>
           </div>
 
-          <div>
-            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
-              Remaining
+          <div className="mt-7 flex flex-col gap-7">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase leading-tight">
+                  Spent Utilization
+                </span>
+                <span className="text-sm font-bold tabular-nums leading-snug">
+                  {Math.round(committedUtilization)}%
+                </span>
+              </div>
+              <Progress
+                value={Math.min(committedUtilization, 100)}
+                className="h-2"
+                indicatorClassName={getUtilizationColor(committedUtilization)}
+              />
             </div>
-            <div className="text-xl font-bold tabular-nums leading-tight">
-              {formatCurrency(remaining)}
+
+            <div>
+              <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
+                Remaining
+              </div>
+              <div className="text-base font-bold text-zinc-700 tabular-nums leading-tight">
+                {formatCurrency(remaining)}
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div>
-            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
-              Limit
+        <div className="mt-auto flex min-h-24 items-center border-t border-separator bg-muted/40 px-5 py-5">
+          <div className="flex w-full items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
+                Limit
+              </div>
+              <div className="text-sm font-bold tabular-nums leading-tight">
+                {formatCurrency(budgetLimit)}
+              </div>
             </div>
-            <div className="text-sm font-semibold tabular-nums leading-snug">
-              {formatCurrency(budgetLimit)}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-0.5 leading-tight">
-              Budget %
-            </div>
-            <div className="text-sm font-semibold tabular-nums leading-snug">
-              {targetBudgetPercent}% TCV
+            <div className="text-right">
+              <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
+                Budget %
+              </div>
+              <div className="text-sm font-bold tabular-nums leading-tight">
+                {targetBudgetPercent}% TCV
+              </div>
             </div>
           </div>
         </div>

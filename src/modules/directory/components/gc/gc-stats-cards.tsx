@@ -1,6 +1,5 @@
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { formatCurrency } from '@/app/lib/helpers';
-import { AlertTriangle, Building2, DollarSign, FolderOpen } from 'lucide-react';
 
 interface GCStatsCardsProps {
   activeProjects: number;
@@ -14,44 +13,42 @@ export function GCStatsCards({ activeProjects, totalCommitted, totalGCs }: GCSta
       label: 'Total GCs',
       value: totalGCs,
       description: 'Approved partners',
-      icon: <Building2 className="size-6 text-primary" />,
-      bgClass: 'bg-primary/10',
+      dotColor: 'bg-primary',
     },
     {
       label: 'Active Projects',
       value: activeProjects,
       description: 'Current workload',
-      icon: <FolderOpen className="size-6 text-info" />,
-      bgClass: 'bg-info/10',
+      dotColor: 'bg-info',
     },
     {
       label: 'Total Committed',
       value: formatCurrency(totalCommitted),
       description: 'Portfolio value',
-      icon: <DollarSign className="size-6 text-success" />,
-      bgClass: 'bg-success/10',
+      dotColor: 'bg-success',
     },
     {
       label: 'Compliance Alert',
       value: 0,
       description: 'Action required',
-      icon: <AlertTriangle className="size-6 text-destructive" />,
-      bgClass: 'bg-destructive/10',
+      dotColor: 'bg-destructive',
     },
   ];
 
   return (
-    <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mb-7.5 lg:grid-cols-4">
+    <StatsBar variant="cards" width="full" columns={{ sm: 2, lg: 4 }} className="mb-5 lg:mb-7.5">
       {statsItems.map((item) => (
-        <StatsCard
+        <StatsBarItem
           key={item.label}
-          icon={item.icon}
-          bgClass={item.bgClass}
+          variant="card"
           label={item.label}
           value={item.value}
           description={item.description}
+          dotColor={item.dotColor}
+          valueColor="text-foreground"
+          valueSize="medium"
         />
       ))}
-    </div>
+    </StatsBar>
   );
 }

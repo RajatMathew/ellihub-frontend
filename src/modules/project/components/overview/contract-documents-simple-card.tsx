@@ -10,12 +10,14 @@ import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 import { FileText, Pin, PinOff, Star, StarOff, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ContractDocumentsSimpleCardProps {
   documents: ContractAttachment[];
   isLoading?: boolean;
   isAdding?: boolean;
   isRemoving?: boolean;
+  documentsUrl?: string;
   parentFolderId?: string;
   onUploadAndPin?: (fileId: string) => Promise<void> | void;
   onPinClick?: () => void;
@@ -29,6 +31,7 @@ export function ContractDocumentsSimpleCard({
   isLoading = false,
   isAdding = false,
   isRemoving = false,
+  documentsUrl,
   parentFolderId,
   onUploadAndPin,
   onPinClick,
@@ -57,9 +60,17 @@ export function ContractDocumentsSimpleCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
-          Contract Documents ({documents.length})
-        </CardTitle>
+        {documentsUrl ? (
+          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+            <Link to={documentsUrl} className="hover:underline">
+              Contract Documents ({documents.length})
+            </Link>
+          </CardTitle>
+        ) : (
+          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+            Contract Documents ({documents.length})
+          </CardTitle>
+        )}
         {(onUploadAndPin || onPinClick) && (
           <CardToolbar>
             <div className="flex items-center gap-2">

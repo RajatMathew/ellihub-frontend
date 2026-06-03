@@ -17,7 +17,9 @@ export function FinancialSummarySimpleCard({
   computations,
 }: FinancialSummarySimpleCardProps) {
   const approvedCOsValueClassName =
-    computations.approvedCOs < 0 ? 'text-destructive font-bold' : 'text-info font-bold';
+    computations.approvedCOs < 0
+      ? 'text-destructive text-sm font-bold tabular-nums'
+      : 'text-info text-sm font-bold tabular-nums';
 
   return (
     <Card className="flex min-h-80 flex-col">
@@ -26,47 +28,69 @@ export function FinancialSummarySimpleCard({
           Financial Summary
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col grow p-0">
-        <div className="pt-6 pb-4 px-4 flex flex-col gap-y-2.5">
-          <InfoRow label="Original Contract" className="uppercase" valueClassName="font-bold">
-            {formatCurrency(computations.original)}
-          </InfoRow>
-          <InfoRow
-            label="Approved COs"
-            labelVariant="lighter"
-            labelClassName="font-medium"
-            valueClassName={approvedCOsValueClassName}
-          >
-            {formatSignedCurrency(computations.approvedCOs)}
-          </InfoRow>
-          <InfoRow
-            label="Contract Sum"
-            className="pt-3 pb-1 border-t-2 border-separator uppercase"
-            valueClassName="font-bold"
-          >
-            {formatCurrency(computations.contractSum)}
-          </InfoRow>
-          <InfoRow
-            label="Paid to Date"
-            labelVariant="lighter"
-            labelClassName="font-medium"
-            className="pb-3 border-b-2 border-separator"
-            valueClassName="text-muted-foreground font-bold"
-          >
-            {formatCurrency(computations.paidToDate)}
-          </InfoRow>
+      <CardContent className="flex flex-col grow p-0 sm:p-0">
+        <div className="flex flex-col px-5 py-5">
+          <div className="flex flex-col gap-y-3.5 border-b-2 border-separator pb-3.5">
+            <InfoRow
+              label="Original Contract"
+              className="uppercase"
+              labelClassName="text-foreground text-sm font-bold"
+              valueClassName="text-sm font-bold tabular-nums"
+            >
+              {formatCurrency(computations.original)}
+            </InfoRow>
+            <InfoRow
+              label="Approved COs"
+              labelVariant="light"
+              labelClassName="text-sm font-medium"
+              valueClassName={approvedCOsValueClassName}
+            >
+              {formatSignedCurrency(computations.approvedCOs)}
+            </InfoRow>
+          </div>
+          <div className="flex flex-col gap-y-3.5 border-b-2 border-separator py-3.5">
+            <InfoRow
+              label="Contract Sum"
+              className="uppercase"
+              labelClassName="text-foreground text-sm font-bold"
+              valueClassName="text-sm font-bold tabular-nums"
+            >
+              {formatCurrency(computations.contractSum)}
+            </InfoRow>
+            <InfoRow
+              label="Paid to Date"
+              labelVariant="light"
+              labelClassName="text-sm font-medium"
+              valueClassName="text-muted-foreground text-sm font-bold tabular-nums"
+            >
+              {formatCurrency(computations.paidToDate)}
+            </InfoRow>
+          </div>
           <InfoRow
             label="Balance Due"
-            className="pt-1 uppercase"
-            valueClassName="text-info font-bold"
+            className="pt-3.5 uppercase"
+            labelClassName="text-foreground text-sm font-bold"
+            valueClassName="text-info text-sm font-bold tabular-nums"
           >
             {formatCurrency(computations.balanceDue)}
           </InfoRow>
         </div>
-        <div className="mt-auto p-5 border-t bg-muted/20">
-          <div className="flex flex-col gap-y-2">
-            <InfoRow label="Retainage %:">{formatPercent(computations.retainagePercent)}</InfoRow>
-            <InfoRow label="Retainage Amount:">
+        <div className="mt-auto flex min-h-24 items-center border-t border-separator bg-muted/40 px-5 py-5">
+          <div className="flex w-full flex-col gap-y-3.5">
+            <InfoRow
+              label="Retainage %:"
+              labelVariant="light"
+              labelClassName="text-sm font-medium"
+              valueClassName="text-sm font-bold tabular-nums"
+            >
+              {formatPercent(computations.retainagePercent)}
+            </InfoRow>
+            <InfoRow
+              label="Retainage Amount:"
+              labelVariant="light"
+              labelClassName="text-sm font-medium"
+              valueClassName="text-sm font-bold tabular-nums"
+            >
               {formatCurrency(computations.retainageAmount)}
             </InfoRow>
           </div>
