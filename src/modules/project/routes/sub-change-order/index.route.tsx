@@ -1,3 +1,4 @@
+import { NotFound } from '@/app/components/error/not-found';
 import {
   SCODetailPage,
   SCOFormPage,
@@ -12,6 +13,7 @@ const SCORoutes = () => {
       <Route path="create" element={<SCOFormPage />} />
       <Route path=":scoId" element={<SCODetailPage />} />
       <Route path=":scoId/edit" element={<SCOFormPage />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

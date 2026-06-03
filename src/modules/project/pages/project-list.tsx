@@ -125,11 +125,13 @@ export function ProjectList() {
         <QueryErrorState title="Unable to load projects" onRetry={() => void refetch()} />
       ) : (
         <>
-          <ProjectStatusSummary
-            projects={summaryProjects}
-            activeStatusId={statusId}
-            onStatusClick={handleStatusClick}
-          />
+          {summaryProjects.length > 0 && (
+            <ProjectStatusSummary
+              projects={summaryProjects}
+              activeStatusId={statusId}
+              onStatusClick={handleStatusClick}
+            />
+          )}
 
           {projects.length > 0 ? (
             <ProjectDivisionBoard projects={projects} />

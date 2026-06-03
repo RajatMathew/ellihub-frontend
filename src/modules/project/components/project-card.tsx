@@ -168,7 +168,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-gray-300 bg-card shadow-none transition-shadow duration-200 hover:shadow-md">
+      <Card className="h-full rounded-lg border-border bg-card shadow-none transition-colors duration-200 hover:border-foreground/20 dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:hover:border-zinc-600/80">
         <CardContent className="flex flex-col gap-2.5 p-3.5 sm:p-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -180,7 +180,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
             {badgeLabel && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-gray-300 bg-background px-1.5 text-[0.625rem] font-semibold tracking-[0.1em] text-muted-foreground">
+                  <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-border bg-background px-1.5 text-[0.625rem] font-semibold tracking-[0.1em] text-muted-foreground dark:border-zinc-700/80 dark:bg-zinc-950/60">
                     <span
                       className={cn('size-1.5 rounded-[2px]', badgeDotClassName)}
                       aria-hidden="true"
@@ -234,9 +234,9 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
 
           {tcoDateLabel && (
             <div className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className="h-px w-14 bg-gray-300" aria-hidden="true" />
+              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
               <span className="shrink-0">TCO: {tcoDateLabel}</span>
-              <span className="h-px w-14 bg-gray-300" aria-hidden="true" />
+              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
             </div>
           )}
         </CardContent>

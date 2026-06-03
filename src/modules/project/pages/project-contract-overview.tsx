@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { useAccess } from '@/app/contexts/access-context';
+import { encodeFolderPath } from '@/modules/files/hooks/use-files-list-params';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -115,6 +116,12 @@ export default function ProjectContractOverview() {
   /* ---- Derived Data ---- */
   const recentPCOs = pcoList?.data ?? [];
   const docs = attachments ?? [];
+  const primeContractFolderUrl = primeContractFolderId
+    ? `/app/project/${projectId}/files?${new URLSearchParams({
+        folderId: primeContractFolderId,
+        folderPath: encodeFolderPath([{ id: primeContractFolderId, name: 'Prime Contract' }]) ?? '',
+      }).toString()}`
+    : undefined;
   const canManageProject = project?.capabilities?.canManage ?? false;
   const projectTeamActions = project?.capabilities?.actions?.projectTeam;
   const canAddTeamMembers = projectTeamActions?.add === true;
@@ -162,14 +169,14 @@ export default function ProjectContractOverview() {
 
   if (!project) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className="container-fluid min-h-[calc(100vh-var(--header-height))] bg-zinc-100 py-7.5 dark:bg-zinc-950">
         <div className="text-sm text-muted-foreground">Project not found.</div>
       </div>
     );
   }
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid min-h-[calc(100vh-var(--header-height))] bg-zinc-100 py-7.5 dark:bg-zinc-950">
       <div className="space-y-4">
         {/* ---- Toolbar ---- */}
         <ProjectToolbarHeader
@@ -245,6 +252,7 @@ export default function ProjectContractOverview() {
           <ContractDocumentsSimpleCard
             documents={docs}
             isLoading={isLoadingAttachments}
+            documentsUrl={primeContractFolderUrl}
             parentFolderId={primeContractFolderId}
             onUploadAndPin={canPinPrimeContracts ? handleUploadAndPinContractDocument : undefined}
             onPinClick={canPinPrimeContracts ? () => setPinDialogOpen(true) : undefined}

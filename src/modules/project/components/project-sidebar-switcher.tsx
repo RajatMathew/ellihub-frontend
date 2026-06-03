@@ -1,7 +1,5 @@
 import { useState } from 'react';
 
-import { ChevronsUpDown } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import {
   Command,
@@ -15,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { useProjectNavigation } from '@/app/hooks/use-project-hook';
 import { useProjectsQuery } from '@/modules/project/hooks';
+import { ChevronsUpDown } from 'lucide-react';
 
 export function ProjectSidebarSwitcher() {
   const [open, setOpen] = useState(false);
@@ -49,24 +48,41 @@ export function ProjectSidebarSwitcher() {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="grid h-auto w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-hidden bg-primary/10 px-3 py-2 text-primary hover:bg-primary/20 hover:text-primary"
+            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-lg border border-emerald-800/70 bg-emerald-950/75 px-3 py-2 text-emerald-50 shadow-none hover:border-emerald-700/80 hover:bg-emerald-900/70 hover:text-white"
           >
+            <span
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-400"
+              aria-hidden="true"
+            />
             <div className="min-w-0 overflow-hidden text-left">
-              <div className="truncate text-sm font-semibold" title={currentProject?.name}>
+              <div
+                className="truncate text-sm font-semibold text-emerald-50"
+                title={currentProject?.name}
+              >
                 {currentProject?.name ?? 'Select Project'}
               </div>
               {currentProject && (
-                <div className="truncate text-xs opacity-75" title={getProjectSubtitle(currentProject)}>
+                <div
+                  className="truncate text-xs text-emerald-200/75"
+                  title={getProjectSubtitle(currentProject)}
+                >
                   {getProjectSubtitle(currentProject)}
                 </div>
               )}
             </div>
-            <ChevronsUpDown className="size-4 shrink-0 opacity-75" />
+            <ChevronsUpDown className="mt-1 size-4 shrink-0 text-emerald-300/65 transition-colors group-hover:text-emerald-100" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="dark p-0 w-64" align="start" sideOffset={4}>
-          <Command>
-            <CommandInput placeholder="Search projects..." />
+        <PopoverContent
+          className="w-72 border-zinc-700/80 bg-zinc-900 p-0 text-zinc-50 shadow-xl shadow-black/30"
+          align="start"
+          sideOffset={4}
+        >
+          <Command className="bg-zinc-900 text-zinc-50 [&_[data-slot=command-input]]:border-zinc-700/80">
+            <CommandInput
+              placeholder="Search projects..."
+              className="text-zinc-50 placeholder:text-zinc-500"
+            />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
               <CommandGroup>
@@ -80,7 +96,7 @@ export function ProjectSidebarSwitcher() {
                       getProjectDivisionLabel(project),
                     ]}
                     onSelect={() => handleSelect(project.id)}
-                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto]"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] rounded-md text-zinc-50 data-[selected=true]:bg-zinc-800"
                     title={`${project.name} - ${getProjectSubtitle(project)}`}
                   >
                     <div className="min-w-0 overflow-hidden">
@@ -88,7 +104,7 @@ export function ProjectSidebarSwitcher() {
                         {project.name}
                       </div>
                       <div
-                        className="truncate text-xs text-muted-foreground"
+                        className="truncate text-xs text-zinc-400"
                         title={getProjectSubtitle(project)}
                       >
                         {getProjectSubtitle(project)}

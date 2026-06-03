@@ -5,8 +5,6 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
-import { AvatarGroup, AvatarGroupItem } from '@/app/components/ui/avatar-group';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -15,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
@@ -23,7 +22,7 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { Check, ChevronDown, Users } from 'lucide-react';
+import { Check, ChevronDown, Share, Share2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {
@@ -163,8 +162,7 @@ export function ProjectToolbarHeader({
       .map((tm) => ({ id: tm.employee!.id, name: tm.employee!.name })),
   ];
 
-  // Show max 4 avatars + count
-  const displayedMembers = allTeamMembers.slice(0, 4);
+  const displayedMembers = allTeamMembers.slice(0, 2);
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
@@ -268,26 +266,36 @@ export function ProjectToolbarHeader({
               variant="ghost"
               size="sm"
               onClick={onTeamClick}
-              className="gap-2 hover:bg-muted/50"
+              className="group h-auto gap-1.5 rounded-lg border border-transparent bg-transparent p-1 hover:border-border hover:bg-muted/45 dark:hover:bg-white/[0.06]"
             >
               {displayedMembers.length > 0 ? (
-                <AvatarGroup className="-space-x-2">
+                <span className="flex items-center pl-2">
+                  <Share2 className="mr-3 size-4" />
                   {displayedMembers.map((member) => (
-                    <AvatarGroupItem key={member.id}>
-                      <Avatar className="size-7 border-2 border-background">
-                        <AvatarImage src="" alt={member.name} />
-                        <AvatarFallback className="text-xs">
+                    <Tooltip key={member.id}>
+                      <TooltipTrigger asChild>
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
                           {getInitials(member.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </AvatarGroupItem>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{member.name}</TooltipContent>
+                    </Tooltip>
                   ))}
-                </AvatarGroup>
+                  {remainingCount > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                          +{remainingCount}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {remainingCount} more team member{remainingCount === 1 ? '' : 's'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </span>
               ) : (
                 <Users className="size-4" />
-              )}
-              {remainingCount > 0 && (
-                <span className="text-xs text-muted-foreground">+{remainingCount}</span>
               )}
               {displayedMembers.length === 0 && <span>Project Team</span>}
             </Button>

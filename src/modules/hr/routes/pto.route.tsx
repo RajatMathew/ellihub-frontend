@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 
+import { NotFound } from '@/app/components/error/not-found';
 import { Route, Routes } from 'react-router-dom';
 
 const PTOListPage = lazy(() => import('@/modules/hr/pages/pto/pto-list'));
@@ -13,6 +14,7 @@ export default function PTORoute() {
       <Route path="create" element={<PTOFormPage />} />
       <Route path=":id" element={<PTODetailPage />} />
       <Route path=":id/edit" element={<PTOFormPage />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
