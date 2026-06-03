@@ -40,9 +40,9 @@ export function getSidebarResolutionBase(pathname: string): {
   if (segments[0] !== 'app') {
     return { base: pathname, stripLeadingDotDotSlash: false };
   }
-  // Handle both /app/project/:id/* and /app/projects/:id/* patterns
-  let projectIndex = segments.indexOf('project');
-  if (projectIndex === -1) projectIndex = segments.indexOf('projects');
+  // Project detail pages live under /app/project/:id/*. Keep /app/projects/new
+  // on the main app base so sidebar links do not resolve under the create route.
+  const projectIndex = segments.indexOf('project');
   const isProjectRoute = projectIndex !== -1 && segments[projectIndex + 1];
   if (isProjectRoute) {
     const projectRoot = '/' + segments.slice(0, projectIndex + 2).join('/');
