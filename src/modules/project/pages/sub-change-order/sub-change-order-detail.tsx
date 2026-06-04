@@ -46,7 +46,10 @@ import {
   useSCODetailQuery,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   AlertTriangle,
   Calendar,
@@ -156,6 +159,13 @@ export function SCODetailPage() {
   );
   const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
+  const { data: scoEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'SUB_CHANGE_ORDER',
+    scoId || undefined,
+    project?.capabilities?.actions?.subChangeOrder?.update === true
+  );
+  const scoUploadFolderId = scoEntityFolderId ?? scoFolderId;
 
   const approveMutation = useApproveSCOMutation();
   const rejectMutation = useRejectSCOMutation();
@@ -833,7 +843,7 @@ export function SCODetailPage() {
               <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
                 Documents ({attachments.length})
               </CardTitle>
-              {canEdit && scoFolderId && (
+              {canEdit && scoUploadFolderId && (
                 <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
                   <Upload className="size-4" />
                   Upload
@@ -1097,11 +1107,11 @@ export function SCODetailPage() {
       )}
 
       {/* ---- Upload file dialog ---- */}
-      {canEdit && scoFolderId && (
+      {canEdit && scoUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={scoFolderId}
+          parentId={scoUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },

@@ -1,4 +1,8 @@
-import { filesApi, type ProjectProtectedFolderType } from '@/modules/files/api/files.api';
+import {
+  filesApi,
+  type ProjectEntityFolderType,
+  type ProjectProtectedFolderType,
+} from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import { useQuery } from '@tanstack/react-query';
 
@@ -35,11 +39,40 @@ async function resolveProjectFolder(projectId: string, subfolderName?: string): 
   return subfolder.id;
 }
 
+export async function resolveProjectEntityFolder(
+  projectId: string,
+  entityType: ProjectEntityFolderType,
+  entityId: string
+): Promise<string> {
+  return filesApi.getProjectEntityFolderId(projectId, entityType, entityId);
+}
+
 export function useProjectFolderQuery(projectId: string | undefined, subfolderName?: string) {
   return useQuery({
     queryKey: [...filesKeys.all, 'projectFolder', projectId, subfolderName ?? '__root__'],
     queryFn: () => resolveProjectFolder(projectId!, subfolderName),
     enabled: !!projectId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useProjectEntityFolderQuery(
+  projectId: string | undefined,
+  entityType: ProjectEntityFolderType | undefined,
+  entityId: string | undefined,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: [
+      ...filesKeys.all,
+      'projectEntityFolder',
+      projectId,
+      entityType ?? '__type__',
+      entityId ?? '__entity__',
+    ],
+    queryFn: () => resolveProjectEntityFolder(projectId!, entityType!, entityId!),
+    enabled: enabled && !!projectId && !!entityType && !!entityId,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

@@ -44,7 +44,10 @@ import {
   useSCODetailQuery,
   useUpdateSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  resolveProjectEntityFolder,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import {
   createSCOInputSchema,
@@ -246,6 +249,14 @@ export function SCOFormPage() {
     }
   }
 
+  async function resolveScoUploadFolderId(targetScoId: string): Promise<string | undefined> {
+    try {
+      return await resolveProjectEntityFolder(projectId, 'SUB_CHANGE_ORDER', targetScoId);
+    } catch {
+      return uploadFolderId;
+    }
+  }
+
   const onSubmit = async (formData: CreateSCOInput) => {
     const cleaned: CreateSCOInput = {
       ...formData,
@@ -273,8 +284,9 @@ export function SCOFormPage() {
           : await createMutation.mutateAsync(cleaned);
 
       if (selectedFiles.length > 0) {
-        if (uploadFolderId) {
-          await uploadFilesAndAttach(saved.id, uploadFolderId, selectedFiles);
+        const folderId = await resolveScoUploadFolderId(saved.id);
+        if (folderId) {
+          await uploadFilesAndAttach(saved.id, folderId, selectedFiles);
         } else {
           toast.error('SCO folder not found - files were not uploaded.');
         }

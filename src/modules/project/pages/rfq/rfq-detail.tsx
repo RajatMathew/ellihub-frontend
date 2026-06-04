@@ -81,7 +81,10 @@ import {
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
 } from '@/modules/project/hooks/rfq';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
@@ -199,6 +202,13 @@ export default function RFQDetailPage() {
   const downloadFile = useDownloadFile();
 
   const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
+  const rfqEntityFolderQuery = useProjectEntityFolderQuery(
+    projectId,
+    'RFQ',
+    rfqId,
+    project?.capabilities?.actions?.rfq?.update === true
+  );
+  const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 
   const { data: rfqStatuses } = useRFQStatusesQuery();
 
@@ -736,7 +746,7 @@ export default function RFQDetailPage() {
           <RFQDetailAttachmentsCard
             attachments={attachments}
             canEdit={canEditDraftRfq}
-            canUpload={canEditDraftRfq && !!rfqFolderQuery.data}
+            canUpload={canEditDraftRfq && !!rfqUploadFolderId}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
             onDownload={(document) => downloadFile.mutate(document)}
@@ -748,11 +758,11 @@ export default function RFQDetailPage() {
             }}
           />
 
-          {canEditDraftRfq && rfqFolderQuery.data && (
+          {canEditDraftRfq && rfqUploadFolderId && (
             <UploadFileDialog
               open={uploadOpen}
               onOpenChange={setUploadOpen}
-              parentId={rfqFolderQuery.data}
+              parentId={rfqUploadFolderId}
               onSubmit={async (payload) => {
                 try {
                   const fileItem = await uploadFileMutation.mutateAsync(payload);
@@ -1435,7 +1445,7 @@ export default function RFQDetailPage() {
 
                     try {
                       let fileIds: string[] = [];
-                      if (quoteFile && rfqFolderQuery.data) {
+                      if (quoteFile && rfqUploadFolderId) {
                         const dotIdx = quoteFile.name.lastIndexOf('.');
                         const docName =
                           dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
@@ -1443,7 +1453,7 @@ export default function RFQDetailPage() {
                           file: quoteFile,
                           data: {
                             name: docName,
-                            parentId: rfqFolderQuery.data,
+                            parentId: rfqUploadFolderId,
                             mimeType: quoteFile.type || undefined,
                             size: quoteFile.size,
                           },

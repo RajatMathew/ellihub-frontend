@@ -38,7 +38,10 @@ import {
 } from '@/modules/project/hooks/invoice';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  resolveProjectEntityFolder,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   createInvoiceInputSchema,
   type CreateInvoiceInput,
@@ -252,6 +255,14 @@ export function InvoiceFormPage() {
     return documentIds;
   }
 
+  async function resolveInvoiceUploadFolderId(targetInvoiceId: string): Promise<string | undefined> {
+    try {
+      return await resolveProjectEntityFolder(projectId, 'INVOICE', targetInvoiceId);
+    } catch {
+      return invoiceFolderId;
+    }
+  }
+
   async function onSubmit(formData: CreateInvoiceInput) {
     const existingAttachmentCount = invoiceDetail?.attachments?.length ?? 0;
 
@@ -302,8 +313,14 @@ export function InvoiceFormPage() {
           },
         });
 
-        if (selectedFiles.length > 0 && invoiceFolderId) {
-          const uploadedIds = await uploadFiles(invoiceFolderId, selectedFiles);
+        if (selectedFiles.length > 0) {
+          const folderId = await resolveInvoiceUploadFolderId(invoiceId);
+          if (!folderId) {
+            toast.error('Invoice folder is not ready yet. Please try again.');
+            return;
+          }
+
+          const uploadedIds = await uploadFiles(folderId, selectedFiles);
           for (const documentId of uploadedIds) {
             await addAttachmentMutation.mutateAsync({
               invoiceId,

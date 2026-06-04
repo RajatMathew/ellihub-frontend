@@ -72,7 +72,10 @@ import {
   useRemovePOAttachmentMutation,
 } from '@/modules/project/hooks/purchase-order';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import type { GeneratePOPdfInput, POStatusName } from '@/modules/project/schemas/purchase-order';
 import {
   AlertTriangle,
@@ -133,6 +136,13 @@ export function PODetailPage() {
   );
   const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
+  const { data: poEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'PURCHASE_ORDER',
+    poId || undefined,
+    project?.capabilities?.actions?.purchaseOrder?.update === true
+  );
+  const poUploadFolderId = poEntityFolderId ?? poFolderId;
   const { data: pdfDefaultTerms } = usePOPdfDefaultTermsQuery();
 
   const issueMutation = useIssuePOMutation();
@@ -640,7 +650,7 @@ export function PODetailPage() {
                 title="Backup Documents"
                 emptyMessage="No backup documents attached."
                 documents={attachments}
-                canUpload={canEdit && !!poFolderId}
+                canUpload={canEdit && !!poUploadFolderId}
                 canRemove={canEdit}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -965,11 +975,11 @@ export function PODetailPage() {
       </Dialog>
 
       {/* ---- Upload file dialog ---- */}
-      {canEdit && poFolderId && (
+      {canEdit && poUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={poFolderId}
+          parentId={poUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },
