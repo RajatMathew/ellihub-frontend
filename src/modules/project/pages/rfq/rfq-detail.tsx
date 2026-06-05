@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
-import { PdfPreviewDialog } from '@/app/components/pdf-preview-dialog';
 import {
   Toolbar,
   ToolbarActions,
@@ -52,13 +51,19 @@ import {
 import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import {
   RFQCreatePOPreviewDialog,
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
 } from '@/modules/project/components/rfq';
-import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
+import {
+  InfoRow,
+  PdfGenerateDialog,
+  ProjectDetailPageLoading,
+} from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
@@ -110,6 +115,13 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
 
 /* ---- Quote Document Preview ---- */
 
@@ -211,6 +223,30 @@ export default function RFQDetailPage() {
   const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 
   const { data: rfqStatuses } = useRFQStatusesQuery();
+  const { data: rfqPdfTermsConfig } = usePdfTermsConfigQuery('rfq');
+  const { data: rfqPdfNoticeConfig } = usePdfNoticeConfigQuery('rfq');
+  const rfqPdfTermsOptions = useMemo(
+    () => rfqPdfTermsConfig?.options ?? [],
+    [rfqPdfTermsConfig?.options]
+  );
+  const rfqPdfNoticeOptions = useMemo(
+    () => rfqPdfNoticeConfig?.options ?? [],
+    [rfqPdfNoticeConfig?.options]
+  );
+  const defaultRfqPdfTermsOption = useMemo(
+    () =>
+      rfqPdfTermsOptions.find((option) => option.id === rfqPdfTermsConfig?.defaultOptionId) ??
+      rfqPdfTermsOptions.find((option) => option.isDefault) ??
+      rfqPdfTermsOptions[0],
+    [rfqPdfTermsConfig?.defaultOptionId, rfqPdfTermsOptions]
+  );
+  const defaultRfqPdfNoticeOption = useMemo(
+    () =>
+      rfqPdfNoticeOptions.find((option) => option.id === rfqPdfNoticeConfig?.defaultOptionId) ??
+      rfqPdfNoticeOptions.find((option) => option.isDefault) ??
+      rfqPdfNoticeOptions[0],
+    [rfqPdfNoticeConfig?.defaultOptionId, rfqPdfNoticeOptions]
+  );
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -254,8 +290,21 @@ export default function RFQDetailPage() {
   const [activePreviewDocId, setActivePreviewDocId] = useState<string | null>(null);
 
   // Generated PDF preview
-  const [vendorPdfPreviewOpen, setVendorPdfPreviewOpen] = useState(false);
+  const [vendorPdfOptionsOpen, setVendorPdfOptionsOpen] = useState(false);
   const [vendorPdfPreview, setVendorPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [vendorPdfTarget, setVendorPdfTarget] = useState<{
+    quoteId: string;
+    vendorName: string;
+  } | null>(null);
+  const [vendorPdfIncludeNotice, setVendorPdfIncludeNotice] = useState(false);
+  const [vendorPdfNoticeTitle, setVendorPdfNoticeTitle] = useState('');
+  const [vendorPdfNoticeHtml, setVendorPdfNoticeHtml] = useState('');
+  const [vendorPdfNoticeTemplateId, setVendorPdfNoticeTemplateId] = useState('');
+  const [vendorPdfDefaultNoticeApplied, setVendorPdfDefaultNoticeApplied] = useState(false);
+  const [vendorPdfIncludeTerms, setVendorPdfIncludeTerms] = useState(false);
+  const [vendorPdfTermsHtml, setVendorPdfTermsHtml] = useState('');
+  const [vendorPdfTermsTemplateId, setVendorPdfTermsTemplateId] = useState('');
+  const [vendorPdfDefaultTermsApplied, setVendorPdfDefaultTermsApplied] = useState(false);
 
   // Vendor email dialog
   const [emailOpen, setEmailOpen] = useState(false);
@@ -476,21 +525,139 @@ export default function RFQDetailPage() {
     unawardMutation.mutate(rfqId);
   }
 
-  function handleVendorPdfPreviewOpenChange(open: boolean) {
-    setVendorPdfPreviewOpen(open);
-    if (!open) setVendorPdfPreview(null);
+  function handleVendorPdfOptionsOpenChange(open: boolean) {
+    setVendorPdfOptionsOpen(open);
+    if (!open) {
+      setVendorPdfPreview(null);
+      setVendorPdfTarget(null);
+      setVendorPdfIncludeNotice(false);
+      setVendorPdfNoticeTitle('');
+      setVendorPdfNoticeHtml('');
+      setVendorPdfNoticeTemplateId('');
+      setVendorPdfDefaultNoticeApplied(false);
+      setVendorPdfIncludeTerms(false);
+      setVendorPdfTermsHtml('');
+      setVendorPdfTermsTemplateId('');
+      setVendorPdfDefaultTermsApplied(false);
+    }
   }
 
-  function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
+  function applyDefaultVendorPdfTermsIfEmpty() {
+    if (!defaultRfqPdfTermsOption?.html || hasHtmlText(vendorPdfTermsHtml)) return false;
+    setVendorPdfTermsTemplateId(defaultRfqPdfTermsOption.id);
+    setVendorPdfTermsHtml(defaultRfqPdfTermsOption.html);
+    setVendorPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultVendorPdfNoticeIfEmpty() {
+    if (!defaultRfqPdfNoticeOption?.html || hasHtmlText(vendorPdfNoticeHtml)) return false;
+    setVendorPdfNoticeTemplateId(defaultRfqPdfNoticeOption.id);
+    setVendorPdfNoticeTitle(defaultRfqPdfNoticeOption.title);
+    setVendorPdfNoticeHtml(defaultRfqPdfNoticeOption.html);
+    setVendorPdfDefaultNoticeApplied(true);
+    return true;
+  }
+
+  function generateVendorPdfPreview(
+    target: { quoteId: string; vendorName: string },
+    data: GeneratePdfTermsInput
+  ) {
     generateVendorPdfMutation.mutate(
-      { quoteId: inviteId, vendorName },
+      { quoteId: target.quoteId, vendorName: target.vendorName, data },
       {
         onSuccess: (file) => {
           setVendorPdfPreview(file);
-          setVendorPdfPreviewOpen(true);
+          setVendorPdfOptionsOpen(true);
         },
       }
     );
+  }
+
+  function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
+    const target = { quoteId: inviteId, vendorName };
+    const shouldEnableDefaultNotice =
+      !vendorPdfDefaultNoticeApplied && rfqPdfNoticeConfig?.includeByDefault === true;
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || vendorPdfIncludeNotice;
+    const defaultNoticeApplied =
+      shouldApplyDefaultNotice &&
+      !vendorPdfDefaultNoticeApplied &&
+      applyDefaultVendorPdfNoticeIfEmpty();
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultRfqPdfNoticeOption?.title
+        ? defaultRfqPdfNoticeOption.title
+        : vendorPdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultRfqPdfNoticeOption?.html
+        ? defaultRfqPdfNoticeOption.html
+        : vendorPdfNoticeHtml;
+    const nextIncludeNotice =
+      (shouldEnableDefaultNotice || vendorPdfIncludeNotice) && hasHtmlText(nextNoticeHtml);
+    const shouldEnableDefaultTerms =
+      !vendorPdfDefaultTermsApplied && rfqPdfTermsConfig?.includeByDefault === true;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || vendorPdfIncludeTerms;
+    const defaultTermsApplied =
+      shouldApplyDefaultTerms &&
+      !vendorPdfDefaultTermsApplied &&
+      applyDefaultVendorPdfTermsIfEmpty();
+    const nextTermsHtml =
+      defaultTermsApplied && defaultRfqPdfTermsOption?.html
+        ? defaultRfqPdfTermsOption.html
+        : vendorPdfTermsHtml;
+    const nextIncludeTerms =
+      (shouldEnableDefaultTerms || vendorPdfIncludeTerms) && hasHtmlText(nextTermsHtml);
+
+    setVendorPdfTarget(target);
+    if (nextIncludeNotice) {
+      setVendorPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
+      setVendorPdfIncludeTerms(true);
+    }
+    setVendorPdfPreview(null);
+    setVendorPdfOptionsOpen(true);
+    generateVendorPdfPreview(target, {
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    });
+  }
+
+  function handleVendorPdfIncludeNoticeChange(includeNotice: boolean) {
+    setVendorPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultVendorPdfNoticeIfEmpty();
+    }
+  }
+
+  function handleVendorPdfNoticeTemplateChange(optionId: string) {
+    const option = rfqPdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option) return;
+
+    setVendorPdfNoticeTemplateId(option.id);
+    setVendorPdfNoticeTitle(option.title);
+    setVendorPdfNoticeHtml(option.html);
+    setVendorPdfIncludeNotice(true);
+    setVendorPdfDefaultNoticeApplied(true);
+  }
+
+  function handleVendorPdfIncludeTermsChange(includeTerms: boolean) {
+    setVendorPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultVendorPdfTermsIfEmpty();
+    }
+  }
+
+  function handleVendorPdfTermsTemplateChange(optionId: string) {
+    const option = rfqPdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option) return;
+
+    setVendorPdfTermsTemplateId(option.id);
+    setVendorPdfTermsHtml(option.html);
+    setVendorPdfIncludeTerms(true);
+    setVendorPdfDefaultTermsApplied(true);
   }
 
   function handleEmailVendor(inviteId: string) {
@@ -515,12 +682,32 @@ export default function RFQDetailPage() {
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
-      <PdfPreviewDialog
-        open={vendorPdfPreviewOpen}
-        onOpenChange={handleVendorPdfPreviewOpenChange}
-        file={vendorPdfPreview}
-        title={vendorPdfPreview?.fileName}
-      />
+      {vendorPdfOptionsOpen && vendorPdfTarget && (
+        <PdfGenerateDialog
+          open={vendorPdfOptionsOpen}
+          title={`Generate RFQ PDF - ${vendorPdfTarget.vendorName}`}
+          onOpenChange={handleVendorPdfOptionsOpenChange}
+          includeNotice={vendorPdfIncludeNotice}
+          noticeTitle={vendorPdfNoticeTitle}
+          noticeHtml={vendorPdfNoticeHtml}
+          noticeOptions={rfqPdfNoticeOptions}
+          selectedNoticeOptionId={vendorPdfNoticeTemplateId}
+          includeTerms={vendorPdfIncludeTerms}
+          termsHtml={vendorPdfTermsHtml}
+          termsOptions={rfqPdfTermsOptions}
+          selectedTermsOptionId={vendorPdfTermsTemplateId}
+          previewFile={vendorPdfPreview}
+          isGenerating={generateVendorPdfMutation.isPending}
+          onIncludeNoticeChange={handleVendorPdfIncludeNoticeChange}
+          onNoticeOptionChange={handleVendorPdfNoticeTemplateChange}
+          onNoticeTitleChange={setVendorPdfNoticeTitle}
+          onNoticeHtmlChange={setVendorPdfNoticeHtml}
+          onIncludeTermsChange={handleVendorPdfIncludeTermsChange}
+          onTermsOptionChange={handleVendorPdfTermsTemplateChange}
+          onTermsHtmlChange={setVendorPdfTermsHtml}
+          onGenerate={(data) => generateVendorPdfPreview(vendorPdfTarget, data)}
+        />
+      )}
       <EmailComposePreviewDialog
         open={emailOpen}
         onOpenChange={handleEmailOpenChange}

@@ -4,16 +4,17 @@ import {
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
-import { PURCHASE_ORDER_PDF_PROFILE } from '@/modules/project/constants/purchase-order';
 import {
   poDetailSchema,
   poPaginatedResponseSchema,
   poPdfDefaultTermsSchema,
+  poPdfTermsOptionsSchema,
   type CreatePOInput,
   type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
   type POPdfDefaultTerms,
+  type POPdfTermsOption,
   type POPaginatedResponse,
 } from '@/modules/project/schemas/purchase-order';
 
@@ -81,6 +82,16 @@ export const poApi = {
     return result.data;
   },
 
+  async getPdfTermsOptions(): Promise<POPdfTermsOption[]> {
+    const res = await api.get(`${LIST_BASE}/pdf/terms`);
+    const raw = res.data?.data ?? res.data;
+    const result = poPdfTermsOptionsSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
   async generatePdf(
     id: string,
     data: GeneratePOPdfInput,
@@ -88,10 +99,7 @@ export const poApi = {
   ): Promise<GeneratedPdfFile> {
     const res = await api.post<Blob>(
       `${LIST_BASE}/${id}/pdf`,
-      {
-        ...PURCHASE_ORDER_PDF_PROFILE,
-        ...data,
-      },
+      data,
       { responseType: 'blob', timeout: 0 }
     );
     const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);

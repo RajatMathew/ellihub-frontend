@@ -48,7 +48,6 @@ export const routeTree: RouteDef[] = [
         path: 'settings/*',
         component: SettingsRoutes,
         title: 'Settings',
-        access: { resource: 'user', action: 'manage-permissions' },
       },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
