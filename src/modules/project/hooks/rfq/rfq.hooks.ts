@@ -1,4 +1,5 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -252,8 +253,15 @@ export const useRemoveVendorMutation = () => {
 
 export const useGenerateRFQVendorPdfMutation = () =>
   useMutation({
-    mutationFn: ({ quoteId, vendorName }: { quoteId: string; vendorName: string }) =>
-      rfqApi.generateVendorPdf(quoteId, vendorName),
+    mutationFn: ({
+      quoteId,
+      vendorName,
+      data,
+    }: {
+      quoteId: string;
+      vendorName: string;
+      data?: GeneratePdfTermsInput;
+    }) => rfqApi.generateVendorPdf(quoteId, vendorName, data),
     onError: (err) => toastApiError(err, 'Failed to generate RFQ PDF.'),
   });
 

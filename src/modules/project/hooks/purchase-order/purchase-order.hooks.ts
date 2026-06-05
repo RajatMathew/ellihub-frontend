@@ -40,6 +40,13 @@ export const usePOPdfDefaultTermsQuery = () =>
     staleTime: 5 * 60 * 1000,
   });
 
+export const usePOPdfTermsOptionsQuery = () =>
+  useQuery({
+    queryKey: poKeys.pdfTermsOptions(),
+    queryFn: () => poApi.getPdfTermsOptions(),
+    staleTime: 5 * 60 * 1000,
+  });
+
 /* ---- mutations ---- */
 
 export const useCreatePOMutation = () => {

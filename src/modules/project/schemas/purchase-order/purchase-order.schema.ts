@@ -332,7 +332,10 @@ export const createPOInputSchema = z
 export type CreatePOInput = z.infer<typeof createPOInputSchema>;
 
 export const generatePOPdfInputSchema = z.object({
-  addTermsAndConditions: z.boolean(),
+  addWarningNotice: z.boolean().optional(),
+  warningNoticeTitle: z.string().optional(),
+  warningNoticeHtml: z.string().optional(),
+  addTermsAndConditions: z.boolean().optional(),
   termsAndConditionsHtml: z.string().optional(),
 });
 
@@ -343,3 +346,14 @@ export const poPdfDefaultTermsSchema = z.object({
 });
 
 export type POPdfDefaultTerms = z.infer<typeof poPdfDefaultTermsSchema>;
+
+export const poPdfTermsOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  html: z.string(),
+  isDefault: z.boolean(),
+});
+
+export const poPdfTermsOptionsSchema = z.array(poPdfTermsOptionSchema);
+
+export type POPdfTermsOption = z.infer<typeof poPdfTermsOptionSchema>;

@@ -22,7 +22,7 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { Check, ChevronDown, Share, Share2, Users } from 'lucide-react';
+import { Check, ChevronDown, Share2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {

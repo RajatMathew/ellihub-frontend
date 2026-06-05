@@ -27,6 +27,8 @@ export type ProjectProtectedFolderType =
   | 'PRIME_CONTRACT'
   | 'SCHEDULE';
 
+export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';
+
 type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
 
 export interface FileSearchParams {
@@ -236,6 +238,20 @@ export const filesApi = {
     const raw = res.data?.data ?? res.data;
 
     return parseFolderId(raw, 'Project subfolder lookup');
+  },
+
+  async getProjectEntityFolderId(
+    projectId: string,
+    entityType: ProjectEntityFolderType,
+    entityId: string
+  ): Promise<string> {
+    const res = await api.post(`${BASE}/project/${projectId}/entity-folder`, {
+      entityType,
+      entityId,
+    });
+    const raw = res.data?.data ?? res.data;
+
+    return parseFolderId(raw, 'Project entity folder lookup');
   },
 
   async createFolder(data: FolderCreateInput): Promise<FileItem> {

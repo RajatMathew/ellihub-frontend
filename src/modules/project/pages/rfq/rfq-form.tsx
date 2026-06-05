@@ -35,7 +35,10 @@ import {
   useRFQDetailQuery,
   useUpdateRFQMutation,
 } from '@/modules/project/hooks/rfq';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  resolveProjectEntityFolder,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   createRFQInputSchema,
   type CreateRFQInput,
@@ -200,6 +203,14 @@ export default function RFQFormPage() {
     reset({ projectId, ...data });
   }, [reset, projectId, rfqTypes, units]);
 
+  async function resolveRfqUploadFolderId(targetRfqId: string): Promise<string | undefined> {
+    try {
+      return await resolveProjectEntityFolder(projectId, 'RFQ', targetRfqId);
+    } catch {
+      return rfqFolderId;
+    }
+  }
+
   const onSubmit = async (formData: CreateRFQInput) => {
     if (isEdit && rfqId && rfqDetail) {
       setIsSaving(true);
@@ -211,8 +222,9 @@ export default function RFQFormPage() {
 
         // Upload new files
         if (selectedFiles.length > 0) {
-          if (rfqFolderId) {
-            await uploadFilesAndAttach(rfqId, rfqFolderId, selectedFiles);
+          const folderId = await resolveRfqUploadFolderId(rfqId);
+          if (folderId) {
+            await uploadFilesAndAttach(rfqId, folderId, selectedFiles);
           } else {
             toast.error('RFQ folder not found — files were not uploaded.');
           }
@@ -228,8 +240,9 @@ export default function RFQFormPage() {
       createMutation.mutate(formData, {
         onSuccess: async (created) => {
           if (selectedFiles.length > 0) {
-            if (rfqFolderId) {
-              await uploadFilesAndAttach(created.id, rfqFolderId, selectedFiles);
+            const folderId = await resolveRfqUploadFolderId(created.id);
+            if (folderId) {
+              await uploadFilesAndAttach(created.id, folderId, selectedFiles);
             } else {
               toast.error('RFQ folder not found — files were not uploaded.');
             }

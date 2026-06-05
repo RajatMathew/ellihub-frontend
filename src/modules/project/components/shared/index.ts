@@ -7,3 +7,4 @@ export * from './project-detail-field';
 export * from './project-form-documents-card';
 export * from './project-form-shell';
 export * from './project-form-toolbar';
+export * from './pdf-generate-dialog';

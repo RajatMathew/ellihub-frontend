@@ -49,6 +49,9 @@ function filterMenuForAccess(
         if (path.includes('hr/pto')) return access.can('leave', 'view') || access.can('leave', 'create');
         if (path.includes('files')) return access.isAdmin;
         if (path.includes('activity-log')) return access.can('activityLog', 'read');
+        if (path.includes('settings')) {
+          return access.can('user', 'manage-permissions') || access.can('template', 'read');
+        }
         if (path.includes('lookup')) return access.isDev;
         if (path.includes('ui')) return access.isDev;
         return false;

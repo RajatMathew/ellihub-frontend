@@ -7,24 +7,6 @@ import type {
 export const PURCHASE_ORDER_DEFAULT_PAGE_SIZE = 25;
 export const PURCHASE_ORDER_SEARCH_DEBOUNCE_MS = 300;
 
-export type PurchaseOrderPdfProfile = {
-  company: {
-    name: string;
-    addressLines: string[];
-    phone: string;
-    logoPath: string;
-  };
-};
-
-export const PURCHASE_ORDER_PDF_PROFILE: PurchaseOrderPdfProfile = {
-  company: {
-    name: 'ELLI N.Y. DESIGN CORP.',
-    addressLines: ['50-01 METROPOLITAN AVE', 'RIDGEWOOD, NY 11385'],
-    phone: '718-418-9002',
-    logoPath: 'assets/logo.png',
-  },
-};
-
 export const PURCHASE_ORDER_SORT_BY_OPTIONS = [
   'poNumber',
   'expectedDate',

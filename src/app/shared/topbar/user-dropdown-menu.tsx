@@ -79,6 +79,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { data } = useSession();
   const { isAdmin, can } = useAccess();
   const canSyncFieldwire = can('primeChangeOrder', 'sync');
+  const canManageTemplates = can('template', 'read');
   const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
   const fieldwireSyncLabel = formatFieldwireSyncLabel(
     fieldwireSyncStatusQuery.data?.lastSyncedAt,
@@ -174,6 +175,14 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 <Link to="/app/settings/members" className="flex items-center gap-2">
                   <Users />
                   Members & Roles
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {canManageTemplates && (
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings/templates" className="flex items-center gap-2">
+                  <FileText />
+                  Templates
                 </Link>
               </DropdownMenuItem>
             )}

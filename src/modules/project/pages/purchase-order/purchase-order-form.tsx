@@ -34,7 +34,10 @@ import {
   usePODetailQuery,
   useUpdatePOMutation,
 } from '@/modules/project/hooks/purchase-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  resolveProjectEntityFolder,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   createPOInputSchema,
   type CreatePOInput,
@@ -271,6 +274,14 @@ export function POFormPage() {
     }
   }
 
+  async function resolvePoUploadFolderId(targetPoId: string): Promise<string | undefined> {
+    try {
+      return await resolveProjectEntityFolder(projectId, 'PURCHASE_ORDER', targetPoId);
+    } catch {
+      return poFolderId;
+    }
+  }
+
   const onSubmit = async (formData: CreatePOInput) => {
     const { lineItems, ...rest } = formData;
     const cleaned: CreatePOInput = {
@@ -299,8 +310,9 @@ export function POFormPage() {
         await updateMutation.mutateAsync({ id: poId, data: cleaned });
 
         if (selectedFiles.length > 0) {
-          if (poFolderId) {
-            await uploadFilesAndAttach(poId, poFolderId, selectedFiles);
+          const folderId = await resolvePoUploadFolderId(poId);
+          if (folderId) {
+            await uploadFilesAndAttach(poId, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }
@@ -318,8 +330,9 @@ export function POFormPage() {
     createMutation.mutate(cleaned, {
       onSuccess: async (created) => {
         if (selectedFiles.length > 0) {
-          if (poFolderId) {
-            await uploadFilesAndAttach(created.id, poFolderId, selectedFiles);
+          const folderId = await resolvePoUploadFolderId(created.id);
+          if (folderId) {
+            await uploadFilesAndAttach(created.id, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }

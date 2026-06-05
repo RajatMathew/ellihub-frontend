@@ -67,12 +67,15 @@ import {
   useGeneratePOPdfMutation,
   useIssuePOMutation,
   usePODetailQuery,
-  usePOPdfDefaultTermsQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
 } from '@/modules/project/hooks/purchase-order';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import type { GeneratePOPdfInput, POStatusName } from '@/modules/project/schemas/purchase-order';
 import {
   AlertTriangle,
@@ -133,7 +136,34 @@ export function PODetailPage() {
   );
   const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
-  const { data: pdfDefaultTerms } = usePOPdfDefaultTermsQuery();
+  const { data: poEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'PURCHASE_ORDER',
+    poId || undefined,
+    project?.capabilities?.actions?.purchaseOrder?.update === true
+  );
+  const poUploadFolderId = poEntityFolderId ?? poFolderId;
+  const { data: pdfTermsConfig } = usePdfTermsConfigQuery('purchaseOrder');
+  const { data: pdfNoticeConfig } = usePdfNoticeConfigQuery('purchaseOrder');
+  const pdfTermsOptions = useMemo(() => pdfTermsConfig?.options ?? [], [pdfTermsConfig?.options]);
+  const pdfNoticeOptions = useMemo(
+    () => pdfNoticeConfig?.options ?? [],
+    [pdfNoticeConfig?.options]
+  );
+  const defaultPdfTermsOption = useMemo(
+    () =>
+      pdfTermsOptions.find((option) => option.id === pdfTermsConfig?.defaultOptionId) ??
+      pdfTermsOptions.find((option) => option.isDefault) ??
+      pdfTermsOptions[0],
+    [pdfTermsConfig?.defaultOptionId, pdfTermsOptions]
+  );
+  const defaultPdfNoticeOption = useMemo(
+    () =>
+      pdfNoticeOptions.find((option) => option.id === pdfNoticeConfig?.defaultOptionId) ??
+      pdfNoticeOptions.find((option) => option.isDefault) ??
+      pdfNoticeOptions[0],
+    [pdfNoticeConfig?.defaultOptionId, pdfNoticeOptions]
+  );
 
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
@@ -144,9 +174,7 @@ export function PODetailPage() {
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
-  const costCodeMap = new Map(
-    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
-  );
+  const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = po?.attachments ?? [];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -154,8 +182,14 @@ export function PODetailPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [pdfIncludeNotice, setPdfIncludeNotice] = useState(false);
+  const [pdfNoticeTitle, setPdfNoticeTitle] = useState('');
+  const [pdfNoticeHtml, setPdfNoticeHtml] = useState('');
+  const [pdfNoticeTemplateId, setPdfNoticeTemplateId] = useState('');
+  const [pdfDefaultNoticeApplied, setPdfDefaultNoticeApplied] = useState(false);
   const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
   const [pdfTermsHtml, setPdfTermsHtml] = useState('');
+  const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
   const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
 
   // Cancel dialog
@@ -171,9 +205,19 @@ export function PODetailPage() {
   }
 
   function applyDefaultPdfTermsIfEmpty() {
-    if (!pdfDefaultTerms?.html || hasHtmlText(pdfTermsHtml)) return false;
-    setPdfTermsHtml(pdfDefaultTerms.html);
+    if (!defaultPdfTermsOption?.html || hasHtmlText(pdfTermsHtml)) return false;
+    setPdfTermsTemplateId(defaultPdfTermsOption.id);
+    setPdfTermsHtml(defaultPdfTermsOption.html);
     setPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultPdfNoticeIfEmpty() {
+    if (!defaultPdfNoticeOption?.html || hasHtmlText(pdfNoticeHtml)) return false;
+    setPdfNoticeTemplateId(defaultPdfNoticeOption.id);
+    setPdfNoticeTitle(defaultPdfNoticeOption.title);
+    setPdfNoticeHtml(defaultPdfNoticeOption.html);
+    setPdfDefaultNoticeApplied(true);
     return true;
   }
 
@@ -189,19 +233,64 @@ export function PODetailPage() {
   }
 
   function openPdfOptions() {
+    const shouldEnableDefaultNotice =
+      !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
+    const defaultNoticeApplied = !pdfDefaultNoticeApplied && applyDefaultPdfNoticeIfEmpty();
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultPdfNoticeOption?.title
+        ? defaultPdfNoticeOption.title
+        : pdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultPdfNoticeOption?.html
+        ? defaultPdfNoticeOption.html
+        : pdfNoticeHtml;
+    const nextIncludeNotice =
+      (shouldEnableDefaultNotice || defaultNoticeApplied) && hasHtmlText(nextNoticeHtml)
+        ? true
+        : pdfIncludeNotice;
+    const shouldEnableDefaultTerms =
+      !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
     const defaultTermsApplied = !pdfDefaultTermsApplied && applyDefaultPdfTermsIfEmpty();
-    const nextIncludeTerms = defaultTermsApplied ? true : pdfIncludeTerms;
-    const nextTermsHtml = defaultTermsApplied && pdfDefaultTerms?.html ? pdfDefaultTerms.html : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldEnableDefaultTerms || defaultTermsApplied ? true : pdfIncludeTerms;
+    const nextTermsHtml =
+      defaultTermsApplied && defaultPdfTermsOption?.html
+        ? defaultPdfTermsOption.html
+        : pdfTermsHtml;
 
-    if (defaultTermsApplied) {
+    if (nextIncludeNotice) {
+      setPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
       setPdfIncludeTerms(true);
     }
     setPdfPreview(null);
     setPdfOptionsOpen(true);
     generatePdfPreview({
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
       addTermsAndConditions: nextIncludeTerms,
       termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
     });
+  }
+
+  function handlePdfIncludeNoticeChange(includeNotice: boolean) {
+    setPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultPdfNoticeIfEmpty();
+    }
+  }
+
+  function handlePdfNoticeTemplateChange(optionId: string) {
+    const option = pdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option) return;
+
+    setPdfNoticeTemplateId(option.id);
+    setPdfNoticeTitle(option.title);
+    setPdfNoticeHtml(option.html);
+    setPdfIncludeNotice(true);
+    setPdfDefaultNoticeApplied(true);
   }
 
   function handlePdfIncludeTermsChange(includeTerms: boolean) {
@@ -209,6 +298,16 @@ export function PODetailPage() {
     if (includeTerms) {
       applyDefaultPdfTermsIfEmpty();
     }
+  }
+
+  function handlePdfTermsTemplateChange(optionId: string) {
+    const option = pdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option) return;
+
+    setPdfTermsTemplateId(option.id);
+    setPdfTermsHtml(option.html);
+    setPdfIncludeTerms(true);
+    setPdfDefaultTermsApplied(true);
   }
 
   const activityItems = useMemo<ActivityItem[]>(() => {
@@ -640,7 +739,7 @@ export function PODetailPage() {
                 title="Backup Documents"
                 emptyMessage="No backup documents attached."
                 documents={attachments}
-                canUpload={canEdit && !!poFolderId}
+                canUpload={canEdit && !!poUploadFolderId}
                 canRemove={canEdit}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -854,11 +953,23 @@ export function PODetailPage() {
         <PurchaseOrderPdfDialog
           open={pdfOptionsOpen}
           onOpenChange={handlePdfOptionsOpenChange}
+          includeNotice={pdfIncludeNotice}
+          noticeTitle={pdfNoticeTitle}
+          noticeHtml={pdfNoticeHtml}
+          noticeOptions={pdfNoticeOptions}
+          selectedNoticeOptionId={pdfNoticeTemplateId}
           includeTerms={pdfIncludeTerms}
           termsHtml={pdfTermsHtml}
+          termsOptions={pdfTermsOptions}
+          selectedTermsOptionId={pdfTermsTemplateId}
           previewFile={pdfPreview}
           isGenerating={generatePdfMutation.isPending}
+          onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+          onNoticeOptionChange={handlePdfNoticeTemplateChange}
+          onNoticeTitleChange={setPdfNoticeTitle}
+          onNoticeHtmlChange={setPdfNoticeHtml}
           onIncludeTermsChange={handlePdfIncludeTermsChange}
+          onTermsOptionChange={handlePdfTermsTemplateChange}
           onTermsHtmlChange={setPdfTermsHtml}
           onGenerate={(data) => {
             generatePdfPreview(data);
@@ -965,11 +1076,11 @@ export function PODetailPage() {
       </Dialog>
 
       {/* ---- Upload file dialog ---- */}
-      {canEdit && poFolderId && (
+      {canEdit && poUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={poFolderId}
+          parentId={poUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },

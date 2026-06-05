@@ -62,7 +62,10 @@ import {
 } from '@/modules/project/hooks/invoice';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   invoiceMarkPaidInputSchema,
   type InvoiceMarkPaidInput,
@@ -150,6 +153,13 @@ export function InvoiceDetailPage() {
   );
 
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
+  const { data: invoiceEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'INVOICE',
+    invoiceId || undefined,
+    project?.capabilities?.actions?.invoice?.update === true
+  );
+  const invoiceUploadFolderId = invoiceEntityFolderId ?? invoiceFolderId;
   const { data: paymentMethods, isLoading: isLoadingPaymentMethods } =
     useLookupsQuery('PAYMENT_METHOD');
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
@@ -370,7 +380,7 @@ export function InvoiceDetailPage() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {canEditInvoice && invoiceFolderId && (
+                {canEditInvoice && invoiceUploadFolderId && (
                   <DropdownMenuItem onClick={() => setUploadOpen(true)}>
                     <Upload className="size-4" />
                     Upload Document
@@ -485,7 +495,7 @@ export function InvoiceDetailPage() {
 
               <ProjectDetailDocumentsCard
                 documents={attachments}
-                canUpload={canEditInvoice && !!invoiceFolderId}
+                canUpload={canEditInvoice && !!invoiceUploadFolderId}
                 canRemove={canEditInvoice}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -884,11 +894,11 @@ export function InvoiceDetailPage() {
         isPending={resolveDisputeMutation.isPending}
       />
 
-      {canEditInvoice && invoiceFolderId && (
+      {canEditInvoice && invoiceUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={invoiceFolderId}
+          parentId={invoiceUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },

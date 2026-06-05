@@ -4,7 +4,7 @@ import {
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
-import { RFQ_VENDOR_PDF_PROFILE } from '@/modules/project/constants/rfq';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import { lookupSchema, type Lookup } from '@/modules/project/schemas/lookup.schema';
 import {
   rfqAttachmentSchema,
@@ -324,8 +324,12 @@ export const rfqApi = {
     await api.patch(`${BASE}/vendor/remove`, { id: quoteId });
   },
 
-  async generateVendorPdf(quoteId: string, vendorName: string): Promise<GeneratedPdfFile> {
-    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf`, RFQ_VENDOR_PDF_PROFILE, {
+  async generateVendorPdf(
+    quoteId: string,
+    vendorName: string,
+    data: GeneratePdfTermsInput = {}
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf`, data, {
       responseType: 'blob',
       timeout: 0,
     });
