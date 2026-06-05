@@ -6,6 +6,7 @@ import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
   CreateSCOInput,
+  GenerateSCOPdfInput,
   ListSCOsParams,
   SCOLineItemInput,
   UpdateSCOInput,
@@ -172,3 +173,17 @@ export const useVoidSCOMutation = () => {
     onError: (err) => toastApiError(err, 'Failed to void SCO.'),
   });
 };
+
+export const useGenerateSCOPdfMutation = () =>
+  useMutation({
+    mutationFn: ({
+      id,
+      data,
+      scoNumber,
+    }: {
+      id: string;
+      data: GenerateSCOPdfInput;
+      scoNumber?: string | null;
+    }) => scoApi.generatePdf(id, data, scoNumber),
+    onError: (err) => toastApiError(err, 'Failed to generate SCO PDF.'),
+  });

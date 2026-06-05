@@ -235,7 +235,9 @@ export function PODetailPage() {
   function openPdfOptions() {
     const shouldEnableDefaultNotice =
       !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
-    const defaultNoticeApplied = !pdfDefaultNoticeApplied && applyDefaultPdfNoticeIfEmpty();
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
+    const defaultNoticeApplied =
+      !pdfDefaultNoticeApplied && shouldApplyDefaultNotice ? applyDefaultPdfNoticeIfEmpty() : false;
     const nextNoticeTitle =
       defaultNoticeApplied && defaultPdfNoticeOption?.title
         ? defaultPdfNoticeOption.title
@@ -245,18 +247,20 @@ export function PODetailPage() {
         ? defaultPdfNoticeOption.html
         : pdfNoticeHtml;
     const nextIncludeNotice =
-      (shouldEnableDefaultNotice || defaultNoticeApplied) && hasHtmlText(nextNoticeHtml)
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
         ? true
         : pdfIncludeNotice;
     const shouldEnableDefaultTerms =
       !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
-    const defaultTermsApplied = !pdfDefaultTermsApplied && applyDefaultPdfTermsIfEmpty();
-    const nextIncludeTerms =
-      shouldEnableDefaultTerms || defaultTermsApplied ? true : pdfIncludeTerms;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
+    const defaultTermsApplied =
+      !pdfDefaultTermsApplied && shouldApplyDefaultTerms ? applyDefaultPdfTermsIfEmpty() : false;
     const nextTermsHtml =
       defaultTermsApplied && defaultPdfTermsOption?.html
         ? defaultPdfTermsOption.html
         : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldApplyDefaultTerms && hasHtmlText(nextTermsHtml) ? true : pdfIncludeTerms;
 
     if (nextIncludeNotice) {
       setPdfIncludeNotice(true);

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const pdfTermsSectionSchema = z.enum(['global', 'rfq', 'purchaseOrder']);
+export const pdfTermsSectionSchema = z.enum(['global', 'rfq', 'purchaseOrder', 'subChangeOrder']);
 export type PdfTermsSection = z.infer<typeof pdfTermsSectionSchema>;
 export const pdfNoticeSectionSchema = pdfTermsSectionSchema;
 export type PdfNoticeSection = z.infer<typeof pdfNoticeSectionSchema>;

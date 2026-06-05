@@ -256,6 +256,16 @@ export const updateSCOInputSchema = baseSCOInputSchema
 
 export type UpdateSCOInput = z.infer<typeof updateSCOInputSchema>;
 
+export const generateSCOPdfInputSchema = z.object({
+  addWarningNotice: z.boolean().optional(),
+  warningNoticeTitle: z.string().optional(),
+  warningNoticeHtml: z.string().optional(),
+  addTermsAndConditions: z.boolean().optional(),
+  termsAndConditionsHtml: z.string().optional(),
+});
+
+export type GenerateSCOPdfInput = z.infer<typeof generateSCOPdfInputSchema>;
+
 // --- SCO line item (from detail response) ---
 
 export const scoLineItemSchema = z

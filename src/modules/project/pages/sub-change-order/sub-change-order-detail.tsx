@@ -23,12 +23,18 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
+import {
+  InfoRow,
+  PdfGenerateDialog,
+  ProjectDetailPageLoading,
+} from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
 import {
   calculateEffectivePurchaseOrderTotals,
@@ -41,6 +47,7 @@ import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
   useAddSCOAttachmentMutation,
   useApproveSCOMutation,
+  useGenerateSCOPdfMutation,
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
   useSCODetailQuery,
@@ -50,6 +57,7 @@ import {
   useProjectEntityFolderQuery,
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
+import type { GenerateSCOPdfInput } from '@/modules/project/schemas/sub-change-order';
 import {
   AlertTriangle,
   Calendar,
@@ -120,6 +128,13 @@ function money(value: unknown): string {
   return formatCurrency(numeric(value));
 }
 
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
+
 function lineAmount(value: PurchaseOrderLineAmountLike): number {
   return calculateRoundedLineAmount(value);
 }
@@ -166,10 +181,32 @@ export function SCODetailPage() {
     project?.capabilities?.actions?.subChangeOrder?.update === true
   );
   const scoUploadFolderId = scoEntityFolderId ?? scoFolderId;
+  const { data: pdfTermsConfig } = usePdfTermsConfigQuery('subChangeOrder');
+  const { data: pdfNoticeConfig } = usePdfNoticeConfigQuery('subChangeOrder');
+  const pdfTermsOptions = useMemo(() => pdfTermsConfig?.options ?? [], [pdfTermsConfig?.options]);
+  const pdfNoticeOptions = useMemo(
+    () => pdfNoticeConfig?.options ?? [],
+    [pdfNoticeConfig?.options]
+  );
+  const defaultPdfTermsOption = useMemo(
+    () =>
+      pdfTermsOptions.find((option) => option.id === pdfTermsConfig?.defaultOptionId) ??
+      pdfTermsOptions.find((option) => option.isDefault) ??
+      pdfTermsOptions[0],
+    [pdfTermsConfig?.defaultOptionId, pdfTermsOptions]
+  );
+  const defaultPdfNoticeOption = useMemo(
+    () =>
+      pdfNoticeOptions.find((option) => option.id === pdfNoticeConfig?.defaultOptionId) ??
+      pdfNoticeOptions.find((option) => option.isDefault) ??
+      pdfNoticeOptions[0],
+    [pdfNoticeConfig?.defaultOptionId, pdfNoticeOptions]
+  );
 
   const approveMutation = useApproveSCOMutation();
   const rejectMutation = useRejectSCOMutation();
   const voidMutation = useVoidSCOMutation();
+  const generatePdfMutation = useGenerateSCOPdfMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -186,6 +223,17 @@ export function SCODetailPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [pdfIncludeNotice, setPdfIncludeNotice] = useState(false);
+  const [pdfNoticeTitle, setPdfNoticeTitle] = useState('');
+  const [pdfNoticeHtml, setPdfNoticeHtml] = useState('');
+  const [pdfNoticeTemplateId, setPdfNoticeTemplateId] = useState('');
+  const [pdfDefaultNoticeApplied, setPdfDefaultNoticeApplied] = useState(false);
+  const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
+  const [pdfTermsHtml, setPdfTermsHtml] = useState('');
+  const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
+  const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
 
   // Workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
@@ -274,6 +322,121 @@ export function SCODetailPage() {
   function handleActionClick(action: WorkflowAction) {
     setActiveAction(action);
     if (action.needsReason) setActionReason('');
+  }
+
+  function handlePdfOptionsOpenChange(open: boolean) {
+    setPdfOptionsOpen(open);
+    if (!open) setPdfPreview(null);
+  }
+
+  function applyDefaultPdfTermsIfEmpty() {
+    if (!defaultPdfTermsOption?.html || hasHtmlText(pdfTermsHtml)) return false;
+    setPdfTermsTemplateId(defaultPdfTermsOption.id);
+    setPdfTermsHtml(defaultPdfTermsOption.html);
+    setPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultPdfNoticeIfEmpty() {
+    if (!defaultPdfNoticeOption?.html || hasHtmlText(pdfNoticeHtml)) return false;
+    setPdfNoticeTemplateId(defaultPdfNoticeOption.id);
+    setPdfNoticeTitle(defaultPdfNoticeOption.title);
+    setPdfNoticeHtml(defaultPdfNoticeOption.html);
+    setPdfDefaultNoticeApplied(true);
+    return true;
+  }
+
+  function generatePdfPreview(data: GenerateSCOPdfInput) {
+    generatePdfMutation.mutate(
+      { id: scoId, scoNumber: sco?.scoNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function openPdfOptions() {
+    const shouldEnableDefaultNotice =
+      !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
+    const defaultNoticeApplied =
+      !pdfDefaultNoticeApplied && shouldApplyDefaultNotice ? applyDefaultPdfNoticeIfEmpty() : false;
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultPdfNoticeOption?.title
+        ? defaultPdfNoticeOption.title
+        : pdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultPdfNoticeOption?.html
+        ? defaultPdfNoticeOption.html
+        : pdfNoticeHtml;
+    const nextIncludeNotice =
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
+        ? true
+        : pdfIncludeNotice;
+    const shouldEnableDefaultTerms =
+      !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
+    const defaultTermsApplied =
+      !pdfDefaultTermsApplied && shouldApplyDefaultTerms ? applyDefaultPdfTermsIfEmpty() : false;
+    const nextTermsHtml =
+      defaultTermsApplied && defaultPdfTermsOption?.html
+        ? defaultPdfTermsOption.html
+        : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldApplyDefaultTerms && hasHtmlText(nextTermsHtml) ? true : pdfIncludeTerms;
+
+    if (nextIncludeNotice) {
+      setPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
+      setPdfIncludeTerms(true);
+    }
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview({
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    });
+  }
+
+  function handlePdfIncludeNoticeChange(includeNotice: boolean) {
+    setPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultPdfNoticeIfEmpty();
+    }
+  }
+
+  function handlePdfNoticeTemplateChange(optionId: string) {
+    const option = pdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option) return;
+
+    setPdfNoticeTemplateId(option.id);
+    setPdfNoticeTitle(option.title);
+    setPdfNoticeHtml(option.html);
+    setPdfIncludeNotice(true);
+    setPdfDefaultNoticeApplied(true);
+  }
+
+  function handlePdfIncludeTermsChange(includeTerms: boolean) {
+    setPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultPdfTermsIfEmpty();
+    }
+  }
+
+  function handlePdfTermsTemplateChange(optionId: string) {
+    const option = pdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option) return;
+
+    setPdfTermsTemplateId(option.id);
+    setPdfTermsHtml(option.html);
+    setPdfIncludeTerms(true);
+    setPdfDefaultTermsApplied(true);
   }
 
   const isActionPending =
@@ -379,6 +542,11 @@ export function SCODetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" onClick={openPdfOptions}>
+              <FileText className="size-4" />
+              Generate PDF
+            </Button>
+
             {/* Approve - only on DRAFT */}
             {canApprove && (
               <Button
@@ -1019,6 +1187,35 @@ export function SCODetailPage() {
           </div>
         </DetailSidebar>
       </div>
+
+      {pdfOptionsOpen && (
+        <PdfGenerateDialog
+          open={pdfOptionsOpen}
+          title="Generate SCO PDF"
+          onOpenChange={handlePdfOptionsOpenChange}
+          includeNotice={pdfIncludeNotice}
+          noticeTitle={pdfNoticeTitle}
+          noticeHtml={pdfNoticeHtml}
+          noticeOptions={pdfNoticeOptions}
+          selectedNoticeOptionId={pdfNoticeTemplateId}
+          includeTerms={pdfIncludeTerms}
+          termsHtml={pdfTermsHtml}
+          termsOptions={pdfTermsOptions}
+          selectedTermsOptionId={pdfTermsTemplateId}
+          previewFile={pdfPreview}
+          isGenerating={generatePdfMutation.isPending}
+          onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+          onNoticeOptionChange={handlePdfNoticeTemplateChange}
+          onNoticeTitleChange={setPdfNoticeTitle}
+          onNoticeHtmlChange={setPdfNoticeHtml}
+          onIncludeTermsChange={handlePdfIncludeTermsChange}
+          onTermsOptionChange={handlePdfTermsTemplateChange}
+          onTermsHtmlChange={setPdfTermsHtml}
+          onGenerate={(data) => {
+            generatePdfPreview(data);
+          }}
+        />
+      )}
 
       {/* ---- Workflow action dialog (no reason) ---- */}
       {activeAction && !activeAction.needsReason && (
