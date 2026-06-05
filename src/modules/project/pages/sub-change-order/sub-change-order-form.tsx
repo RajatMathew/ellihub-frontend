@@ -130,12 +130,7 @@ export function SCOFormPage() {
     projectId,
     selectedOption: selectedPurchaseOrderOption,
   });
-  const { data: primeCoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
-  const { data: legacyScoFolderId } = useProjectFolderQuery(
-    projectId || undefined,
-    'purchase order co'
-  );
-  const uploadFolderId = primeCoFolderId ?? legacyScoFolderId;
+  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'sub change order');
 
   const createMutation = useCreateSCOMutation();
   const updateMutation = useUpdateSCOMutation();
@@ -253,7 +248,7 @@ export function SCOFormPage() {
     try {
       return await resolveProjectEntityFolder(projectId, 'SUB_CHANGE_ORDER', targetScoId);
     } catch {
-      return uploadFolderId;
+      return scoFolderId;
     }
   }
 

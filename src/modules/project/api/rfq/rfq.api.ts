@@ -1,6 +1,6 @@
 import api from '@/app/api';
 import {
-  getPdfDownloadName,
+  getGeneratedPdfFileFromResponse,
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
@@ -334,16 +334,22 @@ export const rfqApi = {
       timeout: 0,
     });
     const fallbackName = sanitizeDownloadName(`${vendorName || 'vendor'}-rfq.pdf`);
-    const fileName = getPdfDownloadName(
-      String(res.headers['content-disposition'] ?? ''),
-      fallbackName
-    );
 
-    return {
-      blob: res.data,
-      fileName,
-      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
-    };
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async saveVendorPdf(
+    quoteId: string,
+    vendorName: string,
+    data: GeneratePdfTermsInput = {}
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${vendorName || 'vendor'}-rfq.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   /* ---- Invite actions ---- */

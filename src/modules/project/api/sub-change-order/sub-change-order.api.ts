@@ -1,6 +1,6 @@
 import api from '@/app/api';
 import {
-  getPdfDownloadName,
+  getGeneratedPdfFileFromResponse,
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
@@ -145,16 +145,22 @@ export const scoApi = {
       timeout: 0,
     });
     const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
-    const fileName = getPdfDownloadName(
-      String(res.headers['content-disposition'] ?? ''),
-      fallbackName
-    );
 
-    return {
-      blob: res.data,
-      fileName,
-      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
-    };
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async savePdf(
+    id: string,
+    data: GenerateSCOPdfInput,
+    scoNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   async addLineItem(scoId: string, data: SCOLineItemInput) {

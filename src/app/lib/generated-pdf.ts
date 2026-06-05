@@ -2,6 +2,15 @@ export type GeneratedPdfFile = {
   blob: Blob;
   fileName: string;
   contentType: string;
+  savedFileId?: string;
+  savedAttachmentId?: string;
+};
+
+type PdfResponseLike = {
+  data: Blob;
+  headers: Record<string, unknown> & {
+    get?: (name: string) => unknown;
+  };
 };
 
 const DOWNLOAD_INVALID_CHARS = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*']);
@@ -30,6 +39,34 @@ export function getPdfDownloadName(disposition: string, fallback: string): strin
 
   const plainMatch = /filename="([^"]+)"/.exec(disposition);
   return plainMatch?.[1] || fallback;
+}
+
+function getResponseHeader(headers: PdfResponseLike['headers'], name: string): string {
+  const fromGetter = typeof headers.get === 'function' ? headers.get(name) : undefined;
+  const raw = fromGetter ?? headers[name] ?? headers[name.toLowerCase()];
+
+  if (Array.isArray(raw)) return String(raw[0] ?? '');
+  return raw == null ? '' : String(raw);
+}
+
+export function getGeneratedPdfFileFromResponse(
+  response: PdfResponseLike,
+  fallbackName: string
+): GeneratedPdfFile {
+  const fileName = getPdfDownloadName(
+    getResponseHeader(response.headers, 'content-disposition'),
+    fallbackName
+  );
+  const savedFileId = getResponseHeader(response.headers, 'x-saved-file-id');
+  const savedAttachmentId = getResponseHeader(response.headers, 'x-saved-attachment-id');
+
+  return {
+    blob: response.data,
+    fileName,
+    contentType: getResponseHeader(response.headers, 'content-type') || 'application/pdf',
+    ...(savedFileId ? { savedFileId } : {}),
+    ...(savedAttachmentId ? { savedAttachmentId } : {}),
+  };
 }
 
 export function downloadBlob(blob: Blob, fileName: string): void {

@@ -1,5 +1,6 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { scoApi } from '@/modules/project/api/sub-change-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
@@ -187,3 +188,30 @@ export const useGenerateSCOPdfMutation = () =>
     }) => scoApi.generatePdf(id, data, scoNumber),
     onError: (err) => toastApiError(err, 'Failed to generate SCO PDF.'),
   });
+
+export const useSaveSCOPdfMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+      scoNumber,
+    }: {
+      id: string;
+      data: GenerateSCOPdfInput;
+      scoNumber?: string | null;
+      purchaseOrderId?: string | null;
+    }) => scoApi.savePdf(id, data, scoNumber),
+    onSuccess: async (_, { id, purchaseOrderId }) => {
+      await invalidateProjectQueries(qc, [
+        scoKeys.all,
+        scoKeys.detail(id),
+        filesKeys.all,
+        activityLogKeys.all,
+        ...(purchaseOrderId ? [scoKeys.byPurchaseOrder(purchaseOrderId), poKeys.detail(purchaseOrderId)] : []),
+      ]);
+      toast.success('PDF saved to Files.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to save SCO PDF.'),
+  });
+};

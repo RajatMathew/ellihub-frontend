@@ -69,6 +69,7 @@ import {
   usePODetailQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
+  useSavePOPdfMutation,
 } from '@/modules/project/hooks/purchase-order';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
@@ -169,6 +170,7 @@ export function PODetailPage() {
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
   const generatePdfMutation = useGeneratePOPdfMutation();
+  const savePdfMutation = useSavePOPdfMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -223,6 +225,17 @@ export function PODetailPage() {
 
   function generatePdfPreview(data: GeneratePOPdfInput) {
     generatePdfMutation.mutate(
+      { id: poId, poNumber: po?.poNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function savePdfToFiles(data: GeneratePOPdfInput) {
+    savePdfMutation.mutate(
       { id: poId, poNumber: po?.poNumber, data },
       {
         onSuccess: (file) => {
@@ -361,6 +374,7 @@ export function PODetailPage() {
   const isDelivered = statusName === 'DELIVERED';
 
   const projectActions = project?.capabilities?.actions;
+  const canSavePdf = projectActions?.purchaseOrder?.update === true;
   const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
   const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
   const canCancel =
@@ -968,6 +982,8 @@ export function PODetailPage() {
           selectedTermsOptionId={pdfTermsTemplateId}
           previewFile={pdfPreview}
           isGenerating={generatePdfMutation.isPending}
+          isSaving={savePdfMutation.isPending}
+          canSave={canSavePdf}
           onIncludeNoticeChange={handlePdfIncludeNoticeChange}
           onNoticeOptionChange={handlePdfNoticeTemplateChange}
           onNoticeTitleChange={setPdfNoticeTitle}
@@ -977,6 +993,9 @@ export function PODetailPage() {
           onTermsHtmlChange={setPdfTermsHtml}
           onGenerate={(data) => {
             generatePdfPreview(data);
+          }}
+          onSave={(data) => {
+            savePdfToFiles(data);
           }}
         />
       )}

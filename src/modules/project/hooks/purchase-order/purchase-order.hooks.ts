@@ -1,4 +1,6 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { poApi } from '@/modules/project/api/purchase-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
@@ -10,6 +12,7 @@ import type {
   POLineItemInput,
 } from '@/modules/project/schemas/purchase-order';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 function invalidatePOQueries(queryClient: QueryClient, poId?: string) {
   return invalidateProjectQueries(
@@ -129,6 +132,31 @@ export const useGeneratePOPdfMutation = () =>
     }) => poApi.generatePdf(id, data, poNumber),
     onError: (err) => toastApiError(err, 'Failed to generate purchase order PDF.'),
   });
+
+export const useSavePOPdfMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+      poNumber,
+    }: {
+      id: string;
+      data: GeneratePOPdfInput;
+      poNumber?: string | null;
+    }) => poApi.savePdf(id, data, poNumber),
+    onSuccess: async (_, { id }) => {
+      await invalidateProjectQueries(qc, [
+        poKeys.all,
+        poKeys.detail(id),
+        filesKeys.all,
+        activityLogKeys.all,
+      ]);
+      toast.success('PDF saved to Files.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to save purchase order PDF.'),
+  });
+};
 
 /* ---- line item mutations ---- */
 

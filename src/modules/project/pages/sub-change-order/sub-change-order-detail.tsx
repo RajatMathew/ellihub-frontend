@@ -51,6 +51,7 @@ import {
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
   useSCODetailQuery,
+  useSaveSCOPdfMutation,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
 import {
@@ -173,7 +174,7 @@ export function SCODetailPage() {
     sco?.scoNumber ?? sco?.title ?? undefined
   );
   const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
-  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
+  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'sub change order');
   const { data: scoEntityFolderId } = useProjectEntityFolderQuery(
     projectId || undefined,
     'SUB_CHANGE_ORDER',
@@ -207,6 +208,7 @@ export function SCODetailPage() {
   const rejectMutation = useRejectSCOMutation();
   const voidMutation = useVoidSCOMutation();
   const generatePdfMutation = useGenerateSCOPdfMutation();
+  const savePdfMutation = useSaveSCOPdfMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -302,6 +304,7 @@ export function SCODetailPage() {
   const canReject = projectActions?.subChangeOrder?.reject === true && isDraft;
   const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
   const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
+  const canSavePdf = projectActions?.subChangeOrder?.update === true;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -349,6 +352,17 @@ export function SCODetailPage() {
   function generatePdfPreview(data: GenerateSCOPdfInput) {
     generatePdfMutation.mutate(
       { id: scoId, scoNumber: sco?.scoNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function savePdfToFiles(data: GenerateSCOPdfInput) {
+    savePdfMutation.mutate(
+      { id: scoId, scoNumber: sco?.scoNumber, purchaseOrderId, data },
       {
         onSuccess: (file) => {
           setPdfPreview(file);
@@ -1204,6 +1218,8 @@ export function SCODetailPage() {
           selectedTermsOptionId={pdfTermsTemplateId}
           previewFile={pdfPreview}
           isGenerating={generatePdfMutation.isPending}
+          isSaving={savePdfMutation.isPending}
+          canSave={canSavePdf}
           onIncludeNoticeChange={handlePdfIncludeNoticeChange}
           onNoticeOptionChange={handlePdfNoticeTemplateChange}
           onNoticeTitleChange={setPdfNoticeTitle}
@@ -1213,6 +1229,9 @@ export function SCODetailPage() {
           onTermsHtmlChange={setPdfTermsHtml}
           onGenerate={(data) => {
             generatePdfPreview(data);
+          }}
+          onSave={(data) => {
+            savePdfToFiles(data);
           }}
         />
       )}

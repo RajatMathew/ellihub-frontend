@@ -37,6 +37,7 @@ import {
   List,
   ListOrdered,
   Loader2,
+  Save,
   Underline,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -56,6 +57,8 @@ export type PdfGenerateDialogProps = {
   selectedTermsOptionId?: string;
   previewFile: GeneratedPdfFile | null;
   isGenerating: boolean;
+  isSaving?: boolean;
+  canSave?: boolean;
   onIncludeNoticeChange: (includeNotice: boolean) => void;
   onNoticeOptionChange?: (optionId: string) => void;
   onNoticeTitleChange: (noticeTitle: string) => void;
@@ -64,6 +67,7 @@ export type PdfGenerateDialogProps = {
   onTermsOptionChange?: (optionId: string) => void;
   onTermsHtmlChange: (termsHtml: string) => void;
   onGenerate: (data: GeneratePdfTermsInput) => void;
+  onSave?: (data: GeneratePdfTermsInput) => void;
 };
 
 type TermsEditorProps = {
@@ -191,10 +195,16 @@ export function TermsEditor({ value, disabled, onChange }: TermsEditorProps) {
 function PdfPreviewPane({
   file,
   isGenerating,
+  isSaving = false,
+  canSave = false,
+  onSave,
   className,
 }: {
   file: GeneratedPdfFile | null;
   isGenerating: boolean;
+  isSaving?: boolean;
+  canSave?: boolean;
+  onSave?: () => void;
   className?: string;
 }) {
   const objectUrl = useMemo(() => {
@@ -222,17 +232,28 @@ function PdfPreviewPane({
             </div>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!file || isGenerating}
-          onClick={() => {
-            if (file) downloadGeneratedPdf(file);
-          }}
-        >
-          <Download className="size-4" />
-          Download
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!file || isGenerating || isSaving || !canSave || !onSave}
+            onClick={onSave}
+          >
+            {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {isSaving ? 'Saving...' : 'Save to Files'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!file || isGenerating || isSaving}
+            onClick={() => {
+              if (file) downloadGeneratedPdf(file);
+            }}
+          >
+            <Download className="size-4" />
+            Download
+          </Button>
+        </div>
       </div>
 
       <div className="relative min-h-0 flex-1 p-3">
@@ -260,11 +281,11 @@ function PdfPreviewPane({
             )}
           </div>
         )}
-        {objectUrl && isGenerating && (
+        {objectUrl && (isGenerating || isSaving) && (
           <div className="absolute inset-3 flex items-center justify-center rounded-md bg-background/70">
             <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
               <Loader2 className="size-4 animate-spin" />
-              Regenerating PDF...
+              {isSaving ? 'Saving PDF...' : 'Regenerating PDF...'}
             </div>
           </div>
         )}
@@ -288,6 +309,8 @@ export function PdfGenerateDialog({
   selectedTermsOptionId,
   previewFile,
   isGenerating,
+  isSaving = false,
+  canSave = false,
   onIncludeNoticeChange,
   onNoticeOptionChange,
   onNoticeTitleChange,
@@ -296,32 +319,46 @@ export function PdfGenerateDialog({
   onTermsOptionChange,
   onTermsHtmlChange,
   onGenerate,
+  onSave,
 }: PdfGenerateDialogProps) {
   const hasNoticeOptions = noticeOptions.length > 0;
+  const isBusy = isGenerating || isSaving;
 
-  function handleGenerate() {
+  function buildPdfRequest(): GeneratePdfTermsInput | null {
     if (includeNotice && !noticeTitle.trim()) {
       toast.error('Enter a warning title before generating the PDF.');
-      return;
+      return null;
     }
 
     if (includeNotice && !stripHtml(noticeHtml)) {
       toast.error('Enter warning content before generating the PDF.');
-      return;
+      return null;
     }
 
     if (includeTerms && !stripHtml(termsHtml)) {
       toast.error('Enter terms and conditions before generating the PDF.');
-      return;
+      return null;
     }
 
-    onGenerate({
+    return {
       addWarningNotice: includeNotice,
       warningNoticeTitle: includeNotice ? noticeTitle : undefined,
       warningNoticeHtml: includeNotice ? noticeHtml : undefined,
       addTermsAndConditions: includeTerms,
       termsAndConditionsHtml: includeTerms ? termsHtml : undefined,
-    });
+    };
+  }
+
+  function handleGenerate() {
+    const request = buildPdfRequest();
+    if (!request) return;
+    onGenerate(request);
+  }
+
+  function handleSave() {
+    const request = buildPdfRequest();
+    if (!request) return;
+    onSave?.(request);
   }
 
   return (
@@ -338,7 +375,7 @@ export function PdfGenerateDialog({
                 <Checkbox
                   id="pdf-notice"
                   checked={includeNotice}
-                  disabled={isGenerating}
+                  disabled={isBusy}
                   onCheckedChange={(checked) => onIncludeNoticeChange(checked === true)}
                 />
                 <div className="space-y-1">
@@ -357,7 +394,7 @@ export function PdfGenerateDialog({
                       </FieldLabel>
                       <Select
                         value={selectedNoticeOptionId ?? ''}
-                        disabled={isGenerating || !onNoticeOptionChange}
+                        disabled={isBusy || !onNoticeOptionChange}
                         onValueChange={(optionId) => onNoticeOptionChange?.(optionId)}
                       >
                         <SelectTrigger>
@@ -388,7 +425,7 @@ export function PdfGenerateDialog({
                     </FieldLabel>
                     <Input
                       value={noticeTitle}
-                      disabled={isGenerating}
+                      disabled={isBusy}
                       placeholder="DO NOT START FABRICATION BEFORE READING THIS"
                       onChange={(event) => onNoticeTitleChange(event.target.value)}
                     />
@@ -401,7 +438,7 @@ export function PdfGenerateDialog({
                     <div className="h-[240px]">
                       <TermsEditor
                         value={noticeHtml}
-                        disabled={isGenerating}
+                        disabled={isBusy}
                         onChange={onNoticeHtmlChange}
                       />
                     </div>
@@ -413,7 +450,7 @@ export function PdfGenerateDialog({
                 <Checkbox
                   id="pdf-terms"
                   checked={includeTerms}
-                  disabled={isGenerating}
+                  disabled={isBusy}
                   onCheckedChange={(checked) => onIncludeTermsChange(checked === true)}
                 />
                 <div className="space-y-1">
@@ -432,7 +469,7 @@ export function PdfGenerateDialog({
                       </FieldLabel>
                       <Select
                         value={selectedTermsOptionId ?? ''}
-                        disabled={isGenerating || !onTermsOptionChange}
+                        disabled={isBusy || !onTermsOptionChange}
                         onValueChange={(optionId) => onTermsOptionChange?.(optionId)}
                       >
                         <SelectTrigger>
@@ -457,7 +494,7 @@ export function PdfGenerateDialog({
                     <div className="h-[300px]">
                       <TermsEditor
                         value={termsHtml}
-                        disabled={isGenerating}
+                        disabled={isBusy}
                         onChange={onTermsHtmlChange}
                       />
                     </div>
@@ -467,10 +504,10 @@ export function PdfGenerateDialog({
             </div>
 
             <DialogFooter className="border-t p-4">
-              <Button variant="outline" disabled={isGenerating} onClick={() => onOpenChange(false)}>
+              <Button variant="outline" disabled={isBusy} onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button disabled={isGenerating} onClick={handleGenerate}>
+              <Button disabled={isBusy} onClick={handleGenerate}>
                 {isGenerating ? 'Generating...' : previewFile ? 'Regenerate PDF' : 'Generate PDF'}
               </Button>
             </DialogFooter>
@@ -480,6 +517,9 @@ export function PdfGenerateDialog({
             className="lg:col-span-2"
             file={previewFile}
             isGenerating={isGenerating}
+            isSaving={isSaving}
+            canSave={canSave}
+            onSave={handleSave}
           />
         </div>
       </DialogContent>

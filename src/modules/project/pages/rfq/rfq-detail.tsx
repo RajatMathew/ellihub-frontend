@@ -81,6 +81,7 @@ import {
   useRemoveVendorMutation,
   useRFQDetailQuery,
   useRFQStatusesQuery,
+  useSaveRFQVendorPdfMutation,
   useSubmitQuoteMutation,
   useUnawardRFQMutation,
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
@@ -199,6 +200,7 @@ export default function RFQDetailPage() {
   const awardMutation = useAwardRFQMutation();
   const unawardMutation = useUnawardRFQMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
+  const saveVendorPdfMutation = useSaveRFQVendorPdfMutation();
   const sendVendorEmailMutation = useSendFeatureMailMutation();
   const deleteMutation = useDeleteRFQMutation();
   const addVendorMutation = useAddVendorMutation();
@@ -435,6 +437,7 @@ export default function RFQDetailPage() {
   const canUseRfqActions = !isTerminal && (canVoidRfq || canDeleteDraftRfq);
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
+  const canSaveVendorPdf = projectActions?.rfq?.update === true;
 
   const isActionPending =
     publishMutation.isPending ||
@@ -574,6 +577,21 @@ export default function RFQDetailPage() {
     );
   }
 
+  function saveVendorPdfToFiles(
+    target: { quoteId: string; vendorName: string },
+    data: GeneratePdfTermsInput
+  ) {
+    saveVendorPdfMutation.mutate(
+      { quoteId: target.quoteId, vendorName: target.vendorName, rfqId, data },
+      {
+        onSuccess: (file) => {
+          setVendorPdfPreview(file);
+          setVendorPdfOptionsOpen(true);
+        },
+      }
+    );
+  }
+
   function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
     const target = { quoteId: inviteId, vendorName };
     const shouldEnableDefaultNotice =
@@ -698,6 +716,8 @@ export default function RFQDetailPage() {
           selectedTermsOptionId={vendorPdfTermsTemplateId}
           previewFile={vendorPdfPreview}
           isGenerating={generateVendorPdfMutation.isPending}
+          isSaving={saveVendorPdfMutation.isPending}
+          canSave={canSaveVendorPdf}
           onIncludeNoticeChange={handleVendorPdfIncludeNoticeChange}
           onNoticeOptionChange={handleVendorPdfNoticeTemplateChange}
           onNoticeTitleChange={setVendorPdfNoticeTitle}
@@ -706,6 +726,7 @@ export default function RFQDetailPage() {
           onTermsOptionChange={handleVendorPdfTermsTemplateChange}
           onTermsHtmlChange={setVendorPdfTermsHtml}
           onGenerate={(data) => generateVendorPdfPreview(vendorPdfTarget, data)}
+          onSave={(data) => saveVendorPdfToFiles(vendorPdfTarget, data)}
         />
       )}
       <EmailComposePreviewDialog
