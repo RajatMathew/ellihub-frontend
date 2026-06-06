@@ -1,4 +1,9 @@
 import api from '@/app/api';
+import {
+  getGeneratedPdfFileFromResponse,
+  sanitizeDownloadName,
+  type GeneratedPdfFile,
+} from '@/app/lib/generated-pdf';
 
 import {
   scoPaginatedResponseSchema,
@@ -13,6 +18,7 @@ import {
   type SCODetail,
   type SCOListItem,
   type CreateSCOInput,
+  type GenerateSCOPdfInput,
   type UpdateSCOInput,
   type SCOLineItemInput,
 } from '@/modules/project/schemas/sub-change-order';
@@ -127,6 +133,34 @@ export const scoApi = {
       return raw as SCODetail;
     }
     return result.data;
+  },
+
+  async generatePdf(
+    id: string,
+    data: GenerateSCOPdfInput,
+    scoNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async savePdf(
+    id: string,
+    data: GenerateSCOPdfInput,
+    scoNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   async addLineItem(scoId: string, data: SCOLineItemInput) {

@@ -1,5 +1,7 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -264,6 +266,32 @@ export const useGenerateRFQVendorPdfMutation = () =>
     }) => rfqApi.generateVendorPdf(quoteId, vendorName, data),
     onError: (err) => toastApiError(err, 'Failed to generate RFQ PDF.'),
   });
+
+export const useSaveRFQVendorPdfMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      quoteId,
+      vendorName,
+      data,
+    }: {
+      quoteId: string;
+      vendorName: string;
+      rfqId?: string;
+      data?: GeneratePdfTermsInput;
+    }) => rfqApi.saveVendorPdf(quoteId, vendorName, data),
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateProjectQueries(qc, [
+        rfqKeys.all,
+        ...(rfqId ? [rfqKeys.detail(rfqId)] : []),
+        filesKeys.all,
+        activityLogKeys.all,
+      ]);
+      toast.success('PDF saved to Files.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to save RFQ PDF.'),
+  });
+};
 
 /* ---- workflow mutations ---- */
 

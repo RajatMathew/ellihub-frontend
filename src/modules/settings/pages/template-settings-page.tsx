@@ -115,12 +115,14 @@ const PDF_TERMS_SECTION_OPTIONS: Array<Option & { value: PdfTermsSection }> = [
   { value: 'global', label: 'Global' },
   { value: 'rfq', label: 'RFQ' },
   { value: 'purchaseOrder', label: 'PO' },
+  { value: 'subChangeOrder', label: 'SCO' },
 ];
 
 const PDF_NOTICE_SECTION_OPTIONS: Array<Option & { value: PdfNoticeSection }> = [
   { value: 'global', label: 'Global' },
   { value: 'rfq', label: 'RFQ' },
   { value: 'purchaseOrder', label: 'PO' },
+  { value: 'subChangeOrder', label: 'SCO' },
 ];
 
 const KEY_OPTIONS: Record<TemplateSettingKind, Option[]> = {

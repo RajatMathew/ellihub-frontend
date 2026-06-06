@@ -69,6 +69,7 @@ import {
   usePODetailQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
+  useSavePOPdfMutation,
 } from '@/modules/project/hooks/purchase-order';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
@@ -169,6 +170,7 @@ export function PODetailPage() {
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
   const generatePdfMutation = useGeneratePOPdfMutation();
+  const savePdfMutation = useSavePOPdfMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -232,10 +234,23 @@ export function PODetailPage() {
     );
   }
 
+  function savePdfToFiles(data: GeneratePOPdfInput) {
+    savePdfMutation.mutate(
+      { id: poId, poNumber: po?.poNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
   function openPdfOptions() {
     const shouldEnableDefaultNotice =
       !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
-    const defaultNoticeApplied = !pdfDefaultNoticeApplied && applyDefaultPdfNoticeIfEmpty();
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
+    const defaultNoticeApplied =
+      !pdfDefaultNoticeApplied && shouldApplyDefaultNotice ? applyDefaultPdfNoticeIfEmpty() : false;
     const nextNoticeTitle =
       defaultNoticeApplied && defaultPdfNoticeOption?.title
         ? defaultPdfNoticeOption.title
@@ -245,18 +260,20 @@ export function PODetailPage() {
         ? defaultPdfNoticeOption.html
         : pdfNoticeHtml;
     const nextIncludeNotice =
-      (shouldEnableDefaultNotice || defaultNoticeApplied) && hasHtmlText(nextNoticeHtml)
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
         ? true
         : pdfIncludeNotice;
     const shouldEnableDefaultTerms =
       !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
-    const defaultTermsApplied = !pdfDefaultTermsApplied && applyDefaultPdfTermsIfEmpty();
-    const nextIncludeTerms =
-      shouldEnableDefaultTerms || defaultTermsApplied ? true : pdfIncludeTerms;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
+    const defaultTermsApplied =
+      !pdfDefaultTermsApplied && shouldApplyDefaultTerms ? applyDefaultPdfTermsIfEmpty() : false;
     const nextTermsHtml =
       defaultTermsApplied && defaultPdfTermsOption?.html
         ? defaultPdfTermsOption.html
         : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldApplyDefaultTerms && hasHtmlText(nextTermsHtml) ? true : pdfIncludeTerms;
 
     if (nextIncludeNotice) {
       setPdfIncludeNotice(true);
@@ -357,6 +374,7 @@ export function PODetailPage() {
   const isDelivered = statusName === 'DELIVERED';
 
   const projectActions = project?.capabilities?.actions;
+  const canSavePdf = projectActions?.purchaseOrder?.update === true;
   const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
   const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
   const canCancel =
@@ -964,6 +982,8 @@ export function PODetailPage() {
           selectedTermsOptionId={pdfTermsTemplateId}
           previewFile={pdfPreview}
           isGenerating={generatePdfMutation.isPending}
+          isSaving={savePdfMutation.isPending}
+          canSave={canSavePdf}
           onIncludeNoticeChange={handlePdfIncludeNoticeChange}
           onNoticeOptionChange={handlePdfNoticeTemplateChange}
           onNoticeTitleChange={setPdfNoticeTitle}
@@ -973,6 +993,9 @@ export function PODetailPage() {
           onTermsHtmlChange={setPdfTermsHtml}
           onGenerate={(data) => {
             generatePdfPreview(data);
+          }}
+          onSave={(data) => {
+            savePdfToFiles(data);
           }}
         />
       )}

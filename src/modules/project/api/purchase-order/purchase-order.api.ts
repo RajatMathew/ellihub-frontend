@@ -1,6 +1,6 @@
 import api from '@/app/api';
 import {
-  getPdfDownloadName,
+  getGeneratedPdfFileFromResponse,
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
@@ -103,16 +103,22 @@ export const poApi = {
       { responseType: 'blob', timeout: 0 }
     );
     const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
-    const fileName = getPdfDownloadName(
-      String(res.headers['content-disposition'] ?? ''),
-      fallbackName
-    );
 
-    return {
-      blob: res.data,
-      fileName,
-      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
-    };
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async savePdf(
+    id: string,
+    data: GeneratePOPdfInput,
+    poNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   async issue(id: string, data?: { emailVendor?: boolean }): Promise<PODetail> {
