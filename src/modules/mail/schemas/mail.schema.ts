@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { generatePdfTermsInputSchema } from '@/modules/pdf/schemas';
+
 export const mailSignatureSchema = z.object({
   name: z.string().min(1),
   role: z.string().min(1),
@@ -65,6 +67,7 @@ export type FeatureMailTarget = z.infer<typeof featureMailTargetSchema>;
 
 export const featureMailActionSchema = featureMailTargetSchema.extend({
   draft: featureMailDraftPayloadSchema,
+  pdfOptions: generatePdfTermsInputSchema.optional(),
 });
 
 export type FeatureMailAction = z.infer<typeof featureMailActionSchema>;

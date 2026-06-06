@@ -56,6 +56,7 @@ export type PdfGenerateDialogProps = {
   termsOptions?: PdfTermsOption[];
   selectedTermsOptionId?: string;
   previewFile: GeneratedPdfFile | null;
+  isPreviewStale?: boolean;
   isGenerating: boolean;
   isSaving?: boolean;
   canSave?: boolean;
@@ -194,6 +195,7 @@ export function TermsEditor({ value, disabled, onChange }: TermsEditorProps) {
 
 function PdfPreviewPane({
   file,
+  isStale = false,
   isGenerating,
   isSaving = false,
   canSave = false,
@@ -201,6 +203,7 @@ function PdfPreviewPane({
   className,
 }: {
   file: GeneratedPdfFile | null;
+  isStale?: boolean;
   isGenerating: boolean;
   isSaving?: boolean;
   canSave?: boolean;
@@ -228,7 +231,9 @@ function PdfPreviewPane({
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">PDF Preview</div>
             <div className="truncate text-xs text-muted-foreground">
-              {file?.fileName ?? 'Generate the PDF to preview it here'}
+              {isStale && file
+                ? 'Preview has edits pending. Regenerate to update it.'
+                : (file?.fileName ?? 'Generate the PDF to preview it here')}
             </div>
           </div>
         </div>
@@ -258,11 +263,29 @@ function PdfPreviewPane({
 
       <div className="relative min-h-0 flex-1 p-3">
         {objectUrl ? (
-          <iframe
-            src={objectUrl}
-            title={file?.fileName ?? 'PDF preview'}
-            className="h-full min-h-96 w-full rounded-md border bg-background"
-          />
+          <>
+            <iframe
+              src={objectUrl}
+              title={file?.fileName ?? 'PDF preview'}
+              className="h-full min-h-96 w-full rounded-md border bg-background"
+            />
+            {(isGenerating || isSaving || isStale) && (
+              <div className="absolute inset-3 flex items-start justify-center rounded-md bg-background/45 p-4">
+                <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
+                  {isGenerating || isSaving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <FileText className="size-4 text-muted-foreground" />
+                  )}
+                  {isSaving
+                    ? 'Saving PDF...'
+                    : isGenerating
+                      ? 'Regenerating PDF...'
+                      : 'Regenerate PDF to preview your latest edits.'}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex h-full min-h-96 flex-col items-center justify-center rounded-md border border-dashed bg-background text-center">
             {isGenerating ? (
@@ -308,6 +331,7 @@ export function PdfGenerateDialog({
   termsOptions = [],
   selectedTermsOptionId,
   previewFile,
+  isPreviewStale = false,
   isGenerating,
   isSaving = false,
   canSave = false,
@@ -516,6 +540,7 @@ export function PdfGenerateDialog({
           <PdfPreviewPane
             className="lg:col-span-2"
             file={previewFile}
+            isStale={isPreviewStale}
             isGenerating={isGenerating}
             isSaving={isSaving}
             canSave={canSave}

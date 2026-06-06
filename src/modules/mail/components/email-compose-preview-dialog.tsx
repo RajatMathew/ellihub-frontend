@@ -38,6 +38,17 @@ type EmailComposePreviewDialogProps = {
   onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
 };
 
+export type EmailComposePreviewFormProps = {
+  draft: FeatureMailDraft;
+  isSending: boolean;
+  recipientsReadOnly: boolean;
+  onCancel: () => void;
+  onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
+  sendLabel?: string;
+  sendingLabel?: string;
+  footerStart?: ReactNode;
+};
+
 type EmailFormState = {
   from: string;
   to: string;
@@ -97,19 +108,16 @@ function EmailComposeLoading({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-function EmailComposePreviewForm({
+export function EmailComposePreviewForm({
   draft,
   isSending,
   recipientsReadOnly,
   onCancel,
   onSend,
-}: {
-  draft: FeatureMailDraft;
-  isSending: boolean;
-  recipientsReadOnly: boolean;
-  onCancel: () => void;
-  onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
-}) {
+  sendLabel = 'Send Email',
+  sendingLabel = 'Sending...',
+  footerStart,
+}: EmailComposePreviewFormProps) {
   const initialForm = useMemo(() => toFormState(draft), [draft]);
   const [form, setForm] = useState<EmailFormState>(initialForm);
   const senderOptions = draft.senderOptions;
@@ -280,13 +288,16 @@ function EmailComposePreviewForm({
         </div>
       </DialogBody>
       <DialogFooter className="border-t px-5 py-4 pt-4">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button disabled={!canSend || isSending} onClick={handleSend}>
-          <Send className="size-4" />
-          {isSending ? 'Sending...' : 'Send Email'}
-        </Button>
+        {footerStart}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button disabled={!canSend || isSending} onClick={handleSend}>
+            <Send className="size-4" />
+            {isSending ? sendingLabel : sendLabel}
+          </Button>
+        </div>
       </DialogFooter>
     </>
   );
