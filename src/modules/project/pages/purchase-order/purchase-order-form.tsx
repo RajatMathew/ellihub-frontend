@@ -43,19 +43,19 @@ import {
   type CreatePOInput,
   type PODetail,
 } from '@/modules/project/schemas/purchase-order';
-import type { RFQDeliverable } from '@/modules/project/schemas/rfq';
+import type { RFQDeliverable, RFQDetail } from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type PurchaseOrderLineItemInput = CreatePOInput['lineItems'][number];
 
-function createDefaultPOValues(projectId: string): CreatePOInput {
+function createDefaultPOValues(projectId: string, rfqId?: string | null): CreatePOInput {
   return {
     projectId,
     vendorId: '',
-    rfqId: undefined,
+    rfqId: rfqId || undefined,
     tradeCategoryId: '',
     description: '',
     leadTime: '',
@@ -85,24 +85,24 @@ function mapPOLineItemToInput(item: PODetail['lineItems'][number]): PurchaseOrde
 
 function mapRFQDeliverableToPOLineItem(deliverable: RFQDeliverable): PurchaseOrderLineItemInput {
   const quantity = Number(deliverable.quantity ?? 0);
-  const estimatedUnitPrice =
-    deliverable.estimatedUnitPrice ??
-    (deliverable.estimatedTotal != null && quantity > 0
-      ? deliverable.estimatedTotal / quantity
-      : 0);
 
   return {
-    description: deliverable.description ?? deliverable.name ?? '',
+    rfqDeliverableId: deliverable.id,
+    description: deliverable.name ?? deliverable.description ?? '',
     quantity: quantity > 0 ? quantity : 1,
-    unitId: deliverable.unitId ?? '',
-    unitPrice: Number(estimatedUnitPrice ?? 0),
+    unitId: getRFQDeliverableUnitId(deliverable),
+    unitPrice: 0,
     costCodeId: deliverable.costCodeId ?? '',
     notes: deliverable.specifications ?? undefined,
   };
 }
 
-function getPOFormValues(projectId: string, po?: PODetail): CreatePOInput {
-  if (!po) return createDefaultPOValues(projectId);
+function getPOFormValues(
+  projectId: string,
+  po?: PODetail,
+  initialRfqId?: string | null
+): CreatePOInput {
+  if (!po) return createDefaultPOValues(projectId, initialRfqId);
 
   return {
     projectId: po.projectId,
@@ -127,10 +127,47 @@ function getPOFormValues(projectId: string, po?: PODetail): CreatePOInput {
   };
 }
 
+function getRFQDeliverableUnitId(deliverable: RFQDeliverable) {
+  if (deliverable.unitId) return deliverable.unitId;
+  if (typeof deliverable.unit === 'object' && deliverable.unit?.id) return deliverable.unit.id;
+  return '';
+}
+
+function getAwardedRFQQuote(rfq: RFQDetail) {
+  return rfq.quotes.find(
+    (quote) => quote.isAwarded || quote.vendorId === rfq.awardedVendorId
+  );
+}
+
+function getAwardedRFQVendorId(rfq: RFQDetail) {
+  const awardedQuote = getAwardedRFQQuote(rfq);
+  return rfq.awardedVendorId ?? rfq.awardedVendor?.id ?? awardedQuote?.vendorId ?? '';
+}
+
+function getRFQTradeCategoryId(rfq: RFQDetail) {
+  return rfq.typeId ?? rfq.type?.id ?? '';
+}
+
+function getAwardedQuoteLeadTime(rfq: RFQDetail) {
+  const quote = getAwardedRFQQuote(rfq);
+  const rawLeadTime =
+    (quote as { leadTime?: unknown } | undefined)?.leadTime ?? quote?.leadTimeDays;
+  return rawLeadTime == null ? '' : String(rawLeadTime);
+}
+
+function getAwardedVendorPaymentTerms(rfq: RFQDetail): CreatePOInput['paymentTerms'] | undefined {
+  const vendor = rfq.awardedVendor as {
+    paymentTerms?: CreatePOInput['paymentTerms'] | null;
+  } | null;
+  return vendor?.paymentTerms ?? undefined;
+}
+
 export function POFormPage() {
   const { projectId = '', poId } = useParams<{ projectId: string; poId: string }>();
   const isEditMode = !!poId;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialRfqId = !isEditMode ? searchParams.get('rfqId') : null;
 
   const { data: existingPO, isLoading: isLoadingPO } = usePODetailQuery(poId ?? '');
   useBreadcrumbLabel(
@@ -178,14 +215,16 @@ export function POFormPage() {
 
   const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
-    defaultValues: getPOFormValues(projectId, isEditMode ? existingPO : undefined),
+    defaultValues: getPOFormValues(projectId, isEditMode ? existingPO : undefined, initialRfqId),
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
-  const populatedLineItemsFromRfqId = useRef<string | null>(null);
+  const populatedFromRfqId = useRef<string | null>(null);
 
-  const selectedRfqAwardedQuote = selectedRfq?.quotes.find((quote) => quote.isAwarded);
+  const selectedRfqAwardedQuote = selectedRfq?.quotes.find(
+    (quote) => quote.isAwarded || quote.vendorId === selectedRfq?.awardedVendorId
+  );
   const selectedRfqAwardedVendorId =
     selectedRfq?.awardedVendorId ??
     selectedRfq?.awardedVendor?.id ??
@@ -216,6 +255,15 @@ export function POFormPage() {
   }, [existingPO, isEditMode, projectId, reset]);
 
   useEffect(() => {
+    if (isEditMode || !initialRfqId || selectedRfqId === initialRfqId) return;
+
+    setValue('rfqId', initialRfqId, {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+  }, [initialRfqId, isEditMode, selectedRfqId, setValue]);
+
+  useEffect(() => {
     if (!isVendorLocked || !selectedRfqAwardedVendorId) return;
 
     setValue('vendorId', selectedRfqAwardedVendorId, {
@@ -225,19 +273,51 @@ export function POFormPage() {
   }, [isVendorLocked, selectedRfqAwardedVendorId, setValue]);
 
   useEffect(() => {
-    if (isEditMode || !selectedRfqId || !selectedRfq) return;
-    if (populatedLineItemsFromRfqId.current === selectedRfqId) return;
+    if (isEditMode) return;
+    if (!selectedRfqId) {
+      populatedFromRfqId.current = null;
+      return;
+    }
+    if (!selectedRfq) return;
+    if (getRFQStatusName(selectedRfq) !== 'AWARDED') return;
+    if (populatedFromRfqId.current === selectedRfqId) return;
+
+    const awardedVendorId = getAwardedRFQVendorId(selectedRfq);
+    if (awardedVendorId) {
+      setValue('vendorId', awardedVendorId, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    setValue('tradeCategoryId', getRFQTradeCategoryId(selectedRfq), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue('description', selectedRfq.description ?? selectedRfq.title, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue('leadTime', getAwardedQuoteLeadTime(selectedRfq), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue('paymentTerms', getAwardedVendorPaymentTerms(selectedRfq) ?? 'NET_30', {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
 
     const rfqLineItems = selectedRfq.deliverables
       .filter((deliverable) => !deliverable.deletedAt)
       .map(mapRFQDeliverableToPOLineItem)
       .filter((item) => item.description.trim());
 
-    if (!rfqLineItems.length) return;
+    if (rfqLineItems.length) {
+      replace(rfqLineItems);
+    }
 
-    replace(rfqLineItems);
-    populatedLineItemsFromRfqId.current = selectedRfqId;
-  }, [isEditMode, replace, selectedRfq, selectedRfqId]);
+    populatedFromRfqId.current = selectedRfqId;
+  }, [isEditMode, replace, selectedRfq, selectedRfqId, setValue]);
 
   const watchedLineItems = watch('lineItems');
   const watchedNegotiatedDiscount = watch('negotiatedDiscount') ?? 0;

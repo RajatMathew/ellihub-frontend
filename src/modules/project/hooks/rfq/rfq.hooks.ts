@@ -6,7 +6,6 @@ import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
-  CreatePOFromRFQInput,
   CreateRFQInput,
   ListRFQParams,
   RFQDeliverableInput,
@@ -14,7 +13,6 @@ import type {
   VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function invalidateRFQQueries(queryClient: QueryClient, rfqId?: string) {
@@ -402,29 +400,5 @@ export const useAddQuoteAttachmentMutation = () => {
       toast.success('Quote document uploaded.');
     },
     onError: (err) => toastApiError(err, 'Failed to upload quote document.'),
-  });
-};
-
-export const useGeneratePOMutation = () => {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
-
-  return useMutation({
-    mutationFn: ({ rfqId, data }: { rfqId: string; data: CreatePOFromRFQInput }) =>
-      rfqApi.generatePO(rfqId, data),
-    onSuccess: async (data, { rfqId }) => {
-      await invalidateRFQQueries(qc, rfqId);
-      toast.success('Purchase Order created.');
-
-      const poId =
-        typeof data === 'object' && data !== null && 'id' in data && typeof data.id === 'string'
-          ? data.id
-          : undefined;
-      if (poId && projectId) {
-        navigate(`/app/project/${projectId}/purchase-orders/${poId}`);
-      }
-    },
-    onError: (err) => toastApiError(err, 'Failed to create Purchase Order.'),
   });
 };

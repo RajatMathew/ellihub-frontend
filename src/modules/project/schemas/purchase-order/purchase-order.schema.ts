@@ -284,10 +284,11 @@ export type PODetail = z.infer<typeof poDetailSchema>;
 // --- Line item input ---
 
 export const poLineItemInputSchema = z.object({
+  rfqDeliverableId: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().positive('Quantity must be > 0'),
   unitId: z.string().min(1, 'Unit is required'),
-  unitPrice: z.number().positive('Unit price must be greater than 0'),
+  unitPrice: z.number().min(0, 'Unit price must be >= 0'),
   costCodeId: z.string().min(1, 'Cost code is required'),
   notes: z.string().optional(),
 });

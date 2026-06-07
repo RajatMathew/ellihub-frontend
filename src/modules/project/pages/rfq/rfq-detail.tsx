@@ -53,7 +53,6 @@ import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import {
-  RFQCreatePOPreviewDialog,
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
@@ -284,9 +283,6 @@ export default function RFQDetailPage() {
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardQuoteIds, setAwardQuoteIds] = useState<string[]>([]);
-
-  // Create PO preview
-  const [createPOOpen, setCreatePOOpen] = useState(false);
 
   // Upload attachment dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -820,6 +816,10 @@ export default function RFQDetailPage() {
     );
   }
 
+  function handleCreatePurchaseOrder() {
+    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfqId}`);
+  }
+
   function handleEmailOpenChange(open: boolean) {
     setEmailOpen(open);
     if (!open) {
@@ -1108,7 +1108,7 @@ export default function RFQDetailPage() {
             onEmailVendor={handleEmailVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
-            onGeneratePO={() => setCreatePOOpen(true)}
+            onGeneratePO={handleCreatePurchaseOrder}
             onRemoveQuote={(quoteId) => removeQuoteMutation.mutate({ rfqId, id: quoteId })}
             onRemoveVendor={(inviteId) => removeVendorMutation.mutate({ rfqId, quoteId: inviteId })}
             onDeclineInvite={(inviteId) =>
@@ -2247,12 +2247,6 @@ export default function RFQDetailPage() {
         isPending={deleteMutation.isPending}
       />
 
-      <RFQCreatePOPreviewDialog
-        open={createPOOpen}
-        rfqId={rfqId}
-        projectId={projectId}
-        onOpenChange={setCreatePOOpen}
-      />
     </div>
   );
 }

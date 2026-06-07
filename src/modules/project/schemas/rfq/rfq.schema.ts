@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { paymentTermsSchema } from '@/modules/project/schemas/purchase-order';
-
 /* ---- Shared / lookup schemas ---- */
 
 export const rfqStatusSchema = z
@@ -378,46 +376,3 @@ export const voidAwardInputSchema = z.object({
 });
 
 export type VoidAwardInput = z.infer<typeof voidAwardInputSchema>;
-
-export const createPOFromRFQInputSchema = z
-  .object({
-    description: z.string().optional(),
-    leadTime: z.string().optional(),
-    expectedDate: z.string().optional(),
-    shipToAddress: z.string().optional(),
-    address: z.string().optional(),
-    negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
-    shippingHandlingFee: z.number().min(0).optional(),
-    taxPercent: z.number().min(0).max(100).optional(),
-    paymentTerms: paymentTermsSchema.optional(),
-    retainagePercent: z.number().min(0).max(100).optional(),
-    notes: z.string().optional(),
-    lineItems: z
-      .array(
-        z.object({
-          rfqDeliverableId: z.string().optional(),
-          description: z.string().min(1, 'Description is required'),
-          quantity: z.number().positive('Quantity must be > 0'),
-          unitId: z.string().min(1, 'Unit is required'),
-          unitPrice: z.number().min(0, 'Unit price must be >= 0'),
-          costCodeId: z.string().min(1, 'Cost code is required'),
-          notes: z.string().optional(),
-        })
-      )
-      .min(1, 'At least one line item is required'),
-  })
-  .superRefine((value, ctx) => {
-    const subtotal = value.lineItems.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
-      0
-    );
-    if ((value.negotiatedDiscount ?? 0) > subtotal) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['negotiatedDiscount'],
-        message: 'Negotiated discount cannot exceed subtotal',
-      });
-    }
-  });
-
-export type CreatePOFromRFQInput = z.infer<typeof createPOFromRFQInputSchema>;
