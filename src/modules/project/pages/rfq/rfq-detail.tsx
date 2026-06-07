@@ -53,7 +53,6 @@ import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import {
-  RFQCreatePOPreviewDialog,
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
@@ -122,6 +121,11 @@ function hasHtmlText(value: string): boolean {
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .trim().length > 0;
+}
+
+function normalizeEmail(value: string | null | undefined): string | null {
+  const email = value?.trim().toLowerCase();
+  return email || null;
 }
 
 /* ---- Quote Document Preview ---- */
@@ -279,9 +283,6 @@ export default function RFQDetailPage() {
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
   const [awardQuoteIds, setAwardQuoteIds] = useState<string[]>([]);
-
-  // Create PO preview
-  const [createPOOpen, setCreatePOOpen] = useState(false);
 
   // Upload attachment dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -743,6 +744,17 @@ export default function RFQDetailPage() {
     };
   }
 
+  function getInviteRecipientEmails(invite: (typeof invites)[number]): string[] {
+    const vendorEmail = normalizeEmail(invite.vendor?.email);
+    const contactEmails =
+      invite.vendor?.contacts?.flatMap((contact) => {
+        const email = normalizeEmail(contact.email);
+        return email ? [email] : [];
+      }) ?? [];
+
+    return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
+  }
+
   function openRfqEmailFlow(
     target: FeatureMailTarget,
     pdfTarget: { quoteId: string; vendorName: string }
@@ -755,12 +767,19 @@ export default function RFQDetailPage() {
   }
 
   function handleEmailVendor(inviteId: string) {
+    const invite = invites.find((item) => item.id === inviteId);
     const pdfTarget = getVendorPdfTargetFromInvite(inviteId);
-    if (!pdfTarget) return;
+    if (!pdfTarget || !invite) return;
 
-    if (!pdfTarget.vendorEmail) {
-      toast.error(`${pdfTarget.vendorName} does not have an email address.`);
+    if (getInviteRecipientEmails(invite).length === 0) {
+      toast.error(`${pdfTarget.vendorName} does not have a vendor or linked contact email.`);
       return;
+    }
+
+    if (!normalizeEmail(pdfTarget.vendorEmail)) {
+      toast.info(
+        `${pdfTarget.vendorName} does not have a vendor email. Select a contact recipient.`
+      );
     }
 
     openRfqEmailFlow(
@@ -770,22 +789,35 @@ export default function RFQDetailPage() {
   }
 
   function handleEmailAllVendors() {
-    const previewInvite = invites.find((invite) => !!invite.vendor?.email) ?? invites[0];
+    const previewInvite =
+      invites.find((invite) => getInviteRecipientEmails(invite).length > 0) ?? invites[0];
     if (!previewInvite) return;
 
     const missingEmailVendors = invites
-      .filter((invite) => !invite.vendor?.email)
+      .filter((invite) => !normalizeEmail(invite.vendor?.email))
+      .map((invite) => invite.vendor?.name ?? 'Unknown vendor');
+    const unavailableRecipientVendors = invites
+      .filter((invite) => getInviteRecipientEmails(invite).length === 0)
       .map((invite) => invite.vendor?.name ?? 'Unknown vendor');
 
     if (missingEmailVendors.length > 0) {
-      toast.error(`Missing email for: ${missingEmailVendors.join(', ')}`);
-      return;
+      toast.info(`Vendor email missing for: ${missingEmailVendors.join(', ')}`);
+    }
+
+    if (unavailableRecipientVendors.length > 0) {
+      toast.error(
+        `No vendor or contact email available for: ${unavailableRecipientVendors.join(', ')}`
+      );
     }
 
     openRfqEmailFlow(
       { feature: 'rfq.vendorRequestAll', entityId: rfqId },
       { quoteId: previewInvite.id, vendorName: previewInvite.vendor?.name ?? 'Vendor' }
     );
+  }
+
+  function handleCreatePurchaseOrder() {
+    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfqId}`);
   }
 
   function handleEmailOpenChange(open: boolean) {
@@ -1076,7 +1108,7 @@ export default function RFQDetailPage() {
             onEmailVendor={handleEmailVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
-            onGeneratePO={() => setCreatePOOpen(true)}
+            onGeneratePO={handleCreatePurchaseOrder}
             onRemoveQuote={(quoteId) => removeQuoteMutation.mutate({ rfqId, id: quoteId })}
             onRemoveVendor={(inviteId) => removeVendorMutation.mutate({ rfqId, quoteId: inviteId })}
             onDeclineInvite={(inviteId) =>
@@ -2215,12 +2247,6 @@ export default function RFQDetailPage() {
         isPending={deleteMutation.isPending}
       />
 
-      <RFQCreatePOPreviewDialog
-        open={createPOOpen}
-        rfqId={rfqId}
-        projectId={projectId}
-        onOpenChange={setCreatePOOpen}
-      />
     </div>
   );
 }

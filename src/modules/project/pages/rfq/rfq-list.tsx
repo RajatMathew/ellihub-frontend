@@ -4,7 +4,6 @@ import { Card } from '@/app/components/ui/card';
 import {
   getRFQStatusName,
   getRFQTrackValue,
-  RFQCreatePOPreviewDialog,
   RFQListConfirmDialogs,
   RFQListFilters,
   RFQListHeader,
@@ -29,10 +28,11 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export default function RFQListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const {
     page,
     size,
@@ -66,7 +66,6 @@ export default function RFQListPage() {
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
   const [voidReason, setVoidReason] = useState('');
-  const [createPOTarget, setCreatePOTarget] = useState<RFQListItem | null>(null);
 
   const rawListData = useMemo(() => data?.data ?? [], [data?.data]);
   const listData = useMemo(
@@ -102,8 +101,8 @@ export default function RFQListPage() {
     setVoidReason('');
   }, []);
   const handleCreatePOTarget = useCallback((rfq: RFQListItem) => {
-    setCreatePOTarget(rfq);
-  }, []);
+    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfq.id}`);
+  }, [navigate, projectId]);
   const columns = useRFQListColumns({
     onDelete: handleDeleteTarget,
     onVoid: handleVoidTarget,
@@ -218,14 +217,6 @@ export default function RFQListPage() {
         onConfirmDelete={handleConfirmDelete}
         onConfirmVoid={handleConfirmVoid}
         onVoidReasonChange={setVoidReason}
-      />
-      <RFQCreatePOPreviewDialog
-        open={!!createPOTarget}
-        rfqId={createPOTarget?.id ?? null}
-        projectId={projectId}
-        onOpenChange={(open) => {
-          if (!open) setCreatePOTarget(null);
-        }}
       />
     </div>
   );

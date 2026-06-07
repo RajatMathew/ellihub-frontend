@@ -11,7 +11,6 @@ import {
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatusSchema,
-  type CreatePOFromRFQInput,
   type CreateRFQInput,
   type ListRFQParams,
   type RFQDeliverableInput,
@@ -462,11 +461,6 @@ export const rfqApi = {
       throw result.error;
     }
     return result.data;
-  },
-
-  async generatePO(rfqId: string, data: CreatePOFromRFQInput): Promise<unknown> {
-    const res = await api.post(`/purchase-order/from-rfq/${rfqId}`, data);
-    return res.data?.data ?? res.data;
   },
 
   /* ---- Attachments ---- */
