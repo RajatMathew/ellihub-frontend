@@ -19,6 +19,28 @@ export const mailAttachmentPreviewSchema = z.object({
 
 export type MailAttachmentPreview = z.infer<typeof mailAttachmentPreviewSchema>;
 
+export const mailRecipientOptionSchema = z.object({
+  id: z.string(),
+  type: z.enum(['vendor', 'contact']),
+  label: z.string(),
+  email: z.string().email(),
+  isPrimary: z.boolean().optional(),
+});
+
+export type MailRecipientOption = z.infer<typeof mailRecipientOptionSchema>;
+
+export const mailRecipientGroupSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  entityType: z.literal('vendor'),
+  entityId: z.string(),
+  quoteId: z.string().optional(),
+  missingEntityEmail: z.boolean().optional(),
+  options: z.array(mailRecipientOptionSchema).default([]),
+});
+
+export type MailRecipientGroup = z.infer<typeof mailRecipientGroupSchema>;
+
 const featureMailDraftBaseSchema = z.object({
   from: z.string().email(),
   to: z.array(z.string().email()).default([]),
@@ -41,6 +63,7 @@ export const featureMailDraftSchema = featureMailDraftBaseSchema.extend({
   senderOptions: z.array(z.string().email()).default([]),
   html: z.string(),
   attachments: z.array(mailAttachmentPreviewSchema).default([]),
+  recipientGroups: z.array(mailRecipientGroupSchema).optional().default([]),
   signatureAssets: z
     .array(
       z.object({

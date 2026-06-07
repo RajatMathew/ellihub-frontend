@@ -120,6 +120,17 @@ export const rfqDeliverableSchema = z
 
 export type RFQDeliverable = z.infer<typeof rfqDeliverableSchema>;
 
+export const rfqVendorContactSchema = z
+  .object({
+    id: z.string(),
+    fullName: z.string(),
+    email: z.string().nullable().optional(),
+    isPrimary: z.boolean().optional(),
+  })
+  .passthrough();
+
+export type RFQVendorContact = z.infer<typeof rfqVendorContactSchema>;
+
 /* ---- Invite (from detail response) ---- */
 
 export const rfqInviteSchema = z
@@ -132,6 +143,7 @@ export const rfqInviteSchema = z
         id: z.string(),
         name: z.string().nullable().optional(),
         email: z.string().nullable().optional(),
+        contacts: z.array(rfqVendorContactSchema).optional().default([]),
       })
       .passthrough()
       .nullable()
@@ -173,7 +185,12 @@ export const rfqQuoteSchema = z
     rfqId: z.string().optional(),
     vendorId: z.string().optional(),
     vendor: z
-      .object({ id: z.string(), name: z.string().nullable().optional() })
+      .object({
+        id: z.string(),
+        name: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
+        contacts: z.array(rfqVendorContactSchema).optional().default([]),
+      })
       .passthrough()
       .nullable()
       .optional(),

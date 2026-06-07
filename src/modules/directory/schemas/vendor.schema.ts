@@ -38,8 +38,10 @@ export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 const vendorEmailInputSchema = z
   .string()
   .trim()
-  .min(1, 'Vendor email is required')
-  .email('Enter a valid vendor email');
+  .refine(
+    (value) => !value || z.string().email().safeParse(value).success,
+    'Enter a valid vendor email'
+  );
 
 // --- Contact link (detail endpoint shape) ---
 
@@ -253,7 +255,7 @@ export const createVendorInputSchema = z.object({
   type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().optional(),
-  email: vendorEmailInputSchema,
+  email: vendorEmailInputSchema.optional(),
   taxId: z.string().optional(),
   website: z.string().optional(),
   paymentTerms: paymentTermsSchema.optional(),
@@ -270,7 +272,7 @@ export const updateVendorInputSchema = z.object({
   type: vendorTypeSchema.optional(),
   categoryTags: z.array(z.string()).optional(),
   phone: z.string().nullable().optional(),
-  email: vendorEmailInputSchema,
+  email: vendorEmailInputSchema.nullable().optional(),
   taxId: z.string().nullable().optional(),
   website: z.string().nullable().optional(),
   paymentTerms: paymentTermsSchema.optional(),

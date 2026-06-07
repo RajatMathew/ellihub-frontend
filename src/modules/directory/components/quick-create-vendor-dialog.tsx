@@ -73,7 +73,7 @@ export function QuickCreateVendorDialog({
     e?.stopPropagation();
     const created = await createMutation.mutateAsync({
       name: data.name,
-      email: data.email,
+      email: data.email.trim() || undefined,
       typeId: data.type || undefined,
       status: data.status,
     });

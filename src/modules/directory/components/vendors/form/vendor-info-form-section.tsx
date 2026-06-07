@@ -95,7 +95,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel required>Email</VendorFormFieldLabel>
+                <VendorFormFieldLabel>Email</VendorFormFieldLabel>
                 <InputWrapper
                   className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
                 >

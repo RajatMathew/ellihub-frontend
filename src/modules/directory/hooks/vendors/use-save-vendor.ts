@@ -39,6 +39,8 @@ export function useSaveVendor({
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const saveVendor = async (formData: VendorFormValues) => {
+    const email = formData.email?.trim() || null;
+
     setIsSaving(true);
     try {
       if (isEdit && id) {
@@ -46,7 +48,7 @@ export function useSaveVendor({
           id,
           data: {
             name: formData.name,
-            email: formData.email,
+            email,
             typeId: formData.type || undefined,
             status: formData.status as VendorStatus,
             taxId: formData.taxId || null,
@@ -72,7 +74,7 @@ export function useSaveVendor({
 
       const created = await createMutation.mutateAsync({
         name: formData.name,
-        email: formData.email,
+        email: email ?? undefined,
         typeId: formData.type || undefined,
         status: formData.status as VendorStatus,
         taxId: formData.taxId || undefined,
