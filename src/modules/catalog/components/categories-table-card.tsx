@@ -1,15 +1,8 @@
 import { useMemo } from 'react';
 
-import { getCoreRowModel, getPaginationRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
-
-import { Button } from '@/app/components/ui/button';
 import { DataGridSection } from '@/app/components/data-grid-section';
-import {
-  Card,
-  CardHeader,
-  CardToolbar,
-} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +13,13 @@ import {
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
+import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
 
 interface CategoriesTableCardProps {
   categories: CostCodeCategory[];
@@ -48,9 +48,7 @@ export function CategoriesTableCard({
         accessorKey: 'name',
         header: 'Name',
         cell: ({ row }) => (
-          <div className="text-sm font-bold text-foreground">
-            {row.original.name}
-          </div>
+          <div className="text-sm font-bold text-foreground">{row.original.name}</div>
         ),
         meta: {
           skeleton: <Skeleton className="h-4 w-40" />,
@@ -84,10 +82,7 @@ export function CategoriesTableCard({
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => onDelete(row.original)}
-                >
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
                   <Trash2 className="size-4" />
                   Delete
                 </DropdownMenuItem>
@@ -116,7 +111,7 @@ export function CategoriesTableCard({
         {isLoading ? (
           <Skeleton className="h-4 w-40" />
         ) : (
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
+          <h2 className="text-sm font-bold tracking-normal text-foreground">
             All Categories ({categories.length})
           </h2>
         )}

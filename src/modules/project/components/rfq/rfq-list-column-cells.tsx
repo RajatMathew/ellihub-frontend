@@ -39,9 +39,7 @@ export function RFQTitleCell({ rfq }: { rfq: RFQListItem }) {
 }
 
 export function RFQTrackCell({ rfq }: { rfq: RFQListItem }) {
-  return (
-    <span className="text-xs font-semibold uppercase tracking-normal">{getRFQTrackLabel(rfq)}</span>
-  );
+  return <span className="text-xs font-semibold tracking-normal">{getRFQTrackLabel(rfq)}</span>;
 }
 
 export function RFQStatusCell({ rfq }: { rfq: RFQListItem }) {

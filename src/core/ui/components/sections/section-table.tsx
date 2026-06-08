@@ -99,7 +99,7 @@ export function SectionTable<T>({
                 <th
                   key={col.key}
                   className={cn(
-                    'px-5 py-3 text-[11px] font-semibold tracking-wide text-gray-500 uppercase',
+                    'px-5 py-3 text-[11px] font-semibold tracking-wide text-gray-500',
                     col.align === 'right' && 'text-right',
                     col.align === 'center' && 'text-center',
                     col.headerClassName

@@ -46,7 +46,7 @@ export function ContactNameCell({ contact }: { contact: Contact }) {
 function LinkedEntityList({ links }: { links: ContactLinkedEntity[] }) {
   return (
     <>
-      <span className="mb-0.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+      <span className="mb-0.5 text-xs font-semibold tracking-normal text-muted-foreground/70">
         Linked Entities
       </span>
       {links.map((link) => (

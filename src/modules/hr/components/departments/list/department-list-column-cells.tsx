@@ -25,7 +25,7 @@ export function DepartmentNameCell({ department }: DepartmentCellProps) {
     <div className="flex min-w-0 flex-col gap-0.5">
       <Link
         to={department.id}
-        className="truncate text-sm font-semibold uppercase text-foreground hover:text-primary"
+        className="truncate text-sm font-semibold text-foreground hover:text-primary"
       >
         {department.name}
       </Link>
@@ -92,9 +92,7 @@ export function DepartmentActionsCell({ department, onDelete }: DepartmentAction
           className="text-destructive focus:text-destructive"
           disabled={!canDelete}
           title={
-            canDelete
-              ? undefined
-              : 'Remove employees from this department before deleting it.'
+            canDelete ? undefined : 'Remove employees from this department before deleting it.'
           }
           onClick={() =>
             onDelete({

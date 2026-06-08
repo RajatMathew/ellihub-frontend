@@ -28,16 +28,16 @@ export function RFQVendorDesktopTable({
       <table className="min-w-max w-full text-sm">
         <thead>
           <tr className="border-b text-left">
-            <th className="pb-2 pr-4 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground">
               Vendor
             </th>
-            <th className="pb-2 pr-4 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground">
               Status
             </th>
-            <th className="pb-2 pr-4 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <th className="pb-2 pr-4 text-right text-xs font-semibold tracking-normal text-muted-foreground">
               Quote Amount
             </th>
-            <th className="pb-2 pr-4 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+            <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground">
               Lead Time
             </th>
             <th className="w-10 pb-2" />

@@ -1,13 +1,5 @@
 import { useMemo } from 'react';
 
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type ColumnDef,
-} from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
@@ -28,6 +20,13 @@ import {
 } from '@/app/components/ui/select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { Lookup } from '@/modules/lookup/schemas/lookup.schema';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
+import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
 
 interface LookupTableCardProps {
   lookups: Lookup[];
@@ -123,7 +122,7 @@ export function LookupTableCard({
         {isLoading ? (
           <Skeleton className="h-4 w-40" />
         ) : (
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">
+          <h2 className="text-sm font-bold tracking-normal text-foreground">
             {typeFilter ? `${typeFilter} (${lookups.length})` : `All Lookups (${lookups.length})`}
           </h2>
         )}

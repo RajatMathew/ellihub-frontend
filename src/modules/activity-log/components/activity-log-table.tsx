@@ -1,5 +1,4 @@
-import { Search, X } from 'lucide-react';
-
+import type { ActivityLogItem } from '@/app/api/activity-log.api';
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -12,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import type { ActivityLogItem } from '@/app/api/activity-log.api';
 import {
   ACTIVITY_ACTION_OPTIONS,
   ACTIVITY_ENTITY_OPTIONS,
@@ -20,6 +18,7 @@ import {
   getActivityEntityLabel,
 } from '@/modules/activity-log/constants/activity-log.constants';
 import type { Table } from '@tanstack/react-table';
+import { Search, X } from 'lucide-react';
 
 interface ActivityLogTableProps {
   table: Table<ActivityLogItem>;
@@ -64,7 +63,7 @@ export function ActivityLogTable({
     <Card>
       <CardHeader className="items-start gap-4 xl:flex-row xl:items-center">
         <div className="space-y-1">
-          <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+          <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
             Event Stream
           </CardTitle>
           <p className="text-xs text-muted-foreground">

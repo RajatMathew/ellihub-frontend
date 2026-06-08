@@ -30,10 +30,10 @@ export function VendorNameCell({ vendor }: VendorNameCellProps) {
   const contactCount = getVendorContactCount(vendor);
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 max-w-[24rem] flex-col gap-0.5">
       <Link
         to={`${vendor.id}`}
-        className="break-words text-sm font-semibold uppercase text-foreground hover:text-primary"
+        className="[overflow-wrap:anywhere] text-sm font-semibold leading-5 text-foreground hover:text-primary"
       >
         {vendor.name}
       </Link>
@@ -95,8 +95,8 @@ export function VendorContactCell({ vendor }: VendorNameCellProps) {
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="break-words text-sm font-medium leading-tight text-foreground">
+    <div className="flex min-w-0 max-w-[22rem] flex-col gap-0.5">
+      <span className="[overflow-wrap:anywhere] text-sm font-medium leading-5 text-foreground">
         {contactName}
       </span>
       {contactEmail && (

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import {
   VendorActionsCell,
   VendorContactCell,
@@ -10,7 +11,6 @@ import {
   VendorNameCell,
   VendorTypeCell,
 } from '@/modules/directory/components/vendors/vendor-list-column-cells';
-import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
 import { type ColumnDef } from '@tanstack/react-table';
 
@@ -36,7 +36,8 @@ export function useVendorListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor Name" />,
         cell: ({ row }) => <VendorNameCell vendor={row.original} />,
         meta: {
-          headerClassName: 'min-w-64',
+          headerClassName: 'w-[26%] min-w-72 max-w-[28rem]',
+          cellClassName: 'w-[26%] min-w-72 max-w-[28rem]',
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -50,7 +51,8 @@ export function useVendorListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         cell: ({ row }) => <VendorTypeCell vendor={row.original} typeLabels={typeLabels} />,
         meta: {
-          headerClassName: 'min-w-40',
+          headerClassName: 'w-[12%] min-w-32',
+          cellClassName: 'w-[12%] min-w-32',
           skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
         },
         enableSorting: false,
@@ -60,7 +62,8 @@ export function useVendorListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Contact" />,
         cell: ({ row }) => <VendorContactCell vendor={row.original} />,
         meta: {
-          headerClassName: 'min-w-56',
+          headerClassName: 'w-[20%] min-w-64 max-w-[24rem]',
+          cellClassName: 'w-[20%] min-w-64 max-w-[24rem]',
           skeleton: (
             <div className="flex flex-col gap-1">
               <Skeleton className="h-3.5 w-24" />
@@ -75,7 +78,8 @@ export function useVendorListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Documents" />,
         cell: ({ row }) => <VendorDocumentCountCell vendor={row.original} />,
         meta: {
-          headerClassName: 'min-w-36',
+          headerClassName: 'w-[12%] min-w-36',
+          cellClassName: 'w-[12%] min-w-36',
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
         },
         enableSorting: false,
@@ -92,7 +96,8 @@ export function useVendorListColumns({
           />
         ),
         meta: {
-          headerClassName: 'min-w-44',
+          headerClassName: 'w-[14%] min-w-44',
+          cellClassName: 'w-[14%] min-w-44',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
         enableSorting: false,
@@ -109,7 +114,8 @@ export function useVendorListColumns({
           return <VendorCurrencyCell value={balance} />;
         },
         meta: {
-          headerClassName: 'min-w-32',
+          headerClassName: 'w-[10%] min-w-32',
+          cellClassName: 'w-[10%] min-w-32',
           skeleton: <Skeleton className="h-3.5 w-16" />,
         },
         enableSorting: false,

@@ -33,7 +33,8 @@ export function useGCListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="GC Name" />,
         cell: ({ row }) => <GCNameCell gc={row.original} />,
         meta: {
-          headerClassName: 'min-w-64',
+          headerClassName: 'w-[32%] min-w-72 max-w-[28rem]',
+          cellClassName: 'w-[32%] min-w-72 max-w-[28rem]',
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -47,7 +48,8 @@ export function useGCListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         cell: ({ row }) => <GCTypeCell gc={row.original} typeLabels={typeLabels} />,
         meta: {
-          headerClassName: 'min-w-40',
+          headerClassName: 'w-[12%] min-w-32',
+          cellClassName: 'w-[12%] min-w-32',
           skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
         },
         enableSorting: false,
@@ -57,7 +59,8 @@ export function useGCListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
         cell: ({ row }) => <GCStatusCell gc={row.original} />,
         meta: {
-          headerClassName: 'min-w-36',
+          headerClassName: 'w-[12%] min-w-32',
+          cellClassName: 'w-[12%] min-w-32',
           skeleton: (
             <div className="flex items-center gap-2">
               <Skeleton className="size-2 rounded-full" />
@@ -71,7 +74,8 @@ export function useGCListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Primary Contact" />,
         cell: ({ row }) => <GCPrimaryContactCell gc={row.original} />,
         meta: {
-          headerClassName: 'min-w-64',
+          headerClassName: 'w-[28%] min-w-72 max-w-[26rem]',
+          cellClassName: 'w-[28%] min-w-72 max-w-[26rem]',
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-8 rounded-full" />
@@ -89,8 +93,8 @@ export function useGCListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Active Projects" />,
         cell: ({ row }) => <GCActiveProjectsCell gc={row.original} />,
         meta: {
-          headerClassName: 'min-w-40 text-center',
-          cellClassName: 'text-center',
+          headerClassName: 'w-[12%] min-w-36 text-center',
+          cellClassName: 'w-[12%] min-w-36 text-center',
           skeleton: <Skeleton className="mx-auto h-3.5 w-8" />,
         },
         enableSorting: false,

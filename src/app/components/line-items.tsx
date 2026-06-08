@@ -1,5 +1,6 @@
 import React, { type ReactNode } from 'react';
 
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
 import {
   Controller,
@@ -27,7 +28,6 @@ import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
 import { formatCurrency } from '@app/lib/helpers';
 import { cn } from '@app/lib/utils';
-import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 
 /* ---- Unit options ---- */
 
@@ -265,8 +265,7 @@ export function LineItems({
   const fn = { ...DEFAULT_FIELD_NAMES, ...fieldNamesProp };
   const newItem = defaultItem ?? DEFAULT_ITEM;
 
-  const thClass =
-    'pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-left';
+  const thClass = 'pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground text-left';
 
   return (
     <Card id={id}>

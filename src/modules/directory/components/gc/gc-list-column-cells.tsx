@@ -25,10 +25,10 @@ import { Link } from 'react-router-dom';
 
 export function GCNameCell({ gc }: { gc: GeneralContractor }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 max-w-[24rem] flex-col gap-0.5">
       <Link
         to={`${gc.id}`}
-        className="break-words text-sm font-semibold uppercase text-foreground hover:text-primary"
+        className="[overflow-wrap:anywhere] text-sm font-semibold leading-5 text-foreground hover:text-primary"
       >
         {gc.name}
       </Link>
@@ -37,10 +37,10 @@ export function GCNameCell({ gc }: { gc: GeneralContractor }) {
           href={gc.website}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex min-w-0 items-center gap-1 break-all text-2sm text-muted-foreground hover:text-primary"
+          className="flex min-w-0 items-start gap-1 break-all text-2sm leading-5 text-muted-foreground hover:text-primary"
         >
-          <ExternalLink className="size-3 shrink-0" />
-          {gc.website.replace(/^https?:\/\//, '')}
+          <ExternalLink className="mt-0.5 size-3 shrink-0" />
+          <span className="min-w-0">{gc.website.replace(/^https?:\/\//, '')}</span>
         </a>
       )}
     </div>
@@ -87,18 +87,20 @@ export function GCPrimaryContactCell({ gc }: { gc: GeneralContractor }) {
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 max-w-[22rem] items-center gap-3">
       <Avatar className="size-8 shrink-0">
         <AvatarFallback className="text-xs font-semibold">
           {getInitials(displayName, 2)}
         </AvatarFallback>
       </Avatar>
       <div className="flex min-w-0 flex-col">
-        <span className="break-words text-sm font-medium text-foreground">{displayName}</span>
+        <span className="[overflow-wrap:anywhere] text-sm font-medium leading-5 text-foreground">
+          {displayName}
+        </span>
         {displayEmail && (
           <a
             href={`mailto:${displayEmail}`}
-            className="break-all text-2sm text-muted-foreground hover:text-primary"
+            className="break-all text-2sm leading-5 text-muted-foreground hover:text-primary"
           >
             {displayEmail}
           </a>

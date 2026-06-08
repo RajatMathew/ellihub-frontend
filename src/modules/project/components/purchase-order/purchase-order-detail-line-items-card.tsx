@@ -1,14 +1,13 @@
-import { FileText } from 'lucide-react';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency, formatDecimal } from '@/app/lib/helpers';
-import { InfoRow } from '@/modules/project/components/shared';
 import {
   calculateRoundedLineAmount,
   formatPurchaseOrderTaxLabel,
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
+import { InfoRow } from '@/modules/project/components/shared';
 import type { PODetail } from '@/modules/project/schemas/purchase-order';
+import { FileText } from 'lucide-react';
 
 interface PurchaseOrderDetailLineItemsCardProps {
   lineItems: PODetail['lineItems'];
@@ -38,7 +37,7 @@ export function PurchaseOrderDetailLineItemsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
           Line Items ({lineItemCount})
         </CardTitle>
       </CardHeader>
@@ -50,7 +49,7 @@ export function PurchaseOrderDetailLineItemsCard({
                 <div key={lineItem.id} className="rounded-lg border p-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      <div className="text-xs font-semibold tracking-normal text-muted-foreground">
                         Line {lineItem.lineNumber}
                       </div>
                       <div className="mt-1 break-words text-sm font-semibold text-foreground">
@@ -86,9 +85,7 @@ export function PurchaseOrderDetailLineItemsCard({
                     <div>
                       <div className="text-muted-foreground">Cost Code</div>
                       <div className="break-words font-medium">
-                        {lineItem.costCodeId
-                          ? costCodeMap.get(lineItem.costCodeId) ?? '-'
-                          : '-'}
+                        {lineItem.costCodeId ? (costCodeMap.get(lineItem.costCodeId) ?? '-') : '-'}
                       </div>
                     </div>
                   </div>
@@ -120,25 +117,25 @@ export function PurchaseOrderDetailLineItemsCard({
               <table className="w-full min-w-max text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="w-8 pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="w-8 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       #
                     </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Description
                     </th>
-                    <th className="w-40 pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="w-40 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Cost Code
                     </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Qty
                     </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Unit
                     </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Unit Price
                     </th>
-                    <th className="pb-2 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Amount
                     </th>
                   </tr>
@@ -146,9 +143,7 @@ export function PurchaseOrderDetailLineItemsCard({
                 <tbody>
                   {lineItems.map((lineItem) => (
                     <tr key={lineItem.id} className="border-b last:border-0">
-                      <td className="py-2.5 pr-3 text-muted-foreground">
-                        {lineItem.lineNumber}
-                      </td>
+                      <td className="py-2.5 pr-3 text-muted-foreground">{lineItem.lineNumber}</td>
                       <td className="py-2.5 pr-3">
                         <div className="font-medium">{lineItem.description}</div>
                         {lineItem.notes && (
@@ -158,9 +153,7 @@ export function PurchaseOrderDetailLineItemsCard({
                         )}
                       </td>
                       <td className="py-2.5 pr-3 text-xs text-muted-foreground">
-                        {lineItem.costCodeId
-                          ? costCodeMap.get(lineItem.costCodeId) ?? '-'
-                          : '-'}
+                        {lineItem.costCodeId ? (costCodeMap.get(lineItem.costCodeId) ?? '-') : '-'}
                       </td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
                         {formatDecimal(lineItem.quantity)}
@@ -217,7 +210,7 @@ export function PurchaseOrderDetailLineItemsCard({
                   <tr className="border-t">
                     <td
                       colSpan={6}
-                      className="pt-2 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground"
+                      className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground"
                     >
                       Total
                     </td>
