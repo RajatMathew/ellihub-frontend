@@ -1,6 +1,12 @@
+import { useState } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatDate } from '@/app/lib/helpers';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
 import { Download, FileText, PlusCircle, Trash2 } from 'lucide-react';
 
@@ -24,6 +30,8 @@ export function EmployeeDocumentsTab({
   onDownloadDocument,
   onRemoveDocument,
 }: EmployeeDocumentsTabProps) {
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
+
   return (
     <Card>
       <CardHeader>
@@ -50,9 +58,19 @@ export function EmployeeDocumentsTab({
                     <FileText className="size-5 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-medium">
-                      {getDocumentName(document)}
-                    </span>
+                    {document.file?.id ? (
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                        onClick={() => setPreviewFile(document.file!)}
+                      >
+                        {getDocumentName(document)}
+                      </button>
+                    ) : (
+                      <span className="block truncate text-sm font-medium">
+                        {getDocumentName(document)}
+                      </span>
+                    )}
                     <span className="text-xs uppercase tracking-widest text-muted-foreground">
                       {getDocumentMeta(document)}
                     </span>
@@ -95,6 +113,14 @@ export function EmployeeDocumentsTab({
           </div>
         )}
       </CardContent>
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

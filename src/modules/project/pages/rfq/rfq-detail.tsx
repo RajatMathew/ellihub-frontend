@@ -43,6 +43,10 @@ import { cn } from '@/app/lib/utils';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import {
   useDownloadFile,
@@ -281,6 +285,8 @@ export default function RFQDetailPage() {
   const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<RFQQuoteAttachment[]>([]);
+  const [quoteAttachmentPreviewFile, setQuoteAttachmentPreviewFile] =
+    useState<FilePreviewItem | null>(null);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -1146,7 +1152,6 @@ export default function RFQDetailPage() {
             canUpload={canEditDraftRfq && !!rfqUploadFolderId}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
-            onDownload={(document) => downloadFile.mutate(document)}
             onRemove={(attachmentId) => {
               removeAttachmentMutation.mutate({
                 rfqId,
@@ -1781,9 +1786,26 @@ export default function RFQDetailPage() {
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="size-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate">
-                        {att.document?.name || att.name || 'Document'}
-                      </span>
+                      {att.document || att.documentId ? (
+                        <button
+                          type="button"
+                          className="truncate text-left text-sm font-medium text-primary hover:underline"
+                          onClick={() => {
+                            const doc =
+                              att.document ??
+                              (att.documentId
+                                ? { id: att.documentId, name: att.name ?? 'Document' }
+                                : null);
+                            if (doc) {
+                              setQuoteAttachmentPreviewFile({ id: doc.id, name: doc.name });
+                            }
+                          }}
+                        >
+                          {att.document?.name || att.name || 'Document'}
+                        </button>
+                      ) : (
+                        <span className="text-sm truncate">{att.name || 'Document'}</span>
+                      )}
                     </div>
                     {!isQuoteViewOnly && (
                       <Button
@@ -2274,6 +2296,13 @@ export default function RFQDetailPage() {
         isPending={deleteMutation.isPending}
       />
 
+      <FilePreviewDialog
+        open={!!quoteAttachmentPreviewFile}
+        onOpenChange={(open) => {
+          if (!open) setQuoteAttachmentPreviewFile(null);
+        }}
+        file={quoteAttachmentPreviewFile}
+      />
     </div>
   );
 }

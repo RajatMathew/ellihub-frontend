@@ -4,8 +4,12 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
@@ -40,8 +44,8 @@ export function ContractDocumentsSimpleCard({
   isSettingPrimary = false,
 }: ContractDocumentsSimpleCardProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
   const uploadMutation = useUploadFileMutation();
-  const downloadFile = useDownloadFile();
   const sortedDocuments = useMemo(
     () =>
       [...documents].sort((a, b) => {
@@ -113,7 +117,7 @@ export function ContractDocumentsSimpleCard({
                       <button
                         type="button"
                         className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                        onClick={() => downloadFile.mutate(document)}
+                        onClick={() => setPreviewFile(document)}
                       >
                         {documentName}
                       </button>
@@ -191,6 +195,14 @@ export function ContractDocumentsSimpleCard({
           isSubmitting={uploadMutation.isPending || isAdding}
         />
       )}
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

@@ -27,6 +27,10 @@ import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -220,13 +224,14 @@ export function SCODetailPage() {
   const attachments = (sco?.attachments ?? []) as {
     id: string;
     documentId?: string;
-    document?: { id: string; name: string };
+    document?: FilePreviewItem;
   }[];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [attachmentPreviewFile, setAttachmentPreviewFile] = useState<FilePreviewItem | null>(null);
   const [pdfIncludeNotice, setPdfIncludeNotice] = useState(false);
   const [pdfNoticeTitle, setPdfNoticeTitle] = useState('');
   const [pdfNoticeHtml, setPdfNoticeHtml] = useState('');
@@ -1042,9 +1047,19 @@ export function SCODetailPage() {
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <FileText className="size-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate">
-                          {att.document?.name ?? 'Document'}
-                        </span>
+                        {att.document?.id ? (
+                          <button
+                            type="button"
+                            className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                            onClick={() => setAttachmentPreviewFile(att.document!)}
+                          >
+                            {att.document?.displayName ?? att.document?.name ?? 'Document'}
+                          </button>
+                        ) : (
+                          <span className="text-sm font-medium truncate">
+                            {att.document?.name ?? 'Document'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
                         {att.document?.id && (
@@ -1344,6 +1359,14 @@ export function SCODetailPage() {
           isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
         />
       )}
+
+      <FilePreviewDialog
+        open={!!attachmentPreviewFile}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentPreviewFile(null);
+        }}
+        file={attachmentPreviewFile}
+      />
     </div>
   );
 }

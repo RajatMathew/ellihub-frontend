@@ -2,8 +2,12 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ScheduleTrackerContractDates } from '@/modules/project/components/overview/schedule-tracker-contract-dates';
 import { ScheduleTrackerEntryTable } from '@/modules/project/components/overview/schedule-tracker-entry-table';
@@ -50,12 +54,12 @@ export function ScheduleTrackerCard({
   const [newEntry, setNewEntry] = useState(createEmptyScheduleTrackerDraft);
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
   const [uploadTarget, setUploadTarget] = useState<ScheduleTrackerUploadTarget>(null);
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
 
   const createMutation = useCreateScheduleEntryMutation();
   const updateMutation = useUpdateScheduleEntryMutation();
   const deleteMutation = useDeleteScheduleEntryMutation();
   const uploadMutation = useUploadFileMutation();
-  const downloadFile = useDownloadFile();
   const primeChangeOrdersQuery = usePrimeChangeOrdersQuery({
     projectId,
     page: 1,
@@ -146,13 +150,13 @@ export function ScheduleTrackerCard({
     setUploadTarget(null);
   };
 
-  const handleDownload = (file: ScheduleFile) => {
+  const handlePreview = (file: ScheduleFile) => {
     if (file.deletedAt) {
       toast.error('This file no longer exists or has been deleted.');
       return;
     }
 
-    downloadFile.mutate(file);
+    setPreviewFile(file);
   };
 
   return (
@@ -197,7 +201,7 @@ export function ScheduleTrackerCard({
         onChangeAdd={setNewEntry}
         onChangeEdit={(id, draft) => setEditingEntry({ id, draft })}
         onDelete={(id) => void deleteMutation.mutateAsync({ projectId, id })}
-        onDownload={handleDownload}
+        onDownload={handlePreview}
         onEdit={(entry) =>
           setEditingEntry({
             id: entry.id,
@@ -219,6 +223,14 @@ export function ScheduleTrackerCard({
           isSubmitting={uploadMutation.isPending}
         />
       )}
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

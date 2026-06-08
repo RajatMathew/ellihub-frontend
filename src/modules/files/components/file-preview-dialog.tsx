@@ -21,6 +21,8 @@ import { Download, ExternalLink, Eye, Loader2 } from 'lucide-react';
 
 import { FileTypeIcon } from './file-type-icon';
 
+export type FilePreviewItem = Pick<FileItem, 'id'> & Partial<FileItem>;
+
 type PreviewType =
   | 'image'
   | 'pdf'
@@ -56,11 +58,11 @@ const TEXT_EXTENSIONS = [
   'sql',
 ];
 
-function getExtension(item: FileItem | null): string {
+function getExtension(item: FilePreviewItem | null): string {
   return (item?.displayName || item?.name || '').split('.').pop()?.toLowerCase() ?? '';
 }
 
-function getPreviewType(item: FileItem): PreviewType {
+function getPreviewType(item: FilePreviewItem): PreviewType {
   const mime = item.mimeType ?? '';
   const extension = getExtension(item);
 
@@ -97,14 +99,14 @@ function getPreviewType(item: FileItem): PreviewType {
   return 'generic';
 }
 
-function isDelimitedSpreadsheet(item: FileItem | null): boolean {
+function isDelimitedSpreadsheet(item: FilePreviewItem | null): boolean {
   const mime = item?.mimeType ?? '';
   const extension = getExtension(item);
 
   return mime === 'text/csv' || DELIMITED_SPREADSHEET_EXTENSIONS.includes(extension);
 }
 
-function getDelimiter(item: FileItem | null): string {
+function getDelimiter(item: FilePreviewItem | null): string {
   return getExtension(item) === 'tsv' ? '\t' : ',';
 }
 
@@ -158,7 +160,7 @@ function parseDelimitedRows(content: string, delimiter: string): string[][] {
 interface FilePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  file: FileItem | null;
+  file: FilePreviewItem | null;
 }
 
 function FallbackPreview({
@@ -166,7 +168,7 @@ function FallbackPreview({
   url,
   type,
 }: {
-  file: FileItem | null;
+  file: FilePreviewItem | null;
   url?: string;
   type: string;
 }) {
@@ -285,7 +287,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
           <DialogTitle className="flex items-center gap-2.5">
             {file && (
               <FileTypeIcon
-                fileType={file.type}
+                fileType={file.type ?? 'FILE'}
                 mimeType={file.mimeType}
                 fileName={file.displayName || file.name}
                 className="size-5 shrink-0"
