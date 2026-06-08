@@ -498,6 +498,11 @@ export default function RFQDetailPage() {
     (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * (d.quantity ?? 0)),
     0
   );
+  const hasFinancialSummary =
+    deliverablesTotal > 0 ||
+    lowestQuote != null ||
+    highestQuote != null ||
+    (isAwarded && (rfq.awardedAmount != null || !!rfq.awardedVendor));
 
   // IDs of vendors already invited
   const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
@@ -1234,38 +1239,42 @@ export default function RFQDetailPage() {
               </Card>
             </div>
 
-            <div>
-              <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
-                Financial Summary
-              </div>
-              <Card>
-                <CardContent className="p-4 space-y-1">
-                  {deliverablesTotal > 0 && (
-                    <InfoRow label="Est. Deliverables">{formatCurrency(deliverablesTotal)}</InfoRow>
-                  )}
-                  {lowestQuote != null && (
-                    <>
-                      {deliverablesTotal > 0 && <Separator className="my-2" />}
-                      <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
-                    </>
-                  )}
-                  {highestQuote != null && (
-                    <InfoRow label="Highest Quote">{formatCurrency(highestQuote)}</InfoRow>
-                  )}
-                  {isAwarded && rfq.awardedAmount != null && (
-                    <>
-                      <Separator className="my-2" />
-                      <InfoRow label="Awarded Amount" valueClassName="text-success">
-                        {formatCurrency(rfq.awardedAmount)}
+            {hasFinancialSummary && (
+              <div>
+                <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
+                  Financial Summary
+                </div>
+                <Card>
+                  <CardContent className="p-4 space-y-1">
+                    {deliverablesTotal > 0 && (
+                      <InfoRow label="Est. Deliverables">
+                        {formatCurrency(deliverablesTotal)}
                       </InfoRow>
-                    </>
-                  )}
-                  {isAwarded && rfq.awardedVendor && (
-                    <InfoRow label="Awarded Vendor">{rfq.awardedVendor.name}</InfoRow>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                    )}
+                    {lowestQuote != null && (
+                      <>
+                        {deliverablesTotal > 0 && <Separator className="my-2" />}
+                        <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
+                      </>
+                    )}
+                    {highestQuote != null && (
+                      <InfoRow label="Highest Quote">{formatCurrency(highestQuote)}</InfoRow>
+                    )}
+                    {isAwarded && rfq.awardedAmount != null && (
+                      <>
+                        <Separator className="my-2" />
+                        <InfoRow label="Awarded Amount" valueClassName="text-success">
+                          {formatCurrency(rfq.awardedAmount)}
+                        </InfoRow>
+                      </>
+                    )}
+                    {isAwarded && rfq.awardedVendor && (
+                      <InfoRow label="Awarded Vendor">{rfq.awardedVendor.name}</InfoRow>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div>
               <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
@@ -2011,7 +2020,7 @@ export default function RFQDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 3}{' '}
+              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 1}{' '}
               vendor(s).
             </p>
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
@@ -2056,7 +2065,7 @@ export default function RFQDetailPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedVendorIds.length} selected (min {rfq.minimumVendors ?? 3})
+              {selectedVendorIds.length} selected (min {rfq.minimumVendors ?? 1})
             </p>
           </div>
           <DialogFooter>
@@ -2070,7 +2079,7 @@ export default function RFQDetailPage() {
               Cancel
             </Button>
             <Button
-              disabled={selectedVendorIds.length < (rfq.minimumVendors ?? 3) || isActionPending}
+              disabled={selectedVendorIds.length < (rfq.minimumVendors ?? 1) || isActionPending}
               onClick={async () => {
                 try {
                   // 1. Publish first
