@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { QueryErrorState } from '@/app/components/query-error-state';
 import {
   Toolbar,
   ToolbarActions,
@@ -192,7 +193,12 @@ export default function RFQDetailPage() {
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
-  const { data: rfq, isLoading, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
+  const {
+    data: rfq,
+    isLoading,
+    isError,
+    refetch: refetchRfqDetail,
+  } = useRFQDetailQuery(rfqId);
   const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
@@ -456,6 +462,18 @@ export default function RFQDetailPage() {
 
   if (isLoading) {
     return <ProjectDetailPageLoading />;
+  }
+
+  if (isError) {
+    return (
+      <div className="container-fluid py-7.5">
+        <QueryErrorState
+          title="Unable to load RFQ"
+          description="The RFQ could not be loaded. Please try again."
+          onRetry={() => void refetchRfqDetail()}
+        />
+      </div>
+    );
   }
 
   if (!rfq) {

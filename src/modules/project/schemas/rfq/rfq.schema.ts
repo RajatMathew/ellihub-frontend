@@ -16,15 +16,6 @@ export type RFQStatus = z.infer<typeof rfqStatusSchema>;
 
 /* ---- List item (from GET /rfqs) ---- */
 
-export const RFQ_TRACKS = [
-  'MATERIAL',
-  'FABRICATION',
-  'INSTALLATION',
-  'LABOR',
-  'EQUIPMENT',
-] as const;
-export type RFQTrack = (typeof RFQ_TRACKS)[number];
-
 export const rfqListItemSchema = z
   .object({
     id: z.string(),
@@ -251,7 +242,7 @@ export const rfqDetailSchema = z
       .nullable()
       .optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
-    track: z.enum(RFQ_TRACKS).nullable().optional(),
+    track: z.string().nullable().optional(),
     type: z
       .object({
         id: z.string(),
