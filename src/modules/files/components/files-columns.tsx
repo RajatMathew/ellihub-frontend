@@ -113,6 +113,8 @@ export function useFilesColumns({
         },
         meta: {
           headerClassName: 'min-w-72',
+          textOverflow: 'truncate',
+          tooltipContent: (file) => file.displayName || file.name || 'Unnamed',
           skeleton: <Skeleton className="h-3.5 w-48" />,
         },
       },
@@ -139,6 +141,8 @@ export function useFilesColumns({
         ),
         meta: {
           headerClassName: 'min-w-32',
+          textOverflow: 'truncate',
+          tooltipContent: (file) => file.createdByUser?.name || file.createdBy || '-',
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,

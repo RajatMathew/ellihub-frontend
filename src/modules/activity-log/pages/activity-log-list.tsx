@@ -107,6 +107,9 @@ export default function ActivityLogListPage() {
             )}
           </div>
         ),
+        meta: {
+          textOverflow: 'scroll',
+        },
       },
       {
         id: 'entityId',

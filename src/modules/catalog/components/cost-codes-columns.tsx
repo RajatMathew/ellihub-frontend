@@ -42,6 +42,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
         ),
         meta: {
           headerClassName: 'min-w-48',
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-4 w-48" />,
         },
       },
@@ -53,6 +54,7 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
         ),
         meta: {
           headerClassName: 'min-w-48',
+          textOverflow: 'scroll',
           skeleton: <Skeleton className="h-4 w-full max-w-80" />,
         },
         enableSorting: false,

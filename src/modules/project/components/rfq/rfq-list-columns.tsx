@@ -39,6 +39,7 @@ export function useRFQListColumns({ onDelete, onVoid, onCreatePO }: UseRFQListCo
         cell: ({ row }) => <RFQTitleCell rfq={row.original} />,
         meta: {
           headerClassName: 'min-w-56',
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-3.5 w-44" />,
         },
       },

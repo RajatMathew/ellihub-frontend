@@ -14,6 +14,10 @@ declare module '@tanstack/react-table' {
     headerTitle?: string;
     headerClassName?: string;
     cellClassName?: string;
+    textOverflow?: 'truncate' | 'scroll' | 'wrap';
+    preserveTruncatedCellLayout?: boolean;
+    alwaysShowTooltip?: boolean;
+    tooltipContent?: (row: TData, value: TValue) => ReactNode;
     skeleton?: ReactNode;
     expandedContent?: (row: TData) => ReactNode;
   }

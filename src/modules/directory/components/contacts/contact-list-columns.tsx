@@ -34,6 +34,7 @@ export function useContactListColumns({
         cell: ({ row }) => <ContactNameCell contact={row.original} />,
         meta: {
           headerClassName: 'min-w-64',
+          textOverflow: 'truncate',
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-9 rounded-full" />
@@ -63,6 +64,8 @@ export function useContactListColumns({
         cell: ({ row }) => <ContactEmailCell contact={row.original} />,
         meta: {
           headerClassName: 'min-w-56',
+          textOverflow: 'truncate',
+          tooltipContent: (contact) => contact.email?.[0]?.email,
           skeleton: (
             <div className="flex items-center gap-2">
               <Skeleton className="size-3.5 rounded-sm" />

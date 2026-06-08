@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
+import { getVendorPrimaryContact } from '@/modules/directory/components/vendors/vendor-list-utils';
 import {
   VendorActionsCell,
   VendorContactCell,
@@ -38,6 +39,7 @@ export function useVendorListColumns({
         meta: {
           headerClassName: 'w-[26%] min-w-72 max-w-[28rem]',
           cellClassName: 'w-[26%] min-w-72 max-w-[28rem]',
+          textOverflow: 'truncate',
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -64,6 +66,9 @@ export function useVendorListColumns({
         meta: {
           headerClassName: 'w-[20%] min-w-64 max-w-[24rem]',
           cellClassName: 'w-[20%] min-w-64 max-w-[24rem]',
+          textOverflow: 'truncate',
+          tooltipContent: (vendor) =>
+            getVendorPrimaryContact(vendor)?.fullName ?? vendor.email ?? vendor.name,
           skeleton: (
             <div className="flex flex-col gap-1">
               <Skeleton className="h-3.5 w-24" />

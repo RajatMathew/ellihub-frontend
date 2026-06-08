@@ -25,6 +25,7 @@ export function useEmployeeListColumns(onDelete: (employee: { id: string; name: 
         cell: ({ row }) => <EmployeeNameCell employee={row.original} />,
         meta: {
           headerClassName: 'min-w-52',
+          textOverflow: 'truncate',
           skeleton: <EmployeeNameSkeleton />,
         },
       },
@@ -35,6 +36,8 @@ export function useEmployeeListColumns(onDelete: (employee: { id: string; name: 
         cell: ({ row }) => <EmployeeDepartmentCell employee={row.original} />,
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (employee) => employee.department?.name,
           skeleton: <Skeleton className="h-5 w-24 rounded" />,
         },
       },
@@ -45,6 +48,7 @@ export function useEmployeeListColumns(onDelete: (employee: { id: string; name: 
         cell: ({ row }) => <EmployeeEmailCell employee={row.original} />,
         meta: {
           headerClassName: 'min-w-64',
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-4 w-56" />,
         },
       },

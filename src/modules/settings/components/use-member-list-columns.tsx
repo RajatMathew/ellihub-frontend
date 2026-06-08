@@ -55,6 +55,8 @@ export function useMemberListColumns({
         },
         meta: {
           headerClassName: 'min-w-72',
+          textOverflow: 'truncate',
+          tooltipContent: (member) => `${member.name}\n${member.email}`,
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-9 rounded-md" />

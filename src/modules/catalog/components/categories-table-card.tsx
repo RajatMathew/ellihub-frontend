@@ -51,6 +51,7 @@ export function CategoriesTableCard({
           <div className="text-sm font-bold text-foreground">{row.original.name}</div>
         ),
         meta: {
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-4 w-40" />,
         },
       },
@@ -63,6 +64,7 @@ export function CategoriesTableCard({
           </div>
         ),
         meta: {
+          textOverflow: 'scroll',
           skeleton: <Skeleton className="h-4 w-full max-w-80" />,
         },
       },

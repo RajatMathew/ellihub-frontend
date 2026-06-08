@@ -26,6 +26,11 @@ export function useInvoiceListColumns(projectId: string) {
         cell: ({ row }) => <InvoiceNumberCell invoice={row.original} />,
         meta: {
           headerClassName: 'min-w-48',
+          textOverflow: 'truncate',
+          preserveTruncatedCellLayout: true,
+          alwaysShowTooltip: true,
+          tooltipContent: (invoice) =>
+            [invoice.invoiceNumber ?? '-', invoice.notes].filter(Boolean).join('\n'),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -40,6 +45,8 @@ export function useInvoiceListColumns(projectId: string) {
         cell: ({ row }) => <VendorCell invoice={row.original} />,
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (invoice) => invoice.vendor?.name ?? '-',
           skeleton: <Skeleton className="h-3.5 w-28" />,
         },
         enableSorting: false,
@@ -50,6 +57,9 @@ export function useInvoiceListColumns(projectId: string) {
         cell: ({ row }) => <PurchaseOrderCell invoice={row.original} projectId={projectId} />,
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (invoice) =>
+            invoice.purchaseOrder?.poNumber ?? invoice.purchaseOrderId ?? '-',
           skeleton: <Skeleton className="h-3.5 w-32" />,
         },
         enableSorting: false,

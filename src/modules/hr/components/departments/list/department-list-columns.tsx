@@ -24,6 +24,7 @@ export function useDepartmentListColumns(
         cell: ({ row }) => <DepartmentNameCell department={row.original} />,
         meta: {
           headerClassName: 'min-w-64',
+          textOverflow: 'truncate',
           skeleton: <DepartmentNameSkeleton />,
         },
       },

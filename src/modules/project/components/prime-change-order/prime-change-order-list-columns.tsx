@@ -58,6 +58,7 @@ export function usePrimeChangeOrderListColumns() {
         cell: ({ row }) => <PrimeChangeOrderNameCell order={row.original} />,
         meta: {
           headerClassName: 'min-w-80',
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-3.5 w-56" />,
         },
       },
@@ -86,6 +87,13 @@ export function usePrimeChangeOrderListColumns() {
         cell: ({ row }) => <PrimeChangeOrderAssigneeCell order={row.original} />,
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (order) =>
+            order.assignee
+              ? [order.assignee.displayName, order.assignee.company ?? order.assignee.jobTitle]
+                  .filter(Boolean)
+                  .join('\n')
+              : '-',
           skeleton: (
             <div className="space-y-1">
               <Skeleton className="h-3.5 w-28" />

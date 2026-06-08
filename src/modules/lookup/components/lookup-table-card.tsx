@@ -64,6 +64,7 @@ export function LookupTableCard({
           <div className="text-sm font-bold text-foreground">{row.original.type}</div>
         ),
         meta: {
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-4 w-32" />,
         },
       },
@@ -74,6 +75,7 @@ export function LookupTableCard({
           <div className="text-sm text-foreground">{row.original.label ?? '\u2014'}</div>
         ),
         meta: {
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-4 w-40" />,
         },
       },

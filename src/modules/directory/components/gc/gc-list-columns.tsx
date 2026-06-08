@@ -35,6 +35,7 @@ export function useGCListColumns({
         meta: {
           headerClassName: 'w-[32%] min-w-72 max-w-[28rem]',
           cellClassName: 'w-[32%] min-w-72 max-w-[28rem]',
+          textOverflow: 'truncate',
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -76,6 +77,8 @@ export function useGCListColumns({
         meta: {
           headerClassName: 'w-[28%] min-w-72 max-w-[26rem]',
           cellClassName: 'w-[28%] min-w-72 max-w-[26rem]',
+          textOverflow: 'truncate',
+          tooltipContent: (gc) => gc.contactLinks?.find((link) => link.isPrimary)?.contact.fullName,
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-8 rounded-full" />
