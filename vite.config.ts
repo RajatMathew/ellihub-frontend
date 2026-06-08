@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { api_url } from './vite-elli-config';
+
 // https://vite.dev/config/
 export default defineConfig({
   build: {
@@ -97,8 +99,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // target: 'https://localhost:8000',
-        target: 'https://elli-api-test.zubble.co',
+        target: api_url,
+        // target: 'http://localhost:9000',
+        // target: 'https://elli-api-test.zubble.co',
         changeOrigin: true,
       },
     },
