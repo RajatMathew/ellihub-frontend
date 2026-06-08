@@ -380,7 +380,7 @@ export function SCOFormPage() {
                         isFetchingNextPage={purchaseOrderPicker.isFetchingNextPage}
                         hasNextPage={purchaseOrderPicker.hasNextPage}
                         onFetchNextPage={() => purchaseOrderPicker.fetchNextPage()}
-                        disabled={!projectId}
+                        disabled={!projectId || isEdit}
                         placeholder="Select purchase order..."
                         searchPlaceholder="Search purchase orders..."
                         emptyMessage="No issued purchase orders found."
