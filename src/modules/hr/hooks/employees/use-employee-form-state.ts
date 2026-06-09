@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 
 import { useAppLookupsQuery } from '@/app/hooks/use-lookup';
-import { fakeContactName, fakeEmployeeEmail, fakePhone, fakeStreetAddress, pickRandom } from '@/lib/fake-data';
+import {
+  fakeContactName,
+  fakeDateInputBetween,
+  fakeEmployeeEmail,
+  fakePhone,
+  fakeStreetAddress,
+  pickRandom,
+} from '@/lib/fake-data';
 import { useEmployeeDetailQuery } from '@/modules/hr/hooks/employees.hooks';
 import {
   createEmployeeInputSchema,
@@ -64,7 +71,7 @@ export function useEmployeeFormState(id: string | undefined) {
       email: fakeEmployeeEmail(selectedName),
       phoneNumber: fakePhone(),
       address: fakeStreetAddress(),
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: fakeDateInputBetween(-3650, -30),
       emergencyContactName: emergencyName,
       emergencyContactPhone: fakePhone(),
       emergencyContactRelation: pickRandom(['Spouse', 'Parent', 'Sibling', 'Partner']),

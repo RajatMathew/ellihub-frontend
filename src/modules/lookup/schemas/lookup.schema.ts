@@ -54,6 +54,7 @@ export const lookupTypeSchema = z.enum([
   'RFQ_TRACK',
   'SCO_CHANGE_TYPE',
   'PROJECT_STATUS',
+  'PROJECT_DIVISION',
   'PROJECT_STAGE',
   'GC_TYPE',
   'PROFESSIONAL_ROLE',

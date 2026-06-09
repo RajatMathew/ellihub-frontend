@@ -1,19 +1,28 @@
 import { CardContent } from '@/app/components/ui/card';
 import { formatDate } from '@/app/lib/helpers';
 import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 
 interface ScheduleTrackerContractDatesProps {
+  project: ProjectDetail;
   contract: PrimeContract | undefined;
 }
 
 export function ScheduleTrackerContractDates({
+  project,
   contract,
 }: ScheduleTrackerContractDatesProps) {
   const dates = [
-    { label: 'Est. Start Date', value: contract?.estimatedStartDate },
-    { label: 'Est. Completion Date', value: contract?.estimatedCompletionDate },
-    { label: 'Actual Start Date', value: contract?.actualStartDate },
-    { label: 'Actual Completion Date', value: contract?.actualCompletionDate },
+    {
+      label: 'Estimated Start Date',
+      value: project.estimatedStartDate ?? contract?.estimatedStartDate,
+    },
+    {
+      label: 'Estimated End Date',
+      value: project.estimatedEndDate ?? contract?.estimatedEndDate,
+    },
+    { label: 'Actual Start Date', value: project.actualStartDate },
+    { label: 'Actual Completion Date', value: project.actualCompletionDate },
   ].filter((date): date is { label: string; value: string } => !!date.value);
 
   if (dates.length === 0) return null;

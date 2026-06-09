@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 
-import { X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { useAccess } from '@/app/contexts/access-context';
 import { useFieldwireProjectsQuery } from '@/modules/project/hooks';
 import type { FieldwireProjectOption } from '@/modules/project/schemas/project.schema';
+import { X } from 'lucide-react';
 
 type FieldwireProjectSelectProps = {
   value: string | null;
@@ -52,6 +51,7 @@ export function FieldwireProjectSelect({
     <div className="space-y-1.5">
       <div className="flex gap-2">
         <SearchableSelect
+          className="min-w-0 flex-1"
           options={options}
           value={value}
           onValueChange={(nextValue) => {
@@ -66,10 +66,7 @@ export function FieldwireProjectSelect({
               : undefined;
             const linkedProject = selectedProject?.linkedProject;
 
-            if (
-              linkedProject &&
-              (!currentProjectId || linkedProject.id !== currentProjectId)
-            ) {
+            if (linkedProject && (!currentProjectId || linkedProject.id !== currentProjectId)) {
               const linkedProjectLabel = linkedProject.jobNumber
                 ? `${linkedProject.name} (${linkedProject.jobNumber})`
                 : linkedProject.name;
@@ -103,6 +100,7 @@ export function FieldwireProjectSelect({
             variant="outline"
             mode="icon"
             size="md"
+            className="shrink-0"
             aria-label="Clear Fieldwire project"
             title="Clear Fieldwire project"
             disabled={isDisabled}

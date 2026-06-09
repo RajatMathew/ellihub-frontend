@@ -58,6 +58,11 @@ import {
   useSetProjectInactiveMutation,
   useUpdateProjectMutation,
 } from '@/modules/project/hooks';
+import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
+import {
+  formatProjectStageLabel,
+  getProjectStageSwatchClassName,
+} from '@/modules/project/lib/project-stage-colors';
 import {
   projectFormSchema,
   type CreateProjectInput,
@@ -69,9 +74,6 @@ import { FileText, X } from 'lucide-react';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-
-const parseDateValue = (value: unknown): string =>
-  typeof value === 'string' ? value.split('T')[0] : '';
 
 const projectInvalidControlClassName = formInvalidControlClassName;
 
@@ -110,7 +112,12 @@ export default function ProjectForm() {
 
   /* ---- Build dropdown options ---- */
 
-  const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
+  const stageOptions =
+    stagesQuery.data?.map((s) => ({
+      value: s.id,
+      label: formatProjectStageLabel(s.name),
+      swatchClassName: getProjectStageSwatchClassName(s.name),
+    })) ?? [];
   const divisionOptions =
     divisionsQuery.data?.map((d) => ({
       value: d.id,
@@ -203,12 +210,27 @@ export default function ProjectForm() {
         targetBudgetPercent: contract?.targetBudgetPercent ?? 0,
         taxRate: Number(contract?.taxRate ?? 0),
         paymentTerms: contract?.paymentTerms ?? '',
-        estimatedStartDate: parseDateValue(contract?.estimatedStartDate),
-        estimatedEndDate: parseDateValue(contract?.estimatedEndDate),
-        setInactiveDate: parseDateValue(contract?.setInactiveDate),
-        tcoDate: parseDateValue(contract?.tcoDate ?? contract?.estimatedEndDate),
-        actualStartDate: parseDateValue(contract?.actualStartDate),
-        actualCompletionDate: parseDateValue(contract?.actualCompletionDate),
+        estimatedStartDate: toDateInputValue(
+          existingProject.estimatedStartDate ?? contract?.estimatedStartDate
+        ),
+        estimatedEndDate: toDateInputValue(
+          existingProject.estimatedEndDate ?? contract?.estimatedEndDate
+        ),
+        setInactiveDate: toDateInputValue(
+          existingProject.setInactiveDate ?? contract?.setInactiveDate
+        ),
+        tcoDate: toDateInputValue(
+          existingProject.tcoDate ??
+            contract?.tcoDate ??
+            existingProject.estimatedEndDate ??
+            contract?.estimatedEndDate
+        ),
+        actualStartDate: toDateInputValue(
+          existingProject.actualStartDate ?? contract?.actualStartDate
+        ),
+        actualCompletionDate: toDateInputValue(
+          existingProject.actualCompletionDate ?? contract?.actualCompletionDate
+        ),
       });
     }
   }, [isEditMode, existingProject, existingContract, reset]);
@@ -256,6 +278,12 @@ export default function ProjectForm() {
     start.setDate(start.getDate() + Math.floor(Math.random() * 30));
     const end = new Date(start);
     end.setMonth(end.getMonth() + 12);
+    const actualStart = new Date(start);
+    actualStart.setDate(actualStart.getDate() + randInt(0, 14));
+    const actualCompletion = new Date(actualStart);
+    actualCompletion.setMonth(actualCompletion.getMonth() + randInt(8, 14));
+    const inactiveDate = new Date(actualCompletion);
+    inactiveDate.setDate(inactiveDate.getDate() + randInt(1, 45));
 
     reset({
       name,
@@ -285,6 +313,9 @@ export default function ProjectForm() {
         'NET_30',
       estimatedStartDate: start.toISOString().split('T')[0],
       estimatedEndDate: end.toISOString().split('T')[0],
+      actualStartDate: actualStart.toISOString().split('T')[0],
+      actualCompletionDate: actualCompletion.toISOString().split('T')[0],
+      setInactiveDate: inactiveDate.toISOString().split('T')[0],
       tcoDate: end.toISOString().split('T')[0],
     });
   };
@@ -321,6 +352,8 @@ export default function ProjectForm() {
           paymentTerms: data.paymentTerms || undefined,
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
+          actualStartDate: data.actualStartDate || undefined,
+          actualCompletionDate: data.actualCompletionDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
           tcoDate: data.tcoDate,
         };
@@ -366,6 +399,8 @@ export default function ProjectForm() {
           paymentTerms: data.paymentTerms || undefined,
           estimatedStartDate: data.estimatedStartDate || undefined,
           estimatedEndDate: data.estimatedEndDate || undefined,
+          actualStartDate: data.actualStartDate || undefined,
+          actualCompletionDate: data.actualCompletionDate || undefined,
           setInactiveDate: data.setInactiveDate || undefined,
           tcoDate: data.tcoDate,
         };
@@ -978,14 +1013,14 @@ export default function ProjectForm() {
                   />
                 </div>
 
-                {/* Row: Set Inactive Date + TCO Date */}
+                {/* Row: Inactive Date + TCO Date */}
                 <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
                   <Controller
                     name="setInactiveDate"
                     control={control}
                     render={({ field }) => (
                       <Field>
-                        <ProjectFormFieldLabel>Set Inactive Date</ProjectFormFieldLabel>
+                        <ProjectFormFieldLabel>Inactive Date</ProjectFormFieldLabel>
                         <InputWrapper>
                           <Input type="date" {...field} />
                         </InputWrapper>

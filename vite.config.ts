@@ -23,6 +23,11 @@ export default defineConfig({
             if (pkg.startsWith('react-router')) return 'router';
             if (pkg.startsWith('tanstack')) return 'tanstack';
             if (pkg === 'recharts' || pkg.startsWith('d3-')) return 'charts';
+            if (pkg === 'radix-ui' || pkg === 'headless-tree' || pkg === 'cmdk') return 'ui';
+            if (pkg.startsWith('motion-')) return 'motion';
+            if (pkg === 'react-markdown' || pkg.startsWith('remark') || pkg.startsWith('rehype'))
+              return 'markdown';
+            if (pkg === 'tiptap') return 'editor';
             if (pkg === 'react-helmet-async') return 'helmet';
             if (pkg === 'lucide-react') return 'lucide';
             return 'vendor';

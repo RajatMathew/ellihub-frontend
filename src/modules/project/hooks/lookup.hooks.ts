@@ -8,4 +8,4 @@ export { lookupKeys } from '@/modules/lookup/constants/lookup.keys';
 // Project-specific convenience hook
 import { useLookupsQuery } from '@/modules/lookup/hooks';
 
-export const useDivisionsQuery = () => useLookupsQuery('GC_TYPE');
+export const useDivisionsQuery = () => useLookupsQuery('PROJECT_DIVISION');

@@ -30,10 +30,12 @@ import type {
   ProjectScheduleEntry,
   ScheduleFile,
 } from '@/modules/project/schemas/project-schedule.schema';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ScheduleTrackerCardProps {
+  project: ProjectDetail;
   projectId: string;
   contract: PrimeContract | undefined;
   entries: ProjectScheduleEntry[];
@@ -43,6 +45,7 @@ interface ScheduleTrackerCardProps {
 }
 
 export function ScheduleTrackerCard({
+  project,
   projectId,
   contract,
   entries,
@@ -180,7 +183,7 @@ export function ScheduleTrackerCard({
         )}
       </CardHeader>
 
-      <ScheduleTrackerContractDates contract={contract} />
+      <ScheduleTrackerContractDates project={project} contract={contract} />
 
       <ScheduleTrackerEntryTable
         entries={entries}
