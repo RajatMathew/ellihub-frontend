@@ -80,6 +80,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { isAdmin, can } = useAccess();
   const canSyncFieldwire = can('primeChangeOrder', 'sync');
   const canManageTemplates = can('template', 'read');
+  const canManageIntegrations = can('integration', 'read');
   const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
   const fieldwireSyncLabel = formatFieldwireSyncLabel(
     fieldwireSyncStatusQuery.data?.lastSyncedAt,
@@ -186,12 +187,14 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 </Link>
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem asChild>
-              <Link to="#" className="flex items-center gap-2">
-                <BetweenHorizontalStart />
-                Integrations
-              </Link>
-            </DropdownMenuItem>
+            {canManageIntegrations && (
+              <DropdownMenuItem asChild>
+                <Link to="/app/settings/integrations" className="flex items-center gap-2">
+                  <BetweenHorizontalStart />
+                  Integrations
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 

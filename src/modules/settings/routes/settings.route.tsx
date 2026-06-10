@@ -3,6 +3,7 @@ import { Forbidden } from '@/app/components/error/forbidden';
 import { NotFound } from '@/app/components/error/not-found';
 import { ModuleLoader } from '@/app/components/loader/elegant';
 import { useAccess } from '@/app/contexts/access-context';
+import QuickBooksIntegrationPage from '@/modules/integrations/pages/quickbooks-integration-page';
 import MembersPage from '@/modules/settings/pages/members-page';
 import TemplateSettingsPage from '@/modules/settings/pages/template-settings-page';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -13,6 +14,7 @@ function SettingsIndex() {
   if (isLoading) return <ModuleLoader />;
   if (can('user', 'manage-permissions')) return <Navigate to="members" replace />;
   if (can('template', 'read')) return <Navigate to="templates" replace />;
+  if (can('integration', 'read')) return <Navigate to="integrations" replace />;
   return <Forbidden />;
 }
 
@@ -33,6 +35,14 @@ export default function SettingsRoutes() {
         element={
           <PermissionRoute resource="template" action="read">
             <TemplateSettingsPage />
+          </PermissionRoute>
+        }
+      />
+      <Route
+        path="integrations"
+        element={
+          <PermissionRoute resource="integration" action="read">
+            <QuickBooksIntegrationPage />
           </PermissionRoute>
         }
       />

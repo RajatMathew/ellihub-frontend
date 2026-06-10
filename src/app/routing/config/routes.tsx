@@ -48,6 +48,11 @@ export const routeTree: RouteDef[] = [
         path: 'settings/*',
         component: SettingsRoutes,
         title: 'Settings',
+        children: [
+          { path: 'members', title: 'Members & Roles' },
+          { path: 'templates', title: 'Templates' },
+          { path: 'integrations', title: 'Integrations' },
+        ],
       },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },

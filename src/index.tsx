@@ -14,6 +14,10 @@ import HelpApp from '@core/help';
 
 import { App } from './app';
 import { PwaUpdateModal } from './core/pwa/PwaUpdateModal';
+import {
+  QuickBooksConnectPage,
+  QuickBooksDisconnectedPage,
+} from './modules/integrations/pages/quickbooks-public-pages';
 import { EndUserLicenseAgreementPage, PrivacyPolicyPage } from './modules/public/pages/legal-pages';
 
 function FrameWork() {
@@ -44,6 +48,8 @@ function FrameWork() {
               <Route path="forgot-password" element={<ForgotPasswordPage />} />
               <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="sign-out" element={<SignOutPage />} />
+              <Route path="quickbooks/connect" element={<QuickBooksConnectPage />} />
+              <Route path="quickbooks/disconnected" element={<QuickBooksDisconnectedPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
