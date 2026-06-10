@@ -76,7 +76,6 @@ services:
       context: ./elli-engine
       dockerfile: docker/Dockerfile
       target: production
-    container_name: pdf-engine
     restart: unless-stopped
     expose:
       - "8000"
