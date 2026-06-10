@@ -24,8 +24,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     /* Absolute path alias */
-    "baseUrl": "./",
     "paths": {
+      "*": ["./*"],
       "@/*": ["./src/*"],
       "@app/*": ["./src/app/*"],
       "@core/*": ["./src/core/*"],
