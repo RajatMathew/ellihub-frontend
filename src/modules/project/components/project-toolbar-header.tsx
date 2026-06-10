@@ -17,6 +17,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/too
 import { cn } from '@/app/lib/utils';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
+import {
+  formatProjectStageLabel,
+  getProjectStageSwatchClassName,
+} from '@/modules/project/lib/project-stage-colors';
 import type {
   Division,
   ProjectDetail,
@@ -51,15 +55,6 @@ const STATUS_META: Record<string, { label: string; badgeClassName: string }> = {
   },
 };
 
-const STAGE_DOT_CLASSES: Array<[string, string]> = [
-  ['SUBMITTAL', 'bg-primary'],
-  ['BUYOUT', 'bg-info'],
-  ['FABRICATION', 'bg-destructive'],
-  ['INSTALLATION', 'bg-primary'],
-  ['PUNCH', 'bg-warning'],
-  ['CLOSEOUT', 'bg-success'],
-];
-
 const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['status']) => {
   if (!status) return undefined;
 
@@ -76,13 +71,6 @@ const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['statu
     label: status.label || status.name || configuredStatus?.label || 'N/A',
     badgeClassName: configuredStatus?.badgeClassName ?? STATUS_META.COMPLETED.badgeClassName,
   };
-};
-
-const getStageDotClassName = (stageName?: string | null) => {
-  const normalizedName = (stageName ?? '').toUpperCase();
-  const stageMatch = STAGE_DOT_CLASSES.find(([key]) => normalizedName.includes(key));
-
-  return stageMatch?.[1] ?? 'bg-muted-foreground';
 };
 
 export function ProjectToolbarHeader({
@@ -186,7 +174,8 @@ export function ProjectToolbarHeader({
             {project?.stage && stages && stages.length > 0 && canManageProject ? (
               (() => {
                 const name = project.stage.name || project.stage.label || '';
-                const dotClassName = getStageDotClassName(name);
+                const displayName = formatProjectStageLabel(name);
+                const dotClassName = getProjectStageSwatchClassName(name);
 
                 return (
                   <DropdownMenu>
@@ -196,7 +185,7 @@ export function ProjectToolbarHeader({
                         className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                       >
                         <span className={cn('size-2 rounded-sm shrink-0', dotClassName)} />
-                        {name}
+                        {displayName}
                         <ChevronDown className="size-3 text-muted-foreground" />
                       </button>
                     </DropdownMenuTrigger>
@@ -209,10 +198,12 @@ export function ProjectToolbarHeader({
                           <span
                             className={cn(
                               'size-2.5 rounded-sm shrink-0',
-                              getStageDotClassName(stage.name)
+                              getProjectStageSwatchClassName(stage.name)
                             )}
                           />
-                          <span className="flex-1">{stage.name}</span>
+                          <span className="flex-1 font-normal">
+                            {formatProjectStageLabel(stage.name)}
+                          </span>
                           {stage.id === project.stageId && (
                             <Check className="size-3.5 text-foreground" />
                           )}

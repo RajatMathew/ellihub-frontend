@@ -21,7 +21,7 @@ export const primeContractSchema = z
     targetBudgetPercent: z.coerce.number().nullable().optional(),
     paymentTerms: paymentTermsSchema.nullable().optional(),
     estimatedStartDate: z.string().nullable().optional(),
-    estimatedCompletionDate: z.string().nullable().optional(),
+    estimatedEndDate: z.string().nullable().optional(),
     actualStartDate: z.string().nullable().optional(),
     actualCompletionDate: z.string().nullable().optional(),
     executedContractDocId: z.string().nullable().optional(),

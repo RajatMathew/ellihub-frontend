@@ -8,6 +8,22 @@ import {
 
 const BASE = '/lookup';
 
+const PROJECT_STAGE_ORDER = [
+  'ONBOARDING',
+  'SUBMITTALS',
+  'BUYOUT',
+  'INSTALLATION',
+  'FABRICATION',
+  'PUNCHLIST',
+  'CLOSEOUT',
+];
+
+const projectStageOrder = new Map(PROJECT_STAGE_ORDER.map((stage, index) => [stage, index]));
+
+function normalizeProjectStageName(name: string) {
+  return name.trim().toUpperCase().replace(/\s+/g, '_');
+}
+
 const lookupProjectStageSchema = z
   .object({
     id: z.string(),
@@ -41,6 +57,16 @@ export const projectStageApi = {
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
         }),
-      );
+      )
+      .sort((a, b) => {
+        const aOrder = projectStageOrder.get(normalizeProjectStageName(a.name));
+        const bOrder = projectStageOrder.get(normalizeProjectStageName(b.name));
+
+        if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+        if (aOrder !== undefined) return -1;
+        if (bOrder !== undefined) return 1;
+
+        return a.name.localeCompare(b.name);
+      });
   },
 };

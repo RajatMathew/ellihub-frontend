@@ -157,8 +157,6 @@ export const employeeProjectSchema = z.object({
   status: z.string(),
   role: z.string().optional().nullable(),
   isLead: z.boolean().optional().default(false),
-  assignedAt: z.string().optional(),
-  startDate: z.string().optional().nullable(),
   estimatedStartDate: z.string().optional().nullable(),
   estimatedEndDate: z.string().optional().nullable(),
   tcoDate: z.string().optional().nullable(),

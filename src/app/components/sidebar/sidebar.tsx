@@ -29,7 +29,7 @@ export default function Sidebar({
     }
   }
   return (
-    <div className="bg-background overflow-hidden border border-border">
+    <div className="bg-[#191919] overflow-hidden border border-border">
       <SidebarHeader />
       <ScrollArea className="shrink-0 h-[calc(100vh-6rem)] lg:h-[calc(100vh-7rem)] mt-0 mb-2.5 min-w-60 ">
         <SidebarAnimatedContent menuConfig={menuConfig} mode={mode} />

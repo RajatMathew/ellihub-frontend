@@ -25,7 +25,7 @@ const getStageBadgeVariant = (stageName: string): StageBadgeVariant => {
 };
 
 const formatProjectDate = (date?: string | null) => date?.split('T')[0] ?? '-';
-const truncateName = (name: string) => (name.length > 15 ? `${name.slice(0, 15)}...` : name);
+const truncateName = (name: string) => (name.length > 18 ? `${name.slice(0, 18)}...` : name);
 
 function TruncatedName({ name }: { name?: string | null }) {
   if (!name) return '-';
@@ -36,7 +36,7 @@ function TruncatedName({ name }: { name?: string | null }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-block cursor-pointer" tabIndex={0}>
+        <span className="inline-block max-w-full cursor-pointer truncate" tabIndex={0}>
           {displayName}
         </span>
       </TooltipTrigger>
@@ -45,9 +45,7 @@ function TruncatedName({ name }: { name?: string | null }) {
   );
 }
 
-export function ContractDetailsSimpleCard({
-  project,
-}: ContractDetailsSimpleCardProps) {
+export function ContractDetailsSimpleCard({ project }: ContractDetailsSimpleCardProps) {
   const resolveDivisionLabel = (division: ProjectDetail['division']) => {
     if (typeof division === 'string') {
       return DIVISION_LABELS[division as keyof typeof DIVISION_LABELS] ?? division;
@@ -115,12 +113,12 @@ export function ContractDetailsSimpleCard({
           </div>
         </div>
         <div className="mt-auto flex min-h-24 items-center border-t border-separator bg-muted/40 px-5 py-5">
-          <div className="flex flex-col gap-y-3.5">
+          <div className="flex w-full flex-col gap-y-3.5">
             <InfoRow
               label="General Contractor"
               labelVariant="lighter"
               labelClassName="font-medium"
-              valueClassName="font-bold"
+              valueClassName="max-w-[58%] font-bold"
             >
               <TruncatedName name={project.gc?.name} />
             </InfoRow>
@@ -128,7 +126,7 @@ export function ContractDetailsSimpleCard({
               label="Lead PM"
               labelVariant="lighter"
               labelClassName="font-medium"
-              valueClassName="font-bold"
+              valueClassName="max-w-[58%] font-bold"
             >
               <TruncatedName name={project.leadPM?.name} />
             </InfoRow>

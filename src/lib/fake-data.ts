@@ -13,6 +13,12 @@ export function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+export function fakeDateInputBetween(minDaysFromToday: number, maxDaysFromToday: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + randInt(minDaysFromToday, maxDaysFromToday));
+  return date.toISOString().split('T')[0];
+}
+
 const FIRST_NAMES = [
   'Avery',
   'Blake',

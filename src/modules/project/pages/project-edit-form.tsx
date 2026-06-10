@@ -44,6 +44,11 @@ import {
   useSetProjectInactiveMutation,
   useUpdateProjectMutation,
 } from '@/modules/project/hooks';
+import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
+import {
+  formatProjectStageLabel,
+  getProjectStageSwatchClassName,
+} from '@/modules/project/lib/project-stage-colors';
 import {
   projectFormSchema,
   type ProjectDetail,
@@ -55,9 +60,6 @@ import { Check } from 'lucide-react';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
-
-const parseDateValue = (value: unknown): string =>
-  typeof value === 'string' ? value.split('T')[0] : '';
 
 function uniqueOptions(options: Array<{ value: string; label: string }>) {
   const seen = new Set<string>();
@@ -110,7 +112,12 @@ function ProjectEditFormInner({
 
   /* ---- Build dropdown options ---- */
 
-  const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
+  const stageOptions =
+    stagesQuery.data?.map((s) => ({
+      value: s.id,
+      label: formatProjectStageLabel(s.name),
+      swatchClassName: getProjectStageSwatchClassName(s.name),
+    })) ?? [];
   const divisionOptions =
     divisionsQuery.data?.map((d) => ({
       value: d.id,
@@ -159,16 +166,18 @@ function ProjectEditFormInner({
       targetBudgetPercent: project.targetBudgetPercent ?? primeContract?.targetBudgetPercent ?? 0,
       taxRate: project.taxRate ?? 0,
       paymentTerms: project.paymentTerms ?? primeContract?.paymentTerms ?? 'NET_30',
-      estimatedStartDate: parseDateValue(
+      estimatedStartDate: toDateInputValue(
         project.estimatedStartDate ?? primeContract?.estimatedStartDate
       ),
-      estimatedEndDate: parseDateValue(
-        project.estimatedEndDate ?? primeContract?.estimatedCompletionDate
+      estimatedEndDate: toDateInputValue(
+        project.estimatedEndDate ?? primeContract?.estimatedEndDate
       ),
-      actualStartDate: parseDateValue(primeContract?.actualStartDate),
-      actualCompletionDate: parseDateValue(primeContract?.actualCompletionDate),
-      setInactiveDate: parseDateValue(project.setInactiveDate),
-      tcoDate: parseDateValue(project.tcoDate ?? project.estimatedEndDate),
+      actualStartDate: toDateInputValue(project.actualStartDate ?? primeContract?.actualStartDate),
+      actualCompletionDate: toDateInputValue(
+        project.actualCompletionDate ?? primeContract?.actualCompletionDate
+      ),
+      setInactiveDate: toDateInputValue(project.setInactiveDate),
+      tcoDate: toDateInputValue(project.tcoDate ?? project.estimatedEndDate),
     },
   });
 
@@ -217,6 +226,8 @@ function ProjectEditFormInner({
       paymentTerms: data.paymentTerms || undefined,
       estimatedStartDate: data.estimatedStartDate || undefined,
       estimatedEndDate: data.estimatedEndDate || undefined,
+      actualStartDate: data.actualStartDate || undefined,
+      actualCompletionDate: data.actualCompletionDate || undefined,
       setInactiveDate: data.setInactiveDate || undefined,
       tcoDate: data.tcoDate,
     };
@@ -810,7 +821,7 @@ function ProjectEditFormInner({
                 />
               </div>
 
-              {/* Row: Set Inactive Date + TCO Date */}
+              {/* Row: Inactive Date + TCO Date */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
                 <Controller
                   name="setInactiveDate"
@@ -818,7 +829,7 @@ function ProjectEditFormInner({
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Set Inactive Date
+                        Inactive Date
                       </FieldLabel>
                       <InputWrapper>
                         <Input type="date" {...field} />

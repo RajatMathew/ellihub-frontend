@@ -23,6 +23,7 @@ export interface SearchableSelectOption {
   label: string;
   badge?: string;
   disabled?: boolean;
+  swatchClassName?: string;
 }
 
 interface SearchableSelectProps {
@@ -78,11 +79,21 @@ function SearchableSelect({
             'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            '[&>span]:line-clamp-1',
-            className,
+            className
           )}
         >
-          <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
+          {selectedOption?.swatchClassName && (
+            <span
+              aria-hidden="true"
+              className={cn('size-[9px] shrink-0 rounded-sm', selectedOption.swatchClassName)}
+            />
+          )}
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate text-left font-normal',
+              !selectedOption && 'text-muted-foreground'
+            )}
+          >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.badge && (
@@ -117,7 +128,13 @@ function SearchableSelect({
                   }}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="truncate">{option.label}</span>
+                    {option.swatchClassName && (
+                      <span
+                        aria-hidden="true"
+                        className={cn('size-[9px] shrink-0 rounded-sm', option.swatchClassName)}
+                      />
+                    )}
+                    <span className="truncate font-normal">{option.label}</span>
                     {option.badge && (
                       <Badge variant="secondary" size="sm" className="shrink-0">
                         {option.badge}
