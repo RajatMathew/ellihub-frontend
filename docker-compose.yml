@@ -38,7 +38,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: ${PORT:-3000}
       REDIS_URL: ${REDIS_URL:-redis://localhost:6379}
-      PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://pdf-engine:8000}
+      PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://q-pdf:8000}
       PDF_ENGINE_API_KEY_HEADER: ${PDF_ENGINE_API_KEY_HEADER:-X-API-Key}
       PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:-local-dev-key}
       PDF_ENGINE_API_KEY: ${PDF_ENGINE_API_KEY:-local-dev-key}
@@ -66,6 +66,41 @@ services:
     depends_on:
       q-db:
         condition: service_healthy
+      q-pdf:
+        condition: service_healthy
+    networks:
+      - elli_network
+
+  q-pdf:
+    build:
+      context: ./elli-engine
+      dockerfile: docker/Dockerfile
+      target: production
+    container_name: pdf-engine
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - pdf-engine-storage:/app/storage
+    environment:
+      PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
+      PDF_ENGINE_STORAGE_DIR: ${PDF_ENGINE_STORAGE_DIR:-/app/storage}
+      PDF_ENGINE_CACHE_DIR: ${PDF_ENGINE_CACHE_DIR:-/app/storage/cache}
+      PDF_ENGINE_GENERATED_DIR: ${PDF_ENGINE_GENERATED_DIR:-/app/storage/generated}
+      PDF_ENGINE_BATCH_DIR: ${PDF_ENGINE_BATCH_DIR:-/app/storage/batch}
+      PDF_ENGINE_PREVIEWS_DIR: ${PDF_ENGINE_PREVIEWS_DIR:-/app/storage/previews}
+      PDF_ENGINE_TEMP_DIR: ${PDF_ENGINE_TEMP_DIR:-/app/storage/temp}
+      PDF_ENGINE_ALLOWED_HOSTS: ${PDF_ENGINE_ALLOWED_HOSTS:-*}
+      PDF_ENGINE_CORS_ALLOW_ORIGINS: ${PDF_ENGINE_CORS_ALLOW_ORIGINS:-*}
+      PDF_ENGINE_CORS_ALLOW_METHODS: ${PDF_ENGINE_CORS_ALLOW_METHODS:-*}
+      PDF_ENGINE_CORS_ALLOW_HEADERS: ${PDF_ENGINE_CORS_ALLOW_HEADERS:-*}
+      PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:-local-dev-key}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - elli_network
 
@@ -87,3 +122,4 @@ networks:
 
 volumes:
   elli_db:
+  pdf-engine-storage:
