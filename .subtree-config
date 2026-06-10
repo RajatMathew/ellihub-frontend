@@ -1,3 +1,5 @@
-CORE_BRANCH="feat/quickbooks"
-UI_BRANCH="feat/quickbooks"
+# Defaults
+
+CORE_BRANCH="bug-fix-albert"
+UI_BRANCH="feat-refactor-albert"
 ENGINE_BRANCH="advanced"

@@ -1,0 +1,10 @@
+FROM postgres:17
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates rclone \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/db-backup.sh /usr/local/bin/db-backup.sh
+RUN chmod +x /usr/local/bin/db-backup.sh
+
+CMD ["db-backup.sh"]

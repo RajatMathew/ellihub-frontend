@@ -4,31 +4,45 @@ set -Eeuo pipefail
 
 CONFIG_FILE=".subtree-config"
 
-# Default values
-CORE_BRANCH="feat/quickbooks"
-UI_BRANCH="feat/quickbooks"
-ENGINE_BRANCH="advanced"
-
 ########################################
 # Config
 ########################################
 
 load_config() {
-    if [[ -f "$CONFIG_FILE" ]]; then
-        source "$CONFIG_FILE"
+
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+
+cat > "$CONFIG_FILE" <<'EOF'
+# Defaults
+
+CORE_BRANCH="feat/quickbooks"
+UI_BRANCH="feat/quickbooks"
+ENGINE_BRANCH="advanced"
+EOF
+
     fi
+
+    source "$CONFIG_FILE"
+
+    CORE_BRANCH="${CORE_BRANCH:-feat/quickbooks}"
+    UI_BRANCH="${UI_BRANCH:-feat/quickbooks}"
+    ENGINE_BRANCH="${ENGINE_BRANCH:-advanced}"
 }
 
 save_config() {
+
 cat > "$CONFIG_FILE" <<EOF
+# Defaults
+
 CORE_BRANCH="$CORE_BRANCH"
 UI_BRANCH="$UI_BRANCH"
 ENGINE_BRANCH="$ENGINE_BRANCH"
 EOF
+
 }
 
 ########################################
-# UI
+# Helpers
 ########################################
 
 pause() {
@@ -37,6 +51,7 @@ pause() {
 }
 
 header() {
+
     clear
 
     echo
@@ -44,68 +59,119 @@ header() {
     echo "       ELLI SUBTREE MANAGER"
     echo "======================================="
     echo
-    echo " Core   : $CORE_BRANCH"
-    echo " UI     : $UI_BRANCH"
-    echo " Engine : $ENGINE_BRANCH"
+    echo "Core   : $CORE_BRANCH"
+    echo "UI     : $UI_BRANCH"
+    echo "Engine : $ENGINE_BRANCH"
     echo
 }
 
 ########################################
-# Branch Helpers
+# Branch Selector
 ########################################
 
 choose_branch() {
 
     local remote="$1"
 
-    echo
-    echo "Fetching branches from $remote..."
     git fetch "$remote" >/dev/null 2>&1 || true
 
     mapfile -t branches < <(
         git branch -r |
         grep "${remote}/" |
         sed "s#.*${remote}/##" |
+        grep -v HEAD |
         sort -u
     )
 
     if [[ ${#branches[@]} -eq 0 ]]; then
-        echo
         echo "No branches found for $remote"
         pause
         return 1
     fi
 
-    echo
-    echo "Available branches:"
-    echo
-
-    local i=1
-
-    for branch in "${branches[@]}"; do
-        printf "%2d) %s\n" "$i" "$branch"
-        ((i++))
-    done
-
-    echo
-
     while true; do
 
-        read -rp "Choose branch number: " selection
+        clear
 
-        if [[ "$selection" =~ ^[0-9]+$ ]] &&
-           (( selection >= 1 && selection <= ${#branches[@]} ))
+        echo
+        echo "======================================="
+        echo " Branch Selector ($remote)"
+        echo "======================================="
+        echo
+
+        case "$remote" in
+            elli-core)
+                echo "Current : $CORE_BRANCH"
+                ;;
+            elli-ui)
+                echo "Current : $UI_BRANCH"
+                ;;
+            elli-engine)
+                echo "Current : $ENGINE_BRANCH"
+                ;;
+        esac
+
+        echo
+
+        read -rp "Search branch (blank=all, q=cancel): " search
+
+        [[ "$search" == "q" ]] && return 1
+
+        filtered=()
+
+        if [[ -z "$search" ]]; then
+
+            filtered=("${branches[@]}")
+
+        else
+
+            for branch in "${branches[@]}"; do
+
+                if [[ "${branch,,}" == *"${search,,}"* ]]; then
+                    filtered+=("$branch")
+                fi
+
+            done
+        fi
+
+        if [[ ${#filtered[@]} -eq 0 ]]; then
+            echo
+            echo "No matching branches."
+            pause
+            continue
+        fi
+
+        echo
+        echo "Matching branches"
+        echo "-----------------"
+
+        for i in "${!filtered[@]}"; do
+            printf "%3d) %s\n" $((i+1)) "${filtered[$i]}"
+        done
+
+        echo
+
+        read -rp "Select branch number (0=search again): " choice
+
+        if [[ "$choice" == "0" ]]; then
+            continue
+        fi
+
+        if [[ "$choice" =~ ^[0-9]+$ ]] &&
+           (( choice >= 1 && choice <= ${#filtered[@]} ))
         then
-            echo "${branches[$((selection-1))]}"
+            printf "%s" "${filtered[$((choice-1))]}"
             return 0
         fi
 
-        echo "Invalid selection"
+        echo
+        echo "Invalid selection."
+        pause
     done
 }
 
 ########################################
-# Branch Changes
+# Branch Management
 ########################################
 
 change_core_branch() {
@@ -119,7 +185,7 @@ change_core_branch() {
     save_config
 
     echo
-    echo "Core branch changed to:"
+    echo "Core branch updated:"
     echo "$CORE_BRANCH"
 
     pause
@@ -136,7 +202,7 @@ change_ui_branch() {
     save_config
 
     echo
-    echo "UI branch changed to:"
+    echo "UI branch updated:"
     echo "$UI_BRANCH"
 
     pause
@@ -153,7 +219,7 @@ change_engine_branch() {
     save_config
 
     echo
-    echo "Engine branch changed to:"
+    echo "Engine branch updated:"
     echo "$ENGINE_BRANCH"
 
     pause
@@ -166,14 +232,14 @@ change_engine_branch() {
 refresh_remotes() {
 
     echo
-    echo "Fetching remotes..."
+    echo "Refreshing remotes..."
 
     git fetch elli-core
     git fetch elli-ui
     git fetch elli-engine
 
     echo
-    echo "Done."
+    echo "Completed."
 
     pause
 }
@@ -181,10 +247,14 @@ refresh_remotes() {
 sync_all() {
 
     echo
-    echo "Syncing Core..."
+    echo "Fetching remotes..."
 
     git fetch elli-core "$CORE_BRANCH"
+    git fetch elli-ui "$UI_BRANCH"
+    git fetch elli-engine "$ENGINE_BRANCH"
 
+    echo
+    echo "Pulling elli-core..."
     git subtree pull \
         --prefix=elli-core \
         elli-core \
@@ -192,10 +262,7 @@ sync_all() {
         --squash
 
     echo
-    echo "Syncing UI..."
-
-    git fetch elli-ui "$UI_BRANCH"
-
+    echo "Pulling elli-ui..."
     git subtree pull \
         --prefix=elli-ui \
         elli-ui \
@@ -203,10 +270,7 @@ sync_all() {
         --squash
 
     echo
-    echo "Syncing Engine..."
-
-    git fetch elli-engine "$ENGINE_BRANCH"
-
+    echo "Pulling elli-engine..."
     git subtree pull \
         --prefix=elli-engine \
         elli-engine \
@@ -214,7 +278,7 @@ sync_all() {
         --squash
 
     echo
-    echo "All subtrees updated."
+    echo "All subtree updates completed."
 
     pause
 }
@@ -222,31 +286,28 @@ sync_all() {
 push_all() {
 
     echo
-    echo "Push Core..."
-
+    echo "Pushing elli-core..."
     git subtree push \
         --prefix=elli-core \
         elli-core \
         "$CORE_BRANCH"
 
     echo
-    echo "Push UI..."
-
+    echo "Pushing elli-ui..."
     git subtree push \
         --prefix=elli-ui \
         elli-ui \
         "$UI_BRANCH"
 
     echo
-    echo "Push Engine..."
-
+    echo "Pushing elli-engine..."
     git subtree push \
         --prefix=elli-engine \
         elli-engine \
         "$ENGINE_BRANCH"
 
     echo
-    echo "Push completed."
+    echo "All subtree pushes completed."
 
     pause
 }
