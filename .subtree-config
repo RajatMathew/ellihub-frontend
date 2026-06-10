@@ -1,0 +1,3 @@
+CORE_BRANCH="feat/quickbooks"
+UI_BRANCH="feat/quickbooks"
+ENGINE_BRANCH="advanced"

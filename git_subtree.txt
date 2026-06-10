@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+git remote add elli-core https://github.com/zubblehq/elli-core.git
+git remote add elli-ui https://github.com/zubblehq/elli-ui.git
+git remote add elli-engine https://github.com/zubblehq/elli-engine.git
+
+git fetch elli-core
+git fetch elli-ui
+git fetch elli-engine
+
+git subtree add --prefix=elli-core elli-core feat/quickbooks --squash
+git subtree add --prefix=elli-ui elli-ui feat/quickbooks --squash
+git subtree add --prefix=elli-engine elli-engine advanced --squash
