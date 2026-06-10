@@ -3,7 +3,7 @@ import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { NotFoundError } from '@utils';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 type CreateRevisionParams = {
     entityType: RevisionEntityType;
@@ -82,7 +82,7 @@ export const RevisionService = {
 
         return tx.revision.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 entityType,
                 entityId,
                 version,

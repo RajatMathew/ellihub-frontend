@@ -1,3 +1,4 @@
+import { integrationSchedules } from '@modules/integrations/scheduler';
 import { primeChangeOrderSchedules } from '@modules/prime-change-order/scheduler';
 import { ptoSchedules } from '@modules/pto/scheduler';
 import schedule from 'node-schedule';
@@ -8,7 +9,11 @@ type ScheduledJob = {
     run: () => Promise<void> | void;
 };
 
-const jobs: ScheduledJob[] = [...ptoSchedules, ...primeChangeOrderSchedules];
+const jobs: ScheduledJob[] = [
+    ...ptoSchedules,
+    ...primeChangeOrderSchedules,
+    ...integrationSchedules,
+];
 
 export const startScheduler = () => {
     for (const job of jobs) {

@@ -5,6 +5,7 @@ import v1 from '@api/V1';
 import { errorHandler } from '@handler/error';
 import { swaggerUI } from '@hono/swagger-ui';
 import { cors_config } from '@lib/cors';
+import { syncDefaultOrganizationAccess } from '@lib/organization-hooks';
 import { startScheduler } from '@lib/scheduler';
 import { performanceMiddleware } from '@middleware';
 import { NotFoundError } from '@utils';
@@ -38,6 +39,9 @@ app.get('/api-docs', swaggerUI({ url: '/api-doc.json' }));
 app.route('/api/v1', v1);
 
 startScheduler();
+void syncDefaultOrganizationAccess().catch((error) => {
+    console.error('Failed to sync default organization access:', error);
+});
 
 app.use(
     '/*',

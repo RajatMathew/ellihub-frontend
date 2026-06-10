@@ -8,6 +8,7 @@ import type {
     FeatureMailDraftRequest,
     FeatureMailDraftResponse,
     FeatureMailKey,
+    FeatureMailPdfOptionsRequest,
     FeatureMailQueryRequest,
     FeatureMailSendResponse,
     MailSignatureInput,
@@ -24,12 +25,14 @@ type FeatureMailHandler = {
     preview: (
         entityId: string,
         draft: FeatureMailDraftRequest,
-        context: FeatureMailContext
+        context: FeatureMailContext,
+        pdfOptions?: FeatureMailPdfOptionsRequest
     ) => Promise<FeatureMailDraftResponse>;
     send: (
         entityId: string,
         draft: FeatureMailDraftRequest,
-        context: FeatureMailContext
+        context: FeatureMailContext,
+        pdfOptions?: FeatureMailPdfOptionsRequest
     ) => Promise<FeatureMailSendResponse>;
 };
 
@@ -39,13 +42,14 @@ const featureMailHandlers: Record<FeatureMailKey, FeatureMailHandler> = {
             RfqService.getVendorEmailDraft(entityId, context.signature),
         preview: (entityId, draft, context) =>
             RfqService.previewVendorEmail(entityId, draft, context.signature),
-        send: (entityId, draft, context) =>
+        send: (entityId, draft, context, pdfOptions) =>
             RfqService.sendVendorEmail(
                 entityId,
                 draft,
                 context.requestedBy,
                 context.userId,
-                context.signature
+                context.signature,
+                pdfOptions
             ),
     },
     'rfq.vendorRequestAll': {
@@ -53,13 +57,14 @@ const featureMailHandlers: Record<FeatureMailKey, FeatureMailHandler> = {
             RfqService.getAllVendorEmailDraft(entityId, context.signature),
         preview: (entityId, draft, context) =>
             RfqService.previewAllVendorEmail(entityId, draft, context.signature),
-        send: (entityId, draft, context) =>
+        send: (entityId, draft, context, pdfOptions) =>
             RfqService.sendAllVendorEmail(
                 entityId,
                 draft,
                 context.requestedBy,
                 context.userId,
-                context.signature
+                context.signature,
+                pdfOptions
             ),
     },
 };
@@ -90,7 +95,8 @@ export const MailFeatureService = {
             {
                 ...context,
                 signature,
-            }
+            },
+            request.pdfOptions
         );
     },
 
@@ -108,7 +114,8 @@ export const MailFeatureService = {
             {
                 ...context,
                 signature,
-            }
+            },
+            request.pdfOptions
         );
     },
 };

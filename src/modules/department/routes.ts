@@ -30,7 +30,7 @@ app.post(
     zValidator('json', DepartmentCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const department = await DepartmentService.create(data);
+        const department = await DepartmentService.create(data, c.get('user')!.id);
         return success(c, department, 201);
     }
 );
@@ -47,14 +47,14 @@ app.put(
     zValidator('json', DepartmentUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const department = await DepartmentService.update(data);
+        const department = await DepartmentService.update(data, c.get('user')!.id);
         return success(c, department);
     }
 );
 
 app.delete('/:id', requirePermission({ department: ['delete'] }), async (c) => {
     const id = c.req.param('id');
-    await DepartmentService.delete(id);
+    await DepartmentService.delete(id, c.get('user')!.id);
     return success(c, null, 200, 'Department deleted');
 });
 
@@ -64,7 +64,7 @@ app.patch(
     zValidator('json', DepartmentAssignEmployeeSchema),
     async (c) => {
         const data = c.req.valid('json');
-        const assignment = await DepartmentService.assignEmployee(data);
+        const assignment = await DepartmentService.assignEmployee(data, c.get('user')!.id);
         return success(c, assignment);
     }
 );
@@ -75,7 +75,7 @@ app.patch(
     zValidator('json', DepartmentRemoveEmployeeSchema),
     async (c) => {
         const data = c.req.valid('json');
-        await DepartmentService.removeEmployee(data);
+        await DepartmentService.removeEmployee(data, c.get('user')!.id);
         return success(c, null);
     }
 );

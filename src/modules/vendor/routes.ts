@@ -1,3 +1,4 @@
+import { assertFileAccess } from '@lib/access';
 import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
@@ -17,13 +18,23 @@ const app = new Hono();
 app.get(
     '/',
     requirePermission({ vendor: ['read'] }),
-    paginationMiddleware({ defaultSize: 25, defaultSortBy: 'name', defaultSortOrder: 'asc' }),
+    paginationMiddleware({
+        defaultSize: 25,
+        defaultSortBy: 'name',
+        defaultSortOrder: 'asc',
+        allowedSortFields: ['name', 'typeId', 'status', 'createdAt'],
+    }),
     async (c: Context) => {
         const pagination = c.get('pagination');
         const { data, count } = await VendorService.getVendors(pagination);
         return success(c, data, 200, 'OK', count);
     }
 );
+
+app.get('/stats', requirePermission({ vendor: ['read'] }), async (c) => {
+    const stats = await VendorService.getStats();
+    return success(c, stats);
+});
 
 app.get('/:id', requirePermission({ vendor: ['read'] }), async (c) => {
     const id = c.req.param('id');
@@ -65,6 +76,7 @@ app.patch(
     zValidator('json', AddVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         const document = await VendorService.addDocumentToVendor(data, c.get('user')!.id);
         return success(c, document);
     }
@@ -76,6 +88,7 @@ app.patch(
     zValidator('json', UpdateVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         const document = await VendorService.updateVendorDocument(data, c.get('user')!.id);
         return success(c, document);
     }
@@ -87,6 +100,7 @@ app.patch(
     zValidator('json', RemoveVendorDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         await VendorService.removeDocumentFromVendor(data, c.get('user')!.id);
         return success(c, null);
     }

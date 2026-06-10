@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
@@ -41,6 +41,16 @@ export function mailAssetExists(fileName: string): boolean {
 
 export function getMailAssetContentType(fileName: string): string {
     return CONTENT_TYPES[extname(fileName).toLowerCase()] || 'application/octet-stream';
+}
+
+export function getMailAssetDataUri(fileName: string): string | null {
+    const assetPath = resolveMailAssetPath(fileName);
+
+    if (!existsSync(assetPath)) return null;
+
+    const contentType = getMailAssetContentType(fileName);
+    const base64 = readFileSync(assetPath).toString('base64');
+    return `data:${contentType};base64,${base64}`;
 }
 
 function resolveMailAssetPath(fileName: string): string {

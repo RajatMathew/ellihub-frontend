@@ -1,5 +1,5 @@
 import { prisma } from '@lib/prisma';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 export const seedRootFolder = async () => {
     let rootFolder = await prisma.file.findFirst({
@@ -15,11 +15,15 @@ export const seedRootFolder = async () => {
         },
     });
 
+    if (!adminUser) {
+        throw new Error('Admin user admin@elli.com not found. Run the user seeder first.');
+    }
+
     if (!rootFolder) {
         rootFolder = await prisma.file.create({
             data: {
-                id: ulid(),
-                createdBy: adminUser!.id,
+                id: generateNanoId(),
+                createdBy: adminUser.id,
                 name: 'root',
                 type: 'FOLDER',
                 isDeletable: false,
@@ -52,11 +56,11 @@ export const seedRootFolder = async () => {
         if (!subFolder) {
             await prisma.file.create({
                 data: {
-                    id: ulid(),
-                    createdBy: adminUser!.id,
+                    id: generateNanoId(),
+                    createdBy: adminUser.id,
                     name: folder.name,
                     displayName: folder.displayName,
-                    parentId: rootFolder?.id!,
+                    parentId: rootFolder.id,
                     type: 'FOLDER',
                     isDeletable: false,
                 },

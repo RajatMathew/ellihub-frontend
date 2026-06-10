@@ -7,8 +7,8 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { BadRequestError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 import { ZodError } from 'zod';
 
 import { FieldwireClient, getFieldwireErrorMessage } from './fieldwire-client';
@@ -34,6 +34,53 @@ type SyncResult = {
         syncedAt: Date;
     };
     data: PrimeChangeOrderWithAssignee[];
+};
+
+type FieldwireGlobalSyncStatus = 'SUCCESS' | 'FAILED' | 'PARTIAL' | null;
+
+type FieldwireProjectSyncOverview = SyncCounts & {
+    projectId: string;
+    projectName: string;
+    fieldwireProjectId: string;
+    fieldwireProjectName: string | null;
+    lastSyncedAt: Date | null;
+    lastSyncStatus: FieldwireGlobalSyncStatus;
+    lastSyncError: string | null;
+};
+
+type FieldwireProjectSyncResult = SyncCounts & {
+    projectId: string;
+    projectName: string;
+    fieldwireProjectId: string;
+    fieldwireProjectName: string | null;
+    status: 'SUCCESS' | 'FAILED';
+    syncedAt: Date | null;
+    error: string | null;
+};
+
+type FieldwireSyncTotals = SyncCounts;
+
+type FieldwireSyncOverview = {
+    provider: 'fieldwire';
+    mappedProjectCount: number;
+    lastSyncedAt: Date | null;
+    lastSyncStatus: FieldwireGlobalSyncStatus;
+    lastSyncError: string | null;
+    totals: FieldwireSyncTotals;
+    projects: FieldwireProjectSyncOverview[];
+};
+
+type FieldwireGlobalSyncResult = {
+    provider: 'fieldwire';
+    trigger: SyncTrigger;
+    startedAt: Date;
+    finishedAt: Date;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+    status: Exclude<FieldwireGlobalSyncStatus, null>;
+    totals: FieldwireSyncTotals;
+    projects: FieldwireProjectSyncResult[];
 };
 
 type PrimeChangeOrderAssignee = {
@@ -69,6 +116,8 @@ const primeChangeOrderStatuses = [
 ];
 
 const FIELDWIRE_PROJECT_USER_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const FIELDWIRE_SYNC_PROVIDER = 'FIELDWIRE';
+const FIELDWIRE_SYNC_SCOPE_GLOBAL = 'GLOBAL';
 
 const parseDate = (value: string, field: string): Date => {
     const date = new Date(value);
@@ -307,7 +356,7 @@ const cacheFieldwireProjectUsers = async (
                     },
                 },
                 create: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     ...data,
                 },
                 update: data,
@@ -415,6 +464,20 @@ const emptySyncStatus = {
     updatedCount: 0,
     deletedCount: 0,
 };
+
+const emptySyncCounts: SyncCounts = {
+    totalReceived: 0,
+    createdCount: 0,
+    updatedCount: 0,
+    deletedCount: 0,
+};
+
+const addSyncCounts = (total: SyncCounts, next: SyncCounts): SyncCounts => ({
+    totalReceived: total.totalReceived + next.totalReceived,
+    createdCount: total.createdCount + next.createdCount,
+    updatedCount: total.updatedCount + next.updatedCount,
+    deletedCount: total.deletedCount + next.deletedCount,
+});
 
 export const PrimeChangeOrderService = {
     resetAfterFieldwireProjectChange: async ({
@@ -528,6 +591,67 @@ export const PrimeChangeOrderService = {
             fieldwireProjectId: project.fieldwireProjectId,
             syncStatus: project.primeChangeOrderSyncStatus ?? emptySyncStatus,
             latestRun,
+        };
+    },
+
+    getFieldwireSyncOverview: async (): Promise<FieldwireSyncOverview> => {
+        const [projects, latestGlobalRun] = await prisma.$transaction([
+            prisma.project.findMany({
+                where: {
+                    deletedAt: null,
+                    fieldwireProjectId: { not: null },
+                    status: 'ACTIVE',
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    fieldwireProjectId: true,
+                    fieldwireProjectName: true,
+                    primeChangeOrderSyncStatus: true,
+                },
+                orderBy: { name: 'asc' },
+            }),
+            prisma.integrationSyncRun.findFirst({
+                where: {
+                    provider: FIELDWIRE_SYNC_PROVIDER,
+                    scope: FIELDWIRE_SYNC_SCOPE_GLOBAL,
+                },
+                orderBy: { startedAt: 'desc' },
+            }),
+        ]);
+
+        const projectOverviews: FieldwireProjectSyncOverview[] = projects.map((project) => {
+            const status = project.primeChangeOrderSyncStatus;
+            return {
+                projectId: project.id,
+                projectName: project.name,
+                fieldwireProjectId: project.fieldwireProjectId!,
+                fieldwireProjectName: project.fieldwireProjectName,
+                lastSyncedAt: status?.lastSyncedAt ?? null,
+                lastSyncStatus: status?.lastSyncStatus ?? null,
+                lastSyncError: status?.lastSyncError ?? null,
+                totalReceived: status?.totalReceived ?? 0,
+                createdCount: status?.createdCount ?? 0,
+                updatedCount: status?.updatedCount ?? 0,
+                deletedCount: status?.deletedCount ?? 0,
+            };
+        });
+
+        return {
+            provider: 'fieldwire',
+            mappedProjectCount: projectOverviews.length,
+            lastSyncedAt: latestGlobalRun?.finishedAt ?? latestGlobalRun?.startedAt ?? null,
+            lastSyncStatus: latestGlobalRun?.status ?? null,
+            lastSyncError: latestGlobalRun?.error ?? null,
+            totals: latestGlobalRun
+                ? {
+                      totalReceived: latestGlobalRun.totalReceived,
+                      createdCount: latestGlobalRun.createdCount,
+                      updatedCount: latestGlobalRun.updatedCount,
+                      deletedCount: latestGlobalRun.deletedCount,
+                  }
+                : emptySyncCounts,
+            projects: projectOverviews,
         };
     },
 
@@ -700,7 +824,7 @@ export const PrimeChangeOrderService = {
                             counts.deletedCount += 1;
                         }
                     } else {
-                        const id = ulid();
+                        const id = generateNanoId();
                         await tx.primeChangeOrder.create({
                             data: {
                                 id,
@@ -718,7 +842,7 @@ export const PrimeChangeOrderService = {
 
                 await tx.primeChangeOrderSyncRun.create({
                     data: {
-                        id: ulid(),
+                        id: generateNanoId(),
                         projectId,
                         trigger,
                         status: 'SUCCESS',
@@ -735,7 +859,7 @@ export const PrimeChangeOrderService = {
                 await tx.primeChangeOrderSyncStatus.upsert({
                     where: { projectId },
                     create: {
-                        id: ulid(),
+                        id: generateNanoId(),
                         projectId,
                         lastSyncedAt: syncedAt,
                         lastSyncStatus: 'SUCCESS',
@@ -810,28 +934,73 @@ export const PrimeChangeOrderService = {
         }
     },
 
-    syncMappedActiveProjects: async () => {
+    syncMappedActiveProjects: async ({
+        trigger = 'SCHEDULED',
+        userId,
+        includeInactive = false,
+        recordGlobalRun = false,
+    }: {
+        trigger?: SyncTrigger;
+        userId?: string;
+        includeInactive?: boolean;
+        recordGlobalRun?: boolean;
+    } = {}): Promise<FieldwireGlobalSyncResult> => {
+        const startedAt = new Date();
         const projects = await prisma.project.findMany({
             where: {
                 deletedAt: null,
-                status: 'ACTIVE',
+                ...(includeInactive ? {} : { status: 'ACTIVE' }),
                 fieldwireProjectId: { not: null },
             },
-            select: { id: true },
+            select: {
+                id: true,
+                name: true,
+                fieldwireProjectId: true,
+                fieldwireProjectName: true,
+            },
+            orderBy: { name: 'asc' },
         });
 
-        const summary = {
-            attempted: projects.length,
-            succeeded: 0,
-            failed: 0,
-        };
+        let succeeded = 0;
+        let failed = 0;
+        let totals = { ...emptySyncCounts };
+        const results: FieldwireProjectSyncResult[] = [];
 
         for (const project of projects) {
             try {
-                await PrimeChangeOrderService.syncProject(project.id, 'SCHEDULED');
-                summary.succeeded += 1;
+                const result = await PrimeChangeOrderService.syncProject(
+                    project.id,
+                    trigger,
+                    userId
+                );
+                succeeded += 1;
+                totals = addSyncCounts(totals, result.summary);
+                results.push({
+                    projectId: project.id,
+                    projectName: project.name,
+                    fieldwireProjectId: project.fieldwireProjectId!,
+                    fieldwireProjectName: project.fieldwireProjectName,
+                    status: 'SUCCESS',
+                    syncedAt: result.summary.syncedAt,
+                    error: null,
+                    totalReceived: result.summary.totalReceived,
+                    createdCount: result.summary.createdCount,
+                    updatedCount: result.summary.updatedCount,
+                    deletedCount: result.summary.deletedCount,
+                });
             } catch (error) {
-                summary.failed += 1;
+                failed += 1;
+                const message = getErrorMessage(error);
+                results.push({
+                    projectId: project.id,
+                    projectName: project.name,
+                    fieldwireProjectId: project.fieldwireProjectId!,
+                    fieldwireProjectName: project.fieldwireProjectName,
+                    status: 'FAILED',
+                    syncedAt: null,
+                    error: message,
+                    ...emptySyncCounts,
+                });
                 console.error(
                     `[prime-change-order:scheduler] failed to sync project ${project.id}:`,
                     error
@@ -839,7 +1008,49 @@ export const PrimeChangeOrderService = {
             }
         }
 
-        return summary;
+        const status: Exclude<FieldwireGlobalSyncStatus, null> =
+            failed === 0 ? 'SUCCESS' : succeeded === 0 ? 'FAILED' : 'PARTIAL';
+        const finishedAt = new Date();
+        const error =
+            failed > 0
+                ? `${failed} Fieldwire project sync${failed === 1 ? '' : 's'} failed.`
+                : null;
+
+        if (recordGlobalRun) {
+            await prisma.integrationSyncRun.create({
+                data: {
+                    id: generateNanoId(),
+                    provider: FIELDWIRE_SYNC_PROVIDER,
+                    scope: FIELDWIRE_SYNC_SCOPE_GLOBAL,
+                    trigger,
+                    status,
+                    startedAt,
+                    finishedAt,
+                    attempted: projects.length,
+                    succeeded,
+                    failed,
+                    totalReceived: totals.totalReceived,
+                    createdCount: totals.createdCount,
+                    updatedCount: totals.updatedCount,
+                    deletedCount: totals.deletedCount,
+                    error,
+                    userId: userId ?? null,
+                },
+            });
+        }
+
+        return {
+            provider: 'fieldwire',
+            trigger,
+            startedAt,
+            finishedAt,
+            attempted: projects.length,
+            succeeded,
+            failed,
+            status,
+            totals,
+            projects: results,
+        };
     },
 
     recordFailedSync: async (
@@ -855,7 +1066,7 @@ export const PrimeChangeOrderService = {
         await prisma.$transaction(async (tx) => {
             await tx.primeChangeOrderSyncRun.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     projectId,
                     trigger,
                     status: 'FAILED',
@@ -869,7 +1080,7 @@ export const PrimeChangeOrderService = {
             await tx.primeChangeOrderSyncStatus.upsert({
                 where: { projectId },
                 create: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     projectId,
                     lastSyncedAt: finishedAt,
                     lastSyncStatus: 'FAILED',

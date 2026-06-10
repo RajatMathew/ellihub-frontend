@@ -131,11 +131,11 @@
                                     "file": {
                                         "type": "string",
                                         "format": "binary",
-                                        "description": "File to upload"
+                                        "description": "File to upload. Allowed extensions: .csv, .docx, .jpeg, .jpg, .pdf, .png, .pptx, .txt, .webp, .xlsx. Default maximum size is 50 MB."
                                     },
                                     "data": {
                                         "type": "string",
-                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID (optional)\", \"displayName\": \"My File (optional)\", \"size\": 1024, \"mimeType\": \"application/pdf\"}. If parentId is omitted, file is placed in the temp folder."
+                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID (optional)\", \"displayName\": \"My File (optional)\", \"size\": 1024, \"mimeType\": \"application/pdf\"}. The size must match the uploaded file. If parentId is omitted, file is placed in the temp folder."
                                     }
                                 }
                             }
@@ -207,7 +207,7 @@
                                             "properties": {
                                                 "data": {
                                                     "type": "string",
-                                                    "description": "Presigned download URL"
+                                                    "description": "Temporary storage download URL"
                                                 }
                                             }
                                         }
@@ -494,7 +494,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Export job status. Completed jobs include a presigned S3 download URL.",
+                        "description": "Export job status. Completed jobs include a temporary storage download URL.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -876,7 +876,7 @@
                     "objectId": {
                         "type": "string",
                         "nullable": true,
-                        "description": "S3 object key (files only)"
+                        "description": "Storage object key (files only)"
                     },
                     "mimeType": {
                         "type": "string",
@@ -963,7 +963,7 @@
                     "downloadUrl": {
                         "type": "string",
                         "nullable": true,
-                        "description": "Presigned S3 URL returned only for completed, non-expired jobs"
+                        "description": "Temporary storage URL returned only for completed, non-expired jobs"
                     },
                     "expiresAt": { "type": "string", "format": "date-time" },
                     "startedAt": { "type": "string", "format": "date-time", "nullable": true },
@@ -1005,7 +1005,7 @@
             "FileUploadData": {
                 "type": "object",
                 "required": ["name", "size"],
-                "description": "Metadata sent as JSON string in the 'data' form field. If parentId is omitted, file is uploaded to the temp folder.",
+                "description": "Metadata sent as JSON string in the 'data' form field. Uploads are limited to the configured max size and allowed document/image extensions. If parentId is omitted, file is uploaded to the temp folder.",
                 "properties": {
                     "name": { "type": "string", "minLength": 1 },
                     "displayName": {

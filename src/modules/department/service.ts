@@ -1,8 +1,9 @@
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { ConflictError, NotFoundError } from '@utils';
+import { ActivityLogService } from '@modules/activity-log';
+import { BadRequestError, ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     DepartmentAssignEmployeeRequest,
@@ -76,7 +77,7 @@ export const DepartmentService = {
         return department;
     },
 
-    create: async (request: DepartmentCreateRequest) => {
+    create: async (request: DepartmentCreateRequest, userId: string) => {
         const existing = await prisma.department.findFirst({
             where: { name: request.name, deletedAt: null },
         });
@@ -84,16 +85,29 @@ export const DepartmentService = {
             throw new ConflictError('A department with this name already exists');
         }
 
-        return await prisma.department.create({
-            data: {
-                id: ulid(),
-                name: request.name,
-                description: request.description,
-            },
+        return await prisma.$transaction(async (tx) => {
+            const department = await tx.department.create({
+                data: {
+                    id: generateNanoId(),
+                    name: request.name,
+                    description: request.description,
+                },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'department',
+                entityId: department.id,
+                action: 'create',
+                description: `Created department ${department.name}`,
+                tx,
+            });
+
+            return department;
         });
     },
 
-    update: async (request: DepartmentUpdateRequest) => {
+    update: async (request: DepartmentUpdateRequest, userId: string) => {
         const { id, ...data } = request;
 
         const department = await prisma.department.findUnique({ where: { id } });
@@ -113,25 +127,61 @@ export const DepartmentService = {
             }
         }
 
-        return await prisma.department.update({
-            where: { id },
-            data,
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.department.update({
+                where: { id },
+                data,
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'department',
+                entityId: updated.id,
+                action: 'update',
+                description: `Updated department ${updated.name}`,
+                tx,
+            });
+
+            return updated;
         });
     },
 
-    delete: async (id: string): Promise<void> => {
+    delete: async (id: string, userId: string): Promise<void> => {
         const department = await prisma.department.findUnique({ where: { id } });
         if (!department) throw new NotFoundError('Department not found');
         checkDeletedAt(department);
 
-        await prisma.department.update({
-            where: { id },
-            data: { deletedAt: new Date() },
+        const employees = await prisma.employee.findMany({
+            where: { departmentId: id, deletedAt: null },
+            select: { id: true },
+        });
+
+        if (employees.length > 0) {
+            throw new BadRequestError(
+                'Cannot delete department while employees are assigned to it. Remove employees from the department first.'
+            );
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.department.update({
+                where: { id },
+                data: { deletedAt: new Date() },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'department',
+                entityId: id,
+                action: 'delete',
+                description: `Deleted department ${department.name}`,
+                affectedEntityIds: employees.map((employee) => employee.id),
+                tx,
+            });
         });
     },
 
-    assignEmployee: async (request: DepartmentAssignEmployeeRequest) => {
-        const { departmentId, employeeId, roleId } = request;
+    assignEmployee: async (request: DepartmentAssignEmployeeRequest, userId: string) => {
+        const { departmentId, employeeId } = request;
 
         const department = await prisma.department.findUnique({ where: { id: departmentId } });
         if (!department) throw new NotFoundError('Department not found');
@@ -141,33 +191,87 @@ export const DepartmentService = {
         if (!employee) throw new NotFoundError('Employee not found');
         checkDeletedAt(employee);
 
-        const role = await prisma.lookup.findUnique({ where: { id: roleId } });
-        if (!role) throw new NotFoundError('Role not found');
-
-        if (employee.departmentId === departmentId && employee.roleId === roleId) {
-            throw new ConflictError(
-                'Employee is already assigned to this department with this role'
-            );
+        if (employee.departmentId === departmentId) {
+            throw new ConflictError('Employee is already assigned to this department');
         }
 
-        return await prisma.employee.update({
-            where: { id: employeeId },
-            data: { departmentId, roleId },
-            include: { department: true, role: true },
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.employee.update({
+                where: { id: employeeId },
+                data: { departmentId },
+                include: { department: true, role: true },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'department',
+                entityId: departmentId,
+                action: 'link',
+                description: `Assigned ${employee.name} to department ${department.name}`,
+                affectedEntityIds: [employeeId, employee.departmentId].filter(
+                    (id): id is string => !!id
+                ),
+                tx,
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'employee',
+                entityId: employeeId,
+                action: 'link',
+                description: `Assigned ${employee.name} to department ${department.name}`,
+                affectedEntityIds: [departmentId, employee.departmentId].filter(
+                    (id): id is string => !!id
+                ),
+                tx,
+            });
+
+            return updated;
         });
     },
 
-    removeEmployee: async (request: DepartmentRemoveEmployeeRequest): Promise<void> => {
+    removeEmployee: async (
+        request: DepartmentRemoveEmployeeRequest,
+        userId: string
+    ): Promise<void> => {
         const { departmentId, employeeId } = request;
 
-        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+        const [department, employee] = await prisma.$transaction([
+            prisma.department.findUnique({ where: { id: departmentId } }),
+            prisma.employee.findUnique({ where: { id: employeeId } }),
+        ]);
+        if (!department) throw new NotFoundError('Department not found');
+        checkDeletedAt(department);
         if (!employee || employee.departmentId !== departmentId) {
             throw new NotFoundError('Employee is not assigned to this department');
         }
+        checkDeletedAt(employee);
 
-        await prisma.employee.update({
-            where: { id: employeeId },
-            data: { departmentId: null, roleId: null },
+        await prisma.$transaction(async (tx) => {
+            await tx.employee.update({
+                where: { id: employeeId },
+                data: { departmentId: null },
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'department',
+                entityId: departmentId,
+                action: 'unlink',
+                description: `Removed ${employee.name} from department ${department.name}`,
+                affectedEntityIds: [employeeId],
+                tx,
+            });
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'employee',
+                entityId: employeeId,
+                action: 'unlink',
+                description: `Removed ${employee.name} from department ${department.name}`,
+                affectedEntityIds: [departmentId],
+                tx,
+            });
         });
     },
 };

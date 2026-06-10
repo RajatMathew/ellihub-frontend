@@ -1,3 +1,4 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const EmailAddressSchema = z.string().trim().toLowerCase().pipe(z.email());
@@ -33,9 +34,9 @@ export const MailSignatureSchema = z.object({
 
 export type MailSignatureInput = z.infer<typeof MailSignatureSchema>;
 
-export const FeatureMailDraftSchema = z.object({
+export const FeatureMailDraftBaseSchema = z.object({
     from: EmailAddressSchema,
-    to: z.array(EmailAddressSchema).min(1),
+    to: z.array(EmailAddressSchema).default([]),
     cc: z.array(EmailAddressSchema).default([]),
     bcc: z.array(EmailAddressSchema).default([]),
     subject: z.string().trim().min(1),
@@ -45,7 +46,23 @@ export const FeatureMailDraftSchema = z.object({
     saveToSentItems: z.boolean().default(true),
 });
 
+export type FeatureMailDraftBase = z.infer<typeof FeatureMailDraftBaseSchema>;
+
+export const FeatureMailDraftSchema = FeatureMailDraftBaseSchema.extend({
+    to: z.array(EmailAddressSchema).min(1),
+});
+
 export type FeatureMailDraftRequest = z.infer<typeof FeatureMailDraftSchema>;
+
+export const FeatureMailPdfOptionsSchema = z.object({
+    addTermsAndConditions: z.boolean().optional().nullable(),
+    termsAndConditionsHtml: z.string().max(20000).optional().nullable(),
+    addWarningNotice: z.boolean().optional().nullable(),
+    warningNoticeTitle: z.string().trim().max(180).optional().nullable(),
+    warningNoticeHtml: z.string().max(20000).optional().nullable(),
+});
+
+export type FeatureMailPdfOptionsRequest = z.infer<typeof FeatureMailPdfOptionsSchema>;
 
 export type FeatureMailAttachmentPreview = {
     id: string;
@@ -60,11 +77,30 @@ export type FeatureMailSignatureAsset = {
     contentId: string;
 };
 
-export type FeatureMailDraftResponse = FeatureMailDraftRequest & {
+export type FeatureMailRecipientOption = {
+    id: string;
+    type: 'vendor' | 'contact';
+    label: string;
+    email: string;
+    isPrimary?: boolean;
+};
+
+export type FeatureMailRecipientGroup = {
+    id: string;
+    label: string;
+    entityType: 'vendor';
+    entityId: string;
+    quoteId?: string;
+    missingEntityEmail?: boolean;
+    options: FeatureMailRecipientOption[];
+};
+
+export type FeatureMailDraftResponse = FeatureMailDraftBase & {
     senderOptions: string[];
     html: string;
     attachments: FeatureMailAttachmentPreview[];
     signatureAssets: FeatureMailSignatureAsset[];
+    recipientGroups?: FeatureMailRecipientGroup[];
 };
 
 export type FeatureMailSendResponse = FeatureMailDraftResponse & {
@@ -77,15 +113,16 @@ export type FeatureMailKey = z.infer<typeof FeatureMailKeySchema>;
 
 export const FeatureMailQuerySchema = z.object({
     feature: FeatureMailKeySchema,
-    entityId: z.ulid(),
+    entityId: nanoIdSchema,
 });
 
 export type FeatureMailQueryRequest = z.infer<typeof FeatureMailQuerySchema>;
 
 export const FeatureMailActionSchema = z.object({
     feature: FeatureMailKeySchema,
-    entityId: z.ulid(),
+    entityId: nanoIdSchema,
     draft: FeatureMailDraftSchema,
+    pdfOptions: FeatureMailPdfOptionsSchema.optional(),
 });
 
 export type FeatureMailActionRequest = z.infer<typeof FeatureMailActionSchema>;

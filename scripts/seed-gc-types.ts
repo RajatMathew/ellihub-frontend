@@ -1,6 +1,6 @@
 import { prisma } from '@lib/prisma';
 import { LookupType } from '@modules/lookup/models';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 const gcTypes = ['SCA', 'Civil', 'Institutional', 'Public / State', 'Public', 'Private'];
 
@@ -17,7 +17,7 @@ export const seedGcTypes = async () => {
         } else {
             const result = await prisma.lookup.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     type: LookupType.GC_TYPE,
                     label,
                 },

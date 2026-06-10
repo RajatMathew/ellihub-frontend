@@ -3,8 +3,8 @@ import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     CostCodeCategoryCreateRequest,
@@ -21,7 +21,7 @@ export const CostCodeService = {
         const created = await prisma.costCodeCategory.create({
             data: {
                 ...request,
-                id: ulid(),
+                id: generateNanoId(),
             },
         });
 
@@ -143,7 +143,7 @@ export const CostCodeService = {
         const created = await prisma.costCode.create({
             data: {
                 ...request,
-                id: ulid(),
+                id: generateNanoId(),
             },
         });
 

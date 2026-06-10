@@ -1,12 +1,14 @@
-import { Invoice, InvoiceAttachment, Prisma } from '@db/client';
+import { Invoice, InvoiceAttachment, Prisma, PurchaseOrder } from '@db/client';
+import { AccessContext } from '@lib/access';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
+import { LookupType } from '@modules/lookup/models';
 import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     AddInvoiceAttachmentRequest,
@@ -18,6 +20,37 @@ import {
     RemoveInvoiceAttachmentRequest,
     ResolveInvoiceDisputeRequest,
 } from './models';
+
+function assertPurchaseOrderCanBeInvoiced(po: PurchaseOrder) {
+    if (po.status !== 'ISSUED') {
+        throw new BadRequestError('Only issued purchase orders can be invoiced');
+    }
+}
+
+async function assertRelatedSCOsBelongToPurchaseOrder(
+    relatedSCOIds: string[],
+    projectId: string,
+    purchaseOrderId: string | null | undefined
+) {
+    if (!relatedSCOIds.length) return;
+
+    if (!purchaseOrderId) {
+        throw new BadRequestError('Related SCOs require a purchase order');
+    }
+
+    const scos = await prisma.subChangeOrder.findMany({
+        where: { id: { in: relatedSCOIds }, deletedAt: null },
+    });
+    if (scos.length !== relatedSCOIds.length) {
+        throw new NotFoundError('One or more related SCOs not found');
+    }
+    if (scos.some((sco) => sco.projectId !== projectId)) {
+        throw new BadRequestError('Related SCOs must belong to the same project');
+    }
+    if (scos.some((sco) => sco.purchaseOrderId !== purchaseOrderId)) {
+        throw new BadRequestError('Related SCOs must belong to the selected purchase order');
+    }
+}
 
 export const InvoiceService = {
     getInvoicesByPo: async (purchaseOrderId: string) => {
@@ -64,7 +97,10 @@ export const InvoiceService = {
         return { ...invoice, relatedSCOs };
     },
 
-    getInvoices: async (params: PaginationParams): Promise<{ data: Invoice[]; count: number }> => {
+    getInvoices: async (
+        params: PaginationParams,
+        access?: AccessContext
+    ): Promise<{ data: Invoice[]; count: number }> => {
         const { filter, skip, take, sortBy, sortOrder, search } = params;
         const { projectId, vendorId, purchaseOrderId, isPaid, ...restFilter } = filter || {};
 
@@ -79,11 +115,28 @@ export const InvoiceService = {
                 OR: [{ invoiceNumber: { contains: search, mode: 'insensitive' as const } }],
             }),
         };
+        const scopedWhereClause: Prisma.InvoiceWhereInput =
+            access && access.projectScope !== 'all'
+                ? {
+                      AND: [
+                          whereClause,
+                          access.employeeId
+                              ? {
+                                    project: {
+                                        teamMembers: {
+                                            some: { employeeId: access.employeeId },
+                                        },
+                                    },
+                                }
+                              : { id: { in: [] } },
+                      ],
+                  }
+                : whereClause;
 
         const [count, data] = await prisma.$transaction([
-            prisma.invoice.count({ where: whereClause }),
+            prisma.invoice.count({ where: scopedWhereClause }),
             prisma.invoice.findMany({
-                where: whereClause,
+                where: scopedWhereClause,
                 skip,
                 take,
                 orderBy: { [sortBy as keyof Invoice]: sortOrder },
@@ -122,6 +175,7 @@ export const InvoiceService = {
             const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
             if (!po) throw new NotFoundError('Purchase order not found');
             checkDeletedAt(po);
+            assertPurchaseOrderCanBeInvoiced(po);
             if (po.projectId !== projectId) {
                 throw new BadRequestError('Purchase order does not belong to the project');
             }
@@ -130,17 +184,7 @@ export const InvoiceService = {
             }
         }
 
-        if (relatedSCOIds.length) {
-            const scos = await prisma.subChangeOrder.findMany({
-                where: { id: { in: relatedSCOIds } },
-            });
-            if (scos.length !== relatedSCOIds.length) {
-                throw new NotFoundError('One or more related SCOs not found');
-            }
-            if (scos.some((s) => s.projectId !== projectId)) {
-                throw new BadRequestError('Related SCOs must belong to the same project');
-            }
-        }
+        await assertRelatedSCOsBelongToPurchaseOrder(relatedSCOIds, projectId, purchaseOrderId);
 
         const files = await prisma.file.findMany({ where: { id: { in: attachments } } });
         if (files.length !== attachments.length) {
@@ -157,7 +201,7 @@ export const InvoiceService = {
         return await prisma.$transaction(async (tx) => {
             const invoice = await tx.invoice.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     projectId,
                     vendorId,
                     purchaseOrderId: purchaseOrderId ?? null,
@@ -172,11 +216,15 @@ export const InvoiceService = {
                 },
             });
 
-            const folderId = await FileService.getProjectSubFolderId(projectId, 'INVOICE', tx);
+            const folderId = await FileService.getOrCreateProjectEntityFolder(
+                { projectId, entityType: 'INVOICE', entityId: invoice.id },
+                userId,
+                tx
+            );
             for (const documentId of attachments) {
                 await FileService.moveFileToFolder(documentId, folderId, tx);
                 await tx.invoiceAttachment.create({
-                    data: { id: ulid(), invoiceId: invoice.id, documentId },
+                    data: { id: generateNanoId(), invoiceId: invoice.id, documentId },
                 });
             }
 
@@ -233,6 +281,7 @@ export const InvoiceService = {
             const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
             if (!po) throw new NotFoundError('Purchase order not found');
             checkDeletedAt(po);
+            assertPurchaseOrderCanBeInvoiced(po);
             if (po.projectId !== projectId) {
                 throw new BadRequestError('Purchase order does not belong to the project');
             }
@@ -241,17 +290,7 @@ export const InvoiceService = {
             }
         }
 
-        if (relatedSCOIds.length) {
-            const scos = await prisma.subChangeOrder.findMany({
-                where: { id: { in: relatedSCOIds } },
-            });
-            if (scos.length !== relatedSCOIds.length) {
-                throw new NotFoundError('One or more related SCOs not found');
-            }
-            if (scos.some((s) => s.projectId !== projectId)) {
-                throw new BadRequestError('Related SCOs must belong to the same project');
-            }
-        }
+        await assertRelatedSCOsBelongToPurchaseOrder(relatedSCOIds, projectId, purchaseOrderId);
 
         if (invoiceNumber !== existing.invoiceNumber) {
             const duplicate = await prisma.invoice.findUnique({
@@ -316,15 +355,15 @@ export const InvoiceService = {
         checkDeletedAt(file);
 
         return await prisma.$transaction(async (tx) => {
-            const folderId = await FileService.getProjectSubFolderId(
-                invoice.projectId,
-                'INVOICE',
+            const folderId = await FileService.getOrCreateProjectEntityFolder(
+                { projectId: invoice.projectId, entityType: 'INVOICE', entityId: invoice.id },
+                userId,
                 tx
             );
             await FileService.moveFileToFolder(documentId, folderId, tx);
 
             const attachment = await tx.invoiceAttachment.create({
-                data: { id: ulid(), invoiceId, documentId },
+                data: { id: generateNanoId(), invoiceId, documentId },
             });
 
             await ActivityLogService.log({
@@ -394,7 +433,9 @@ export const InvoiceService = {
         }
 
         const paymentMethod = await prisma.lookup.findUnique({ where: { id: paymentMethodId } });
-        if (!paymentMethod) throw new NotFoundError('Payment method not found');
+        if (!paymentMethod || paymentMethod.type !== LookupType.PAYMENT_METHOD) {
+            throw new NotFoundError('Payment method not found');
+        }
 
         const updated = await prisma.invoice.update({
             where: { id },

@@ -13,7 +13,8 @@ export type ActivityEntityType =
     | 'purchaseOrder'
     | 'primeChangeOrder'
     | 'subChangeOrder'
-    | 'invoice';
+    | 'invoice'
+    | 'template';
 
 export type ActivityAction =
     | 'create'

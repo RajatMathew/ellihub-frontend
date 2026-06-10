@@ -21,7 +21,11 @@
                     {
                         "name": "sortBy",
                         "in": "query",
-                        "schema": { "type": "string", "enum": ["name", "createdAt", "updatedAt"], "default": "name" },
+                        "schema": {
+                            "type": "string",
+                            "enum": ["name", "createdAt", "updatedAt"],
+                            "default": "name"
+                        },
                         "description": "Field to sort by"
                     },
                     {
@@ -50,9 +54,13 @@
                                             "properties": {
                                                 "data": {
                                                     "type": "array",
-                                                    "items": { "$ref": "#/components/schemas/Employee" }
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Employee"
+                                                    }
                                                 },
-                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                                "pagination": {
+                                                    "$ref": "#/components/schemas/PaginationInfo"
+                                                }
                                             }
                                         }
                                     ]
@@ -349,7 +357,9 @@
                                         {
                                             "type": "object",
                                             "properties": {
-                                                "data": { "$ref": "#/components/schemas/EmployeeDocument" }
+                                                "data": {
+                                                    "$ref": "#/components/schemas/EmployeeDocument"
+                                                }
                                             }
                                         }
                                     ]
@@ -409,7 +419,9 @@
                     "required": true,
                     "content": {
                         "application/json": {
-                            "schema": { "$ref": "#/components/schemas/RemoveEmployeeDocumentRequest" }
+                            "schema": {
+                                "$ref": "#/components/schemas/RemoveEmployeeDocumentRequest"
+                            }
                         }
                     }
                 },
@@ -472,12 +484,28 @@
                     "emergencyContactName": { "type": "string", "nullable": true },
                     "emergencyContactPhone": { "type": "string", "nullable": true },
                     "emergencyContactRelation": { "type": "string", "nullable": true },
-                    "userId": { "type": "string", "nullable": true, "description": "Linked user account ID (set when account was created)" },
+                    "userId": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Linked user account ID (set when account was created)"
+                    },
                     "status": { "type": "string", "enum": ["ACTIVE", "ON_LEAVE"] },
                     "departmentId": { "type": "string", "nullable": true },
                     "department": { "$ref": "#/components/schemas/Department", "nullable": true },
-                    "roleId": { "type": "string", "nullable": true, "description": "Lookup ID for the employee's role" },
-                    "role": { "type": "object", "nullable": true, "description": "Lookup row for the role" },
+                    "roleId": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Lookup ID for the employee's role"
+                    },
+                    "role": {
+                        "type": "object",
+                        "nullable": true,
+                        "description": "Lookup row for the role"
+                    },
+                    "documents": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/EmployeeDocument" }
+                    },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" },
                     "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
@@ -491,12 +519,22 @@
                     "email": { "type": "string", "format": "email" },
                     "phoneNumber": { "type": "string", "minLength": 7 },
                     "address": { "type": "string" },
-                    "startDate": { "type": "string", "format": "date-time", "description": "Coerced to a Date" },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Coerced to a Date"
+                    },
                     "emergencyContactName": { "type": "string" },
                     "emergencyContactPhone": { "type": "string" },
                     "emergencyContactRelation": { "type": "string" },
-                    "roleId": { "type": "string", "description": "Optional role ID (ULID) to assign when an account is created" },
-                    "createAccount": { "type": "boolean", "description": "Whether to create a user account for this employee" }
+                    "roleId": {
+                        "type": "string",
+                        "description": "Optional role ID (ULID) to assign when an account is created"
+                    },
+                    "createAccount": {
+                        "type": "boolean",
+                        "description": "Whether to create a user account for this employee"
+                    }
                 }
             },
             "EmployeeDocument": {
@@ -505,6 +543,18 @@
                     "id": { "type": "string", "description": "ULID" },
                     "employeeId": { "type": "string", "description": "Employee ID (ULID)" },
                     "fileId": { "type": "string", "description": "File ID (ULID)" },
+                    "file": {
+                        "type": "object",
+                        "nullable": true,
+                        "properties": {
+                            "id": { "type": "string", "description": "File ID (ULID)" },
+                            "name": { "type": "string", "nullable": true },
+                            "displayName": { "type": "string", "nullable": true },
+                            "mimeType": { "type": "string", "nullable": true },
+                            "size": { "type": "number", "nullable": true },
+                            "type": { "type": "string", "enum": ["FILE", "FOLDER"] }
+                        }
+                    },
                     "expiresOn": { "type": "string", "format": "date", "nullable": true },
                     "createdAt": { "type": "string", "format": "date-time" },
                     "updatedAt": { "type": "string", "format": "date-time" }

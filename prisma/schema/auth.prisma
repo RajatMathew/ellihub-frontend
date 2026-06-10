@@ -1,17 +1,17 @@
 model User {
-  id                       String             @id
+  id                       String                    @id
   name                     String
   email                    String
-  emailVerified            Boolean            @default(false)
+  emailVerified            Boolean                   @default(false)
   image                    String?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
   sessions                 Session[]
   accounts                 Account[]
   members                  Member[]
   invitations              Invitation[]
   role                     String?
-  banned                   Boolean?           @default(false)
+  banned                   Boolean?                  @default(false)
   banReason                String?
   banExpires               DateTime?
   profile                  String?
@@ -19,7 +19,10 @@ model User {
   activityLogs             ActivityLog[]
   sentEmailLogs            SentEmailLog[]
   primeChangeOrderSyncRuns PrimeChangeOrderSyncRun[]
+  integrationSyncRuns      IntegrationSyncRun[]
   revisions                Revision[]
+  quickBooksConnections    QuickBooksConnection[]   @relation("QuickBooksConnections")
+  quickBooksOAuthStates    QuickBooksOAuthState[]   @relation("QuickBooksOAuthStates")
 
   @@unique([email])
   @@map("user")

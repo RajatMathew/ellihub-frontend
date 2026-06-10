@@ -1,0 +1,36 @@
+model TemplateSetting {
+  id          String                @id
+  kind        TemplateSettingKind
+  key         String
+  name        String
+  description String?
+  value       Json
+  tags        String[]              @default([])
+  isDefault   Boolean               @default(false)
+  status      TemplateSettingStatus @default(ACTIVE)
+
+  createdBy String?
+  updatedBy String?
+  deletedBy String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, key])
+  @@index([kind, key, isDefault])
+  @@index([deletedAt])
+}
+
+enum TemplateSettingKind {
+  PDF_TERMS
+  PDF_NOTICE
+  MAIL_FEATURE
+  MAIL_SENDER_GROUP
+  MAIL_SIGNATURE
+  PDF_PROFILE
+}
+
+enum TemplateSettingStatus {
+  ACTIVE
+  INACTIVE
+}

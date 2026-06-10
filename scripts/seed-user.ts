@@ -41,6 +41,7 @@ export async function seedUser() {
         console.log('\n⚠️  Change password after first login!');
     } catch (error) {
         console.error('❌ Error:', error);
+        throw error;
     }
 }
 

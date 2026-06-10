@@ -7,7 +7,7 @@ import {
 } from '@modules/activity-log';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { BadRequestError } from '@utils';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 import {
     getMailService,
@@ -113,7 +113,7 @@ async function createSentEmailLog(
     }
 ): Promise<SentEmailLog> {
     const data = {
-        id: ulid(),
+        id: generateNanoId(),
         feature: context.feature,
         entityType: context.entityType,
         entityId: context.entityId,

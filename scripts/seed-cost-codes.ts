@@ -1,11 +1,11 @@
 import { prisma } from '@lib/prisma';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 const categories = [
-    { id: ulid(), name: 'Labor', description: 'Labor and workforce costs' },
-    { id: ulid(), name: 'Material', description: 'Raw materials and supplies' },
-    { id: ulid(), name: 'Subcontractor', description: 'Subcontractor services' },
-    { id: ulid(), name: 'Equipment', description: 'Equipment rental and purchases' },
+    { id: generateNanoId(), name: 'Labor', description: 'Labor and workforce costs' },
+    { id: generateNanoId(), name: 'Material', description: 'Raw materials and supplies' },
+    { id: generateNanoId(), name: 'Subcontractor', description: 'Subcontractor services' },
+    { id: generateNanoId(), name: 'Equipment', description: 'Equipment rental and purchases' },
 ];
 
 export const seedCostCodes = async () => {
@@ -60,7 +60,7 @@ export const seedCostCodes = async () => {
         } else {
             await prisma.costCode.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     code: cc.code,
                     name: cc.name,
                     description: cc.description,

@@ -1,15 +1,20 @@
-import { File, FileExportJob } from '@db/client';
+import { File, FileExportJob, type ProtectedFolderType } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma as prismaClient } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { ActivityLogService } from '@modules/activity-log';
+import { ActivityLogService } from '@modules/activity-log/service';
 import { UserService } from '@modules/user/services';
-import { BadRequestError, NotFoundError } from '@utils';
+import { BadRequestError, ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
-import { FileFolderRenameRequest, FileUploadRequest, FolderCreateRequest } from './models';
-import { s3Service } from './s3';
+import {
+    FileFolderRenameRequest,
+    FileUploadRequest,
+    FolderCreateRequest,
+    ProjectEntityFolderRequest,
+} from './models';
+import { storageService } from './storage';
 import { writeZipArchiveToSink, ZipStreamEntry } from './zip';
 
 type FileContent = {
@@ -17,6 +22,23 @@ type FileContent = {
     fileName: string;
     mimeType: string;
     content: Uint8Array;
+};
+
+type FileStreamContent = {
+    file: File;
+    fileName: string;
+    mimeType: string;
+    size: number | null;
+    stream: ReadableStream<Uint8Array>;
+};
+
+type GeneratedFileSaveRequest<T> = {
+    name: string;
+    displayName?: string;
+    parentId: string;
+    mimeType: string;
+    content: Uint8Array;
+    afterCreate?: (file: File, tx: TransactionClient) => Promise<T>;
 };
 
 type FolderExportPlan = {
@@ -49,12 +71,103 @@ type FileBreadcrumb = {
     name: string;
 };
 
+type PrimeContractFileState = {
+    id: string;
+    fileId: string;
+    isPrimary: boolean;
+};
+
+type FileWithPrimeContracts = File & {
+    primeContracts?: PrimeContractFileState[];
+};
+
+type FilePrimeContractMetadata = {
+    id: string;
+    isPinned: boolean;
+    isPrimary: boolean;
+};
+
 type FileSearchResult = File & {
     breadcrumbs?: FileBreadcrumb[];
+    primeContract?: FilePrimeContractMetadata | null;
 };
+type FileWithPrimeContractMetadata = File & {
+    primeContract?: FilePrimeContractMetadata | null;
+};
+type FileWithChildren = File & { children: FileWithPrimeContractMetadata[] };
+
+type ProjectSubFolderType = Extract<
+    ProtectedFolderType,
+    | 'INVOICE'
+    | 'RFQ'
+    | 'PURCHASE_ORDER'
+    | 'PURCHASE_ORDER_CO'
+    | 'PRIME_CO'
+    | 'SUB_CHANGE_ORDER'
+    | 'PRIME_CONTRACT'
+    | 'SCHEDULE'
+>;
+
+type ProjectEntityFolderConfig = {
+    parentType: ProjectSubFolderType;
+    displayName: string;
+};
+
+type ProjectSubFolderConfig = {
+    name: string;
+    displayName: string;
+    protectedFolderType: ProjectSubFolderType;
+};
+
+type ProjectRootFolder = Pick<File, 'id' | 'createdBy'>;
 
 const EXPORT_EXPIRES_IN_SECONDS = 24 * 60 * 60;
 const EXPORT_OBJECT_PREFIX = 'exports';
+const FILE_UNAVAILABLE_MESSAGE = 'This file no longer exists or has been deleted.';
+
+const PROJECT_SUBFOLDERS: ProjectSubFolderConfig[] = [
+    { name: 'invoice', displayName: 'Invoice', protectedFolderType: 'INVOICE' },
+    { name: 'rfq', displayName: 'RFQ', protectedFolderType: 'RFQ' },
+    {
+        name: 'purchase order',
+        displayName: 'Purchase Order',
+        protectedFolderType: 'PURCHASE_ORDER',
+    },
+    {
+        name: 'purchase order co',
+        displayName: 'Purchase Order CO',
+        protectedFolderType: 'PURCHASE_ORDER_CO',
+    },
+    { name: 'prime co', displayName: 'Prime CO', protectedFolderType: 'PRIME_CO' },
+    {
+        name: 'sub change order',
+        displayName: 'Sub Change Order',
+        protectedFolderType: 'SUB_CHANGE_ORDER',
+    },
+    {
+        name: 'prime contract',
+        displayName: 'Prime Contract',
+        protectedFolderType: 'PRIME_CONTRACT',
+    },
+    { name: 'schedule', displayName: 'Schedule', protectedFolderType: 'SCHEDULE' },
+];
+
+const LEGACY_SCO_PARENT_TYPES: ProjectSubFolderType[] = ['PRIME_CO', 'PURCHASE_ORDER_CO'];
+
+function getProjectSubFolderConfig(type: ProjectSubFolderType): ProjectSubFolderConfig {
+    const config = PROJECT_SUBFOLDERS.find((subFolder) => subFolder.protectedFolderType === type);
+    if (!config) throw new BadRequestError(`Unsupported project sub-folder type: ${type}`);
+
+    return config;
+}
+
+function assertActiveFile(file: File | null): File {
+    if (!file || file.type !== 'FILE' || file.deletedAt) {
+        throw new NotFoundError(FILE_UNAVAILABLE_MESSAGE);
+    }
+
+    return file;
+}
 
 function getDisplayFileName(file: File): string {
     return file.displayName || file.name || file.id;
@@ -104,7 +217,7 @@ function ensureUniqueZipPath(path: string, usedPaths: Set<string>, directory = f
 async function serializeExportJob(job: FileExportJob): Promise<FolderExportJobResponse> {
     const isCompleted = job.status === 'COMPLETED' && !!job.objectId && job.expiresAt > new Date();
     const downloadUrl = isCompleted
-        ? await s3Service.getDownloadLink(job.objectId!, EXPORT_EXPIRES_IN_SECONDS)
+        ? await storageService.getDownloadLink(job.objectId!, EXPORT_EXPIRES_IN_SECONDS)
         : undefined;
 
     return {
@@ -165,7 +278,7 @@ async function buildFolderExportPlan(folder: File): Promise<FolderExportPlan> {
             entries.push({
                 path: ensureUniqueZipPath(childPath, usedPaths),
                 modifiedAt: child.updatedAt,
-                stream: () => s3Service.stream(objectId),
+                stream: () => storageService.stream(objectId),
             });
         }
     };
@@ -215,17 +328,524 @@ async function getDescendantFileIds(folderId: string): Promise<string[]> {
     return descendantIds;
 }
 
+function isPrimeContractFolder(file: Pick<File, 'protectedFolderType'> | null | undefined) {
+    return file?.protectedFolderType === 'PRIME_CONTRACT';
+}
+
+function withPrimeContractMetadata<T extends FileWithPrimeContracts>(
+    file: T
+): Omit<T, 'primeContracts'> & { primeContract: FilePrimeContractMetadata | null } {
+    const { primeContracts, ...rest } = file;
+    const primeContract = primeContracts?.[0] ?? null;
+
+    return {
+        ...rest,
+        primeContract: primeContract
+            ? {
+                  id: primeContract.id,
+                  isPinned: true,
+                  isPrimary: primeContract.isPrimary,
+              }
+            : null,
+    };
+}
+
+async function applyLatestChildUpdatedAt<T extends File>(children: T[]): Promise<T[]> {
+    const folderIds = children.filter((child) => child.type === 'FOLDER').map((child) => child.id);
+
+    if (folderIds.length === 0) return children;
+
+    const latestChildrenByFolder = await prismaClient.file.groupBy({
+        by: ['parentId'],
+        where: {
+            parentId: { in: folderIds },
+            deletedAt: null,
+        },
+        _max: {
+            updatedAt: true,
+        },
+    });
+
+    const latestUpdatedAtByFolderId = new Map(
+        latestChildrenByFolder
+            .filter((entry) => entry.parentId && entry._max.updatedAt)
+            .map((entry) => [entry.parentId!, entry._max.updatedAt!])
+    );
+
+    return children.map((child) => {
+        const latestChildUpdatedAt = latestUpdatedAtByFolderId.get(child.id);
+
+        if (!latestChildUpdatedAt || latestChildUpdatedAt <= child.updatedAt) return child;
+
+        return {
+            ...child,
+            updatedAt: latestChildUpdatedAt,
+        };
+    });
+}
+
+async function assertUniqueSiblingName({
+    name,
+    parentId,
+    excludeId,
+    tx,
+}: {
+    name: string;
+    parentId?: string | null;
+    excludeId?: string;
+    tx?: TransactionClient;
+}): Promise<string> {
+    const prisma = tx || prismaClient;
+    const normalizedName = name.trim();
+    if (!normalizedName) throw new BadRequestError('Name is required.');
+
+    const existing = await prisma.file.findFirst({
+        where: {
+            parentId: parentId ?? null,
+            deletedAt: null,
+            name: { equals: normalizedName, mode: 'insensitive' },
+            ...(excludeId && { id: { not: excludeId } }),
+        },
+        select: { id: true },
+    });
+
+    if (existing) {
+        throw new ConflictError(`A file or folder named "${normalizedName}" already exists here.`);
+    }
+
+    return normalizedName;
+}
+
+async function getProjectRootFolder(
+    projectId: string,
+    tx?: TransactionClient
+): Promise<ProjectRootFolder> {
+    const prisma = tx || prismaClient;
+
+    const projectFolder = await prisma.file.findFirst({
+        where: {
+            name: projectId,
+            protectedFolderType: 'PROJECT_ROOT',
+            deletedAt: null,
+        },
+        select: { id: true, createdBy: true },
+    });
+
+    if (!projectFolder)
+        throw new NotFoundError(`Project folder not found for project: ${projectId}`);
+
+    return projectFolder;
+}
+
+async function ensureProjectSubFolder(
+    projectFolder: ProjectRootFolder,
+    type: ProjectSubFolderType,
+    tx?: TransactionClient
+): Promise<string> {
+    const prisma = tx || prismaClient;
+    const config = getProjectSubFolderConfig(type);
+
+    const existing = await prisma.file.findFirst({
+        where: {
+            parentId: projectFolder.id,
+            protectedFolderType: type,
+            deletedAt: null,
+        },
+        select: { id: true, name: true, displayName: true },
+    });
+
+    if (existing) {
+        if (existing.name !== config.name || existing.displayName !== config.displayName) {
+            await prisma.file.update({
+                where: { id: existing.id },
+                data: {
+                    name: config.name,
+                    displayName: config.displayName,
+                    isDeletable: false,
+                },
+            });
+        }
+
+        return existing.id;
+    }
+
+    const folder = await prisma.file.create({
+        data: {
+            id: generateNanoId(),
+            name: config.name,
+            displayName: config.displayName,
+            type: 'FOLDER',
+            createdBy: projectFolder.createdBy,
+            isDeletable: false,
+            parentId: projectFolder.id,
+            protectedFolderType: config.protectedFolderType,
+        },
+    });
+
+    return folder.id;
+}
+
+async function getLegacyScoParentIds(
+    projectRootFolderId: string,
+    tx?: TransactionClient
+): Promise<string[]> {
+    const prisma = tx || prismaClient;
+
+    const folders = await prisma.file.findMany({
+        where: {
+            parentId: projectRootFolderId,
+            protectedFolderType: { in: LEGACY_SCO_PARENT_TYPES },
+            deletedAt: null,
+        },
+        select: { id: true },
+    });
+
+    return folders.map((folder) => folder.id);
+}
+
+async function moveLegacyScoEntityFolders({
+    projectId,
+    projectRootFolderId,
+    subChangeOrderFolderId,
+    tx,
+}: {
+    projectId: string;
+    projectRootFolderId: string;
+    subChangeOrderFolderId: string;
+    tx?: TransactionClient;
+}): Promise<void> {
+    const prisma = tx || prismaClient;
+    const legacyParentIds = await getLegacyScoParentIds(projectRootFolderId, tx);
+    if (legacyParentIds.length === 0) return;
+
+    const scos = await prisma.subChangeOrder.findMany({
+        where: { projectId, deletedAt: null },
+        select: { id: true },
+    });
+    const scoIds = scos.map((sco) => sco.id);
+    if (scoIds.length === 0) return;
+
+    const legacyFolders = await prisma.file.findMany({
+        where: {
+            parentId: { in: legacyParentIds },
+            type: 'FOLDER',
+            name: { in: scoIds },
+            deletedAt: null,
+        },
+        select: { id: true, name: true },
+    });
+
+    for (const folder of legacyFolders) {
+        const existingTarget = await prisma.file.findFirst({
+            where: {
+                parentId: subChangeOrderFolderId,
+                name: folder.name,
+                deletedAt: null,
+                id: { not: folder.id },
+            },
+            select: { id: true },
+        });
+
+        if (existingTarget) continue;
+
+        await prisma.file.update({
+            where: { id: folder.id },
+            data: { parentId: subChangeOrderFolderId },
+        });
+    }
+}
+
+async function moveFileToFolderIfNoNameConflict(
+    file: Pick<File, 'id' | 'name'>,
+    folderId: string,
+    tx?: TransactionClient
+): Promise<void> {
+    const prisma = tx || prismaClient;
+
+    const conflict = await prisma.file.findFirst({
+        where: {
+            parentId: folderId,
+            name: { equals: file.name, mode: 'insensitive' },
+            deletedAt: null,
+            id: { not: file.id },
+        },
+        select: { id: true },
+    });
+
+    if (conflict) return;
+
+    await prisma.file.update({
+        where: { id: file.id },
+        data: { parentId: folderId },
+    });
+}
+
+async function moveLegacyScoAttachmentFilesForProject({
+    projectId,
+    projectFolder,
+    subChangeOrderFolderId,
+    tx,
+}: {
+    projectId: string;
+    projectFolder: ProjectRootFolder;
+    subChangeOrderFolderId: string;
+    tx?: TransactionClient;
+}): Promise<void> {
+    const prisma = tx || prismaClient;
+    const legacyParentIds = await getLegacyScoParentIds(projectFolder.id, tx);
+    if (legacyParentIds.length === 0) return;
+
+    const scos = await prisma.subChangeOrder.findMany({
+        where: {
+            projectId,
+            deletedAt: null,
+            attachments: {
+                some: {
+                    document: {
+                        parentId: { in: legacyParentIds },
+                        deletedAt: null,
+                    },
+                },
+            },
+        },
+        select: {
+            id: true,
+            scoNumber: true,
+            title: true,
+            attachments: {
+                where: {
+                    document: {
+                        parentId: { in: legacyParentIds },
+                        deletedAt: null,
+                    },
+                },
+                select: {
+                    document: {
+                        select: { id: true, name: true },
+                    },
+                },
+            },
+        },
+    });
+
+    for (const sco of scos) {
+        const displayName = sco.scoNumber || sco.title || sco.id;
+        const existingFolder = await prisma.file.findFirst({
+            where: {
+                parentId: subChangeOrderFolderId,
+                name: sco.id,
+                deletedAt: null,
+            },
+            select: { id: true, type: true, displayName: true },
+        });
+
+        let entityFolderId: string | null = null;
+
+        if (existingFolder?.type === 'FOLDER') {
+            entityFolderId = existingFolder.id;
+
+            if (existingFolder.displayName !== displayName) {
+                await prisma.file.update({
+                    where: { id: existingFolder.id },
+                    data: { displayName },
+                });
+            }
+        } else if (!existingFolder) {
+            const folder = await prisma.file.create({
+                data: {
+                    id: generateNanoId(),
+                    name: sco.id,
+                    displayName,
+                    type: 'FOLDER',
+                    createdBy: projectFolder.createdBy,
+                    isDeletable: false,
+                    parentId: subChangeOrderFolderId,
+                },
+            });
+
+            entityFolderId = folder.id;
+        }
+
+        if (!entityFolderId) continue;
+
+        for (const attachment of sco.attachments) {
+            await moveFileToFolderIfNoNameConflict(attachment.document, entityFolderId, tx);
+        }
+    }
+}
+
+async function ensureProjectStandardFolders(
+    projectId: string,
+    projectFolder: ProjectRootFolder,
+    tx?: TransactionClient
+): Promise<void> {
+    let subChangeOrderFolderId: string | null = null;
+
+    for (const subFolder of PROJECT_SUBFOLDERS) {
+        const folderId = await ensureProjectSubFolder(
+            projectFolder,
+            subFolder.protectedFolderType,
+            tx
+        );
+
+        if (subFolder.protectedFolderType === 'SUB_CHANGE_ORDER') {
+            subChangeOrderFolderId = folderId;
+        }
+    }
+
+    if (subChangeOrderFolderId) {
+        await moveLegacyScoEntityFolders({
+            projectId,
+            projectRootFolderId: projectFolder.id,
+            subChangeOrderFolderId,
+            tx,
+        });
+        await moveLegacyScoAttachmentFilesForProject({
+            projectId,
+            projectFolder,
+            subChangeOrderFolderId,
+            tx,
+        });
+    }
+}
+
+async function moveLegacyScoAttachmentFiles({
+    request,
+    entityFolderId,
+    tx,
+}: {
+    request: ProjectEntityFolderRequest;
+    entityFolderId: string;
+    tx?: TransactionClient;
+}): Promise<void> {
+    if (request.entityType !== 'SUB_CHANGE_ORDER') return;
+
+    const prisma = tx || prismaClient;
+    const projectFolder = await getProjectRootFolder(request.projectId, tx);
+    const legacyParentIds = await getLegacyScoParentIds(projectFolder.id, tx);
+    if (legacyParentIds.length === 0) return;
+
+    const attachments = await prisma.sCOAttachment.findMany({
+        where: {
+            scoId: request.entityId,
+            document: {
+                parentId: { in: legacyParentIds },
+                deletedAt: null,
+            },
+        },
+        select: {
+            document: {
+                select: { id: true, name: true },
+            },
+        },
+    });
+
+    for (const attachment of attachments) {
+        await moveFileToFolderIfNoNameConflict(attachment.document, entityFolderId, tx);
+    }
+}
+
+async function resolveProjectEntityFolderConfig(
+    request: ProjectEntityFolderRequest,
+    tx?: TransactionClient
+): Promise<ProjectEntityFolderConfig> {
+    const prisma = tx || prismaClient;
+
+    switch (request.entityType) {
+        case 'RFQ': {
+            const rfq = await prisma.rFQ.findUnique({
+                where: { id: request.entityId },
+                select: {
+                    id: true,
+                    projectId: true,
+                    rfqNumber: true,
+                    title: true,
+                    deletedAt: true,
+                },
+            });
+            if (!rfq) throw new NotFoundError('RFQ not found');
+            checkDeletedAt(rfq);
+            if (rfq.projectId !== request.projectId) {
+                throw new BadRequestError('RFQ does not belong to this project');
+            }
+            return {
+                parentType: 'RFQ',
+                displayName: rfq.rfqNumber || rfq.title || rfq.id,
+            };
+        }
+        case 'PURCHASE_ORDER': {
+            const po = await prisma.purchaseOrder.findUnique({
+                where: { id: request.entityId },
+                select: {
+                    id: true,
+                    projectId: true,
+                    poNumber: true,
+                    description: true,
+                    deletedAt: true,
+                },
+            });
+            if (!po) throw new NotFoundError('Purchase order not found');
+            checkDeletedAt(po);
+            if (po.projectId !== request.projectId) {
+                throw new BadRequestError('Purchase order does not belong to this project');
+            }
+            return {
+                parentType: 'PURCHASE_ORDER',
+                displayName: po.poNumber || po.description || po.id,
+            };
+        }
+        case 'SUB_CHANGE_ORDER': {
+            const sco = await prisma.subChangeOrder.findUnique({
+                where: { id: request.entityId },
+                select: {
+                    id: true,
+                    projectId: true,
+                    scoNumber: true,
+                    title: true,
+                    deletedAt: true,
+                },
+            });
+            if (!sco) throw new NotFoundError('Sub change order not found');
+            checkDeletedAt(sco);
+            if (sco.projectId !== request.projectId) {
+                throw new BadRequestError('Sub change order does not belong to this project');
+            }
+            return {
+                parentType: 'SUB_CHANGE_ORDER',
+                displayName: sco.scoNumber || sco.title || sco.id,
+            };
+        }
+        case 'INVOICE': {
+            const invoice = await prisma.invoice.findUnique({
+                where: { id: request.entityId },
+                select: {
+                    id: true,
+                    projectId: true,
+                    invoiceNumber: true,
+                    deletedAt: true,
+                },
+            });
+            if (!invoice) throw new NotFoundError('Invoice not found');
+            checkDeletedAt(invoice);
+            if (invoice.projectId !== request.projectId) {
+                throw new BadRequestError('Invoice does not belong to this project');
+            }
+            return {
+                parentType: 'INVOICE',
+                displayName: invoice.invoiceNumber || invoice.id,
+            };
+        }
+        default:
+            throw new BadRequestError('Unsupported project entity folder type');
+    }
+}
+
 export const FileService = {
     protectedFolderNames: [
         'root',
         'projects',
         'project',
-        'rfq',
-        'purchase order',
-        'purchase order co',
-        'prime co',
-        'prime contract',
-        'invoice',
+        ...PROJECT_SUBFOLDERS.map((folder) => folder.name),
         'temp',
         'vendor',
         'employees',
@@ -233,14 +853,19 @@ export const FileService = {
     ],
 
     createFolder: async (request: FolderCreateRequest, userId: string): Promise<File> => {
-        if (FileService.protectedFolderNames.includes(request.name.toLowerCase()))
-            throw new BadRequestError(`Cannot name folder '${request.name}'`);
+        const name = await assertUniqueSiblingName({
+            name: request.name,
+            parentId: request.parentId,
+        });
+
+        if (FileService.protectedFolderNames.includes(name.toLowerCase()))
+            throw new BadRequestError(`Cannot name folder '${name}'`);
 
         const f = await prismaClient.$transaction(async (tx) => {
             const file = await tx.file.create({
                 data: {
-                    id: ulid(),
-                    name: request.name,
+                    id: generateNanoId(),
+                    name,
                     parentId: request.parentId,
                     type: 'FOLDER',
                     createdBy: userId,
@@ -284,11 +909,87 @@ export const FileService = {
         return f;
     },
 
+    getOrCreateProjectEntityFolder: async (
+        request: ProjectEntityFolderRequest,
+        userId: string,
+        tx?: TransactionClient
+    ): Promise<string> => {
+        const prisma = tx || prismaClient;
+        const config = await resolveProjectEntityFolderConfig(request, tx);
+        const parentId = await FileService.getProjectSubFolderId(
+            request.projectId,
+            config.parentType,
+            tx
+        );
+
+        const existing = await prisma.file.findFirst({
+            where: {
+                parentId,
+                name: request.entityId,
+                deletedAt: null,
+            },
+            select: {
+                id: true,
+                type: true,
+                displayName: true,
+            },
+        });
+
+        if (existing) {
+            if (existing.type !== 'FOLDER') {
+                throw new ConflictError(
+                    `A file named "${config.displayName}" already exists in this folder.`
+                );
+            }
+
+            if (existing.displayName !== config.displayName) {
+                await prisma.file.update({
+                    where: { id: existing.id },
+                    data: { displayName: config.displayName },
+                });
+            }
+
+            await moveLegacyScoAttachmentFiles({
+                request,
+                entityFolderId: existing.id,
+                tx,
+            });
+
+            return existing.id;
+        }
+
+        const folder = await prisma.file.create({
+            data: {
+                id: generateNanoId(),
+                name: request.entityId,
+                displayName: config.displayName,
+                type: 'FOLDER',
+                createdBy: userId,
+                isDeletable: false,
+                parentId,
+            },
+        });
+
+        await moveLegacyScoAttachmentFiles({
+            request,
+            entityFolderId: folder.id,
+            tx,
+        });
+
+        return folder.id;
+    },
+
     uploadFile: async (request: FileUploadRequest, objectId: string, userId: string) => {
+        const name = await assertUniqueSiblingName({
+            name: request.name,
+            parentId: request.parentId,
+        });
+
         const file = await prismaClient.file.create({
             data: {
                 ...request,
                 id: objectId,
+                name,
                 type: 'FILE',
                 createdBy: userId,
                 objectId,
@@ -305,24 +1006,137 @@ export const FileService = {
         });
     },
 
+    saveGeneratedFile: async <T = undefined>(
+        request: GeneratedFileSaveRequest<T>,
+        userId: string
+    ): Promise<{ file: File; result: T | undefined }> => {
+        const objectId = generateNanoId();
+        const writer = storageService.createWriter(objectId, request.mimeType);
+
+        try {
+            writer.write(request.content);
+            await writer.end();
+        } catch (error) {
+            await Promise.resolve(writer.end(error instanceof Error ? error : undefined)).catch(
+                () => undefined
+            );
+
+            throw error;
+        }
+
+        try {
+            return await prismaClient.$transaction(async (tx) => {
+                const name = await assertUniqueSiblingName({
+                    name: request.name,
+                    parentId: request.parentId,
+                    tx,
+                });
+
+                const file = await tx.file.create({
+                    data: {
+                        id: objectId,
+                        name,
+                        displayName: request.displayName,
+                        parentId: request.parentId,
+                        mimeType: request.mimeType,
+                        size: request.content.byteLength,
+                        type: 'FILE',
+                        createdBy: userId,
+                        objectId,
+                    },
+                });
+
+                await ActivityLogService.log({
+                    userId,
+                    entityType: 'file',
+                    entityId: file.id,
+                    action: 'create',
+                    description: `Saved generated PDF ${file.name}`,
+                    affectedEntityIds: [request.parentId],
+                    tx,
+                });
+
+                const result = request.afterCreate
+                    ? await request.afterCreate(file, tx)
+                    : undefined;
+
+                return { file, result };
+            });
+        } catch (error) {
+            await storageService.delete(objectId).catch(() => undefined);
+            throw error;
+        }
+    },
+
+    ensureFileAvailable: async (id: string): Promise<void> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+
+        assertActiveFile(file);
+    },
+
+    getDownloadLink: async (id: string): Promise<string> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+        const activeFile = assertActiveFile(file);
+        const objectId = activeFile.objectId || activeFile.id;
+
+        try {
+            return await storageService.getDownloadLink(objectId);
+        } catch {
+            throw new NotFoundError(FILE_UNAVAILABLE_MESSAGE);
+        }
+    },
+
     getFileContent: async (id: string): Promise<FileContent> => {
         const file = await prismaClient.file.findUnique({
             where: { id },
         });
 
-        if (!file || file.type !== 'FILE') throw new NotFoundError('No file found with id: ' + id);
+        const activeFile = assertActiveFile(file);
 
-        checkDeletedAt(file);
+        const objectId = activeFile.objectId || activeFile.id;
+        let content: Uint8Array;
 
-        const objectId = file.objectId || file.id;
-        const content = await s3Service.read(objectId);
+        try {
+            content = await storageService.read(objectId);
+        } catch {
+            throw new NotFoundError(FILE_UNAVAILABLE_MESSAGE);
+        }
 
         return {
-            file,
-            fileName: getDisplayFileName(file),
-            mimeType: file.mimeType || 'application/octet-stream',
+            file: activeFile,
+            fileName: getDisplayFileName(activeFile),
+            mimeType: activeFile.mimeType || 'application/octet-stream',
             content,
         };
+    },
+
+    getFileStream: async (id: string): Promise<FileStreamContent> => {
+        const file = await prismaClient.file.findUnique({
+            where: { id },
+        });
+
+        const activeFile = assertActiveFile(file);
+        const objectId = activeFile.objectId || activeFile.id;
+
+        try {
+            if (!(await storageService.exists(objectId))) {
+                throw new NotFoundError(FILE_UNAVAILABLE_MESSAGE);
+            }
+
+            return {
+                file: activeFile,
+                fileName: getDisplayFileName(activeFile),
+                mimeType: activeFile.mimeType || 'application/octet-stream',
+                size: activeFile.size,
+                stream: storageService.stream(objectId),
+            };
+        } catch {
+            throw new NotFoundError(FILE_UNAVAILABLE_MESSAGE);
+        }
     },
 
     createFolderExportJob: async (
@@ -339,7 +1153,7 @@ export const FileService = {
         checkDeletedAt(folder);
 
         const plan = await buildFolderExportPlan(folder);
-        const jobId = ulid();
+        const jobId = generateNanoId();
         const job = await prismaClient.fileExportJob.create({
             data: {
                 id: jobId,
@@ -402,7 +1216,7 @@ export const FileService = {
             return;
         }
 
-        const writer = s3Service.createWriter(objectId, 'application/zip');
+        const writer = storageService.createWriter(objectId, 'application/zip');
         let processedFiles = 0;
         let processedBytes = 0n;
         let lastProgressUpdate = 0;
@@ -473,7 +1287,7 @@ export const FileService = {
             }
 
             try {
-                await s3Service.delete(objectId);
+                await storageService.delete(objectId);
             } catch {
                 // The object may not exist if upload failed before multipart completion.
             }
@@ -537,42 +1351,9 @@ export const FileService = {
     ): Promise<void> => {
         const projectsRootFolder = await FileService.getRootFolder('projects', tx);
 
-        const subFolders: {
-            name: string;
-            displayName: string;
-            protectedFolderType:
-                | 'INVOICE'
-                | 'RFQ'
-                | 'PURCHASE_ORDER'
-                | 'PURCHASE_ORDER_CO'
-                | 'PRIME_CO'
-                | 'PRIME_CONTRACT'
-                | 'SCHEDULE';
-        }[] = [
-            { name: 'invoice', displayName: 'Invoice', protectedFolderType: 'INVOICE' },
-            { name: 'rfq', displayName: 'RFQ', protectedFolderType: 'RFQ' },
-            {
-                name: 'purchase order',
-                displayName: 'Purchase Order',
-                protectedFolderType: 'PURCHASE_ORDER',
-            },
-            {
-                name: 'purchase order co',
-                displayName: 'Purchase Order CO',
-                protectedFolderType: 'PURCHASE_ORDER_CO',
-            },
-            { name: 'prime co', displayName: 'Prime CO', protectedFolderType: 'PRIME_CO' },
-            {
-                name: 'prime contract',
-                displayName: 'Prime Contract',
-                protectedFolderType: 'PRIME_CONTRACT',
-            },
-            { name: 'schedule', displayName: 'Schedule', protectedFolderType: 'SCHEDULE' },
-        ];
-
         const projectFolder = await tx.file.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 name: projectId,
                 displayName,
                 type: 'FOLDER',
@@ -583,10 +1364,10 @@ export const FileService = {
             },
         });
 
-        for (const sf of subFolders) {
+        for (const sf of PROJECT_SUBFOLDERS) {
             await tx.file.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     name: sf.name,
                     displayName: sf.displayName,
                     type: 'FOLDER',
@@ -609,7 +1390,7 @@ export const FileService = {
 
         await tx.file.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 name: gcId,
                 displayName,
                 type: 'FOLDER',
@@ -630,7 +1411,7 @@ export const FileService = {
 
         await tx.file.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 name: vendorId,
                 displayName,
                 type: 'FOLDER',
@@ -651,7 +1432,7 @@ export const FileService = {
 
         await tx.file.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 name: employeeId,
                 displayName,
                 type: 'FOLDER',
@@ -663,18 +1444,8 @@ export const FileService = {
     },
 
     getProjectFolderId: async (projectId: string, tx?: TransactionClient): Promise<string> => {
-        const prisma = tx || prismaClient;
-
-        const projectFolder = await prisma.file.findFirst({
-            where: {
-                name: projectId,
-                protectedFolderType: 'PROJECT_ROOT',
-            },
-            select: { id: true },
-        });
-
-        if (!projectFolder)
-            throw new NotFoundError(`Project folder not found for project: ${projectId}`);
+        const projectFolder = await getProjectRootFolder(projectId, tx);
+        await ensureProjectStandardFolders(projectId, projectFolder, tx);
 
         return projectFolder.id;
     },
@@ -750,33 +1521,50 @@ export const FileService = {
         tx?: TransactionClient
     ): Promise<void> => {
         const prisma = tx || prismaClient;
+        const [file, targetFolder] = await Promise.all([
+            prisma.file.findUnique({
+                where: { id: fileId },
+                select: { name: true, deletedAt: true },
+            }),
+            prisma.file.findUnique({
+                where: { id: folderId },
+                select: { type: true, deletedAt: true },
+            }),
+        ]);
+
+        if (!file || file.deletedAt) throw new NotFoundError('File not found');
+        if (!targetFolder || targetFolder.type !== 'FOLDER' || targetFolder.deletedAt) {
+            throw new NotFoundError('Target folder not found');
+        }
+
+        const name = await assertUniqueSiblingName({
+            name: file.name,
+            parentId: folderId,
+            excludeId: fileId,
+            tx,
+        });
 
         await prisma.file.update({
             where: { id: fileId },
-            data: { parentId: folderId },
+            data: { parentId: folderId, name },
         });
     },
 
     getProjectSubFolderId: async (
         projectId: string,
-        type:
-            | 'INVOICE'
-            | 'RFQ'
-            | 'PURCHASE_ORDER'
-            | 'PURCHASE_ORDER_CO'
-            | 'PRIME_CO'
-            | 'PRIME_CONTRACT'
-            | 'SCHEDULE',
+        type: ProjectSubFolderType,
         tx?: TransactionClient
     ): Promise<string> => {
         const prisma = tx || prismaClient;
 
-        const projectFolderId = await FileService.getProjectFolderId(projectId, tx);
+        const projectFolder = await getProjectRootFolder(projectId, tx);
+        await ensureProjectStandardFolders(projectId, projectFolder, tx);
 
         const subFolder = await prisma.file.findFirst({
             where: {
-                parentId: projectFolderId,
+                parentId: projectFolder.id,
                 protectedFolderType: type,
+                deletedAt: null,
             },
             select: { id: true },
         });
@@ -833,14 +1621,20 @@ export const FileService = {
         return tempFolder.id;
     },
 
-    getFolderDetails: async (id: string): Promise<File> => {
+    getFolderDetails: async (id: string): Promise<FileWithChildren> => {
         const folder = await prismaClient.file.findUnique({
             where: { id },
             include: {
                 createdByUser: true,
                 children: {
                     where: { deletedAt: null },
-                    include: { createdByUser: true },
+                    include: {
+                        createdByUser: true,
+                        primeContracts: {
+                            select: { id: true, fileId: true, isPrimary: true },
+                            take: 1,
+                        },
+                    },
                 },
             },
         });
@@ -850,7 +1644,22 @@ export const FileService = {
         if (!folder || folder.type !== 'FOLDER')
             throw new NotFoundError('No folder found with id: ' + id);
 
-        return folder;
+        const children = await applyLatestChildUpdatedAt(folder.children);
+
+        if (isPrimeContractFolder(folder)) {
+            return {
+                ...folder,
+                children: children.map((child) => ({
+                    ...withPrimeContractMetadata(child),
+                    isDeletable: false,
+                })),
+            };
+        }
+
+        return {
+            ...folder,
+            children: children.map((child) => withPrimeContractMetadata(child)),
+        };
     },
 
     rename: async (request: FileFolderRenameRequest, userId: string): Promise<File> => {
@@ -867,10 +1676,16 @@ export const FileService = {
                 'Cannot rename this file / folder because it is protected or non-deletable.'
             );
 
+        const name = await assertUniqueSiblingName({
+            name: request.name,
+            parentId: file.parentId,
+            excludeId: file.id,
+        });
+
         const updated = await prismaClient.file.update({
             where: { id: request.id },
             data: {
-                name: request.name,
+                name,
             },
         });
 
@@ -999,17 +1814,48 @@ export const FileService = {
                 skip,
                 take,
                 orderBy: { [sortBy as keyof File]: sortOrder },
-                include: { createdByUser: true },
+                include: {
+                    createdByUser: true,
+                    primeContracts: {
+                        select: { id: true, fileId: true, isPrimary: true },
+                        take: 1,
+                    },
+                },
             }),
         ]);
+        const parentIds = Array.from(
+            new Set(data.map((file) => file.parentId).filter((id): id is string => Boolean(id)))
+        );
+        const primeContractParentIds =
+            parentIds.length > 0
+                ? new Set(
+                      (
+                          await prismaClient.file.findMany({
+                              where: {
+                                  id: { in: parentIds },
+                                  protectedFolderType: 'PRIME_CONTRACT',
+                              },
+                              select: { id: true },
+                          })
+                      ).map((folder) => folder.id)
+                  )
+                : new Set<string>();
 
         const dataWithBreadcrumbs = await Promise.all(
-            data.map(async (file) => ({
-                ...file,
-                breadcrumbs: await FileService.getBreadcrumbs(
-                    file.type === 'FOLDER' ? file.id : file.parentId || file.id
-                ),
-            }))
+            data.map(async (file) => {
+                const withMetadata = withPrimeContractMetadata(file);
+
+                return {
+                    ...withMetadata,
+                    isDeletable:
+                        file.parentId && primeContractParentIds.has(file.parentId)
+                            ? false
+                            : file.isDeletable,
+                    breadcrumbs: await FileService.getBreadcrumbs(
+                        file.type === 'FOLDER' ? file.id : file.parentId || file.id
+                    ),
+                };
+            })
         );
 
         return { data: dataWithBreadcrumbs, count };
@@ -1018,6 +1864,10 @@ export const FileService = {
     deleteFile: async (id: string, userId: string): Promise<void> => {
         const file = await prismaClient.file.findUnique({
             where: { id },
+            include: {
+                parent: { select: { protectedFolderType: true } },
+                primeContracts: { select: { id: true }, take: 1 },
+            },
         });
 
         if (!file) throw new NotFoundError('No file found with id: ' + id);
@@ -1025,6 +1875,10 @@ export const FileService = {
         checkDeletedAt(file);
 
         if (!file.isDeletable) throw new BadRequestError('Cannot delete this file.');
+
+        if (isPrimeContractFolder(file.parent) || file.primeContracts.length > 0) {
+            throw new BadRequestError('Prime contract files cannot be deleted from Files.');
+        }
 
         if (!UserService.getUser(userId))
             throw new NotFoundError('No user found with id: ' + userId);

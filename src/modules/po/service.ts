@@ -1,24 +1,310 @@
 import { POAttachment, Prisma, PurchaseOrder } from '@db/client';
+import { AccessContext } from '@lib/access';
+import { renderPdf, type PdfJsonObject } from '@lib/pdf-engine';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
+import { calculateCommercialDocumentTotals, roundMoney } from '@modules/commercial-document/totals';
 import { FileService } from '@modules/file/services';
+import { PdfNoticeService, type ResolvedPdfNotice } from '@modules/pdf/notice-service';
+import { resolvePdfProfile, type PdfProfile } from '@modules/pdf/profile-service';
+import {
+    PdfTermsService,
+    type PdfTermsOption,
+    type ResolvedPdfTerms,
+} from '@modules/pdf/terms-service';
 import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     AddPoAttachmentRequest,
+    GeneratePoPdfRequest,
     PoCreateRequest,
+    PoFromRfqRequest,
     PoUpdateRequest,
     RemovePoAttachmentRequest,
     SetPoCancelledRequest,
     SetPoDeliveredRequest,
-    SetPoDraftRequest,
     SetPoIssuedRequest,
 } from './models';
 import { generatePoNumber } from './utils';
+
+type PurchaseOrderPdfResult = {
+    bytes: Uint8Array;
+    fileName: string;
+    contentType: string;
+    requestHash: string | null;
+    cacheHit: boolean;
+};
+
+type SavedPurchaseOrderPdfResult = PurchaseOrderPdfResult & {
+    savedFileId: string;
+    savedAttachmentId: string | null;
+};
+
+type PurchaseOrderPdfOrder = Prisma.PurchaseOrderGetPayload<{
+    include: {
+        project: true;
+        vendor: true;
+        rfq: true;
+        tradeCategory: true;
+        lineItems: { include: { unit: true } };
+    };
+}>;
+
+const PURCHASE_ORDER_PDF_TEMPLATE_ID = 'purchase_order_v1';
+const PURCHASE_ORDER_PDF_TERMS_SECTION = 'purchaseOrder';
+const PURCHASE_ORDER_PDF_NOTICE_SECTION = 'purchaseOrder';
+const FILE_NAME_INVALID_CHARACTERS = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*']);
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+});
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+    currency: 'USD',
+    style: 'currency',
+});
+const quantityFormatter = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
+function assertRfqCanBeLinkedToPurchaseOrder(
+    rfq: { projectId: string; status: string },
+    projectId: string
+) {
+    if (rfq.projectId !== projectId) {
+        throw new BadRequestError('RFQ does not belong to the given project');
+    }
+    if (rfq.status !== 'AWARDED') {
+        throw new BadRequestError('Only AWARDED RFQs can be linked to a purchase order');
+    }
+}
+
+function assertPurchaseOrderVendorMatchesAwardedRfq(
+    rfq: { awardedVendorId: string | null },
+    vendorId: string
+) {
+    if (!rfq.awardedVendorId) {
+        throw new BadRequestError('RFQ has no awarded vendor');
+    }
+    if (rfq.awardedVendorId !== vendorId) {
+        throw new BadRequestError('PO vendor must match the awarded RFQ vendor');
+    }
+}
+
+function assertRfqDeliverableLineItems(
+    rfq: { rfqdeliverables: { id: string; deletedAt: Date | null }[] },
+    lineItems: { rfqDeliverableId?: string | null }[]
+) {
+    const deliverableById = new Map(
+        rfq.rfqdeliverables
+            .filter((deliverable) => !deliverable.deletedAt)
+            .map((deliverable) => [deliverable.id, deliverable])
+    );
+    const seenDeliverableIds = new Set<string>();
+
+    for (const lineItem of lineItems) {
+        if (!lineItem.rfqDeliverableId) continue;
+
+        if (seenDeliverableIds.has(lineItem.rfqDeliverableId)) {
+            throw new BadRequestError('Duplicate RFQ deliverable line item submitted');
+        }
+        seenDeliverableIds.add(lineItem.rfqDeliverableId);
+
+        if (!deliverableById.has(lineItem.rfqDeliverableId)) {
+            throw new BadRequestError('Line item does not belong to this RFQ');
+        }
+    }
+}
+
+function formatDate(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    return dateFormatter.format(new Date(value));
+}
+
+function toNumber(value: { toString(): string } | number | null | undefined): number {
+    if (value == null) return 0;
+    const numericValue = typeof value === 'number' ? value : Number(value.toString());
+    return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function formatQuantity(value: { toString(): string } | null | undefined): string {
+    const numericValue = toNumber(value);
+    return quantityFormatter.format(numericValue);
+}
+
+function formatCurrencyValue(value: { toString(): string } | number | null | undefined): string {
+    return currencyFormatter.format(toNumber(value));
+}
+
+function formatPercent(value: { toString(): string } | number | null | undefined): string {
+    const numericValue = toNumber(value);
+    if (numericValue === 0) return '0%';
+    return `${quantityFormatter.format(numericValue)}%`;
+}
+
+function formatPaymentTerms(value: string | null | undefined): string {
+    if (!value) return '';
+    if (value === 'DUE_ON_RECEIPT') return 'Due on Receipt';
+    return value
+        .split('_')
+        .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+        .join(' ');
+}
+
+function sanitizeFileName(value: string): string {
+    return (
+        Array.from(value)
+            .map((character) =>
+                FILE_NAME_INVALID_CHARACTERS.has(character) || character.charCodeAt(0) < 32
+                    ? '_'
+                    : character
+            )
+            .join('')
+            .replace(/\s+/g, ' ')
+            .trim() || 'purchase-order.pdf'
+    );
+}
+
+function formatProjectAddress(project: PurchaseOrderPdfOrder['project']): string {
+    return [project.streetAddress, project.city, project.state, project.zipCode]
+        .filter(Boolean)
+        .join(', ');
+}
+
+function buildPurchaseOrderPdfData(
+    po: PurchaseOrderPdfOrder,
+    requestedBy: string,
+    pdfProfile: PdfProfile,
+    terms: ResolvedPdfTerms,
+    notice: ResolvedPdfNotice
+): PdfJsonObject {
+    const logoPath = pdfProfile.company.logoPath || 'assets/logo.png';
+    const retainagePercent = toNumber(po.retainagePercent);
+    const lineAmounts = po.lineItems.map((item) =>
+        new Prisma.Decimal(item.quantity ?? 0).times(new Prisma.Decimal(item.unitPrice ?? 0))
+    );
+    const totals = calculateCommercialDocumentTotals({
+        lineAmounts,
+        negotiatedDiscount: toNumber(po.negotiatedDiscount),
+        shippingHandlingFee: toNumber(po.shippingHandlingFee),
+        taxPercent: po.taxPercent == null ? null : toNumber(po.taxPercent),
+    });
+    const retainageAmount = toNumber(totals.total) * (retainagePercent / 100);
+
+    return {
+        company: {
+            name: pdfProfile.company.name,
+            address_lines: pdfProfile.company.addressLines,
+            phone: pdfProfile.company.phone,
+            logo_path: logoPath,
+        },
+        purchase_order: {
+            number: po.poNumber,
+            description: po.description || '',
+            status: po.status,
+            issued_on: formatDate(po.issuedAt || po.createdAt || new Date()),
+            expected_date: formatDate(po.expectedDate),
+            trade_category: po.tradeCategory.label,
+            lead_time: po.leadTime || '',
+            payment_terms: formatPaymentTerms(po.paymentTerms),
+        },
+        project: {
+            name: po.project.name,
+            number: po.project.jobNumber || po.project.contractNumber || '',
+            contract_number: po.project.contractNumber || '',
+        },
+        vendor: {
+            name: po.vendor.name,
+            address: po.vendor.address || '',
+            email: po.vendor.email || '',
+            phone: po.vendor.phone || '',
+        },
+        ship_to: {
+            address:
+                po.shipToAddress ||
+                formatProjectAddress(po.project) ||
+                pdfProfile.company.addressLines.join(', '),
+        },
+        request: {
+            requested_by: requestedBy,
+        },
+        line_items: po.lineItems.map((item, index) => ({
+            line_number: String(item.lineNumber || index + 1),
+            description: item.description,
+            quantity: formatQuantity(item.quantity),
+            unit: item.unit.label,
+            unit_price: formatCurrencyValue(item.unitPrice),
+            amount: formatCurrencyValue(item.amount),
+            notes: item.notes || '',
+        })),
+        line_items_count: String(po.lineItems.length),
+        summary: {
+            subtotal: formatCurrencyValue(totals.subtotal),
+            negotiated_discount: formatCurrencyValue(totals.negotiatedDiscount),
+            shipping_and_handling_fee: formatCurrencyValue(totals.shippingHandling),
+            tax_label: po.taxPercent ? `Tax (${formatPercent(po.taxPercent)})` : 'Tax',
+            tax_amount: formatCurrencyValue(totals.taxAmount),
+            total: formatCurrencyValue(totals.total),
+            retainage_percent: formatPercent(po.retainagePercent),
+            retainage_amount: formatCurrencyValue(retainageAmount),
+        },
+        terms: {
+            included: terms.included,
+            html: terms.html,
+        },
+        notice: {
+            included: notice.included,
+            title: notice.title,
+            html: notice.html,
+        },
+        footer: {
+            left: `${pdfProfile.company.name} - ${po.poNumber}`,
+        },
+    };
+}
+
+function buildPurchaseOrderPdfFileName(po: PurchaseOrderPdfOrder): string {
+    return sanitizeFileName(`${po.poNumber || 'purchase-order'}.pdf`);
+}
+
+function formatSavedPdfTimestamp(date = new Date()): string {
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+
+    return [
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+        `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}-${milliseconds}`,
+    ].join(' ');
+}
+
+function buildSavedPurchaseOrderPdfFileName(fileName: string): string {
+    const baseName = fileName.toLowerCase().endsWith('.pdf') ? fileName.slice(0, -4) : fileName;
+    return sanitizeFileName(`${baseName} - ${formatSavedPdfTimestamp()}.pdf`);
+}
+
+async function assertUnitsExist(unitIds: string[]) {
+    const uniqueUnitIds = [...new Set(unitIds)];
+    const units = await prisma.lookup.findMany({ where: { id: { in: uniqueUnitIds } } });
+    if (units.length !== uniqueUnitIds.length) {
+        throw new NotFoundError('One or more line item units not found');
+    }
+}
+
+async function assertCostCodesExist(costCodeIds: string[]) {
+    const uniqueCostCodeIds = [...new Set(costCodeIds)];
+    const costCodes = await prisma.costCode.findMany({
+        where: { id: { in: uniqueCostCodeIds } },
+    });
+    if (costCodes.length !== uniqueCostCodeIds.length) {
+        throw new NotFoundError('One or more cost codes not found');
+    }
+}
 
 export const PoService = {
     getPurchaseOrder: async (id: string): Promise<PurchaseOrder> => {
@@ -42,8 +328,128 @@ export const PoService = {
         return po;
     },
 
+    getDefaultPdfTerms: async (): Promise<{ html: string }> => {
+        return PdfTermsService.getDefaultTerms(PURCHASE_ORDER_PDF_TERMS_SECTION);
+    },
+
+    getPdfTermsOptions: async (): Promise<PdfTermsOption[]> => {
+        return (await PdfTermsService.getConfig(PURCHASE_ORDER_PDF_TERMS_SECTION)).options;
+    },
+
+    generatePdf: async (
+        id: string,
+        requestedBy: string,
+        pdfRequest: GeneratePoPdfRequest
+    ): Promise<PurchaseOrderPdfResult> => {
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: {
+                project: true,
+                vendor: true,
+                rfq: true,
+                tradeCategory: true,
+                lineItems: {
+                    where: { deletedAt: null },
+                    orderBy: { lineNumber: 'asc' },
+                    include: { unit: true },
+                },
+            },
+        });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+        if (!po.lineItems.length) {
+            throw new BadRequestError(
+                'Purchase order must have at least one line item to generate a PDF'
+            );
+        }
+
+        const fileName = buildPurchaseOrderPdfFileName(po);
+        const [pdfProfile, terms, notice] = await Promise.all([
+            resolvePdfProfile(),
+            PdfTermsService.resolveForRequest(PURCHASE_ORDER_PDF_TERMS_SECTION, pdfRequest),
+            PdfNoticeService.resolveForRequest(PURCHASE_ORDER_PDF_NOTICE_SECTION, pdfRequest),
+        ]);
+        const pdf = await renderPdf({
+            template_id: PURCHASE_ORDER_PDF_TEMPLATE_ID,
+            data: buildPurchaseOrderPdfData(po, requestedBy, pdfProfile, terms, notice),
+            branding: {
+                company_name: pdfProfile.company.name,
+            },
+            settings: {
+                filename: fileName,
+            },
+        });
+
+        return {
+            ...pdf,
+            fileName,
+        };
+    },
+
+    savePdf: async (
+        id: string,
+        requestedBy: string,
+        userId: string,
+        pdfRequest: GeneratePoPdfRequest
+    ): Promise<SavedPurchaseOrderPdfResult> => {
+        const pdf = await PoService.generatePdf(id, requestedBy, pdfRequest);
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                projectId: true,
+                poNumber: true,
+                vendorId: true,
+                deletedAt: true,
+            },
+        });
+        if (!po) throw new NotFoundError('Purchase order not found');
+        checkDeletedAt(po);
+
+        const folderId = await FileService.getOrCreateProjectEntityFolder(
+            { projectId: po.projectId, entityType: 'PURCHASE_ORDER', entityId: po.id },
+            userId
+        );
+        const savedFileName = buildSavedPurchaseOrderPdfFileName(pdf.fileName);
+        const saved = await FileService.saveGeneratedFile(
+            {
+                name: savedFileName,
+                displayName: savedFileName,
+                parentId: folderId,
+                mimeType: pdf.contentType,
+                content: pdf.bytes,
+                afterCreate: async (file, tx) => {
+                    const attachment = await tx.pOAttachment.create({
+                        data: { id: generateNanoId(), purchaseOrderId: po.id, documentId: file.id },
+                    });
+
+                    await ActivityLogService.log({
+                        userId,
+                        entityType: 'purchaseOrder',
+                        entityId: po.id,
+                        action: 'create',
+                        description: `Saved generated PDF ${file.name} to PO ${po.poNumber}`,
+                        affectedEntityIds: [file.id, po.projectId, po.vendorId],
+                        tx,
+                    });
+
+                    return { attachmentId: attachment.id };
+                },
+            },
+            userId
+        );
+
+        return {
+            ...pdf,
+            fileName: saved.file.name,
+            savedFileId: saved.file.id,
+            savedAttachmentId: saved.result?.attachmentId ?? null,
+        };
+    },
+
     getPurchaseOrders: async (
-        params: PaginationParams
+        params: PaginationParams,
+        access?: AccessContext
     ): Promise<{ data: PurchaseOrder[]; count: number }> => {
         const { filter, skip, take, sortBy, sortOrder, search } = params;
         const { projectId, vendorId, rfqId, status, tradeCategoryId, ...restFilter } = filter || {};
@@ -63,11 +469,28 @@ export const PoService = {
                 ],
             }),
         };
+        const scopedWhereClause: Prisma.PurchaseOrderWhereInput =
+            access && access.projectScope !== 'all'
+                ? {
+                      AND: [
+                          whereClause,
+                          access.employeeId
+                              ? {
+                                    project: {
+                                        teamMembers: {
+                                            some: { employeeId: access.employeeId },
+                                        },
+                                    },
+                                }
+                              : { id: { in: [] } },
+                      ],
+                  }
+                : whereClause;
 
         const [count, data] = await prisma.$transaction([
-            prisma.purchaseOrder.count({ where: whereClause }),
+            prisma.purchaseOrder.count({ where: scopedWhereClause }),
             prisma.purchaseOrder.findMany({
-                where: whereClause,
+                where: scopedWhereClause,
                 skip,
                 take,
                 orderBy: { [sortBy as keyof PurchaseOrder]: sortOrder },
@@ -75,6 +498,16 @@ export const PoService = {
                     project: true,
                     vendor: true,
                     tradeCategory: true,
+                    subChangeOrders: {
+                        where: { deletedAt: null, status: 'APPROVED' },
+                        select: {
+                            id: true,
+                            amount: true,
+                            negotiatedDiscount: true,
+                            shippingHandlingFee: true,
+                            status: true,
+                        },
+                    },
                 },
             }),
         ]);
@@ -93,7 +526,8 @@ export const PoService = {
             tradeCategoryId,
             expectedDate,
             taxPercent,
-            markupAmount,
+            negotiatedDiscount,
+            shippingHandlingFee,
             retainagePercent,
             lineItems,
             ...rest
@@ -102,61 +536,49 @@ export const PoService = {
         const project = await prisma.project.findUnique({ where: { id: projectId } });
         if (!project) throw new NotFoundError('Project not found');
         checkDeletedAt(project);
-        if (!project.jobNumber) {
-            throw new BadRequestError('Project must have a job number to create a PO');
-        }
-
         const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
         if (!vendor) throw new NotFoundError('Vendor not found');
         checkDeletedAt(vendor);
 
         if (rfqId) {
-            const rfq = await prisma.rFQ.findUnique({ where: { id: rfqId } });
+            const rfq = await prisma.rFQ.findUnique({
+                where: { id: rfqId },
+                include: {
+                    rfqdeliverables: {
+                        select: { id: true, deletedAt: true },
+                    },
+                },
+            });
             if (!rfq) throw new NotFoundError('RFQ not found');
             checkDeletedAt(rfq);
-            if (rfq.projectId !== projectId) {
-                throw new BadRequestError('RFQ does not belong to the given project');
-            }
+            assertRfqCanBeLinkedToPurchaseOrder(rfq, projectId);
+            assertPurchaseOrderVendorMatchesAwardedRfq(rfq, vendorId);
+            assertRfqDeliverableLineItems(rfq, lineItems);
         }
 
         const tradeCategory = await prisma.lookup.findUnique({ where: { id: tradeCategoryId } });
         if (!tradeCategory) throw new NotFoundError('Trade category not found');
 
-        const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
-        const units = await prisma.lookup.findMany({ where: { id: { in: unitIds } } });
-        if (units.length !== unitIds.length) {
-            throw new NotFoundError('One or more line item units not found');
-        }
-
-        const costCodeIds = [
-            ...new Set(lineItems.map((li) => li.costCodeId).filter((v): v is string => !!v)),
-        ];
-        if (costCodeIds.length) {
-            const costCodes = await prisma.costCode.findMany({
-                where: { id: { in: costCodeIds } },
-            });
-            if (costCodes.length !== costCodeIds.length) {
-                throw new NotFoundError('One or more cost codes not found');
-            }
-        }
+        await assertUnitsExist(lineItems.map((li) => li.unitId));
+        await assertCostCodesExist(lineItems.map((li) => li.costCodeId));
 
         const lineAmounts = lineItems.map((li) =>
-            new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice))
+            roundMoney(new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice)))
         );
-        const subtotal = lineAmounts.reduce((sum, amt) => sum.plus(amt), new Prisma.Decimal(0));
-        const taxAmount =
-            taxPercent != null
-                ? subtotal.times(new Prisma.Decimal(taxPercent)).dividedBy(100)
-                : new Prisma.Decimal(0);
-        const total = subtotal.plus(taxAmount);
+        const totals = calculateCommercialDocumentTotals({
+            lineAmounts,
+            negotiatedDiscount,
+            shippingHandlingFee,
+            taxPercent,
+        });
 
         return await prisma.$transaction(async (tx) => {
-            const poNumber = await generatePoNumber(tx, project.jobNumber!);
+            const poNumber = await generatePoNumber(tx);
 
             const po = await tx.purchaseOrder.create({
                 data: {
                     ...rest,
-                    id: ulid(),
+                    id: generateNanoId(),
                     poNumber,
                     projectId,
                     vendorId,
@@ -164,11 +586,14 @@ export const PoService = {
                     tradeCategoryId,
                     status: 'DRAFT',
                     expectedDate: expectedDate ? new Date(expectedDate) : null,
-                    subtotal,
-                    markupAmount: markupAmount ?? null,
+                    subtotal: totals.subtotal,
+                    negotiatedDiscount:
+                        negotiatedDiscount != null ? totals.negotiatedDiscount : null,
+                    shippingHandlingFee:
+                        shippingHandlingFee != null ? totals.shippingHandling : null,
                     taxPercent: taxPercent ?? null,
-                    taxAmount: taxPercent != null ? taxAmount : null,
-                    total,
+                    taxAmount: taxPercent != null ? totals.taxAmount : null,
+                    total: totals.total,
                     retainagePercent: retainagePercent ?? 0,
                     createdBy: userId,
                 },
@@ -176,7 +601,7 @@ export const PoService = {
 
             await tx.purchaseOrderLineItem.createMany({
                 data: lineItems.map((li, i) => ({
-                    id: ulid(),
+                    id: generateNanoId(),
                     purchaseOrderId: po.id,
                     lineNumber: i + 1,
                     description: li.description,
@@ -184,7 +609,7 @@ export const PoService = {
                     quantity: new Prisma.Decimal(li.quantity),
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],
-                    costCodeId: li.costCodeId ?? null,
+                    costCodeId: li.costCodeId,
                     notes: li.notes ?? null,
                 })),
             });
@@ -203,7 +628,25 @@ export const PoService = {
         });
     },
 
-    createFromRfq: async (rfqId: string, userId: string): Promise<PurchaseOrder> => {
+    createFromRfq: async (
+        rfqId: string,
+        request: PoFromRfqRequest,
+        userId: string
+    ): Promise<PurchaseOrder> => {
+        const {
+            description,
+            leadTime,
+            shipToAddress,
+            address,
+            expectedDate,
+            taxPercent,
+            negotiatedDiscount,
+            shippingHandlingFee,
+            retainagePercent,
+            paymentTerms,
+            notes,
+            lineItems,
+        } = request;
         const rfq = await prisma.rFQ.findUnique({
             where: { id: rfqId },
             include: {
@@ -220,9 +663,6 @@ export const PoService = {
         if (!rfq.awardedVendorId || rfq.awardedAmount === null) {
             throw new BadRequestError('RFQ has no awarded vendor or amount');
         }
-        if (!rfq.project.jobNumber) {
-            throw new BadRequestError('Project must have a job number to create a PO');
-        }
         if (!rfq.rfqdeliverables.length) {
             throw new BadRequestError('RFQ has no deliverables');
         }
@@ -233,41 +673,83 @@ export const PoService = {
 
         const awardedQuote = rfq.vendorQuotes[0];
 
-        const subtotal = new Prisma.Decimal(rfq.awardedAmount);
-        const total = subtotal;
+        const deliverableById = new Map(
+            rfq.rfqdeliverables.map((deliverable) => [deliverable.id, deliverable])
+        );
+        const seenDeliverableIds = new Set<string>();
+
+        for (const lineItem of lineItems) {
+            if (!lineItem.rfqDeliverableId) continue;
+
+            if (seenDeliverableIds.has(lineItem.rfqDeliverableId)) {
+                throw new BadRequestError('Duplicate RFQ deliverable line item submitted');
+            }
+            seenDeliverableIds.add(lineItem.rfqDeliverableId);
+
+            if (!deliverableById.has(lineItem.rfqDeliverableId)) {
+                throw new BadRequestError('Line item does not belong to this RFQ');
+            }
+        }
+
+        await assertUnitsExist(lineItems.map((lineItem) => lineItem.unitId));
+        await assertCostCodesExist(lineItems.map((lineItem) => lineItem.costCodeId));
+
+        const lineAmounts = lineItems.map((lineItem) =>
+            roundMoney(
+                new Prisma.Decimal(lineItem.quantity).times(new Prisma.Decimal(lineItem.unitPrice))
+            )
+        );
+        const totals = calculateCommercialDocumentTotals({
+            lineAmounts,
+            negotiatedDiscount,
+            shippingHandlingFee,
+            taxPercent,
+        });
 
         return await prisma.$transaction(async (tx) => {
-            const poNumber = await generatePoNumber(tx, rfq.project.jobNumber!);
+            const poNumber = await generatePoNumber(tx);
 
             const po = await tx.purchaseOrder.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     poNumber,
                     projectId: rfq.projectId,
                     vendorId: rfq.awardedVendorId!,
                     rfqId: rfq.id,
                     tradeCategoryId: rfq.typeId,
                     status: 'DRAFT',
-                    description: rfq.description ?? rfq.title,
-                    leadTime: awardedQuote?.leadTime ?? null,
-                    subtotal,
-                    total,
-                    paymentTerms: vendor.paymentTerms,
+                    description: description ?? rfq.description ?? rfq.title,
+                    leadTime: leadTime ?? awardedQuote?.leadTime ?? null,
+                    shipToAddress: shipToAddress ?? null,
+                    address: address ?? null,
+                    expectedDate: expectedDate ? new Date(expectedDate) : null,
+                    subtotal: totals.subtotal,
+                    negotiatedDiscount:
+                        negotiatedDiscount != null ? totals.negotiatedDiscount : null,
+                    shippingHandlingFee:
+                        shippingHandlingFee != null ? totals.shippingHandling : null,
+                    taxPercent: taxPercent ?? null,
+                    taxAmount: taxPercent != null ? totals.taxAmount : null,
+                    total: totals.total,
+                    retainagePercent: retainagePercent ?? 0,
+                    paymentTerms: paymentTerms ?? vendor.paymentTerms,
+                    notes: notes ?? null,
                     createdBy: userId,
                 },
             });
 
             await tx.purchaseOrderLineItem.createMany({
-                data: rfq.rfqdeliverables.map((d, i) => ({
-                    id: ulid(),
+                data: lineItems.map((lineItem, i) => ({
+                    id: generateNanoId(),
                     purchaseOrderId: po.id,
                     lineNumber: i + 1,
-                    description: `Item ${i + 1}`,
-                    unitId: d.unitId,
-                    quantity: d.quantity,
-                    unitPrice: new Prisma.Decimal(0),
-                    amount: new Prisma.Decimal(0),
-                    costCodeId: d.costCodeId ?? null,
+                    description: lineItem.description,
+                    unitId: lineItem.unitId,
+                    quantity: new Prisma.Decimal(lineItem.quantity),
+                    unitPrice: new Prisma.Decimal(lineItem.unitPrice),
+                    amount: lineAmounts[i],
+                    costCodeId: lineItem.costCodeId,
+                    notes: lineItem.notes ?? null,
                 })),
             });
 
@@ -297,7 +779,8 @@ export const PoService = {
             tradeCategoryId,
             expectedDate,
             taxPercent,
-            markupAmount,
+            negotiatedDiscount,
+            shippingHandlingFee,
             retainagePercent,
             lineItems,
             ...rest
@@ -318,44 +801,36 @@ export const PoService = {
         checkDeletedAt(vendor);
 
         if (rfqId) {
-            const rfq = await prisma.rFQ.findUnique({ where: { id: rfqId } });
+            const rfq = await prisma.rFQ.findUnique({
+                where: { id: rfqId },
+                include: {
+                    rfqdeliverables: {
+                        select: { id: true, deletedAt: true },
+                    },
+                },
+            });
             if (!rfq) throw new NotFoundError('RFQ not found');
             checkDeletedAt(rfq);
-            if (rfq.projectId !== projectId) {
-                throw new BadRequestError('RFQ does not belong to the given project');
-            }
+            assertRfqCanBeLinkedToPurchaseOrder(rfq, projectId);
+            assertPurchaseOrderVendorMatchesAwardedRfq(rfq, vendorId);
+            assertRfqDeliverableLineItems(rfq, lineItems);
         }
 
         const tradeCategory = await prisma.lookup.findUnique({ where: { id: tradeCategoryId } });
         if (!tradeCategory) throw new NotFoundError('Trade category not found');
 
-        const unitIds = [...new Set(lineItems.map((li) => li.unitId))];
-        const units = await prisma.lookup.findMany({ where: { id: { in: unitIds } } });
-        if (units.length !== unitIds.length) {
-            throw new NotFoundError('One or more line item units not found');
-        }
-
-        const costCodeIds = [
-            ...new Set(lineItems.map((li) => li.costCodeId).filter((v): v is string => !!v)),
-        ];
-        if (costCodeIds.length) {
-            const costCodes = await prisma.costCode.findMany({
-                where: { id: { in: costCodeIds } },
-            });
-            if (costCodes.length !== costCodeIds.length) {
-                throw new NotFoundError('One or more cost codes not found');
-            }
-        }
+        await assertUnitsExist(lineItems.map((li) => li.unitId));
+        await assertCostCodesExist(lineItems.map((li) => li.costCodeId));
 
         const lineAmounts = lineItems.map((li) =>
-            new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice))
+            roundMoney(new Prisma.Decimal(li.quantity).times(new Prisma.Decimal(li.unitPrice)))
         );
-        const subtotal = lineAmounts.reduce((sum, amt) => sum.plus(amt), new Prisma.Decimal(0));
-        const taxAmount =
-            taxPercent != null
-                ? subtotal.times(new Prisma.Decimal(taxPercent)).dividedBy(100)
-                : new Prisma.Decimal(0);
-        const total = subtotal.plus(taxAmount);
+        const totals = calculateCommercialDocumentTotals({
+            lineAmounts,
+            negotiatedDiscount,
+            shippingHandlingFee,
+            taxPercent,
+        });
 
         return await prisma.$transaction(async (tx) => {
             await RevisionService.create(tx, {
@@ -372,11 +847,14 @@ export const PoService = {
                     rfqId: rfqId ?? null,
                     tradeCategoryId,
                     expectedDate: expectedDate ? new Date(expectedDate) : null,
-                    subtotal,
-                    markupAmount: markupAmount ?? null,
+                    subtotal: totals.subtotal,
+                    negotiatedDiscount:
+                        negotiatedDiscount != null ? totals.negotiatedDiscount : null,
+                    shippingHandlingFee:
+                        shippingHandlingFee != null ? totals.shippingHandling : null,
                     taxPercent: taxPercent ?? null,
-                    taxAmount: taxPercent != null ? taxAmount : null,
-                    total,
+                    taxAmount: taxPercent != null ? totals.taxAmount : null,
+                    total: totals.total,
                     retainagePercent: retainagePercent ?? 0,
                 },
             });
@@ -384,7 +862,7 @@ export const PoService = {
             await tx.purchaseOrderLineItem.deleteMany({ where: { purchaseOrderId: id } });
             await tx.purchaseOrderLineItem.createMany({
                 data: lineItems.map((li, i) => ({
-                    id: ulid(),
+                    id: generateNanoId(),
                     purchaseOrderId: id,
                     lineNumber: i + 1,
                     description: li.description,
@@ -392,7 +870,7 @@ export const PoService = {
                     quantity: new Prisma.Decimal(li.quantity),
                     unitPrice: new Prisma.Decimal(li.unitPrice),
                     amount: lineAmounts[i],
-                    costCodeId: li.costCodeId ?? null,
+                    costCodeId: li.costCodeId,
                     notes: li.notes ?? null,
                 })),
             });
@@ -438,15 +916,15 @@ export const PoService = {
         if (existing) throw new ConflictError('File already attached to a PO');
 
         return await prisma.$transaction(async (tx) => {
-            const folderId = await FileService.getProjectSubFolderId(
-                po.projectId,
-                'PURCHASE_ORDER',
+            const folderId = await FileService.getOrCreateProjectEntityFolder(
+                { projectId: po.projectId, entityType: 'PURCHASE_ORDER', entityId: po.id },
+                userId,
                 tx
             );
             await FileService.moveFileToFolder(documentId, folderId, tx);
 
             const attachment = await tx.pOAttachment.create({
-                data: { id: ulid(), purchaseOrderId, documentId },
+                data: { id: generateNanoId(), purchaseOrderId, documentId },
             });
 
             await ActivityLogService.log({
@@ -486,40 +964,6 @@ export const PoService = {
             description: `Removed attachment ${attachment.document.name} from PO ${attachment.purchaseOrder.poNumber}`,
             affectedEntityIds: [attachment.documentId],
         });
-    },
-
-    setDraft: async (request: SetPoDraftRequest, userId: string): Promise<PurchaseOrder> => {
-        const { id } = request;
-        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
-        if (!po) throw new NotFoundError('Purchase order not found');
-        checkDeletedAt(po);
-        if (po.status === 'DRAFT') {
-            throw new BadRequestError('PO is already in DRAFT');
-        }
-
-        const updated = await prisma.purchaseOrder.update({
-            where: { id },
-            data: {
-                status: 'DRAFT',
-                issuedBy: null,
-                issuedAt: null,
-                deliveryDate: null,
-                cancelledBy: null,
-                cancelledAt: null,
-                cancellationReason: null,
-            },
-        });
-
-        await ActivityLogService.log({
-            userId,
-            entityType: 'purchaseOrder',
-            entityId: id,
-            action: 'update',
-            description: `Set PO ${updated.poNumber} to DRAFT`,
-            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
-        });
-
-        return updated;
     },
 
     setIssued: async (request: SetPoIssuedRequest, userId: string): Promise<PurchaseOrder> => {
@@ -582,7 +1026,15 @@ export const PoService = {
         userId: string
     ): Promise<PurchaseOrder> => {
         const { id, cancellationReason } = request;
-        const po = await prisma.purchaseOrder.findUnique({ where: { id } });
+        const po = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: {
+                subChangeOrders: {
+                    where: { deletedAt: null, status: { not: 'VOID' } },
+                    select: { id: true, scoNumber: true, projectId: true },
+                },
+            },
+        });
         if (!po) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(po);
         if (po.status === 'CANCELLED') {
@@ -592,25 +1044,60 @@ export const PoService = {
             throw new BadRequestError('Delivered PO cannot be cancelled');
         }
 
-        const updated = await prisma.purchaseOrder.update({
-            where: { id },
-            data: {
-                status: 'CANCELLED',
-                cancelledBy: userId,
-                cancelledAt: new Date(),
-                cancellationReason,
-            },
-        });
+        const cancelledAt = new Date();
+        const voidReason = `Purchase order ${po.poNumber} was cancelled: ${cancellationReason}`;
 
-        await ActivityLogService.log({
-            userId,
-            entityType: 'purchaseOrder',
-            entityId: id,
-            action: 'update',
-            description: `Cancelled PO ${updated.poNumber}`,
-            affectedEntityIds: [po.projectId, po.vendorId, ...(po.rfqId ? [po.rfqId] : [])],
-        });
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.purchaseOrder.update({
+                where: { id },
+                data: {
+                    status: 'CANCELLED',
+                    cancelledBy: userId,
+                    cancelledAt,
+                    cancellationReason,
+                },
+            });
 
-        return updated;
+            if (po.subChangeOrders.length > 0) {
+                await tx.subChangeOrder.updateMany({
+                    where: { purchaseOrderId: id, deletedAt: null, status: { not: 'VOID' } },
+                    data: {
+                        status: 'VOID',
+                        voidedBy: userId,
+                        voidedAt: cancelledAt,
+                        voidReason,
+                    },
+                });
+
+                for (const sco of po.subChangeOrders) {
+                    await ActivityLogService.log({
+                        userId,
+                        entityType: 'subChangeOrder',
+                        entityId: sco.id,
+                        action: 'update',
+                        description: `Voided SCO ${sco.scoNumber} because PO ${po.poNumber} was cancelled`,
+                        affectedEntityIds: [po.projectId, id],
+                        tx,
+                    });
+                }
+            }
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'purchaseOrder',
+                entityId: id,
+                action: 'update',
+                description: `Cancelled PO ${updated.poNumber}`,
+                affectedEntityIds: [
+                    po.projectId,
+                    po.vendorId,
+                    ...(po.rfqId ? [po.rfqId] : []),
+                    ...po.subChangeOrders.map((sco) => sco.id),
+                ],
+                tx,
+            });
+
+            return updated;
+        });
     },
 };

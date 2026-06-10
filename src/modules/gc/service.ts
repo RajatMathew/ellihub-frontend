@@ -4,8 +4,8 @@ import { PaginationParams } from '@middleware';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     AddGcDocumentRequest,
@@ -63,6 +63,21 @@ type GcStats = {
     totalCommitted: number;
 };
 
+const optionalNullableChanged = <T>(next: T | null | undefined, current: T | null) =>
+    next !== undefined && (next ?? null) !== current;
+
+const hasGcProfileChanged = (gc: GeneralContractor, request: GcUpdateRequest) =>
+    request.name !== gc.name ||
+    request.gcTypeId !== gc.gcTypeId ||
+    request.status !== gc.status ||
+    request.paymentTerms !== gc.paymentTerms ||
+    request.retainagePercent !== gc.retainagePercent ||
+    optionalNullableChanged(request.address, gc.address) ||
+    optionalNullableChanged(request.email, gc.email) ||
+    optionalNullableChanged(request.phone, gc.phone) ||
+    optionalNullableChanged(request.website, gc.website) ||
+    optionalNullableChanged(request.fax, gc.fax);
+
 const getProjectMetricsByGcId = async (gcIds: string[]): Promise<Map<string, GcProjectMetrics>> => {
     if (gcIds.length === 0) return new Map();
 
@@ -104,7 +119,7 @@ export const GcService = {
 
         return await prisma.$transaction(async (tx) => {
             const gc = await tx.generalContractor.create({
-                data: { ...rest, id: ulid(), gcTypeId },
+                data: { ...rest, id: generateNanoId(), gcTypeId },
             });
 
             await FileService.createGcFolder(tx, gc.id, request.name, userId);
@@ -172,6 +187,8 @@ export const GcService = {
         const type = await prisma.lookup.findUnique({ where: { id: gcTypeId } });
         if (!type) throw new NotFoundError('GC type not found');
 
+        const profileChanged = hasGcProfileChanged(gc, request);
+
         return await prisma.$transaction(async (tx) => {
             const updated = await tx.generalContractor.update({
                 where: { id },
@@ -183,14 +200,16 @@ export const GcService = {
                 await FileService.updateFolderDisplayName(folderId, request.name, tx);
             }
 
-            await ActivityLogService.log({
-                userId,
-                entityType: 'gc',
-                entityId: updated.id,
-                action: 'update',
-                description: `Updated general contractor ${updated.name}`,
-                tx,
-            });
+            if (profileChanged) {
+                await ActivityLogService.log({
+                    userId,
+                    entityType: 'gc',
+                    entityId: updated.id,
+                    action: 'update',
+                    description: `Updated general contractor ${updated.name}`,
+                    tx,
+                });
+            }
 
             return updated;
         });
@@ -205,6 +224,26 @@ export const GcService = {
 
         checkDeletedAt(gc);
 
+        const linkedProjectWhere = { gcId: id, deletedAt: null };
+        const [linkedProjectCount, linkedProject] = await Promise.all([
+            prisma.project.count({ where: linkedProjectWhere }),
+            prisma.project.findFirst({
+                where: linkedProjectWhere,
+                select: { name: true },
+                orderBy: { name: 'asc' },
+            }),
+        ]);
+        if (linkedProjectCount) {
+            const projectName = linkedProject?.name ?? 'a project';
+            const projectText =
+                linkedProjectCount === 1
+                    ? `project ${projectName}`
+                    : `${linkedProjectCount} projects, including ${projectName}`;
+            throw new ConflictError(
+                `Cannot delete general contractor because it is linked to ${projectText}. Reassign the project first.`
+            );
+        }
+
         const affectedContacts = await prisma.contact.findMany({
             where: { generalContractorId: id },
             select: { id: true },
@@ -213,7 +252,7 @@ export const GcService = {
         await prisma.$transaction([
             prisma.contact.updateMany({
                 where: { generalContractorId: id },
-                data: { generalContractorId: null },
+                data: { generalContractorId: null, isPrimary: false },
             }),
             prisma.generalContractor.update({
                 where: { id },
@@ -259,7 +298,7 @@ export const GcService = {
 
             const doc = await tx.gCDocument.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     gcId,
                     fileId,
                     expiresOn: expiresOn ? new Date(expiresOn) : null,

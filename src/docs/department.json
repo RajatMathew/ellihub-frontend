@@ -187,7 +187,7 @@
         "/hr/department/employee/assign": {
             "patch": {
                 "tags": ["Departments"],
-                "summary": "Assign an employee to a department with a role",
+                "summary": "Assign an employee to a department",
                 "operationId": "assignEmployeeToDepartment",
                 "requestBody": {
                     "required": true,
@@ -279,11 +279,10 @@
             },
             "DepartmentAssignEmployeeRequest": {
                 "type": "object",
-                "required": ["departmentId", "employeeId", "roleId"],
+                "required": ["departmentId", "employeeId"],
                 "properties": {
                     "departmentId": { "type": "string", "description": "Department ULID" },
-                    "employeeId": { "type": "string", "description": "Employee ULID" },
-                    "roleId": { "type": "string", "description": "Role ULID (Lookup of type role)" }
+                    "employeeId": { "type": "string", "description": "Employee ULID" }
                 }
             },
             "DepartmentRemoveEmployeeRequest": {

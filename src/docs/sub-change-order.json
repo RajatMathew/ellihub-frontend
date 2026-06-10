@@ -33,7 +33,7 @@
             },
             "post": {
                 "tags": ["Sub Change Order"],
-                "summary": "Create a sub change order (auto-generates scoNumber as SCO-{jobNumber}-NNN)",
+                "summary": "Create a sub change order (auto-generates scoNumber as {poNumber}-NN)",
                 "operationId": "createSubChangeOrder",
                 "requestBody": {
                     "required": true,
@@ -53,7 +53,7 @@
                             }
                         }
                     },
-                    "400": { "description": "Validation / project missing job number", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Validation / purchase order not issued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Project / change type / unit / category / cost code not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             },
@@ -207,15 +207,14 @@
                 "required": ["projectId", "purchaseOrderId", "date", "title", "lineItems"],
                 "properties": {
                     "projectId": { "type": "string" },
-                    "purchaseOrderId": { "type": "string", "description": "Mandatory link to the parent PO; must belong to the same project" },
+                    "purchaseOrderId": { "type": "string", "description": "Mandatory link to the parent PO; must belong to the same project and must not be cancelled" },
                     "date": { "type": "string", "format": "date" },
                     "title": { "type": "string" },
                     "description": { "type": "string", "nullable": true },
-                    "markupAmount": { "type": "number", "nullable": true },
-                    "scheduleImpactDays": { "type": "integer", "nullable": true },
-                    "requestedBy": { "type": "string", "nullable": true },
+                    "negotiatedDiscount": { "type": "number", "nullable": true },
+                    "shippingHandlingFee": { "type": "number", "nullable": true },
+                    "taxPercent": { "type": "number", "nullable": true },
                     "changeTypeId": { "type": "string", "nullable": true },
-                    "impactsSchedule": { "type": "boolean" },
                     "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/SCOLineItemInput" }, "minItems": 1 }
                 }
             },
@@ -290,12 +289,12 @@
                     "amount": { "type": "string" },
                     "status": { "$ref": "#/components/schemas/SCOStatus" },
                     "createdBy": { "type": "string" },
-                    "markupAmount": { "type": "number", "nullable": true },
-                    "scheduleImpactDays": { "type": "integer", "nullable": true },
-                    "requestedBy": { "type": "string", "nullable": true },
+                    "negotiatedDiscount": { "type": "number", "nullable": true },
+                    "shippingHandlingFee": { "type": "number", "nullable": true },
+                    "taxPercent": { "type": "number", "nullable": true },
+                    "taxAmount": { "type": "number", "nullable": true },
                     "changeTypeId": { "type": "string", "nullable": true },
                     "changeType": { "type": "object", "nullable": true, "description": "Lookup row for the change type" },
-                    "impactsSchedule": { "type": "boolean" },
                     "approvedBy": { "type": "string", "nullable": true },
                     "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
                     "rejectedBy": { "type": "string", "nullable": true },

@@ -1,4 +1,5 @@
 import { auth } from '@lib/auth';
+import { authMiddleware } from '@middleware/auth';
 import { activityLogRoutes } from '@modules/activity-log';
 import { contactRoutes } from '@modules/contact';
 import { costCodeRoutes } from '@modules/cost-code';
@@ -6,9 +7,11 @@ import { departmentRoutes } from '@modules/department';
 import { employeeRoutes } from '@modules/employee';
 import { fileRoutes } from '@modules/file';
 import { gcRoutes } from '@modules/gc';
+import { integrationPublicRoutes, integrationRoutes } from '@modules/integrations';
 import { invoiceRoutes } from '@modules/invoice';
 import { lookupRoutes } from '@modules/lookup';
 import { mailRoutes } from '@modules/mail';
+import { pdfRoutes } from '@modules/pdf';
 import { poRoutes } from '@modules/po';
 import { primeChangeOrderRoutes } from '@modules/prime-change-order';
 import { projectRoutes } from '@modules/project';
@@ -16,11 +19,10 @@ import { ptoRoutes } from '@modules/pto';
 import { revisionRoutes } from '@modules/revision';
 import { rfqRoutes } from '@modules/rfq';
 import { scoRoutes } from '@modules/sco';
-import { seederRoutes } from '@modules/seeder';
+import { templateSettingRoutes } from '@modules/template-setting';
 import { userRoutes } from '@modules/user';
 import { vendorRoutes } from '@modules/vendor';
 import { Hono } from 'hono';
-import { authMiddleware } from 'src/middleware/auth';
 
 const app = new Hono();
 
@@ -28,7 +30,7 @@ app.on(['POST', 'GET'], '/auth/*', (c) => {
     return auth.handler(c.req.raw);
 });
 
-app.route('/seed', seederRoutes);
+app.route('/integrations', integrationPublicRoutes);
 
 app.use('/*', authMiddleware);
 
@@ -40,6 +42,9 @@ app.route('/hr/department', departmentRoutes);
 app.route('/hr/pto', ptoRoutes);
 app.route('/lookup', lookupRoutes);
 app.route('/mail', mailRoutes);
+app.route('/pdf', pdfRoutes);
+app.route('/template-settings', templateSettingRoutes);
+app.route('/integrations', integrationRoutes);
 app.route('/vendor', vendorRoutes);
 app.route('/gc', gcRoutes);
 app.route('/contact', contactRoutes);

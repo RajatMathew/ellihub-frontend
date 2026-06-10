@@ -1,3 +1,4 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const PaymentTermsSchema = z.enum([
@@ -10,28 +11,30 @@ export const PaymentTermsSchema = z.enum([
 ]);
 
 export const POLineItemSchema = z.object({
+    rfqDeliverableId: nanoIdSchema.optional().nullable(),
     description: z.string().min(1),
-    unitId: z.ulid(),
+    unitId: nanoIdSchema,
     quantity: z.number().positive(),
     unitPrice: z.number().nonnegative(),
-    costCodeId: z.ulid().optional().nullable(),
+    costCodeId: nanoIdSchema,
     notes: z.string().min(1).optional().nullable(),
 });
 
 export type POLineItemInput = z.infer<typeof POLineItemSchema>;
 
 export const PoCreateSchema = z.object({
-    projectId: z.ulid(),
-    vendorId: z.ulid(),
-    rfqId: z.ulid().optional().nullable(),
-    tradeCategoryId: z.ulid(),
+    projectId: nanoIdSchema,
+    vendorId: nanoIdSchema,
+    rfqId: nanoIdSchema.optional().nullable(),
+    tradeCategoryId: nanoIdSchema,
     description: z.string().min(1).optional().nullable(),
     leadTime: z.string().min(1).optional().nullable(),
     shipToAddress: z.string().min(1).optional().nullable(),
     address: z.string().min(1).optional().nullable(),
     expectedDate: z.iso.date().optional().nullable(),
     taxPercent: z.number().min(0).max(100).optional().nullable(),
-    markupAmount: z.number().nonnegative().optional().nullable(),
+    negotiatedDiscount: z.number().nonnegative().optional().nullable(),
+    shippingHandlingFee: z.number().nonnegative().optional().nullable(),
     retainagePercent: z.number().min(0).max(100).optional().nullable(),
     paymentTerms: PaymentTermsSchema,
     notes: z.string().min(1).optional().nullable(),
@@ -40,45 +43,68 @@ export const PoCreateSchema = z.object({
 
 export type PoCreateRequest = z.infer<typeof PoCreateSchema>;
 
-export const PoUpdateSchema = PoCreateSchema.extend({ id: z.ulid() });
+export const PoUpdateSchema = PoCreateSchema.extend({ id: nanoIdSchema });
 
 export type PoUpdateRequest = z.infer<typeof PoUpdateSchema>;
 
+export const PoFromRfqLineItemSchema = POLineItemSchema;
+
+export const PoFromRfqSchema = z.object({
+    description: z.string().min(1).optional().nullable(),
+    leadTime: z.string().min(1).optional().nullable(),
+    shipToAddress: z.string().min(1).optional().nullable(),
+    address: z.string().min(1).optional().nullable(),
+    expectedDate: z.iso.date().optional().nullable(),
+    taxPercent: z.number().min(0).max(100).optional().nullable(),
+    negotiatedDiscount: z.number().nonnegative().optional().nullable(),
+    shippingHandlingFee: z.number().nonnegative().optional().nullable(),
+    retainagePercent: z.number().min(0).max(100).optional().nullable(),
+    paymentTerms: PaymentTermsSchema.optional().nullable(),
+    notes: z.string().min(1).optional().nullable(),
+    lineItems: z.array(PoFromRfqLineItemSchema).min(1, 'At least one line item is required'),
+});
+
+export type PoFromRfqRequest = z.infer<typeof PoFromRfqSchema>;
+
+export const GeneratePoPdfSchema = z.object({
+    addTermsAndConditions: z.boolean().optional().nullable(),
+    termsAndConditionsHtml: z.string().max(20000).optional().nullable(),
+    addWarningNotice: z.boolean().optional().nullable(),
+    warningNoticeTitle: z.string().trim().max(180).optional().nullable(),
+    warningNoticeHtml: z.string().max(20000).optional().nullable(),
+});
+
+export type GeneratePoPdfRequest = z.infer<typeof GeneratePoPdfSchema>;
+
 export const SetPoIssuedSchema = z.object({
-    id: z.ulid(),
+    id: nanoIdSchema,
 });
 
 export type SetPoIssuedRequest = z.infer<typeof SetPoIssuedSchema>;
 
 export const SetPoDeliveredSchema = z.object({
-    id: z.ulid(),
+    id: nanoIdSchema,
     deliveryDate: z.iso.date(),
 });
 
 export type SetPoDeliveredRequest = z.infer<typeof SetPoDeliveredSchema>;
 
 export const SetPoCancelledSchema = z.object({
-    id: z.ulid(),
+    id: nanoIdSchema,
     cancellationReason: z.string().min(1),
 });
 
 export type SetPoCancelledRequest = z.infer<typeof SetPoCancelledSchema>;
 
-export const SetPoDraftSchema = z.object({
-    id: z.ulid(),
-});
-
-export type SetPoDraftRequest = z.infer<typeof SetPoDraftSchema>;
-
 export const AddPoAttachmentSchema = z.object({
-    purchaseOrderId: z.ulid(),
-    documentId: z.ulid(),
+    purchaseOrderId: nanoIdSchema,
+    documentId: nanoIdSchema,
 });
 
 export type AddPoAttachmentRequest = z.infer<typeof AddPoAttachmentSchema>;
 
 export const RemovePoAttachmentSchema = z.object({
-    id: z.ulid(),
+    id: nanoIdSchema,
 });
 
 export type RemovePoAttachmentRequest = z.infer<typeof RemovePoAttachmentSchema>;

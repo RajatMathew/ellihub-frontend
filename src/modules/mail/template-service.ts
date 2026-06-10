@@ -2,12 +2,18 @@ import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { TemplateSettingService } from '@modules/template-setting';
 import { BadRequestError } from '@utils';
 
-import { getMailAssetContentType, mailAssetExists, readMailAsset } from './asset-service';
+import {
+    getMailAssetContentType,
+    getMailAssetDataUri,
+    mailAssetExists,
+    readMailAsset,
+} from './asset-service';
 
 import type { MailAttachment } from './mail-service';
-import type { FeatureMailDraftRequest, FeatureMailKey, MailSignatureInput } from './models';
+import type { FeatureMailDraftBase, FeatureMailKey, MailSignatureInput } from './models';
 
 export type SignatureImageTemplate = {
     fileName: string;
@@ -80,12 +86,80 @@ const SIGNATURE_TEXT_STYLE =
     'text-align:start;color:#0a2f41;background-color:#ffffff;font-size:16px;font-family:Aptos, sans-serif;margin:0 0 8px;';
 const SINGLE_QUOTE = '\u0027';
 
-export function getMailTemplateConfig(): MailTemplateConfig {
+function getFallbackMailTemplateConfig(): MailTemplateConfig {
     return JSON.parse(readFileSync(MAIL_TEMPLATE_CONFIG_PATH, 'utf-8')) as MailTemplateConfig;
 }
 
-export function getFeatureMailTemplate(feature: FeatureMailKey): ResolvedMailFeatureTemplate {
-    const config = getMailTemplateConfig();
+export async function getMailTemplateConfig(): Promise<MailTemplateConfig> {
+    const config = getFallbackMailTemplateConfig();
+    const [senderGroups, mailFeatures, pdfProfiles, signatureTemplates] = await Promise.all([
+        TemplateSettingService.list({
+            kind: 'MAIL_SENDER_GROUP',
+            status: 'ACTIVE',
+            includeDeleted: false,
+        }),
+        TemplateSettingService.list({
+            kind: 'MAIL_FEATURE',
+            status: 'ACTIVE',
+            includeDeleted: false,
+        }),
+        TemplateSettingService.list({
+            kind: 'PDF_PROFILE',
+            status: 'ACTIVE',
+            includeDeleted: false,
+        }),
+        TemplateSettingService.list({
+            kind: 'MAIL_SIGNATURE',
+            status: 'ACTIVE',
+            includeDeleted: false,
+        }),
+    ]);
+
+    config.email = config.email ?? {};
+    config.email.senders = config.email.senders ?? {};
+
+    for (const setting of senderGroups) {
+        if (setting.kind !== 'MAIL_SENDER_GROUP' || !setting.isDefault) continue;
+        const value = setting.value as MailSenderGroupTemplate;
+        config.email.senders[setting.key] = value;
+    }
+
+    for (const setting of mailFeatures) {
+        if (setting.kind !== 'MAIL_FEATURE' || !setting.isDefault) continue;
+        const value = setting.value as {
+            senderGroup?: string;
+            subject: string;
+            body: string;
+            pdfProfileKey?: string;
+        };
+        config.features[setting.key] = {
+            senderGroup: value.senderGroup,
+            subject: value.subject,
+            body: value.body,
+            pdfProfile: value.pdfProfileKey,
+        };
+    }
+
+    for (const setting of pdfProfiles) {
+        if (setting.kind !== 'PDF_PROFILE' || !setting.isDefault) continue;
+        config.pdfProfiles[setting.key] = setting.value as MailPdfProfileTemplate;
+    }
+
+    const globalSignature = signatureTemplates.find(
+        (setting) =>
+            setting.kind === 'MAIL_SIGNATURE' && setting.key === 'global' && setting.isDefault
+    );
+    if (globalSignature) {
+        config.signature = globalSignature.value as MailSignatureTemplate;
+    }
+
+    return config;
+}
+
+export async function getFeatureMailTemplate(
+    feature: string
+): Promise<ResolvedMailFeatureTemplate> {
+    const config = await getMailTemplateConfig();
     const featureTemplate = config.features[feature];
 
     if (!featureTemplate) {
@@ -109,8 +183,8 @@ export function getFeatureMailTemplate(feature: FeatureMailKey): ResolvedMailFea
     };
 }
 
-export function getFeatureMailSenderOptions(feature: FeatureMailKey): string[] {
-    const config = getMailTemplateConfig();
+export async function getFeatureMailSenderOptions(feature: string): Promise<string[]> {
+    const config = await getMailTemplateConfig();
     const featureTemplate = config.features[feature];
 
     if (!featureTemplate) {
@@ -120,11 +194,14 @@ export function getFeatureMailSenderOptions(feature: FeatureMailKey): string[] {
     return getFeatureSenderOptions(config, featureTemplate);
 }
 
-export function isAllowedFeatureMailSender(feature: FeatureMailKey, mailbox: string): boolean {
-    return getFeatureMailSenderOptions(feature).includes(mailbox.trim().toLowerCase());
+export async function isAllowedFeatureMailSender(
+    feature: string,
+    mailbox: string
+): Promise<boolean> {
+    return (await getFeatureMailSenderOptions(feature)).includes(mailbox.trim().toLowerCase());
 }
 
-export function buildDefaultFeatureMailDraft({
+export async function buildDefaultFeatureMailDraft({
     feature,
     context,
     to,
@@ -134,8 +211,8 @@ export function buildDefaultFeatureMailDraft({
     context: TemplateContext;
     to: string[];
     signature?: MailSignatureInput;
-}): FeatureMailDraftRequest {
-    const template = getFeatureMailTemplate(feature);
+}): Promise<FeatureMailDraftBase> {
+    const template = await getFeatureMailTemplate(feature);
     const resolvedSignature = signature ?? {
         name: template.signature.name,
         role: template.signature.role,
@@ -239,12 +316,13 @@ function renderSignatureImageLine(
         .filter((image) => image.line === line && mailAssetExists(image.fileName))
         .map((image) => {
             const src =
-                mode === 'send'
-                    ? `cid:${image.contentId}`
-                    : `/api/v1/mail/assets/${encodeURIComponent(image.fileName)}`;
+                mode === 'send' ? `cid:${image.contentId}` : getMailAssetDataUri(image.fileName);
 
-            return `<img src="${src}" alt="${escapeHtml(image.alt)}" width="${image.width}" height="${image.height}" style="display:inline-block;vertical-align:middle;border:0;margin-right:4px;">`;
+            if (!src) return '';
+
+            return `<img src="${escapeHtml(src)}" alt="${escapeHtml(image.alt)}" width="${image.width}" height="${image.height}" style="display:inline-block;vertical-align:middle;border:0;margin-right:4px;">`;
         })
+        .filter(Boolean)
         .join('');
 
     return html ? `<p style="${SIGNATURE_TEXT_STYLE}">${html}</p>` : '';
