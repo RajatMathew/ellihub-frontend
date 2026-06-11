@@ -1,0 +1,19 @@
+# deps
+node_modules/
+
+/src/generated/prisma
+
+# production
+build/
+dist/
+cache/
+
+dist/index.js
+src/lib/db
+
+.env
+.env.development
+.env.production
+.deepsec
+
+
