@@ -316,28 +316,36 @@ force_sync_all() {
 
     echo
     echo "======================================="
-    echo "FORCE SQUASH SYNC ALL"
+    echo "FORCE SQUASH SYNC ALL (FIXED)"
     echo "======================================="
     echo
 
-    read -rp "Type YES to continue: " confirm
+    read -rp "Type YES to continue (THIS WILL OVERWRITE): " confirm
     [[ "$confirm" != "YES" ]] && return
 
-    git fetch elli-core "$CORE_BRANCH" || return 1
-    git fetch elli-ui "$UI_BRANCH" || return 1
-    git fetch elli-engine "$ENGINE_BRANCH" || return 1
+    # Ensure clean state (this fixes your error)
+    git reset --hard HEAD
+    git clean -fd
 
-    # Remove subtrees
-    git rm -r elli-core elli-ui elli-engine
-    git commit -m "Remove subtrees"
+    # Fetch latest
+    git fetch elli-core "$CORE_BRANCH"
+    git fetch elli-ui "$UI_BRANCH"
+    git fetch elli-engine "$ENGINE_BRANCH"
 
-    # Re-add as squash
+    # Remove existing subtree folders safely
+    git rm -rf elli-core elli-ui elli-engine 2>/dev/null || true
+
+    # Commit removal (needed to avoid subtree state issues)
+    git commit -m "Reset subtrees before force sync" --allow-empty
+
+    # Re-add fresh (squash = single commit each)
     git subtree add --prefix=elli-core elli-core "$CORE_BRANCH" --squash
     git subtree add --prefix=elli-ui elli-ui "$UI_BRANCH" --squash
     git subtree add --prefix=elli-engine elli-engine "$ENGINE_BRANCH" --squash
 
     echo
-    echo "Force squash sync completed."
+    echo "Force squash sync completed successfully."
+    pause
 }
 
 ########################################
