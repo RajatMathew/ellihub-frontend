@@ -356,7 +356,9 @@ export type CancelRFQInput = z.infer<typeof cancelRFQInputSchema>;
 export const awardRFQInputSchema = z.object({
   awardedQuoteId: z.string().min(1, 'Quote is required'),
   awardedVendorId: z.string().min(1, 'Vendor is required'),
-  awardedAmount: moneySchema('Awarded amount').positive('Awarded amount must be greater than 0'),
+  awardedAmount: moneySchema('Awarded amount').refine((value) => value > 0, {
+    message: 'Awarded amount must be greater than 0',
+  }),
   autoGeneratePO: z.boolean().optional(),
   sendAwardEmail: z.boolean().optional(),
   sendRegretEmails: z.boolean().optional(),
