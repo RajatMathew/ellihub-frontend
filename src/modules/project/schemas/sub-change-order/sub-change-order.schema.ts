@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
+import {
+  sumRoundedLineAmountsDecimal,
+  toCommercialDecimal,
+} from '@/modules/project/lib/commercial-decimal';
 
 // --- Status ---
 
@@ -231,11 +234,8 @@ function validateSCODiscount(
   value: z.infer<typeof baseSCOInputSchema>,
   ctx: z.RefinementCtx
 ) {
-    const subtotal = value.lineItems.reduce(
-      (sum, item) => sum + calculateRoundedLineAmount(item),
-      0
-    );
-    if ((value.negotiatedDiscount ?? 0) > subtotal) {
+    const subtotal = sumRoundedLineAmountsDecimal(value.lineItems);
+    if (toCommercialDecimal(value.negotiatedDiscount).greaterThan(subtotal)) {
       ctx.addIssue({
         code: 'custom',
         path: ['negotiatedDiscount'],

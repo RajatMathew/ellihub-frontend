@@ -127,12 +127,14 @@ function UnitCombobox({
   invalid,
   options = UNIT_OPTIONS,
   allowCustomUnit = true,
+  testId,
 }: {
   value: string;
   onChange: (v: string) => void;
   invalid?: boolean;
   options?: readonly { value: string; label: string }[] | { value: string; label: string }[];
   allowCustomUnit?: boolean;
+  testId?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -152,6 +154,7 @@ function UnitCombobox({
         <button
           type="button"
           aria-invalid={invalid}
+          data-testid={testId}
           className={cn(
             'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] shadow-xs shadow-black/5 transition-shadow outline-none text-left',
             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
@@ -295,7 +298,11 @@ export function LineItems({
             </thead>
             <tbody>
               {fields.map((field, index) => (
-                <tr key={field.id} className="border-b last:border-0 align-top">
+                <tr
+                  key={field.id}
+                  data-testid={`${fieldPrefix}-${index}-row`}
+                  className="border-b last:border-0 align-top"
+                >
                   <td className="py-2.5 pr-3 text-sm text-muted-foreground pt-3.5">{index + 1}</td>
 
                   {/* Description */}
@@ -310,6 +317,7 @@ export function LineItems({
                             placeholder="e.g. W12x26 beams"
                             aria-invalid={fieldState.invalid}
                             autoComplete="off"
+                            data-testid={`${fieldPrefix}-${index}-description-input`}
                           />
                           {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                         </div>
@@ -335,6 +343,7 @@ export function LineItems({
                               onAdd={onAddCostCode}
                               addLabel="Add Cost Code"
                               className={fieldState.invalid ? 'border-destructive' : undefined}
+                              testId={`${fieldPrefix}-${index}-cost-code-select`}
                             />
                             {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                           </div>
@@ -357,10 +366,11 @@ export function LineItems({
                             name={f.name}
                             ref={f.ref}
                             min={0}
-                            decimalPlaces={2}
+                            decimalPlaces={3}
                             placeholder="0"
                             aria-invalid={fieldState.invalid}
                             className="text-right"
+                            data-testid={`${fieldPrefix}-${index}-quantity-input`}
                           />
                           {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                         </div>
@@ -381,6 +391,7 @@ export function LineItems({
                             invalid={fieldState.invalid}
                             options={unitOptions}
                             allowCustomUnit={allowCustomUnit}
+                            testId={`${fieldPrefix}-${index}-unit-select`}
                           />
                           {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                         </div>
@@ -403,10 +414,11 @@ export function LineItems({
                               name={f.name}
                               ref={f.ref}
                               min={0}
-                              decimalPlaces={2}
+                              decimalPlaces={3}
                               placeholder="0.00"
                               aria-invalid={fieldState.invalid}
                               className="text-right"
+                              data-testid={`${fieldPrefix}-${index}-unit-price-input`}
                             />
                             {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                           </div>
@@ -438,6 +450,7 @@ export function LineItems({
                       className="size-8 text-muted-foreground hover:text-destructive"
                       disabled={fields.length <= 1}
                       onClick={() => remove(index)}
+                      data-testid={`${fieldPrefix}-${index}-delete-button`}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -452,7 +465,13 @@ export function LineItems({
           <p className="text-sm text-destructive">{(rootError as { message?: string }).message}</p>
         )}
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append(newItem)}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => append(newItem)}
+          data-testid={`${fieldPrefix}-add-button`}
+        >
           <Plus className="size-4" />
           {addLabel}
         </Button>

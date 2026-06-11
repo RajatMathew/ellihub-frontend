@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
@@ -100,7 +100,8 @@ function mapRFQDeliverableToPOLineItem(deliverable: RFQDeliverable): PurchaseOrd
 function getPOFormValues(
   projectId: string,
   po?: PODetail,
-  initialRfqId?: string | null
+  initialRfqId?: string | null,
+  tradeCategoryOptions: { value: string; label: string }[] = []
 ): CreatePOInput {
   if (!po) return createDefaultPOValues(projectId, initialRfqId);
 
@@ -108,7 +109,7 @@ function getPOFormValues(
     projectId: po.projectId,
     vendorId: po.vendorId,
     rfqId: po.rfqId ?? undefined,
-    tradeCategoryId: po.tradeCategoryId ?? '',
+    tradeCategoryId: resolvePOTradeCategoryId(po, tradeCategoryOptions),
     description: po.description ?? '',
     leadTime: po.leadTime ?? '',
     expectedDate: po.expectedDate?.split('T')[0] ?? '',
@@ -125,6 +126,27 @@ function getPOFormValues(
         ? po.lineItems.map(mapPOLineItemToInput)
         : [{ description: '', quantity: 1, unitId: '', unitPrice: 0, costCodeId: '' }],
   };
+}
+
+function resolvePOTradeCategoryId(
+  po: PODetail,
+  tradeCategoryOptions: { value: string; label: string }[]
+) {
+  const directId = po.tradeCategoryId?.trim();
+  if (directId) return directId;
+
+  const candidates = [po.tradeCategoryLabel, po.tradeCategory].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+  const normalizedCandidates = candidates.map((value) => value.trim().toLowerCase());
+
+  return (
+    tradeCategoryOptions.find((option) =>
+      [option.value, option.label].some((value) =>
+        normalizedCandidates.includes(value.trim().toLowerCase())
+      )
+    )?.value ?? ''
+  );
 }
 
 function getRFQDeliverableUnitId(deliverable: RFQDeliverable) {
@@ -198,10 +220,14 @@ export function POFormPage() {
     value: costCode.id,
     label: `${costCode.code} - ${costCode.name}`,
   }));
-  const tradeCategoryOptions = (tradeCategories ?? []).map((category) => ({
-    value: category.id,
-    label: category.label ?? category.name ?? category.id,
-  }));
+  const tradeCategoryOptions = useMemo(
+    () =>
+      (tradeCategories ?? []).map((category) => ({
+        value: category.id,
+        label: category.label ?? category.name ?? category.id,
+      })),
+    [tradeCategories]
+  );
   const unitOptions = (units ?? []).map((unit) => ({
     value: unit.id,
     label: unit.label ?? unit.name ?? unit.id,
@@ -215,7 +241,12 @@ export function POFormPage() {
 
   const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
-    defaultValues: getPOFormValues(projectId, isEditMode ? existingPO : undefined, initialRfqId),
+    defaultValues: getPOFormValues(
+      projectId,
+      isEditMode ? existingPO : undefined,
+      initialRfqId,
+      tradeCategoryOptions
+    ),
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
@@ -250,9 +281,26 @@ export function POFormPage() {
 
   useEffect(() => {
     if (isEditMode && existingPO) {
-      reset(getPOFormValues(projectId, existingPO));
+      reset(getPOFormValues(projectId, existingPO, undefined, tradeCategoryOptions));
     }
-  }, [existingPO, isEditMode, projectId, reset]);
+  }, [existingPO, isEditMode, projectId, reset, tradeCategoryOptions]);
+
+  useEffect(() => {
+    if (!isEditMode || !existingPO) return;
+
+    const tradeCategoryId = resolvePOTradeCategoryId(existingPO, tradeCategoryOptions);
+    if (!tradeCategoryId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setValue('tradeCategoryId', tradeCategoryId, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [existingPO, isEditMode, setValue, tradeCategoryOptions]);
 
   useEffect(() => {
     if (isEditMode || !initialRfqId || selectedRfqId === initialRfqId) return;

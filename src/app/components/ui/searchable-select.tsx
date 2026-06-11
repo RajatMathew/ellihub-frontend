@@ -35,6 +35,7 @@ interface SearchableSelectProps {
   emptyMessage?: string;
   disabled?: boolean;
   className?: string;
+  testId?: string;
   /** Callback to create a new item — renders a "+ Add" button at the bottom */
   onAdd?: () => void;
   /** Label for the add button (default: "Add New") */
@@ -50,6 +51,7 @@ function SearchableSelect({
   emptyMessage = 'No results found.',
   disabled = false,
   className,
+  testId,
   onAdd,
   addLabel = 'Add New',
 }: SearchableSelectProps) {
@@ -74,6 +76,7 @@ function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
+          data-testid={testId}
           className={cn(
             // Match SelectTrigger variants (md size)
             'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',

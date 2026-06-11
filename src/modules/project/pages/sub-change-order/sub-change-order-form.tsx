@@ -388,6 +388,7 @@ export function SCOFormPage() {
                         triggerClassName={
                           fieldState.invalid ? scoInvalidControlClassName : undefined
                         }
+                        testId="sco-purchase-order-select"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -403,7 +404,12 @@ export function SCOFormPage() {
                       <InputWrapper
                         className={fieldState.invalid ? scoInvalidControlClassName : undefined}
                       >
-                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                        <Input
+                          type="date"
+                          {...field}
+                          aria-invalid={fieldState.invalid}
+                          data-testid="sco-date-input"
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -424,6 +430,7 @@ export function SCOFormPage() {
                         searchPlaceholder="Search change types..."
                         emptyMessage="No change types found."
                         className={fieldState.invalid ? scoInvalidControlClassName : undefined}
+                        testId="sco-change-type-select"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -445,6 +452,7 @@ export function SCOFormPage() {
                         placeholder="e.g. Added electrical rough-in"
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
+                        data-testid="sco-title-input"
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -458,7 +466,12 @@ export function SCOFormPage() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel className={scoFieldLabelClassName}>Description</FieldLabel>
-                    <Textarea {...field} placeholder="Describe the requested change..." rows={3} />
+                    <Textarea
+                      {...field}
+                      placeholder="Describe the requested change..."
+                      rows={3}
+                      data-testid="sco-description-input"
+                    />
                   </Field>
                 )}
               />
