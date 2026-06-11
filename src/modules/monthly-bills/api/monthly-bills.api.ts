@@ -1,16 +1,27 @@
 import api from '@/app/api';
 import {
-  monthlyBillsSubcontractorPOGroupsSchema,
-  type MonthlyBillsSubcontractorPOGroup,
+  monthlyBillProjectGroupsSchema,
+  type MonthlyBillProjectGroup,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 
 const BASE = '/monthly-bills';
 
+export interface MonthlyBillsQueryParams {
+  /** Inclusive start of the period, ISO date (YYYY-MM-DD). */
+  startDate: string;
+  /** Inclusive end of the period, ISO date (YYYY-MM-DD). */
+  endDate: string;
+  /** 1-12. */
+  month: number;
+  year: number;
+}
+
 export const monthlyBillsApi = {
-  async getSubcontractorPOGroups(): Promise<MonthlyBillsSubcontractorPOGroup[]> {
-    const res = await api.get(`${BASE}/subcontractor/purchase-orders`);
+  // Identity (role + employee) is derived server-side from the auth session, so it is not sent here.
+  async listMonthlyBills(params: MonthlyBillsQueryParams): Promise<MonthlyBillProjectGroup[]> {
+    const res = await api.get(BASE, { params });
     const raw = res.data?.data ?? res.data;
-    const result = monthlyBillsSubcontractorPOGroupsSchema.safeParse(raw);
+    const result = monthlyBillProjectGroupsSchema.safeParse(raw);
     if (!result.success) {
       throw result.error;
     }

@@ -10,17 +10,19 @@ import {
 import { Card } from '@/app/components/ui/card';
 import { useAccess } from '@/app/contexts/access-context';
 import { MonthYearPicker } from '@/modules/monthly-bills/components/month-year-picker';
+import { MonthlyBillsTable } from '@/modules/monthly-bills/components/monthly-bills-table';
 import { MonthlyBillsTabs } from '@/modules/monthly-bills/components/monthly-bills-tabs';
-import { SubcontractorPOGroups } from '@/modules/monthly-bills/components/subcontractor-po-groups';
 import {
   MONTHLY_BILL_TABS,
   MONTHLY_BILLS_ALLOWED_ROLES,
   MONTHLY_BILLS_DEFAULT_PATH,
 } from '@/modules/monthly-bills/constants/monthly-bills.constants';
-import { useMonthlyBillsSubcontractorPOGroupsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
+import { useMonthlyBillsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import {
   formatMonthlyBillMonthNumber,
   getMonthlyBillDateFromSearch,
+  getMonthlyBillDateRange,
+  getMonthlyBillMonthNumber,
   getMonthlyBillMonthSearch,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
@@ -45,20 +47,25 @@ function MonthlyBillsSubcontractorPage({
   selectedDate: Date;
   enabled: boolean;
 }) {
-  const subcontractorPOGroupsQuery = useMonthlyBillsSubcontractorPOGroupsQuery(enabled);
+  const { startDate, endDate } = getMonthlyBillDateRange(selectedDate);
+  const monthlyBillsQuery = useMonthlyBillsQuery(
+    {
+      startDate,
+      endDate,
+      month: getMonthlyBillMonthNumber(selectedDate),
+      year: selectedDate.getFullYear(),
+    },
+    enabled
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="text-sm text-muted-foreground">
-        month: {formatMonthlyBillMonthNumber(selectedDate)}, year: {selectedDate.getFullYear()}
-      </div>
-      <SubcontractorPOGroups
-        groups={subcontractorPOGroupsQuery.data ?? []}
-        isLoading={subcontractorPOGroupsQuery.isLoading}
-        isError={subcontractorPOGroupsQuery.isError}
-        onRetry={() => void subcontractorPOGroupsQuery.refetch()}
-      />
-    </div>
+    <MonthlyBillsTable
+      groups={monthlyBillsQuery.data ?? []}
+      selectedDate={selectedDate}
+      isLoading={monthlyBillsQuery.isLoading}
+      isError={monthlyBillsQuery.isError}
+      onRetry={() => void monthlyBillsQuery.refetch()}
+    />
   );
 }
 

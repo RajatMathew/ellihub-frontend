@@ -1,6 +1,7 @@
+import { endOfMonth, format, getMonth, getYear, startOfMonth } from 'date-fns';
+
 export function getInitialMonthlyBillDate() {
-  const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), 1);
+  return startOfMonth(new Date());
 }
 
 export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
@@ -22,16 +23,24 @@ export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
 }
 
 export function getMonthlyBillMonthNumber(date: Date) {
-  return date.getMonth() + 1;
+  return getMonth(date) + 1;
 }
 
 export function formatMonthlyBillMonthNumber(date: Date) {
-  return String(getMonthlyBillMonthNumber(date)).padStart(2, '0');
+  return format(date, 'MM');
+}
+
+/** Inclusive ISO start/end dates spanning the calendar month of `date`. */
+export function getMonthlyBillDateRange(date: Date) {
+  return {
+    startDate: format(startOfMonth(date), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(date), 'yyyy-MM-dd'),
+  };
 }
 
 export function getMonthlyBillMonthSearch(date: Date) {
   const params = new URLSearchParams();
   params.set('month', formatMonthlyBillMonthNumber(date));
-  params.set('year', String(date.getFullYear()));
+  params.set('year', String(getYear(date)));
   return `?${params.toString()}`;
 }
