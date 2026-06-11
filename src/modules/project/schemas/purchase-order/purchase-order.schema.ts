@@ -3,6 +3,12 @@ import {
   sumRoundedLineAmountsDecimal,
   toCommercialDecimal,
 } from '@/modules/project/lib/commercial-decimal';
+import {
+  moneySchema,
+  percentSchema,
+  quantitySchema,
+  rateSchema,
+} from '@/modules/project/lib/commercial-validation';
 
 // --- Enums ---
 
@@ -289,9 +295,9 @@ export type PODetail = z.infer<typeof poDetailSchema>;
 export const poLineItemInputSchema = z.object({
   rfqDeliverableId: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
-  quantity: z.number().positive('Quantity must be > 0'),
+  quantity: quantitySchema(),
   unitId: z.string().min(1, 'Unit is required'),
-  unitPrice: z.number().min(0, 'Unit price must be >= 0'),
+  unitPrice: rateSchema(),
   costCodeId: z.string().min(1, 'Cost code is required'),
   notes: z.string().optional(),
 });
@@ -311,11 +317,11 @@ export const createPOInputSchema = z
     address: z.string().optional(),
     expectedDate: z.string().optional(),
     shipToAddress: z.string().optional(),
-    negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
-    shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
-    taxPercent: z.number().min(0).max(100).optional(),
+    negotiatedDiscount: moneySchema('Negotiated discount').optional(),
+    shippingHandlingFee: moneySchema('Shipping and handling fee').optional(),
+    taxPercent: percentSchema('Tax percent').optional(),
     paymentTerms: paymentTermsSchema,
-    retainagePercent: z.number().min(0).max(100).optional(),
+    retainagePercent: percentSchema('Retainage percent').optional(),
     notes: z.string().optional(),
     lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
   })

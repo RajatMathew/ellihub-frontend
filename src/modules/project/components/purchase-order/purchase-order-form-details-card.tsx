@@ -252,7 +252,7 @@ export function PurchaseOrderFormDetailsCard({
                     ref={field.ref}
                     min={0}
                     max={100}
-                    decimalPlaces={2}
+                    decimalPlaces={3}
                     placeholder="0"
                     aria-invalid={fieldState.invalid}
                     data-testid="po-retainage-percent-input"

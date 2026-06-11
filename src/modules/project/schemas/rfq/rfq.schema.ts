@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { moneySchema, quantitySchema, rateSchema } from '@/modules/project/lib/commercial-validation';
+
 /* ---- Shared / lookup schemas ---- */
 
 export const rfqStatusSchema = z
@@ -304,11 +306,11 @@ export const rfqDeliverableInputSchema = z.object({
   name: optionalTextSchema,
   description: requiredTextSchema('Deliverable description is required'),
   specifications: optionalTextSchema,
-  quantity: z.number().min(0, 'Quantity cannot be negative').optional(),
+  quantity: quantitySchema(),
   unit: optionalTextSchema,
   unitId: requiredTextSchema('Unit is required'),
   costCodeId: optionalTextSchema,
-  estimatedUnitPrice: z.number().min(0, 'Estimated unit price cannot be negative').optional(),
+  estimatedUnitPrice: rateSchema('Estimated unit price').optional(),
 });
 
 export type RFQDeliverableInput = z.infer<typeof rfqDeliverableInputSchema>;
@@ -354,7 +356,7 @@ export type CancelRFQInput = z.infer<typeof cancelRFQInputSchema>;
 export const awardRFQInputSchema = z.object({
   awardedQuoteId: z.string().min(1, 'Quote is required'),
   awardedVendorId: z.string().min(1, 'Vendor is required'),
-  awardedAmount: z.number().positive('Awarded amount must be greater than 0'),
+  awardedAmount: moneySchema('Awarded amount').positive('Awarded amount must be greater than 0'),
   autoGeneratePO: z.boolean().optional(),
   sendAwardEmail: z.boolean().optional(),
   sendRegretEmails: z.boolean().optional(),
