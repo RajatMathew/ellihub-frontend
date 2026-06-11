@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
@@ -16,6 +16,7 @@ import { Globe } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
 
 import { GCContactFields } from './gc-contact-fields';
+import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
 import { GCTermsFields } from './gc-terms-fields';
 
 interface GCInfoFormSectionProps {
@@ -28,9 +29,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
     <Card id="info">
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold uppercase tracking-wide text-foreground">
-            General Information
-          </h2>
+          <h2 className="text-lg font-semibold text-foreground">General Information</h2>
           <p className="text-sm text-muted-foreground">Core entity details and classification.</p>
         </div>
 
@@ -42,10 +41,10 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  GC Name
-                </FieldLabel>
-                <InputWrapper>
+                <GCFormFieldLabel required>GC Name</GCFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                >
                   <Input
                     {...field}
                     placeholder="e.g. Navillus Inc."
@@ -62,9 +61,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  GC Type
-                </FieldLabel>
+                <GCFormFieldLabel required>GC Type</GCFormFieldLabel>
                 <SearchableSelect
                   options={gcTypeOptions}
                   value={field.value || null}
@@ -73,6 +70,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                   searchPlaceholder="Search types..."
                   emptyMessage="No types found."
                   disabled={gcTypeOptions.length === 0}
+                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -86,10 +84,10 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Official Website
-                </FieldLabel>
-                <InputWrapper>
+                <GCFormFieldLabel>Official Website</GCFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                >
                   <Globe className="size-4" />
                   <Input
                     {...field}
@@ -105,13 +103,24 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
           <Controller
             name="status"
             control={control}
-            render={({ field }) => (
-              <Field>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <GCFormFieldLabel
+                  required
+                  info="Choose Inactive if the general contractor is currently out of operation or unavailable for new work."
+                  infoLabel="Initial status information"
+                >
                   Initial Status
-                </FieldLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
+                </GCFormFieldLabel>
+                <Select
+                  key={field.value || 'empty-status'}
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                  >
                     <SelectValue placeholder="Select status..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -122,6 +131,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
           />

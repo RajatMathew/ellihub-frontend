@@ -1,3 +1,4 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const GcStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
@@ -13,7 +14,7 @@ export const PaymentTermsSchema = z.enum([
 
 export const GcCreateSchema = z.object({
     name: z.string().min(2),
-    gcTypeId: z.ulid(),
+    gcTypeId: nanoIdSchema,
     status: GcStatusSchema.default('ACTIVE'),
     address: z.string().min(1).optional().nullable(),
     email: z.email().optional().nullable(),
@@ -27,30 +28,30 @@ export const GcCreateSchema = z.object({
 export type GcCreateRequest = z.infer<typeof GcCreateSchema>;
 
 export const GcUpdateSchema = GcCreateSchema.extend({
-    id: z.ulid(),
+    id: nanoIdSchema,
 });
 
 export type GcUpdateRequest = z.infer<typeof GcUpdateSchema>;
 
 export const AddGcDocumentSchema = z.object({
-    gcId: z.ulid(),
-    fileId: z.ulid(),
+    gcId: nanoIdSchema,
+    fileId: nanoIdSchema,
     expiresOn: z.iso.date().optional().nullable(),
 });
 
 export type AddGcDocumentRequest = z.infer<typeof AddGcDocumentSchema>;
 
 export const UpdateGcDocumentSchema = z.object({
-    gcId: z.ulid(),
-    fileId: z.ulid(),
+    gcId: nanoIdSchema,
+    fileId: nanoIdSchema,
     expiresOn: z.iso.date().optional().nullable(),
 });
 
 export type UpdateGcDocumentRequest = z.infer<typeof UpdateGcDocumentSchema>;
 
 export const RemoveGcDocumentSchema = z.object({
-    gcId: z.ulid(),
-    fileId: z.ulid(),
+    gcId: nanoIdSchema,
+    fileId: nanoIdSchema,
 });
 
 export type RemoveGcDocumentRequest = z.infer<typeof RemoveGcDocumentSchema>;

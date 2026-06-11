@@ -969,8 +969,16 @@
                         ],
                         "nullable": true
                     },
-                    "startDate": { "type": "string", "format": "date-time", "nullable": true },
-                    "completedDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "actualStartDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "actualCompletionDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
                     "closedDate": { "type": "string", "format": "date-time", "nullable": true },
                     "setInactiveDate": {
                         "type": "string",

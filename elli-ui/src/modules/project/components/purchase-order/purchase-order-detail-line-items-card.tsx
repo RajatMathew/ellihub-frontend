@@ -1,16 +1,20 @@
-import { FileText } from 'lucide-react';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
-import { formatCurrency } from '@/app/lib/helpers';
+import { formatCurrency, formatDecimal } from '@/app/lib/helpers';
+import {
+  calculateRoundedLineAmount,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { InfoRow } from '@/modules/project/components/shared';
 import type { PODetail } from '@/modules/project/schemas/purchase-order';
+import { FileText } from 'lucide-react';
 
 interface PurchaseOrderDetailLineItemsCardProps {
   lineItems: PODetail['lineItems'];
   costCodeMap: Map<string, string>;
   subtotal: number;
-  markupAmount: string | null | undefined;
+  negotiatedDiscount: string | null | undefined;
+  shippingHandlingFee: string | number | null | undefined;
   taxAmount: number;
   taxPercent: string | null | undefined;
   total: number;
@@ -20,17 +24,20 @@ export function PurchaseOrderDetailLineItemsCard({
   lineItems,
   costCodeMap,
   subtotal,
-  markupAmount,
+  negotiatedDiscount,
+  shippingHandlingFee,
   taxAmount,
   taxPercent,
   total,
 }: PurchaseOrderDetailLineItemsCardProps) {
   const lineItemCount = lineItems.length;
+  const discount = Number(negotiatedDiscount ?? 0);
+  const shippingHandling = Number(shippingHandlingFee ?? 0);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
           Line Items ({lineItemCount})
         </CardTitle>
       </CardHeader>
@@ -42,7 +49,7 @@ export function PurchaseOrderDetailLineItemsCard({
                 <div key={lineItem.id} className="rounded-lg border p-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                      <div className="text-xs font-semibold tracking-normal text-muted-foreground">
                         Line {lineItem.lineNumber}
                       </div>
                       <div className="mt-1 break-words text-sm font-semibold text-foreground">
@@ -55,13 +62,15 @@ export function PurchaseOrderDetailLineItemsCard({
                       )}
                     </div>
                     <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                      {formatCurrency(parseFloat(lineItem.amount ?? '0'))}
+                      {formatCurrency(calculateRoundedLineAmount(lineItem))}
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <div className="text-muted-foreground">Qty</div>
-                      <div className="font-medium tabular-nums">{lineItem.quantity}</div>
+                      <div className="font-medium tabular-nums">
+                        {formatDecimal(lineItem.quantity)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-muted-foreground">Unit</div>
@@ -76,9 +85,7 @@ export function PurchaseOrderDetailLineItemsCard({
                     <div>
                       <div className="text-muted-foreground">Cost Code</div>
                       <div className="break-words font-medium">
-                        {lineItem.costCodeId
-                          ? costCodeMap.get(lineItem.costCodeId) ?? '-'
-                          : '-'}
+                        {lineItem.costCodeId ? (costCodeMap.get(lineItem.costCodeId) ?? '-') : '-'}
                       </div>
                     </div>
                   </div>
@@ -86,11 +93,18 @@ export function PurchaseOrderDetailLineItemsCard({
               ))}
               <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                 <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                {Number(markupAmount ?? 0) !== 0 && (
-                  <InfoRow label="Markup">{formatCurrency(Number(markupAmount))}</InfoRow>
+                {discount !== 0 && (
+                  <InfoRow label="Negotiated Discount">-{formatCurrency(discount)}</InfoRow>
                 )}
-                {taxAmount > 0 && (
-                  <InfoRow label={`Tax (${taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
+                {shippingHandling !== 0 && (
+                  <InfoRow label="Shipping and Handling Fee">
+                    {formatCurrency(shippingHandling)}
+                  </InfoRow>
+                )}
+                {taxAmount !== 0 && (
+                  <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
+                    {formatCurrency(taxAmount)}
+                  </InfoRow>
                 )}
                 <Separator className="my-2" />
                 <InfoRow label="Total">
@@ -103,25 +117,25 @@ export function PurchaseOrderDetailLineItemsCard({
               <table className="w-full min-w-max text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="w-8 pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="w-8 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       #
                     </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Description
                     </th>
-                    <th className="w-40 pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="w-40 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Cost Code
                     </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Qty
                     </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
                       Unit
                     </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Unit Price
                     </th>
-                    <th className="pb-2 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+                    <th className="pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground">
                       Amount
                     </th>
                   </tr>
@@ -129,9 +143,7 @@ export function PurchaseOrderDetailLineItemsCard({
                 <tbody>
                   {lineItems.map((lineItem) => (
                     <tr key={lineItem.id} className="border-b last:border-0">
-                      <td className="py-2.5 pr-3 text-muted-foreground">
-                        {lineItem.lineNumber}
-                      </td>
+                      <td className="py-2.5 pr-3 text-muted-foreground">{lineItem.lineNumber}</td>
                       <td className="py-2.5 pr-3">
                         <div className="font-medium">{lineItem.description}</div>
                         {lineItem.notes && (
@@ -141,19 +153,17 @@ export function PurchaseOrderDetailLineItemsCard({
                         )}
                       </td>
                       <td className="py-2.5 pr-3 text-xs text-muted-foreground">
-                        {lineItem.costCodeId
-                          ? costCodeMap.get(lineItem.costCodeId) ?? '-'
-                          : '-'}
+                        {lineItem.costCodeId ? (costCodeMap.get(lineItem.costCodeId) ?? '-') : '-'}
                       </td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
-                        {lineItem.quantity}
+                        {formatDecimal(lineItem.quantity)}
                       </td>
                       <td className="py-2.5 pr-3">{lineItem.unit}</td>
                       <td className="py-2.5 pr-3 text-right tabular-nums">
                         {formatCurrency(parseFloat(lineItem.unitPrice ?? '0'))}
                       </td>
                       <td className="py-2.5 text-right font-medium tabular-nums">
-                        {formatCurrency(parseFloat(lineItem.amount ?? '0'))}
+                        {formatCurrency(calculateRoundedLineAmount(lineItem))}
                       </td>
                     </tr>
                   ))}
@@ -167,20 +177,30 @@ export function PurchaseOrderDetailLineItemsCard({
                       {formatCurrency(subtotal)}
                     </td>
                   </tr>
-                  {Number(markupAmount ?? 0) !== 0 && (
+                  {discount !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Markup
+                        Negotiated Discount
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
-                        {formatCurrency(Number(markupAmount))}
+                        -{formatCurrency(discount)}
                       </td>
                     </tr>
                   )}
-                  {taxAmount > 0 && (
+                  {shippingHandling !== 0 && (
                     <tr>
                       <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Tax ({taxPercent}%)
+                        Shipping and Handling Fee
+                      </td>
+                      <td className="pt-1 text-right text-sm tabular-nums">
+                        {formatCurrency(shippingHandling)}
+                      </td>
+                    </tr>
+                  )}
+                  {taxAmount !== 0 && (
+                    <tr>
+                      <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
+                        {formatPurchaseOrderTaxLabel(taxPercent)}
                       </td>
                       <td className="pt-1 text-right text-sm tabular-nums">
                         {formatCurrency(taxAmount)}
@@ -190,7 +210,7 @@ export function PurchaseOrderDetailLineItemsCard({
                   <tr className="border-t">
                     <td
                       colSpan={6}
-                      className="pt-2 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground"
+                      className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground"
                     >
                       Total
                     </td>

@@ -9,6 +9,7 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { useAccess } from '@/app/contexts/access-context';
 import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
 import { ProjectListEmptyState } from '@/modules/project/components/project-list-empty-state';
@@ -20,10 +21,24 @@ import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const currentYear = new Date().getFullYear();
+const getProjectYearDate = (project: ProjectListItem): string | null | undefined => {
+  return project.tcoDate ?? project.estimatedEndDate;
+};
 
 const getProjectYear = (project: ProjectListItem): number | null => {
-  return project.createdAt ? new Date(project.createdAt).getFullYear() : null;
+  const projectYearDate = getProjectYearDate(project);
+  if (!projectYearDate) return null;
+
+  const year = Number.parseInt(projectYearDate.slice(0, 4), 10);
+  return Number.isInteger(year) ? year : null;
+};
+
+const getProjectYearSortValue = (project: ProjectListItem): number => {
+  const projectYearDate = getProjectYearDate(project);
+  if (!projectYearDate) return 0;
+
+  const value = new Date(projectYearDate).getTime();
+  return Number.isFinite(value) ? value : 0;
 };
 
 const getProjectStatusId = (project: ProjectListItem): string | undefined => {
@@ -31,20 +46,25 @@ const getProjectStatusId = (project: ProjectListItem): string | undefined => {
 };
 
 export function ProjectList() {
+  const { can } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
 
-  const year = Number(searchParams.get('year')) || currentYear;
+  const yearParam = searchParams.get('year');
+  const year = yearParam ? Number(yearParam) : null;
   const statusId = searchParams.get('statusId') ?? undefined;
 
   const { data, isLoading, isError, refetch } = useProjectsQuery({
     size: 100,
-    sortBy: 'createdAt',
+    sortBy: 'tcoDate',
     sortOrder: 'desc',
-    year: undefined,
+    year: year ?? undefined,
   });
 
   const summaryProjects = useMemo(
-    () => (data?.data ?? []).filter((project) => getProjectYear(project) === year),
+    () =>
+      (data?.data ?? [])
+        .filter((project) => year === null || getProjectYear(project) === year)
+        .sort((a, b) => getProjectYearSortValue(b) - getProjectYearSortValue(a)),
     [data?.data, year]
   );
   const projects = useMemo(
@@ -57,11 +77,11 @@ export function ProjectList() {
     [summaryProjects, statusId]
   );
 
-  const totalCount = summaryProjects.length;
+  const totalCount = data?.pagination.totalItems ?? summaryProjects.length;
 
   const handleYearChange = useCallback(
-    (y: number) => {
-      updateParams({ year: String(y), statusId: undefined });
+    (y: number | null) => {
+      updateParams({ year: y === null ? undefined : String(y), statusId: undefined });
     },
     [updateParams]
   );
@@ -75,22 +95,21 @@ export function ProjectList() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar>
+      <Toolbar className="gap-3 pt-5 pb-3 mb-4">
         <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Portfolio Overview
-            </div>
-            <ToolbarPageTitle>Active Projects</ToolbarPageTitle>
+          <ToolbarHeading className="gap-0 lg:gap-0">
+            <ToolbarPageTitle>Project Portfolio</ToolbarPageTitle>
           </ToolbarHeading>
-          <ToolbarActions>
-            <Button variant="primary" asChild>
-              <Link to="new">
-                <Plus className="size-4" />
-                New Project
-              </Link>
-            </Button>
-          </ToolbarActions>
+          {can('project', 'create') && (
+            <ToolbarActions>
+              <Button variant="primary" asChild>
+                <Link to="new">
+                  <Plus className="size-4" />
+                  New Project
+                </Link>
+              </Button>
+            </ToolbarActions>
+          )}
         </ToolbarWrapper>
 
         <ProjectYearTabs
@@ -106,11 +125,13 @@ export function ProjectList() {
         <QueryErrorState title="Unable to load projects" onRetry={() => void refetch()} />
       ) : (
         <>
-          <ProjectStatusSummary
-            projects={summaryProjects}
-            activeStatusId={statusId}
-            onStatusClick={handleStatusClick}
-          />
+          {summaryProjects.length > 0 && (
+            <ProjectStatusSummary
+              projects={summaryProjects}
+              activeStatusId={statusId}
+              onStatusClick={handleStatusClick}
+            />
+          )}
 
           {projects.length > 0 ? (
             <ProjectDivisionBoard projects={projects} />

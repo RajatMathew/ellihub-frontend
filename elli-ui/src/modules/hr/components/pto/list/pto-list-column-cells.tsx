@@ -41,23 +41,21 @@ interface PTOActionsCellProps extends PTOCellProps {
 
 export function PTOReferenceCell({ pto }: PTOCellProps) {
   return (
-    <Link to={pto.id} className="text-xs font-bold uppercase text-primary hover:underline">
+    <Link to={pto.id} className="text-xs font-bold text-primary hover:underline">
       {formatPTOReference(pto.id)}
     </Link>
   );
 }
 
 export function PTOEmployeeCell({ pto }: PTOCellProps) {
-  return (
-    <span className="text-xs font-bold uppercase tracking-tight">{getPTOEmployeeName(pto)}</span>
-  );
+  return <span className="text-xs font-bold tracking-normal">{getPTOEmployeeName(pto)}</span>;
 }
 
 export function PTOTypeCell({ pto }: PTOCellProps) {
   return (
     <Badge
       variant="outline"
-      className="whitespace-nowrap border-primary/20 bg-primary/5 text-xs font-bold uppercase text-primary"
+      className="whitespace-nowrap border-primary/20 bg-primary/5 text-xs font-bold text-primary"
     >
       {getPTOTypeLabel(pto)}
     </Badge>
@@ -67,12 +65,12 @@ export function PTOTypeCell({ pto }: PTOCellProps) {
 export function PTODatesCell({ pto }: PTOCellProps) {
   return (
     <div className="flex min-w-0 flex-col">
-      <span className="whitespace-nowrap text-xs font-medium uppercase text-muted-foreground">
+      <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
         {formatPTODate(pto.startDate)}
       </span>
       <div className="flex items-center gap-1.5">
-        <span className="text-xs font-bold uppercase text-muted-foreground/60">To</span>
-        <span className="whitespace-nowrap text-xs font-medium uppercase text-muted-foreground">
+        <span className="text-xs font-bold text-muted-foreground/60">To</span>
+        <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
           {formatPTODate(pto.endDate)}
         </span>
       </div>
@@ -90,7 +88,7 @@ export function PTODaysCell({ pto }: PTOCellProps) {
 
 export function PTOUpdatedCell({ pto }: PTOCellProps) {
   return (
-    <span className="whitespace-nowrap text-xs font-medium uppercase text-muted-foreground">
+    <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
       {formatPTODate(pto.updatedAt)}
     </span>
   );

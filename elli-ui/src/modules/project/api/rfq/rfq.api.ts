@@ -1,10 +1,10 @@
 import api from '@/app/api';
 import {
-  getPdfDownloadName,
+  getGeneratedPdfFileFromResponse,
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
-import { RFQ_VENDOR_PDF_PROFILE } from '@/modules/project/constants/rfq';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import { lookupSchema, type Lookup } from '@/modules/project/schemas/lookup.schema';
 import {
   rfqAttachmentSchema,
@@ -79,6 +79,7 @@ export type BidComparison = {
 };
 
 const BASE = '/rfq';
+type RFQMutableState = 'DRAFT' | 'PUBLISHED';
 
 type RFQApiObject = Record<string, unknown>;
 type RFQApiType = RFQApiObject & { id?: string; label?: string };
@@ -172,6 +173,7 @@ function normalizeRFQ(item: unknown) {
     track,
     typeId,
     deliverables,
+    voidReason: record.voidReason ?? record.cancellationReason,
     attachments: record.attachments ?? record.rfqattachments,
     invites: normalizedInvites,
     quotes: normalizedQuotes,
@@ -187,7 +189,7 @@ export const rfqApi = {
     if (params.sortBy) query.sortBy = params.sortBy;
     if (params.sortOrder) query.sortOrder = params.sortOrder;
     if (params.search) query.search = params.search;
-    if (params.statusId) query.statusId = params.statusId;
+    if (params.statusId) query.status = params.statusId;
 
     const res = await api.get(BASE, { params: query });
     const body = res.data;
@@ -321,22 +323,32 @@ export const rfqApi = {
     await api.patch(`${BASE}/vendor/remove`, { id: quoteId });
   },
 
-  async generateVendorPdf(quoteId: string, vendorName: string): Promise<GeneratedPdfFile> {
-    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf`, RFQ_VENDOR_PDF_PROFILE, {
+  async generateVendorPdf(
+    quoteId: string,
+    vendorName: string,
+    data: GeneratePdfTermsInput = {}
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf`, data, {
       responseType: 'blob',
       timeout: 0,
     });
     const fallbackName = sanitizeDownloadName(`${vendorName || 'vendor'}-rfq.pdf`);
-    const fileName = getPdfDownloadName(
-      String(res.headers['content-disposition'] ?? ''),
-      fallbackName
-    );
 
-    return {
-      blob: res.data,
-      fileName,
-      contentType: String(res.headers['content-type'] ?? 'application/pdf'),
-    };
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async saveVendorPdf(
+    quoteId: string,
+    vendorName: string,
+    data: GeneratePdfTermsInput = {}
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${BASE}/vendor/${quoteId}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${vendorName || 'vendor'}-rfq.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   /* ---- Invite actions ---- */
@@ -382,8 +394,9 @@ export const rfqApi = {
 
   /* ---- Status ---- */
 
-  async changeStatus(id: string, statusId: string): Promise<RFQDetail> {
-    const res = await api.put(`${BASE}/${id}/status`, { statusId });
+  async changeStatus(id: string, statusName: RFQMutableState): Promise<RFQDetail> {
+    const endpoint = statusName === 'DRAFT' ? 'set-draft' : 'set-published';
+    const res = await api.patch(`${BASE}/${id}/${endpoint}`);
     const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {
@@ -448,11 +461,6 @@ export const rfqApi = {
       throw result.error;
     }
     return result.data;
-  },
-
-  async generatePO(rfqId: string): Promise<unknown> {
-    const res = await api.post(`/purchase-order/from-rfq/${rfqId}`);
-    return res.data?.data ?? res.data;
   },
 
   /* ---- Attachments ---- */

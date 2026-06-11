@@ -5,21 +5,37 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   AccordionMenu,
   AccordionMenuGroup,
-  AccordionMenuItem,
   AccordionMenuLabel,
+  AccordionMenuLinkItem,
 } from '@app/components/ui/accordion-menu';
 import { Badge } from '@app/components/ui/badge';
 import type { MenuConfig } from '@app/config/types';
 import { getSidebarResolutionBase, resolvePath } from '@app/lib/utils';
 
+import { SidebarMenuCreateAction } from './sidebar-menu-create-action';
+
 export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
   const { pathname } = useLocation();
   const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
+  const resolveSidebarMenuPath = useCallback(
+    (path?: string): string => {
+      if (!path) return '#';
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
+      return resolvePath(base, toResolve);
+    },
+    [base, stripLeadingDotDotSlash]
+  );
 
   // Resolve relative menu paths (e.g. "../projects") to absolute for comparison with pathname
   const matchPath = useCallback(
     (path: string): boolean => {
-      const toResolve = stripLeadingDotDotSlash && path.startsWith('../') ? path.slice(3) : path;
+      const toResolve =
+        stripLeadingDotDotSlash && path.startsWith('../') && !path.startsWith('../../')
+          ? path.slice(3)
+          : path;
       const resolved = resolvePath(base, toResolve);
       return (
         pathname === resolved ||
@@ -37,7 +53,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
       className="space-y-2.5 px-2.5 my-1"
       classNames={{
         label: 'text-xs font-normal text-muted-foreground mb-2',
-        item: 'h-8.5 px-2.5 text-sm font-normal text-foreground hover:text-primary data-[selected=true]:bg-muted data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
+        item: 'h-8.5 px-2.5 text-sm font-normal text-foreground hover:text-primary data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
         group: '',
       }}
     >
@@ -46,9 +62,28 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
           <AccordionMenuGroup key={index}>
             {item.title && <AccordionMenuLabel>{item.title}</AccordionMenuLabel>}
             {item.children?.map((child, index) => {
+              const to = resolveSidebarMenuPath(child.path);
+              const createTo = child.createPath
+                ? resolveSidebarMenuPath(
+                    child.createPath === true
+                      ? `${child.path?.replace(/\/$/, '')}/create`
+                      : child.createPath
+                  )
+                : undefined;
+
               return (
-                <AccordionMenuItem key={index} value={child.path || '#'}>
-                  <Link to={child.path || '#'}>
+                <AccordionMenuLinkItem
+                  key={index}
+                  value={child.path || '#'}
+                  asChild
+                  className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
+                  trailing={
+                    createTo ? (
+                      <SidebarMenuCreateAction item={child} createPath={createTo} />
+                    ) : undefined
+                  }
+                >
+                  <Link to={to}>
                     {child.icon && <child.icon />}
                     <span>{child.title}</span>
                     {child.badge && (
@@ -61,7 +96,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                       </Badge>
                     )}
                   </Link>
-                </AccordionMenuItem>
+                </AccordionMenuLinkItem>
               );
             })}
           </AccordionMenuGroup>

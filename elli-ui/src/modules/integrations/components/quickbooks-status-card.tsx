@@ -83,7 +83,7 @@ function TokenHealthAlert({ tokenHealth }: { tokenHealth: string }) {
         <AlertContent>
           <AlertTitle>Refresh token expired</AlertTitle>
           <AlertDescription>
-            The QuickBooks refresh token has expired. Please reconnect to restore access.
+            Reconnect QuickBooks to restore Elli's access to the selected company.
           </AlertDescription>
         </AlertContent>
       </Alert>
@@ -99,7 +99,7 @@ function TokenHealthAlert({ tokenHealth }: { tokenHealth: string }) {
         <AlertContent>
           <AlertTitle>Refresh token expiring soon</AlertTitle>
           <AlertDescription>
-            The QuickBooks refresh token will expire within 14 days. Reconnect to extend access.
+            Reconnect within 14 days to keep QuickBooks access active.
           </AlertDescription>
         </AlertContent>
       </Alert>
@@ -131,9 +131,9 @@ export function QuickBooksStatusCard({
         <CardHeader>
           <CardHeading>
             <CardTitle>QuickBooks Online</CardTitle>
-            <CardDescription>Accounting</CardDescription>
+            <CardDescription>Accounting connection</CardDescription>
           </CardHeading>
-          <CardToolbar>
+          <CardToolbar className="flex-wrap">
             <Badge variant={badge.variant} appearance="light">
               {badge.label}
             </Badge>
@@ -157,9 +157,7 @@ export function QuickBooksStatusCard({
               </AlertIcon>
               <AlertContent>
                 <AlertTitle>Missing backend configuration</AlertTitle>
-                <AlertDescription>
-                  {status.missingConfig.join(', ')}
-                </AlertDescription>
+                <AlertDescription>{status.missingConfig.join(', ')}</AlertDescription>
               </AlertContent>
             </Alert>
           )}
@@ -177,9 +175,15 @@ export function QuickBooksStatusCard({
           {connection ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <DetailItem label="Company" value={connection.companyName ?? 'Connected company'} />
-              <DetailItem label="Token expires" value={formatDateTime(connection.accessTokenExpiresAt)} />
-              <DetailItem label="Refresh expires" value={formatDateTime(connection.refreshTokenExpiresAt)} />
-              <DetailItem label="Last sync" value={formatDateTime(connection.lastSyncedAt)} />
+              <DetailItem
+                label="Access expires"
+                value={formatDateTime(connection.accessTokenExpiresAt)}
+              />
+              <DetailItem
+                label="Refresh expires"
+                value={formatDateTime(connection.refreshTokenExpiresAt)}
+              />
+              <DetailItem label="Connected" value={formatDateTime(connection.createdAt)} />
             </div>
           ) : (
             <div className="flex items-center gap-3 rounded-lg border border-dashed border-border p-4">
@@ -189,7 +193,7 @@ export function QuickBooksStatusCard({
               <div>
                 <div className="text-sm font-medium">No QuickBooks company connected</div>
                 <div className="text-xs text-muted-foreground">
-                  The transaction preview appears after OAuth completes.
+                  Connect QuickBooks Online to authorize Elli for the selected company.
                 </div>
               </div>
             </div>
@@ -224,16 +228,13 @@ export function QuickBooksStatusCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect QuickBooks?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revoke the OAuth connection and remove access to QuickBooks Online
-              data. Existing linked payments will remain, but new transactions cannot be
-              fetched until the connection is re-established.
+              This revokes Elli's QuickBooks OAuth access. You can reconnect from this page any
+              time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDisconnectConfirm}>
-              Disconnect
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDisconnectConfirm}>Disconnect</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

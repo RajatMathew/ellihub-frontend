@@ -1,6 +1,3 @@
-import { FilePlus2, MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -11,20 +8,20 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { formatDate } from '@/app/lib/helpers';
-import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
-import type { RFQListItem } from '@/modules/project/schemas/rfq';
 import {
   getRFQStatusLabel,
   getRFQStatusName,
   getRFQTrackLabel,
 } from '@/modules/project/components/rfq/rfq-list-utils';
+import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
+import type { RFQListItem } from '@/modules/project/schemas/rfq';
+import { FilePlus2, MoreHorizontal } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
 export function RFQNumberCell({ rfq }: { rfq: RFQListItem }) {
   return (
-    <Link
-      to={`${rfq.id}`}
-      className="text-sm font-semibold text-foreground hover:text-primary"
-    >
+    <Link to={`${rfq.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
       {rfq.rfqNumber ?? '-'}
     </Link>
   );
@@ -42,11 +39,7 @@ export function RFQTitleCell({ rfq }: { rfq: RFQListItem }) {
 }
 
 export function RFQTrackCell({ rfq }: { rfq: RFQListItem }) {
-  return (
-    <span className="text-xs font-semibold uppercase tracking-normal">
-      {getRFQTrackLabel(rfq)}
-    </span>
-  );
+  return <span className="text-xs font-semibold tracking-normal">{getRFQTrackLabel(rfq)}</span>;
 }
 
 export function RFQStatusCell({ rfq }: { rfq: RFQListItem }) {
@@ -98,11 +91,20 @@ export function RFQQuotesCell({ rfq }: { rfq: RFQListItem }) {
 interface RFQActionsCellProps {
   rfq: RFQListItem;
   onDelete: (rfq: RFQListItem) => void;
+  onVoid: (rfq: RFQListItem) => void;
   onCreatePO: (rfq: RFQListItem) => void;
 }
 
-export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProps) {
+export function RFQActionsCell({ rfq, onDelete, onVoid, onCreatePO }: RFQActionsCellProps) {
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const projectActions = project?.capabilities?.actions;
   const statusName = getRFQStatusName(rfq);
+  const canEdit = projectActions?.rfq?.update === true && statusName === 'DRAFT';
+  const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
+  const canDelete = projectActions?.rfq?.delete === true && statusName === 'DRAFT';
+  const canVoid =
+    projectActions?.rfq?.void === true && (statusName === 'PUBLISHED' || statusName === 'AWARDED');
 
   return (
     <DropdownMenu>
@@ -122,10 +124,12 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
         <DropdownMenuItem asChild>
           <Link to={`${rfq.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${rfq.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        {statusName === 'AWARDED' && (
+        {canEdit && (
+          <DropdownMenuItem asChild>
+            <Link to={`${rfq.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canCreatePO && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onCreatePO(rfq)}>
@@ -134,11 +138,19 @@ export function RFQActionsCell({ rfq, onDelete, onCreatePO }: RFQActionsCellProp
             </DropdownMenuItem>
           </>
         )}
-        {statusName === 'DRAFT' && (
+        {canDelete && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => onDelete(rfq)}>
               Delete
+            </DropdownMenuItem>
+          </>
+        )}
+        {canVoid && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onVoid(rfq)}>
+              Void
             </DropdownMenuItem>
           </>
         )}

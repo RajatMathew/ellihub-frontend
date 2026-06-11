@@ -2,6 +2,7 @@ import api from '@/app/api';
 
 import {
   projectTeamAssignmentSchema,
+  type ProjectTeamRole,
   type ProjectTeamAssignment,
 } from '@/modules/project/schemas/project-team.schema';
 
@@ -22,12 +23,17 @@ export const projectTeamApi = {
     await api.patch(`${BASE}/team-member/remove`, { projectId, employeeId });
   },
 
-  async promoteToLeadPM(
+  async promoteToLeadPM(projectId: string, employeeId: string): Promise<ProjectTeamAssignment> {
+    const res = await api.put(`${BASE}/${projectId}/team/${employeeId}/promote`);
+    return projectTeamAssignmentSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async updateMemberRole(
     projectId: string,
     employeeId: string,
-    keepOldPM?: boolean,
-  ): Promise<void> {
-    const params = keepOldPM != null ? { keepOldPM } : undefined;
-    await api.put(`${BASE}/${projectId}/team/${employeeId}/promote`, null, { params });
+    role: ProjectTeamRole
+  ): Promise<ProjectTeamAssignment> {
+    const res = await api.patch(`${BASE}/${projectId}/team/${employeeId}/role`, { role });
+    return projectTeamAssignmentSchema.parse(res.data?.data ?? res.data);
   },
 };

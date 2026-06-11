@@ -1,9 +1,11 @@
+import * as React from 'react';
 import { useState, type ReactNode } from 'react';
 
 import { Search, type LucideIcon } from 'lucide-react';
 
 import { Button } from '@app/components/ui/button';
 import { Input } from '@app/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@app/components/ui/tooltip';
 import { cn } from '@app/lib/utils';
 
 import { SectionHeader, type SectionHeaderAction } from './section-header';
@@ -14,6 +16,8 @@ export interface SectionTableColumn<T> {
   align?: 'left' | 'center' | 'right';
   className?: string;
   headerClassName?: string;
+  textOverflow?: 'truncate' | 'scroll' | 'wrap';
+  tooltip?: (row: T) => ReactNode;
   render: (row: T) => ReactNode;
 }
 
@@ -99,7 +103,7 @@ export function SectionTable<T>({
                 <th
                   key={col.key}
                   className={cn(
-                    'px-5 py-3 text-[11px] font-semibold tracking-wide text-gray-500 uppercase',
+                    'px-5 py-3 text-[11px] font-semibold tracking-wide text-gray-500',
                     col.align === 'right' && 'text-right',
                     col.align === 'center' && 'text-center',
                     col.headerClassName
@@ -130,19 +134,26 @@ export function SectionTable<T>({
                     onRowClick && 'cursor-pointer'
                   )}
                 >
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
-                      className={cn(
-                        'px-5 py-4',
-                        col.align === 'right' && 'text-right',
-                        col.align === 'center' && 'text-center',
-                        col.className
-                      )}
-                    >
-                      {col.render(row)}
-                    </td>
-                  ))}
+                  {columns.map((col) => {
+                    return (
+                      <td
+                        key={col.key}
+                        className={cn(
+                          'px-5 py-4',
+                          col.align === 'right' && 'text-right',
+                          col.align === 'center' && 'text-center',
+                          col.className
+                        )}
+                      >
+                        <SectionTableCellContent
+                          textOverflow={col.textOverflow}
+                          tooltip={col.tooltip?.(row)}
+                        >
+                          {col.render(row)}
+                        </SectionTableCellContent>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}
@@ -208,5 +219,69 @@ export function SectionTable<T>({
         </div>
       </div>
     </div>
+  );
+}
+
+function SectionTableCellContent({
+  children,
+  textOverflow,
+  tooltip,
+}: {
+  children: ReactNode;
+  textOverflow?: 'truncate' | 'scroll' | 'wrap';
+  tooltip?: ReactNode;
+}) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (textOverflow !== 'truncate') {
+      setIsOverflowing(false);
+      return;
+    }
+
+    const element = contentRef.current;
+    if (!element) return;
+
+    const checkOverflow = () => {
+      setIsOverflowing(
+        element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight
+      );
+    };
+
+    checkOverflow();
+
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [children, textOverflow, tooltip]);
+
+  const content = (
+    <div
+      ref={contentRef}
+      className={cn(
+        'min-w-0 max-w-full',
+        textOverflow === 'truncate' && 'truncate',
+        textOverflow === 'scroll' &&
+          'max-h-24 overflow-auto whitespace-pre-wrap break-words pr-1 text-left',
+        textOverflow === 'wrap' && 'whitespace-normal break-words'
+      )}
+    >
+      {children}
+    </div>
+  );
+
+  if (textOverflow !== 'truncate' || !tooltip || !isOverflowing) {
+    return content;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent className="max-w-96 whitespace-pre-wrap break-words text-left">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
   );
 }

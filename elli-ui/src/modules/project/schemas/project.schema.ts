@@ -57,6 +57,8 @@ export const projectListItemSchema = z
     state: z.string().nullable().optional(),
     estimatedStartDate: z.string().nullable().optional(),
     estimatedEndDate: z.string().nullable().optional(),
+    actualStartDate: z.string().nullable().optional(),
+    actualCompletionDate: z.string().nullable().optional(),
     setInactiveDate: z.string().nullable().optional(),
     tcoDate: z.string().nullable().optional(),
     gc: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
@@ -76,6 +78,90 @@ export const projectListItemSchema = z
   .passthrough();
 
 export type ProjectListItem = z.infer<typeof projectListItemSchema>;
+
+const projectActionCapabilitiesSchema = z
+  .object({
+    projectTeam: z
+      .object({
+        add: z.boolean().optional(),
+        remove: z.boolean().optional(),
+        promote: z.boolean().optional(),
+        'assign-role': z.boolean().optional(),
+        'transfer-lead': z.boolean().optional(),
+        removeMember: z.boolean().optional(),
+        removePM: z.boolean().optional(),
+        removeLeadPM: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    primeContract: z
+      .object({
+        read: z.boolean().optional(),
+        pin: z.boolean().optional(),
+        unpin: z.boolean().optional(),
+        primary: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    rfq: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        award: z.boolean().optional(),
+        unaward: z.boolean().optional(),
+        void: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    purchaseOrder: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        issue: z.boolean().optional(),
+        deliver: z.boolean().optional(),
+        cancel: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    subChangeOrder: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        approve: z.boolean().optional(),
+        reject: z.boolean().optional(),
+        void: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    invoice: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        state: z.boolean().optional(),
+        'mark-paid': z.boolean().optional(),
+        'mark-unpaid': z.boolean().optional(),
+        dispute: z.boolean().optional(),
+        'resolve-dispute': z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+  })
+  .passthrough()
+  .optional()
+  .default({});
 
 export const projectDetailSchema = z
   .object({
@@ -105,6 +191,8 @@ export const projectDetailSchema = z
     zipCode: z.string().nullable().optional(),
     estimatedStartDate: z.string().nullable().optional(),
     estimatedEndDate: z.string().nullable().optional(),
+    actualStartDate: z.string().nullable().optional(),
+    actualCompletionDate: z.string().nullable().optional(),
     setInactiveDate: z.string().nullable().optional(),
     tcoDate: z.string().nullable().optional(),
     deletedAt: z.string().nullable().optional(),
@@ -135,6 +223,17 @@ export const projectDetailSchema = z
     primeContract: primeContractSchema.nullable().optional(),
     projectScheduleEntries: z.array(projectScheduleEntrySchema).optional().default([]),
     teamMembers: z.array(projectTeamAssignmentSchema).optional().default([]),
+    currentUserProjectRole: z.string().nullable().optional(),
+    capabilities: z
+      .object({
+        canManage: z.boolean().optional().default(false),
+        canEdit: z.boolean().optional().default(false),
+        canCreateProjectDocuments: z.boolean().optional().default(false),
+        canManageTeam: z.boolean().optional().default(false),
+        actions: projectActionCapabilitiesSchema,
+      })
+      .optional()
+      .default({}),
   })
   .passthrough();
 
@@ -147,6 +246,14 @@ export const fieldwireProjectOptionSchema = z
     code: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     accountId: z.coerce.number(),
+    linkedProject: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        jobNumber: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
   })
   .passthrough();
 
@@ -181,6 +288,8 @@ export const createProjectInputSchema = z.object({
   zipCode: z.string().optional(),
   estimatedStartDate: z.string().optional(),
   estimatedEndDate: z.string().optional(),
+  actualStartDate: z.string().nullable().optional(),
+  actualCompletionDate: z.string().nullable().optional(),
   gcId: z.string().min(1, 'GC is required'),
   leadPMId: z.string().optional(),
   contractValue: z.number().optional().default(0),
@@ -190,7 +299,7 @@ export const createProjectInputSchema = z.object({
   taxRate: z.number().optional().default(0),
   paymentTerms: z.string().optional(),
   setInactiveDate: z.string().nullable().optional(),
-  tcoDate: z.string().nullable().optional(),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
@@ -224,7 +333,7 @@ export const projectFormSchema = z.object({
   status: ProjectStatusSchema.default('ACTIVE'),
   divisionId: z.string().min(1, 'Division is required'),
   gcId: z.string().min(1, 'General contractor is required'),
-  leadPMId: z.string().optional(),
+  leadPMId: z.string().min(1, 'Lead PM is required'),
   streetAddress: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -240,7 +349,7 @@ export const projectFormSchema = z.object({
   actualStartDate: z.string().optional().default(''),
   actualCompletionDate: z.string().optional().default(''),
   setInactiveDate: z.string().optional().default(''),
-  tcoDate: z.string().optional().default(''),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
@@ -265,6 +374,8 @@ export const updateProjectInputSchema = z.object({
   zipCode: z.string().optional(),
   estimatedStartDate: z.string().optional(),
   estimatedEndDate: z.string().optional(),
+  actualStartDate: z.string().nullable().optional(),
+  actualCompletionDate: z.string().nullable().optional(),
   contractValue: z.number().optional(),
   contractType: z.string().optional(),
   retainagePercent: z.number().optional(),
@@ -272,7 +383,7 @@ export const updateProjectInputSchema = z.object({
   taxRate: z.number().optional(),
   paymentTerms: z.string().optional(),
   setInactiveDate: z.string().nullable().optional(),
-  tcoDate: z.string().nullable().optional(),
+  tcoDate: z.string().min(1, 'TCO date is required'),
 });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectInputSchema>;

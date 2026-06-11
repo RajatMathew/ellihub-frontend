@@ -2,17 +2,23 @@ import { Prisma } from '@db/client';
 
 type Tx = Prisma.TransactionClient;
 
-export const generatePoNumber = async (tx: Tx, jobNumber: string): Promise<string> => {
-    const prefix = `PO-${jobNumber}-`;
-    const latest = await tx.purchaseOrder.findFirst({
-        where: { poNumber: { startsWith: prefix } },
-        orderBy: { poNumber: 'desc' },
+export const generatePoNumber = async (tx: Tx): Promise<string> => {
+    const prefix = 'PO-';
+    const purchaseOrders = await tx.purchaseOrder.findMany({
         select: { poNumber: true },
     });
-    let seq = 1;
-    if (latest?.poNumber) {
-        const suffix = latest.poNumber.slice(prefix.length);
-        seq = (parseInt(suffix, 10) || 0) + 1;
+    const highestExistingSequence = purchaseOrders.reduce((highest, po) => {
+        const match = /^PO-(?:.*-)?(\d+)$/.exec(po.poNumber);
+        if (!match) return highest;
+        return Math.max(highest, parseInt(match[1], 10) || 0);
+    }, 0);
+    let seq = Math.max(highestExistingSequence, purchaseOrders.length) + 1;
+    let poNumber = `${prefix}${String(seq).padStart(3, '0')}`;
+
+    while (await tx.purchaseOrder.findUnique({ where: { poNumber }, select: { id: true } })) {
+        seq += 1;
+        poNumber = `${prefix}${String(seq).padStart(3, '0')}`;
     }
-    return `${prefix}${String(seq).padStart(3, '0')}`;
+
+    return poNumber;
 };

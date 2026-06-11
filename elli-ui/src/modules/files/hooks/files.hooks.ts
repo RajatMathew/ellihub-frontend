@@ -1,11 +1,12 @@
 ﻿import { toastApiError } from '@/app/lib/toast-api-error';
-import { filesApi, type FileSearchParams } from '@/modules/files/api/files.api';
+import {
+  filesApi,
+  type FileSearchParams,
+  type FileUploadBatchInput,
+  type FileUploadPayload,
+} from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import type {
-  FileFolderRenameInput,
-  FileUploadInput,
-  FolderCreateInput,
-} from '@/modules/files/schemas/file.schema';
+import type { FileFolderRenameInput, FolderCreateInput } from '@/modules/files/schemas/file.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const PREVIEW_STALE_TIME = 5 * 60 * 1000;
@@ -14,6 +15,7 @@ export const useRootFolderQuery = (enabled = true) =>
     queryKey: filesKeys.root(),
     queryFn: () => filesApi.getRootFolder(),
     enabled,
+    refetchOnMount: 'always',
   });
 
 export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
@@ -25,6 +27,7 @@ export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
       return filesApi.getFolderDetails(id);
     },
     enabled: enabled && !!id,
+    refetchOnMount: 'always',
   });
 
 export const useFilesSearchQuery = (params: FileSearchParams, enabled: boolean) =>
@@ -79,13 +82,31 @@ export const useUploadFileMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ file, data }: { file: File; data: FileUploadInput }) =>
-      filesApi.uploadFile(file, data),
+    mutationFn: ({ file, data }: FileUploadPayload) => filesApi.uploadFile(file, data),
     onSuccess: (_, { data: { parentId } }) => {
       queryClient.invalidateQueries({ queryKey: filesKeys.all });
       queryClient.invalidateQueries({ queryKey: filesKeys.folderDetail(parentId) });
     },
     onError: (error) => toastApiError(error, 'Failed to upload file.'),
+  });
+};
+
+export const useUploadFilesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ payloads, onProgress }: FileUploadBatchInput) =>
+      filesApi.uploadFiles(payloads, onProgress),
+    onSuccess: (_, { payloads }) => {
+      queryClient.invalidateQueries({ queryKey: filesKeys.all });
+
+      const parentIds = new Set(payloads.map(({ data }) => data.parentId));
+
+      for (const parentId of parentIds) {
+        queryClient.invalidateQueries({ queryKey: filesKeys.folderDetail(parentId) });
+      }
+    },
+    onError: (error) => toastApiError(error, 'Failed to upload files.'),
   });
 };
 

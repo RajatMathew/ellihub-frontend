@@ -10,12 +10,13 @@ export interface BreadcrumbMeta {
 export interface RouteDef {
   path: string;
   /** Lazy component or static import */
-  component: ComponentType<unknown> | LazyExoticComponent<ComponentType<unknown>>;
+  component?: ComponentType<unknown> | LazyExoticComponent<ComponentType<unknown>>;
   /** Default: "app" */
   layout?: LayoutType;
   /** For document title and breadcrumb */
   title?: string;
   breadcrumb?: BreadcrumbMeta;
+  access?: 'admin' | 'dev' | { resource: string; action: string };
   /** Nested routes (e.g. project children) */
   children?: RouteDef[];
 }

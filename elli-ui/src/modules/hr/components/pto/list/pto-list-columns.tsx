@@ -47,6 +47,8 @@ export function usePTOListColumns({
         cell: ({ row }) => <PTOEmployeeCell pto={row.original} />,
         meta: {
           headerClassName: 'min-w-40',
+          textOverflow: 'truncate',
+          tooltipContent: (pto) => pto.employee?.name,
           skeleton: <Skeleton className="h-4 w-32 rounded" />,
         },
       },
@@ -57,6 +59,8 @@ export function usePTOListColumns({
         cell: ({ row }) => <PTOTypeCell pto={row.original} />,
         meta: {
           headerClassName: 'w-32',
+          textOverflow: 'truncate',
+          tooltipContent: (pto) => pto.type?.label,
           skeleton: <Skeleton className="h-5 w-20 rounded" />,
         },
       },

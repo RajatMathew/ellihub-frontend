@@ -30,9 +30,9 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
+import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
@@ -41,33 +41,43 @@ import {
   PurchaseOrderDetailLineItemsCard,
   PurchaseOrderDetailLinkedInvoicesCard,
   PurchaseOrderDetailLinkedSCOsCard,
-  PurchaseOrderPaymentHistoryCard,
+  PurchaseOrderPdfDialog,
 } from '@/modules/project/components/purchase-order';
+import {
+  calculateEffectivePurchaseOrderTotals,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
   InfoRow,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   PO_STATUS_COLORS,
   TRADE_CATEGORY_BADGE_VARIANTS,
   TRADE_CATEGORY_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
+import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddPOAttachmentMutation,
   useCancelPOMutation,
+  useGeneratePOPdfMutation,
   useIssuePOMutation,
   usePODetailQuery,
-  usePOQuickBooksPaymentsQuery,
   useRecordDeliveryMutation,
   useRemovePOAttachmentMutation,
-  useRevertToDraftMutation,
+  useSavePOPdfMutation,
 } from '@/modules/project/hooks/purchase-order';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import type { POStatusName } from '@/modules/project/schemas/purchase-order';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
+import type { GeneratePOPdfInput, POStatusName } from '@/modules/project/schemas/purchase-order';
 import {
   AlertTriangle,
   Calendar,
@@ -76,6 +86,7 @@ import {
   Clock,
   DollarSign,
   ExternalLink,
+  FileText,
   History,
   MoreHorizontal,
   PanelRightOpen,
@@ -97,18 +108,24 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
+
 /* ---- Page ---- */
 
 export function PODetailPage() {
   const { projectId = '', poId = '' } = useParams<{ projectId: string; poId: string }>();
 
   const { data: po, isLoading } = usePODetailQuery(poId);
+  const { data: project } = useProjectDetailQuery(projectId);
   const { data: linkedInvoices = [], isLoading: isLinkedInvoicesLoading } =
     useInvoicesByPurchaseOrderQuery(poId);
   const { data: linkedSCOs = [], isLoading: isLinkedSCOsLoading } =
     useSCOsByPurchaseOrderQuery(poId);
-  const { data: quickBooksPayments = [], isLoading: isQuickBooksPaymentsLoading } =
-    usePOQuickBooksPaymentsQuery(poId);
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'purchaseOrder',
     entityId: poId,
@@ -118,26 +135,64 @@ export function PODetailPage() {
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
     po?.poNumber ?? undefined
   );
-  const { data: costCodesData } = useCostCodesQuery();
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
+  const { data: poEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'PURCHASE_ORDER',
+    poId || undefined,
+    project?.capabilities?.actions?.purchaseOrder?.update === true
+  );
+  const poUploadFolderId = poEntityFolderId ?? poFolderId;
+  const { data: pdfTermsConfig } = usePdfTermsConfigQuery('purchaseOrder');
+  const { data: pdfNoticeConfig } = usePdfNoticeConfigQuery('purchaseOrder');
+  const pdfTermsOptions = useMemo(() => pdfTermsConfig?.options ?? [], [pdfTermsConfig?.options]);
+  const pdfNoticeOptions = useMemo(
+    () => pdfNoticeConfig?.options ?? [],
+    [pdfNoticeConfig?.options]
+  );
+  const defaultPdfTermsOption = useMemo(
+    () =>
+      pdfTermsOptions.find((option) => option.id === pdfTermsConfig?.defaultOptionId) ??
+      pdfTermsOptions.find((option) => option.isDefault) ??
+      pdfTermsOptions[0],
+    [pdfTermsConfig?.defaultOptionId, pdfTermsOptions]
+  );
+  const defaultPdfNoticeOption = useMemo(
+    () =>
+      pdfNoticeOptions.find((option) => option.id === pdfNoticeConfig?.defaultOptionId) ??
+      pdfNoticeOptions.find((option) => option.isDefault) ??
+      pdfNoticeOptions[0],
+    [pdfNoticeConfig?.defaultOptionId, pdfNoticeOptions]
+  );
 
   const issueMutation = useIssuePOMutation();
   const cancelMutation = useCancelPOMutation();
   const recordDeliveryMutation = useRecordDeliveryMutation();
-  const revertToDraftMutation = useRevertToDraftMutation();
+  const generatePdfMutation = useGeneratePOPdfMutation();
+  const savePdfMutation = useSavePOPdfMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
-  const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
-  );
+  const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = po?.attachments ?? [];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [issueOpen, setIssueOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [pdfIncludeNotice, setPdfIncludeNotice] = useState(false);
+  const [pdfNoticeTitle, setPdfNoticeTitle] = useState('');
+  const [pdfNoticeHtml, setPdfNoticeHtml] = useState('');
+  const [pdfNoticeTemplateId, setPdfNoticeTemplateId] = useState('');
+  const [pdfDefaultNoticeApplied, setPdfDefaultNoticeApplied] = useState(false);
+  const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
+  const [pdfTermsHtml, setPdfTermsHtml] = useState('');
+  const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
+  const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -145,6 +200,132 @@ export function PODetailPage() {
 
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  function handlePdfOptionsOpenChange(open: boolean) {
+    setPdfOptionsOpen(open);
+    if (!open) setPdfPreview(null);
+  }
+
+  function applyDefaultPdfTermsIfEmpty() {
+    if (!defaultPdfTermsOption?.html || hasHtmlText(pdfTermsHtml)) return false;
+    setPdfTermsTemplateId(defaultPdfTermsOption.id);
+    setPdfTermsHtml(defaultPdfTermsOption.html);
+    setPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultPdfNoticeIfEmpty() {
+    if (!defaultPdfNoticeOption?.html || hasHtmlText(pdfNoticeHtml)) return false;
+    setPdfNoticeTemplateId(defaultPdfNoticeOption.id);
+    setPdfNoticeTitle(defaultPdfNoticeOption.title);
+    setPdfNoticeHtml(defaultPdfNoticeOption.html);
+    setPdfDefaultNoticeApplied(true);
+    return true;
+  }
+
+  function generatePdfPreview(data: GeneratePOPdfInput) {
+    generatePdfMutation.mutate(
+      { id: poId, poNumber: po?.poNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function savePdfToFiles(data: GeneratePOPdfInput) {
+    savePdfMutation.mutate(
+      { id: poId, poNumber: po?.poNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function openPdfOptions() {
+    const shouldEnableDefaultNotice =
+      !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
+    const defaultNoticeApplied =
+      !pdfDefaultNoticeApplied && shouldApplyDefaultNotice ? applyDefaultPdfNoticeIfEmpty() : false;
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultPdfNoticeOption?.title
+        ? defaultPdfNoticeOption.title
+        : pdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultPdfNoticeOption?.html
+        ? defaultPdfNoticeOption.html
+        : pdfNoticeHtml;
+    const nextIncludeNotice =
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
+        ? true
+        : pdfIncludeNotice;
+    const shouldEnableDefaultTerms =
+      !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
+    const defaultTermsApplied =
+      !pdfDefaultTermsApplied && shouldApplyDefaultTerms ? applyDefaultPdfTermsIfEmpty() : false;
+    const nextTermsHtml =
+      defaultTermsApplied && defaultPdfTermsOption?.html
+        ? defaultPdfTermsOption.html
+        : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldApplyDefaultTerms && hasHtmlText(nextTermsHtml) ? true : pdfIncludeTerms;
+
+    if (nextIncludeNotice) {
+      setPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
+      setPdfIncludeTerms(true);
+    }
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview({
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    });
+  }
+
+  function handlePdfIncludeNoticeChange(includeNotice: boolean) {
+    setPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultPdfNoticeIfEmpty();
+    }
+  }
+
+  function handlePdfNoticeTemplateChange(optionId: string) {
+    const option = pdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option) return;
+
+    setPdfNoticeTemplateId(option.id);
+    setPdfNoticeTitle(option.title);
+    setPdfNoticeHtml(option.html);
+    setPdfIncludeNotice(true);
+    setPdfDefaultNoticeApplied(true);
+  }
+
+  function handlePdfIncludeTermsChange(includeTerms: boolean) {
+    setPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultPdfTermsIfEmpty();
+    }
+  }
+
+  function handlePdfTermsTemplateChange(optionId: string) {
+    const option = pdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option) return;
+
+    setPdfTermsTemplateId(option.id);
+    setPdfTermsHtml(option.html);
+    setPdfIncludeTerms(true);
+    setPdfDefaultTermsApplied(true);
+  }
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     if (!activityData?.data) return [];
@@ -192,11 +373,16 @@ export function PODetailPage() {
   const isCancelled = statusName === 'CANCELLED';
   const isDelivered = statusName === 'DELIVERED';
 
-  const canEdit = isDraft;
-  const canIssue = isDraft;
-  const canCancel = !isCancelled;
-  const canRevert = !isDraft;
-  const canRecordDelivery = isIssued && !isDelivered;
+  const projectActions = project?.capabilities?.actions;
+  const canSavePdf = projectActions?.purchaseOrder?.update === true;
+  const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
+  const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
+  const canCancel =
+    projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
+  const canRecordDelivery =
+    projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
+  const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
+  const canUseActionsMenu = canEdit || canCancel;
 
   const isOverdue =
     !!po?.expectedDate &&
@@ -206,10 +392,7 @@ export function PODetailPage() {
   const overdueDays = isOverdue ? calcOverdueDays(po.expectedDate) : 0;
 
   const isActionPending =
-    issueMutation.isPending ||
-    cancelMutation.isPending ||
-    recordDeliveryMutation.isPending ||
-    revertToDraftMutation.isPending;
+    issueMutation.isPending || cancelMutation.isPending || recordDeliveryMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -223,35 +406,34 @@ export function PODetailPage() {
     );
   }
 
-  const poTotal = parseFloat(po.total ?? '0');
+  const purchaseOrderTotals = calculateEffectivePurchaseOrderTotals({
+    lineItems: po.lineItems,
+    subtotal: po.subtotal,
+    negotiatedDiscount: po.negotiatedDiscount,
+    shippingHandlingFee: po.shippingHandlingFee,
+    taxPercent: po.taxPercent,
+    taxAmount: po.taxAmount,
+  });
+  const poTotal = purchaseOrderTotals.total;
   const scoTotal = linkedSCOs
     .filter((sco) => sco.status === 'APPROVED')
-    .reduce((sum, sco) => sum + Number(sco.amount ?? 0), 0);
+    .reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0);
   const totalCommitment = poTotal + scoTotal;
-  const paidInvoiceTotal = linkedInvoices
+  const amountPaid = linkedInvoices
     .filter((invoice) => invoice.isPaid)
     .reduce((sum, invoice) => sum + Number(invoice.totalAmount ?? 0), 0);
-  const quickBooksPaymentTotal = quickBooksPayments.reduce(
-    (sum, payment) => sum + Number(payment.totalAmount ?? 0),
-    0
-  );
-  const amountPaid = paidInvoiceTotal + quickBooksPaymentTotal;
   const invoiceTotal = linkedInvoices.reduce(
     (sum, invoice) => sum + Number(invoice.totalAmount ?? 0),
     0
   );
-  const hasPaymentActivity = linkedInvoices.length > 0 || quickBooksPayments.length > 0;
   const balanceDue = Math.max(totalCommitment - amountPaid, 0);
-  const subtotal = parseFloat(po.subtotal ?? '0');
-  const taxAmount = parseFloat(po.taxAmount ?? '0');
+  const { subtotal, negotiatedDiscount, shippingHandlingFee, taxAmount } = purchaseOrderTotals;
   const retainagePercent = parseFloat(po.retainagePercent ?? '0');
   const readableRfq = po.rfq?.rfqNumber ?? po.rfq?.title ?? po.rfqId;
   const tradeLabel =
     po.tradeCategoryLabel ??
     (po.tradeCategory ? TRADE_CATEGORY_LABELS[po.tradeCategory] : undefined);
   const vendorEmail = typeof po.vendor?.email === 'string' ? po.vendor.email : undefined;
-  const vendorPhone = typeof po.vendor?.phone === 'string' ? po.vendor.phone : undefined;
-  const vendorAddress = typeof po.vendor?.address === 'string' ? po.vendor.address : undefined;
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
@@ -303,20 +485,14 @@ export function PODetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" onClick={openPdfOptions}>
+              <FileText className="size-4" />
+              Generate PDF
+            </Button>
             {canIssue && (
               <Button size="sm" onClick={() => setIssueOpen(true)}>
                 <CheckCircle2 className="size-4" />
                 Issue PO
-              </Button>
-            )}
-            {canRevert && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => revertToDraftMutation.mutate(poId)}
-              >
-                Revert to Draft
               </Button>
             )}
             {canRecordDelivery && (
@@ -340,34 +516,41 @@ export function PODetailPage() {
                 </Link>
               </Button>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon" aria-label="Purchase order actions">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canCancel && (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setCancelReason('');
-                      setCancelOpen(true);
-                    }}
+            {canUseActionsMenu && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Purchase order actions"
                   >
-                    <XCircle className="size-4" />
-                    Cancel PO
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {canEdit && (
+                    <DropdownMenuItem asChild>
+                      <Link to="edit">
+                        <Pencil className="size-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {canCancel && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setCancelReason('');
+                        setCancelOpen(true);
+                      }}
+                    >
+                      <XCircle className="size-4" />
+                      Cancel PO
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {!sidebarOpen && (
               <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
                 <PanelRightOpen className="size-4" />
@@ -406,13 +589,14 @@ export function PODetailPage() {
           )}
 
           {/* ---- Stat cards ---- */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             <StatsCard
               icon={<DollarSign className="size-5 text-primary" />}
               bgClass="bg-primary/10"
               label="PO Total"
               value={formatCurrency(poTotal)}
               description="Base contract amount"
+              compactValue
             />
             <StatsCard
               icon={<TrendingUp className="size-5 text-muted-foreground" />}
@@ -420,6 +604,7 @@ export function PODetailPage() {
               label="SCO Total"
               value={scoTotal > 0 ? `+${formatCurrency(scoTotal)}` : formatCurrency(0)}
               description="Approved change orders"
+              compactValue
             />
             <StatsCard
               icon={<ClipboardList className="size-5 text-info" />}
@@ -427,13 +612,15 @@ export function PODetailPage() {
               label="Total Commitment"
               value={formatCurrency(totalCommitment)}
               description="PO + approved SCOs"
+              compactValue
             />
             <StatsCard
               icon={<CheckCircle2 className="size-5 text-success" />}
               bgClass="bg-success/10"
               label="Amount Paid"
               value={formatCurrency(amountPaid)}
-              description="Invoices + QuickBooks"
+              description="Via linked invoices"
+              compactValue
             />
             <StatsCard
               icon={<Receipt className="size-5 text-warning" />}
@@ -441,6 +628,7 @@ export function PODetailPage() {
               label="Balance Due"
               value={formatCurrency(balanceDue)}
               description="Remaining balance"
+              compactValue
             />
           </div>
 
@@ -476,7 +664,7 @@ export function PODetailPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                     <ProjectDetailField label="Vendor">{po.vendor?.name}</ProjectDetailField>
                     <ProjectDetailField label="Email">
                       {vendorEmail ? (
@@ -487,16 +675,9 @@ export function PODetailPage() {
                         '-'
                       )}
                     </ProjectDetailField>
-                    <ProjectDetailField label="Phone">{vendorPhone}</ProjectDetailField>
                     <ProjectDetailField label="Lead Time">{po.leadTime}</ProjectDetailField>
                     <ProjectDetailField label="Payment Terms">
                       {po.paymentTerms?.replace(/_/g, ' ')}
-                    </ProjectDetailField>
-                    <ProjectDetailField
-                      label="Vendor Address"
-                      className="sm:col-span-2 lg:col-span-3"
-                    >
-                      {vendorAddress ?? '-'}
                     </ProjectDetailField>
                   </div>
                 </CardContent>
@@ -562,7 +743,8 @@ export function PODetailPage() {
                 lineItems={po.lineItems ?? []}
                 costCodeMap={costCodeMap}
                 subtotal={subtotal}
-                markupAmount={po.markupAmount}
+                negotiatedDiscount={po.negotiatedDiscount}
+                shippingHandlingFee={shippingHandlingFee}
                 taxAmount={taxAmount}
                 taxPercent={po.taxPercent}
                 total={poTotal}
@@ -572,8 +754,10 @@ export function PODetailPage() {
             {/* Right column: Placeholder sections */}
             <div className="min-w-0 space-y-5 2xl:col-span-2">
               <ProjectDetailDocumentsCard
+                title="Backup Documents"
+                emptyMessage="No backup documents attached."
                 documents={attachments}
-                canUpload={canEdit && !!poFolderId}
+                canUpload={canEdit && !!poUploadFolderId}
                 canRemove={canEdit}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -582,11 +766,7 @@ export function PODetailPage() {
                 }
               />
 
-              <PurchaseOrderPaymentHistoryCard
-                purchaseOrderId={poId}
-                payments={quickBooksPayments}
-                isLoading={isQuickBooksPaymentsLoading}
-              />
+              {/* Hidden until backend exposes purchase-order payment history in the API response. */}
 
               <PurchaseOrderDetailLinkedInvoicesCard
                 projectId={projectId}
@@ -600,6 +780,8 @@ export function PODetailPage() {
                 scos={linkedSCOs}
                 isLoading={isLinkedSCOsLoading}
                 approvedTotal={scoTotal}
+                canCreate={canCreateSCO}
+                createTo={`/app/project/${projectId}/sub-change-order/create?purchaseOrderId=${poId}`}
               />
             </div>
           </div>
@@ -637,18 +819,27 @@ export function PODetailPage() {
               <Card>
                 <CardContent className="p-4 space-y-1">
                   <InfoRow label="Subtotal">{formatCurrency(subtotal)}</InfoRow>
-                  {Number(po.markupAmount ?? 0) !== 0 && (
-                    <InfoRow label="Markup">{formatCurrency(Number(po.markupAmount))}</InfoRow>
+                  {negotiatedDiscount !== 0 && (
+                    <InfoRow label="Negotiated Discount">
+                      -{formatCurrency(negotiatedDiscount)}
+                    </InfoRow>
                   )}
-                  {taxAmount > 0 && (
-                    <InfoRow label={`Tax (${po.taxPercent}%)`}>{formatCurrency(taxAmount)}</InfoRow>
+                  {shippingHandlingFee !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">
+                      {formatCurrency(shippingHandlingFee)}
+                    </InfoRow>
+                  )}
+                  {taxAmount !== 0 && (
+                    <InfoRow label={formatPurchaseOrderTaxLabel(po.taxPercent)}>
+                      {formatCurrency(taxAmount)}
+                    </InfoRow>
                   )}
                   <Separator className="my-1" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{formatCurrency(poTotal)}</span>
                   </InfoRow>
                   {retainagePercent > 0 && (
-                    <InfoRow label={`Retainage (${retainagePercent}%)`}>
+                    <InfoRow label={`Retainage (${formatPercent(retainagePercent)})`}>
                       {formatCurrency(poTotal * (retainagePercent / 100))}
                     </InfoRow>
                   )}
@@ -659,15 +850,10 @@ export function PODetailPage() {
                       <InfoRow label="Total Commitment">{formatCurrency(totalCommitment)}</InfoRow>
                     </>
                   )}
-                  {hasPaymentActivity && (
+                  {linkedInvoices.length > 0 && (
                     <>
                       <Separator className="my-2" />
                       <InfoRow label="Invoice Total">{formatCurrency(invoiceTotal)}</InfoRow>
-                      {quickBooksPaymentTotal > 0 && (
-                        <InfoRow label="QuickBooks Payments">
-                          {formatCurrency(quickBooksPaymentTotal)}
-                        </InfoRow>
-                      )}
                       <InfoRow label="Amount Paid">{formatCurrency(amountPaid)}</InfoRow>
                       <InfoRow label="Balance Due">{formatCurrency(balanceDue)}</InfoRow>
                     </>
@@ -781,6 +967,39 @@ export function PODetailPage() {
         </DetailSidebar>
       </div>
 
+      {pdfOptionsOpen && (
+        <PurchaseOrderPdfDialog
+          open={pdfOptionsOpen}
+          onOpenChange={handlePdfOptionsOpenChange}
+          includeNotice={pdfIncludeNotice}
+          noticeTitle={pdfNoticeTitle}
+          noticeHtml={pdfNoticeHtml}
+          noticeOptions={pdfNoticeOptions}
+          selectedNoticeOptionId={pdfNoticeTemplateId}
+          includeTerms={pdfIncludeTerms}
+          termsHtml={pdfTermsHtml}
+          termsOptions={pdfTermsOptions}
+          selectedTermsOptionId={pdfTermsTemplateId}
+          previewFile={pdfPreview}
+          isGenerating={generatePdfMutation.isPending}
+          isSaving={savePdfMutation.isPending}
+          canSave={canSavePdf}
+          onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+          onNoticeOptionChange={handlePdfNoticeTemplateChange}
+          onNoticeTitleChange={setPdfNoticeTitle}
+          onNoticeHtmlChange={setPdfNoticeHtml}
+          onIncludeTermsChange={handlePdfIncludeTermsChange}
+          onTermsOptionChange={handlePdfTermsTemplateChange}
+          onTermsHtmlChange={setPdfTermsHtml}
+          onGenerate={(data) => {
+            generatePdfPreview(data);
+          }}
+          onSave={(data) => {
+            savePdfToFiles(data);
+          }}
+        />
+      )}
+
       {/* ---- Issue PO confirmation ---- */}
       <ConfirmDialog
         open={issueOpen}
@@ -880,11 +1099,11 @@ export function PODetailPage() {
       </Dialog>
 
       {/* ---- Upload file dialog ---- */}
-      {poFolderId && (
+      {canEdit && poUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={poFolderId}
+          parentId={poUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },

@@ -19,6 +19,8 @@ export type InfiniteMultiSearchSelectOption = {
   value: string;
   label: string;
   description?: string;
+  badge?: string;
+  disabled?: boolean;
 };
 
 type InfiniteMultiSearchSelectProps = {
@@ -91,6 +93,7 @@ export function InfiniteMultiSearchSelect({
               selectedOptions.map((option) => (
                 <Badge key={option.value} variant="secondary" appearance="outline" size="sm">
                   <span className="max-w-[180px] truncate">{option.label}</span>
+                  {option.badge && <span className="text-muted-foreground">{option.badge}</span>}
                   <span
                     role="button"
                     tabIndex={0}
@@ -150,10 +153,21 @@ export function InfiniteMultiSearchSelect({
                     key={option.value}
                     value={option.value}
                     keywords={[option.label, option.description ?? '']}
-                    onSelect={() => toggle(option.value)}
+                    disabled={option.disabled}
+                    onSelect={() => {
+                      if (option.disabled) return;
+                      toggle(option.value);
+                    }}
                   >
-                    <div className="min-w-0">
-                      <span className="block truncate">{option.label}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">{option.label}</span>
+                        {option.badge && (
+                          <Badge variant="secondary" size="sm" className="shrink-0">
+                            {option.badge}
+                          </Badge>
+                        )}
+                      </div>
                       {option.description && (
                         <span className="block truncate text-xs text-muted-foreground">
                           {option.description}

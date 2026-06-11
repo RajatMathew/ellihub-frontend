@@ -23,7 +23,10 @@ function flattenRouteTree(nodes: RouteDef[], basePath = ''): RouteEntry[] {
       entries.push({ fullPath, title: node.title });
     }
     if (node.children?.length) {
-      entries.push(...flattenRouteTree(node.children, fullPath === '/' ? '' : fullPath));
+      // Strip trailing /* from the base path for children — React Router treats /*
+      // as a layout catchall; children paths are relative to the parent without it.
+      const childBase = fullPath === '/' ? '' : fullPath.replace(/\/\*$/, '');
+      entries.push(...flattenRouteTree(node.children, childBase));
     }
   }
 
@@ -35,7 +38,9 @@ function flattenRouteTree(nodes: RouteDef[], basePath = ''): RouteEntry[] {
  * that matches actual pathnames.
  */
 function patternToRegex(pattern: string): RegExp {
-  const escaped = pattern.replace(/:[^/]+/g, '[^/]+').replace(/\*$/, '(/.*)?'); // "hr/*" matches /hr and /hr/anything
+  const escaped = pattern
+    .replace(/:[^/]+/g, '[^/]+') // ":param" → match any single segment
+    .replace(/\/\*$/, '(/.*)?'); // "hr/*" → match /hr and /hr/anything (strip the leading slash with the wildcard)
   return new RegExp(`^${escaped}$`);
 }
 

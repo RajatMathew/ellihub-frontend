@@ -1,14 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { LinkedContactItem } from '@/modules/directory/components/shared';
+import {
+  fakeTaxId,
+  fakeVendorEmail,
+  fakeVendorName,
+  fakeVendorWebsite,
+  pickRandom,
+} from '@/lib/fake-data';
+import type {
+  LinkedContactItem,
+  LinkedContactNameSource,
+} from '@/modules/directory/components/shared';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import {
   useContactsQuery,
   useVendorDetailQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks';
 import {
+  paymentTermsSchema,
   vendorFormSchema,
+  vendorStatusSchema,
   type VendorContactLink,
+  type VendorDetail,
   type VendorFormValues,
 } from '@/modules/directory/schemas/vendor.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,23 +50,24 @@ export function useVendorFormState(id: string | undefined) {
   const [activeSection, setActiveSection] = useState('info');
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
+  const [createdContacts, setCreatedContacts] = useState<LinkedContactNameSource[]>([]);
   const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const initializedVendorIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isEdit || !vendorQuery.data || isInitialized) return;
+    if (!isEdit || !vendorQuery.data || initializedVendorIdRef.current === vendorQuery.data.id) {
+      return;
+    }
 
     const vendor = vendorQuery.data;
-    const typeValue =
-      vendor.typeId || (typeof vendor.type === 'object' ? vendor.type?.id : vendor.type) || '';
 
     form.reset({
       name: vendor.name,
       email: vendor.email ?? '',
       website: vendor.website ?? '',
-      paymentTerms: vendor.paymentTerms ?? '',
-      type: typeValue,
-      status: vendor.status,
+      paymentTerms: getVendorPaymentTermsFormValue(vendor),
+      type: getVendorTypeFormValue(vendor),
+      status: getVendorStatusFormValue(vendor),
       taxId: vendor.taxId ?? '',
     });
 
@@ -67,50 +82,62 @@ export function useVendorFormState(id: string | undefined) {
           isPrimary: link.isPrimary,
         }))
       );
-      setIsInitialized(true);
+      initializedVendorIdRef.current = vendor.id;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [form, isEdit, isInitialized, vendorQuery.data]);
+  }, [form, isEdit, vendorQuery.data]);
+
+  const contacts = useMemo(() => {
+    const map = new Map<string, LinkedContactNameSource>();
+    for (const contact of contactsQuery.data?.data ?? []) {
+      map.set(contact.id, contact);
+    }
+    for (const contact of createdContacts) {
+      map.set(contact.id, contact);
+    }
+    return Array.from(map.values());
+  }, [contactsQuery.data?.data, createdContacts]);
 
   const contactOptions = useMemo(
     () =>
-      (contactsQuery.data?.data ?? []).map((contact) => ({
+      contacts.map((contact) => ({
         value: contact.id,
         label: contact.fullName,
       })),
-    [contactsQuery.data]
+    [contacts]
   );
 
   const fillRandom = () => {
-    const randomId = Math.floor(Math.random() * 10000);
-    const randomType =
-      vendorTypesQuery.data?.[Math.floor(Math.random() * vendorTypesQuery.data.length)]?.id;
+    const name = fakeVendorName();
+    const vendorTypes = vendorTypesQuery.data ?? [];
+    const randomType = vendorTypes.length > 0 ? pickRandom(vendorTypes).id : 'MATERIAL';
 
     form.reset({
-      name: `Random Vendor ${randomId}`,
-      email: `vendor-${randomId}@example.com`,
-      type: randomType ?? 'MATERIAL',
+      name,
+      email: fakeVendorEmail(name),
+      type: randomType,
       status: Math.random() > 0.5 ? 'ACTIVE' : 'INACTIVE',
-      taxId: `${Math.floor(10 + Math.random() * 89)}-${Math.floor(
-        1000000 + Math.random() * 8999999
-      )}`,
-      website: `https://vendor-${randomId}.com`,
-      paymentTerms: 'NET_30',
+      taxId: fakeTaxId(),
+      website: fakeVendorWebsite(name),
+      paymentTerms: pickRandom(PAYMENT_TERMS_OPTIONS).value,
     });
   };
 
   const handleContactCreated = (contact: { id: string; fullName: string }) => {
-    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+    setCreatedContacts((prev) =>
+      prev.some((existing) => existing.id === contact.id) ? prev : [...prev, contact]
+    );
+    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: prev.length === 0 }]);
   };
 
   return {
     isEdit,
     form,
     vendorQuery,
-    contacts: contactsQuery.data?.data ?? [],
+    contacts,
     vendorTypes: vendorTypesQuery.data ?? [],
     contactOptions,
     activeSection,
@@ -123,6 +150,24 @@ export function useVendorFormState(id: string | undefined) {
     fillRandom,
     handleContactCreated,
   };
+}
+
+function getVendorTypeFormValue(vendor: VendorDetail) {
+  if (vendor.typeId) return vendor.typeId;
+  if (vendor.type && typeof vendor.type === 'object') return vendor.type.id;
+  if (typeof vendor.type === 'string') return vendor.type;
+
+  return '';
+}
+
+function getVendorStatusFormValue(vendor: VendorDetail) {
+  const result = vendorStatusSchema.safeParse(vendor.status);
+  return result.success ? result.data : 'ACTIVE';
+}
+
+function getVendorPaymentTermsFormValue(vendor: VendorDetail) {
+  const result = paymentTermsSchema.safeParse(vendor.paymentTerms);
+  return result.success ? result.data : 'NET_30';
 }
 
 function buildVendorContactLinks(
@@ -139,7 +184,7 @@ function buildVendorContactLinks(
       id: contact.id,
       contactId: contact.id,
       vendorId,
-      isPrimary: false,
+      isPrimary: contact.isPrimary ?? false,
       contact,
     });
   });

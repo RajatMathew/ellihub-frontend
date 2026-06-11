@@ -39,7 +39,7 @@ export function EmployeeNameCell({ employee }: { employee: Employee }) {
 
 export function EmployeeDepartmentCell({ employee }: { employee: Employee }) {
   return (
-    <div className="inline-flex max-w-full rounded border border-border/50 bg-muted/50 px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-foreground/80">
+    <div className="inline-flex max-w-full rounded border border-border/50 bg-muted/50 px-2 py-0.5 text-xs font-bold tracking-normal text-foreground/80">
       <span className="truncate">{employee.department?.name || 'Unassigned'}</span>
     </div>
   );
@@ -65,7 +65,7 @@ export function EmployeePhoneCell({ employee }: { employee: Employee }) {
 export function EmployeeStatusCell({ employee }: { employee: Employee }) {
   return (
     <span
-      className={`inline-flex rounded border px-2 py-0.5 text-xs font-bold uppercase tracking-widest ${getEmployeeStatusTone(
+      className={`inline-flex rounded border px-2 py-0.5 text-xs font-bold tracking-normal ${getEmployeeStatusTone(
         employee.status
       )}`}
     >

@@ -2,21 +2,19 @@ import api from '@/app/api';
 import {
   quickBooksAuthorizationSchema,
   quickBooksDisconnectSchema,
+  quickBooksReferenceAutoDailySyncSchema,
+  quickBooksReferenceSyncResultSchema,
+  quickBooksReferenceSyncStatusSchema,
   quickBooksStatusSchema,
-  quickBooksTransactionsSchema,
   type QuickBooksAuthorization,
   type QuickBooksDisconnect,
+  type QuickBooksReferenceAutoDailySync,
+  type QuickBooksReferenceSyncResult,
+  type QuickBooksReferenceSyncStatus,
   type QuickBooksStatus,
-  type QuickBooksTransactionEntity,
-  type QuickBooksTransactions,
 } from '@/modules/integrations/schemas/quickbooks.schema';
 
 const BASE = '/integrations/quickbooks';
-
-type QuickBooksTransactionsParams = {
-  entities?: QuickBooksTransactionEntity[];
-  maxResults?: number;
-};
 
 export const quickBooksApi = {
   async getStatus(): Promise<QuickBooksStatus> {
@@ -34,13 +32,18 @@ export const quickBooksApi = {
     return quickBooksDisconnectSchema.parse(res.data?.data ?? res.data);
   },
 
-  async getTransactions(params?: QuickBooksTransactionsParams): Promise<QuickBooksTransactions> {
-    const res = await api.get(`${BASE}/transactions`, {
-      params: {
-        entities: params?.entities?.join(','),
-        maxResults: params?.maxResults,
-      },
-    });
-    return quickBooksTransactionsSchema.parse(res.data?.data ?? res.data);
+  async getReferenceSyncStatus(): Promise<QuickBooksReferenceSyncStatus> {
+    const res = await api.get(`${BASE}/reference-sync/status`);
+    return quickBooksReferenceSyncStatusSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async syncReferenceData(): Promise<QuickBooksReferenceSyncResult> {
+    const res = await api.patch(`${BASE}/reference-sync`);
+    return quickBooksReferenceSyncResultSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async updateReferenceAutoDailySync(enabled: boolean): Promise<QuickBooksReferenceAutoDailySync> {
+    const res = await api.patch(`${BASE}/reference-sync/auto-daily`, { enabled });
+    return quickBooksReferenceAutoDailySyncSchema.parse(res.data?.data ?? res.data);
   },
 };

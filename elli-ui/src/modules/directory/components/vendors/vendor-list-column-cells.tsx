@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   getVendorContactCount,
   getVendorPrimaryContact,
@@ -18,7 +19,7 @@ import {
   VENDOR_TYPE_BADGE_VARIANTS,
 } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
-import { MoreHorizontal, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface VendorNameCellProps {
@@ -29,10 +30,10 @@ export function VendorNameCell({ vendor }: VendorNameCellProps) {
   const contactCount = getVendorContactCount(vendor);
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 max-w-[24rem] flex-col gap-0.5">
       <Link
         to={`${vendor.id}`}
-        className="break-words text-sm font-semibold uppercase text-foreground hover:text-primary"
+        className="[overflow-wrap:anywhere] text-sm font-semibold leading-5 text-foreground hover:text-primary"
       >
         {vendor.name}
       </Link>
@@ -94,8 +95,8 @@ export function VendorContactCell({ vendor }: VendorNameCellProps) {
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="break-words text-sm font-medium leading-tight text-foreground">
+    <div className="flex min-w-0 max-w-[22rem] flex-col gap-0.5">
+      <span className="[overflow-wrap:anywhere] text-sm font-medium leading-5 text-foreground">
         {contactName}
       </span>
       {contactEmail && (
@@ -105,24 +106,29 @@ export function VendorContactCell({ vendor }: VendorNameCellProps) {
   );
 }
 
-export function VendorComplianceCell() {
+export function VendorDocumentCountCell({ vendor }: VendorNameCellProps) {
+  const count = vendor.documentCount ?? vendor._count?.documents ?? 0;
+
   return (
-    <Badge variant="secondary" size="sm">
-      <ShieldCheck className="mr-1 size-3" />
-      N/A
-    </Badge>
+    <span className="text-sm text-foreground">
+      {count} Document{count === 1 ? '' : 's'}
+    </span>
   );
 }
 
-export function VendorEmptyValueCell() {
-  return <span className="text-sm text-muted-foreground">-</span>;
+export function VendorCurrencyCell({ value }: { value: number }) {
+  return <span className="text-sm font-medium text-foreground">{formatCurrency(value)}</span>;
 }
 
 export function VendorActionsCell({
   vendor,
+  canUpdate,
+  canDelete,
   onDelete,
 }: {
   vendor: Vendor;
+  canUpdate: boolean;
+  canDelete: boolean;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -143,16 +149,22 @@ export function VendorActionsCell({
         <DropdownMenuItem asChild>
           <Link to={`${vendor.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${vendor.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(vendor.id)}
-        >
-          Archive
-        </DropdownMenuItem>
+        {canUpdate && (
+          <DropdownMenuItem asChild>
+            <Link to={`${vendor.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(vendor.id)}
+            >
+              Archive
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

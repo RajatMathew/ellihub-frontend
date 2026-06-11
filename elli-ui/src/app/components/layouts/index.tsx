@@ -1,6 +1,5 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
-import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 
 import { LayoutProvider } from '@app/providers/layout';
@@ -13,36 +12,28 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { pathname } = useLocation();
-  const title = useMemo(
-    () => getTitleForPathname(pathname, routeTree) ?? DEFAULT_TITLE,
-    [pathname]
-  );
+  const location = useLocation();
 
   useEffect(() => {
+    const title = getTitleForPathname(location.pathname, routeTree) ?? DEFAULT_TITLE;
     document.title = title;
-  }, [title]);
+  }, [location.pathname]);
 
   return (
-    <>
-      <Helmet>
-        <title>{title}</title>
-      </Helmet>
-      <LayoutProvider
-        bodyClassName="bg-background lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
-        style={
-          {
-            '--page-margin': '0px',
-            '--sidebar-width': '240px',
-            '--sidebar-collapsed-width': '0px',
-            '--sidebar-header-height': '54px',
-            '--header-height': '60px',
-            '--header-height-mobile': '60px',
-          } as React.CSSProperties
-        }
-      >
-        {children}
-      </LayoutProvider>
-    </>
+    <LayoutProvider
+      bodyClassName="bg-background lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
+      style={
+        {
+          '--page-margin': '0px',
+          '--sidebar-width': '240px',
+          '--sidebar-collapsed-width': '0px',
+          '--sidebar-header-height': '54px',
+          '--header-height': '48px',
+          '--header-height-mobile': '48px',
+        } as React.CSSProperties
+      }
+    >
+      {children}
+    </LayoutProvider>
   );
 }

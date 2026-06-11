@@ -1,27 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { FormSectionNav } from '@/app/components/form-section-nav';
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { Forbidden } from '@/app/components/error/forbidden';
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
+import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { LineItems } from '@/app/components/line-items';
-import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import {
+  fakeProjectDescription,
+  fakeRFQDeliverables,
+  fakeRFQTitle,
+  pickRandom,
+  randInt,
+} from '@/lib/fake-data';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
-  ProjectFormToolbar,
+  ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { RFQ_FORM_SECTIONS } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddRFQAttachmentMutation,
@@ -29,87 +35,81 @@ import {
   useRFQDetailQuery,
   useUpdateRFQMutation,
 } from '@/modules/project/hooks/rfq';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
-import { createRFQInputSchema, type CreateRFQInput } from '@/modules/project/schemas/rfq';
+import {
+  resolveProjectEntityFolder,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
+import {
+  createRFQInputSchema,
+  type CreateRFQInput,
+  type RFQDetail,
+} from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Shuffle } from 'lucide-react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const rfqInvalidControlClassName = formInvalidControlClassName;
+
 /* ---- Random data for dev ---- */
 
-const RANDOM_RFQ_TITLES = [
-  'Structural steel supply — Phase 2',
-  'HVAC equipment for floors 3-5',
-  'Exterior cladding materials',
-  'Electrical switchgear & panels',
-  'Plumbing fixtures and rough-in materials',
-  'Concrete formwork and pour — foundation',
-  'Fire protection sprinkler system',
-  'Elevator installation — 2 cabs',
-  'Roofing membrane and insulation',
-  'Window and curtain wall fabrication',
-  'Demolition and hazmat abatement',
-  'Landscaping and site work',
-];
-
-const RANDOM_DELIVERABLES = [
-  { description: 'W14x30 steel beams, ASTM A992', unit: 'LF', qtyRange: [50, 500] },
-  { description: 'RTU HVAC units, 15-ton capacity', unit: 'EA', qtyRange: [2, 8] },
-  { description: 'Aluminum curtain wall panels', unit: 'SF', qtyRange: [500, 5000] },
-  { description: '200A electrical distribution panel', unit: 'EA', qtyRange: [4, 20] },
-  { description: 'PVC Schedule 40 pipe, 4"', unit: 'LF', qtyRange: [100, 1000] },
-  { description: '5000 PSI concrete, delivered', unit: 'CY', qtyRange: [20, 200] },
-  { description: 'Fire sprinkler heads, pendant type', unit: 'EA', qtyRange: [50, 500] },
-  { description: 'Passenger elevator cab, 3500 lb', unit: 'EA', qtyRange: [1, 4] },
-  { description: 'TPO roofing membrane, 60 mil', unit: 'SF', qtyRange: [2000, 15000] },
-  { description: 'Double-pane insulated glass units', unit: 'EA', qtyRange: [20, 200] },
-  { description: 'Asbestos abatement, contained area', unit: 'SF', qtyRange: [500, 3000] },
-  { description: 'Topsoil and grading', unit: 'CY', qtyRange: [50, 500] },
-  { description: 'Rebar #4, Grade 60', unit: 'TON', qtyRange: [2, 20] },
-  { description: 'Drywall, 5/8" Type X fire-rated', unit: 'SF', qtyRange: [1000, 10000] },
-];
-
-function pickRandom<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function generateRandomRFQ() {
-  const numDeliverables = randInt(2, 5);
-  const used = new Set<number>();
-  const deliverables = Array.from({ length: numDeliverables }, () => {
-    let idx: number;
-    do {
-      idx = Math.floor(Math.random() * RANDOM_DELIVERABLES.length);
-    } while (used.has(idx) && used.size < RANDOM_DELIVERABLES.length);
-    used.add(idx);
-    const item = RANDOM_DELIVERABLES[idx];
-    return {
-      description: item.description,
-      quantity: randInt(item.qtyRange[0], item.qtyRange[1]),
-      unitId: '',
-    };
-  });
-
+function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]) {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + randInt(7, 30));
 
   return {
-    title: pickRandom(RANDOM_RFQ_TITLES),
-    description: '',
-    typeId: '',
+    title: fakeRFQTitle(),
+    description: fakeProjectDescription(),
+    typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
     bidDeadline: deadline.toISOString().slice(0, 10),
-    biddingType: pickRandom(['ANONYMOUS', 'OPEN'] as const),
-    deliverables,
+    deliverables: fakeRFQDeliverables(units),
   };
 }
 
 /* ---- Helpers ---- */
+
+type RFQTypeOption = {
+  id: string;
+  label?: string;
+  name?: string;
+};
+
+function normalizeLookupValue(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function resolveRFQTypeId(rfqDetail: RFQDetail, rfqTypes?: RFQTypeOption[]) {
+  const existingTypeId = rfqDetail.typeId ?? rfqDetail.type?.id;
+  if (existingTypeId) return existingTypeId;
+
+  const values = [existingTypeId, rfqDetail.track, rfqDetail.type?.label, rfqDetail.type?.id].map(
+    normalizeLookupValue
+  );
+
+  return (
+    rfqTypes?.find((option) => {
+      const candidates = [option.id, option.label, option.name].map(normalizeLookupValue);
+
+      return candidates.some((candidate) => values.includes(candidate));
+    })?.id ?? ''
+  );
+}
+
+function RFQRequiredFieldLabel({ children }: { children: ReactNode }) {
+  return <FormFieldLabel required>{children}</FormFieldLabel>;
+}
+
+function getRFQTypeLabel(rfqDetail: RFQDetail) {
+  return rfqDetail.type?.label ?? rfqDetail.track ?? 'Current track';
+}
+
+function getRFQTypeDisplayValue(typeId: string, options: RFQTypeOption[], rfqDetail?: RFQDetail) {
+  const option = options.find((item) => item.id === typeId);
+  if (option) return option.label ?? option.name ?? option.id;
+
+  const detailTypeId = rfqDetail?.typeId ?? rfqDetail?.type?.id;
+  return typeId && detailTypeId === typeId && rfqDetail ? getRFQTypeLabel(rfqDetail) : '';
+}
 
 /* ---- Page ---- */
 
@@ -119,6 +119,7 @@ export default function RFQFormPage() {
   const isEdit = !!rfqId;
 
   const { data: rfqDetail, isLoading: isLoadingDetail } = useRFQDetailQuery(rfqId ?? '');
+  const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   const { data: rfqFolderId } = useProjectFolderQuery(projectId || undefined, 'rfq');
   const { data: rfqTypes } = useLookupsQuery('TRADE_CATEGORY');
   const { data: units } = useLookupsQuery('UNIT');
@@ -128,6 +129,17 @@ export default function RFQFormPage() {
   const addAttachmentMutation = useAddRFQAttachmentMutation();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const rfqTypeOptions = useMemo<RFQTypeOption[]>(() => {
+    const options = rfqTypes ?? [];
+    if (!isEdit || !rfqDetail) return options;
+
+    const selectedTypeId = resolveRFQTypeId(rfqDetail, options);
+    if (!selectedTypeId || options.some((option) => option.id === selectedTypeId)) {
+      return options;
+    }
+
+    return [{ id: selectedTypeId, label: getRFQTypeLabel(rfqDetail) }, ...options];
+  }, [isEdit, rfqDetail, rfqTypes]);
 
   const defaultValues: CreateRFQInput = {
     projectId,
@@ -138,12 +150,14 @@ export default function RFQFormPage() {
     deliverables: [{ description: '', quantity: 0, unitId: '' }],
   };
 
-  const { control, handleSubmit, reset, formState } = useForm<CreateRFQInput>({
+  const { control, handleSubmit, reset, setValue, formState } = useForm<CreateRFQInput>({
     resolver: zodResolver(createRFQInputSchema),
     defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'deliverables' });
+
+  const selectedRFQTypeId = rfqDetail ? resolveRFQTypeId(rfqDetail, rfqTypeOptions) : '';
 
   // Reset form when detail loads in edit mode
   useEffect(() => {
@@ -152,7 +166,7 @@ export default function RFQFormPage() {
         projectId: rfqDetail.project?.id ?? projectId,
         title: rfqDetail.title,
         description: rfqDetail.description || '',
-        typeId: rfqDetail.typeId ?? rfqDetail.type?.id ?? '',
+        typeId: selectedRFQTypeId,
         bidDeadline: rfqDetail.bidDeadline
           ? new Date(rfqDetail.bidDeadline).toISOString().split('T')[0]
           : '',
@@ -168,16 +182,34 @@ export default function RFQFormPage() {
             : [{ description: '', specifications: '', quantity: 0, unitId: '' }],
       });
     }
-  }, [isEdit, rfqDetail, reset, projectId, rfqTypes]);
+  }, [isEdit, rfqDetail, reset, projectId, selectedRFQTypeId]);
+
+  useEffect(() => {
+    if (isEdit && selectedRFQTypeId) {
+      setValue('typeId', selectedRFQTypeId, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
+    }
+  }, [isEdit, selectedRFQTypeId, setValue]);
 
   const [activeSection, setActiveSection] = useState<string>('rfq-details');
   const [isSaving, setIsSaving] = useState(false);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const fillRandom = useCallback(() => {
-    const data = generateRandomRFQ();
+    const data = generateRandomRFQ(rfqTypes, units);
     reset({ projectId, ...data });
-  }, [reset, projectId]);
+  }, [reset, projectId, rfqTypes, units]);
+
+  async function resolveRfqUploadFolderId(targetRfqId: string): Promise<string | undefined> {
+    try {
+      return await resolveProjectEntityFolder(projectId, 'RFQ', targetRfqId);
+    } catch {
+      return rfqFolderId;
+    }
+  }
 
   const onSubmit = async (formData: CreateRFQInput) => {
     if (isEdit && rfqId && rfqDetail) {
@@ -190,8 +222,9 @@ export default function RFQFormPage() {
 
         // Upload new files
         if (selectedFiles.length > 0) {
-          if (rfqFolderId) {
-            await uploadFilesAndAttach(rfqId, rfqFolderId, selectedFiles);
+          const folderId = await resolveRfqUploadFolderId(rfqId);
+          if (folderId) {
+            await uploadFilesAndAttach(rfqId, folderId, selectedFiles);
           } else {
             toast.error('RFQ folder not found — files were not uploaded.');
           }
@@ -207,8 +240,9 @@ export default function RFQFormPage() {
       createMutation.mutate(formData, {
         onSuccess: async (created) => {
           if (selectedFiles.length > 0) {
-            if (rfqFolderId) {
-              await uploadFilesAndAttach(created.id, rfqFolderId, selectedFiles);
+            const folderId = await resolveRfqUploadFolderId(created.id);
+            if (folderId) {
+              await uploadFilesAndAttach(created.id, folderId, selectedFiles);
             } else {
               toast.error('RFQ folder not found — files were not uploaded.');
             }
@@ -232,184 +266,181 @@ export default function RFQFormPage() {
           rfqId: targetRfqId,
           documentId: uploaded.id,
         });
-      } catch {
-        toast.error(`Failed to upload file: ${file.name}`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
       }
     }
   }
 
-  if (isEdit && isLoadingDetail) {
+  if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={RFQ_FORM_SECTIONS.length} />;
   }
 
+  const canSubmitRfq = isEdit
+    ? project?.capabilities?.actions?.rfq?.update === true
+    : project?.capabilities?.actions?.rfq?.create === true;
+  if (!canSubmitRfq) return <Forbidden />;
+
   return (
-    <form
-      onSubmit={(event) =>
-        void handleSubmit(onSubmit, () => {
-          toast.error('Please fix the highlighted RFQ fields.');
-        })(event)
-      }
-      className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5"
+    <ProjectFormShell
+      onSubmit={(event) => void handleSubmit(onSubmit, onInvalidFormSubmit)(event)}
+      title={isEdit ? 'Edit RFQ' : 'New RFQ'}
+      submitLabel={isEdit ? 'Save Changes' : 'Create RFQ'}
+      isSubmitting={isSubmitting}
+      sections={RFQ_FORM_SECTIONS}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      extraActions={!isEdit ? <MockDataButton onClick={fillRandom} /> : undefined}
     >
-      <ProjectFormToolbar
-        backLabel="RFQs"
-        title={isEdit ? 'Edit RFQ' : 'New RFQ'}
-        description={
-          isEdit ? 'Update the RFQ details below.' : 'Create a new request for quotation.'
-        }
-        submitLabel={isEdit ? 'Save Changes' : 'Create RFQ'}
-        isSubmitting={isSubmitting}
-        extraActions={
-          !isEdit ? (
-            <Button variant="ghost" size="sm" type="button" onClick={fillRandom}>
-              <Shuffle className="size-4" />
-              Fill Random
-            </Button>
-          ) : undefined
-        }
-      />
+      <FormLayout className="pt-4 pb-8 lg:pb-10">
+        <FormContent>
+          {/* ---- Section 1: RFQ Details ---- */}
+          <Card id="rfq-details">
+            <CardContent className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">RFQ Details</h2>
+                <p className="text-sm text-muted-foreground">
+                  Core information about this request for quotation.
+                </p>
+              </div>
 
-      {/* Main layout: top nav + content */}
-      <FormSectionNav
-        sections={RFQ_FORM_SECTIONS}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
+              <Separator />
 
-      <div className="pt-6 space-y-6">
-        {/* ---- Section 1: RFQ Details ---- */}
-        <Card id="rfq-details">
-          <CardContent className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">RFQ Details</h2>
-              <p className="text-sm text-muted-foreground">
-                Core information about this request for quotation.
-              </p>
-            </div>
+              {/* Bid Deadline + Track */}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <Controller
+                  name="bidDeadline"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <RFQRequiredFieldLabel>Bid Deadline</RFQRequiredFieldLabel>
+                      <InputWrapper
+                        className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                      >
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                      </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
 
-            <Separator />
+                <Controller
+                  name="typeId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <RFQRequiredFieldLabel>Track (Type)</RFQRequiredFieldLabel>
+                      <Select
+                        value={field.value || selectedRFQTypeId}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger
+                          aria-invalid={fieldState.invalid}
+                          className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                        >
+                          <span
+                            className={
+                              field.value || selectedRFQTypeId ? '' : 'text-muted-foreground'
+                            }
+                          >
+                            {getRFQTypeDisplayValue(
+                              field.value || selectedRFQTypeId,
+                              rfqTypeOptions,
+                              rfqDetail
+                            ) || 'Select track...'}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rfqTypeOptions.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              {opt.label ?? opt.name ?? opt.id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+              </div>
 
-            {/* Bid Deadline + Track */}
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {/* Title */}
               <Controller
-                name="bidDeadline"
+                name="title"
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Bid Deadline
-                    </FieldLabel>
-                    <InputWrapper>
-                      <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                    <RFQRequiredFieldLabel>Title</RFQRequiredFieldLabel>
+                    <InputWrapper
+                      className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                    >
+                      <Input
+                        {...field}
+                        placeholder="e.g. Structural Steel Supply"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                      />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
 
+              {/* Description */}
               <Controller
-                name="typeId"
+                name="description"
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                      Track (Type)
-                    </FieldLabel>
-                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue
-                          placeholder={
-                            rfqDetail?.track || rfqDetail?.type?.label || 'Select track...'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rfqTypes?.map((opt) => (
-                          <SelectItem key={opt.id} value={opt.id}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <RFQRequiredFieldLabel>Description</RFQRequiredFieldLabel>
+                    <Textarea
+                      {...field}
+                      placeholder="Describe the scope of work..."
+                      rows={4}
+                      aria-invalid={fieldState.invalid}
+                      className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                    />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Title */}
-            <Controller
-              name="title"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                    Title
-                  </FieldLabel>
-                  <InputWrapper>
-                    <Input
-                      {...field}
-                      placeholder="e.g. Structural Steel Supply"
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="off"
-                    />
-                  </InputWrapper>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+          {/* ---- Section 2: Deliverables ---- */}
+          <LineItems
+            id="deliverables"
+            control={control}
+            fieldPrefix="deliverables"
+            fields={fields}
+            append={append}
+            remove={remove}
+            costCodeOptions={[]}
+            unitOptions={(units ?? []).map((u) => ({
+              value: u.id,
+              label: u.label || u.name || u.id,
+            }))}
+            fieldNames={{ unit: 'unitId' }}
+            allowCustomUnit={false}
+            hideCostCode
+            hideUnitPrice
+            defaultItem={{ description: '', quantity: 0, unitId: '' }}
+            rootError={formState.errors.deliverables?.root}
+            title="Deliverables"
+            subtitle="At least one deliverable is required."
+            addLabel="Add Deliverable"
+          />
 
-            {/* Description */}
-            <Controller
-              name="description"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
-                    Description
-                  </FieldLabel>
-                  <Textarea
-                    {...field}
-                    placeholder="Describe the scope of work..."
-                    rows={4}
-                    aria-invalid={fieldState.invalid}
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* ---- Section 2: Deliverables ---- */}
-        <LineItems
-          id="deliverables"
-          control={control}
-          fieldPrefix="deliverables"
-          fields={fields}
-          append={append}
-          remove={remove}
-          costCodeOptions={[]}
-          unitOptions={units?.map((u) => ({ value: u.id, label: u.label || u.name || u.id }))}
-          fieldNames={{ unit: 'unitId' }}
-          hideCostCode
-          hideUnitPrice
-          defaultItem={{ description: '', quantity: 0, unitId: '' }}
-          rootError={formState.errors.deliverables?.root}
-          title="Deliverables"
-          subtitle="At least one deliverable is required."
-          addLabel="Add Deliverable"
-        />
-
-        <ProjectFormDocumentsCard
-          selectedFiles={selectedFiles}
-          existingDocuments={isEdit && rfqDetail ? rfqDetail.attachments : undefined}
-          onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
-          onRemoveFile={(index) =>
-            setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
-          }
-        />
-      </div>
-    </form>
+          <ProjectFormDocumentsCard
+            selectedFiles={selectedFiles}
+            existingDocuments={isEdit && rfqDetail ? rfqDetail.attachments : undefined}
+            onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
+            onRemoveFile={(index) =>
+              setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
+            }
+          />
+        </FormContent>
+      </FormLayout>
+    </ProjectFormShell>
   );
 }

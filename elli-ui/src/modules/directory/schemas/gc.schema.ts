@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const gcTypeCodeSchema = z.string();
 export type GCTypeCode = string;
 
-export const gcStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PROSPECTING']);
+export const gcStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 export type GCStatus = z.infer<typeof gcStatusSchema>;
 
 export const paymentTermsSchema = z.enum([
@@ -48,20 +48,27 @@ const contactPhoneSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
+const normalizeContactEmailValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ email: val, label: 'Email' }];
+  return val;
+};
+
+const normalizeContactPhoneValue = (val: unknown) => {
+  if (!val) return [];
+  if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
+  return val;
+};
+
 export const gcContactLinkContactSchema = z
   .object({
     id: z.string(),
     fullName: z.string(),
     professionalRoleId: z.string().nullable().optional(),
-    email: z.preprocess((val) => {
-      if (typeof val === 'string') return [{ email: val, label: 'Email' }];
-      return val;
-    }, z.array(contactEmailSchema).optional().default([])),
-    phoneNumber: z.preprocess((val) => {
-      if (typeof val === 'string') return [{ number: val, label: 'Phone' }];
-      return val;
-    }, z.array(contactPhoneSchema).optional().default([])),
+    email: z.preprocess(normalizeContactEmailValue, z.array(contactEmailSchema).default([])),
+    phoneNumber: z.preprocess(normalizeContactPhoneValue, z.array(contactPhoneSchema).default([])),
     tags: z.array(z.string()).optional().default([]),
+    isPrimary: z.boolean().optional().default(false),
     deletedAt: z.string().nullable().optional(),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
@@ -84,6 +91,26 @@ export const gcContactLinkSchema = z
 
 export type GCContactLink = z.infer<typeof gcContactLinkSchema>;
 
+// --- Project summary (detail endpoint shape) ---
+
+export const gcProjectSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    jobNumber: z.string().nullable().optional(),
+    status: z.string(),
+    contractValue: z.coerce.number().optional().default(0),
+    estimatedStartDate: z.string().nullable().optional(),
+    estimatedEndDate: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    state: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export type GCProject = z.infer<typeof gcProjectSchema>;
+
 // --- Main model (list view) ---
 
 export const generalContractorSchema = z
@@ -101,6 +128,8 @@ export const generalContractorSchema = z
     retainagePercent: z.number().optional().default(10.0),
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
+    activeProjects: z.number().optional(),
+    totalCommitted: z.coerce.number().optional(),
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
     contacts: z.array(gcContactLinkContactSchema).optional().default([]),
     _count: z
@@ -134,9 +163,11 @@ export const generalContractorDetailSchema = z
     deletedAt: z.string().nullable().optional().default(null),
     createdAt: z.string().optional().default(''),
     updatedAt: z.string().optional().default(''),
+    activeProjects: z.number().optional(),
+    totalCommitted: z.coerce.number().optional(),
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
     contacts: z.array(gcContactLinkContactSchema).optional().default([]),
-    projects: z.array(z.object({ id: z.string() }).passthrough()).optional().default([]),
+    projects: z.array(gcProjectSchema).optional().default([]),
   })
   .passthrough();
 
@@ -218,27 +249,21 @@ export const gcFormSchema = z.object({
     .string()
     .refine(
       (val) => !val || /^https?:\/\/.+/.test(val),
-      'Enter a valid URL starting with http:// or https://',
+      'Enter a valid URL starting with http:// or https://'
     ),
-  status: z.string(),
+  status: gcStatusSchema,
   email: z
     .string()
-    .refine(
-      (val) => !val || z.string().email().safeParse(val).success,
-      'Invalid email address',
-    ),
+    .refine((val) => !val || z.string().email().safeParse(val).success, 'Invalid email address'),
   phone: z
     .string()
     .refine(
       (val) => !val || /^[+\d\s\-().]+$/.test(val),
-      'Phone number contains invalid characters',
+      'Phone number contains invalid characters'
     )
-    .refine(
-      (val) => !val || val.replace(/\D/g, '').length >= 7,
-      'Enter a valid phone number',
-    ),
+    .refine((val) => !val || val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number'),
   address: z.string(),
-  paymentTerms: z.string(),
+  paymentTerms: paymentTermsSchema,
   retainagePercent: z.number().min(0).max(100),
 });
 

@@ -484,12 +484,12 @@
             },
             "ContactCreateRequest": {
                 "type": "object",
-                "required": ["fullName", "email"],
-                "description": "Set at most one of vendorId or generalContractorId. Providing both is a validation error.",
+                "required": ["fullName"],
+                "description": "Provide at least one of email or phoneNumber. Set at most one of vendorId or generalContractorId. Providing both is a validation error.",
                 "properties": {
                     "fullName": { "type": "string", "minLength": 2 },
                     "professionalRoleId": { "type": "string", "nullable": true, "description": "Lookup ULID" },
-                    "email": { "type": "string", "format": "email" },
+                    "email": { "type": "string", "format": "email", "nullable": true },
                     "phoneNumber": { "type": "string", "minLength": 1, "nullable": true },
                     "tags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
                     "vendorId": { "type": "string", "nullable": true, "description": "ULID of the vendor to link. Mutually exclusive with generalContractorId." },

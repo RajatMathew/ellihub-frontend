@@ -19,35 +19,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
+import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useCostCodesQuery } from '@/modules/catalog/hooks';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
+import {
+  InfoRow,
+  PdfGenerateDialog,
+  ProjectDetailPageLoading,
+} from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
+import {
+  calculateEffectivePurchaseOrderTotals,
+  calculateRoundedLineAmount,
+  formatPurchaseOrderTaxLabel,
+  type PurchaseOrderLineAmountLike,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
+import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
   useAddSCOAttachmentMutation,
   useApproveSCOMutation,
+  useGenerateSCOPdfMutation,
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
-  useRevertSCOToDraftMutation,
   useSCODetailQuery,
+  useSaveSCOPdfMutation,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
+import type { GenerateSCOPdfInput } from '@/modules/project/schemas/sub-change-order';
 import {
   AlertTriangle,
   Calendar,
@@ -60,7 +75,6 @@ import {
   FileText,
   History,
   Link2,
-  MoreHorizontal,
   PanelRightOpen,
   Pencil,
   PlusCircle,
@@ -110,9 +124,24 @@ function lookupLabel(value: unknown): string {
   return String(value);
 }
 
-function money(value: unknown): string {
+function numeric(value: unknown): number {
   const numeric = Number(value ?? 0);
-  return formatCurrency(Number.isFinite(numeric) ? numeric : 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function money(value: unknown): string {
+  return formatCurrency(numeric(value));
+}
+
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
+
+function lineAmount(value: PurchaseOrderLineAmountLike): number {
+  return calculateRoundedLineAmount(value);
 }
 
 function DetailField({
@@ -140,6 +169,7 @@ export function SCODetailPage() {
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
+  const { data: project } = useProjectDetailQuery(projectId);
   const purchaseOrderId = sco?.purchaseOrderId ?? sco?.purchaseOrder?.id ?? '';
   const { data: purchaseOrderDetail, isFetching: isPurchaseOrderFetching } =
     usePODetailQuery(purchaseOrderId);
@@ -147,29 +177,70 @@ export function SCODetailPage() {
     projectId && scoId ? `/app/project/${projectId}/sub-change-order/${scoId}` : undefined,
     sco?.scoNumber ?? sco?.title ?? undefined
   );
-  const { data: costCodesData } = useCostCodesQuery();
-  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'prime co');
+  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
+  const { data: scoFolderId } = useProjectFolderQuery(projectId || undefined, 'sub change order');
+  const { data: scoEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'SUB_CHANGE_ORDER',
+    scoId || undefined,
+    project?.capabilities?.actions?.subChangeOrder?.update === true
+  );
+  const scoUploadFolderId = scoEntityFolderId ?? scoFolderId;
+  const { data: pdfTermsConfig } = usePdfTermsConfigQuery('subChangeOrder');
+  const { data: pdfNoticeConfig } = usePdfNoticeConfigQuery('subChangeOrder');
+  const pdfTermsOptions = useMemo(() => pdfTermsConfig?.options ?? [], [pdfTermsConfig?.options]);
+  const pdfNoticeOptions = useMemo(
+    () => pdfNoticeConfig?.options ?? [],
+    [pdfNoticeConfig?.options]
+  );
+  const defaultPdfTermsOption = useMemo(
+    () =>
+      pdfTermsOptions.find((option) => option.id === pdfTermsConfig?.defaultOptionId) ??
+      pdfTermsOptions.find((option) => option.isDefault) ??
+      pdfTermsOptions[0],
+    [pdfTermsConfig?.defaultOptionId, pdfTermsOptions]
+  );
+  const defaultPdfNoticeOption = useMemo(
+    () =>
+      pdfNoticeOptions.find((option) => option.id === pdfNoticeConfig?.defaultOptionId) ??
+      pdfNoticeOptions.find((option) => option.isDefault) ??
+      pdfNoticeOptions[0],
+    [pdfNoticeConfig?.defaultOptionId, pdfNoticeOptions]
+  );
 
   const approveMutation = useApproveSCOMutation();
   const rejectMutation = useRejectSCOMutation();
   const voidMutation = useVoidSCOMutation();
-  const revertToDraftMutation = useRevertSCOToDraftMutation();
+  const generatePdfMutation = useGenerateSCOPdfMutation();
+  const savePdfMutation = useSaveSCOPdfMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(
-    (costCodesData?.data ?? []).map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
+    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
   );
   const attachments = (sco?.attachments ?? []) as {
     id: string;
     documentId?: string;
-    document?: { id: string; name: string };
+    document?: FilePreviewItem;
   }[];
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [attachmentPreviewFile, setAttachmentPreviewFile] = useState<FilePreviewItem | null>(null);
+  const [pdfIncludeNotice, setPdfIncludeNotice] = useState(false);
+  const [pdfNoticeTitle, setPdfNoticeTitle] = useState('');
+  const [pdfNoticeHtml, setPdfNoticeHtml] = useState('');
+  const [pdfNoticeTemplateId, setPdfNoticeTemplateId] = useState('');
+  const [pdfDefaultNoticeApplied, setPdfDefaultNoticeApplied] = useState(false);
+  const [pdfIncludeTerms, setPdfIncludeTerms] = useState(false);
+  const [pdfTermsHtml, setPdfTermsHtml] = useState('');
+  const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
+  const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
 
   // Workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
@@ -233,11 +304,12 @@ export function SCODetailPage() {
   const isRejected = statusName === 'REJECTED';
   const isVoid = statusName === 'VOID';
 
-  const canApprove = isDraft;
-  const canReject = isDraft;
-  const canVoid = isApproved;
-  const canRevert = !isDraft;
-  const canEdit = isDraft;
+  const projectActions = project?.capabilities?.actions;
+  const canApprove = projectActions?.subChangeOrder?.approve === true && isDraft;
+  const canReject = projectActions?.subChangeOrder?.reject === true && isDraft;
+  const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
+  const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
+  const canSavePdf = projectActions?.subChangeOrder?.update === true;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -260,11 +332,134 @@ export function SCODetailPage() {
     if (action.needsReason) setActionReason('');
   }
 
+  function handlePdfOptionsOpenChange(open: boolean) {
+    setPdfOptionsOpen(open);
+    if (!open) setPdfPreview(null);
+  }
+
+  function applyDefaultPdfTermsIfEmpty() {
+    if (!defaultPdfTermsOption?.html || hasHtmlText(pdfTermsHtml)) return false;
+    setPdfTermsTemplateId(defaultPdfTermsOption.id);
+    setPdfTermsHtml(defaultPdfTermsOption.html);
+    setPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultPdfNoticeIfEmpty() {
+    if (!defaultPdfNoticeOption?.html || hasHtmlText(pdfNoticeHtml)) return false;
+    setPdfNoticeTemplateId(defaultPdfNoticeOption.id);
+    setPdfNoticeTitle(defaultPdfNoticeOption.title);
+    setPdfNoticeHtml(defaultPdfNoticeOption.html);
+    setPdfDefaultNoticeApplied(true);
+    return true;
+  }
+
+  function generatePdfPreview(data: GenerateSCOPdfInput) {
+    generatePdfMutation.mutate(
+      { id: scoId, scoNumber: sco?.scoNumber, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function savePdfToFiles(data: GenerateSCOPdfInput) {
+    savePdfMutation.mutate(
+      { id: scoId, scoNumber: sco?.scoNumber, purchaseOrderId, data },
+      {
+        onSuccess: (file) => {
+          setPdfPreview(file);
+        },
+      }
+    );
+  }
+
+  function openPdfOptions() {
+    const shouldEnableDefaultNotice =
+      !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
+    const defaultNoticeApplied =
+      !pdfDefaultNoticeApplied && shouldApplyDefaultNotice ? applyDefaultPdfNoticeIfEmpty() : false;
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultPdfNoticeOption?.title
+        ? defaultPdfNoticeOption.title
+        : pdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultPdfNoticeOption?.html
+        ? defaultPdfNoticeOption.html
+        : pdfNoticeHtml;
+    const nextIncludeNotice =
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
+        ? true
+        : pdfIncludeNotice;
+    const shouldEnableDefaultTerms =
+      !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
+    const defaultTermsApplied =
+      !pdfDefaultTermsApplied && shouldApplyDefaultTerms ? applyDefaultPdfTermsIfEmpty() : false;
+    const nextTermsHtml =
+      defaultTermsApplied && defaultPdfTermsOption?.html
+        ? defaultPdfTermsOption.html
+        : pdfTermsHtml;
+    const nextIncludeTerms =
+      shouldApplyDefaultTerms && hasHtmlText(nextTermsHtml) ? true : pdfIncludeTerms;
+
+    if (nextIncludeNotice) {
+      setPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
+      setPdfIncludeTerms(true);
+    }
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview({
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    });
+  }
+
+  function handlePdfIncludeNoticeChange(includeNotice: boolean) {
+    setPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultPdfNoticeIfEmpty();
+    }
+  }
+
+  function handlePdfNoticeTemplateChange(optionId: string) {
+    const option = pdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option) return;
+
+    setPdfNoticeTemplateId(option.id);
+    setPdfNoticeTitle(option.title);
+    setPdfNoticeHtml(option.html);
+    setPdfIncludeNotice(true);
+    setPdfDefaultNoticeApplied(true);
+  }
+
+  function handlePdfIncludeTermsChange(includeTerms: boolean) {
+    setPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultPdfTermsIfEmpty();
+    }
+  }
+
+  function handlePdfTermsTemplateChange(optionId: string) {
+    const option = pdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option) return;
+
+    setPdfTermsTemplateId(option.id);
+    setPdfTermsHtml(option.html);
+    setPdfIncludeTerms(true);
+    setPdfDefaultTermsApplied(true);
+  }
+
   const isActionPending =
-    approveMutation.isPending ||
-    rejectMutation.isPending ||
-    voidMutation.isPending ||
-    revertToDraftMutation.isPending;
+    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -278,9 +473,20 @@ export function SCODetailPage() {
     );
   }
 
-  const amount = Number(sco.amount ?? 0);
-  const markupAmount = Number(sco.markupAmount ?? 0);
-  const totalAmount = amount + markupAmount;
+  const taxPercent = numeric(sco.taxPercent);
+  const detailTotals = calculateEffectivePurchaseOrderTotals({
+    lineItems: sco.lineItems.length > 0 ? sco.lineItems : undefined,
+    subtotal: sco.lineItems.length > 0 ? undefined : sco.amount,
+    negotiatedDiscount: sco.negotiatedDiscount,
+    shippingHandlingFee: sco.shippingHandlingFee,
+    taxPercent,
+    taxAmount: sco.taxAmount,
+  });
+  const amount = detailTotals.subtotal;
+  const negotiatedDiscount = detailTotals.negotiatedDiscount;
+  const shippingHandlingFee = detailTotals.shippingHandlingFee;
+  const taxAmount = detailTotals.taxAmount;
+  const totalAmount = detailTotals.total;
   const embeddedPurchaseOrder = sco.purchaseOrder as
     | {
         id?: string;
@@ -299,7 +505,6 @@ export function SCODetailPage() {
     | undefined;
   const linkedPurchaseOrder = purchaseOrderDetail ?? embeddedPurchaseOrder;
   const purchaseOrderTotal = Number(linkedPurchaseOrder?.total ?? 0);
-  const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
   const purchaseOrderLabel = linkedPurchaseOrder?.poNumber ?? sco.purchaseOrderId ?? '-';
   const purchaseOrderVendor =
     purchaseOrderDetail?.vendor?.name ??
@@ -353,14 +558,14 @@ export function SCODetailPage() {
                   {lookupLabel(sco.changeType)}
                 </Badge>
               )}
-              {sco.impactsSchedule && (
-                <Badge variant="warning" appearance="outline" size="sm">
-                  Schedule Impact
-                </Badge>
-              )}
             </div>
           </ToolbarHeading>
           <ToolbarActions>
+            <Button variant="outline" size="sm" onClick={openPdfOptions}>
+              <FileText className="size-4" />
+              Generate PDF
+            </Button>
+
             {/* Approve - only on DRAFT */}
             {canApprove && (
               <Button
@@ -375,7 +580,7 @@ export function SCODetailPage() {
               </Button>
             )}
 
-            {/* Revert to Draft - on APPROVED */}
+            {/* Reject - only on DRAFT */}
             {canReject && (
               <Button
                 variant="destructive"
@@ -425,35 +630,6 @@ export function SCODetailPage() {
               </Button>
             )}
 
-            {/* More menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  mode="icon"
-                  aria-label="Sub change order actions"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {canEdit && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canRevert && (
-                  <DropdownMenuItem onClick={() => revertToDraftMutation.mutate(scoId)}>
-                    <Clock className="size-4" />
-                    Revert to Draft
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
             {!sidebarOpen && (
               <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
                 <PanelRightOpen className="size-4" />
@@ -466,7 +642,7 @@ export function SCODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard
               icon={<DollarSign className="size-5 text-primary" />}
               bgClass="bg-primary/10"
@@ -477,9 +653,9 @@ export function SCODetailPage() {
             <StatsCard
               icon={<TrendingUp className="size-5 text-muted-foreground" />}
               bgClass="bg-muted/60"
-              label="Markup"
-              value={money(markupAmount)}
-              description="Added markup"
+              label="Shipping and Handling Fee"
+              value={money(shippingHandlingFee)}
+              description="Added shipping and handling fee"
             />
             <StatsCard
               icon={<ClipboardList className="size-5 text-info" />}
@@ -494,13 +670,6 @@ export function SCODetailPage() {
               label="Linked PO"
               value={purchaseOrderLabel}
               description={String(purchaseOrderStatus)}
-            />
-            <StatsCard
-              icon={<Calendar className="size-5 text-warning" />}
-              bgClass="bg-warning/10"
-              label="Schedule"
-              value={`${scheduleImpactDays} day${scheduleImpactDays === 1 ? '' : 's'}`}
-              description={sco.impactsSchedule ? 'Impacts schedule' : 'No schedule impact'}
             />
           </div>
 
@@ -543,11 +712,6 @@ export function SCODetailPage() {
               {/* Hidden until /sub-change-order/{id} includes vendorContactName. */}
               {/* Hidden until /sub-change-order/{id} includes vendorContactEmail. */}
               {/* Hidden until /sub-change-order/{id} includes vendorReferenceNumber. */}
-              {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
-                <InfoRow label="Schedule Impact">
-                  {sco.scheduleImpactDays} day{sco.scheduleImpactDays !== 1 ? 's' : ''}
-                </InfoRow>
-              )}
             </CardContent>
           </Card>
 
@@ -622,7 +786,9 @@ export function SCODetailPage() {
                               <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
                             )}
                           </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">{item.quantity}</td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums">
+                            {formatDecimal(item.quantity)}
+                          </td>
                           <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
                           <td className="py-2.5 text-right font-medium tabular-nums">
                             {money(item.amount)}
@@ -682,14 +848,16 @@ export function SCODetailPage() {
                             )}
                           </div>
                           <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                            {money(li.amount)}
+                            {money(lineAmount(li))}
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <div className="text-muted-foreground">Qty</div>
                             <div className="font-medium tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </div>
                           </div>
                           <div>
@@ -710,16 +878,21 @@ export function SCODetailPage() {
                       </div>
                     ))}
                     <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                      <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                      {Number(sco.markupAmount ?? 0) !== 0 && (
-                        <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
+                      <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                      {negotiatedDiscount !== 0 && (
+                        <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                       )}
-                      {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                      {shippingHandlingFee !== 0 && (
+                        <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                      )}
+                      {taxAmount !== 0 && (
+                        <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
+                          {money(taxAmount)}
+                        </InfoRow>
+                      )}
                       <Separator className="my-2" />
                       <InfoRow label="Total">
-                        <span className="font-semibold">
-                          {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
-                        </span>
+                        <span className="font-semibold">{money(totalAmount)}</span>
                       </InfoRow>
                     </div>
                   </div>
@@ -765,14 +938,16 @@ export function SCODetailPage() {
                               {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
                             </td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {li.quantity ?? li.qty ?? '-'}
+                              {li.quantity != null || li.qty != null
+                                ? formatDecimal(li.quantity ?? li.qty)
+                                : '-'}
                             </td>
                             <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
                             <td className="py-2.5 pr-4 text-right tabular-nums">
                               {money(li.unitPrice)}
                             </td>
                             <td className="py-2.5 text-right font-medium tabular-nums">
-                              {money(li.amount)}
+                              {money(lineAmount(li))}
                             </td>
                           </tr>
                         ))}
@@ -783,23 +958,48 @@ export function SCODetailPage() {
                             Subtotal
                           </td>
                           <td className="pt-3 text-right tabular-nums text-sm">
-                            {formatCurrency(sco.amount)}
+                            {money(amount)}
                           </td>
                         </tr>
-                        {Number(sco.markupAmount ?? 0) !== 0 && (
+                        {negotiatedDiscount !== 0 && (
                           <tr>
                             <td
                               colSpan={6}
                               className="pt-1 text-right text-xs text-muted-foreground"
                             >
-                              Markup
+                              Negotiated Discount
                             </td>
                             <td className="pt-1 text-right tabular-nums text-sm">
-                              {money(sco.markupAmount)}
+                              -{money(negotiatedDiscount)}
                             </td>
                           </tr>
                         )}
-                        {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                        {shippingHandlingFee !== 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="pt-1 text-right text-xs text-muted-foreground"
+                            >
+                              Shipping and Handling Fee
+                            </td>
+                            <td className="pt-1 text-right tabular-nums text-sm">
+                              {money(shippingHandlingFee)}
+                            </td>
+                          </tr>
+                        )}
+                        {taxAmount !== 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="pt-1 text-right text-xs text-muted-foreground"
+                            >
+                              {formatPurchaseOrderTaxLabel(taxPercent)}
+                            </td>
+                            <td className="pt-1 text-right tabular-nums text-sm">
+                              {money(taxAmount)}
+                            </td>
+                          </tr>
+                        )}
                         <tr className="border-t">
                           <td
                             colSpan={6}
@@ -808,9 +1008,7 @@ export function SCODetailPage() {
                             Total
                           </td>
                           <td className="pt-2 text-right font-semibold tabular-nums">
-                            {formatCurrency(
-                              Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0)
-                            )}
+                            {money(totalAmount)}
                           </td>
                         </tr>
                       </tfoot>
@@ -832,7 +1030,7 @@ export function SCODetailPage() {
               <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
                 Documents ({attachments.length})
               </CardTitle>
-              {isDraft && scoFolderId && (
+              {canEdit && scoUploadFolderId && (
                 <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
                   <Upload className="size-4" />
                   Upload
@@ -849,9 +1047,19 @@ export function SCODetailPage() {
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <FileText className="size-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium truncate">
-                          {att.document?.name ?? 'Document'}
-                        </span>
+                        {att.document?.id ? (
+                          <button
+                            type="button"
+                            className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                            onClick={() => setAttachmentPreviewFile(att.document!)}
+                          >
+                            {att.document?.displayName ?? att.document?.name ?? 'Document'}
+                          </button>
+                        ) : (
+                          <span className="text-sm font-medium truncate">
+                            {att.document?.name ?? 'Document'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
                         {att.document?.id && (
@@ -865,7 +1073,7 @@ export function SCODetailPage() {
                             <Download className="size-3.5" />
                           </Button>
                         )}
-                        {isDraft && (
+                        {canEdit && (
                           <Button
                             variant="ghost"
                             mode="icon"
@@ -923,16 +1131,21 @@ export function SCODetailPage() {
               </div>
               <Card>
                 <CardContent className="p-4 space-y-1">
-                  <InfoRow label="Subtotal">{money(sco.amount)}</InfoRow>
-                  {Number(sco.markupAmount ?? 0) !== 0 && (
-                    <InfoRow label="Markup">{money(sco.markupAmount)}</InfoRow>
+                  <InfoRow label="Subtotal">{money(amount)}</InfoRow>
+                  {negotiatedDiscount !== 0 && (
+                    <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                   )}
-                  {/* Hidden until /sub-change-order/{id} includes taxAmount/taxPercent. */}
+                  {shippingHandlingFee !== 0 && (
+                    <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                  )}
+                  {taxAmount !== 0 && (
+                    <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
+                      {money(taxAmount)}
+                    </InfoRow>
+                  )}
                   <Separator className="my-2" />
                   <InfoRow label="Total">
-                    <span className="font-semibold">
-                      {money(Number(sco.amount ?? 0) + Number(sco.markupAmount ?? 0))}
-                    </span>
+                    <span className="font-semibold">{money(totalAmount)}</span>
                   </InfoRow>
                   {/* Hidden until /sub-change-order/{id} includes retainagePercent. */}
                   {/* Hidden until /sub-change-order/{id} includes paymentTerms. */}
@@ -1004,6 +1217,40 @@ export function SCODetailPage() {
         </DetailSidebar>
       </div>
 
+      {pdfOptionsOpen && (
+        <PdfGenerateDialog
+          open={pdfOptionsOpen}
+          title="Generate SCO PDF"
+          onOpenChange={handlePdfOptionsOpenChange}
+          includeNotice={pdfIncludeNotice}
+          noticeTitle={pdfNoticeTitle}
+          noticeHtml={pdfNoticeHtml}
+          noticeOptions={pdfNoticeOptions}
+          selectedNoticeOptionId={pdfNoticeTemplateId}
+          includeTerms={pdfIncludeTerms}
+          termsHtml={pdfTermsHtml}
+          termsOptions={pdfTermsOptions}
+          selectedTermsOptionId={pdfTermsTemplateId}
+          previewFile={pdfPreview}
+          isGenerating={generatePdfMutation.isPending}
+          isSaving={savePdfMutation.isPending}
+          canSave={canSavePdf}
+          onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+          onNoticeOptionChange={handlePdfNoticeTemplateChange}
+          onNoticeTitleChange={setPdfNoticeTitle}
+          onNoticeHtmlChange={setPdfNoticeHtml}
+          onIncludeTermsChange={handlePdfIncludeTermsChange}
+          onTermsOptionChange={handlePdfTermsTemplateChange}
+          onTermsHtmlChange={setPdfTermsHtml}
+          onGenerate={(data) => {
+            generatePdfPreview(data);
+          }}
+          onSave={(data) => {
+            savePdfToFiles(data);
+          }}
+        />
+      )}
+
       {/* ---- Workflow action dialog (no reason) ---- */}
       {activeAction && !activeAction.needsReason && (
         <ConfirmDialog
@@ -1019,7 +1266,7 @@ export function SCODetailPage() {
               {activeAction.endpoint === 'approve' ? (
                 <>
                   {' '}
-                  for <strong>{formatCurrency(sco.amount)}</strong>
+                  for <strong>{formatCurrency(totalAmount)}</strong>
                 </>
               ) : null}
               ?
@@ -1091,11 +1338,11 @@ export function SCODetailPage() {
       )}
 
       {/* ---- Upload file dialog ---- */}
-      {scoFolderId && (
+      {canEdit && scoUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={scoFolderId}
+          parentId={scoUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },
@@ -1112,6 +1359,14 @@ export function SCODetailPage() {
           isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
         />
       )}
+
+      <FilePreviewDialog
+        open={!!attachmentPreviewFile}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentPreviewFile(null);
+        }}
+        file={attachmentPreviewFile}
+      />
     </div>
   );
 }

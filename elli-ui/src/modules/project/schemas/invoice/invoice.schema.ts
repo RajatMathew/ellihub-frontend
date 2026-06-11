@@ -42,8 +42,9 @@ export const invoiceRelatedSCOSchema = z
     title: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     amount: z.coerce.number().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
+    shippingHandlingFee: z.coerce.number().nullable().optional(),
     status: z.string().nullable().optional(),
-    requestedBy: z.string().nullable().optional(),
     changeType: z
       .object({
         id: z.string().optional(),
@@ -54,8 +55,6 @@ export const invoiceRelatedSCOSchema = z
       .passthrough()
       .nullable()
       .optional(),
-    impactsSchedule: z.boolean().nullable().optional(),
-    scheduleImpactDays: z.coerce.number().nullable().optional(),
     lineItems: z.array(z.unknown()).optional().default([]),
     attachments: z.array(z.unknown()).optional().default([]),
   })
@@ -300,7 +299,7 @@ export const createInvoiceInputSchema = z.object({
   invoiceNumber: z.string().min(1, 'Invoice number is required'),
   invoiceDate: z.string().min(1, 'Invoice date is required'),
   dueDate: z.string().min(1, 'Due date is required'),
-  totalAmount: z.number().min(0, 'Total amount must be >= 0'),
+  totalAmount: z.number().gt(0, 'Invoice amount must be greater than 0'),
   taxAmount: z.number().min(0, 'Tax amount must be >= 0'),
   taxRate: z.number().min(0, 'Tax rate must be >= 0'),
   notes: z.string(),

@@ -1,0 +1,427 @@
+{
+    "sourceWorkbook": "CF- TURKISH AIR..v3.xlsx",
+    "project": {
+        "Project_Name": "JFK NTO Turkish Airlines",
+        "Project_Description": "Seed placeholder description for JFK NTO Turkish Airlines; client to replace with confirmed project scope.",
+        "Project_Number": "31700",
+        "Project_Status": "ACTIVE",
+        "Lead_PM": "RANDOM_PM",
+        "Division": "CIVIL",
+        "Contract_Category": "CIVIL",
+        "Contract_Type": "Prime Contract",
+        "GC_Name": "VRH Construction",
+        "GC_Contact": "K.Curran@vrhcorp.com",
+        "Address": "320 Grand Avenue\nEnglewood, NJ 07631",
+        "TCO_Date": "2026-07-22",
+        "Stage": "Installation",
+        "Normalized_Stage": "INSTALLATION",
+        "Payment_Terms": "NET_60",
+        "Retainage_Percent": "10",
+        "Target_Budget_Percent": "63",
+        "Tax_Rate": "0"
+    },
+    "primeContract": {
+        "Contract_ID": "4861-007S",
+        "Contract_Type": "Prime Contract",
+        "Division": "CIVIL",
+        "Contract_Category": "CIVIL",
+        "GC_Name": "VRH Construction",
+        "GC_Contact_Name": "Kevin Curran",
+        "GC_Contact_Email": "K.Curran@vrhcorp.com",
+        "GC_Contact_Phone": "201-927-2402",
+        "Original_Contract_Value": "1118850",
+        "Retainage_Percent": "10",
+        "Target_Budget_Percent": "63",
+        "Tax_Rate": "0",
+        "TCO_Date": "2026-07-22",
+        "Payment_Terms": "60",
+        "Normalized_Payment_Terms": "NET_60",
+        "Contract_Document_Link": null,
+        "Contract_Scheduled_Document_Link": null,
+        "Contract_Document_File": {
+            "id": "OHMBYDAD",
+            "objectId": "project-files/jfk-nto-turkish-airlines/JFK TURKISH.pdf",
+            "sourcePath": "scripts/data/project-files/jfk-nto-turkish-airlines/JFK TURKISH.pdf",
+            "name": "JFK TURKISH.pdf",
+            "displayName": "JFK NTO Turkish Airlines Prime Contract",
+            "mimeType": "application/pdf",
+            "size": 16768609,
+            "legacySourceUrl": "https://www.dropbox.com/scl/fo/m09jrtziezzi79516yg7d/AOZbLqY362NXFMPpGdzw-mc/JFK%20Turkish/JFK%20TURKISH.pdf?rlkey=2gle93ap7ug1j7ugx22xk0pxj&st=icekxrvn&dl=0"
+        },
+        "Contract_Scheduled_Document_File": {
+            "id": "npHvHedm",
+            "objectId": "project-files/jfk-nto-turkish-airlines/VRH Turkish NTO Contract DD - 26.03.04.pdf",
+            "sourcePath": "scripts/data/project-files/jfk-nto-turkish-airlines/VRH Turkish NTO Contract DD - 26.03.04.pdf",
+            "name": "VRH Turkish NTO Contract DD - 26.03.04.pdf",
+            "displayName": "JFK NTO Turkish Airlines Schedule",
+            "mimeType": "application/pdf",
+            "size": 404704,
+            "legacySourceUrl": "https://www.dropbox.com/scl/fo/m09jrtziezzi79516yg7d/AB4TDBvM03UoBP6fWbzVrw0/JFK%20Turkish/VRH%20Turkish%20NTO%20Contract%20DD%20-%2026.03.04.pdf?rlkey=2gle93ap7ug1j7ugx22xk0pxj&st=vksg07g4&dl=0"
+        }
+    },
+    "primeContracts": [
+        {
+            "Contract_ID": "4861-007S",
+            "Contract_Type": "Prime Contract",
+            "Division": "CIVIL",
+            "Contract_Category": "CIVIL",
+            "GC_Name": "VRH Construction",
+            "GC_Contact_Name": "Kevin Curran",
+            "GC_Contact_Email": "K.Curran@vrhcorp.com",
+            "GC_Contact_Phone": "201-927-2402",
+            "Original_Contract_Value": "1118850",
+            "Retainage_Percent": "10",
+            "Target_Budget_Percent": "63",
+            "Tax_Rate": "0",
+            "TCO_Date": "2026-07-22",
+            "Payment_Terms": "60",
+            "Normalized_Payment_Terms": "NET_60",
+            "Contract_Document_Link": null,
+            "Contract_Scheduled_Document_Link": null,
+            "Contract_Document_File": {
+                "id": "OHMBYDAD",
+                "objectId": "project-files/jfk-nto-turkish-airlines/JFK TURKISH.pdf",
+                "sourcePath": "scripts/data/project-files/jfk-nto-turkish-airlines/JFK TURKISH.pdf",
+                "name": "JFK TURKISH.pdf",
+                "displayName": "JFK NTO Turkish Airlines Prime Contract",
+                "mimeType": "application/pdf",
+                "size": 16768609,
+                "legacySourceUrl": "https://www.dropbox.com/scl/fo/m09jrtziezzi79516yg7d/AOZbLqY362NXFMPpGdzw-mc/JFK%20Turkish/JFK%20TURKISH.pdf?rlkey=2gle93ap7ug1j7ugx22xk0pxj&st=icekxrvn&dl=0"
+            },
+            "Contract_Scheduled_Document_File": {
+                "id": "npHvHedm",
+                "objectId": "project-files/jfk-nto-turkish-airlines/VRH Turkish NTO Contract DD - 26.03.04.pdf",
+                "sourcePath": "scripts/data/project-files/jfk-nto-turkish-airlines/VRH Turkish NTO Contract DD - 26.03.04.pdf",
+                "name": "VRH Turkish NTO Contract DD - 26.03.04.pdf",
+                "displayName": "JFK NTO Turkish Airlines Schedule",
+                "mimeType": "application/pdf",
+                "size": 404704,
+                "legacySourceUrl": "https://www.dropbox.com/scl/fo/m09jrtziezzi79516yg7d/AB4TDBvM03UoBP6fWbzVrw0/JFK%20Turkish/VRH%20Turkish%20NTO%20Contract%20DD%20-%2026.03.04.pdf?rlkey=2gle93ap7ug1j7ugx22xk0pxj&st=vksg07g4&dl=0"
+            }
+        }
+    ],
+    "rfqs": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1643",
+            "Title": "Shop Drawings for Turkish Airlines",
+            "Vendor": "WWSD",
+            "Status": null,
+            "Final_Amount": null,
+            "Issued Date": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1644",
+            "Title": "Material & Fabrication for Turkish Airlines",
+            "Vendor": "Multiple",
+            "Status": null,
+            "Final_Amount": null,
+            "Issued Date": null
+        }
+    ],
+    "rfqLineItems": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1643",
+            "Item": "Shop Drawings for Turkish Airlines",
+            "Unit": null,
+            "Qty": null,
+            "Unit_Price": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1644",
+            "Item": "Material & Fabrication for Turkish Airlines",
+            "Unit": null,
+            "Qty": null,
+            "Unit_Price": null
+        }
+    ],
+    "rfqAttachments": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1643",
+            "Document_Name": null,
+            "Document_Link": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "RFQ_ID": "RFQ-2025-1644",
+            "Document_Name": null,
+            "Document_Link": null
+        }
+    ],
+    "purchaseOrders": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "25969",
+            "Linked_RFQ_ID": "1643",
+            "Issue_Date": "2025-08-25",
+            "Status": "OPEN",
+            "Vendor": "Woodwork Shop Drawings LLC",
+            "Trade": "Civil",
+            "PO_Amount": "3750",
+            "Tax_Rate": null,
+            "Expected_Date": null,
+            "Delivery_Date": "2026-03-04T05:00:00.000Z",
+            "Payment_Terms": null,
+            "Lead_Time": null,
+            "Ship_To": "Elli NY Design",
+            "Notes": "Please advise minimuin 1 day before delivery to ensure Loading Dock availability",
+            "Created_By": "Tomasz",
+            "Document_Link": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26035",
+            "Linked_RFQ_ID": null,
+            "Issue_Date": "2025-08-25",
+            "Status": "CLOSED",
+            "Vendor": "SWAC",
+            "Trade": "Civil",
+            "PO_Amount": "600",
+            "Tax_Rate": null,
+            "Expected_Date": null,
+            "Delivery_Date": "2026-02-09",
+            "Payment_Terms": null,
+            "Lead_Time": null,
+            "Ship_To": "Elli NY Design",
+            "Notes": ". Please advise minimum 1 day before delivery to ensure Loading Dock availability",
+            "Created_By": "Tomasz",
+            "Document_Link": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Linked_RFQ_ID": null,
+            "Issue_Date": "2025-08-25",
+            "Status": "CLOSED",
+            "Vendor": "Sherwin Williams",
+            "Trade": "Civil",
+            "PO_Amount": "205.19",
+            "Tax_Rate": null,
+            "Expected_Date": null,
+            "Delivery_Date": "2026-02-28",
+            "Payment_Terms": null,
+            "Lead_Time": null,
+            "Ship_To": "Elli NY Design",
+            "Notes": "Please advise minimuin 1 day before delivery to ensure Loading Dock availability",
+            "Created_By": "Tomasz",
+            "Document_Link": null
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Linked_RFQ_ID": null,
+            "Issue_Date": "2025-08-25",
+            "Status": "CLOSED",
+            "Vendor": "Sherwin Williams",
+            "Trade": "Civil",
+            "PO_Amount": "205.19",
+            "Tax_Rate": null,
+            "Expected_Date": null,
+            "Delivery_Date": "2026-03-09",
+            "Payment_Terms": null,
+            "Lead_Time": null,
+            "Ship_To": "Elli NY Design",
+            "Notes": "Please advise minimum 1 day before delivery to ensure Loading Dock availability",
+            "Created_By": "Tomasz",
+            "Document_Link": null
+        }
+    ],
+    "poLineItems": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "25969",
+            "Item": "Turkish Airlines - Shop Drawings Set",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "3750",
+            "Price": "3750"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26035",
+            "Item": "deposit made to your SWAC Corporate Account",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "600",
+            "Price": "600"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Item": "Gallon of solid color for RAL 3011",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "61.87",
+            "Price": "61.87"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Item": "Gallon of solid color for RAL 1015",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "61.87",
+            "Price": "61.87"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Item": "Gallon of solid color for RAL 8017",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "61.87",
+            "Price": "61.87"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Item": "Fees",
+            "Qty": "3",
+            "Unit": null,
+            "Unit_Price": "0.95",
+            "Price": "2.85"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Item": "Tax",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "16.73",
+            "Price": "16.73"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Item": "L1 Blue",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "62.82",
+            "Price": "62.82"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Item": "R2 Maroon",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "62.82",
+            "Price": "62.82"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Item": "R3 Magenta",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "62.82",
+            "Price": "62.82"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Item": "Tax",
+            "Qty": "1",
+            "Unit": null,
+            "Unit_Price": "16.73",
+            "Price": "16.73"
+        }
+    ],
+    "poPayments": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "25969",
+            "Date": "2026-03-11",
+            "CHK#": "1320",
+            "Note": "Civil Check#1320",
+            "Amount": "1500"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26035",
+            "Date": "2026-02-09",
+            "CHK#": null,
+            "Note": "deposit made to your SWAC Corporate Account",
+            "Amount": "600"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26078",
+            "Date": "2026-03-05",
+            "CHK#": null,
+            "Note": "Amex",
+            "Amount": "205.19"
+        },
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "26111",
+            "Date": "2026-03-09",
+            "CHK#": null,
+            "Note": "Amex",
+            "Amount": "205.19"
+        }
+    ],
+    "poChangeOrders": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_ID": "25969",
+            "PO_CO_ID": "25969-01",
+            "Name": "CO#25969-01",
+            "Description": "Change Order #1 for PO 25969",
+            "Status": "APPROVED",
+            "Amount": "550",
+            "Reason": null,
+            "Schedule_Impact_Days": null,
+            "Markup_Pct": null,
+            "Creator": "Tomasz",
+            "Assignee": null,
+            "Due_Date": null,
+            "Approval_Date": "2026-03-27",
+            "Document_Link": null
+        }
+    ],
+    "poCoLineItems": [
+        {
+            "PROJECT NUMBER": "31700",
+            "PROJECT NAME": "JFK NTO Turkish Airlines",
+            "PO_CO_ID": "25969-01",
+            "Category": null,
+            "Cost_Code": null,
+            "Item": "Change Order #1",
+            "Qty": "1",
+            "Unit_Type": null,
+            "Unit_Price": "550",
+            "Price": "550"
+        }
+    ]
+}

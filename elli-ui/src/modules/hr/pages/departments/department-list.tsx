@@ -35,7 +35,11 @@ export default function DepartmentListPage() {
     handleSearchChange,
     clearSearch,
   } = useDepartmentListParams();
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    employeeCount?: number;
+  } | null>(null);
 
   const filters = useMemo<ListDepartmentsParams>(
     () => ({
@@ -111,6 +115,7 @@ export default function DepartmentListPage() {
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return;
+    if ((deleteTarget.employeeCount ?? 0) > 0) return;
 
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),

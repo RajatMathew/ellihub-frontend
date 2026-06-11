@@ -1,4 +1,6 @@
 import api from '@/app/api';
+import { costCodeSchema, type CostCode } from '@/modules/catalog/schemas/costcode.schema';
+import { employeeSchema, type Employee } from '@/modules/hr/schemas/employee.schema';
 import { invoiceApi } from '@/modules/project/api/invoice';
 import {
   fieldwireProjectOptionSchema,
@@ -93,6 +95,17 @@ export const projectApi = {
 
     return result.data;
   },
+
+  async listProjectCostCodes(projectId: string): Promise<CostCode[]> {
+    const res = await api.get(`${BASE}/${projectId}/cost-codes`);
+    return costCodeSchema.array().parse(res.data?.data ?? res.data ?? []);
+  },
+
+  async listProjectEmployeeOptions(projectId: string): Promise<Employee[]> {
+    const res = await api.get(`${BASE}/${projectId}/employee-options`);
+    return employeeSchema.array().parse(res.data?.data ?? res.data ?? []);
+  },
+
   async create(data: CreateProjectInput): Promise<ProjectDetail> {
     const res = await api.post(BASE, data);
     const raw = res.data?.data ?? res.data;

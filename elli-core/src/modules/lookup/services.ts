@@ -1,9 +1,36 @@
 import { Lookup } from '@db/client';
 import { prisma } from '@lib/prisma';
 import { ConflictError, NotFoundError } from '@utils';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
-import { LookupCreateRequest, LookupUpdateRequest } from './models';
+import { LookupCreateRequest, LookupType, LookupUpdateRequest } from './models';
+
+const DEFAULT_LOOKUP_LABELS: Partial<Record<LookupType, string[]>> = {
+    [LookupType.PAYMENT_METHOD]: ['ACH', 'Check', 'Wire Transfer', 'Credit Card', 'Other'],
+};
+
+async function ensureDefaultLookups(type: string): Promise<void> {
+    const labels = DEFAULT_LOOKUP_LABELS[type as LookupType];
+    if (!labels?.length) return;
+
+    await Promise.all(
+        labels.map((label) =>
+            prisma.lookup.upsert({
+                where: { type_label: { type, label } },
+                update: {},
+                create: {
+                    id: generateNanoId(),
+                    type,
+                    label,
+                },
+            })
+        )
+    );
+}
+
+async function ensureAllDefaultLookups(): Promise<void> {
+    await Promise.all(Object.values(LookupType).map((type) => ensureDefaultLookups(type)));
+}
 
 export const LookupService = {
     create: async (request: LookupCreateRequest): Promise<Lookup> => {
@@ -17,7 +44,7 @@ export const LookupService = {
 
         return await prisma.lookup.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 ...request,
             },
         });
@@ -63,12 +90,16 @@ export const LookupService = {
     },
 
     list: async (): Promise<Lookup[]> => {
+        await ensureAllDefaultLookups();
+
         return await prisma.lookup.findMany({
             orderBy: { type: 'asc' },
         });
     },
 
     listByType: async (type: string): Promise<Lookup[]> => {
+        await ensureDefaultLookups(type);
+
         return await prisma.lookup.findMany({
             where: { type },
             orderBy: { label: 'asc' },

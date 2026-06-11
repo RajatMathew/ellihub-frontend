@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { Forbidden } from '@/app/components/error/forbidden';
 import { FormSectionNav } from '@/app/components/form-section-nav';
 import {
   Toolbar,
@@ -12,6 +13,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
@@ -22,8 +24,8 @@ import {
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useGCsQuery } from '@/modules/directory/hooks';
-import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
@@ -34,6 +36,7 @@ import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.const
 import {
   useDivisionsQuery,
   useProjectDetailQuery,
+  useProjectEmployeeOptionsQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
   useSetProjectClosedMutation,
@@ -41,6 +44,11 @@ import {
   useSetProjectInactiveMutation,
   useUpdateProjectMutation,
 } from '@/modules/project/hooks';
+import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
+import {
+  formatProjectStageLabel,
+  getProjectStageSwatchClassName,
+} from '@/modules/project/lib/project-stage-colors';
 import {
   projectFormSchema,
   type ProjectDetail,
@@ -49,13 +57,18 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
-import { Controller, useForm, type Resolver, type SubmitHandler } from 'react-hook-form';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
-import { toast } from 'sonner';
 
-const parseDateValue = (value: unknown): string =>
-  typeof value === 'string' ? value.split('T')[0] : '';
+function uniqueOptions(options: Array<{ value: string; label: string }>) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
 
 export default function ProjectEditForm() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -71,6 +84,7 @@ export default function ProjectEditForm() {
       </div>
     );
   }
+  if (!project.capabilities?.canEdit) return <Forbidden />;
 
   return <ProjectEditFormInner project={project} projectId={projectId} navigate={navigate} />;
 }
@@ -93,18 +107,38 @@ function ProjectEditFormInner({
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
-  const employeesQuery = useEmployeesQuery({ size: 1000 });
+  const canTransferLeadPM = project.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
+  const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canTransferLeadPM);
 
   /* ---- Build dropdown options ---- */
 
-  const stageOptions = stagesQuery.data?.map((s) => ({ value: s.id, label: s.name })) ?? [];
+  const stageOptions =
+    stagesQuery.data?.map((s) => ({
+      value: s.id,
+      label: formatProjectStageLabel(s.name),
+      swatchClassName: getProjectStageSwatchClassName(s.name),
+    })) ?? [];
   const divisionOptions =
     divisionsQuery.data?.map((d) => ({
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
-  const gcOptions = gcsQuery.data?.data?.map((gc) => ({ value: gc.id, label: gc.name })) ?? [];
-  const pmOptions = employeesQuery.data?.data?.map((e) => ({ value: e.id, label: e.name })) ?? [];
+  const gcOptions =
+    gcsQuery.data?.data?.map((gc) => ({
+      value: gc.id,
+      label: gc.name,
+      badge: gc.status === 'INACTIVE' ? 'Inactive' : undefined,
+      disabled: gc.status === 'INACTIVE',
+    })) ?? [];
+  const pmOptions = uniqueOptions([
+    ...(project.leadPM ? [{ value: project.leadPM.id, label: project.leadPM.name }] : []),
+    ...(project.leadPMId && !project.leadPM
+      ? [{ value: project.leadPMId, label: 'Current Lead PM' }]
+      : []),
+    ...(employeesQuery.data
+      ?.filter((employee) => employee.authRole === 'pm' && employee.id !== project.leadPMId)
+      .map((employee) => ({ value: employee.id, label: employee.name })) ?? []),
+  ]);
 
   /* ---- Form setup with existing values ---- */
 
@@ -132,16 +166,18 @@ function ProjectEditFormInner({
       targetBudgetPercent: project.targetBudgetPercent ?? primeContract?.targetBudgetPercent ?? 0,
       taxRate: project.taxRate ?? 0,
       paymentTerms: project.paymentTerms ?? primeContract?.paymentTerms ?? 'NET_30',
-      estimatedStartDate: parseDateValue(
+      estimatedStartDate: toDateInputValue(
         project.estimatedStartDate ?? primeContract?.estimatedStartDate
       ),
-      estimatedEndDate: parseDateValue(
-        project.estimatedEndDate ?? primeContract?.estimatedCompletionDate
+      estimatedEndDate: toDateInputValue(
+        project.estimatedEndDate ?? primeContract?.estimatedEndDate
       ),
-      actualStartDate: parseDateValue(primeContract?.actualStartDate),
-      actualCompletionDate: parseDateValue(primeContract?.actualCompletionDate),
-      setInactiveDate: parseDateValue(project.setInactiveDate),
-      tcoDate: parseDateValue(project.tcoDate),
+      actualStartDate: toDateInputValue(project.actualStartDate ?? primeContract?.actualStartDate),
+      actualCompletionDate: toDateInputValue(
+        project.actualCompletionDate ?? primeContract?.actualCompletionDate
+      ),
+      setInactiveDate: toDateInputValue(project.setInactiveDate),
+      tcoDate: toDateInputValue(project.tcoDate ?? project.estimatedEndDate),
     },
   });
 
@@ -169,13 +205,14 @@ function ProjectEditFormInner({
     const payload: UpdateProjectInput = {
       name: data.name,
       description: data.description,
+      jobNumber: data.jobNumber || undefined,
       contractNumber: data.contractNumber || undefined,
       fieldwireProjectId: data.fieldwireProjectId || null,
       fieldwireProjectName: data.fieldwireProjectId ? data.fieldwireProjectName || undefined : null,
       stageId: data.stageId,
       divisionId: data.divisionId,
       gcId: data.gcId,
-      leadPMId: data.leadPMId || undefined,
+      leadPMId: data.leadPMId,
       status: data.status,
       streetAddress: data.streetAddress || undefined,
       city: data.city || undefined,
@@ -189,8 +226,10 @@ function ProjectEditFormInner({
       paymentTerms: data.paymentTerms || undefined,
       estimatedStartDate: data.estimatedStartDate || undefined,
       estimatedEndDate: data.estimatedEndDate || undefined,
+      actualStartDate: data.actualStartDate || undefined,
+      actualCompletionDate: data.actualCompletionDate || undefined,
       setInactiveDate: data.setInactiveDate || undefined,
-      tcoDate: data.tcoDate || undefined,
+      tcoDate: data.tcoDate,
     };
 
     try {
@@ -202,13 +241,13 @@ function ProjectEditFormInner({
       const newStatus = data.status;
 
       if (oldStatus !== newStatus) {
-        if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(projectId);
-        else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(projectId);
-        else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(projectId);
-        else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(projectId);
+        const statusInput = { id: projectId, silent: true };
+        if (newStatus === 'ACTIVE') await setActiveMutation.mutateAsync(statusInput);
+        else if (newStatus === 'INACTIVE') await setInactiveMutation.mutateAsync(statusInput);
+        else if (newStatus === 'CLOSED') await setClosedMutation.mutateAsync(statusInput);
+        else if (newStatus === 'COMPLETED') await setCompletedMutation.mutateAsync(statusInput);
       }
 
-      toast.success('Project updated.');
       navigate(`/app/project/${projectId}/overview`);
     } catch {
       /* error toast from mutation */
@@ -225,10 +264,7 @@ function ProjectEditFormInner({
   }, []);
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit as SubmitHandler<ProjectFormValues>)}
-      className="container-fluid py-7.5"
-    >
+    <form onSubmit={handleSubmit(onSubmit, onInvalidFormSubmit)} className="container-fluid py-7.5">
       {/* ── Toolbar ── */}
       <Toolbar sticky ref={headerRef} className="mb-0">
         <ToolbarWrapper>
@@ -321,7 +357,7 @@ function ProjectEditFormInner({
               />
             </div>
 
-            {/* Row: Job Number (read-only) */}
+            {/* Row: Job Number */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <Controller
                 name="jobNumber"
@@ -337,7 +373,6 @@ function ProjectEditFormInner({
                         placeholder="P-2026-9299"
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
-                        disabled
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -360,6 +395,7 @@ function ProjectEditFormInner({
                         <FieldwireProjectSelect
                           value={field.value || null}
                           currentName={nameField.value}
+                          currentProjectId={projectId}
                           onValueChange={(value, selectedProject) => {
                             field.onChange(value ?? '');
                             nameField.onChange(selectedProject?.name ?? '');
@@ -518,15 +554,16 @@ function ProjectEditFormInner({
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Project Manager
+                        Lead PM
                       </FieldLabel>
                       <SearchableSelect
                         options={pmOptions}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
-                        placeholder="Select PM..."
+                        placeholder="Select Lead PM..."
                         searchPlaceholder="Search people..."
-                        emptyMessage="No contacts found."
+                        emptyMessage="No PM users found."
+                        disabled={!canTransferLeadPM}
                       />
                     </Field>
                   )}
@@ -641,15 +678,14 @@ function ProjectEditFormInner({
                     </FieldLabel>
                     <InputWrapper>
                       <span className="text-muted-foreground text-sm">$</span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        decimalPlaces={2}
                         placeholder="0.00"
                         aria-invalid={fieldState.invalid}
                       />
@@ -668,16 +704,15 @@ function ProjectEditFormInner({
                       Retainage %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min={0}
-                        max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />
@@ -700,16 +735,15 @@ function ProjectEditFormInner({
                       Target Budget %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min={0}
-                        max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />
@@ -729,16 +763,15 @@ function ProjectEditFormInner({
                       Tax Rate %
                     </FieldLabel>
                     <InputWrapper>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        max={100}
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                      <NumberInput
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
+                        min={0}
+                        max={100}
+                        decimalPlaces={2}
                         placeholder="0"
                         aria-invalid={fieldState.invalid}
                       />
@@ -788,7 +821,7 @@ function ProjectEditFormInner({
                 />
               </div>
 
-              {/* Row: Set Inactive Date + TCO Date */}
+              {/* Row: Inactive Date + TCO Date */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 mt-5">
                 <Controller
                   name="setInactiveDate"
@@ -796,7 +829,7 @@ function ProjectEditFormInner({
                   render={({ field }) => (
                     <Field>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                        Set Inactive Date
+                        Inactive Date
                       </FieldLabel>
                       <InputWrapper>
                         <Input type="date" {...field} />
@@ -808,14 +841,15 @@ function ProjectEditFormInner({
                 <Controller
                   name="tcoDate"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         TCO Date
                       </FieldLabel>
                       <InputWrapper>
-                        <Input type="date" {...field} />
+                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
                       </InputWrapper>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

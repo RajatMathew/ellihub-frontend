@@ -1,8 +1,9 @@
-import { ActivityLog } from '@db/client';
+import { ActivityLog, Prisma } from '@db/client';
 import { TransactionClient } from '@db/internal/prismaNamespace';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
-import { ulid } from 'ulid';
+import { NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 
 import { ActivityAction, ActivityEntityType } from './types';
 
@@ -24,11 +25,26 @@ type ListFilter = {
     action?: string;
     from?: Date;
     to?: Date;
+    search?: string;
 };
 
 const includeUser = {
     user: { select: { id: true, name: true, email: true, image: true } },
 } as const;
+
+async function getRelatedActivityEntityIds(
+    entityType: ActivityEntityType,
+    entityId: string
+): Promise<string[]> {
+    if (entityType !== 'vendor') return [];
+
+    const purchaseOrders = await prisma.purchaseOrder.findMany({
+        where: { vendorId: entityId, deletedAt: null },
+        select: { id: true },
+    });
+
+    return purchaseOrders.map((purchaseOrder) => purchaseOrder.id);
+}
 
 export const ActivityLogService = {
     log: async (params: LogParams): Promise<ActivityLog> => {
@@ -36,7 +52,7 @@ export const ActivityLogService = {
         const client = tx ?? prisma;
         return client.activityLog.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 userId: rest.userId,
                 entityType: rest.entityType,
                 entityId: rest.entityId,
@@ -54,9 +70,45 @@ export const ActivityLogService = {
         pagination: PaginationParams
     ): Promise<{ data: ActivityLog[]; count: number }> => {
         const { skip, take } = pagination;
-        const where = {
-            entityType,
-            OR: [{ entityId }, { affectedEntityIds: { has: entityId } }],
+        const affectedEntityIds = [
+            entityId,
+            ...(await getRelatedActivityEntityIds(entityType, entityId)),
+        ];
+        const where: Prisma.ActivityLogWhereInput = {
+            OR: [{ entityType, entityId }, { affectedEntityIds: { hasSome: affectedEntityIds } }],
+        };
+
+        const [count, data] = await prisma.$transaction([
+            prisma.activityLog.count({ where }),
+            prisma.activityLog.findMany({
+                where,
+                skip,
+                take,
+                orderBy: { createdAt: 'desc' },
+                include: includeUser,
+            }),
+        ]);
+
+        return { data, count };
+    },
+
+    getForEmployee: async (
+        employeeId: string,
+        pagination: PaginationParams
+    ): Promise<{ data: ActivityLog[]; count: number }> => {
+        const { skip, take } = pagination;
+        const employee = await prisma.employee.findUnique({
+            where: { id: employeeId },
+            select: { userId: true, deletedAt: true },
+        });
+        if (!employee || employee.deletedAt) throw new NotFoundError('Employee not found');
+
+        const where: Prisma.ActivityLogWhereInput = {
+            OR: [
+                { entityType: 'employee', entityId: employeeId },
+                { affectedEntityIds: { has: employeeId } },
+                ...(employee.userId ? [{ userId: employee.userId }] : []),
+            ],
         };
 
         const [count, data] = await prisma.$transaction([
@@ -78,15 +130,26 @@ export const ActivityLogService = {
         filter: ListFilter = {}
     ): Promise<{ data: ActivityLog[]; count: number }> => {
         const { skip, take } = pagination;
-        const { userId, entityType, entityId, action, from, to } = filter;
+        const { userId, entityType, entityId, action, from, to, search } = filter;
 
-        const where = {
+        const where: Prisma.ActivityLogWhereInput = {
             ...(userId && { userId }),
             ...(entityType && { entityType }),
             ...(entityId && {
                 OR: [{ entityId }, { affectedEntityIds: { has: entityId } }],
             }),
             ...(action && { action }),
+            ...(search && {
+                AND: [
+                    {
+                        OR: [
+                            { description: { contains: search, mode: 'insensitive' } },
+                            { note: { contains: search, mode: 'insensitive' } },
+                            { entityId: { contains: search, mode: 'insensitive' } },
+                        ],
+                    },
+                ],
+            }),
             ...((from || to) && {
                 createdAt: {
                     ...(from && { gte: from }),

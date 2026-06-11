@@ -65,11 +65,11 @@ model Department {
 }
 
 model PaidTimeOff {
-  id         String   @id
+  id         String    @id
   employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   typeId     String
-  type       Lookup   @relation(fields: [typeId], references: [id])
+  type       Lookup    @relation(fields: [typeId], references: [id])
   startDate  DateTime  @db.Date
   endDate    DateTime  @db.Date
   reason     String?

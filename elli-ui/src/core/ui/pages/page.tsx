@@ -598,6 +598,8 @@ const projectColumns: SectionTableColumn<ProjectRow>[] = [
   {
     key: 'name',
     header: 'Project Name',
+    textOverflow: 'truncate',
+    tooltip: (row) => row.name,
     render: (row) => <span className="text-[13px] font-bold text-gray-900">{row.name}</span>,
   },
   {

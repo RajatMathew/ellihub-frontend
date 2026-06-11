@@ -1,8 +1,10 @@
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import type { GCFormValues } from '@/modules/directory/schemas/gc.schema';
 import { Building2, Mail, Phone } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
+
+import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
 
 interface GCContactFieldsProps {
   control: Control<GCFormValues>;
@@ -17,12 +19,15 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Company Email
-              </FieldLabel>
-              <InputWrapper>
+              <GCFormFieldLabel>Company Email</GCFormFieldLabel>
+              <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
                 <Mail className="size-4" />
-                <Input {...field} type="email" placeholder="info@company.com" />
+                <Input
+                  {...field}
+                  type="email"
+                  placeholder="info@company.com"
+                  aria-invalid={fieldState.invalid}
+                />
               </InputWrapper>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -33,10 +38,8 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Company Phone
-              </FieldLabel>
-              <InputWrapper>
+              <GCFormFieldLabel>Company Phone</GCFormFieldLabel>
+              <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
                 <Phone className="size-4" />
                 <Input
                   {...field}
@@ -45,6 +48,7 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
                   }
                   type="tel"
                   placeholder="(555) 000-0000"
+                  aria-invalid={fieldState.invalid}
                 />
               </InputWrapper>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -56,15 +60,18 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
       <Controller
         name="address"
         control={control}
-        render={({ field }) => (
-          <Field>
-            <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-              Address
-            </FieldLabel>
-            <InputWrapper>
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <GCFormFieldLabel>Address</GCFormFieldLabel>
+            <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
               <Building2 className="size-4" />
-              <Input {...field} placeholder="200 Commerce St, Dallas TX 75201" />
+              <Input
+                {...field}
+                placeholder="200 Commerce St, Dallas TX 75201"
+                aria-invalid={fieldState.invalid}
+              />
             </InputWrapper>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />

@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   ContactFormContent,
   ContactFormLoading,
@@ -21,6 +23,11 @@ export function ContactFormPage() {
   const rolesQuery = useProfessionalRolesQuery();
   const vendorsQuery = useVendorsQuery({ limit: 1000 });
   const gcsQuery = useGCsQuery({ limit: 1000 });
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/contacts/${id}` : undefined,
+    contactQuery.data?.fullName ?? 'Contact'
+  );
 
   const roles = rolesQuery.data ?? [];
   const vendorOptions = useMemo(
@@ -57,7 +64,7 @@ export function ContactFormPage() {
 
   if (isError) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Unable to load contact form."
           description="The contact form options could not be loaded."
@@ -74,7 +81,7 @@ export function ContactFormPage() {
 
   if (isEdit && !contactQuery.data) {
     return (
-      <div className="container-fluid py-7.5">
+      <div className={formPageContainerClassName}>
         <QueryErrorState
           title="Contact not found."
           description="This contact may have been deleted or moved."

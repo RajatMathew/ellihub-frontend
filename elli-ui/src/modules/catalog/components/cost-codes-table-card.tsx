@@ -1,17 +1,11 @@
-import { type Table } from '@tanstack/react-table';
-import { Search, Tag } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
-import {
-  Card,
-  CardHeader,
-  CardToolbar,
-} from '@/app/components/ui/card';
+import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
-
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
+import { type Table } from '@tanstack/react-table';
+import { Search, Tag } from 'lucide-react';
 
 interface CostCodesTableCardProps {
   table: Table<CostCode>;

@@ -1,56 +1,42 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+This repository is currently scaffold-level. The only committed artifact is [prompt.md](/Users/mac/projects/pdf-engine/prompt.md), which defines a Python PDF template engine built with FastAPI, Jinja2, and WeasyPrint.
 
-This repository is the deployment/orchestration wrapper for two Git subtrees:
+Use that spec as the baseline structure:
+- `app/` for API, rendering, validation, and cache modules
+- `templates/{template_id}/` for user-managed template bundles
+- `tests/` for unit and integration coverage
+- `assets/` for shared static files if repository-level assets are introduced
 
-- `elli-core/`: Bun + Hono backend API, Prisma schema and migrations, docs, and backend tests.
-- `elli-ui/`: React + Vite frontend, static assets in `public/`, application code in `src/`.
-- `nginx/default.conf`: root Nginx config. It serves the built UI and proxies `/api/*` to the API.
-- `Dockerfile.nginx` and `docker-compose.yml`: combined production-style stack.
-
-Do not edit subtree files unless the task explicitly targets that project. Prefer root-level deployment changes for orchestration issues.
+Each template bundle should contain `template.html`, `styles.css`, `schema.json`, `metadata.json`, plus optional `partials/` and `assets/`.
 
 ## Build, Test, and Development Commands
+No build system is committed yet. When bootstrapping the project, prefer a standard Python workflow and keep commands documented in `README.md`.
 
-Use Bun inside each subtree:
+Expected commands:
+- `python -m venv .venv` creates the local virtual environment
+- `source .venv/bin/activate` activates the environment
+- `pip install -r requirements.txt` installs app dependencies
+- `uvicorn app.main:app --reload` runs the FastAPI server locally
+- `pytest` runs the test suite
 
-```sh
-cd elli-core && bun install && bun run dev
-cd elli-ui && bun install && bun run dev
-```
-
-Root stack validation:
-
-```sh
-docker compose --env-file .env.example config
-docker compose --env-file .env.example up --build
-```
-
-Backend checks:
-
-```sh
-cd elli-core && bun run typecheck && bun test && bun run build
-```
-
-Frontend checks:
-
-```sh
-cd elli-ui && bun run lint && bun run build
-```
+If you introduce `Makefile`, `just`, or task-runner commands, keep them thin wrappers around the commands above.
 
 ## Coding Style & Naming Conventions
+Target Python 3 with 4-space indentation and type hints on public functions. Use `snake_case` for modules, functions, and variables, `PascalCase` for classes, and lowercase directory names for template IDs such as `templates/invoice_v1/`.
 
-Both subtrees use TypeScript, ESLint, and Prettier. Keep existing formatting and import conventions. Backend code uses modular route/service organization under `elli-core/src/modules`. Frontend code uses React components and feature modules under `elli-ui/src/modules`; prefer kebab-case filenames for UI files already following that pattern.
+Prefer small modules with single responsibilities: API routing, schema validation, sandboxed rendering, PDF generation, and cache storage should remain separate.
 
 ## Testing Guidelines
-
-Backend tests run with `bun test`. Place backend tests near the relevant module when adding API behavior. The UI currently relies on lint/build validation; add focused tests only when introducing a test framework or matching an existing local pattern. Always run the relevant subtree build before changing Docker wiring.
+Use `pytest` for all new tests. Mirror the application layout under `tests/`, and name files `test_<module>.py`. Add unit tests for schema validation, sandbox restrictions, and request-hash caching, plus integration tests for `/render` and `/render/batch`.
 
 ## Commit & Pull Request Guidelines
-
-History uses concise imperative commits, for example `Update environment URLs...` and `Refactor Docker setup...`. Keep commits scoped: root deployment changes separate from subtree updates. PRs should include a short summary, affected services, environment changes, validation commands run, and screenshots for visible UI changes.
+There is no Git history in this workspace yet, so adopt concise imperative commits such as `Add sandboxed template loader`. Keep pull requests focused and include:
+- a short summary of behavior changes
+- linked issue or task reference, if available
+- sample request/response payloads for API changes
+- rendered PDF screenshots only when output formatting changes
 
 ## Security & Configuration Tips
-
-Copy `.env.example` to deployment environment variables; do not commit real secrets. For production auth, `BETTER_AUTH_BASE_URL` and `CLIENT_URL` must match the public origin, such as `http://localhost` for local deployments. The compose file intentionally avoids public `ports:` bindings; expose services through the deployment platform's internal routing only.
+Do not allow template code to escape Jinja2 sandboxing. Never commit secrets, generated PDFs, or local virtual environments. Keep `.env`, cache directories, and runtime artifacts ignored once those files are introduced.

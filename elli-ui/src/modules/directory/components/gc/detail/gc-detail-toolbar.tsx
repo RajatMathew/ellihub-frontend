@@ -28,6 +28,8 @@ import { getGCTypeCode, getGCTypeName } from './gc-detail-utils';
 interface GCDetailToolbarProps {
   gc: GeneralContractorDetail;
   sidebarOpen: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
   onDelete: () => void;
   onOpenSidebar: () => void;
 }
@@ -35,6 +37,8 @@ interface GCDetailToolbarProps {
 export function GCDetailToolbar({
   gc,
   sidebarOpen,
+  canUpdate,
+  canDelete,
   onDelete,
   onOpenSidebar,
 }: GCDetailToolbarProps) {
@@ -43,7 +47,7 @@ export function GCDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to="../.." relative="path" className="hover:text-foreground">
               Directory
@@ -53,7 +57,7 @@ export function GCDetailToolbar({
               General Contractors
             </Link>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <ToolbarPageTitle>{gc.name}</ToolbarPageTitle>
             <Badge
               variant={typeCode ? (GC_TYPE_BADGE_VARIANTS[typeCode] ?? 'primary') : 'primary'}
@@ -74,35 +78,50 @@ export function GCDetailToolbar({
             </div>
           </div>
         </ToolbarHeading>
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="edit">
-              <Pencil className="size-4" />
-              Edit Profile
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" mode="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-4" />
-                Archive GC
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          {canUpdate && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+              <Link to="edit">
+                <Pencil className="size-4" />
+                Edit Profile
+              </Link>
+            </Button>
+          )}
+          {(canUpdate || canDelete) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" mode="icon">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                {canUpdate && (
+                  <DropdownMenuItem asChild>
+                    <Link to="edit">
+                      <Pencil className="size-4" />
+                      Edit Profile
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <>
+                    {canUpdate && <DropdownMenuSeparator />}
+                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                      <Trash2 className="size-4" />
+                      Archive GC
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               View Details
             </Button>

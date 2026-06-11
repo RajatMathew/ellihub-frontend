@@ -1,5 +1,11 @@
+import { useState } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import type { RFQAttachment } from '@/modules/project/schemas/rfq';
 import { FileText, Paperclip, Trash2, Upload } from 'lucide-react';
 
@@ -9,7 +15,6 @@ interface RFQDetailAttachmentsCardProps {
   canUpload: boolean;
   isRemoving: boolean;
   onUpload: () => void;
-  onDownload: (document: { id: string; name: string }) => void;
   onRemove: (attachmentId: string) => void;
 }
 
@@ -19,9 +24,10 @@ export function RFQDetailAttachmentsCard({
   canUpload,
   isRemoving,
   onUpload,
-  onDownload,
   onRemove,
 }: RFQDetailAttachmentsCardProps) {
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -54,7 +60,7 @@ export function RFQDetailAttachmentsCard({
                         <button
                           type="button"
                           className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                          onClick={() => onDownload({ id: document.id, name: documentName })}
+                          onClick={() => setPreviewFile({ ...document, name: documentName })}
                         >
                           {documentName}
                         </button>
@@ -88,6 +94,14 @@ export function RFQDetailAttachmentsCard({
           </div>
         )}
       </CardContent>
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

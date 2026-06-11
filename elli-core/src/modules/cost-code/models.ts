@@ -1,3 +1,4 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const CostCodeCategoryCreateSchema = z.object({
@@ -8,7 +9,7 @@ export const CostCodeCategoryCreateSchema = z.object({
 export type CostCodeCategoryCreateRequest = z.infer<typeof CostCodeCategoryCreateSchema>;
 
 export const CostCodeCategoryUpdateSchema = CostCodeCategoryCreateSchema.partial().extend({
-    id: z.ulid(),
+    id: nanoIdSchema,
 });
 
 export type CostCodeCategoryUpdateRequest = z.infer<typeof CostCodeCategoryUpdateSchema>;
@@ -16,19 +17,19 @@ export type CostCodeCategoryUpdateRequest = z.infer<typeof CostCodeCategoryUpdat
 export const CostCodeCreateSchema = z.object({
     name: z.string().min(2),
     code: z.string().min(2),
-    costCodeCategoryId: z.ulid(),
+    costCodeCategoryId: nanoIdSchema,
     description: z.string().min(1),
 });
 
 export type CostCodeCreateRequest = z.infer<typeof CostCodeCreateSchema>;
 
-export const CostCodeUpdateSchema = CostCodeCreateSchema.partial().extend({ id: z.ulid() });
+export const CostCodeUpdateSchema = CostCodeCreateSchema.partial().extend({ id: nanoIdSchema });
 
 export type CostCodeUpdateRequest = z.infer<typeof CostCodeUpdateSchema>;
 
 export const CostCodeQuerySchema = z.object({
     search: z.string().optional(),
-    costCodeCategoryId: z.ulid().optional(),
+    costCodeCategoryId: nanoIdSchema.optional(),
     page: z.coerce.number().int().positive().optional(),
     size: z.coerce.number().int().positive().max(100).optional(),
     sortBy: z.enum(['code', 'name', 'createdAt', 'updatedAt']).optional(),

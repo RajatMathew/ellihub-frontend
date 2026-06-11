@@ -38,7 +38,8 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
@@ -49,6 +50,7 @@ import {
   ProjectDetailField,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
@@ -58,8 +60,12 @@ import {
   useRemoveInvoiceAttachmentMutation,
   useResolveDisputeInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import {
   invoiceMarkPaidInputSchema,
   type InvoiceMarkPaidInput,
@@ -140,13 +146,22 @@ export function InvoiceDetailPage() {
   }>();
 
   const { data: invoice, isLoading } = useInvoiceDetailQuery(invoiceId);
+  const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && invoiceId ? `/app/project/${projectId}/invoices/${invoiceId}` : undefined,
     invoice?.invoiceNumber ?? undefined
   );
 
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
-  const { data: paymentMethods } = useLookupsQuery('PAYMENT_METHOD');
+  const { data: invoiceEntityFolderId } = useProjectEntityFolderQuery(
+    projectId || undefined,
+    'INVOICE',
+    invoiceId || undefined,
+    project?.capabilities?.actions?.invoice?.update === true
+  );
+  const invoiceUploadFolderId = invoiceEntityFolderId ?? invoiceFolderId;
+  const { data: paymentMethods, isLoading: isLoadingPaymentMethods } =
+    useLookupsQuery('PAYMENT_METHOD');
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'invoice',
     entityId: invoiceId,
@@ -237,9 +252,15 @@ export function InvoiceDetailPage() {
   const relatedSCOCount = relatedSCOs.length || invoice.relatedSCOIds.length;
   const isPaid = invoice.isPaid === true;
   const isDisputed = invoice.isDisputed === true;
-  const totalAmount = Number(invoice.totalAmount ?? 0);
+  const projectActions = project?.capabilities?.actions;
+  const canMarkInvoicePaid = projectActions?.invoice?.['mark-paid'] === true;
+  const canMarkInvoiceUnpaid = projectActions?.invoice?.['mark-unpaid'] === true;
+  const canDisputeInvoice = projectActions?.invoice?.dispute === true;
+  const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
+  const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
+  const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
-  const subtotal = Math.max(0, totalAmount - taxAmount);
+  const totalAmount = invoiceAmount + taxAmount;
   const isPastDue = !isPaid && !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
   const paymentMethodLabel =
     invoice.paymentMethod?.label ??
@@ -252,6 +273,7 @@ export function InvoiceDetailPage() {
     markUnpaidMutation.isPending ||
     disputeMutation.isPending ||
     resolveDisputeMutation.isPending;
+  const hasPaymentMethods = (paymentMethods?.length ?? 0) > 0;
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
@@ -281,7 +303,7 @@ export function InvoiceDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {!isPaid && (
+            {canMarkInvoicePaid && !isPaid && (
               <Button
                 size="sm"
                 disabled={isActionPending}
@@ -299,7 +321,7 @@ export function InvoiceDetailPage() {
                 Mark Paid
               </Button>
             )}
-            {isPaid && (
+            {canMarkInvoiceUnpaid && isPaid && (
               <Button
                 variant="outline"
                 size="sm"
@@ -310,7 +332,7 @@ export function InvoiceDetailPage() {
                 Mark Unpaid
               </Button>
             )}
-            {!isDisputed && (
+            {canDisputeInvoice && !isDisputed && (
               <Button
                 variant="outline"
                 size="sm"
@@ -324,7 +346,7 @@ export function InvoiceDetailPage() {
                 Dispute
               </Button>
             )}
-            {isDisputed && (
+            {canResolveInvoiceDispute && isDisputed && (
               <Button
                 variant="outline"
                 size="sm"
@@ -335,7 +357,7 @@ export function InvoiceDetailPage() {
                 Resolve Dispute
               </Button>
             )}
-            {!isPaid && (
+            {canEditInvoice && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -350,7 +372,7 @@ export function InvoiceDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                {!isPaid && (
+                {canEditInvoice && (
                   <DropdownMenuItem asChild>
                     <Link to="edit">
                       <Pencil className="size-4" />
@@ -358,7 +380,7 @@ export function InvoiceDetailPage() {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {!isPaid && invoiceFolderId && (
+                {canEditInvoice && invoiceUploadFolderId && (
                   <DropdownMenuItem onClick={() => setUploadOpen(true)}>
                     <Upload className="size-4" />
                     Upload Document
@@ -382,15 +404,8 @@ export function InvoiceDetailPage() {
             <StatsCard
               icon={<Receipt className="size-5 text-primary" />}
               bgClass="bg-primary/10"
-              label="Invoice Total"
-              value={money(totalAmount)}
-              description="Submitted amount"
-            />
-            <StatsCard
-              icon={<Receipt className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
-              label="Subtotal"
-              value={money(subtotal)}
+              label="Invoice Amount"
+              value={money(invoiceAmount)}
               description="Before tax"
             />
             <StatsCard
@@ -398,7 +413,14 @@ export function InvoiceDetailPage() {
               bgClass="bg-info/10"
               label="Tax"
               value={money(taxAmount)}
-              description={`${invoice.taxRate ?? 0}%`}
+              description={formatPercent(invoice.taxRate)}
+            />
+            <StatsCard
+              icon={<Receipt className="size-5 text-muted-foreground" />}
+              bgClass="bg-muted/60"
+              label="Total"
+              value={money(totalAmount)}
+              description="Amount + tax"
             />
             <StatsCard
               icon={<CreditCard className="size-5 text-success" />}
@@ -473,8 +495,8 @@ export function InvoiceDetailPage() {
 
               <ProjectDetailDocumentsCard
                 documents={attachments}
-                canUpload={!isPaid && !!invoiceFolderId}
-                canRemove={!isPaid}
+                canUpload={canEditInvoice && !!invoiceUploadFolderId}
+                canRemove={canEditInvoice}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
                 onRemove={(attachment) =>
@@ -535,7 +557,6 @@ export function InvoiceDetailPage() {
                     <div className="space-y-2">
                       {relatedSCOs.map((sco) => {
                         const changeTypeLabel = lookupLabel(sco.changeType);
-                        const scheduleImpactDays = Number(sco.scheduleImpactDays ?? 0);
 
                         return (
                           <Link
@@ -567,22 +588,14 @@ export function InvoiceDetailPage() {
                                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                   {sco.date && <span>{formatDate(sco.date)}</span>}
                                   {changeTypeLabel && <span>{changeTypeLabel}</span>}
-                                  {sco.requestedBy && <span>Requested by {sco.requestedBy}</span>}
                                   <span>{sco.lineItems.length} line items</span>
                                   <span>{sco.attachments.length} attachments</span>
                                 </div>
                               </div>
                               <div className="shrink-0 text-left sm:text-right">
                                 <div className="text-sm font-semibold tabular-nums text-foreground">
-                                  {money(sco.amount)}
+                                  {money(getSubChangeOrderTotalAmount(sco))}
                                 </div>
-                                {sco.impactsSchedule && (
-                                  <div className="mt-1 text-xs text-warning">
-                                    {scheduleImpactDays > 0
-                                      ? `${scheduleImpactDays} day schedule impact`
-                                      : 'Schedule impact'}
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </Link>
@@ -655,8 +668,10 @@ export function InvoiceDetailPage() {
               </div>
               <Card>
                 <CardContent className="space-y-1 p-4">
-                  <InfoRow label="Subtotal">{money(subtotal)}</InfoRow>
-                  <InfoRow label={`Tax (${invoice.taxRate ?? 0}%)`}>{money(taxAmount)}</InfoRow>
+                  <InfoRow label="Invoice Amount">{money(invoiceAmount)}</InfoRow>
+                  <InfoRow label={`Tax (${formatPercent(invoice.taxRate)})`}>
+                    {money(taxAmount)}
+                  </InfoRow>
                   <Separator className="my-2" />
                   <InfoRow label="Total">
                     <span className="font-semibold">{money(totalAmount)}</span>
@@ -730,7 +745,7 @@ export function InvoiceDetailPage() {
                   },
                   { onSuccess: () => setMarkPaidOpen(false) }
                 );
-              })(event)
+              }, onInvalidFormSubmit)(event)
             }
           >
             <Controller
@@ -752,16 +767,28 @@ export function InvoiceDetailPage() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Payment Method</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isLoadingPaymentMethods || markPaidMutation.isPending}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select payment method..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {(paymentMethods ?? []).map((method) => (
-                        <SelectItem key={method.id} value={method.id}>
-                          {method.label ?? method.name ?? method.id}
+                      {hasPaymentMethods ? (
+                        paymentMethods?.map((method) => (
+                          <SelectItem key={method.id} value={method.id}>
+                            {method.label ?? method.name ?? method.id}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__payment_methods_empty" disabled>
+                          {isLoadingPaymentMethods
+                            ? 'Loading payment methods...'
+                            : 'No payment methods available'}
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -794,7 +821,7 @@ export function InvoiceDetailPage() {
               <Button type="button" variant="outline" onClick={() => setMarkPaidOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={markPaidMutation.isPending}>
+              <Button type="submit" disabled={markPaidMutation.isPending || !hasPaymentMethods}>
                 Mark Paid
               </Button>
             </DialogFooter>
@@ -867,11 +894,11 @@ export function InvoiceDetailPage() {
         isPending={resolveDisputeMutation.isPending}
       />
 
-      {invoiceFolderId && (
+      {canEditInvoice && invoiceUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
-          parentId={invoiceFolderId}
+          parentId={invoiceUploadFolderId}
           onSubmit={({ file, data }) => {
             uploadFileMutation.mutate(
               { file, data },

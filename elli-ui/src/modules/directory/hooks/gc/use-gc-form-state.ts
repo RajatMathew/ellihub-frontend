@@ -1,11 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { LinkedContactItem } from '@/modules/directory/components/shared';
+import {
+  fakeGCName,
+  fakePhone,
+  fakeStreetAddress,
+  fakeVendorEmail,
+  fakeVendorWebsite,
+  pickRandom,
+} from '@/lib/fake-data';
+import type {
+  LinkedContactItem,
+  LinkedContactNameSource,
+} from '@/modules/directory/components/shared';
+import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import { useContactsQuery, useGCDetailQuery, useGCTypesQuery } from '@/modules/directory/hooks';
 import {
   gcFormSchema,
+  gcStatusSchema,
+  paymentTermsSchema,
   type GCContactLink,
   type GCFormValues,
+  type GeneralContractorDetail,
 } from '@/modules/directory/schemas/gc.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -35,22 +50,23 @@ export function useGCFormState(id: string | undefined) {
   const [activeSection, setActiveSection] = useState('info');
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
+  const [createdContacts, setCreatedContacts] = useState<LinkedContactNameSource[]>([]);
   const [originalLinks, setOriginalLinks] = useState<GCContactLink[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const initializedGcIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isEdit || !gcQuery.data || isInitialized) return;
+    if (!isEdit || !gcQuery.data || initializedGcIdRef.current === gcQuery.data.id) return;
 
     const gc = gcQuery.data;
     form.reset({
       name: gc.name,
       gcTypeId: gc.gcTypeId || gc.gcType?.id || '',
       website: gc.website ?? '',
-      status: gc.status,
+      status: getGCStatusFormValue(gc),
       email: gc.email ?? '',
       phone: gc.phone ?? '',
       address: gc.address ?? '',
-      paymentTerms: gc.paymentTerms ?? '',
+      paymentTerms: getGCPaymentTermsFormValue(gc),
       retainagePercent: gc.retainagePercent,
     });
 
@@ -65,21 +81,32 @@ export function useGCFormState(id: string | undefined) {
           isPrimary: link.isPrimary,
         }))
       );
-      setIsInitialized(true);
+      initializedGcIdRef.current = gc.id;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [form, gcQuery.data, isEdit, isInitialized]);
+  }, [form, gcQuery.data, isEdit]);
+
+  const contacts = useMemo(() => {
+    const map = new Map<string, LinkedContactNameSource>();
+    for (const contact of contactsQuery.data?.data ?? []) {
+      map.set(contact.id, contact);
+    }
+    for (const contact of createdContacts) {
+      map.set(contact.id, contact);
+    }
+    return Array.from(map.values());
+  }, [contactsQuery.data?.data, createdContacts]);
 
   const contactOptions = useMemo(
     () =>
-      (contactsQuery.data?.data ?? []).map((contact) => ({
+      contacts.map((contact) => ({
         value: contact.id,
         label: contact.fullName,
       })),
-    [contactsQuery.data]
+    [contacts]
   );
 
   const gcTypeOptions = useMemo(
@@ -99,31 +126,34 @@ export function useGCFormState(id: string | undefined) {
     }
 
     const randomType = gcTypes[Math.floor(Math.random() * gcTypes.length)];
-    const randomSuffix = Math.floor(Math.random() * 1000);
+    const name = fakeGCName();
 
     form.reset({
-      name: `Test GC ${randomSuffix}`,
+      name,
       gcTypeId: randomType.id,
-      website: `https://test-gc-${randomSuffix}.com`,
+      website: fakeVendorWebsite(name),
       status: 'ACTIVE',
-      email: `test-${randomSuffix}@example.com`,
-      phone: `(555) 000-${randomSuffix.toString().padStart(4, '0')}`,
-      address: `${randomSuffix} Test Parkway, Dallas TX 75201`,
-      paymentTerms: 'NET_30',
+      email: fakeVendorEmail(name),
+      phone: fakePhone(),
+      address: fakeStreetAddress(),
+      paymentTerms: pickRandom(PAYMENT_TERMS_OPTIONS).value,
       retainagePercent: 10,
     });
     toast.info('Form filled with test data.');
   };
 
   const handleContactCreated = (contact: { id: string; fullName: string }) => {
-    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: false }]);
+    setCreatedContacts((prev) =>
+      prev.some((existing) => existing.id === contact.id) ? prev : [...prev, contact]
+    );
+    setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: prev.length === 0 }]);
   };
 
   return {
     isEdit,
     form,
     gcQuery,
-    contacts: contactsQuery.data?.data ?? [],
+    contacts,
     gcTypes: gcTypesQuery.data ?? [],
     gcTypeOptions,
     contactOptions,
@@ -137,6 +167,16 @@ export function useGCFormState(id: string | undefined) {
     fillRandom,
     handleContactCreated,
   };
+}
+
+function getGCStatusFormValue(gc: GeneralContractorDetail) {
+  const result = gcStatusSchema.safeParse(gc.status);
+  return result.success ? result.data : 'ACTIVE';
+}
+
+function getGCPaymentTermsFormValue(gc: GeneralContractorDetail) {
+  const result = paymentTermsSchema.safeParse(gc.paymentTerms);
+  return result.success ? result.data : 'NET_30';
 }
 
 function buildGCContactLinks(
@@ -153,7 +193,7 @@ function buildGCContactLinks(
       id: contact.id,
       contactId: contact.id,
       generalContractorId,
-      isPrimary: false,
+      isPrimary: contact.isPrimary ?? false,
       contact,
     });
   });

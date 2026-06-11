@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { generatePdfTermsInputSchema } from '@/modules/pdf/schemas';
+
 export const mailSignatureSchema = z.object({
   name: z.string().min(1),
   role: z.string().min(1),
@@ -16,6 +18,28 @@ export const mailAttachmentPreviewSchema = z.object({
 });
 
 export type MailAttachmentPreview = z.infer<typeof mailAttachmentPreviewSchema>;
+
+export const mailRecipientOptionSchema = z.object({
+  id: z.string(),
+  type: z.enum(['vendor', 'contact']),
+  label: z.string(),
+  email: z.string().email(),
+  isPrimary: z.boolean().optional(),
+});
+
+export type MailRecipientOption = z.infer<typeof mailRecipientOptionSchema>;
+
+export const mailRecipientGroupSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  entityType: z.literal('vendor'),
+  entityId: z.string(),
+  quoteId: z.string().optional(),
+  missingEntityEmail: z.boolean().optional(),
+  options: z.array(mailRecipientOptionSchema).default([]),
+});
+
+export type MailRecipientGroup = z.infer<typeof mailRecipientGroupSchema>;
 
 const featureMailDraftBaseSchema = z.object({
   from: z.string().email(),
@@ -39,6 +63,7 @@ export const featureMailDraftSchema = featureMailDraftBaseSchema.extend({
   senderOptions: z.array(z.string().email()).default([]),
   html: z.string(),
   attachments: z.array(mailAttachmentPreviewSchema).default([]),
+  recipientGroups: z.array(mailRecipientGroupSchema).optional().default([]),
   signatureAssets: z
     .array(
       z.object({
@@ -65,6 +90,7 @@ export type FeatureMailTarget = z.infer<typeof featureMailTargetSchema>;
 
 export const featureMailActionSchema = featureMailTargetSchema.extend({
   draft: featureMailDraftPayloadSchema,
+  pdfOptions: generatePdfTermsInputSchema.optional(),
 });
 
 export type FeatureMailAction = z.infer<typeof featureMailActionSchema>;

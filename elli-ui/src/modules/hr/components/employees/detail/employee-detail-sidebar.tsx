@@ -2,9 +2,11 @@ import type { ReactNode } from 'react';
 
 import { ActivityPanel, type ActivityPanelItem } from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
 import { Separator } from '@/app/components/ui/separator';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
-import { Mail, MapPin, Phone, User } from 'lucide-react';
+import { Mail, MapPin, Phone, User, UserCheck, UserPlus, UserX } from 'lucide-react';
 
 interface EmployeeDetailSidebarProps {
   employee: Employee;
@@ -14,6 +16,8 @@ interface EmployeeDetailSidebarProps {
   isActivityError: boolean;
   onClose: () => void;
   onRetryActivity: () => void;
+  onLinkUser: () => void;
+  onUnlinkUser: () => void;
 }
 
 export function EmployeeDetailSidebar({
@@ -24,7 +28,11 @@ export function EmployeeDetailSidebar({
   isActivityError,
   onClose,
   onRetryActivity,
+  onLinkUser,
+  onUnlinkUser,
 }: EmployeeDetailSidebarProps) {
+  const hasUserAccount = Boolean(employee.userId);
+
   return (
     <DetailSidebar
       open={open}
@@ -38,7 +46,7 @@ export function EmployeeDetailSidebar({
         />
       }
     >
-      <div className="space-y-4 p-4">
+      <div className="min-w-0 space-y-4 p-4">
         <div>
           <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Quick Contact
@@ -55,6 +63,47 @@ export function EmployeeDetailSidebar({
               icon={<MapPin className="size-4 text-destructive" />}
               value={employee.address || 'No address provided'}
             />
+          </div>
+        </div>
+        <Separator />
+        <div>
+          <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            System Access
+          </span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Badge variant={hasUserAccount ? 'success' : 'secondary'} appearance="light">
+                {hasUserAccount ? (
+                  <UserCheck className="size-3" />
+                ) : (
+                  <UserX className="size-3" />
+                )}
+                {hasUserAccount ? 'Linked User' : 'No Auth User'}
+              </Badge>
+            </div>
+            {hasUserAccount ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={onUnlinkUser}
+              >
+                <UserX className="size-4" />
+                Unlink User
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={onLinkUser}
+              >
+                <UserPlus className="size-4" />
+                Link User
+              </Button>
+            )}
           </div>
         </div>
         <Separator />
@@ -75,9 +124,9 @@ export function EmployeeDetailSidebar({
 
 function ContactLine({ icon, value }: { icon: ReactNode; value: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 text-sm">
+    <div className="flex min-w-0 items-start gap-3 text-sm">
       {icon}
-      <span className="min-w-0 break-words">{value}</span>
+      <span className="min-w-0 flex-1 break-words">{value}</span>
     </div>
   );
 }

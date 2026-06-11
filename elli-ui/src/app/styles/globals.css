@@ -9,6 +9,7 @@
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
   --background: #fff;
+  --form-background: var(--color-zinc-100);
   --foreground: var(--color-zinc-950);
   --card: var(--color-white);
   --card-foreground: var(--color-zinc-950);
@@ -56,6 +57,7 @@
 
 .dark {
   --background: #0f0f0f;
+  --form-background: var(--color-zinc-900);
   /* zinc-950 but standard black */
   --foreground: var(--color-zinc-50);
   --card: #0d0d0d;
@@ -105,6 +107,7 @@
 @theme inline {
   /** Base Colors **/
   --color-background: var(--background);
+  --color-form-background: var(--form-background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -199,6 +202,18 @@
 
   *:focus-visible {
     @apply outline-ring! rounded-xs! shadow-none! outline-2! outline-offset-3! transition-none!;
+  }
+
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
   }
 }
 

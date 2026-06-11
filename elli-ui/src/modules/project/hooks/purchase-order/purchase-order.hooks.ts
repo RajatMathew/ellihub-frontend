@@ -1,11 +1,13 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { poApi } from '@/modules/project/api/purchase-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
+import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
-  AddPOQuickBooksPaymentInput,
-  AddPOQuickBooksPaymentsInput,
   CreatePOInput,
+  GeneratePOPdfInput,
   ListPOsParams,
   POLineItemInput,
 } from '@/modules/project/schemas/purchase-order';
@@ -34,18 +36,18 @@ export const usePODetailQuery = (id: string) =>
     enabled: !!id,
   });
 
-export const usePOQuickBooksPaymentsQuery = (id: string) =>
+export const usePOPdfDefaultTermsQuery = () =>
   useQuery({
-    queryKey: poKeys.quickBooksPayments(id),
-    queryFn: () => poApi.listQuickBooksPayments(id),
-    enabled: !!id,
+    queryKey: poKeys.pdfDefaultTerms(),
+    queryFn: () => poApi.getPdfDefaultTerms(),
+    staleTime: 5 * 60 * 1000,
   });
 
-export const usePOQuickBooksPaymentOptionsQuery = (id: string, enabled: boolean) =>
+export const usePOPdfTermsOptionsQuery = () =>
   useQuery({
-    queryKey: poKeys.quickBooksPaymentOptions(id),
-    queryFn: () => poApi.listQuickBooksPaymentOptions(id),
-    enabled: !!id && enabled,
+    queryKey: poKeys.pdfTermsOptions(),
+    queryFn: () => poApi.getPdfTermsOptions(),
+    staleTime: 5 * 60 * 1000,
   });
 
 /* ---- mutations ---- */
@@ -99,7 +101,7 @@ export const useCancelPOMutation = () => {
       confirmSCOs?: boolean;
     }) => poApi.cancel(id, data),
     onSuccess: async (_, { id }) => {
-      await invalidatePOQueries(qc, id);
+      await invalidateProjectQueries(qc, [poKeys.all, poKeys.detail(id), scoKeys.all]);
     },
     onError: (err) => toastApiError(err, 'Failed to cancel purchase order.'),
   });
@@ -117,73 +119,42 @@ export const useRecordDeliveryMutation = () => {
   });
 };
 
-export const useRevertToDraftMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => poApi.revertToDraft(id),
-    onSuccess: async (_, id) => {
-      await invalidatePOQueries(qc, id);
-      toast.success('Purchase order reverted to draft.');
-    },
-    onError: (err) => toastApiError(err, 'Failed to revert to draft.'),
+export const useGeneratePOPdfMutation = () =>
+  useMutation({
+    mutationFn: ({
+      id,
+      data,
+      poNumber,
+    }: {
+      id: string;
+      data: GeneratePOPdfInput;
+      poNumber?: string | null;
+    }) => poApi.generatePdf(id, data, poNumber),
+    onError: (err) => toastApiError(err, 'Failed to generate purchase order PDF.'),
   });
-};
 
-export const useAddPOQuickBooksPaymentMutation = () => {
+export const useSavePOPdfMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ poId, data }: { poId: string; data: AddPOQuickBooksPaymentInput }) =>
-      poApi.addQuickBooksPayment(poId, data),
-    onSuccess: async (_, { poId }) => {
-      qc.removeQueries({ queryKey: poKeys.quickBooksPaymentOptions(poId) });
+    mutationFn: ({
+      id,
+      data,
+      poNumber,
+    }: {
+      id: string;
+      data: GeneratePOPdfInput;
+      poNumber?: string | null;
+    }) => poApi.savePdf(id, data, poNumber),
+    onSuccess: async (_, { id }) => {
       await invalidateProjectQueries(qc, [
-        poKeys.detail(poId),
-        poKeys.quickBooksPayments(poId),
-        poKeys.quickBooksPaymentOptions(poId),
+        poKeys.all,
+        poKeys.detail(id),
+        filesKeys.all,
+        activityLogKeys.all,
       ]);
-      toast.success('QuickBooks payment added.');
+      toast.success('PDF saved to Files.');
     },
-    onError: (err) => toastApiError(err, 'Failed to add QuickBooks payment.'),
-  });
-};
-
-export const useAddPOQuickBooksPaymentsMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ poId, data }: { poId: string; data: AddPOQuickBooksPaymentsInput }) =>
-      poApi.addQuickBooksPayments(poId, data),
-    onSuccess: async (payments, { poId }) => {
-      qc.removeQueries({ queryKey: poKeys.quickBooksPaymentOptions(poId) });
-      await invalidateProjectQueries(qc, [
-        poKeys.detail(poId),
-        poKeys.quickBooksPayments(poId),
-        poKeys.quickBooksPaymentOptions(poId),
-      ]);
-      toast.success(
-        payments.length === 1
-          ? 'QuickBooks payment added.'
-          : `${payments.length} QuickBooks payments added.`
-      );
-    },
-    onError: (err) => toastApiError(err, 'Failed to add QuickBooks payments.'),
-  });
-};
-
-export const useRemovePOQuickBooksPaymentMutation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ poId, paymentId }: { poId: string; paymentId: string }) =>
-      poApi.removeQuickBooksPayment(poId, paymentId),
-    onSuccess: async (_, { poId }) => {
-      qc.removeQueries({ queryKey: poKeys.quickBooksPaymentOptions(poId) });
-      await invalidateProjectQueries(qc, [
-        poKeys.detail(poId),
-        poKeys.quickBooksPayments(poId),
-        poKeys.quickBooksPaymentOptions(poId),
-      ]);
-      toast.success('QuickBooks payment removed.');
-    },
-    onError: (err) => toastApiError(err, 'Failed to remove QuickBooks payment.'),
+    onError: (err) => toastApiError(err, 'Failed to save purchase order PDF.'),
   });
 };
 

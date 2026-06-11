@@ -1,9 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+import { toastApiError } from '@/app/lib/toast-api-error';
+import { employeesKeys } from '@/modules/hr/constants/employees.keys';
 import { projectTeamApi } from '@/modules/project/api/project-team.api';
 import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
+import type { ProjectTeamRole } from '@/modules/project/schemas/project-team.schema';
 
 export const useAddTeamMemberMutation = () => {
   const queryClient = useQueryClient();
@@ -14,10 +17,13 @@ export const useAddTeamMemberMutation = () => {
       role: string;
       isLead?: boolean;
     }) => projectTeamApi.addMember(data),
-    onSuccess: async (_, { projectId }) => {
+    onSuccess: async (_, { projectId, employeeId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      await queryClient.invalidateQueries({ queryKey: employeesKeys.projects(employeeId) });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      toast.success('Team member added.');
     },
-    onError: () => toast.error('Failed to add team member.'),
+    onError: (error) => toastApiError(error, 'Failed to add team member.'),
   });
 };
 
@@ -27,16 +33,38 @@ export const usePromoteToLeadPMMutation = () => {
     mutationFn: ({
       projectId,
       employeeId,
-      keepOldPM,
     }: {
       projectId: string;
       employeeId: string;
-      keepOldPM?: boolean;
-    }) => projectTeamApi.promoteToLeadPM(projectId, employeeId, keepOldPM),
-    onSuccess: async (_, { projectId }) => {
+    }) => projectTeamApi.promoteToLeadPM(projectId, employeeId),
+    onSuccess: async (_, { projectId, employeeId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      await queryClient.invalidateQueries({ queryKey: employeesKeys.projects(employeeId) });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
     },
-    onError: () => toast.error('Failed to promote team member.'),
+    onError: (error) => toastApiError(error, 'Failed to promote team member.'),
+  });
+};
+
+export const useUpdateTeamMemberRoleMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      employeeId,
+      role,
+    }: {
+      projectId: string;
+      employeeId: string;
+      role: ProjectTeamRole;
+    }) => projectTeamApi.updateMemberRole(projectId, employeeId, role),
+    onSuccess: async (_, { projectId, employeeId }) => {
+      await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      await queryClient.invalidateQueries({ queryKey: employeesKeys.projects(employeeId) });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      toast.success('Team member role updated.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to update team member role.'),
   });
 };
 
@@ -50,9 +78,12 @@ export const useRemoveTeamMemberMutation = () => {
       projectId: string;
       employeeId: string;
     }) => projectTeamApi.removeMember(projectId, employeeId),
-    onSuccess: async (_, { projectId }) => {
+    onSuccess: async (_, { projectId, employeeId }) => {
       await invalidateProjectQueries(queryClient, [projectKeys.detail(projectId)]);
+      await queryClient.invalidateQueries({ queryKey: employeesKeys.projects(employeeId) });
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      toast.success('Team member removed.');
     },
-    onError: () => toast.error('Failed to remove team member.'),
+    onError: (error) => toastApiError(error, 'Failed to remove team member.'),
   });
 };

@@ -1,7 +1,3 @@
-import { Link } from 'react-router-dom';
-
-import { Mail, MoreHorizontal, Phone, Trash2 } from 'lucide-react';
-
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -19,6 +15,8 @@ import {
   type ContactLinkedEntity,
 } from '@/modules/directory/components/contacts/contact-list-utils';
 import type { Contact } from '@/modules/directory/schemas/contact.schema';
+import { Mail, MoreHorizontal, Phone, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function ContactNameCell({ contact }: { contact: Contact }) {
   return (
@@ -48,7 +46,7 @@ export function ContactNameCell({ contact }: { contact: Contact }) {
 function LinkedEntityList({ links }: { links: ContactLinkedEntity[] }) {
   return (
     <>
-      <span className="mb-0.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+      <span className="mb-0.5 text-xs font-semibold tracking-normal text-muted-foreground/70">
         Linked Entities
       </span>
       {links.map((link) => (
@@ -144,10 +142,14 @@ export function ContactRoleCell({ contact }: { contact: Contact }) {
 
 export function ContactActionsCell({
   contact,
+  canUpdate,
+  canDelete,
   onDelete,
 }: {
   contact: Contact;
-  onDelete: (id: string) => void;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onDelete: (contact: Contact) => void;
 }) {
   return (
     <DropdownMenu>
@@ -167,14 +169,20 @@ export function ContactActionsCell({
         <DropdownMenuItem asChild>
           <Link to={`${contact.id}`}>View</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to={`${contact.id}/edit`}>Edit</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact.id)}>
-          <Trash2 className="size-4" />
-          Delete
-        </DropdownMenuItem>
+        {canUpdate && (
+          <DropdownMenuItem asChild>
+            <Link to={`${contact.id}/edit`}>Edit</Link>
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact)}>
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

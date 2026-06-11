@@ -1,9 +1,10 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const PTOCreateSchema = z
     .object({
-        employeeId: z.ulid(),
-        typeId: z.ulid(),
+        employeeId: nanoIdSchema.optional(),
+        typeId: nanoIdSchema,
         startDate: z.coerce.date(),
         endDate: z.coerce.date(),
         reason: z.string().trim().min(1).optional(),
@@ -17,8 +18,8 @@ export type PTOCreateRequest = z.infer<typeof PTOCreateSchema>;
 
 export const PTOUpdateSchema = z
     .object({
-        id: z.ulid(),
-        typeId: z.ulid().optional(),
+        id: nanoIdSchema,
+        typeId: nanoIdSchema.optional(),
         startDate: z.coerce.date().optional(),
         endDate: z.coerce.date().optional(),
         reason: z.string().trim().min(1).nullable().optional(),
@@ -31,7 +32,7 @@ export const PTOUpdateSchema = z
 export type PTOUpdateRequest = z.infer<typeof PTOUpdateSchema>;
 
 export const PTOReviewSchema = z.object({
-    id: z.ulid(),
+    id: nanoIdSchema,
     note: z.string().trim().min(1).optional(),
 });
 

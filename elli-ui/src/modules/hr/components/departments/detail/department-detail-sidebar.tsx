@@ -53,19 +53,19 @@ export function DepartmentDetailSidebar({
                 </p>
               </div>
               <Separator />
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                 <span className="text-xs uppercase tracking-wide text-muted-foreground">
                   Created On
                 </span>
-                <span className="text-sm font-semibold text-foreground">
+                <span className="break-words text-sm font-semibold text-foreground sm:text-right">
                   {department.createdAt ? new Date(department.createdAt).toLocaleDateString() : '-'}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                 <span className="text-xs uppercase tracking-wide text-muted-foreground">
                   Department ID
                 </span>
-                <span className="truncate text-xs font-mono text-muted-foreground">
+                <span className="break-words text-xs font-mono text-muted-foreground sm:text-right">
                   {department.id.slice(-8).toUpperCase()}
                 </span>
               </div>

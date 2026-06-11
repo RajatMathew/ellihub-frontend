@@ -34,12 +34,13 @@ export function usePrimeChangeOrderListColumns() {
         },
       },
       {
-        accessorKey: 'name',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
-        cell: ({ row }) => <PrimeChangeOrderNameCell order={row.original} />,
+        accessorKey: 'totalCost',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Total Cost" />,
+        cell: ({ row }) => <PrimeChangeOrderCostCell order={row.original} />,
         meta: {
-          headerClassName: 'min-w-80',
-          skeleton: <Skeleton className="h-3.5 w-56" />,
+          headerClassName: 'min-w-32 text-right',
+          cellClassName: 'text-right',
+          skeleton: <Skeleton className="ml-auto h-3.5 w-20" />,
         },
       },
       {
@@ -49,6 +50,16 @@ export function usePrimeChangeOrderListColumns() {
         meta: {
           headerClassName: 'min-w-44',
           skeleton: <Skeleton className="h-3.5 w-28" />,
+        },
+      },
+      {
+        accessorKey: 'name',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
+        cell: ({ row }) => <PrimeChangeOrderNameCell order={row.original} />,
+        meta: {
+          headerClassName: 'min-w-80',
+          textOverflow: 'truncate',
+          skeleton: <Skeleton className="h-3.5 w-56" />,
         },
       },
       {
@@ -71,21 +82,18 @@ export function usePrimeChangeOrderListColumns() {
         },
       },
       {
-        accessorKey: 'totalCost',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Total Cost" />,
-        cell: ({ row }) => <PrimeChangeOrderCostCell order={row.original} />,
-        meta: {
-          headerClassName: 'min-w-32 text-right',
-          cellClassName: 'text-right',
-          skeleton: <Skeleton className="ml-auto h-3.5 w-20" />,
-        },
-      },
-      {
         id: 'assignee',
         header: () => 'Assignee',
         cell: ({ row }) => <PrimeChangeOrderAssigneeCell order={row.original} />,
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (order) =>
+            order.assignee
+              ? [order.assignee.displayName, order.assignee.company ?? order.assignee.jobTitle]
+                  .filter(Boolean)
+                  .join('\n')
+              : '-',
           skeleton: (
             <div className="space-y-1">
               <Skeleton className="h-3.5 w-28" />

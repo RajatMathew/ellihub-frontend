@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
-import { PdfPreviewDialog } from '@/app/components/pdf-preview-dialog';
+import { QueryErrorState } from '@/app/components/query-error-state';
 import {
   Toolbar,
   ToolbarActions,
@@ -30,40 +30,46 @@ import {
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import {
   useDownloadFile,
   useFilePreviewQuery,
   useUploadFileMutation,
 } from '@/modules/files/hooks/files.hooks';
-import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
-import {
-  useFeatureMailDraftQuery,
-  usePreviewFeatureMailMutation,
-  useSendFeatureMailMutation,
-} from '@/modules/mail/hooks';
-import type { FeatureMailDraft, FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
+import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
+import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import {
   RFQDetailAttachmentsCard,
   RFQDetailDeliverablesCard,
   RFQDetailVendorsCard,
+  RfqEmailWizardDialog,
 } from '@/modules/project/components/rfq';
-import { InfoRow, ProjectDetailPageLoading } from '@/modules/project/components/shared';
 import {
-  BIDDING_TYPE_LABELS,
-  getRfqStatusVariant,
-  RFQ_TRACK_LABELS,
-} from '@/modules/project/constants/rfq';
+  InfoRow,
+  PdfGenerateDialog,
+  ProjectDetailPageLoading,
+} from '@/modules/project/components/shared';
+import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -72,7 +78,6 @@ import {
   useCancelRFQMutation,
   useDeclineInviteMutation,
   useDeleteRFQMutation,
-  useGeneratePOMutation,
   useGenerateRFQVendorPdfMutation,
   usePublishRFQMutation,
   useRemoveQuoteMutation,
@@ -80,13 +85,16 @@ import {
   useRemoveVendorMutation,
   useRFQDetailQuery,
   useRFQStatusesQuery,
+  useSaveRFQVendorPdfMutation,
   useSubmitQuoteMutation,
   useUnawardRFQMutation,
   useChangeRFQStatusMutation as useUpdateRFQStatusMutation,
   useEditQuoteMutation as useUpdateVendorQuoteMutation,
-  useVoidAwardMutation,
 } from '@/modules/project/hooks/rfq';
-import { useProjectFolderQuery } from '@/modules/project/hooks/use-project-folder';
+import {
+  useProjectEntityFolderQuery,
+  useProjectFolderQuery,
+} from '@/modules/project/hooks/use-project-folder';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
@@ -98,6 +106,7 @@ import {
   History,
   Mail,
   PanelRightOpen,
+  Paperclip,
   Pencil,
   PlusCircle,
   Send,
@@ -111,6 +120,18 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+function hasHtmlText(value: string): boolean {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim().length > 0;
+}
+
+function normalizeEmail(value: string | null | undefined): string | null {
+  const email = value?.trim().toLowerCase();
+  return email || null;
+}
 
 /* ---- Quote Document Preview ---- */
 
@@ -172,10 +193,17 @@ function QuoteDocPreview({
 /* ---- Page ---- */
 
 export default function RFQDetailPage() {
+  const { can } = useAccess();
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
-  const { data: rfq, isLoading, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
+  const {
+    data: rfq,
+    isLoading,
+    isError,
+    refetch: refetchRfqDetail,
+  } = useRFQDetailQuery(rfqId);
+  const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
     rfq?.rfqNumber ?? undefined
@@ -184,11 +212,9 @@ export default function RFQDetailPage() {
   const publishMutation = usePublishRFQMutation();
   const cancelMutation = useCancelRFQMutation();
   const awardMutation = useAwardRFQMutation();
-  const voidMutation = useVoidAwardMutation();
   const unawardMutation = useUnawardRFQMutation();
-  const generatePOMutation = useGeneratePOMutation();
   const generateVendorPdfMutation = useGenerateRFQVendorPdfMutation();
-  const previewVendorEmailMutation = usePreviewFeatureMailMutation();
+  const saveVendorPdfMutation = useSaveRFQVendorPdfMutation();
   const sendVendorEmailMutation = useSendFeatureMailMutation();
   const deleteMutation = useDeleteRFQMutation();
   const addVendorMutation = useAddVendorMutation();
@@ -204,8 +230,39 @@ export default function RFQDetailPage() {
   const downloadFile = useDownloadFile();
 
   const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
+  const rfqEntityFolderQuery = useProjectEntityFolderQuery(
+    projectId,
+    'RFQ',
+    rfqId,
+    project?.capabilities?.actions?.rfq?.update === true
+  );
+  const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 
   const { data: rfqStatuses } = useRFQStatusesQuery();
+  const { data: rfqPdfTermsConfig } = usePdfTermsConfigQuery('rfq');
+  const { data: rfqPdfNoticeConfig } = usePdfNoticeConfigQuery('rfq');
+  const rfqPdfTermsOptions = useMemo(
+    () => rfqPdfTermsConfig?.options ?? [],
+    [rfqPdfTermsConfig?.options]
+  );
+  const rfqPdfNoticeOptions = useMemo(
+    () => rfqPdfNoticeConfig?.options ?? [],
+    [rfqPdfNoticeConfig?.options]
+  );
+  const defaultRfqPdfTermsOption = useMemo(
+    () =>
+      rfqPdfTermsOptions.find((option) => option.id === rfqPdfTermsConfig?.defaultOptionId) ??
+      rfqPdfTermsOptions.find((option) => option.isDefault) ??
+      rfqPdfTermsOptions[0],
+    [rfqPdfTermsConfig?.defaultOptionId, rfqPdfTermsOptions]
+  );
+  const defaultRfqPdfNoticeOption = useMemo(
+    () =>
+      rfqPdfNoticeOptions.find((option) => option.id === rfqPdfNoticeConfig?.defaultOptionId) ??
+      rfqPdfNoticeOptions.find((option) => option.isDefault) ??
+      rfqPdfNoticeOptions[0],
+    [rfqPdfNoticeConfig?.defaultOptionId, rfqPdfNoticeOptions]
+  );
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -228,14 +285,12 @@ export default function RFQDetailPage() {
   const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<RFQQuoteAttachment[]>([]);
+  const [quoteAttachmentPreviewFile, setQuoteAttachmentPreviewFile] =
+    useState<FilePreviewItem | null>(null);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-
-  // Void award dialog
-  const [voidOpen, setVoidOpen] = useState(false);
-  const [voidReason, setVoidReason] = useState('');
 
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
@@ -246,15 +301,31 @@ export default function RFQDetailPage() {
 
   // Bid comparison dialog
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [selectedCompareVendorId, setSelectedCompareVendorId] = useState<string | null>(null);
+  const [activePreviewDocId, setActivePreviewDocId] = useState<string | null>(null);
 
   // Generated PDF preview
-  const [vendorPdfPreviewOpen, setVendorPdfPreviewOpen] = useState(false);
+  const [vendorPdfOptionsOpen, setVendorPdfOptionsOpen] = useState(false);
   const [vendorPdfPreview, setVendorPdfPreview] = useState<GeneratedPdfFile | null>(null);
+  const [vendorPdfPreviewStale, setVendorPdfPreviewStale] = useState(false);
+  const [vendorPdfTarget, setVendorPdfTarget] = useState<{
+    quoteId: string;
+    vendorName: string;
+  } | null>(null);
+  const [vendorPdfIncludeNotice, setVendorPdfIncludeNotice] = useState(false);
+  const [vendorPdfNoticeTitle, setVendorPdfNoticeTitle] = useState('');
+  const [vendorPdfNoticeHtml, setVendorPdfNoticeHtml] = useState('');
+  const [vendorPdfNoticeTemplateId, setVendorPdfNoticeTemplateId] = useState('');
+  const [vendorPdfDefaultNoticeApplied, setVendorPdfDefaultNoticeApplied] = useState(false);
+  const [vendorPdfIncludeTerms, setVendorPdfIncludeTerms] = useState(false);
+  const [vendorPdfTermsHtml, setVendorPdfTermsHtml] = useState('');
+  const [vendorPdfTermsTemplateId, setVendorPdfTermsTemplateId] = useState('');
+  const [vendorPdfDefaultTermsApplied, setVendorPdfDefaultTermsApplied] = useState(false);
 
   // Vendor email dialog
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTarget, setEmailTarget] = useState<FeatureMailTarget | null>(null);
-  const [emailPreview, setEmailPreview] = useState<FeatureMailDraft | null>(null);
+  const vendorPdfRequestIdRef = useRef(0);
 
   const vendorEmailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
@@ -263,6 +334,37 @@ export default function RFQDetailPage() {
     isLoading: isComparisonLoading,
     isError: isComparisonError,
   } = useBidComparisonQuery(rfqId, comparisonOpen);
+
+  const comparisonRows = useMemo(() => {
+    const detailInvites = rfq?.invites ?? [];
+    const detailQuotes = rfq?.quotes ?? [];
+    const comparisonQuotes = bidComparison?.quotes ?? [];
+
+    return detailInvites.map((invite) => {
+      const vendorId = invite.vendor?.id ?? invite.vendorId ?? '';
+      const quote = comparisonQuotes.find((item) => item.vendorId === vendorId);
+      const detailQuote = quote ? detailQuotes.find((item) => item.id === quote.quoteId) : null;
+
+      return {
+        invite,
+        vendorId,
+        vendorName: invite.vendor?.name ?? 'Unknown Vendor',
+        vendorEmail: invite.vendor?.email ?? undefined,
+        declined: !!invite.declinedToQuote,
+        quote,
+        hasQuote: !!quote,
+        isAwarded: !!detailQuote?.isAwarded || quote?.status?.name === 'AWARDED',
+      };
+    });
+  }, [bidComparison?.quotes, rfq?.invites, rfq?.quotes]);
+
+  const selectedComparisonRow =
+    comparisonRows.find((row) => row.vendorId && row.vendorId === selectedCompareVendorId) ?? null;
+  const selectedComparisonQuote = selectedComparisonRow?.quote ?? null;
+  const selectedComparisonAttachments = selectedComparisonQuote?.attachments ?? [];
+  const selectedPreviewAttachment =
+    selectedComparisonAttachments.find((attachment) => attachment.id === activePreviewDocId) ??
+    selectedComparisonAttachments[0];
 
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'rfq',
@@ -330,16 +432,35 @@ export default function RFQDetailPage() {
   const isEvaluation = statusName === 'EVALUATION';
   const isAwarded = statusName === 'AWARDED';
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
+  const draftPublishedStatuses =
+    rfqStatuses?.filter(
+      (status): status is RFQStatus & { id: string; name: 'DRAFT' | 'PUBLISHED' } =>
+        typeof status.id === 'string' &&
+        status.id.length > 0 &&
+        (status.name === 'DRAFT' || status.name === 'PUBLISHED')
+    ) ?? [];
+  const projectActions = project?.capabilities?.actions;
+  const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
+  const canManagePublishedRfq = projectActions?.rfq?.update === true && isPublished;
+  const canStateRfq = projectActions?.rfq?.state === true;
+  const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
+  const canPublishRfq = projectActions?.rfq?.update === true && canStateRfq && isDraft;
+  const canAwardRfq = projectActions?.rfq?.award === true && !isAwarded;
+  const canUnawardRfq = projectActions?.rfq?.unaward === true;
+  const canVoidRfq = projectActions?.rfq?.void === true && (isPublished || isAwarded);
+  const canDeleteDraftRfq = projectActions?.rfq?.delete === true && isDraft;
+  const canUseRfqActions = !isTerminal && (canVoidRfq || canDeleteDraftRfq);
+  const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
+  const canEmailVendors = can('mail', 'send');
+  const canSaveVendorPdf = projectActions?.rfq?.update === true;
 
   const isActionPending =
     publishMutation.isPending ||
     cancelMutation.isPending ||
     awardMutation.isPending ||
-    voidMutation.isPending ||
     addVendorMutation.isPending ||
     submitQuoteMutation.isPending ||
     unawardMutation.isPending ||
-    generatePOMutation.isPending ||
     sendVendorEmailMutation.isPending ||
     updateStatusMutation.isPending ||
     addAttachmentMutation.isPending ||
@@ -347,6 +468,18 @@ export default function RFQDetailPage() {
 
   if (isLoading) {
     return <ProjectDetailPageLoading />;
+  }
+
+  if (isError) {
+    return (
+      <div className="container-fluid py-7.5">
+        <QueryErrorState
+          title="Unable to load RFQ"
+          description="The RFQ could not be loaded. Please try again."
+          onRetry={() => void refetchRfqDetail()}
+        />
+      </div>
+    );
   }
 
   if (!rfq) {
@@ -361,6 +494,7 @@ export default function RFQDetailPage() {
   const invites = rfq.invites ?? [];
   const quotes = rfq.quotes ?? [];
   const attachments = rfq.attachments ?? [];
+  const comparisonSubtitle = rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : rfq.title;
 
   const quoteGrandTotals = quotes.map((q) => q.grandTotal).filter((v): v is number => v != null);
   const lowestQuote = quoteGrandTotals.length > 0 ? Math.min(...quoteGrandTotals) : null;
@@ -370,6 +504,11 @@ export default function RFQDetailPage() {
     (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * (d.quantity ?? 0)),
     0
   );
+  const hasFinancialSummary =
+    deliverablesTotal > 0 ||
+    lowestQuote != null ||
+    highestQuote != null ||
+    (isAwarded && (rfq.awardedAmount != null || !!rfq.awardedVendor));
 
   // IDs of vendors already invited
   const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
@@ -421,82 +560,384 @@ export default function RFQDetailPage() {
     unawardMutation.mutate(rfqId);
   }
 
-  function handleVendorPdfPreviewOpenChange(open: boolean) {
-    setVendorPdfPreviewOpen(open);
-    if (!open) setVendorPdfPreview(null);
+  function resetVendorPdfState() {
+    vendorPdfRequestIdRef.current += 1;
+    setVendorPdfPreview(null);
+    setVendorPdfPreviewStale(false);
+    setVendorPdfTarget(null);
+    setVendorPdfIncludeNotice(false);
+    setVendorPdfNoticeTitle('');
+    setVendorPdfNoticeHtml('');
+    setVendorPdfNoticeTemplateId('');
+    setVendorPdfDefaultNoticeApplied(false);
+    setVendorPdfIncludeTerms(false);
+    setVendorPdfTermsHtml('');
+    setVendorPdfTermsTemplateId('');
+    setVendorPdfDefaultTermsApplied(false);
   }
 
-  function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
-    generateVendorPdfMutation.mutate(
-      { quoteId: inviteId, vendorName },
+  function handleVendorPdfOptionsOpenChange(open: boolean) {
+    setVendorPdfOptionsOpen(open);
+    if (!open) {
+      resetVendorPdfState();
+    }
+  }
+
+  function applyDefaultVendorPdfTermsIfEmpty() {
+    if (!defaultRfqPdfTermsOption?.html || hasHtmlText(vendorPdfTermsHtml)) return false;
+    setVendorPdfTermsTemplateId(defaultRfqPdfTermsOption.id);
+    setVendorPdfTermsHtml(defaultRfqPdfTermsOption.html);
+    setVendorPdfDefaultTermsApplied(true);
+    return true;
+  }
+
+  function applyDefaultVendorPdfNoticeIfEmpty() {
+    if (!defaultRfqPdfNoticeOption?.html || hasHtmlText(vendorPdfNoticeHtml)) return false;
+    setVendorPdfNoticeTemplateId(defaultRfqPdfNoticeOption.id);
+    setVendorPdfNoticeTitle(defaultRfqPdfNoticeOption.title);
+    setVendorPdfNoticeHtml(defaultRfqPdfNoticeOption.html);
+    setVendorPdfDefaultNoticeApplied(true);
+    return true;
+  }
+
+  function generateVendorPdfPreview(
+    target: { quoteId: string; vendorName: string },
+    data: GeneratePdfTermsInput,
+    options: { openPdfDialog?: boolean } = {}
+  ) {
+    const { openPdfDialog = true } = options;
+    const requestId = ++vendorPdfRequestIdRef.current;
+
+    generateVendorPdfMutation
+      .mutateAsync({ quoteId: target.quoteId, vendorName: target.vendorName, data })
+      .then((file) => {
+        if (requestId !== vendorPdfRequestIdRef.current) return;
+
+        setVendorPdfPreview(file);
+        setVendorPdfPreviewStale(false);
+        if (openPdfDialog) {
+          setVendorPdfOptionsOpen(true);
+        }
+      })
+      .catch(() => {
+        // The mutation hook shows the API error toast.
+      }
+    );
+  }
+
+  function saveVendorPdfToFiles(
+    target: { quoteId: string; vendorName: string },
+    data: GeneratePdfTermsInput
+  ) {
+    saveVendorPdfMutation.mutate(
+      { quoteId: target.quoteId, vendorName: target.vendorName, rfqId, data },
       {
         onSuccess: (file) => {
           setVendorPdfPreview(file);
-          setVendorPdfPreviewOpen(true);
+          setVendorPdfPreviewStale(false);
+          setVendorPdfOptionsOpen(true);
         },
       }
     );
   }
 
-  function handleEmailVendor(inviteId: string) {
-    setEmailTarget({ feature: 'rfq.vendorRequest', entityId: inviteId });
-    setEmailPreview(null);
-    previewVendorEmailMutation.reset();
+  function prepareVendorPdfTarget(target: { quoteId: string; vendorName: string }) {
+    const shouldEnableDefaultNotice =
+      !vendorPdfDefaultNoticeApplied && rfqPdfNoticeConfig?.includeByDefault === true;
+    const shouldApplyDefaultNotice = shouldEnableDefaultNotice || vendorPdfIncludeNotice;
+    const defaultNoticeApplied =
+      shouldApplyDefaultNotice &&
+      !vendorPdfDefaultNoticeApplied &&
+      applyDefaultVendorPdfNoticeIfEmpty();
+    const nextNoticeTitle =
+      defaultNoticeApplied && defaultRfqPdfNoticeOption?.title
+        ? defaultRfqPdfNoticeOption.title
+        : vendorPdfNoticeTitle;
+    const nextNoticeHtml =
+      defaultNoticeApplied && defaultRfqPdfNoticeOption?.html
+        ? defaultRfqPdfNoticeOption.html
+        : vendorPdfNoticeHtml;
+    const nextIncludeNotice =
+      (shouldEnableDefaultNotice || vendorPdfIncludeNotice) && hasHtmlText(nextNoticeHtml);
+    const shouldEnableDefaultTerms =
+      !vendorPdfDefaultTermsApplied && rfqPdfTermsConfig?.includeByDefault === true;
+    const shouldApplyDefaultTerms = shouldEnableDefaultTerms || vendorPdfIncludeTerms;
+    const defaultTermsApplied =
+      shouldApplyDefaultTerms &&
+      !vendorPdfDefaultTermsApplied &&
+      applyDefaultVendorPdfTermsIfEmpty();
+    const nextTermsHtml =
+      defaultTermsApplied && defaultRfqPdfTermsOption?.html
+        ? defaultRfqPdfTermsOption.html
+        : vendorPdfTermsHtml;
+    const nextIncludeTerms =
+      (shouldEnableDefaultTerms || vendorPdfIncludeTerms) && hasHtmlText(nextTermsHtml);
+
+    setVendorPdfTarget(target);
+    if (nextIncludeNotice) {
+      setVendorPdfIncludeNotice(true);
+    }
+    if (nextIncludeTerms) {
+      setVendorPdfIncludeTerms(true);
+    }
+    setVendorPdfPreview(null);
+    setVendorPdfPreviewStale(false);
+
+    return {
+      addWarningNotice: nextIncludeNotice,
+      warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
+      warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
+      addTermsAndConditions: nextIncludeTerms,
+      termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
+    };
+  }
+
+  function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
+    const target = { quoteId: inviteId, vendorName };
+    const request = prepareVendorPdfTarget(target);
+    setVendorPdfOptionsOpen(true);
+    generateVendorPdfPreview(target, request);
+  }
+
+  function markVendorPdfPreviewStale() {
+    setVendorPdfPreviewStale((current) => current || vendorPdfPreview != null);
+  }
+
+  function handleVendorPdfIncludeNoticeChange(includeNotice: boolean) {
+    if (includeNotice === vendorPdfIncludeNotice) return;
+    markVendorPdfPreviewStale();
+    setVendorPdfIncludeNotice(includeNotice);
+    if (includeNotice) {
+      applyDefaultVendorPdfNoticeIfEmpty();
+    }
+  }
+
+  function handleVendorPdfNoticeTemplateChange(optionId: string) {
+    const option = rfqPdfNoticeOptions.find((noticeOption) => noticeOption.id === optionId);
+    if (!option || option.id === vendorPdfNoticeTemplateId) return;
+
+    markVendorPdfPreviewStale();
+    setVendorPdfNoticeTemplateId(option.id);
+    setVendorPdfNoticeTitle(option.title);
+    setVendorPdfNoticeHtml(option.html);
+    setVendorPdfIncludeNotice(true);
+    setVendorPdfDefaultNoticeApplied(true);
+  }
+
+  function handleVendorPdfNoticeTitleChange(value: string) {
+    if (value === vendorPdfNoticeTitle) return;
+    markVendorPdfPreviewStale();
+    setVendorPdfNoticeTitle(value);
+  }
+
+  function handleVendorPdfNoticeHtmlChange(value: string) {
+    if (value === vendorPdfNoticeHtml) return;
+    markVendorPdfPreviewStale();
+    setVendorPdfNoticeHtml(value);
+  }
+
+  function handleVendorPdfIncludeTermsChange(includeTerms: boolean) {
+    if (includeTerms === vendorPdfIncludeTerms) return;
+    markVendorPdfPreviewStale();
+    setVendorPdfIncludeTerms(includeTerms);
+    if (includeTerms) {
+      applyDefaultVendorPdfTermsIfEmpty();
+    }
+  }
+
+  function handleVendorPdfTermsTemplateChange(optionId: string) {
+    const option = rfqPdfTermsOptions.find((termsOption) => termsOption.id === optionId);
+    if (!option || option.id === vendorPdfTermsTemplateId) return;
+
+    markVendorPdfPreviewStale();
+    setVendorPdfTermsTemplateId(option.id);
+    setVendorPdfTermsHtml(option.html);
+    setVendorPdfIncludeTerms(true);
+    setVendorPdfDefaultTermsApplied(true);
+  }
+
+  function handleVendorPdfTermsHtmlChange(value: string) {
+    if (value === vendorPdfTermsHtml) return;
+    markVendorPdfPreviewStale();
+    setVendorPdfTermsHtml(value);
+  }
+
+  function getVendorPdfTargetFromInvite(inviteId: string) {
+    const invite = invites.find((item) => item.id === inviteId);
+    if (!invite) return null;
+
+    return {
+      quoteId: invite.id,
+      vendorName: invite.vendor?.name ?? 'Vendor',
+      vendorEmail: invite.vendor?.email ?? null,
+    };
+  }
+
+  function getInviteRecipientEmails(invite: (typeof invites)[number]): string[] {
+    const vendorEmail = normalizeEmail(invite.vendor?.email);
+    const contactEmails =
+      invite.vendor?.contacts?.flatMap((contact) => {
+        const email = normalizeEmail(contact.email);
+        return email ? [email] : [];
+      }) ?? [];
+
+    return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
+  }
+
+  function openRfqEmailFlow(
+    target: FeatureMailTarget,
+    pdfTarget: { quoteId: string; vendorName: string }
+  ) {
+    const request = prepareVendorPdfTarget(pdfTarget);
+    setEmailTarget(target);
     sendVendorEmailMutation.reset();
     setEmailOpen(true);
+    generateVendorPdfPreview(pdfTarget, request, { openPdfDialog: false });
+  }
+
+  function handleEmailVendor(inviteId: string) {
+    const invite = invites.find((item) => item.id === inviteId);
+    const pdfTarget = getVendorPdfTargetFromInvite(inviteId);
+    if (!pdfTarget || !invite) return;
+
+    if (getInviteRecipientEmails(invite).length === 0) {
+      toast.error(`${pdfTarget.vendorName} does not have a vendor or linked contact email.`);
+      return;
+    }
+
+    if (!normalizeEmail(pdfTarget.vendorEmail)) {
+      toast.info(
+        `${pdfTarget.vendorName} does not have a vendor email. Select a contact recipient.`
+      );
+    }
+
+    openRfqEmailFlow(
+      { feature: 'rfq.vendorRequest', entityId: inviteId },
+      { quoteId: pdfTarget.quoteId, vendorName: pdfTarget.vendorName }
+    );
   }
 
   function handleEmailAllVendors() {
-    setEmailTarget({ feature: 'rfq.vendorRequestAll', entityId: rfqId });
-    setEmailPreview(null);
-    previewVendorEmailMutation.reset();
-    sendVendorEmailMutation.reset();
-    setEmailOpen(true);
+    const previewInvite =
+      invites.find((invite) => getInviteRecipientEmails(invite).length > 0) ?? invites[0];
+    if (!previewInvite) return;
+
+    const missingEmailVendors = invites
+      .filter((invite) => !normalizeEmail(invite.vendor?.email))
+      .map((invite) => invite.vendor?.name ?? 'Unknown vendor');
+    const unavailableRecipientVendors = invites
+      .filter((invite) => getInviteRecipientEmails(invite).length === 0)
+      .map((invite) => invite.vendor?.name ?? 'Unknown vendor');
+
+    if (missingEmailVendors.length > 0) {
+      toast.info(`Vendor email missing for: ${missingEmailVendors.join(', ')}`);
+    }
+
+    if (unavailableRecipientVendors.length > 0) {
+      toast.error(
+        `No vendor or contact email available for: ${unavailableRecipientVendors.join(', ')}`
+      );
+    }
+
+    openRfqEmailFlow(
+      { feature: 'rfq.vendorRequestAll', entityId: rfqId },
+      { quoteId: previewInvite.id, vendorName: previewInvite.vendor?.name ?? 'Vendor' }
+    );
+  }
+
+  function handleCreatePurchaseOrder() {
+    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfqId}`);
   }
 
   function handleEmailOpenChange(open: boolean) {
     setEmailOpen(open);
     if (!open) {
       setEmailTarget(null);
-      setEmailPreview(null);
-      previewVendorEmailMutation.reset();
       sendVendorEmailMutation.reset();
+      resetVendorPdfState();
     }
   }
 
   return (
     <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
-      <PdfPreviewDialog
-        open={vendorPdfPreviewOpen}
-        onOpenChange={handleVendorPdfPreviewOpenChange}
-        file={vendorPdfPreview}
-        title={vendorPdfPreview?.fileName}
-      />
-      <EmailComposePreviewDialog
+      {vendorPdfOptionsOpen && vendorPdfTarget && (
+        <PdfGenerateDialog
+          open={vendorPdfOptionsOpen}
+          title={`Generate RFQ PDF - ${vendorPdfTarget.vendorName}`}
+          onOpenChange={handleVendorPdfOptionsOpenChange}
+          includeNotice={vendorPdfIncludeNotice}
+          noticeTitle={vendorPdfNoticeTitle}
+          noticeHtml={vendorPdfNoticeHtml}
+          noticeOptions={rfqPdfNoticeOptions}
+          selectedNoticeOptionId={vendorPdfNoticeTemplateId}
+          includeTerms={vendorPdfIncludeTerms}
+          termsHtml={vendorPdfTermsHtml}
+          termsOptions={rfqPdfTermsOptions}
+          selectedTermsOptionId={vendorPdfTermsTemplateId}
+          previewFile={vendorPdfPreview}
+          isPreviewStale={vendorPdfPreviewStale}
+          isGenerating={generateVendorPdfMutation.isPending}
+          isSaving={saveVendorPdfMutation.isPending}
+          canSave={canSaveVendorPdf}
+          onIncludeNoticeChange={handleVendorPdfIncludeNoticeChange}
+          onNoticeOptionChange={handleVendorPdfNoticeTemplateChange}
+          onNoticeTitleChange={handleVendorPdfNoticeTitleChange}
+          onNoticeHtmlChange={handleVendorPdfNoticeHtmlChange}
+          onIncludeTermsChange={handleVendorPdfIncludeTermsChange}
+          onTermsOptionChange={handleVendorPdfTermsTemplateChange}
+          onTermsHtmlChange={handleVendorPdfTermsHtmlChange}
+          onGenerate={(data) => generateVendorPdfPreview(vendorPdfTarget, data)}
+          onSave={(data) => saveVendorPdfToFiles(vendorPdfTarget, data)}
+        />
+      )}
+      <RfqEmailWizardDialog
         open={emailOpen}
         onOpenChange={handleEmailOpenChange}
         title={emailTarget?.feature === 'rfq.vendorRequestAll' ? 'Email All Vendors' : 'Email RFQ'}
+        pdfTitle={
+          vendorPdfTarget
+            ? `${rfq.rfqNumber ?? 'RFQ'} - ${vendorPdfTarget.vendorName}`
+            : (rfq.rfqNumber ?? 'RFQ')
+        }
         draft={vendorEmailDraftQuery.data ?? null}
-        preview={emailPreview}
-        isLoading={vendorEmailDraftQuery.isLoading}
-        isPreviewing={previewVendorEmailMutation.isPending}
+        isDraftLoading={vendorEmailDraftQuery.isLoading}
+        isGenerating={generateVendorPdfMutation.isPending}
+        isSaving={saveVendorPdfMutation.isPending}
         isSending={sendVendorEmailMutation.isPending}
-        recipientsReadOnly
-        onPreview={async (payload) => {
-          if (!emailTarget) return;
-          const preview = await previewVendorEmailMutation.mutateAsync({
-            feature: emailTarget.feature,
-            entityId: emailTarget.entityId,
-            draft: payload,
-          });
-          setEmailPreview(preview);
+        canSavePdf={canSaveVendorPdf}
+        pdfPreviewFile={vendorPdfPreview}
+        isPdfPreviewStale={vendorPdfPreviewStale}
+        includeNotice={vendorPdfIncludeNotice}
+        noticeTitle={vendorPdfNoticeTitle}
+        noticeHtml={vendorPdfNoticeHtml}
+        noticeOptions={rfqPdfNoticeOptions}
+        selectedNoticeOptionId={vendorPdfNoticeTemplateId}
+        includeTerms={vendorPdfIncludeTerms}
+        termsHtml={vendorPdfTermsHtml}
+        termsOptions={rfqPdfTermsOptions}
+        selectedTermsOptionId={vendorPdfTermsTemplateId}
+        onIncludeNoticeChange={handleVendorPdfIncludeNoticeChange}
+        onNoticeOptionChange={handleVendorPdfNoticeTemplateChange}
+        onNoticeTitleChange={handleVendorPdfNoticeTitleChange}
+        onNoticeHtmlChange={handleVendorPdfNoticeHtmlChange}
+        onIncludeTermsChange={handleVendorPdfIncludeTermsChange}
+        onTermsOptionChange={handleVendorPdfTermsTemplateChange}
+        onTermsHtmlChange={handleVendorPdfTermsHtmlChange}
+        onGeneratePdf={(data) => {
+          if (!vendorPdfTarget) return;
+          generateVendorPdfPreview(vendorPdfTarget, data, { openPdfDialog: false });
         }}
-        onSend={async (payload) => {
+        onSavePdf={(data) => {
+          if (!vendorPdfTarget) return;
+          saveVendorPdfToFiles(vendorPdfTarget, data);
+        }}
+        onSend={async (payload, pdfOptions) => {
           if (!emailTarget) return;
           await sendVendorEmailMutation.mutateAsync({
             feature: emailTarget.feature,
             entityId: emailTarget.entityId,
             draft: payload,
+            pdfOptions,
           });
           await refetchRfqDetail();
           handleEmailOpenChange(false);
@@ -514,12 +955,21 @@ export default function RFQDetailPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
-              {rfq.status && rfqStatuses && rfqStatuses.length > 0 ? (
+              {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
                 <Select
+                  disabled={updateStatusMutation.isPending}
                   value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
                   onValueChange={(statusId) => {
                     if (statusId !== (statusObj?.id || rfq.status)) {
-                      updateStatusMutation.mutate({ id: rfqId, statusId });
+                      const selectedStatus = draftPublishedStatuses.find(
+                        (status) => status.id === statusId
+                      );
+                      if (selectedStatus) {
+                        updateStatusMutation.mutate({
+                          id: rfqId,
+                          statusName: selectedStatus.name,
+                        });
+                      }
                     }
                   }}
                 >
@@ -529,16 +979,11 @@ export default function RFQDetailPage() {
                     </Badge>
                   </SelectTrigger>
                   <SelectContent>
-                    {rfqStatuses
-                      .filter(
-                        (status): status is RFQStatus & { id: string } =>
-                          typeof status.id === 'string' && status.id.length > 0
-                      )
-                      .map((status) => (
-                        <SelectItem key={status.id} value={status.id}>
-                          {status.label ?? status.name ?? status.id}
-                        </SelectItem>
-                      ))}
+                    {draftPublishedStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.label ?? status.name ?? status.id}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               ) : rfq.status ? (
@@ -552,7 +997,7 @@ export default function RFQDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {!isTerminal && (
+            {canEditDraftRfq && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -560,20 +1005,20 @@ export default function RFQDetailPage() {
                 </Link>
               </Button>
             )}
-            {isDraft && (
+            {canPublishRfq && (
               <Button size="sm" onClick={() => setPublishOpen(true)}>
                 <Send className="size-4" />
                 Publish
               </Button>
             )}
-            {(isPublished || isEvaluation || isAwarded) && quotes.length > 0 && (
+            {canAwardRfq && (isPublished || isEvaluation) && quotes.length > 0 && (
               <Button size="sm" onClick={() => setAwardOpen(true)}>
                 <Trophy className="size-4" />
                 Award
               </Button>
             )}
 
-            {!isTerminal && (
+            {canUseRfqActions && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -582,7 +1027,7 @@ export default function RFQDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {(isPublished || isEvaluation) && (
+                  {canVoidRfq && (
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
@@ -590,21 +1035,10 @@ export default function RFQDetailPage() {
                         setCancelOpen(true);
                       }}
                     >
-                      Cancel RFQ
+                      Void RFQ
                     </DropdownMenuItem>
                   )}
-                  {isAwarded && (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => {
-                        setVoidReason('');
-                        setVoidOpen(true);
-                      }}
-                    >
-                      Void Award
-                    </DropdownMenuItem>
-                  )}
-                  {isDraft && (
+                  {canDeleteDraftRfq && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
@@ -632,18 +1066,7 @@ export default function RFQDetailPage() {
         {/* Left column */}
         <div className="min-w-0 flex-1 space-y-5">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard
-              icon={<ShieldAlert className="size-6 text-muted-foreground" />}
-              bgClass="bg-muted/50"
-              label="Bidding Type"
-              value={
-                ((rfq.biddingType &&
-                  BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
-                  rfq.biddingType) ||
-                ''
-              }
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatsCard
               icon={<Users className="size-6 text-primary" />}
               bgClass="bg-primary/10"
@@ -668,7 +1091,7 @@ export default function RFQDetailPage() {
           </div>
 
           {/* Quick Actions */}
-          {!isDraft && (
+          {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {quotes.length >= 2 && (
                 <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
@@ -676,13 +1099,11 @@ export default function RFQDetailPage() {
                   Compare {quotes.length} Quotes
                 </Button>
               )}
-              {invites.length > 0 && (
+              {canEmailVendors && invites.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={
-                    previewVendorEmailMutation.isPending || sendVendorEmailMutation.isPending
-                  }
+                  disabled={sendVendorEmailMutation.isPending}
                   onClick={handleEmailAllVendors}
                 >
                   <Mail className="size-4" />
@@ -701,6 +1122,12 @@ export default function RFQDetailPage() {
             isPublished={isPublished}
             isEvaluation={isEvaluation}
             isAwarded={isAwarded}
+            canManageVendors={canManagePublishedRfq}
+            canManageQuotes={canManagePublishedRfq}
+            canAwardQuotes={canAwardRfq}
+            canUnawardQuotes={canUnawardRfq}
+            canCreatePurchaseOrder={canCreatePurchaseOrder}
+            canEmailVendors={canEmailVendors}
             onInviteVendor={() => {
               setInviteVendorIds([]);
               setInviteOpen(true);
@@ -710,7 +1137,7 @@ export default function RFQDetailPage() {
             onEmailVendor={handleEmailVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
-            onGeneratePO={() => generatePOMutation.mutate(rfqId)}
+            onGeneratePO={handleCreatePurchaseOrder}
             onRemoveQuote={(quoteId) => removeQuoteMutation.mutate({ rfqId, id: quoteId })}
             onRemoveVendor={(inviteId) => removeVendorMutation.mutate({ rfqId, quoteId: inviteId })}
             onDeclineInvite={(inviteId) =>
@@ -721,11 +1148,10 @@ export default function RFQDetailPage() {
 
           <RFQDetailAttachmentsCard
             attachments={attachments}
-            canEdit={!isTerminal}
-            canUpload={!!rfqFolderQuery.data}
+            canEdit={canEditDraftRfq}
+            canUpload={canEditDraftRfq && !!rfqUploadFolderId}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
-            onDownload={(document) => downloadFile.mutate(document)}
             onRemove={(attachmentId) => {
               removeAttachmentMutation.mutate({
                 rfqId,
@@ -734,11 +1160,11 @@ export default function RFQDetailPage() {
             }}
           />
 
-          {rfqFolderQuery.data && (
+          {canEditDraftRfq && rfqUploadFolderId && (
             <UploadFileDialog
               open={uploadOpen}
               onOpenChange={setUploadOpen}
-              parentId={rfqFolderQuery.data}
+              parentId={rfqUploadFolderId}
               onSubmit={async (payload) => {
                 try {
                   const fileItem = await uploadFileMutation.mutateAsync(payload);
@@ -811,11 +1237,6 @@ export default function RFQDetailPage() {
                     {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '—'}
                   </InfoRow>
                   <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
-                  <InfoRow label="Bidding Type">
-                    {(rfq.biddingType &&
-                      BIDDING_TYPE_LABELS[rfq.biddingType as keyof typeof BIDDING_TYPE_LABELS]) ??
-                      rfq.biddingType}
-                  </InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
                   )}
@@ -823,38 +1244,42 @@ export default function RFQDetailPage() {
               </Card>
             </div>
 
-            <div>
-              <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
-                Financial Summary
-              </div>
-              <Card>
-                <CardContent className="p-4 space-y-1">
-                  {deliverablesTotal > 0 && (
-                    <InfoRow label="Est. Deliverables">{formatCurrency(deliverablesTotal)}</InfoRow>
-                  )}
-                  {lowestQuote != null && (
-                    <>
-                      {deliverablesTotal > 0 && <Separator className="my-2" />}
-                      <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
-                    </>
-                  )}
-                  {highestQuote != null && (
-                    <InfoRow label="Highest Quote">{formatCurrency(highestQuote)}</InfoRow>
-                  )}
-                  {isAwarded && rfq.awardedAmount != null && (
-                    <>
-                      <Separator className="my-2" />
-                      <InfoRow label="Awarded Amount" valueClassName="text-success">
-                        {formatCurrency(rfq.awardedAmount)}
+            {hasFinancialSummary && (
+              <div>
+                <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
+                  Financial Summary
+                </div>
+                <Card>
+                  <CardContent className="p-4 space-y-1">
+                    {deliverablesTotal > 0 && (
+                      <InfoRow label="Est. Deliverables">
+                        {formatCurrency(deliverablesTotal)}
                       </InfoRow>
-                    </>
-                  )}
-                  {isAwarded && rfq.awardedVendor && (
-                    <InfoRow label="Awarded Vendor">{rfq.awardedVendor.name}</InfoRow>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                    )}
+                    {lowestQuote != null && (
+                      <>
+                        {deliverablesTotal > 0 && <Separator className="my-2" />}
+                        <InfoRow label="Lowest Quote">{formatCurrency(lowestQuote)}</InfoRow>
+                      </>
+                    )}
+                    {highestQuote != null && (
+                      <InfoRow label="Highest Quote">{formatCurrency(highestQuote)}</InfoRow>
+                    )}
+                    {isAwarded && rfq.awardedAmount != null && (
+                      <>
+                        <Separator className="my-2" />
+                        <InfoRow label="Awarded Amount" valueClassName="text-success">
+                          {formatCurrency(rfq.awardedAmount)}
+                        </InfoRow>
+                      </>
+                    )}
+                    {isAwarded && rfq.awardedVendor && (
+                      <InfoRow label="Awarded Vendor">{rfq.awardedVendor.name}</InfoRow>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div>
               <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase mb-3">
@@ -925,149 +1350,353 @@ export default function RFQDetailPage() {
       </div>
 
       {/* ---- Bid Comparison Dialog ---- */}
-      <Dialog open={comparisonOpen} onOpenChange={setComparisonOpen}>
-        <DialogContent className="flex max-h-dvh max-w-7xl flex-col overflow-hidden">
-          <DialogHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <DialogTitle className="text-lg">Bid Comparison</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Comparing {bidComparison?.quotes.length ?? 0} quote
-                {(bidComparison?.quotes.length ?? 0) !== 1 ? 's' : ''} from {invites.length} vendor
-                {invites.length !== 1 ? 's' : ''} for RFQ #{rfq.rfqNumber}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 text-sm sm:gap-6">
-              {rfq.createdAt && (
-                <div>
-                  <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                    Issue Date
-                  </div>
-                  <div className="font-medium">{formatDate(rfq.createdAt)}</div>
-                </div>
-              )}
-              <div>
-                <div className="text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                  Due Date
-                </div>
-                <div className="font-medium">{formatDate(rfq.bidDeadline || '')}</div>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="mt-4 flex-1 overflow-x-auto overflow-y-auto">
+      <Dialog
+        open={comparisonOpen}
+        onOpenChange={(open) => {
+          setComparisonOpen(open);
+          if (!open) {
+            setSelectedCompareVendorId(null);
+            setActivePreviewDocId(null);
+          }
+        }}
+      >
+        <DialogContent
+          variant="fullscreen"
+          showCloseButton={false}
+          className="inset-4 gap-0 overflow-hidden p-0"
+        >
+          <div className="flex min-h-0 flex-1 flex-col">
             {isComparisonLoading ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                <div className="size-8 rounded-full border-2 border-t-primary border-muted-foreground/10 animate-spin mb-4" />
-                <p className="text-sm">Loading comparison...</p>
-              </div>
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
+                  <div className="mb-4 size-8 animate-spin rounded-full border-2 border-muted-foreground/10 border-t-primary" />
+                  <p className="text-sm">Loading comparison...</p>
+                </div>
+              </>
             ) : isComparisonError ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                <ShieldAlert className="size-10 text-destructive/40 mb-4" />
-                <p className="text-sm text-destructive">Failed to load comparison data</p>
-              </div>
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <ShieldAlert className="mb-4 size-10 text-destructive/50" />
+                  <p className="text-sm font-medium text-destructive">
+                    Failed to load comparison data.
+                  </p>
+                </div>
+              </>
             ) : bidComparison ? (
-              <div className="flex min-w-max gap-4 pb-4">
-                {/* Show all invites — vendors with quotes, without quotes, and declined */}
-                {invites.map((inv) => {
-                  const vendor = inv.vendor;
-                  const declined = !!inv.declinedToQuote;
-                  const bcQuote = bidComparison.quotes.find((q) => q.vendorId === vendor?.id);
-                  const hasQuote = !!bcQuote;
-
-                  return (
-                    <div
-                      key={inv.id}
-                      className="flex w-72 shrink-0 flex-col rounded-lg border bg-card"
+              <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+                <div className="flex min-h-0 shrink-0 flex-col border-b bg-muted/20 lg:w-80 lg:border-b-0 lg:border-r">
+                  <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      aria-label="Close bid comparison"
+                      className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => setComparisonOpen(false)}
                     >
-                      {/* Quote document area */}
-                      <div className="flex h-64 items-center justify-center overflow-hidden rounded-t-lg border-b bg-muted/30">
-                        {hasQuote && bcQuote?.attachments?.length ? (
-                          <QuoteDocPreview
-                            documentId={bcQuote.attachments[0].document.id}
-                            name={bcQuote.attachments[0].document.name}
-                            mimeType={bcQuote.attachments[0].document.mimeType}
-                          />
-                        ) : hasQuote ? (
-                          <div className="text-center p-4">
-                            <FileText className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-xs text-muted-foreground">No document attached</p>
-                          </div>
-                        ) : declined ? (
-                          <div className="text-center">
-                            <XCircle className="size-12 text-destructive/40 mx-auto mb-2" />
-                            <p className="text-sm font-medium text-destructive">Declined Bid</p>
-                          </div>
-                        ) : (
-                          <div className="text-center">
-                            <Clock className="size-12 text-muted-foreground/40 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Not Submitted</p>
-                          </div>
-                        )}
-                      </div>
+                      <X className="size-4" />
+                    </Button>
 
-                      {/* Vendor info footer */}
-                      <div className="p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm truncate">{vendor?.name ?? '—'}</div>
-                          {hasQuote && bcQuote ? (
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                              <span>Total: {formatCurrency(Number(bcQuote.grandTotal ?? 0))}</span>
-                              {bcQuote.leadTimeDays && (
-                                <span>Lead: {bcQuote.leadTimeDays} days</span>
+                    <div className="min-w-0">
+                      <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {comparisonSubtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 border-b bg-background px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">
+                        Vendors
+                      </div>
+                      <Badge variant="secondary" appearance="light" size="sm">
+                        {bidComparison.statistics.quotesSubmitted}/
+                        {bidComparison.statistics.quotesExpected} submitted
+                      </Badge>
+                    </div>
+                    <div className="mt-1 truncate text-xs text-muted-foreground">
+                      Range:{' '}
+                      <span className="font-medium text-foreground">
+                        {bidComparison.statistics.lowestQuote != null &&
+                        bidComparison.statistics.highestQuote != null
+                          ? `${formatCurrency(bidComparison.statistics.lowestQuote)} - ${formatCurrency(
+                              bidComparison.statistics.highestQuote
+                            )}`
+                          : 'No quotes'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                    {comparisonRows.length > 0 ? (
+                      <div className="space-y-2">
+                        {comparisonRows.map((row) => {
+                          const isSelected = row.vendorId === selectedCompareVendorId;
+                          const comparisonQuote = row.quote;
+                          const comparisonAttachments = comparisonQuote?.attachments ?? [];
+                          const canAwardComparisonRow =
+                            canAwardRfq && isSelected && !!comparisonQuote && !row.isAwarded;
+
+                          const selectComparisonRow = () => {
+                            setSelectedCompareVendorId(row.vendorId || null);
+                            setActivePreviewDocId(null);
+                          };
+
+                          return (
+                            <div
+                              key={row.invite.id}
+                              className={`w-full rounded-lg border bg-background p-3 text-left transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'hover:border-muted-foreground/30 hover:bg-muted/40'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                className="w-full cursor-pointer text-left"
+                                onClick={selectComparisonRow}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold">
+                                      {row.vendorName}
+                                    </div>
+                                    {row.vendorEmail && (
+                                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                        {row.vendorEmail}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {row.isAwarded ? (
+                                    <Badge variant="success" appearance="light" size="sm">
+                                      Awarded
+                                    </Badge>
+                                  ) : row.hasQuote ? (
+                                    <Badge variant="primary" appearance="light" size="sm">
+                                      Quoted
+                                    </Badge>
+                                  ) : row.declined ? (
+                                    <Badge variant="destructive" appearance="light" size="sm">
+                                      Declined
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" appearance="light" size="sm">
+                                      Waiting
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {comparisonQuote ? (
+                                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    <span className="font-semibold text-foreground">
+                                      {comparisonQuote.grandTotal != null
+                                        ? formatCurrency(comparisonQuote.grandTotal)
+                                        : 'No total'}
+                                    </span>
+                                    {comparisonQuote.leadTimeDays != null && (
+                                      <span>{comparisonQuote.leadTimeDays} days lead</span>
+                                    )}
+                                    {comparisonAttachments.length > 0 && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <Paperclip className="size-3" />
+                                        {comparisonAttachments.length}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="mt-3 text-xs text-muted-foreground">
+                                    {row.declined ? 'Declined to bid' : 'No quote submitted'}
+                                  </div>
+                                )}
+                              </button>
+
+                              {isSelected && comparisonAttachments.length > 1 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {comparisonAttachments.map((attachment) => {
+                                    const isActive =
+                                      selectedPreviewAttachment?.id === attachment.id ||
+                                      (!activePreviewDocId &&
+                                        comparisonAttachments[0]?.id === attachment.id);
+
+                                    return (
+                                      <button
+                                        key={attachment.id}
+                                        type="button"
+                                        className={`inline-flex max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                          isActive
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : 'bg-background text-muted-foreground hover:bg-muted/50'
+                                        }`}
+                                        onClick={() => setActivePreviewDocId(attachment.id)}
+                                      >
+                                        <Paperclip className="size-3 shrink-0" />
+                                        <span className="truncate">{attachment.document.name}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {canAwardComparisonRow && comparisonQuote && (
+                                <Button
+                                  size="sm"
+                                  className="mt-3 w-full"
+                                  onClick={() => {
+                                    setAwardQuoteIds([comparisonQuote.quoteId]);
+                                    setAwardOpen(true);
+                                  }}
+                                >
+                                  <Trophy className="size-4" />
+                                  Award Bid
+                                </Button>
                               )}
                             </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {declined ? '(Declined)' : '(Not Submitted)'}
-                            </p>
-                          )}
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center text-sm text-muted-foreground">
+                        <Users className="mb-3 size-8 text-muted-foreground/40" />
+                        No vendors invited.
+                      </div>
+                    )}
+                  </div>
+
+                  <details className="group shrink-0 border-t bg-background px-4 py-3 text-sm">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase text-muted-foreground">
+                      RFQ Details
+                      <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                    </summary>
+
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Issue</div>
+                        <div className="mt-0.5 font-medium">
+                          {rfq.createdAt ? formatDate(rfq.createdAt) : '-'}
                         </div>
-                        {hasQuote && bcQuote ? (
-                          (() => {
-                            const isBcQuoteAwarded = quotes.find(
-                              (q) => q.id === bcQuote.quoteId
-                            )?.isAwarded;
-                            return isBcQuoteAwarded ? (
-                              <Badge
-                                variant="success"
-                                appearance="light"
-                                size="sm"
-                                className="shrink-0"
-                              >
-                                Awarded
-                              </Badge>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="shrink-0"
-                                onClick={() => {
-                                  setComparisonOpen(false);
-                                  setAwardQuoteIds([bcQuote.quoteId]);
-                                  setAwardOpen(true);
-                                }}
-                              >
-                                Award Bid
-                              </Button>
-                            );
-                          })()
-                        ) : !hasQuote && !declined ? (
-                          <Button variant="outline" size="sm" className="shrink-0" disabled>
-                            Award Bid
-                          </Button>
-                        ) : declined ? (
-                          <span className="text-xs text-destructive font-medium shrink-0">
-                            Declined
-                          </span>
-                        ) : null}
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Due</div>
+                        <div className="mt-0.5 font-medium">
+                          {formatDate(rfq.bidDeadline || '')}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Lowest</div>
+                        <div className="mt-0.5 font-medium">
+                          {bidComparison.statistics.lowestQuote != null
+                            ? formatCurrency(bidComparison.statistics.lowestQuote)
+                            : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Average</div>
+                        <div className="mt-0.5 font-medium">
+                          {bidComparison.statistics.averageQuote != null
+                            ? formatCurrency(bidComparison.statistics.averageQuote)
+                            : '-'}
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  </details>
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col bg-background">
+                  <div className="min-h-0 flex-1 bg-muted/20">
+                    {!selectedComparisonRow ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <PanelRightOpen className="mb-4 size-10 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">Select a vendor</p>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          Choose a vendor to preview the quote document and compare bid details.
+                        </p>
+                      </div>
+                    ) : selectedComparisonQuote && selectedPreviewAttachment ? (
+                      <QuoteDocPreview
+                        documentId={selectedPreviewAttachment.document.id}
+                        name={selectedPreviewAttachment.document.name}
+                        mimeType={selectedPreviewAttachment.document.mimeType}
+                      />
+                    ) : selectedComparisonQuote ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <FileText className="mb-4 size-12 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">No document attached</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          The quote has pricing but no uploaded file.
+                        </p>
+                      </div>
+                    ) : selectedComparisonRow.declined ? (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <XCircle className="mb-4 size-12 text-destructive/40" />
+                        <p className="text-sm font-semibold text-destructive">Declined to bid</p>
+                      </div>
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                        <Clock className="mb-4 size-12 text-muted-foreground/35" />
+                        <p className="text-sm font-semibold">Waiting for quote</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-                No comparison data available
-              </div>
+              <>
+                <div className="flex shrink-0 items-start gap-3 border-b bg-background px-4 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    mode="icon"
+                    aria-label="Close bid comparison"
+                    className="mt-0.5 size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setComparisonOpen(false)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <DialogTitle className="text-xl">Bid Comparison</DialogTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">{comparisonSubtitle}</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                  No comparison data available.
+                </div>
+              </>
             )}
           </div>
         </DialogContent>
@@ -1100,16 +1729,13 @@ export default function RFQDetailPage() {
               </FieldLabel>
               <InputWrapper>
                 <span className="text-muted-foreground text-sm">$</span>
-                <Input
-                  type="number"
-                  step="0.01"
+                <NumberInput
+                  value={typeof quoteAmount === 'number' ? quoteAmount : 0}
+                  onValueChange={setQuoteAmount}
                   min={0}
+                  decimalPlaces={2}
                   placeholder="0.00"
-                  value={quoteAmount}
                   disabled={isQuoteViewOnly}
-                  onChange={(e) =>
-                    setQuoteAmount(e.target.value === '' ? '' : e.target.valueAsNumber)
-                  }
                 />
               </InputWrapper>
             </Field>
@@ -1160,9 +1786,26 @@ export default function RFQDetailPage() {
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="size-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm truncate">
-                        {att.document?.name || att.name || 'Document'}
-                      </span>
+                      {att.document || att.documentId ? (
+                        <button
+                          type="button"
+                          className="truncate text-left text-sm font-medium text-primary hover:underline"
+                          onClick={() => {
+                            const doc =
+                              att.document ??
+                              (att.documentId
+                                ? { id: att.documentId, name: att.name ?? 'Document' }
+                                : null);
+                            if (doc) {
+                              setQuoteAttachmentPreviewFile({ id: doc.id, name: doc.name });
+                            }
+                          }}
+                        >
+                          {att.document?.name || att.name || 'Document'}
+                        </button>
+                      ) : (
+                        <span className="text-sm truncate">{att.name || 'Document'}</span>
+                      )}
                     </div>
                     {!isQuoteViewOnly && (
                       <Button
@@ -1225,7 +1868,7 @@ export default function RFQDetailPage() {
 
                     try {
                       let fileIds: string[] = [];
-                      if (quoteFile && rfqFolderQuery.data) {
+                      if (quoteFile && rfqUploadFolderId) {
                         const dotIdx = quoteFile.name.lastIndexOf('.');
                         const docName =
                           dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
@@ -1233,7 +1876,7 @@ export default function RFQDetailPage() {
                           file: quoteFile,
                           data: {
                             name: docName,
-                            parentId: rfqFolderQuery.data,
+                            parentId: rfqUploadFolderId,
                             mimeType: quoteFile.type || undefined,
                             size: quoteFile.size,
                           },
@@ -1306,26 +1949,42 @@ export default function RFQDetailPage() {
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
               {vendors
                 .filter((v) => !alreadyInvitedIds.has(v.id))
-                .map((v) => (
-                  <label
-                    key={v.id}
-                    className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={inviteVendorIds.includes(v.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setInviteVendorIds((prev) => [...prev, v.id]);
-                        } else {
-                          setInviteVendorIds((prev) => prev.filter((id) => id !== v.id));
-                        }
-                      }}
-                    />
-                    {v.name}
-                  </label>
-                ))}
+                .map((v) => {
+                  const isInactive = v.status === 'INACTIVE';
+
+                  return (
+                    <label
+                      key={v.id}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
+                        isInactive
+                          ? 'cursor-not-allowed opacity-60'
+                          : 'cursor-pointer hover:bg-accent'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-primary disabled:cursor-not-allowed"
+                        checked={inviteVendorIds.includes(v.id)}
+                        disabled={isInactive}
+                        onChange={(e) => {
+                          if (isInactive) return;
+                          if (e.target.checked) {
+                            setInviteVendorIds((prev) => [...prev, v.id]);
+                          } else {
+                            setInviteVendorIds((prev) => prev.filter((id) => id !== v.id));
+                          }
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                      {isInactive && (
+                        <Badge variant="secondary" size="sm" className="shrink-0">
+                          Inactive
+                        </Badge>
+                      )}
+                    </label>
+                  );
+                })}
               {vendors.filter((v) => !alreadyInvitedIds.has(v.id)).length === 0 && (
                 <p className="text-sm text-muted-foreground py-2 text-center">
                   All vendors have already been invited.
@@ -1350,12 +2009,12 @@ export default function RFQDetailPage() {
                 try {
                   await Promise.all(
                     inviteVendorIds.map((vendorId) =>
-                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
+                      addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId, silent: true })
                     )
                   );
                   setInviteOpen(false);
                   setInviteVendorIds([]);
-                  toast.success('Vendors added successfully.');
+                  toast.success(inviteVendorIds.length === 1 ? 'Vendor added.' : 'Vendors added.');
                 } catch {
                   // error toast already shown by mutation
                 }
@@ -1383,36 +2042,52 @@ export default function RFQDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 3}{' '}
+              Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 1}{' '}
               vendor(s).
             </p>
             <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
-              {vendors.map((v) => (
-                <label
-                  key={v.id}
-                  className="flex items-center gap-2.5 py-1.5 text-sm cursor-pointer hover:bg-accent rounded px-1.5"
-                >
-                  <input
-                    type="checkbox"
-                    className="accent-primary"
-                    checked={selectedVendorIds.includes(v.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedVendorIds((prev) => [...prev, v.id]);
-                      } else {
-                        setSelectedVendorIds((prev) => prev.filter((id) => id !== v.id));
-                      }
-                    }}
-                  />
-                  {v.name}
-                </label>
-              ))}
+              {vendors.map((v) => {
+                const isInactive = v.status === 'INACTIVE';
+
+                return (
+                  <label
+                    key={v.id}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
+                      isInactive
+                        ? 'cursor-not-allowed opacity-60'
+                        : 'cursor-pointer hover:bg-accent'
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-primary disabled:cursor-not-allowed"
+                      checked={selectedVendorIds.includes(v.id)}
+                      disabled={isInactive}
+                      onChange={(e) => {
+                        if (isInactive) return;
+                        if (e.target.checked) {
+                          setSelectedVendorIds((prev) => [...prev, v.id]);
+                        } else {
+                          setSelectedVendorIds((prev) => prev.filter((id) => id !== v.id));
+                        }
+                      }}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                    {isInactive && (
+                      <Badge variant="secondary" size="sm" className="shrink-0">
+                        Inactive
+                      </Badge>
+                    )}
+                  </label>
+                );
+              })}
               {vendors.length === 0 && (
                 <p className="text-sm text-muted-foreground py-2 text-center">No vendors found.</p>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedVendorIds.length} selected (min {rfq.minimumVendors ?? 3})
+              {selectedVendorIds.length} selected (min {rfq.minimumVendors ?? 1})
             </p>
           </div>
           <DialogFooter>
@@ -1426,7 +2101,7 @@ export default function RFQDetailPage() {
               Cancel
             </Button>
             <Button
-              disabled={selectedVendorIds.length < (rfq.minimumVendors ?? 3) || isActionPending}
+              disabled={selectedVendorIds.length < (rfq.minimumVendors ?? 1) || isActionPending}
               onClick={async () => {
                 try {
                   // 1. Publish first
@@ -1436,7 +2111,7 @@ export default function RFQDetailPage() {
                   if (selectedVendorIds.length > 0) {
                     await Promise.all(
                       selectedVendorIds.map((vendorId) =>
-                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId })
+                        addVendorMutation.mutateAsync({ rfqId: rfqId!, vendorId, silent: true })
                       )
                     );
                   }
@@ -1454,7 +2129,7 @@ export default function RFQDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ---- Cancel dialog ---- */}
+      {/* ---- Void dialog ---- */}
       <Dialog
         open={cancelOpen}
         onOpenChange={(open) => {
@@ -1466,14 +2141,14 @@ export default function RFQDetailPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel RFQ</DialogTitle>
+            <DialogTitle>Void RFQ</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Provide a reason for cancelling <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
+              Provide a reason for voiding <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
             </p>
             <Textarea
-              placeholder="Cancellation reason..."
+              placeholder="Void reason..."
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               rows={4}
@@ -1504,64 +2179,7 @@ export default function RFQDetailPage() {
                 );
               }}
             >
-              {cancelMutation.isPending ? 'Cancelling...' : 'Cancel RFQ'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Void award dialog ---- */}
-      <Dialog
-        open={voidOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setVoidOpen(false);
-            setVoidReason('');
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Void Award</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Provide a reason for voiding the award on{' '}
-              <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
-            </p>
-            <Textarea
-              placeholder="Void reason..."
-              value={voidReason}
-              onChange={(e) => setVoidReason(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setVoidOpen(false);
-                setVoidReason('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={voidReason.length < 1 || isActionPending}
-              onClick={() => {
-                voidMutation.mutate(
-                  { id: rfqId, data: { voidReason } },
-                  {
-                    onSuccess: () => {
-                      setVoidOpen(false);
-                      setVoidReason('');
-                    },
-                  }
-                );
-              }}
-            >
-              {voidMutation.isPending ? 'Voiding...' : 'Void Award'}
+              {cancelMutation.isPending ? 'Voiding...' : 'Void RFQ'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1665,8 +2283,7 @@ export default function RFQDetailPage() {
         title="Delete RFQ"
         description={
           <>
-            This will permanently delete <strong>{rfq.rfqNumber ?? rfq.title}</strong>. This cannot
-            be undone.
+            This will delete <strong>{rfq.rfqNumber ?? rfq.title}</strong>.
           </>
         }
         confirmLabel="Delete"
@@ -1677,6 +2294,14 @@ export default function RFQDetailPage() {
         }}
         variant="destructive"
         isPending={deleteMutation.isPending}
+      />
+
+      <FilePreviewDialog
+        open={!!quoteAttachmentPreviewFile}
+        onOpenChange={(open) => {
+          if (!open) setQuoteAttachmentPreviewFile(null);
+        }}
+        file={quoteAttachmentPreviewFile}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -18,25 +19,36 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import type {
   FeatureMailDraft,
   FeatureMailDraftPayload,
+  MailRecipientGroup,
   MailSignature,
 } from '@/modules/mail/schemas/mail.schema';
-import { Eye, FileText, Send, X } from 'lucide-react';
+import { featureMailDraftPayloadSchema } from '@/modules/mail/schemas/mail.schema';
+import { FileText, Info, Send, X } from 'lucide-react';
 
 type EmailComposePreviewDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   draft: FeatureMailDraft | null;
-  preview: FeatureMailDraft | null;
   isLoading?: boolean;
-  isPreviewing?: boolean;
   isSending?: boolean;
   recipientsReadOnly?: boolean;
-  onPreview: (payload: FeatureMailDraftPayload) => Promise<void>;
   onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
+};
+
+export type EmailComposePreviewFormProps = {
+  draft: FeatureMailDraft;
+  isSending: boolean;
+  recipientsReadOnly: boolean;
+  onCancel: () => void;
+  onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
+  sendLabel?: string;
+  sendingLabel?: string;
+  footerStart?: ReactNode;
 };
 
 type EmailFormState = {
@@ -55,12 +67,9 @@ export function EmailComposePreviewDialog({
   onOpenChange,
   title,
   draft,
-  preview,
   isLoading = false,
-  isPreviewing = false,
   isSending = false,
   recipientsReadOnly = false,
-  onPreview,
   onSend,
 }: EmailComposePreviewDialogProps) {
   return (
@@ -75,12 +84,9 @@ export function EmailComposePreviewDialog({
           <EmailComposePreviewForm
             key={getDraftKey(draft)}
             draft={draft}
-            preview={preview}
-            isPreviewing={isPreviewing}
             isSending={isSending}
             recipientsReadOnly={recipientsReadOnly}
             onCancel={() => onOpenChange(false)}
-            onPreview={onPreview}
             onSend={onSend}
           />
         )}
@@ -104,57 +110,45 @@ function EmailComposeLoading({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-function EmailComposePreviewForm({
+export function EmailComposePreviewForm({
   draft,
-  preview,
-  isPreviewing,
   isSending,
   recipientsReadOnly,
   onCancel,
-  onPreview,
   onSend,
-}: {
-  draft: FeatureMailDraft;
-  preview: FeatureMailDraft | null;
-  isPreviewing: boolean;
-  isSending: boolean;
-  recipientsReadOnly: boolean;
-  onCancel: () => void;
-  onPreview: (payload: FeatureMailDraftPayload) => Promise<void>;
-  onSend: (payload: FeatureMailDraftPayload) => Promise<void>;
-}) {
+  sendLabel = 'Send Email',
+  sendingLabel = 'Sending...',
+  footerStart,
+}: EmailComposePreviewFormProps) {
   const initialForm = useMemo(() => toFormState(draft), [draft]);
   const [form, setForm] = useState<EmailFormState>(initialForm);
-  const [previewedPayloadKey, setPreviewedPayloadKey] = useState(() =>
-    JSON.stringify(toPayload(initialForm))
-  );
   const senderOptions = draft.senderOptions;
-  const activePreview = preview ?? draft;
+  const recipientGroups = useMemo(() => draft.recipientGroups ?? [], [draft.recipientGroups]);
   const payload = useMemo(() => toPayload(form), [form]);
-  const payloadKey = useMemo(() => JSON.stringify(payload), [payload]);
+  const previewPayload = useDebouncedValue(payload, 150);
+  const missingRecipientGroups = useMemo(
+    () => getMissingRecipientGroupLabels(recipientGroups, payload.to),
+    [payload.to, recipientGroups]
+  );
+  const isPayloadValid = useMemo(
+    () => featureMailDraftPayloadSchema.safeParse(payload).success,
+    [payload]
+  );
+  const activePreview = useMemo(
+    () => buildLocalPreview(draft, previewPayload),
+    [draft, previewPayload]
+  );
   const selectedAttachments = useMemo(() => {
     const attachmentById = new Map(
-      [...draft.attachments, ...(activePreview?.attachments ?? [])].map((attachment) => [
-        attachment.id,
-        attachment,
-      ])
+      draft.attachments.map((attachment) => [attachment.id, attachment])
     );
 
     return form.attachmentIds.flatMap((id) => {
       const attachment = attachmentById.get(id);
       return attachment ? [attachment] : [];
     });
-  }, [activePreview?.attachments, draft.attachments, form.attachmentIds]);
-  const canSend =
-    payloadKey === previewedPayloadKey &&
-    !!payload.from &&
-    payload.to.length > 0 &&
-    !!activePreview;
-
-  async function handlePreview() {
-    await onPreview(payload);
-    setPreviewedPayloadKey(payloadKey);
-  }
+  }, [draft.attachments, form.attachmentIds]);
+  const canSend = isPayloadValid && missingRecipientGroups.length === 0;
 
   async function handleSend() {
     if (!canSend) return;
@@ -185,14 +179,27 @@ function EmailComposePreviewForm({
               </Select>
             </LabeledControl>
 
-            <LabeledControl label="To">
-              <Input
-                value={form.to}
-                placeholder="vendor@example.com"
-                readOnly={recipientsReadOnly}
-                onChange={(event) => setForm((current) => ({ ...current, to: event.target.value }))}
+            {recipientGroups.length > 0 ? (
+              <RecipientGroupsSelector
+                groups={recipientGroups}
+                selectedEmails={parseEmailList(form.to)}
+                disabled={isSending}
+                onChange={(emails) =>
+                  setForm((current) => ({ ...current, to: emails.join(', ') }))
+                }
               />
-            </LabeledControl>
+            ) : (
+              <LabeledControl label="To">
+                <Input
+                  value={form.to}
+                  placeholder="vendor@example.com"
+                  readOnly={recipientsReadOnly}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, to: event.target.value }))
+                  }
+                />
+              </LabeledControl>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <LabeledControl label="Cc">
@@ -250,11 +257,11 @@ function EmailComposePreviewForm({
           <div className="border-b px-5 py-3">
             <div className="text-xs font-semibold uppercase text-muted-foreground">Preview</div>
             <div className="mt-1 truncate text-sm font-medium">
-              {activePreview?.subject || 'No preview yet'}
+              {activePreview.subject || 'No preview yet'}
             </div>
           </div>
           <div className="min-h-0 flex-1 p-4">
-            {activePreview?.html ? (
+            {activePreview.html ? (
               <iframe
                 title="Email preview"
                 srcDoc={activePreview.html}
@@ -262,7 +269,7 @@ function EmailComposePreviewForm({
               />
             ) : (
               <div className="flex h-full items-center justify-center rounded-md border bg-background text-sm text-muted-foreground">
-                Generate a preview to review the email.
+                Preview will appear when the email fields are valid.
               </div>
             )}
           </div>
@@ -301,17 +308,16 @@ function EmailComposePreviewForm({
         </div>
       </DialogBody>
       <DialogFooter className="border-t px-5 py-4 pt-4">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button variant="outline" disabled={isPreviewing} onClick={handlePreview}>
-          <Eye className="size-4" />
-          {isPreviewing ? 'Previewing...' : 'Preview'}
-        </Button>
-        <Button disabled={!canSend || isSending || isPreviewing} onClick={handleSend}>
-          <Send className="size-4" />
-          {isSending ? 'Sending...' : 'Send Email'}
-        </Button>
+        {footerStart}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button disabled={!canSend || isSending} onClick={handleSend}>
+            <Send className="size-4" />
+            {isSending ? sendingLabel : sendLabel}
+          </Button>
+        </div>
       </DialogFooter>
     </>
   );
@@ -326,8 +332,133 @@ function LabeledControl({ label, children }: { label: string; children: ReactNod
   );
 }
 
+function RecipientGroupsSelector({
+  groups,
+  selectedEmails,
+  disabled,
+  onChange,
+}: {
+  groups: MailRecipientGroup[];
+  selectedEmails: string[];
+  disabled: boolean;
+  onChange: (emails: string[]) => void;
+}) {
+  const selected = new Set(selectedEmails);
+  const selectedSummary = selectedEmails.length
+    ? selectedEmails.join(', ')
+    : 'No recipients selected';
+
+  function toggleEmail(email: string, checked: boolean) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const next = new Set(selected);
+
+    if (checked) {
+      next.add(normalizedEmail);
+    } else {
+      next.delete(normalizedEmail);
+    }
+
+    onChange(Array.from(next).sort());
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-muted-foreground">Recipients</div>
+      <div className="space-y-2 rounded-md border bg-background p-3">
+        {groups.map((group) => {
+          const groupSelected = group.options.some((option) => selected.has(option.email));
+          const groupHasOptions = group.options.length > 0;
+
+          return (
+            <div key={group.id} className="rounded-md border bg-muted/20 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-medium text-foreground">{group.label}</div>
+                {group.missingEntityEmail && (
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                    <Info className="size-3" />
+                    Vendor email missing
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 space-y-2">
+                {groupHasOptions ? (
+                  group.options.map((option) => (
+                    <label
+                      key={option.id}
+                      className="flex cursor-pointer items-start gap-2 rounded-sm px-1 py-1 text-sm hover:bg-background"
+                    >
+                      <Checkbox
+                        checked={selected.has(option.email)}
+                        disabled={disabled}
+                        onCheckedChange={(checked) => toggleEmail(option.email, checked === true)}
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-medium text-foreground">{option.label}</span>
+                        <span className="block break-all text-xs text-muted-foreground">
+                          {option.email}
+                        </span>
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="rounded-sm bg-background px-2 py-1.5 text-sm text-destructive">
+                    No vendor or contact email available.
+                  </div>
+                )}
+              </div>
+
+              {groupHasOptions && !groupSelected && (
+                <div className="mt-2 text-xs text-destructive">
+                  Select at least one recipient for this vendor.
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+        <div className="text-xs font-medium text-muted-foreground">To</div>
+        <div className="mt-1 break-all text-foreground">{selectedSummary}</div>
+      </div>
+    </div>
+  );
+}
+
 function getDraftKey(draft: FeatureMailDraft): string {
   return [draft.from, draft.to.join(','), draft.subject, draft.attachmentIds.join(',')].join('|');
+}
+
+function buildLocalPreview(
+  draft: FeatureMailDraft,
+  payload: FeatureMailDraftPayload
+): FeatureMailDraft {
+  const selectedIds = new Set(payload.attachmentIds);
+
+  return {
+    ...draft,
+    ...payload,
+    html: buildLocalPreviewHtml(payload.body, draft.html, payload.signature),
+    attachments: draft.attachments.filter((attachment) => selectedIds.has(attachment.id)),
+  };
+}
+
+function buildLocalPreviewHtml(
+  body: string,
+  draftHtml: string,
+  signature: MailSignature
+): string {
+  return [
+    '<div style="font-family:Aptos, Arial, sans-serif;font-size:15px;color:#111827;line-height:1.5;">',
+    textToHtml(body),
+    '</div>',
+    getSignatureHtml(draftHtml) || buildFallbackSignatureHtml(signature),
+  ].join('');
+}
+
+function getSignatureHtml(html: string): string {
+  const bodyEnd = html.indexOf('</div>');
+  return bodyEnd >= 0 ? html.slice(bodyEnd + '</div>'.length) : '';
 }
 
 function toFormState(draft: FeatureMailDraft): EmailFormState {
@@ -366,4 +497,47 @@ function parseEmailList(value: string): string[] {
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function getMissingRecipientGroupLabels(groups: MailRecipientGroup[], selectedEmails: string[]) {
+  if (groups.length === 0) return [];
+
+  const selected = new Set(selectedEmails);
+  return groups
+    .filter((group) => !group.options.some((option) => selected.has(option.email)))
+    .map((group) => group.label);
+}
+
+function textToHtml(value: string): string {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map(
+      (paragraph) =>
+        `<p style="margin:0 0 12px;">${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`
+    )
+    .join('');
+}
+
+function buildFallbackSignatureHtml(signature: MailSignature): string {
+  return [
+    '<div style="margin-top:20px;font-family:Aptos, Arial, sans-serif;">',
+    '<p style="margin:0 0 8px;">Thank you,</p>',
+    `<p style="margin:0 0 8px;">${escapeHtml(signature.name)}</p>`,
+    `<p style="margin:0 0 8px;">${escapeHtml(signature.role)}</p>`,
+    `<p style="margin:0 0 8px;">Email: <a href="mailto:${escapeHtml(signature.email)}">${escapeHtml(
+      signature.email
+    )}</a></p>`,
+    '</div>',
+  ].join('');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }

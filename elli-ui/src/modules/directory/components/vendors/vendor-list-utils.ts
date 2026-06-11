@@ -22,7 +22,13 @@ export function getVendorContactCount(vendor: Vendor) {
 }
 
 export function getVendorPrimaryContact(vendor: Vendor) {
-  return vendor.contacts?.[0] ?? vendor.contactLinks?.[0]?.contact ?? null;
+  return (
+    vendor.contacts?.find((contact) => contact.isPrimary) ??
+    vendor.contactLinks?.find((link) => link.isPrimary)?.contact ??
+    vendor.contacts?.[0] ??
+    vendor.contactLinks?.[0]?.contact ??
+    null
+  );
 }
 
 export function getVendorTypeOptionLabel(type: {

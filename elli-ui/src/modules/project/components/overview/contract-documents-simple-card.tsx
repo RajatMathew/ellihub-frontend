@@ -1,30 +1,33 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { FileText, Plus, Trash2 } from 'lucide-react';
-
+import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardToolbar,
-} from '@/app/components/ui/card';
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
-
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
+import { FileText, Pin, PinOff, Star, StarOff, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ContractDocumentsSimpleCardProps {
   documents: ContractAttachment[];
   isLoading?: boolean;
   isAdding?: boolean;
   isRemoving?: boolean;
+  documentsUrl?: string;
   parentFolderId?: string;
-  onAdd?: (fileId: string) => Promise<void> | void;
-  onRemove?: (attachmentId: string) => void;
+  onUploadAndPin?: (fileId: string) => Promise<void> | void;
+  onPinClick?: () => void;
+  onUnpin?: (attachmentId: string) => void;
+  onSetPrimary?: (attachmentId: string, isPrimary: boolean) => void;
+  isSettingPrimary?: boolean;
 }
 
 export function ContractDocumentsSimpleCard({
@@ -32,46 +35,79 @@ export function ContractDocumentsSimpleCard({
   isLoading = false,
   isAdding = false,
   isRemoving = false,
+  documentsUrl,
   parentFolderId,
-  onAdd,
-  onRemove,
+  onUploadAndPin,
+  onPinClick,
+  onUnpin,
+  onSetPrimary,
+  isSettingPrimary = false,
 }: ContractDocumentsSimpleCardProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
   const uploadMutation = useUploadFileMutation();
-  const downloadFile = useDownloadFile();
+  const sortedDocuments = useMemo(
+    () =>
+      [...documents].sort((a, b) => {
+        if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+        return new Date(b.uploadedAt ?? 0).getTime() - new Date(a.uploadedAt ?? 0).getTime();
+      }),
+    [documents]
+  );
 
   const handleUploadSubmit = async (payload: { file: File; data: FileUploadInput }) => {
     const fileItem = await uploadMutation.mutateAsync(payload);
-    await onAdd?.(fileItem.id);
+    await onUploadAndPin?.(fileItem.id);
     setUploadOpen(false);
   };
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
-          Contract Documents ({documents.length})
-        </CardTitle>
-        <CardToolbar>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!onAdd || !parentFolderId || isAdding || uploadMutation.isPending}
-            onClick={() => setUploadOpen(true)}
-          >
-            <Plus className="size-4" />
-            Add
-          </Button>
-        </CardToolbar>
+        {documentsUrl ? (
+          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+            <Link to={documentsUrl} className="hover:underline">
+              Contract Documents ({documents.length})
+            </Link>
+          </CardTitle>
+        ) : (
+          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+            Contract Documents ({documents.length})
+          </CardTitle>
+        )}
+        {(onUploadAndPin || onPinClick) && (
+          <CardToolbar>
+            <div className="flex items-center gap-2">
+              {onUploadAndPin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!parentFolderId || isAdding || uploadMutation.isPending}
+                  onClick={() => setUploadOpen(true)}
+                >
+                  <Upload className="size-4" />
+                  Upload
+                </Button>
+              )}
+              {onPinClick && (
+                <Button size="sm" variant="outline" onClick={onPinClick}>
+                  <Pin className="size-4" />
+                  Pin
+                </Button>
+              )}
+            </div>
+          </CardToolbar>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <ProjectInlineListLoading rows={2} />
-        ) : documents.length > 0 ? (
+        ) : sortedDocuments.length > 0 ? (
           <div className="space-y-2">
-            {documents.map((att) => {
+            {sortedDocuments.map((att) => {
               const document = att.file ?? att.document;
               const documentName = document?.displayName ?? document?.name ?? 'Document';
+              const isPrimary = att.isPrimary ?? false;
 
               return (
                 <div key={att.id} className="flex items-center gap-3 rounded-lg border p-2.5">
@@ -81,7 +117,7 @@ export function ContractDocumentsSimpleCard({
                       <button
                         type="button"
                         className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                        onClick={() => downloadFile.mutate(document)}
+                        onClick={() => setPreviewFile(document)}
                       >
                         {documentName}
                       </button>
@@ -89,17 +125,54 @@ export function ContractDocumentsSimpleCard({
                       <span className="block truncate text-sm font-medium">{documentName}</span>
                     )}
                   </div>
-                  {onRemove && (
-                    <Button
-                      variant="ghost"
-                      mode="icon"
-                      size="sm"
-                      disabled={isRemoving}
-                      aria-label={`Remove ${documentName}`}
-                      onClick={() => onRemove(att.id)}
-                    >
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
+                  {isPrimary && (
+                    <Badge variant="primary" appearance="light" size="sm" className="shrink-0">
+                      Primary
+                    </Badge>
+                  )}
+                  {onSetPrimary && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          mode="icon"
+                          size="sm"
+                          disabled={isSettingPrimary}
+                          aria-label={
+                            isPrimary
+                              ? `Remove primary mark from ${documentName}`
+                              : `Mark ${documentName} primary`
+                          }
+                          onClick={() => onSetPrimary(att.id, !isPrimary)}
+                        >
+                          {isPrimary ? (
+                            <StarOff className="size-4" />
+                          ) : (
+                            <Star className="size-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isPrimary ? 'Remove primary mark' : 'Mark primary'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onUnpin && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          mode="icon"
+                          size="sm"
+                          disabled={isRemoving}
+                          aria-label={`Unpin ${documentName}`}
+                          onClick={() => onUnpin(att.id)}
+                        >
+                          <PinOff className="size-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Unpin from overview</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               );
@@ -108,9 +181,7 @@ export function ContractDocumentsSimpleCard({
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
             <FileText className="size-8 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              No documents attached.
-            </p>
+            <p className="text-sm text-muted-foreground">No prime contracts pinned.</p>
           </div>
         )}
       </CardContent>
@@ -124,6 +195,14 @@ export function ContractDocumentsSimpleCard({
           isSubmitting={uploadMutation.isPending || isAdding}
         />
       )}
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

@@ -1,26 +1,39 @@
-import { FlaskConical } from 'lucide-react';
+import { isMockDataFillEnabled } from '@/app/lib/mock-data-fill';
+import { Shuffle } from 'lucide-react';
 
 import { Button } from '@app/components/ui/button';
 
-const isDev = import.meta.env.DEV;
-
 interface MockDataButtonProps<T> {
-  data: T;
-  onLoad: (data: T) => void;
+  data?: T;
+  onLoad?: (data: T) => void;
+  onClick?: () => void;
   label?: string;
 }
 
-export function MockDataButton<T>({ data, onLoad, label = 'Enter Mock Data' }: MockDataButtonProps<T>) {
-  if (!isDev) return null;
+export function MockDataButton<T>({
+  data,
+  onLoad,
+  onClick,
+  label = 'Fill Sample',
+}: MockDataButtonProps<T>) {
+  if (!isMockDataFillEnabled) return null;
   return (
     <Button
       variant="outline"
       size="sm"
       type="button"
-      className="border-dashed border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950"
-      onClick={() => onLoad(data)}
+      onClick={() => {
+        if (onClick) {
+          onClick();
+          return;
+        }
+
+        if (onLoad) {
+          onLoad(data as T);
+        }
+      }}
     >
-      <FlaskConical className="size-4" />
+      <Shuffle className="size-4" />
       {label}
     </Button>
   );

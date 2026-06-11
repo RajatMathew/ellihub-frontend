@@ -1,7 +1,14 @@
 import React, { type ReactNode } from 'react';
 
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { ChevronDown, Plus, Trash2 } from 'lucide-react';
-import { Controller, useWatch, type Control, type FieldArrayWithId, type FieldErrors } from 'react-hook-form';
+import {
+  Controller,
+  useWatch,
+  type Control,
+  type FieldArrayWithId,
+  type FieldErrors,
+} from 'react-hook-form';
 
 import { Button } from '@app/components/ui/button';
 import { Card, CardContent } from '@app/components/ui/card';
@@ -15,11 +22,12 @@ import {
 } from '@app/components/ui/command';
 import { FieldError as FieldErr } from '@app/components/ui/field';
 import { Input } from '@app/components/ui/input';
+import { NumberInput } from '@app/components/ui/number-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
-import { formatCurrency } from '@app/lib/helpers';
-import { cn } from '@app/lib/utils';
 import { SearchableSelect } from '@app/components/ui/searchable-select';
 import { Separator } from '@app/components/ui/separator';
+import { formatCurrency } from '@app/lib/helpers';
+import { cn } from '@app/lib/utils';
 
 /* ---- Unit options ---- */
 
@@ -92,6 +100,8 @@ export interface LineItemsProps {
   hideCostCode?: boolean;
   /** Unit options for the UnitCombobox */
   unitOptions?: { value: string; label: string }[];
+  /** Allow entering free-form unit values instead of choosing an option */
+  allowCustomUnit?: boolean;
   /** Footer content rendered inside the card (e.g. receipt-style totals) */
   children?: ReactNode;
   /** Callback to add a new cost code — shows "+ Add" in cost code dropdown */
@@ -116,11 +126,13 @@ function UnitCombobox({
   onChange,
   invalid,
   options = UNIT_OPTIONS,
+  allowCustomUnit = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   invalid?: boolean;
   options?: readonly { value: string; label: string }[] | { value: string; label: string }[];
+  allowCustomUnit?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -128,7 +140,7 @@ function UnitCombobox({
   const filtered = options.filter(
     (u) =>
       u.value.toLowerCase().includes(search.toLowerCase()) ||
-      u.label.toLowerCase().includes(search.toLowerCase()),
+      u.label.toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedOption = options.find((u) => u.value === value);
@@ -143,7 +155,7 @@ function UnitCombobox({
           className={cn(
             'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] shadow-xs shadow-black/5 transition-shadow outline-none text-left',
             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
-            !value && 'text-muted-foreground',
+            !value && 'text-muted-foreground'
           )}
         >
           <span className="truncate">{displayValue || 'Unit'}</span>
@@ -153,13 +165,13 @@ function UnitCombobox({
       <PopoverContent className="w-[180px] p-0" align="start" sideOffset={4}>
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search or type..."
+            placeholder={allowCustomUnit ? 'Search or type...' : 'Search units...'}
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
             <CommandEmpty>
-              {search ? (
+              {allowCustomUnit && search ? (
                 <button
                   type="button"
                   className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded cursor-pointer"
@@ -171,8 +183,12 @@ function UnitCombobox({
                 >
                   Use &quot;{search.toUpperCase()}&quot;
                 </button>
-              ) : (
+              ) : search ? (
+                'No units found.'
+              ) : allowCustomUnit ? (
                 'Type a custom unit'
+              ) : (
+                'No units available.'
               )}
             </CommandEmpty>
             <CommandGroup>
@@ -216,7 +232,9 @@ function LineTotalCell({
   const qty = useWatch({ control, name: `${fieldPrefix}.${index}.${quantityField}` }) ?? 0;
   const price = useWatch({ control, name: `${fieldPrefix}.${index}.${unitPriceField}` }) ?? 0;
   return (
-    <span className="text-sm font-medium tabular-nums">{formatCurrency(qty * price)}</span>
+    <span className="text-sm font-medium tabular-nums">
+      {formatCurrency(calculateRoundedLineAmount({ quantity: qty, unitPrice: price }))}
+    </span>
   );
 }
 
@@ -240,13 +258,14 @@ export function LineItems({
   hideUnitPrice = false,
   hideCostCode = false,
   unitOptions,
+  allowCustomUnit = true,
   children,
   onAddCostCode,
 }: LineItemsProps) {
   const fn = { ...DEFAULT_FIELD_NAMES, ...fieldNamesProp };
   const newItem = defaultItem ?? DEFAULT_ITEM;
 
-  const thClass = 'pb-2 pr-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase text-left';
+  const thClass = 'pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground text-left';
 
   return (
     <Card id={id}>
@@ -267,7 +286,9 @@ export function LineItems({
                 {!hideCostCode && <th className={`${thClass} w-[180px]`}>Cost Code</th>}
                 <th className={`${thClass} w-[90px] text-right`}>Qty</th>
                 <th className={`${thClass} w-[90px]`}>Unit</th>
-                {!hideUnitPrice && <th className={`${thClass} w-[110px] text-right`}>Unit Price</th>}
+                {!hideUnitPrice && (
+                  <th className={`${thClass} w-[110px] text-right`}>Unit Price</th>
+                )}
                 {showLineTotal && <th className={`${thClass} w-[110px] text-right`}>Amount</th>}
                 <th className="w-8" />
               </tr>
@@ -297,24 +318,30 @@ export function LineItems({
                   </td>
 
                   {/* Cost Code */}
-                  {!hideCostCode && <td className="py-2.5 pr-3">
-                    <Controller
-                      name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
-                      control={control}
-                      render={({ field: f }) => (
-                        <SearchableSelect
-                          options={costCodeOptions}
-                          value={f.value ?? null}
-                          onValueChange={(v) => f.onChange(v ?? undefined)}
-                          placeholder="Select..."
-                          searchPlaceholder="Search..."
-                          emptyMessage="None found."
-                          onAdd={onAddCostCode}
-                          addLabel="Add Cost Code"
-                        />
-                      )}
-                    />
-                  </td>}
+                  {!hideCostCode && (
+                    <td className="py-2.5 pr-3">
+                      <Controller
+                        name={`${fieldPrefix}.${index}.${fn.costCodeId}`}
+                        control={control}
+                        render={({ field: f, fieldState }) => (
+                          <div>
+                            <SearchableSelect
+                              options={costCodeOptions}
+                              value={f.value ?? null}
+                              onValueChange={(v) => f.onChange(v ?? '')}
+                              placeholder="Select..."
+                              searchPlaceholder="Search..."
+                              emptyMessage="None found."
+                              onAdd={onAddCostCode}
+                              addLabel="Add Cost Code"
+                              className={fieldState.invalid ? 'border-destructive' : undefined}
+                            />
+                            {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                          </div>
+                        )}
+                      />
+                    </td>
+                  )}
 
                   {/* Quantity */}
                   <td className="py-2.5 pr-3">
@@ -323,11 +350,15 @@ export function LineItems({
                       control={control}
                       render={({ field: f, fieldState }) => (
                         <div>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...f}
-                            onChange={(e) => f.onChange(Number(e.target.value))}
+                          <NumberInput
+                            value={f.value ?? 0}
+                            onValueChange={f.onChange}
+                            onBlur={f.onBlur}
+                            name={f.name}
+                            ref={f.ref}
+                            min={0}
+                            decimalPlaces={2}
+                            placeholder="0"
                             aria-invalid={fieldState.invalid}
                             className="text-right"
                           />
@@ -349,6 +380,7 @@ export function LineItems({
                             onChange={f.onChange}
                             invalid={fieldState.invalid}
                             options={unitOptions}
+                            allowCustomUnit={allowCustomUnit}
                           />
                           {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                         </div>
@@ -357,25 +389,31 @@ export function LineItems({
                   </td>
 
                   {/* Unit Price */}
-                  {!hideUnitPrice && <td className="py-2.5 pr-3">
-                    <Controller
-                      name={`${fieldPrefix}.${index}.${fn.unitPrice}`}
-                      control={control}
-                      render={({ field: f, fieldState }) => (
-                        <div>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...f}
-                            onChange={(e) => f.onChange(Number(e.target.value))}
-                            aria-invalid={fieldState.invalid}
-                            className="text-right"
-                          />
-                          {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
-                        </div>
-                      )}
-                    />
-                  </td>}
+                  {!hideUnitPrice && (
+                    <td className="py-2.5 pr-3">
+                      <Controller
+                        name={`${fieldPrefix}.${index}.${fn.unitPrice}`}
+                        control={control}
+                        render={({ field: f, fieldState }) => (
+                          <div>
+                            <NumberInput
+                              value={f.value ?? 0}
+                              onValueChange={f.onChange}
+                              onBlur={f.onBlur}
+                              name={f.name}
+                              ref={f.ref}
+                              min={0}
+                              decimalPlaces={2}
+                              placeholder="0.00"
+                              aria-invalid={fieldState.invalid}
+                              className="text-right"
+                            />
+                            {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
+                          </div>
+                        )}
+                      />
+                    </td>
+                  )}
 
                   {/* Line Total */}
                   {showLineTotal && (
@@ -411,9 +449,7 @@ export function LineItems({
         </div>
 
         {rootError && 'message' in rootError && (
-          <p className="text-sm text-destructive">
-            {(rootError as { message?: string }).message}
-          </p>
+          <p className="text-sm text-destructive">{(rootError as { message?: string }).message}</p>
         )}
 
         <Button type="button" variant="outline" size="sm" onClick={() => append(newItem)}>

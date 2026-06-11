@@ -1,41 +1,38 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import {
-  type SortingState,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
-
 import { Card } from '@/app/components/ui/card';
 import {
+  getRFQStatusName,
+  getRFQTrackValue,
   RFQListConfirmDialogs,
   RFQListFilters,
   RFQListHeader,
   RFQListStats,
   RFQListTable,
-  getRFQStatusName,
-  getRFQTrackValue,
   useRFQListColumns,
 } from '@/modules/project/components/rfq';
+import { isRFQSortByField, RFQ_DEFAULT_PAGE_SIZE } from '@/modules/project/constants/rfq';
+import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
-  RFQ_DEFAULT_PAGE_SIZE,
-  isRFQSortByField,
-} from '@/modules/project/constants/rfq';
-import {
+  useCancelRFQMutation,
   useDeleteRFQMutation,
-  useGeneratePOMutation,
   useRFQListParams,
   useRFQListQuery,
   useRFQStatusesQuery,
   type RFQListParamPatch,
 } from '@/modules/project/hooks/rfq';
-import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import type { ListRFQParams, RFQListItem } from '@/modules/project/schemas/rfq';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export default function RFQListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const {
     page,
     size,
@@ -65,9 +62,10 @@ export default function RFQListPage() {
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: allData } = useRFQListQuery({ projectId, size: 100 });
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
-  const { mutate: generatePO, isPending: isCreatePOPending } = useGeneratePOMutation();
+  const { mutate: voidRFQ, isPending: isVoidPending } = useCancelRFQMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
-  const [createPOTarget, setCreatePOTarget] = useState<RFQListItem | null>(null);
+  const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
+  const [voidReason, setVoidReason] = useState('');
 
   const rawListData = useMemo(() => data?.data ?? [], [data?.data]);
   const listData = useMemo(
@@ -75,7 +73,7 @@ export default function RFQListPage() {
       trackFilter
         ? rawListData.filter((rfq) => getRFQTrackValue(rfq) === trackFilter)
         : rawListData,
-    [rawListData, trackFilter],
+    [rawListData, trackFilter]
   );
   const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
   const allRfqs = useMemo(() => allData?.data ?? [], [allData?.data]);
@@ -92,17 +90,22 @@ export default function RFQListPage() {
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!trackFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
 
   const handleDeleteTarget = useCallback((rfq: RFQListItem) => {
     setDeleteTarget(rfq);
   }, []);
-  const handleCreatePOTarget = useCallback((rfq: RFQListItem) => {
-    setCreatePOTarget(rfq);
+  const handleVoidTarget = useCallback((rfq: RFQListItem) => {
+    setVoidTarget(rfq);
+    setVoidReason('');
   }, []);
+  const handleCreatePOTarget = useCallback((rfq: RFQListItem) => {
+    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfq.id}`);
+  }, [navigate, projectId]);
   const columns = useRFQListColumns({
     onDelete: handleDeleteTarget,
+    onVoid: handleVoidTarget,
     onCreatePO: handleCreatePOTarget,
   });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
@@ -161,13 +164,21 @@ export default function RFQListPage() {
     });
   }, [deleteRFQ, deleteTarget]);
 
-  const handleConfirmCreatePO = useCallback(() => {
-    if (!createPOTarget) return;
+  const handleCloseVoid = useCallback(() => {
+    setVoidTarget(null);
+    setVoidReason('');
+  }, []);
 
-    generatePO(createPOTarget.id, {
-      onSuccess: () => setCreatePOTarget(null),
-    });
-  }, [createPOTarget, generatePO]);
+  const handleConfirmVoid = useCallback(() => {
+    if (!voidTarget) return;
+
+    voidRFQ(
+      { id: voidTarget.id, cancellationReason: voidReason },
+      {
+        onSuccess: handleCloseVoid,
+      }
+    );
+  }, [handleCloseVoid, voidRFQ, voidReason, voidTarget]);
 
   return (
     <div className="container-fluid py-7.5">
@@ -197,13 +208,15 @@ export default function RFQListPage() {
 
       <RFQListConfirmDialogs
         deleteTarget={deleteTarget}
-        createPOTarget={createPOTarget}
+        voidTarget={voidTarget}
+        voidReason={voidReason}
         isDeletePending={isDeletePending}
-        isCreatePOPending={isCreatePOPending}
+        isVoidPending={isVoidPending}
         onCloseDelete={() => setDeleteTarget(null)}
-        onCloseCreatePO={() => setCreatePOTarget(null)}
+        onCloseVoid={handleCloseVoid}
         onConfirmDelete={handleConfirmDelete}
-        onConfirmCreatePO={handleConfirmCreatePO}
+        onConfirmVoid={handleConfirmVoid}
+        onVoidReasonChange={setVoidReason}
       />
     </div>
   );

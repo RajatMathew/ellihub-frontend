@@ -24,8 +24,9 @@ model PurchaseOrder {
   expectedDate DateTime?
   deliveryDate DateTime?
 
-  subtotal     Decimal  @db.Decimal(15, 2)
-  markupAmount Decimal? @db.Decimal(15, 2)
+  subtotal            Decimal  @db.Decimal(15, 2)
+  negotiatedDiscount  Decimal? @db.Decimal(15, 2)
+  shippingHandlingFee Decimal? @db.Decimal(15, 2)
 
   taxPercent Decimal?
   taxAmount  Decimal? @db.Decimal(15, 2)
@@ -54,11 +55,10 @@ model PurchaseOrder {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  lineItems          PurchaseOrderLineItem[]
-  attachments        POAttachment[]
-  invoices           Invoice[]
-  subChangeOrders    SubChangeOrder[]                 @relation("POSubChangeOrders")
-  quickBooksPayments PurchaseOrderQuickBooksPayment[]
+  lineItems       PurchaseOrderLineItem[]
+  attachments     POAttachment[]
+  invoices        Invoice[]
+  subChangeOrders SubChangeOrder[]        @relation("POSubChangeOrders")
 
   @@index([projectId])
   @@index([vendorId])
@@ -116,40 +116,6 @@ model POAttachment {
   @@index([purchaseOrderId])
 }
 
-model PurchaseOrderQuickBooksPayment {
-  id              String        @id
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  purchaseOrderId String
-
-  realmId                 String
-  quickBooksEntity        String
-  quickBooksTransactionId String
-
-  docNumber       String?
-  displayName     String
-  txnDate         DateTime?
-  totalAmount     Decimal?  @db.Decimal(15, 2)
-  currency        String?
-  privateNote     String?   @db.Text
-  lastUpdatedTime DateTime?
-  raw             Json
-
-  linkedById  String?
-  linkedBy    User?     @relation("PurchaseOrderQuickBooksPaymentsLinkedBy", fields: [linkedById], references: [id], onDelete: SetNull)
-  removedAt   DateTime?
-  removedById String?
-  removedBy   User?     @relation("PurchaseOrderQuickBooksPaymentsRemovedBy", fields: [removedById], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([purchaseOrderId])
-  @@index([realmId, quickBooksEntity, quickBooksTransactionId])
-  @@index([linkedById])
-  @@index([removedById])
-  @@index([removedAt])
-}
-
 // Sub change order
 
 model SubChangeOrder {
@@ -167,13 +133,13 @@ model SubChangeOrder {
 
   createdBy String
 
-  markupAmount       Float?
-  scheduleImpactDays Int?
-  requestedBy        String?
+  negotiatedDiscount  Decimal? @db.Decimal(15, 2)
+  shippingHandlingFee Decimal? @db.Decimal(15, 2)
+  taxPercent          Decimal? @db.Decimal(6, 3)
+  taxAmount           Decimal? @db.Decimal(15, 2)
 
   changeType      Lookup? @relation("SCOChangeType", fields: [changeTypeId], references: [id])
   changeTypeId    String?
-  impactsSchedule Boolean @default(false)
 
   approvedBy      String?
   approvedAt      DateTime?

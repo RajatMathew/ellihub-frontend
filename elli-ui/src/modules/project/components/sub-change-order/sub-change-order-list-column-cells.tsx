@@ -1,6 +1,3 @@
-import { MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -10,11 +7,20 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
+import { MoreHorizontal } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
 import {
   formatOptionalSubChangeOrderCurrency,
   formatOptionalSubChangeOrderDate,
+  getSubChangeOrderNegotiatedDiscount,
+  getSubChangeOrderShippingHandlingFee,
+  getSubChangeOrderSubtotal,
+  getSubChangeOrderTaxAmount,
+  getSubChangeOrderTaxLabel,
+  getSubChangeOrderTotalAmount,
   getSubChangeOrderPurchaseOrderLabel,
   getSubChangeOrderTypeLabel,
 } from './sub-change-order-list-utils';
@@ -54,21 +60,13 @@ export function SubChangeOrderPurchaseOrderCell({
         <span className="text-sm text-foreground">{purchaseOrderLabel}</span>
       )}
       {sco.purchaseOrder?.status && (
-        <span className="text-2sm text-muted-foreground">
-          PO {sco.purchaseOrder.status}
-        </span>
+        <span className="text-2sm text-muted-foreground">PO {sco.purchaseOrder.status}</span>
       )}
     </div>
   );
 }
 
-export function SubChangeOrderTypeCell({
-  sco,
-  fallback,
-}: {
-  sco: SCOListItem;
-  fallback?: string;
-}) {
+export function SubChangeOrderTypeCell({ sco, fallback }: { sco: SCOListItem; fallback?: string }) {
   return (
     <div className="flex flex-col items-start gap-1">
       <Badge variant="primary" appearance="outline" size="sm">
@@ -78,20 +76,39 @@ export function SubChangeOrderTypeCell({
   );
 }
 
-export function SubChangeOrderRequestedByCell({ sco }: { sco: SCOListItem }) {
-  return <span className="text-sm text-foreground">{sco.requestedBy ?? '-'}</span>;
-}
-
 export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
+  const subtotal = getSubChangeOrderSubtotal(sco);
+  const negotiatedDiscount = getSubChangeOrderNegotiatedDiscount(sco);
+  const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
+  const taxAmount = getSubChangeOrderTaxAmount(sco);
+  const total = getSubChangeOrderTotalAmount(sco);
+
   return (
     <div className="flex flex-col gap-0.5 text-right">
       <span className="text-sm font-medium text-foreground">
-        {formatOptionalSubChangeOrderCurrency(sco.amount)}
+        {formatOptionalSubChangeOrderCurrency(total)}
       </span>
-      {Number(sco.markupAmount ?? 0) !== 0 && (
-        <span className="text-2sm text-muted-foreground">
-          Markup {formatOptionalSubChangeOrderCurrency(sco.markupAmount)}
-        </span>
+      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0 || taxAmount !== 0) && (
+        <>
+          <span className="text-2sm text-muted-foreground">
+            Subtotal {formatOptionalSubChangeOrderCurrency(subtotal)}
+          </span>
+          {negotiatedDiscount !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              Discount -{formatOptionalSubChangeOrderCurrency(negotiatedDiscount)}
+            </span>
+          )}
+          {shippingHandlingFee !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(shippingHandlingFee)}
+            </span>
+          )}
+          {taxAmount !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              {getSubChangeOrderTaxLabel(sco)} {formatOptionalSubChangeOrderCurrency(taxAmount)}
+            </span>
+          )}
+        </>
       )}
     </div>
   );
@@ -112,17 +129,7 @@ export function SubChangeOrderStatusCell({ sco }: { sco: SCOListItem }) {
 export function SubChangeOrderDateCell({ sco }: { sco: SCOListItem }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-sm text-foreground">
-        {formatOptionalSubChangeOrderDate(sco.date)}
-      </span>
-      <span className="text-2sm text-muted-foreground">
-        {sco.impactsSchedule ? 'Schedule impact' : 'No schedule impact'}
-      </span>
-      {sco.scheduleImpactDays != null && sco.scheduleImpactDays > 0 && (
-        <span className="text-2sm text-muted-foreground">
-          {sco.scheduleImpactDays} day{sco.scheduleImpactDays === 1 ? '' : 's'}
-        </span>
-      )}
+      <span className="text-sm text-foreground">{formatOptionalSubChangeOrderDate(sco.date)}</span>
     </div>
   );
 }
@@ -136,6 +143,11 @@ export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
 }
 
 export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canEdit =
+    project?.capabilities?.actions?.subChangeOrder?.update === true && sco.status === 'DRAFT';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -154,7 +166,7 @@ export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
         <DropdownMenuItem asChild>
           <Link to={`${sco.id}`}>View</Link>
         </DropdownMenuItem>
-        {sco.status === 'DRAFT' && (
+        {canEdit && (
           <DropdownMenuItem asChild>
             <Link to={`${sco.id}/edit`}>Edit</Link>
           </DropdownMenuItem>

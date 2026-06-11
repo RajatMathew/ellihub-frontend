@@ -1,11 +1,13 @@
 import { useCallback, useMemo } from 'react';
 
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { useAccess } from '@/app/contexts/access-context';
 import {
   useVendorListColumns,
   VendorsTableCard,
   VendorStatsCards,
 } from '@/modules/directory/components/vendors';
+import { getVendorCommitmentSummaries } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import {
   isVendorsSortByField,
   VENDORS_DEFAULT_PAGE_SIZE,
@@ -13,10 +15,12 @@ import {
 import {
   useDeleteVendorMutation,
   useVendorsQuery,
+  useVendorStatsQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks/vendors.hooks';
 import { useVendorListParams } from '@/modules/directory/hooks/vendors/use-vendor-list-params';
 import type { ListVendorsParams } from '@/modules/directory/schemas/vendor.schema';
+import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -26,6 +30,7 @@ import {
 import { Plus } from 'lucide-react';
 
 export function VendorListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -53,16 +58,33 @@ export function VendorListPage() {
     [page, searchQuery, size, sortBy, sortOrder, statusFilter, typeFilter]
   );
 
-  const { data: allData, isLoading: isStatsLoading } = useVendorsQuery({ limit: 100 });
+  const { data: stats, isLoading: isStatsLoading } = useVendorStatsQuery();
   const { data: typeTabs = [], isLoading: isTypesLoading } = useVendorTypesQuery();
   const { data, isLoading, isError, refetch } = useVendorsQuery(filters);
+  const purchaseOrdersQuery = usePOsQuery({
+    page: 1,
+    size: 10000,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  });
   const deleteMutation = useDeleteVendorMutation();
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = Boolean(searchQuery || typeFilter || statusFilter);
+  const commitmentsByVendorId = useMemo(
+    () => getVendorCommitmentSummaries(purchaseOrdersQuery.data?.data ?? []),
+    [purchaseOrdersQuery.data?.data]
+  );
+  const totalCommitted =
+    purchaseOrdersQuery.data?.data != null
+      ? Array.from(commitmentsByVendorId.values()).reduce(
+          (sum, commitment) => sum + commitment.totalCommitted,
+          0
+        )
+      : (stats?.totalCommitted ?? 0);
 
-  const totalVendors = allData?.pagination?.totalItems ?? allData?.data.length ?? totalCount;
+  const totalVendors = stats?.totalVendors ?? totalCount;
   const typeLabels = useMemo(() => {
     const labels = new Map<string, string>();
     for (const type of typeTabs) {
@@ -80,7 +102,10 @@ export function VendorListPage() {
 
   const columns = useVendorListColumns({
     typeLabels,
+    canUpdate: can('vendor', 'update'),
+    canDelete: can('vendor', 'delete'),
     onDelete: handleDelete,
+    commitmentsByVendorId,
   });
 
   const sorting = useMemo<SortingState>(
@@ -144,12 +169,18 @@ export function VendorListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="Vendors"
-        addLabel="Add Vendor"
-        addTo="create"
-        addIcon={<Plus className="size-4" />}
+        addLabel={can('vendor', 'create') ? 'Add Vendor' : undefined}
+        addTo={can('vendor', 'create') ? 'create' : undefined}
+        addIcon={can('vendor', 'create') ? <Plus className="size-4" /> : undefined}
       />
 
-      <VendorStatsCards totalVendors={totalVendors} isLoading={isStatsLoading} />
+      <VendorStatsCards
+        totalVendors={totalVendors}
+        totalCommitted={totalCommitted}
+        totalPaid={stats?.totalPaid ?? 0}
+        outstandingBalance={stats?.outstandingBalance ?? 0}
+        isLoading={isStatsLoading || purchaseOrdersQuery.isLoading}
+      />
 
       <VendorsTableCard
         table={table}

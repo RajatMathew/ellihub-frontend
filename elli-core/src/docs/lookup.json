@@ -18,7 +18,9 @@
                                             "properties": {
                                                 "data": {
                                                     "type": "array",
-                                                    "items": { "$ref": "#/components/schemas/Lookup" }
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Lookup"
+                                                    }
                                                 }
                                             }
                                         }
@@ -171,7 +173,7 @@
                         "in": "path",
                         "required": true,
                         "schema": { "type": "string" },
-                        "description": "Lookup type (e.g. \"category\", \"tag\", \"status\")"
+                        "description": "Lookup type (e.g. \"PAYMENT_METHOD\", \"TRADE_CATEGORY\", \"GC_TYPE\")"
                     }
                 ],
                 "responses": {
@@ -187,7 +189,9 @@
                                             "properties": {
                                                 "data": {
                                                     "type": "array",
-                                                    "items": { "$ref": "#/components/schemas/Lookup" }
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Lookup"
+                                                    }
                                                 }
                                             }
                                         }
@@ -306,7 +310,10 @@
                 "type": "object",
                 "properties": {
                     "id": { "type": "string", "description": "ULID" },
-                    "type": { "type": "string", "description": "Lookup type (e.g. category, tag, status)" },
+                    "type": {
+                        "type": "string",
+                        "description": "Lookup type (e.g. PAYMENT_METHOD, TRADE_CATEGORY, GC_TYPE)"
+                    },
                     "label": { "type": "string" }
                 }
             },

@@ -1,3 +1,6 @@
+import { useState } from 'react';
+
+import type { FileUploadProgress } from '@/modules/files/api/files.api';
 import { CreateFolderDialog } from '@/modules/files/components/create-folder-dialog';
 import { FilePreviewDialog } from '@/modules/files/components/file-preview-dialog';
 import { FilesDeleteDialog } from '@/modules/files/components/files-delete-dialog';
@@ -8,7 +11,7 @@ import {
   useDeleteFileMutation,
   useDeleteFolderMutation,
   useRenameMutation,
-  useUploadFileMutation,
+  useUploadFilesMutation,
 } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { toast } from 'sonner';
@@ -25,6 +28,7 @@ interface FilesPageDialogsProps {
   onPreviewItemChange: (item: FileItem | null) => void;
   onRenameItemChange: (item: FileItem | null) => void;
   onDeleteItemChange: (item: FileItem | null) => void;
+  readOnly?: boolean;
 }
 
 export function FilesPageDialogs({
@@ -39,54 +43,79 @@ export function FilesPageDialogs({
   onPreviewItemChange,
   onRenameItemChange,
   onDeleteItemChange,
+  readOnly = false,
 }: FilesPageDialogsProps) {
   const createFolderMutation = useCreateFolderMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadFilesMutation = useUploadFilesMutation();
   const renameMutation = useRenameMutation();
   const deleteFolderMutation = useDeleteFolderMutation();
   const deleteFileMutation = useDeleteFileMutation();
   const isDeleting = deleteFolderMutation.isPending || deleteFileMutation.isPending;
+  const [uploadProgress, setUploadProgress] = useState<FileUploadProgress | null>(null);
+
+  const handleUploadOpenChange = (open: boolean) => {
+    if (!open) setUploadProgress(null);
+    onUploadFileOpenChange(open);
+  };
 
   return (
     <>
-      <CreateFolderDialog
-        open={createFolderOpen}
-        onOpenChange={onCreateFolderOpenChange}
-        parentId={currentFolderId}
-        isSubmitting={createFolderMutation.isPending}
-        onSubmit={(data) => {
-          createFolderMutation.mutate(data, {
-            onSuccess: () => onCreateFolderOpenChange(false),
-          });
-        }}
-      />
-      <UploadFileDialog
-        open={uploadFileOpen}
-        onOpenChange={onUploadFileOpenChange}
-        parentId={currentFolderId}
-        isSubmitting={uploadFileMutation.isPending}
-        onSubmit={(payload) => {
-          uploadFileMutation.mutate(payload, {
-            onSuccess: () => onUploadFileOpenChange(false),
-          });
-        }}
-      />
-      <RenameDialog
-        open={!!renameItem}
-        onOpenChange={(open) => {
-          if (!open) onRenameItemChange(null);
-        }}
-        item={renameItem}
-        isSubmitting={renameMutation.isPending}
-        onSubmit={(data) => {
-          renameMutation.mutate(data, {
-            onSuccess: () => {
-              toast.success('Renamed successfully.');
-              onRenameItemChange(null);
-            },
-          });
-        }}
-      />
+      {!readOnly && (
+        <>
+          <CreateFolderDialog
+            open={createFolderOpen}
+            onOpenChange={onCreateFolderOpenChange}
+            parentId={currentFolderId}
+            isSubmitting={createFolderMutation.isPending}
+            onSubmit={(data) => {
+              createFolderMutation.mutate(data, {
+                onSuccess: () => onCreateFolderOpenChange(false),
+              });
+            }}
+          />
+          <UploadFileDialog
+            open={uploadFileOpen}
+            onOpenChange={handleUploadOpenChange}
+            parentId={currentFolderId}
+            multiple
+            isSubmitting={uploadFilesMutation.isPending}
+            uploadProgress={uploadProgress}
+            onSubmit={(payloads) => {
+              setUploadProgress({
+                completed: 0,
+                total: payloads.length,
+                currentFileName: payloads[0]?.file.name,
+              });
+              uploadFilesMutation.mutate(
+                {
+                  payloads,
+                  onProgress: setUploadProgress,
+                },
+                {
+                  onSuccess: () => onUploadFileOpenChange(false),
+                  onSettled: () => setUploadProgress(null),
+                }
+              );
+            }}
+          />
+          <RenameDialog
+            open={!!renameItem}
+            onOpenChange={(open) => {
+              if (!open) onRenameItemChange(null);
+            }}
+            item={renameItem}
+            isSubmitting={renameMutation.isPending}
+            onSubmit={(data) => {
+              renameMutation.mutate(data, {
+                onSuccess: () => {
+                  toast.success('Renamed successfully.');
+                  onRenameItemChange(null);
+                },
+              });
+            }}
+          />
+        </>
+      )}
       <FilePreviewDialog
         open={!!previewItem}
         onOpenChange={(open) => {
@@ -94,24 +123,27 @@ export function FilesPageDialogs({
         }}
         file={previewItem}
       />
-      <FilesDeleteDialog
-        item={deleteItem}
-        onOpenChange={(open) => {
-          if (!open) onDeleteItemChange(null);
-        }}
-        isPending={isDeleting}
-        onConfirm={() => {
-          if (!deleteItem) return;
+      {!readOnly && (
+        <FilesDeleteDialog
+          item={deleteItem}
+          onOpenChange={(open) => {
+            if (!open) onDeleteItemChange(null);
+          }}
+          isPending={isDeleting}
+          onConfirm={() => {
+            if (!deleteItem) return;
 
-          const mutation = deleteItem.type === 'FOLDER' ? deleteFolderMutation : deleteFileMutation;
-          mutation.mutate(deleteItem.id, {
-            onSuccess: () => {
-              toast.success(`${deleteItem.type === 'FOLDER' ? 'Folder' : 'File'} deleted.`);
-              onDeleteItemChange(null);
-            },
-          });
-        }}
-      />
+            const mutation =
+              deleteItem.type === 'FOLDER' ? deleteFolderMutation : deleteFileMutation;
+            mutation.mutate(deleteItem.id, {
+              onSuccess: () => {
+                toast.success(`${deleteItem.type === 'FOLDER' ? 'Folder' : 'File'} deleted.`);
+                onDeleteItemChange(null);
+              },
+            });
+          }}
+        />
+      )}
     </>
   );
 }

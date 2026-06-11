@@ -12,8 +12,11 @@ import {
   type FolderCreateInput,
   type FolderDetail,
 } from '@/modules/files/schemas/file.schema';
+import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
+import { isAxiosError } from 'axios';
 
 const BASE = '/file';
+const FILE_UNAVAILABLE_MESSAGE = 'This file no longer exists or has been deleted.';
 
 export type ProjectProtectedFolderType =
   | 'INVOICE'
@@ -21,8 +24,11 @@ export type ProjectProtectedFolderType =
   | 'PURCHASE_ORDER'
   | 'PURCHASE_ORDER_CO'
   | 'PRIME_CO'
+  | 'SUB_CHANGE_ORDER'
   | 'PRIME_CONTRACT'
   | 'SCHEDULE';
+
+export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';
 
 type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
 
@@ -36,6 +42,22 @@ export interface FileSearchParams {
   ancestorId?: string;
   createdFrom?: string;
   createdTo?: string;
+}
+
+export interface FileUploadPayload {
+  file: File;
+  data: FileUploadInput;
+}
+
+export interface FileUploadProgress {
+  completed: number;
+  total: number;
+  currentFileName?: string;
+}
+
+export interface FileUploadBatchInput {
+  payloads: FileUploadPayload[];
+  onProgress?: (progress: FileUploadProgress) => void;
 }
 
 function parseFolderId(raw: unknown, context: string): string {
@@ -60,6 +82,61 @@ function downloadBlob(blob: Blob, fileName: string): void {
   anchor.click();
   document.body.removeChild(anchor);
   window.URL.revokeObjectURL(blobUrl);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getMessageFromPayload(payload: unknown): string | undefined {
+  if (typeof payload === 'string') return payload;
+  if (!isRecord(payload)) return undefined;
+
+  const message = payload.message;
+  if (typeof message === 'string') return message;
+  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
+    return message.join('\n');
+  }
+
+  return undefined;
+}
+
+async function getBlobErrorMessage(blob: Blob): Promise<string | undefined> {
+  const text = await blob.text();
+  if (!text.trim()) return undefined;
+
+  try {
+    return getMessageFromPayload(JSON.parse(text) as unknown) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function isUnavailableFileMessage(message: string | undefined): boolean {
+  const normalized = message?.toLowerCase() ?? '';
+
+  return (
+    normalized.includes('no file found') ||
+    normalized.includes('deleted') ||
+    normalized.includes('no longer exists')
+  );
+}
+
+async function normalizeDownloadError(error: unknown): Promise<unknown> {
+  if (!isAxiosError(error)) return error;
+
+  const data = error.response?.data;
+  const status = error.response?.status;
+  const message =
+    data instanceof Blob ? await getBlobErrorMessage(data) : getMessageFromPayload(data);
+
+  if ((status === 400 || status === 404) && isUnavailableFileMessage(message)) {
+    return new Error(FILE_UNAVAILABLE_MESSAGE);
+  }
+
+  if (message) return new Error(message);
+
+  return error;
 }
 
 function parseExportJob(raw: unknown, context: string): FileExportJob {
@@ -164,6 +241,20 @@ export const filesApi = {
     return parseFolderId(raw, 'Project subfolder lookup');
   },
 
+  async getProjectEntityFolderId(
+    projectId: string,
+    entityType: ProjectEntityFolderType,
+    entityId: string
+  ): Promise<string> {
+    const res = await api.post(`${BASE}/project/${projectId}/entity-folder`, {
+      entityType,
+      entityId,
+    });
+    const raw = res.data?.data ?? res.data;
+
+    return parseFolderId(raw, 'Project entity folder lookup');
+  },
+
   async createFolder(data: FolderCreateInput): Promise<FileItem> {
     const res = await api.post(`${BASE}/folder`, data);
     const raw = res.data?.data ?? res.data;
@@ -178,6 +269,8 @@ export const filesApi = {
   },
 
   async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
+    assertUploadFileIsValid(file, data);
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('name', data.name);
@@ -203,19 +296,47 @@ export const filesApi = {
     return match;
   },
 
+  async uploadFiles(
+    payloads: FileUploadPayload[],
+    onProgress?: (progress: FileUploadProgress) => void
+  ): Promise<FileItem[]> {
+    const uploadedFiles: FileItem[] = [];
+    const total = payloads.length;
+
+    for (const [index, payload] of payloads.entries()) {
+      onProgress?.({
+        completed: index,
+        total,
+        currentFileName: payload.file.name,
+      });
+      uploadedFiles.push(await this.uploadFile(payload.file, payload.data));
+      onProgress?.({
+        completed: index + 1,
+        total,
+        currentFileName: payload.file.name,
+      });
+    }
+
+    return uploadedFiles;
+  },
+
   async getDownloadLink(id: string): Promise<string> {
     const res = await api.get(`${BASE}/download/${id}`);
     return res.data?.data ?? res.data;
   },
 
   async downloadFile(file: DownloadTarget): Promise<void> {
-    const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
-      params: { disposition: 'attachment' },
-      responseType: 'blob',
-      timeout: 0,
-    });
+    try {
+      const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
+        params: { disposition: 'attachment' },
+        responseType: 'blob',
+        timeout: 0,
+      });
 
-    downloadBlob(res.data, getDownloadName(file, 'download'));
+      downloadBlob(res.data, getDownloadName(file, 'download'));
+    } catch (error: unknown) {
+      throw await normalizeDownloadError(error);
+    }
   },
 
   async startFolderExport(folder: DownloadTarget): Promise<FileExportJob> {

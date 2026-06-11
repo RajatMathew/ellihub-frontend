@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -15,13 +13,15 @@ import {
   RFQVendorsCell,
 } from '@/modules/project/components/rfq/rfq-list-column-cells';
 import type { RFQListItem } from '@/modules/project/schemas/rfq';
+import type { ColumnDef } from '@tanstack/react-table';
 
 interface UseRFQListColumnsOptions {
   onDelete: (rfq: RFQListItem) => void;
+  onVoid: (rfq: RFQListItem) => void;
   onCreatePO: (rfq: RFQListItem) => void;
 }
 
-export function useRFQListColumns({ onDelete, onCreatePO }: UseRFQListColumnsOptions) {
+export function useRFQListColumns({ onDelete, onVoid, onCreatePO }: UseRFQListColumnsOptions) {
   return useMemo<ColumnDef<RFQListItem>[]>(
     () => [
       {
@@ -39,6 +39,7 @@ export function useRFQListColumns({ onDelete, onCreatePO }: UseRFQListColumnsOpt
         cell: ({ row }) => <RFQTitleCell rfq={row.original} />,
         meta: {
           headerClassName: 'min-w-56',
+          textOverflow: 'truncate',
           skeleton: <Skeleton className="h-3.5 w-44" />,
         },
       },
@@ -95,7 +96,12 @@ export function useRFQListColumns({ onDelete, onCreatePO }: UseRFQListColumnsOpt
         id: 'actions',
         header: () => null,
         cell: ({ row }) => (
-          <RFQActionsCell rfq={row.original} onDelete={onDelete} onCreatePO={onCreatePO} />
+          <RFQActionsCell
+            rfq={row.original}
+            onDelete={onDelete}
+            onVoid={onVoid}
+            onCreatePO={onCreatePO}
+          />
         ),
         meta: {
           headerClassName: 'w-14',
@@ -104,6 +110,6 @@ export function useRFQListColumns({ onDelete, onCreatePO }: UseRFQListColumnsOpt
         enableSorting: false,
       },
     ],
-    [onCreatePO, onDelete],
+    [onCreatePO, onDelete, onVoid]
   );
 }

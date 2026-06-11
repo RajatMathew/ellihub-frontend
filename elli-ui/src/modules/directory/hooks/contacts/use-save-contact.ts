@@ -6,6 +6,7 @@ import {
   useUnlinkEntityMutation,
   useUpdateContactMutation,
 } from '@/modules/directory/hooks/contacts.hooks';
+import type { PendingContactAssociation } from '@/modules/directory/components/contacts/form/contact-form.types';
 import type {
   ContactFormValues,
   CreateContactInput,
@@ -17,6 +18,8 @@ interface UseSaveContactArgs {
   isEdit: boolean;
   primaryVendorId: string | undefined;
   primaryGCId: string | undefined;
+  isPrimary: boolean;
+  initialAssociation: Pick<PendingContactAssociation, 'id' | 'type'> | null;
   onSaved: () => void;
 }
 
@@ -25,6 +28,8 @@ export function useSaveContact({
   isEdit,
   primaryVendorId,
   primaryGCId,
+  isPrimary,
+  initialAssociation,
   onSaved,
 }: UseSaveContactArgs) {
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +44,7 @@ export function useSaveContact({
     try {
       const email = formData.email?.email || undefined;
       const phoneNumber = formData.phoneNumber?.number || undefined;
+      const nextAssociation = getSelectedAssociation(primaryVendorId, primaryGCId);
 
       if (isEdit && contactId) {
         await updateMutation.mutateAsync({
@@ -49,18 +55,18 @@ export function useSaveContact({
             email,
             phoneNumber,
             tags: formData.tags,
-            vendorId: primaryVendorId,
-            generalContractorId: primaryGCId,
           },
         });
 
-        if (primaryVendorId || primaryGCId) {
+        if (nextAssociation) {
           await linkEntityMutation.mutateAsync({
             contactId,
             vendorId: primaryVendorId,
             generalContractorId: primaryGCId,
+            isPrimary,
+            replaceExisting: hasAssociationChanged(initialAssociation, nextAssociation),
           });
-        } else {
+        } else if (!nextAssociation && initialAssociation) {
           await unlinkMutation.mutateAsync(contactId);
         }
 
@@ -75,17 +81,16 @@ export function useSaveContact({
         email,
         phoneNumber,
         tags: formData.tags,
-        vendorId: primaryVendorId,
-        generalContractorId: primaryGCId,
       };
 
       const newContact = await createMutation.mutateAsync(payload);
 
-      if (primaryVendorId || primaryGCId) {
+      if (nextAssociation) {
         await linkEntityMutation.mutateAsync({
           contactId: newContact.id,
           vendorId: primaryVendorId,
           generalContractorId: primaryGCId,
+          isPrimary,
         });
       }
 
@@ -107,4 +112,21 @@ export function useSaveContact({
       linkEntityMutation.isPending ||
       unlinkMutation.isPending,
   };
+}
+
+function getSelectedAssociation(
+  primaryVendorId: string | undefined,
+  primaryGCId: string | undefined
+): Pick<PendingContactAssociation, 'id' | 'type'> | null {
+  if (primaryVendorId) return { id: primaryVendorId, type: 'VENDOR' };
+  if (primaryGCId) return { id: primaryGCId, type: 'GC' };
+
+  return null;
+}
+
+function hasAssociationChanged(
+  current: Pick<PendingContactAssociation, 'id' | 'type'> | null,
+  next: Pick<PendingContactAssociation, 'id' | 'type'>
+) {
+  return Boolean(current && (current.id !== next.id || current.type !== next.type));
 }

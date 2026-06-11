@@ -1,4 +1,7 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -10,7 +13,6 @@ import type {
   VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function invalidateRFQQueries(queryClient: QueryClient, rfqId?: string) {
@@ -195,8 +197,8 @@ export const useRemoveQuoteMutation = () => {
 export const useChangeRFQStatusMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, statusId }: { id: string; statusId: string }) =>
-      rfqApi.changeStatus(id, statusId),
+    mutationFn: ({ id, statusName }: { id: string; statusName: 'DRAFT' | 'PUBLISHED' }) =>
+      rfqApi.changeStatus(id, statusName),
     onSuccess: async (_, { id }) => {
       await invalidateRFQQueries(qc, id);
       toast.success('Status updated.');
@@ -225,10 +227,13 @@ export const useDeclineInviteMutation = () => {
 export const useAddVendorMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { rfqId: string; vendorId: string }) => rfqApi.addVendor(data),
-    onSuccess: async (_, { rfqId }) => {
+    mutationFn: ({ rfqId, vendorId }: { rfqId: string; vendorId: string; silent?: boolean }) =>
+      rfqApi.addVendor({ rfqId, vendorId }),
+    onSuccess: async (_, { rfqId, silent }) => {
       await invalidateRFQQueries(qc, rfqId);
-      toast.success('Vendor added.');
+      if (!silent) {
+        toast.success('Vendor added.');
+      }
     },
     onError: (err) => toastApiError(err, 'Failed to add vendor.'),
   });
@@ -248,10 +253,43 @@ export const useRemoveVendorMutation = () => {
 
 export const useGenerateRFQVendorPdfMutation = () =>
   useMutation({
-    mutationFn: ({ quoteId, vendorName }: { quoteId: string; vendorName: string }) =>
-      rfqApi.generateVendorPdf(quoteId, vendorName),
+    mutationFn: ({
+      quoteId,
+      vendorName,
+      data,
+    }: {
+      quoteId: string;
+      vendorName: string;
+      data?: GeneratePdfTermsInput;
+    }) => rfqApi.generateVendorPdf(quoteId, vendorName, data),
     onError: (err) => toastApiError(err, 'Failed to generate RFQ PDF.'),
   });
+
+export const useSaveRFQVendorPdfMutation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      quoteId,
+      vendorName,
+      data,
+    }: {
+      quoteId: string;
+      vendorName: string;
+      rfqId?: string;
+      data?: GeneratePdfTermsInput;
+    }) => rfqApi.saveVendorPdf(quoteId, vendorName, data),
+    onSuccess: async (_, { rfqId }) => {
+      await invalidateProjectQueries(qc, [
+        rfqKeys.all,
+        ...(rfqId ? [rfqKeys.detail(rfqId)] : []),
+        filesKeys.all,
+        activityLogKeys.all,
+      ]);
+      toast.success('PDF saved to Files.');
+    },
+    onError: (err) => toastApiError(err, 'Failed to save RFQ PDF.'),
+  });
+};
 
 /* ---- workflow mutations ---- */
 
@@ -274,9 +312,9 @@ export const useCancelRFQMutation = () => {
       rfqApi.cancel(id, cancellationReason),
     onSuccess: async (_, { id }) => {
       await invalidateRFQQueries(qc, id);
-      toast.success('RFQ cancelled.');
+      toast.success('RFQ voided.');
     },
-    onError: (err) => toastApiError(err, 'Failed to cancel RFQ.'),
+    onError: (err) => toastApiError(err, 'Failed to void RFQ.'),
   });
 };
 
@@ -362,28 +400,5 @@ export const useAddQuoteAttachmentMutation = () => {
       toast.success('Quote document uploaded.');
     },
     onError: (err) => toastApiError(err, 'Failed to upload quote document.'),
-  });
-};
-
-export const useGeneratePOMutation = () => {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
-
-  return useMutation({
-    mutationFn: (rfqId: string) => rfqApi.generatePO(rfqId),
-    onSuccess: async (data, rfqId) => {
-      await invalidateRFQQueries(qc, rfqId);
-      toast.success('Purchase Order created.');
-
-      const poId =
-        typeof data === 'object' && data !== null && 'id' in data && typeof data.id === 'string'
-          ? data.id
-          : undefined;
-      if (poId && projectId) {
-        navigate(`/app/project/${projectId}/purchase-orders/${poId}`);
-      }
-    },
-    onError: (err) => toastApiError(err, 'Failed to create Purchase Order.'),
   });
 };

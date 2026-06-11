@@ -1,124 +1,127 @@
 model Vendor {
-    id           String       @id
-    name         String
-    type         Lookup?      @relation(fields: [typeId], references: [id])
-    typeId       String?
-    categoryTags String[]
-    taxId        String?
-    status       VendorStatus
-    address      String?
-    email        String?
-    phone        String?
-    website      String?
-    fax          String?
-    paymentTerms PaymentTerms @default(NET_30)
-    notes        String?
+  id           String       @id
+  name         String
+  type         Lookup?      @relation(fields: [typeId], references: [id])
+  typeId       String?
+  categoryTags String[]
+  taxId        String?
+  status       VendorStatus
+  address      String?
+  email        String?
+  phone        String?
+  website      String?
+  fax          String?
+  paymentTerms PaymentTerms @default(NET_30)
+  notes        String?
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    contacts        Contact[]
-    documents       VendorDocument[]
-    rfqs            RFQ[]
-    rfqvendorQuotes RFQVendorQuote[]
-    purchaseOrders  PurchaseOrder[]
-    invoices        Invoice[]
+  contacts        Contact[]
+  documents       VendorDocument[]
+  rfqs            RFQ[]
+  rfqvendorQuotes RFQVendorQuote[]
+  purchaseOrders  PurchaseOrder[]
+  invoices        Invoice[]
 
-    @@index([name])
-    @@index([status])
+  @@index([name])
+  @@index([status])
 }
 
 model VendorDocument {
-    id       String @id
-    fileId   String
-    file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
-    vendorId String
-    vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id       String @id
+  fileId   String
+  file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
-    expiresOn DateTime? @db.Date
+  expiresOn DateTime? @db.Date
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@unique([vendorId, fileId])
-    @@index([fileId])
+  @@unique([vendorId, fileId])
+  @@index([fileId])
 }
 
 enum VendorStatus {
-    ACTIVE
-    INACTIVE
+  ACTIVE
+  INACTIVE
 }
 
 model GeneralContractor {
-    id               String       @id
-    name             String
-    gcTypeId         String
-    gcType           Lookup       @relation(fields: [gcTypeId], references: [id])
-    status           GCStatus     @default(ACTIVE)
-    address          String?
-    email            String?
-    phone            String?
-    website          String?
-    fax              String?
-    paymentTerms     PaymentTerms @default(NET_30)
-    retainagePercent Float        @default(10.0)
+  id               String       @id
+  name             String
+  gcTypeId         String
+  gcType           Lookup       @relation(fields: [gcTypeId], references: [id])
+  status           GCStatus     @default(ACTIVE)
+  address          String?
+  email            String?
+  phone            String?
+  website          String?
+  fax              String?
+  paymentTerms     PaymentTerms @default(NET_30)
+  retainagePercent Float        @default(10.0)
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    contacts  Contact[]
-    documents GCDocument[]
-    projects  Project[]
+  contacts  Contact[]
+  documents GCDocument[]
+  projects  Project[]
 
-    @@index([name])
-    @@index([status])
-    @@index([gcTypeId])
-    @@index([deletedAt])
+  @@index([name])
+  @@index([status])
+  @@index([gcTypeId])
+  @@index([deletedAt])
 }
 
 enum GCStatus {
-    ACTIVE
-    INACTIVE
+  ACTIVE
+  INACTIVE
 }
 
 model GCDocument {
-    id     String            @id
-    gcId   String
-    gc     GeneralContractor @relation(fields: [gcId], references: [id], onDelete: Cascade)
-    fileId String
-    file   File              @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  id     String            @id
+  gcId   String
+  gc     GeneralContractor @relation(fields: [gcId], references: [id], onDelete: Cascade)
+  fileId String
+  file   File              @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
-    expiresOn DateTime? @db.Date
+  expiresOn DateTime? @db.Date
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@unique([gcId, fileId])
-    @@index([fileId])
+  @@unique([gcId, fileId])
+  @@index([fileId])
 }
 
 model Contact {
-    id                 String   @id
-    fullName           String
-    professionalRoleId String?
-    professionalRole   Lookup?  @relation(fields: [professionalRoleId], references: [id])
-    email              String?
-    phoneNumber        String?
-    tags               String[]
+  id                 String   @id
+  fullName           String
+  professionalRoleId String?
+  professionalRole   Lookup?  @relation(fields: [professionalRoleId], references: [id])
+  email              String?
+  phoneNumber        String?
+  tags               String[]
+  isPrimary          Boolean  @default(false)
 
-    vendorId            String?
-    vendor              Vendor?            @relation(fields: [vendorId], references: [id])
-    generalContractorId String?
-    generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
+  vendorId            String?
+  vendor              Vendor?            @relation(fields: [vendorId], references: [id])
+  generalContractorId String?
+  generalContractor   GeneralContractor? @relation(fields: [generalContractorId], references: [id])
 
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-    @@index([fullName])
-    @@index([deletedAt])
-    @@index([vendorId])
-    @@index([generalContractorId])
+  @@index([fullName])
+  @@index([deletedAt])
+  @@index([vendorId])
+  @@index([generalContractorId])
+  @@index([vendorId, isPrimary])
+  @@index([generalContractorId, isPrimary])
 }

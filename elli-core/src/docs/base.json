@@ -69,7 +69,7 @@
         { "name": "Users", "description": "User and role management" },
         { "name": "Cost Code Categories", "description": "Manage cost code categories" },
         { "name": "Cost Codes", "description": "Manage cost codes" },
-        { "name": "File", "description": "File and folder management (S3)" },
+        { "name": "File", "description": "File and folder management" },
         { "name": "Employees", "description": "Employee management and project assignments" },
         { "name": "Departments", "description": "Department management and employee assignments" },
         { "name": "Lookup", "description": "Generic lookup values (categories, tags, statuses, etc.)" },

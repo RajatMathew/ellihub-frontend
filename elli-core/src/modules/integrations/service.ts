@@ -1,36 +1,28 @@
 import { randomBytes } from 'node:crypto';
 
 import { prisma } from '@lib/prisma';
-import { BadRequestError, NotFoundError } from '@utils';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
 import {
     QUICKBOOKS_ACCOUNTING_SCOPE,
-    QUICKBOOKS_DEFAULT_TRANSACTION_ENTITIES,
     QuickBooksCallbackQuery,
     QuickBooksDisconnectCallbackQuery,
-    QuickBooksTransactionEntity,
-    QuickBooksTransactionEntitySchema,
-    QuickBooksTransactionPreview,
-    QuickBooksTransactionsQuery,
 } from './models';
 import {
     getFrontendUrl,
     getQuickBooksClientErrorMessage,
     getQuickBooksConfig,
     getQuickBooksConfigurationStatus,
-    isQuickBooksAuthError,
     QuickBooksClient,
-    QuickBooksTokenResponse,
 } from './quickbooks-client';
 import { decryptQuickBooksToken, encryptQuickBooksToken } from './quickbooks-crypto';
+import { markQuickBooksConnectionDisconnected } from './quickbooks-token-helper';
 
 import type { QuickBooksConnection } from '@db/client';
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const ACCESS_TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
 const REFRESH_TOKEN_EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
-const QUICKBOOKS_ENTITY_SET = new Set<string>(QuickBooksTransactionEntitySchema.options);
+const QUICKBOOKS_SETTINGS_PATH = '/app/settings/integrations';
 
 type QuickBooksTokenHealth = 'healthy' | 'expiring' | 'expired' | 'unknown';
 
@@ -45,7 +37,6 @@ type QuickBooksStatusConnection = {
     accessTokenExpiresAt: string;
     refreshTokenExpiresAt: string | null;
     tokenHealth: QuickBooksTokenHealth;
-    lastSyncedAt: string | null;
     disconnectedAt: string | null;
     createdAt: string;
     updatedAt: string;
@@ -70,22 +61,6 @@ type QuickBooksAuthorizationResponse = {
 
 type QuickBooksCallbackResponse = {
     redirectUrl: string;
-};
-
-type QuickBooksTransactionsResponse = {
-    realmId: string;
-    companyName: string | null;
-    environment: 'sandbox' | 'production';
-    fetchedAt: string;
-    entities: QuickBooksTransactionEntity[];
-    transactions: QuickBooksTransactionPreview[];
-};
-
-type QuickBooksTransactionResponse = {
-    realmId: string;
-    companyName: string | null;
-    environment: 'sandbox' | 'production';
-    transaction: QuickBooksTransactionPreview;
 };
 
 type QuickBooksDisconnectResponse = {
@@ -128,7 +103,6 @@ const toStatusConnection = (connection: QuickBooksConnection): QuickBooksStatusC
     accessTokenExpiresAt: connection.accessTokenExpiresAt.toISOString(),
     refreshTokenExpiresAt: connection.refreshTokenExpiresAt?.toISOString() ?? null,
     tokenHealth: getTokenHealth(connection),
-    lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
     disconnectedAt: connection.disconnectedAt?.toISOString() ?? null,
     createdAt: connection.createdAt.toISOString(),
     updatedAt: connection.updatedAt.toISOString(),
@@ -146,18 +120,8 @@ const getActiveConnection = async (): Promise<QuickBooksConnection | null> => {
     });
 };
 
-const getRequiredActiveConnection = async (): Promise<QuickBooksConnection> => {
-    const connection = await getActiveConnection();
-
-    if (!connection) {
-        throw new NotFoundError('QuickBooks is not connected');
-    }
-
-    return connection;
-};
-
 const buildFrontendRedirect = (params: Record<string, string>): string => {
-    const url = new URL('/app/integrations/quickbooks', getFrontendUrl());
+    const url = new URL(QUICKBOOKS_SETTINGS_PATH, getFrontendUrl());
 
     Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
@@ -170,186 +134,6 @@ const buildPublicRedirect = (path: string, params: Record<string, string> = {}):
     Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
     return url.toString();
-};
-
-const markConnectionDisconnected = async (connectionId: string): Promise<void> => {
-    await prisma.quickBooksConnection.update({
-        where: { id: connectionId },
-        data: {
-            status: 'DISCONNECTED',
-            accessToken: '',
-            refreshToken: '',
-            accessTokenExpiresAt: new Date(0),
-            refreshTokenExpiresAt: null,
-            disconnectedAt: new Date(),
-        },
-    });
-};
-
-const storeTokenResponse = async (
-    connectionId: string,
-    token: QuickBooksTokenResponse,
-    now = new Date()
-): Promise<void> => {
-    await prisma.quickBooksConnection.update({
-        where: { id: connectionId },
-        data: {
-            accessToken: encryptQuickBooksToken(token.accessToken),
-            refreshToken: encryptQuickBooksToken(token.refreshToken),
-            tokenType: token.tokenType,
-            accessTokenExpiresAt: addSeconds(now, token.expiresIn),
-            refreshTokenExpiresAt: token.refreshTokenExpiresIn
-                ? addSeconds(now, token.refreshTokenExpiresIn)
-                : undefined,
-        },
-    });
-};
-
-const getValidAccessToken = async (connectionId: string): Promise<string> => {
-    const connection = await prisma.quickBooksConnection.findUnique({
-        where: { id: connectionId },
-    });
-    if (!connection || connection.status !== 'CONNECTED') {
-        throw new NotFoundError('QuickBooks is not connected');
-    }
-
-    const refreshAt = connection.accessTokenExpiresAt.getTime() - ACCESS_TOKEN_REFRESH_WINDOW_MS;
-    if (refreshAt > Date.now()) {
-        return decryptQuickBooksToken(connection.accessToken);
-    }
-
-    try {
-        const token = await QuickBooksClient.refreshToken(
-            decryptQuickBooksToken(connection.refreshToken)
-        );
-        await storeTokenResponse(connection.id, token);
-
-        return token.accessToken;
-    } catch (error) {
-        if (isQuickBooksAuthError(error)) {
-            await markConnectionDisconnected(connection.id);
-            throw new BadRequestError(
-                'QuickBooks authorization has been revoked. Please reconnect.'
-            );
-        }
-
-        const message = getQuickBooksClientErrorMessage(error);
-        if (message) {
-            throw new BadRequestError(`QuickBooks token refresh failed: ${message}`);
-        }
-
-        throw error;
-    }
-};
-
-const getRequestedEntities = (entities?: string): QuickBooksTransactionEntity[] => {
-    if (!entities) return QUICKBOOKS_DEFAULT_TRANSACTION_ENTITIES;
-
-    const requested = entities
-        .split(',')
-        .map((entity) => entity.trim())
-        .filter(Boolean);
-
-    if (requested.length === 0) return QUICKBOOKS_DEFAULT_TRANSACTION_ENTITIES;
-
-    const invalid = requested.filter((entity) => !QUICKBOOKS_ENTITY_SET.has(entity));
-    if (invalid.length > 0) {
-        throw new BadRequestError(
-            `Unsupported QuickBooks transaction entity: ${invalid.join(', ')}`
-        );
-    }
-
-    return requested.map((entity) => QuickBooksTransactionEntitySchema.parse(entity));
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const getStringValue = (record: Record<string, unknown>, key: string): string | null => {
-    const value = record[key];
-    return typeof value === 'string' && value.trim() ? value : null;
-};
-
-const getNumberValue = (record: Record<string, unknown>, key: string): number | null => {
-    const value = record[key];
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string' && value.trim()) {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-
-    return null;
-};
-
-const getRecordValue = (
-    record: Record<string, unknown>,
-    key: string
-): Record<string, unknown> | null => {
-    const value = record[key];
-    return isRecord(value) ? value : null;
-};
-
-const getRefName = (record: Record<string, unknown>, key: string): string | null => {
-    const ref = getRecordValue(record, key);
-    if (!ref) return null;
-
-    return getStringValue(ref, 'name') ?? getStringValue(ref, 'value');
-};
-
-const getLastUpdatedTime = (record: Record<string, unknown>): string | null => {
-    const metadata = getRecordValue(record, 'MetaData') ?? getRecordValue(record, 'Metadata');
-    return metadata ? getStringValue(metadata, 'LastUpdatedTime') : null;
-};
-
-const getCurrency = (record: Record<string, unknown>): string | null => {
-    const currencyRef = getRecordValue(record, 'CurrencyRef');
-    return currencyRef ? getStringValue(currencyRef, 'value') : null;
-};
-
-const getDisplayName = (
-    entity: QuickBooksTransactionEntity,
-    record: Record<string, unknown>
-): string => {
-    return (
-        getRefName(record, 'CustomerRef') ??
-        getRefName(record, 'VendorRef') ??
-        getRefName(record, 'AccountRef') ??
-        getStringValue(record, 'DocNumber') ??
-        `${entity} ${getStringValue(record, 'Id') ?? ''}`.trim()
-    );
-};
-
-const normalizeTransaction = (
-    entity: QuickBooksTransactionEntity,
-    record: Record<string, unknown>
-): QuickBooksTransactionPreview => ({
-    entity,
-    id: getStringValue(record, 'Id') ?? '',
-    docNumber: getStringValue(record, 'DocNumber'),
-    txnDate: getStringValue(record, 'TxnDate'),
-    displayName: getDisplayName(entity, record),
-    totalAmount: getNumberValue(record, 'TotalAmt') ?? getNumberValue(record, 'Amount'),
-    currency: getCurrency(record),
-    privateNote: getStringValue(record, 'PrivateNote') ?? getStringValue(record, 'Memo'),
-    lastUpdatedTime: getLastUpdatedTime(record),
-    raw: record,
-});
-
-const compareTransactions = (
-    a: QuickBooksTransactionPreview,
-    b: QuickBooksTransactionPreview
-): number => {
-    const aDate = a.lastUpdatedTime ?? a.txnDate ?? '';
-    const bDate = b.lastUpdatedTime ?? b.txnDate ?? '';
-
-    return bDate.localeCompare(aDate);
-};
-
-const getSafeQuickBooksId = (value: string): string => {
-    if (!/^[A-Za-z0-9_-]+$/.test(value)) {
-        throw new BadRequestError('Invalid QuickBooks transaction id');
-    }
-    return value;
 };
 
 export const QuickBooksService = {
@@ -381,7 +165,7 @@ export const QuickBooksService = {
 
         await prisma.quickBooksOAuthState.create({
             data: {
-                id: ulid(),
+                id: generateNanoId(),
                 state,
                 userId,
                 redirectTo: buildFrontendRedirect({}),
@@ -449,7 +233,6 @@ export const QuickBooksService = {
                 companyName = null;
             }
 
-            // Disconnect any other active connections (single-connection enforcement)
             const otherConnections = await prisma.quickBooksConnection.findMany({
                 where: {
                     status: 'CONNECTED',
@@ -461,9 +244,9 @@ export const QuickBooksService = {
                 try {
                     await QuickBooksClient.revokeToken(decryptQuickBooksToken(other.refreshToken));
                 } catch {
-                    // Best effort — token may already be invalid
+                    // Best effort: the Intuit token may already be invalid.
                 }
-                await markConnectionDisconnected(other.id);
+                await markQuickBooksConnectionDisconnected(other.id);
             }
 
             await prisma.quickBooksConnection.upsert({
@@ -484,7 +267,7 @@ export const QuickBooksService = {
                     disconnectedAt: null,
                 },
                 create: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     realmId: query.realmId,
                     companyName,
                     environment: config.environment === 'production' ? 'PRODUCTION' : 'SANDBOX',
@@ -528,11 +311,10 @@ export const QuickBooksService = {
         try {
             await QuickBooksClient.revokeToken(decryptQuickBooksToken(connection.refreshToken));
         } catch {
-            // Best effort — token may already be revoked, expired, or invalid.
-            // We always proceed with local cleanup regardless.
+            // Always clean up local state even if Intuit rejects the revocation request.
         }
 
-        await markConnectionDisconnected(connection.id);
+        await markQuickBooksConnectionDisconnected(connection.id);
 
         return { disconnected: true };
     },
@@ -545,7 +327,7 @@ export const QuickBooksService = {
         });
 
         if (connection && connection.status === 'CONNECTED') {
-            await markConnectionDisconnected(connection.id);
+            await markQuickBooksConnectionDisconnected(connection.id);
         }
 
         return {
@@ -553,93 +335,5 @@ export const QuickBooksService = {
                 realmId: query.realmId,
             }),
         };
-    },
-
-    getTransactions: async (
-        query: QuickBooksTransactionsQuery
-    ): Promise<QuickBooksTransactionsResponse> => {
-        const connection = await getRequiredActiveConnection();
-        const entities = getRequestedEntities(query.entities);
-        const accessToken = await getValidAccessToken(connection.id);
-        const transactions: QuickBooksTransactionPreview[] = [];
-
-        try {
-            for (const entity of entities) {
-                const select = `SELECT * FROM ${entity} ORDERBY MetaData.LastUpdatedTime DESC STARTPOSITION 1 MAXRESULTS ${query.maxResults}`;
-                const rows = await QuickBooksClient.queryEntity(
-                    connection.realmId,
-                    accessToken,
-                    entity,
-                    select
-                );
-                transactions.push(...rows.map((row) => normalizeTransaction(entity, row)));
-            }
-        } catch (error) {
-            const message = getQuickBooksClientErrorMessage(error);
-            if (message) {
-                throw new BadRequestError(`QuickBooks transaction sync failed: ${message}`);
-            }
-
-            throw error;
-        }
-
-        await prisma.quickBooksConnection.update({
-            where: { id: connection.id },
-            data: { lastSyncedAt: new Date() },
-        });
-
-        return {
-            realmId: connection.realmId,
-            companyName: connection.companyName,
-            environment: toEnvironment(connection.environment),
-            fetchedAt: new Date().toISOString(),
-            entities,
-            transactions: transactions.sort(compareTransactions),
-        };
-    },
-
-    getTransactionById: async (
-        entity: QuickBooksTransactionEntity,
-        transactionId: string,
-        realmId?: string
-    ): Promise<QuickBooksTransactionResponse> => {
-        const connection = await getRequiredActiveConnection();
-
-        if (realmId && connection.realmId !== realmId) {
-            throw new BadRequestError('QuickBooks transaction belongs to a different company');
-        }
-
-        const accessToken = await getValidAccessToken(connection.id);
-        const safeId = getSafeQuickBooksId(transactionId);
-
-        try {
-            const rows = await QuickBooksClient.queryEntity(
-                connection.realmId,
-                accessToken,
-                entity,
-                `SELECT * FROM ${entity} WHERE Id = '${safeId}'`
-            );
-            const record = rows[0];
-            if (!record) {
-                throw new NotFoundError('QuickBooks transaction not found');
-            }
-
-            await prisma.quickBooksConnection.update({
-                where: { id: connection.id },
-                data: { lastSyncedAt: new Date() },
-            });
-
-            return {
-                realmId: connection.realmId,
-                companyName: connection.companyName,
-                environment: toEnvironment(connection.environment),
-                transaction: normalizeTransaction(entity, record),
-            };
-        } catch (error) {
-            const message = getQuickBooksClientErrorMessage(error);
-            if (message)
-                throw new BadRequestError(`QuickBooks transaction lookup failed: ${message}`);
-            throw error;
-        }
     },
 };

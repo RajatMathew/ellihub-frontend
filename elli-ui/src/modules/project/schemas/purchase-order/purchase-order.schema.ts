@@ -1,5 +1,5 @@
-import { quickBooksTransactionEntitySchema } from '@/modules/integrations/schemas/quickbooks.schema';
 import { z } from 'zod';
+import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
 
 // --- Enums ---
 
@@ -75,6 +75,25 @@ const poTradeCategoryRefSchema = z
   })
   .passthrough();
 
+const poProjectRefSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().nullable().optional(),
+    jobNumber: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const poSubChangeOrderRefSchema = z
+  .object({
+    id: z.string(),
+    amount: z.coerce.number().nullable().optional(),
+    negotiatedDiscount: z.coerce.number().nullable().optional(),
+    shippingHandlingFee: z.coerce.number().nullable().optional(),
+    status: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 const poAttachmentSchema = z
   .object({
     id: z.string(),
@@ -102,8 +121,10 @@ export const poListItemSchema = z
     rfqId: z.string().nullable().optional(),
     tradeCategoryId: z.string().nullable().optional(),
     vendor: poVendorRefSchema.nullable().optional(),
+    project: poProjectRefSchema.nullable().optional(),
     rfq: poRfqRefSchema.nullable().optional(),
     tradeCategory: poTradeCategoryRefSchema.nullable().optional(),
+    subChangeOrders: z.array(poSubChangeOrderRefSchema).optional().default([]),
     poNumber: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     status: poStatusNameSchema,
@@ -113,7 +134,8 @@ export const poListItemSchema = z
     expectedDate: z.string().nullable().optional(),
     deliveryDate: z.string().nullable().optional(),
     subtotal: z.string().nullable().optional(),
-    markupAmount: z.string().nullable().optional(),
+    negotiatedDiscount: z.string().nullable().optional(),
+    shippingHandlingFee: z.string().nullable().optional(),
     taxPercent: z.string().nullable().optional(),
     taxAmount: z.string().nullable().optional(),
     total: z.string().nullable().optional(),
@@ -221,7 +243,8 @@ export const poDetailSchema = z
     shipToAddress: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     subtotal: z.string().nullable().optional(),
-    markupAmount: z.string().nullable().optional(),
+    negotiatedDiscount: z.string().nullable().optional(),
+    shippingHandlingFee: z.string().nullable().optional(),
     taxPercent: z.string().nullable().optional(),
     taxAmount: z.string().nullable().optional(),
     total: z.string().nullable().optional(),
@@ -261,11 +284,12 @@ export type PODetail = z.infer<typeof poDetailSchema>;
 // --- Line item input ---
 
 export const poLineItemInputSchema = z.object({
+  rfqDeliverableId: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().positive('Quantity must be > 0'),
   unitId: z.string().min(1, 'Unit is required'),
   unitPrice: z.number().min(0, 'Unit price must be >= 0'),
-  costCodeId: z.string().optional(),
+  costCodeId: z.string().min(1, 'Cost code is required'),
   notes: z.string().optional(),
 });
 
@@ -273,87 +297,64 @@ export type POLineItemInput = z.infer<typeof poLineItemInputSchema>;
 
 // --- Create input ---
 
-export const createPOInputSchema = z.object({
-  projectId: z.string().min(1, 'Project is required'),
-  vendorId: z.string().min(1, 'Vendor is required'),
-  rfqId: z.string().optional(),
-  tradeCategoryId: z.string().min(1, 'Trade category is required'),
-  description: z.string().optional(),
-  leadTime: z.string().optional(),
-  address: z.string().optional(),
-  expectedDate: z.string().optional(),
-  shipToAddress: z.string().optional(),
-  markupAmount: z.number().optional(),
-  taxPercent: z.number().min(0).max(100).optional(),
-  paymentTerms: paymentTermsSchema,
-  retainagePercent: z.number().min(0).max(100).optional(),
-  notes: z.string().optional(),
-  lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
-});
+export const createPOInputSchema = z
+  .object({
+    projectId: z.string().min(1, 'Project is required'),
+    vendorId: z.string().min(1, 'Vendor is required'),
+    rfqId: z.string().optional(),
+    tradeCategoryId: z.string().min(1, 'Trade category is required'),
+    description: z.string().optional(),
+    leadTime: z.string().optional(),
+    address: z.string().optional(),
+    expectedDate: z.string().optional(),
+    shipToAddress: z.string().optional(),
+    negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
+    shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
+    taxPercent: z.number().min(0).max(100).optional(),
+    paymentTerms: paymentTermsSchema,
+    retainagePercent: z.number().min(0).max(100).optional(),
+    notes: z.string().optional(),
+    lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
+  })
+  .superRefine((value, ctx) => {
+    const subtotal = value.lineItems.reduce(
+      (sum, item) => sum + calculateRoundedLineAmount(item),
+      0
+    );
+    if ((value.negotiatedDiscount ?? 0) > subtotal) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['negotiatedDiscount'],
+        message: 'Negotiated discount cannot exceed subtotal',
+      });
+    }
+  });
 
 export type CreatePOInput = z.infer<typeof createPOInputSchema>;
 
-// --- QuickBooks PO payments ---
+export const generatePOPdfInputSchema = z.object({
+  addWarningNotice: z.boolean().optional(),
+  warningNoticeTitle: z.string().optional(),
+  warningNoticeHtml: z.string().optional(),
+  addTermsAndConditions: z.boolean().optional(),
+  termsAndConditionsHtml: z.string().optional(),
+});
 
-export const poQuickBooksPaymentSchema = z.object({
+export type GeneratePOPdfInput = z.infer<typeof generatePOPdfInputSchema>;
+
+export const poPdfDefaultTermsSchema = z.object({
+  html: z.string(),
+});
+
+export type POPdfDefaultTerms = z.infer<typeof poPdfDefaultTermsSchema>;
+
+export const poPdfTermsOptionSchema = z.object({
   id: z.string(),
-  purchaseOrderId: z.string(),
-  realmId: z.string(),
-  entity: quickBooksTransactionEntitySchema,
-  transactionId: z.string(),
-  docNumber: z.string().nullable(),
-  displayName: z.string(),
-  txnDate: z.string().nullable(),
-  totalAmount: z.string().nullable(),
-  currency: z.string().nullable(),
-  privateNote: z.string().nullable(),
-  lastUpdatedTime: z.string().nullable(),
-  linkedById: z.string().nullable(),
-  removedAt: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  name: z.string(),
+  html: z.string(),
+  isDefault: z.boolean(),
 });
 
-export const poQuickBooksLinkedPurchaseOrderSchema = z.object({
-  id: z.string(),
-  poNumber: z.string().nullable(),
-});
+export const poPdfTermsOptionsSchema = z.array(poPdfTermsOptionSchema);
 
-export const poQuickBooksPaymentOptionSchema = z.object({
-  realmId: z.string(),
-  entity: quickBooksTransactionEntitySchema,
-  id: z.string(),
-  docNumber: z.string().nullable(),
-  txnDate: z.string().nullable(),
-  displayName: z.string(),
-  totalAmount: z.number().nullable(),
-  currency: z.string().nullable(),
-  privateNote: z.string().nullable(),
-  lastUpdatedTime: z.string().nullable(),
-  raw: z.record(z.string(), z.unknown()),
-  linkedPurchaseOrder: poQuickBooksLinkedPurchaseOrderSchema.nullable(),
-});
-
-export const poQuickBooksPaymentOptionsSchema = z.object({
-  realmId: z.string(),
-  companyName: z.string().nullable(),
-  environment: z.enum(['sandbox', 'production']),
-  fetchedAt: z.string(),
-  transactions: z.array(poQuickBooksPaymentOptionSchema),
-});
-
-export const addPoQuickBooksPaymentInputSchema = z.object({
-  entity: quickBooksTransactionEntitySchema,
-  transactionId: z.string().min(1),
-  realmId: z.string().min(1).optional(),
-});
-
-export const addPoQuickBooksPaymentsInputSchema = z.object({
-  payments: z.array(addPoQuickBooksPaymentInputSchema).min(1).max(25),
-});
-
-export type POQuickBooksPayment = z.infer<typeof poQuickBooksPaymentSchema>;
-export type POQuickBooksPaymentOption = z.infer<typeof poQuickBooksPaymentOptionSchema>;
-export type POQuickBooksPaymentOptions = z.infer<typeof poQuickBooksPaymentOptionsSchema>;
-export type AddPOQuickBooksPaymentInput = z.infer<typeof addPoQuickBooksPaymentInputSchema>;
-export type AddPOQuickBooksPaymentsInput = z.infer<typeof addPoQuickBooksPaymentsInputSchema>;
+export type POPdfTermsOption = z.infer<typeof poPdfTermsOptionSchema>;

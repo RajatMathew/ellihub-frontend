@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/app/components/ui/card';
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import {
   Select,
@@ -16,6 +16,8 @@ import type {
 } from '@/modules/directory/schemas/contact.schema';
 import { Building2, CircleUserRound, Mail, Phone } from 'lucide-react';
 import { Controller, type Control, type FormState } from 'react-hook-form';
+
+import { ContactFormFieldLabel, contactInvalidControlClassName } from './contact-form-field';
 
 interface ContactInfoFormSectionProps {
   control: Control<ContactFormValues>;
@@ -46,10 +48,10 @@ export function ContactInfoFormSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Full Name
-                </FieldLabel>
-                <InputWrapper>
+                <ContactFormFieldLabel required>Full Name</ContactFormFieldLabel>
+                <InputWrapper
+                  className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                >
                   <CircleUserRound className="size-4" />
                   <Input
                     {...field}
@@ -68,16 +70,17 @@ export function ContactInfoFormSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                  Professional Role
-                </FieldLabel>
+                <ContactFormFieldLabel>Professional Role</ContactFormFieldLabel>
                 <Select
                   key={`${roles.length}-${field.value || 'none'}`}
                   value={field.value ? String(field.value) : ''}
                   onValueChange={(value) => field.onChange(value || undefined)}
                   disabled={isLoadingRoles}
                 >
-                  <SelectTrigger aria-invalid={fieldState.invalid}>
+                  <SelectTrigger
+                    aria-invalid={fieldState.invalid}
+                    className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                  >
                     <div className="flex items-center gap-2">
                       <Building2 className="size-4 text-muted-foreground" />
                       <SelectValue
@@ -105,12 +108,11 @@ export function ContactInfoFormSection({
             control={control}
             render={({ field, fieldState }) => {
               const emailValue = field.value?.email ?? '';
+              const isInvalid = fieldState.invalid || Boolean(formState.errors.email);
               return (
-                <Field data-invalid={fieldState.invalid || Boolean(formState.errors.email)}>
-                  <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                    Email Address
-                  </FieldLabel>
-                  <InputWrapper>
+                <Field data-invalid={isInvalid}>
+                  <ContactFormFieldLabel>Email Address</ContactFormFieldLabel>
+                  <InputWrapper className={isInvalid ? contactInvalidControlClassName : undefined}>
                     <Mail className="size-4" />
                     <Input
                       type="email"
@@ -120,7 +122,7 @@ export function ContactInfoFormSection({
                         field.onChange(value ? { email: value, label: 'Work' } : undefined);
                       }}
                       placeholder="m.chen@company.com"
-                      aria-invalid={fieldState.invalid || Boolean(formState.errors.email)}
+                      aria-invalid={isInvalid}
                       autoComplete="off"
                     />
                   </InputWrapper>
@@ -140,10 +142,10 @@ export function ContactInfoFormSection({
               const phoneValue = field.value?.number ?? '';
               return (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                    Direct Phone
-                  </FieldLabel>
-                  <InputWrapper>
+                  <ContactFormFieldLabel>Direct Phone</ContactFormFieldLabel>
+                  <InputWrapper
+                    className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                  >
                     <Phone className="size-4" />
                     <Input
                       type="tel"
@@ -169,9 +171,7 @@ export function ContactInfoFormSection({
           control={control}
           render={({ field }) => (
             <Field>
-              <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-                Tags
-              </FieldLabel>
+              <ContactFormFieldLabel>Tags</ContactFormFieldLabel>
               <TagInput
                 value={field.value ?? []}
                 onChange={field.onChange}

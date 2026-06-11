@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { useAccess } from '@/app/contexts/access-context';
 import { GCStatsCards, GCTableCard, useGCListColumns } from '@/modules/directory/components/gc';
 import {
   GCS_DEFAULT_PAGE_SIZE,
@@ -9,6 +10,7 @@ import {
 import {
   useDeleteGCMutation,
   useGCsQuery,
+  useGCStatsQuery,
   useGCTypesQuery,
 } from '@/modules/directory/hooks/gc.hooks';
 import { useGCListParams } from '@/modules/directory/hooks/gc/use-gc-list-params';
@@ -22,6 +24,7 @@ import {
 import { Plus } from 'lucide-react';
 
 export function GCListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -51,10 +54,13 @@ export function GCListPage() {
 
   const { data: typeTabs = [], isLoading: isTypesLoading } = useGCTypesQuery();
   const { data, isLoading, isError, refetch } = useGCsQuery(filters);
+  const { data: stats } = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
 
   const listData = data?.data ?? [];
   const totalCount = data?.pagination?.totalItems ?? 0;
+  const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
+  const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
   const hasActiveFilters = Boolean(searchQuery || gcTypeIdFilter || statusFilter);
 
   const typeLabels = useMemo(() => {
@@ -74,6 +80,8 @@ export function GCListPage() {
 
   const columns = useGCListColumns({
     typeLabels,
+    canUpdate: can('generalContractor', 'update'),
+    canDelete: can('generalContractor', 'delete'),
     onDelete: handleDelete,
   });
 
@@ -137,12 +145,16 @@ export function GCListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="GCs"
-        addLabel="Add GC"
-        addTo="create"
-        addIcon={<Plus className="size-4" />}
+        addLabel={can('generalContractor', 'create') ? 'Add GC' : undefined}
+        addTo={can('generalContractor', 'create') ? 'create' : undefined}
+        addIcon={can('generalContractor', 'create') ? <Plus className="size-4" /> : undefined}
       />
 
-      <GCStatsCards totalGCs={totalCount} activeProjects={0} totalCommitted={0} />
+      <GCStatsCards
+        totalGCs={stats?.totalGCs ?? totalCount}
+        activeProjects={stats?.activeProjects ?? visibleActiveProjects}
+        totalCommitted={stats?.totalCommitted ?? visibleCommitted}
+      />
 
       <GCTableCard
         table={table}

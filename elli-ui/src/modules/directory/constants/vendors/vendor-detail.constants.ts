@@ -21,6 +21,4 @@ export const VENDOR_DETAIL_TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'projects', label: 'Projects' },
   { value: 'purchase-orders', label: 'Purchase Orders' },
-  { value: 'change-orders', label: 'Change Orders' },
-  { value: 'payments', label: 'Payments' },
 ] as const;

@@ -1,5 +1,4 @@
-import { StatsCard } from '@/app/components/ui/stats-card';
-import { Briefcase, Building2, FolderOpen, Tag } from 'lucide-react';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 
 interface ContactDetailStatsProps {
   roleName: string | null;
@@ -8,36 +7,47 @@ interface ContactDetailStatsProps {
 }
 
 export function ContactDetailStats({ roleName, entityCount, tagCount }: ContactDetailStatsProps) {
+  const statsItems = [
+    {
+      label: 'Role',
+      value: roleName ?? '-',
+      description: 'Professional role',
+      dotColor: 'bg-primary',
+    },
+    {
+      label: 'Companies',
+      value: entityCount,
+      description: 'Linked entities',
+      dotColor: 'bg-success',
+    },
+    {
+      label: 'Tags',
+      value: tagCount,
+      description: 'Classifications',
+      dotColor: 'bg-info',
+    },
+    {
+      label: 'Projects',
+      value: '-',
+      description: 'Coming soon',
+      dotColor: 'bg-warning',
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatsCard
-        icon={<Briefcase className="size-5 text-primary" />}
-        bgClass="bg-primary/10"
-        label="Role"
-        value={roleName ?? '-'}
-        description="Professional role"
-      />
-      <StatsCard
-        icon={<Building2 className="size-5 text-success" />}
-        bgClass="bg-success/10"
-        label="Companies"
-        value={entityCount}
-        description="Linked entities"
-      />
-      <StatsCard
-        icon={<Tag className="size-5 text-info" />}
-        bgClass="bg-info/10"
-        label="Tags"
-        value={tagCount}
-        description="Classifications"
-      />
-      <StatsCard
-        icon={<FolderOpen className="size-5 text-warning" />}
-        bgClass="bg-warning/10"
-        label="Projects"
-        value="-"
-        description="Coming soon"
-      />
-    </div>
+    <StatsBar variant="cards" width="full" columns={{ sm: 2, '2xl': 4 }}>
+      {statsItems.map((item) => (
+        <StatsBarItem
+          key={item.label}
+          variant="card"
+          label={item.label}
+          value={item.value}
+          description={item.description}
+          dotColor={item.dotColor}
+          valueColor="text-foreground"
+          valueSize="medium"
+        />
+      ))}
+    </StatsBar>
   );
 }

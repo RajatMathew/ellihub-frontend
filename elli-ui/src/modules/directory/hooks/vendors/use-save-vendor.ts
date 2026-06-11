@@ -39,6 +39,8 @@ export function useSaveVendor({
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
   const saveVendor = async (formData: VendorFormValues) => {
+    const email = formData.email?.trim() || null;
+
     setIsSaving(true);
     try {
       if (isEdit && id) {
@@ -46,7 +48,7 @@ export function useSaveVendor({
           id,
           data: {
             name: formData.name,
-            email: formData.email,
+            email,
             typeId: formData.type || undefined,
             status: formData.status as VendorStatus,
             taxId: formData.taxId || null,
@@ -72,7 +74,7 @@ export function useSaveVendor({
 
       const created = await createMutation.mutateAsync({
         name: formData.name,
-        email: formData.email,
+        email: email ?? undefined,
         typeId: formData.type || undefined,
         status: formData.status as VendorStatus,
         taxId: formData.taxId || undefined,
@@ -109,22 +111,45 @@ async function persistVendorContactLinks(
   contactLinks: LinkedContactItem[],
   originalLinks: VendorContactLink[],
   mutations: {
-    link: (payload: { contactId: string; vendorId: string }) => Promise<unknown>;
+    link: (payload: {
+      contactId: string;
+      vendorId: string;
+      isPrimary?: boolean;
+      replaceExisting?: boolean;
+    }) => Promise<unknown>;
     unlink: (contactId: string) => Promise<unknown>;
   }
 ) {
   const originalByContact = new Map(originalLinks.map((link) => [link.contactId, link]));
   const currentByContact = new Map(contactLinks.map((link) => [link.contactId, link]));
   const toRemove = originalLinks.filter((link) => !currentByContact.has(link.contactId));
-  const toAdd = contactLinks.filter((link) => !originalByContact.has(link.contactId));
+  const toPersist = contactLinks.filter((link) => {
+    const original = originalByContact.get(link.contactId);
+    return !original || original.isPrimary !== link.isPrimary;
+  });
 
-  const operations: Promise<unknown>[] = [
-    ...toRemove.map((link) => mutations.unlink(link.contactId)),
-    ...toAdd.map((link) => mutations.link({ contactId: link.contactId, vendorId })),
-  ];
+  let failed = 0;
 
-  if (operations.length === 0) return 0;
+  for (const link of toRemove) {
+    try {
+      await mutations.unlink(link.contactId);
+    } catch {
+      failed += 1;
+    }
+  }
 
-  const results = await Promise.allSettled(operations);
-  return results.filter((result) => result.status === 'rejected').length;
+  for (const link of toPersist) {
+    try {
+      await mutations.link({
+        contactId: link.contactId,
+        vendorId,
+        isPrimary: link.isPrimary,
+        replaceExisting: link.replaceExisting,
+      });
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return failed;
 }

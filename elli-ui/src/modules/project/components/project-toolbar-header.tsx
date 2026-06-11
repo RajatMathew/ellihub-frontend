@@ -5,8 +5,6 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
-import { AvatarGroup, AvatarGroupItem } from '@/app/components/ui/avatar-group';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -15,15 +13,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
+import {
+  formatProjectStageLabel,
+  getProjectStageSwatchClassName,
+} from '@/modules/project/lib/project-stage-colors';
 import type {
   Division,
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Share2, Users } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {
   title: string;
@@ -51,15 +55,6 @@ const STATUS_META: Record<string, { label: string; badgeClassName: string }> = {
   },
 };
 
-const STAGE_DOT_CLASSES: Array<[string, string]> = [
-  ['SUBMITTAL', 'bg-primary'],
-  ['BUYOUT', 'bg-info'],
-  ['FABRICATION', 'bg-destructive'],
-  ['INSTALLATION', 'bg-primary'],
-  ['PUNCH', 'bg-warning'],
-  ['CLOSEOUT', 'bg-success'],
-];
-
 const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['status']) => {
   if (!status) return undefined;
 
@@ -78,13 +73,6 @@ const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['statu
   };
 };
 
-const getStageDotClassName = (stageName?: string | null) => {
-  const normalizedName = (stageName ?? '').toUpperCase();
-  const stageMatch = STAGE_DOT_CLASSES.find(([key]) => normalizedName.includes(key));
-
-  return stageMatch?.[1] ?? 'bg-muted-foreground';
-};
-
 export function ProjectToolbarHeader({
   title,
   project,
@@ -93,6 +81,7 @@ export function ProjectToolbarHeader({
 }: ProjectToolbarHeaderProps) {
   const { data: stages } = useProjectStagesQuery();
   const updateMutation = useUpdateProjectMutation();
+  const canManageProject = project?.capabilities?.canManage ?? false;
 
   const handleStageChange = (stageId: string) => {
     if (!project || stageId === project.stageId) return;
@@ -103,6 +92,12 @@ export function ProjectToolbarHeader({
       return dateStr.split('T')[0];
     };
     const optionalString = (value?: string | null) => value ?? undefined;
+    const tcoDate = formatDate(project.tcoDate ?? project.estimatedEndDate);
+
+    if (!tcoDate) {
+      toast.error('TCO date is required before updating the project stage.');
+      return;
+    }
 
     // PUT /project is a full replace, so we must send all required fields
     const fullPayload: UpdateProjectInput = {
@@ -130,7 +125,7 @@ export function ProjectToolbarHeader({
       estimatedStartDate: formatDate(project.estimatedStartDate),
       estimatedEndDate: formatDate(project.estimatedEndDate),
       setInactiveDate: formatDate(project.setInactiveDate),
-      tcoDate: formatDate(project.tcoDate),
+      tcoDate,
     };
 
     updateMutation.mutate({ id: project.id, data: fullPayload });
@@ -155,8 +150,7 @@ export function ProjectToolbarHeader({
       .map((tm) => ({ id: tm.employee!.id, name: tm.employee!.name })),
   ];
 
-  // Show max 4 avatars + count
-  const displayedMembers = allTeamMembers.slice(0, 4);
+  const displayedMembers = allTeamMembers.slice(0, 2);
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
@@ -177,10 +171,11 @@ export function ProjectToolbarHeader({
                   </Badge>
                 );
               })()}
-            {project?.stage && stages && stages.length > 0 ? (
+            {project?.stage && stages && stages.length > 0 && canManageProject ? (
               (() => {
                 const name = project.stage.name || project.stage.label || '';
-                const dotClassName = getStageDotClassName(name);
+                const displayName = formatProjectStageLabel(name);
+                const dotClassName = getProjectStageSwatchClassName(name);
 
                 return (
                   <DropdownMenu>
@@ -190,7 +185,7 @@ export function ProjectToolbarHeader({
                         className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                       >
                         <span className={cn('size-2 rounded-sm shrink-0', dotClassName)} />
-                        {name}
+                        {displayName}
                         <ChevronDown className="size-3 text-muted-foreground" />
                       </button>
                     </DropdownMenuTrigger>
@@ -203,10 +198,12 @@ export function ProjectToolbarHeader({
                           <span
                             className={cn(
                               'size-2.5 rounded-sm shrink-0',
-                              getStageDotClassName(stage.name)
+                              getProjectStageSwatchClassName(stage.name)
                             )}
                           />
-                          <span className="flex-1">{stage.name}</span>
+                          <span className="flex-1 font-normal">
+                            {formatProjectStageLabel(stage.name)}
+                          </span>
                           {stage.id === project.stageId && (
                             <Check className="size-3.5 text-foreground" />
                           )}
@@ -248,35 +245,50 @@ export function ProjectToolbarHeader({
             )}
             {project?.leadPM && (
               <span>
-                <span className="font-medium">PM:</span> {project.leadPM.name}
+                <span className="font-medium">Lead PM:</span> {project.leadPM.name}
               </span>
             )}
           </div>
         </ToolbarHeading>
         <ToolbarActions>
           {/* Team Avatar Group Button */}
-          {project && onTeamClick && allTeamMembers.length > 0 && (
+          {project && onTeamClick && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onTeamClick}
-              className="gap-2 hover:bg-muted/50"
+              className="group h-auto gap-1.5 rounded-lg border border-transparent bg-transparent p-1 hover:border-border hover:bg-muted/45 dark:hover:bg-white/[0.06]"
             >
-              <AvatarGroup className="-space-x-2">
-                {displayedMembers.map((member) => (
-                  <AvatarGroupItem key={member.id}>
-                    <Avatar className="size-7 border-2 border-background">
-                      <AvatarImage src="" alt={member.name} />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </AvatarGroupItem>
-                ))}
-              </AvatarGroup>
-              {remainingCount > 0 && (
-                <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+              {displayedMembers.length > 0 ? (
+                <span className="flex items-center pl-2">
+                  <Share2 className="mr-3 size-4" />
+                  {displayedMembers.map((member) => (
+                    <Tooltip key={member.id}>
+                      <TooltipTrigger asChild>
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                          {getInitials(member.name)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{member.name}</TooltipContent>
+                    </Tooltip>
+                  ))}
+                  {remainingCount > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                          +{remainingCount}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {remainingCount} more team member{remainingCount === 1 ? '' : 's'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </span>
+              ) : (
+                <Users className="size-4" />
               )}
+              {displayedMembers.length === 0 && <span>Project Team</span>}
             </Button>
           )}
           {children}

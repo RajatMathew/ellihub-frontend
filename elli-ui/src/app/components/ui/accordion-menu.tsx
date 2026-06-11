@@ -4,7 +4,7 @@ import * as React from 'react';
 
 import { cva, type VariantProps } from 'class-variance-authority';
 import { ChevronDown } from 'lucide-react';
-import { Accordion as AccordionPrimitive } from 'radix-ui';
+import { Accordion as AccordionPrimitive, Slot as SlotPrimitive } from 'radix-ui';
 
 import { cn } from '@app/lib/utils';
 
@@ -161,7 +161,7 @@ function AccordionMenuGroup({ children, className, ...props }: AccordionMenuGrou
     <div
       data-slot="accordion-menu-group"
       role="group"
-      className={cn('space-y-0.5', classNames?.group, className)}
+      className={cn('space-y-1', classNames?.group, className)}
       {...props}
     >
       {children}
@@ -271,6 +271,66 @@ function AccordionMenuItem({
   );
 }
 
+function AccordionMenuLinkItem({
+  className,
+  children,
+  variant,
+  value,
+  asChild,
+  trailing,
+  ...props
+}: React.ComponentPropsWithoutRef<'a'> &
+  VariantProps<typeof itemVariants> & {
+    value: string;
+    asChild?: boolean;
+    trailing?: React.ReactNode;
+  }) {
+  const { classNames, selectedValue, matchPath } = React.useContext(AccordionMenuContext);
+  const Comp = asChild ? SlotPrimitive.Slot : 'a';
+  const selected = matchPath(value) || selectedValue === value;
+
+  if (trailing) {
+    return (
+      <AccordionPrimitive.Item className="flex" value={value}>
+        <div
+          data-slot="accordion-menu-link-item"
+          role="none"
+          className={cn(
+            itemVariants({ variant }),
+            '[&>a]:w-auto [&>a:first-of-type]:flex-1',
+            classNames?.item,
+            className
+          )}
+          data-selected={selected ? 'true' : undefined}
+        >
+          <Comp
+            role="menuitem"
+            className="min-w-0 flex-1 items-center gap-2 overflow-hidden"
+            {...props}
+          >
+            {children}
+          </Comp>
+          {trailing}
+        </div>
+      </AccordionPrimitive.Item>
+    );
+  }
+
+  return (
+    <AccordionPrimitive.Item className="flex" value={value}>
+      <Comp
+        data-slot="accordion-menu-link-item"
+        role="menuitem"
+        className={cn(itemVariants({ variant }), classNames?.item, className)}
+        data-selected={selected ? 'true' : undefined}
+        {...props}
+      >
+        {children}
+      </Comp>
+    </AccordionPrimitive.Item>
+  );
+}
+
 function AccordionMenuSub({
   className,
   children,
@@ -371,7 +431,7 @@ function AccordionMenuSubContent({
     >
       {type === 'multiple' ? (
         <AccordionPrimitive.Root
-          className={cn('w-full py-0.5', classNames?.subWrapper)}
+          className={cn('w-full space-y-1 py-0.5', classNames?.subWrapper)}
           type="multiple"
           value={currentValue as string[]}
           role="menu"
@@ -385,7 +445,7 @@ function AccordionMenuSubContent({
         </AccordionPrimitive.Root>
       ) : (
         <AccordionPrimitive.Root
-          className={cn('w-full py-0.5', classNames?.subWrapper)}
+          className={cn('w-full space-y-1 py-0.5', classNames?.subWrapper)}
           type="single"
           collapsible={collapsible}
           value={currentValue as string}
@@ -422,6 +482,7 @@ export {
   AccordionMenuIndicator,
   AccordionMenuItem,
   AccordionMenuLabel,
+  AccordionMenuLinkItem,
   AccordionMenuSeparator,
   AccordionMenuSub,
   AccordionMenuSubContent,

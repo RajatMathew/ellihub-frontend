@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { Alert, AlertContent, AlertDescription, AlertIcon } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -11,17 +12,18 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
-import { useAppLookupsQuery } from '@/app/hooks/use-lookup';
 import { getDepartmentEmployeeId } from '@/modules/hr/components/departments/detail/department-employee-utils';
 import { useAssignEmployeeMutation } from '@/modules/hr/hooks/departments.hooks';
 import { useEmployeesQuery } from '@/modules/hr/hooks/employees.hooks';
 import type { DepartmentEmployee } from '@/modules/hr/schemas/department.schema';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
+import { Info } from 'lucide-react';
 
 interface EmployeeAssignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departmentId: string;
+  departmentName: string;
   assignedEmployees: DepartmentEmployee[];
 }
 
@@ -29,10 +31,10 @@ export function EmployeeAssignDialog({
   open,
   onOpenChange,
   departmentId,
+  departmentName,
   assignedEmployees,
 }: EmployeeAssignDialogProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
   const { data: employeesData, isLoading: isEmployeesLoading } = useEmployeesQuery({
     page: 1,
@@ -40,7 +42,6 @@ export function EmployeeAssignDialog({
     sortBy: 'name',
     sortOrder: 'asc',
   });
-  const { data: rolesData, isLoading: isRolesLoading } = useAppLookupsQuery('PROFESSIONAL_ROLE');
   const assignMutation = useAssignEmployeeMutation();
 
   const employeeOptions = useMemo(() => {
@@ -61,16 +62,18 @@ export function EmployeeAssignDialog({
       }));
   }, [assignedEmployees, departmentId, employeesData?.data]);
 
-  const roleOptions = (rolesData ?? []).map((role) => ({
-    value: role.id,
-    label: role.label || role.name || 'Unknown Role',
-  }));
+  const selectedEmployee = useMemo(
+    () => (employeesData?.data ?? []).find((employee) => employee.id === selectedEmployeeId),
+    [employeesData?.data, selectedEmployeeId]
+  );
 
+  const selectedEmployeeDepartmentName = selectedEmployee?.department?.name ?? 'another department';
+  const shouldShowDepartmentReassignmentNotice =
+    Boolean(selectedEmployee?.departmentId) && selectedEmployee?.departmentId !== departmentId;
   const hasSelectedEmployee = employeeOptions.some((option) => option.value === selectedEmployeeId);
 
   const resetSelections = () => {
     setSelectedEmployeeId('');
-    setSelectedRoleId('');
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -84,7 +87,6 @@ export function EmployeeAssignDialog({
     await assignMutation.mutateAsync({
       departmentId,
       employeeId: selectedEmployeeId,
-      roleId: selectedRoleId || undefined,
     });
 
     handleOpenChange(false);
@@ -117,18 +119,23 @@ export function EmployeeAssignDialog({
             />
           </Field>
 
-          <Field>
-            <FieldLabel className="text-xs font-bold uppercase tracking-widest">
-              Role (Optional)
-            </FieldLabel>
-            <SearchableSelect
-              options={roleOptions}
-              value={selectedRoleId}
-              onValueChange={(value) => setSelectedRoleId(value ?? '')}
-              placeholder="Select a role..."
-              disabled={isRolesLoading}
-            />
-          </Field>
+          {shouldShowDepartmentReassignmentNotice && (
+            <Alert variant="info" appearance="light" size="sm">
+              <AlertIcon>
+                <Info className="size-4" />
+              </AlertIcon>
+              <AlertContent>
+                <AlertDescription className="text-xs leading-relaxed">
+                  This employee is already in{' '}
+                  <span className="font-semibold text-foreground">
+                    {selectedEmployeeDepartmentName}
+                  </span>
+                  . Assigning them here will remove them from that department and assign them to{' '}
+                  <span className="font-semibold text-foreground">{departmentName}</span>.
+                </AlertDescription>
+              </AlertContent>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>

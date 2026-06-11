@@ -32,6 +32,15 @@ interface FilesExplorerProps {
   title?: string;
   rootFolderId?: string;
   rootLabel?: string;
+  readOnly?: boolean;
+  primeContractPinning?: {
+    folderId?: string;
+    pinnedFileIds: string[];
+    canPin: boolean;
+    onPin: (file: FileItem) => void;
+    canSetPrimary?: boolean;
+    onSetPrimary?: (file: FileItem, isPrimary: boolean) => void;
+  };
 }
 
 function getFileName(file: FileItem) {
@@ -47,9 +56,7 @@ function getFolderPathFromBreadcrumbs(
     return [...fallbackPath, { id: folder.id, name: getFileName(folder) }];
   }
 
-  const rootIndex = rootId
-    ? folder.breadcrumbs.findIndex((entry) => entry.id === rootId)
-    : -1;
+  const rootIndex = rootId ? folder.breadcrumbs.findIndex((entry) => entry.id === rootId) : -1;
   const relativePath =
     rootIndex >= 0 ? folder.breadcrumbs.slice(rootIndex + 1) : folder.breadcrumbs.slice(1);
 
@@ -60,6 +67,8 @@ export function FilesExplorer({
   title = 'Files',
   rootFolderId,
   rootLabel = 'Files',
+  readOnly = false,
+  primeContractPinning,
 }: FilesExplorerProps) {
   const listParams = useFilesListParams();
   const {
@@ -134,6 +143,28 @@ export function FilesExplorer({
   const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
   const navigationRootId = rootFolderId ?? rootFolder?.id;
   const showResultLocation = isSearchActive && searchMode === 'global';
+  const canMutate = !readOnly;
+  const pinnedPrimeContractFileIds = useMemo(
+    () => new Set(primeContractPinning?.pinnedFileIds ?? []),
+    [primeContractPinning?.pinnedFileIds]
+  );
+  const canPinPrimeContract = useCallback(
+    (item: FileItem) =>
+      !!primeContractPinning?.canPin &&
+      item.type === 'FILE' &&
+      item.parentId === primeContractPinning.folderId &&
+      !item.primeContract?.isPinned &&
+      !pinnedPrimeContractFileIds.has(item.id),
+    [pinnedPrimeContractFileIds, primeContractPinning]
+  );
+  const canSetPrimeContractPrimary = useCallback(
+    (item: FileItem) =>
+      !!primeContractPinning?.canSetPrimary &&
+      item.type === 'FILE' &&
+      item.parentId === primeContractPinning.folderId &&
+      item.primeContract?.isPinned === true,
+    [primeContractPinning]
+  );
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploadFileOpen, setUploadFileOpen] = useState(false);
@@ -213,6 +244,11 @@ export function FilesExplorer({
     onRename: setRenameItem,
     onDelete: setDeleteItem,
     onExportFolder: (item) => void folderZipExport.startExport(item),
+    onPinPrimeContract: primeContractPinning?.onPin,
+    canPinPrimeContract,
+    onSetPrimeContractPrimary: primeContractPinning?.onSetPrimary,
+    canSetPrimeContractPrimary,
+    canMutate,
   });
 
   return (
@@ -221,8 +257,9 @@ export function FilesExplorer({
         title={title}
         searchInput={searchInput}
         searchMode={searchMode}
-        canMutateFolder={!!currentFolderId}
+        canMutateFolder={canMutate && !!currentFolderId}
         canExport={!!folderDetail && !folderZipExport.isExporting}
+        showMutationActions={canMutate}
         onSearchChange={handleSearchChange}
         onSearchModeChange={handleSearchModeChange}
         onExport={handleExport}
@@ -291,6 +328,10 @@ export function FilesExplorer({
                 onFolderClick={handleFolderClick}
                 onFilePreview={setPreviewItem}
                 onFolderExport={(item) => void folderZipExport.startExport(item)}
+                onPinPrimeContract={primeContractPinning?.onPin}
+                canPinPrimeContract={canPinPrimeContract}
+                onSetPrimeContractPrimary={primeContractPinning?.onSetPrimary}
+                canSetPrimeContractPrimary={canSetPrimeContractPrimary}
               />
             )}
             <CardFooter>
@@ -323,6 +364,7 @@ export function FilesExplorer({
         onPreviewItemChange={setPreviewItem}
         onRenameItemChange={setRenameItem}
         onDeleteItemChange={setDeleteItem}
+        readOnly={readOnly}
       />
     </div>
   );

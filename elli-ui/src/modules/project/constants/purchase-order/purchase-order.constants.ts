@@ -19,25 +19,19 @@ export const PURCHASE_ORDER_SORT_BY_OPTIONS = [
 export type PurchaseOrderSortByField = (typeof PURCHASE_ORDER_SORT_BY_OPTIONS)[number];
 
 export function isPurchaseOrderSortByField(
-  value: string | null,
+  value: string | null
 ): value is PurchaseOrderSortByField {
   return PURCHASE_ORDER_SORT_BY_OPTIONS.includes(value as PurchaseOrderSortByField);
 }
 
 export function isValidPOStatus(value: string | null): value is POStatusName {
-  return (
-    value === 'DRAFT' ||
-    value === 'ISSUED' ||
-    value === 'DELIVERED' ||
-    value === 'CANCELLED'
-  );
+  return value === 'DRAFT' || value === 'ISSUED' || value === 'DELIVERED' || value === 'CANCELLED';
 }
 
 export const PO_FORM_SECTIONS = [
   { id: 'po-details', label: 'PO Details' },
-  { id: 'financial', label: 'Financial' },
   { id: 'line-items', label: 'Line Items' },
-  { id: 'documents', label: 'Documents' },
+  { id: 'documents', label: 'Backup Documents' },
 ] as const;
 
 export const PAYMENT_TERMS_OPTIONS: { value: PaymentTerms; label: string }[] = [

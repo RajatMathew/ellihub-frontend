@@ -16,19 +16,17 @@ export function usePOCalculations({ pos }: UsePOCalculationsOptions) {
       };
     }
 
-    // Filter out cancelled POs
-    const activePOs = pos.filter((po) => po.status !== 'CANCELLED');
+    const committedPOs = pos.filter((po) => po.status === 'ISSUED' || po.status === 'DELIVERED');
 
-    // Calculate total committed from active POs
-    const totalPOCommitted = activePOs.reduce(
+    const totalPOCommitted = committedPOs.reduce(
       (sum, po) => sum + (parseFloat(po.total ?? '0') || 0),
       0
     );
 
     return {
-      activePOs,
+      activePOs: committedPOs,
       totalPOCommitted,
-      activePOsCount: activePOs.length,
+      activePOsCount: committedPOs.length,
     };
   }, [pos]);
 }

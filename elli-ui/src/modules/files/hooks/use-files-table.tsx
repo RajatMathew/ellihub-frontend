@@ -28,6 +28,11 @@ interface UseFilesTableParams {
   onRename: (item: FileItem) => void;
   onDelete: (item: FileItem) => void;
   onExportFolder: (item: FileItem) => void;
+  onPinPrimeContract?: (item: FileItem) => void;
+  canPinPrimeContract?: (item: FileItem) => boolean;
+  onSetPrimeContractPrimary?: (item: FileItem, isPrimary: boolean) => void;
+  canSetPrimeContractPrimary?: (item: FileItem) => boolean;
+  canMutate?: boolean;
 }
 
 export function useFilesTable({
@@ -45,6 +50,11 @@ export function useFilesTable({
   onRename,
   onDelete,
   onExportFolder,
+  onPinPrimeContract,
+  canPinPrimeContract,
+  onSetPrimeContractPrimary,
+  canSetPrimeContractPrimary,
+  canMutate = true,
 }: UseFilesTableParams) {
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -58,6 +68,11 @@ export function useFilesTable({
     onRename,
     onDelete,
     onExportFolder,
+    onPinPrimeContract,
+    canPinPrimeContract,
+    onSetPrimeContractPrimary,
+    canSetPrimeContractPrimary,
+    canMutate,
   });
   const pageCount = Math.max(1, Math.ceil(totalCount / size));
 

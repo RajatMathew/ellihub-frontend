@@ -1,6 +1,10 @@
+import { NotFound } from '@/app/components/error/not-found';
+import {
+  InvoiceDetailPage,
+  InvoiceFormPage,
+  InvoiceListPage,
+} from '@/modules/project/pages/invoice';
 import { Route, Routes } from 'react-router-dom';
-
-import { InvoiceDetailPage, InvoiceFormPage, InvoiceListPage } from '@/modules/project/pages/invoice';
 
 const InvoiceRoutes = () => {
   return (
@@ -9,6 +13,7 @@ const InvoiceRoutes = () => {
       <Route path="create" element={<InvoiceFormPage />} />
       <Route path=":invoiceId" element={<InvoiceDetailPage />} />
       <Route path=":invoiceId/edit" element={<InvoiceFormPage />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

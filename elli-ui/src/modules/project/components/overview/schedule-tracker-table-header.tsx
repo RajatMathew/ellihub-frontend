@@ -1,8 +1,4 @@
-import {
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/app/components/ui/table';
+import { TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 
 export function ScheduleTrackerTableHeader() {
   return (
@@ -11,9 +7,10 @@ export function ScheduleTrackerTableHeader() {
         <TableHead>Date</TableHead>
         <TableHead>Description</TableHead>
         <TableHead>Adj. Finish</TableHead>
+        <TableHead>Prime CO</TableHead>
         <TableHead>File</TableHead>
         <TableHead>Notes</TableHead>
-        <TableHead className="w-10" />
+        <TableHead className="w-20" />
       </TableRow>
     </TableHeader>
   );

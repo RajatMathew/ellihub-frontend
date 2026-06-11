@@ -8,6 +8,7 @@ import type {
   UpdateVendorContactInput,
   UpdateVendorInput,
 } from '@/modules/directory/schemas/vendor.schema';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
@@ -31,6 +32,12 @@ export const useVendorTypesQuery = () =>
     queryFn: () => vendorsApi.getTypes(),
   });
 
+export const useVendorStatsQuery = () =>
+  useQuery({
+    queryKey: [...vendorsKeys.all, 'stats'],
+    queryFn: () => vendorsApi.stats(),
+  });
+
 /* ---- mutations ---- */
 
 export const useCreateVendorMutation = () => {
@@ -39,6 +46,7 @@ export const useCreateVendorMutation = () => {
     mutationFn: (data: CreateVendorInput) => vendorsApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to create vendor.'),
   });
@@ -52,6 +60,7 @@ export const useUpdateVendorMutation = () => {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
       qc.invalidateQueries({ queryKey: vendorsKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update vendor.'),
   });
@@ -63,6 +72,7 @@ export const useDeleteVendorMutation = () => {
     mutationFn: (id: string) => vendorsApi.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: vendorsKeys.all });
+      qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to archive vendor.'),
   });

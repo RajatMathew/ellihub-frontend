@@ -32,7 +32,7 @@ export function ContactCard({
         </div>
         {email && (
           <div className="mt-1 flex min-w-0 items-center gap-1.5">
-            <Mail className="size-3 text-muted-foreground" />
+            <Mail className="size-3 shrink-0 text-muted-foreground" />
             <a
               href={`mailto:${email}`}
               className="min-w-0 break-all text-xs text-muted-foreground hover:text-primary"
@@ -43,7 +43,7 @@ export function ContactCard({
         )}
         {phone && (
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-            <Phone className="size-3 text-muted-foreground" />
+            <Phone className="size-3 shrink-0 text-muted-foreground" />
             <a
               href={`tel:${phone}`}
               className="break-words text-xs text-muted-foreground hover:text-primary"

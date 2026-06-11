@@ -9,11 +9,16 @@ import {
 } from '@/app/components/toolbar/toolbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { QuickBooksStatusCard } from '@/modules/integrations/components/quickbooks-status-card';
+import { QuickBooksReferenceSyncCard } from '@/modules/integrations/components/quickbooks-reference-sync-card';
 import {
   useDisconnectQuickBooksMutation,
+  useQuickBooksReferenceSyncStatusQuery,
   useQuickBooksStatusQuery,
   useStartQuickBooksConnectionMutation,
+  useSyncQuickBooksReferenceDataMutation,
+  useUpdateQuickBooksReferenceAutoDailySyncMutation,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
+import { useAccess } from '@/app/contexts/access-context';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -28,9 +33,15 @@ function QuickBooksPageLoading() {
 
 export default function QuickBooksIntegrationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { can } = useAccess();
   const statusQuery = useQuickBooksStatusQuery();
+  const referenceSyncStatusQuery = useQuickBooksReferenceSyncStatusQuery();
   const startConnection = useStartQuickBooksConnectionMutation();
   const disconnect = useDisconnectQuickBooksMutation();
+  const syncReferenceData = useSyncQuickBooksReferenceDataMutation();
+  const updateAutoDailySync = useUpdateQuickBooksReferenceAutoDailySyncMutation();
+  const canSyncReferenceData = can('integration', 'sync');
+  const canManageIntegrations = can('integration', 'manage');
 
   useEffect(() => {
     const result = searchParams.get('quickbooks');
@@ -78,9 +89,9 @@ export default function QuickBooksIntegrationPage() {
         <ToolbarWrapper>
           <ToolbarHeading>
             <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Integrations
+              Settings
             </div>
-            <ToolbarPageTitle>QuickBooks Online</ToolbarPageTitle>
+            <ToolbarPageTitle>Integrations</ToolbarPageTitle>
           </ToolbarHeading>
         </ToolbarWrapper>
       </Toolbar>
@@ -92,6 +103,25 @@ export default function QuickBooksIntegrationPage() {
         onConnect={() => startConnection.mutate()}
         onDisconnect={() => disconnect.mutate()}
       />
+
+      {referenceSyncStatusQuery.isLoading ? (
+        <Skeleton className="h-72 w-full" />
+      ) : referenceSyncStatusQuery.isError || !referenceSyncStatusQuery.data ? (
+        <QueryErrorState
+          title="Unable to load QuickBooks sync status"
+          onRetry={() => void referenceSyncStatusQuery.refetch()}
+        />
+      ) : (
+        <QuickBooksReferenceSyncCard
+          status={referenceSyncStatusQuery.data}
+          canSync={canSyncReferenceData}
+          canManage={canManageIntegrations}
+          isSyncing={syncReferenceData.isPending}
+          isUpdatingAutoDailySync={updateAutoDailySync.isPending}
+          onSync={() => syncReferenceData.mutate()}
+          onToggleAutoDailySync={(enabled) => updateAutoDailySync.mutate(enabled)}
+        />
+      )}
     </div>
   );
 }

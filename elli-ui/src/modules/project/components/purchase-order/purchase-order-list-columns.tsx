@@ -17,6 +17,11 @@ import {
   PurchaseOrderTradeCategoryCell,
   PurchaseOrderVendorCell,
 } from './purchase-order-list-column-cells';
+import {
+  getPurchaseOrderRfqLabel,
+  getPurchaseOrderTradeCategoryLabel,
+  getPurchaseOrderVendorName,
+} from './purchase-order-list-utils';
 
 export function usePurchaseOrderListColumns({
   projectId,
@@ -35,6 +40,11 @@ export function usePurchaseOrderListColumns({
         cell: ({ row }) => <PurchaseOrderNumberCell po={row.original} />,
         meta: {
           headerClassName: 'min-w-48',
+          textOverflow: 'truncate',
+          preserveTruncatedCellLayout: true,
+          alwaysShowTooltip: true,
+          tooltipContent: (po) =>
+            [po.poNumber ?? '-', po.description].filter(Boolean).join('\n'),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -49,6 +59,8 @@ export function usePurchaseOrderListColumns({
         cell: ({ row }) => <PurchaseOrderVendorCell po={row.original} />,
         meta: {
           headerClassName: 'min-w-40',
+          textOverflow: 'truncate',
+          tooltipContent: (po) => getPurchaseOrderVendorName(po),
           skeleton: <Skeleton className="h-3.5 w-28" />,
         },
         enableSorting: false,
@@ -61,6 +73,8 @@ export function usePurchaseOrderListColumns({
         ),
         meta: {
           headerClassName: 'min-w-28',
+          textOverflow: 'truncate',
+          tooltipContent: (po) => getPurchaseOrderRfqLabel(po) ?? po.rfqId ?? '-',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
         enableSorting: false,
@@ -80,6 +94,12 @@ export function usePurchaseOrderListColumns({
         ),
         meta: {
           headerClassName: 'min-w-36',
+          textOverflow: 'truncate',
+          tooltipContent: (po) =>
+            getPurchaseOrderTradeCategoryLabel(
+              po,
+              po.tradeCategoryId ? tradeCategoryLabelById.get(po.tradeCategoryId) : undefined
+            ),
           skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
         },
         enableSorting: false,

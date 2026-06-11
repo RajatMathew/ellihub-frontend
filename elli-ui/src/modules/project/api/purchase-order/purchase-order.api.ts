@@ -1,17 +1,21 @@
 import api from '@/app/api';
 import {
+  getGeneratedPdfFileFromResponse,
+  sanitizeDownloadName,
+  type GeneratedPdfFile,
+} from '@/app/lib/generated-pdf';
+import {
   poDetailSchema,
   poPaginatedResponseSchema,
-  poQuickBooksPaymentOptionsSchema,
-  poQuickBooksPaymentSchema,
-  type AddPOQuickBooksPaymentInput,
-  type AddPOQuickBooksPaymentsInput,
+  poPdfDefaultTermsSchema,
+  poPdfTermsOptionsSchema,
   type CreatePOInput,
+  type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
+  type POPdfDefaultTerms,
+  type POPdfTermsOption,
   type POPaginatedResponse,
-  type POQuickBooksPayment,
-  type POQuickBooksPaymentOptions,
 } from '@/modules/project/schemas/purchase-order';
 
 const BASE = '/po';
@@ -66,6 +70,55 @@ export const poApi = {
       throw result.error;
     }
     return result.data;
+  },
+
+  async getPdfDefaultTerms(): Promise<POPdfDefaultTerms> {
+    const res = await api.get(`${LIST_BASE}/pdf/default-terms`);
+    const raw = res.data?.data ?? res.data;
+    const result = poPdfDefaultTermsSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async getPdfTermsOptions(): Promise<POPdfTermsOption[]> {
+    const res = await api.get(`${LIST_BASE}/pdf/terms`);
+    const raw = res.data?.data ?? res.data;
+    const result = poPdfTermsOptionsSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async generatePdf(
+    id: string,
+    data: GeneratePOPdfInput,
+    poNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(
+      `${LIST_BASE}/${id}/pdf`,
+      data,
+      { responseType: 'blob', timeout: 0 }
+    );
+    const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async savePdf(
+    id: string,
+    data: GeneratePOPdfInput,
+    poNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
   },
 
   async issue(id: string, data?: { emailVendor?: boolean }): Promise<PODetail> {
@@ -153,36 +206,6 @@ export const poApi = {
     return result.data;
   },
 
-  async listQuickBooksPayments(id: string): Promise<POQuickBooksPayment[]> {
-    const res = await api.get(`${LIST_BASE}/${id}/payments`);
-    return poQuickBooksPaymentSchema.array().parse(res.data?.data ?? res.data ?? []);
-  },
-
-  async listQuickBooksPaymentOptions(id: string): Promise<POQuickBooksPaymentOptions> {
-    const res = await api.get(`${LIST_BASE}/${id}/quickbooks-payment-options`);
-    return poQuickBooksPaymentOptionsSchema.parse(res.data?.data ?? res.data);
-  },
-
-  async addQuickBooksPayment(
-    id: string,
-    data: AddPOQuickBooksPaymentInput
-  ): Promise<POQuickBooksPayment> {
-    const res = await api.post(`${LIST_BASE}/${id}/payments/quickbooks`, data);
-    return poQuickBooksPaymentSchema.parse(res.data?.data ?? res.data);
-  },
-
-  async addQuickBooksPayments(
-    id: string,
-    data: AddPOQuickBooksPaymentsInput
-  ): Promise<POQuickBooksPayment[]> {
-    const res = await api.post(`${LIST_BASE}/${id}/payments/quickbooks/bulk`, data);
-    return poQuickBooksPaymentSchema.array().parse(res.data?.data ?? res.data ?? []);
-  },
-
-  async removeQuickBooksPayment(id: string, paymentId: string): Promise<void> {
-    await api.delete(`${LIST_BASE}/${id}/payments/${paymentId}`);
-  },
-
   async update(id: string, data: Partial<CreatePOInput>): Promise<PODetail> {
     const res = await api.put(LIST_BASE, { ...data, id });
     const raw = normalizePODetail(res.data?.data ?? res.data);
@@ -191,11 +214,6 @@ export const poApi = {
       throw result.error;
     }
     return result.data;
-  },
-
-  async revertToDraft(id: string): Promise<PODetail> {
-    await api.patch(`${LIST_BASE}/set-draft`, { id });
-    return this.get(id);
   },
 
   /* ---- line items ---- */

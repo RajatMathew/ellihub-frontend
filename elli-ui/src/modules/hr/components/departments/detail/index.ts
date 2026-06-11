@@ -3,4 +3,3 @@ export * from './department-detail-loading';
 export * from './department-detail-sidebar';
 export * from './department-detail-toolbar';
 export * from './department-employees-tab';
-export * from './department-placeholder-tab';

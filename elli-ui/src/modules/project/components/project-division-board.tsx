@@ -4,7 +4,15 @@ import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 
 import { ProjectCard } from './project-card';
 
-const STANDARD_DIVISION_ORDER = ['SCA', 'DDC', 'CIVIL', 'INSTITUTIONAL'];
+const STANDARD_DIVISIONS: Array<{ label: string; keys: string[] }> = [
+  { label: 'SCA', keys: ['SCA'] },
+  { label: 'Institutional', keys: ['INSTITUTIONAL'] },
+  { label: 'Public', keys: ['PUBLIC', 'DDC'] },
+  { label: 'Public / State', keys: ['PUBLIC / STATE', 'PUBLIC STATE', 'CIVIL'] },
+];
+
+const normalizeDivisionLabel = (value: string): string =>
+  value.trim().replace(/\s+/g, ' ').toUpperCase();
 
 const getDivisionLabel = (project: ProjectListItem): string => {
   const division = project.division;
@@ -14,12 +22,21 @@ const getDivisionLabel = (project: ProjectListItem): string => {
   return division?.label ?? division?.name ?? 'Unassigned';
 };
 
+const getDivisionColumnLabel = (label: string): string => {
+  const normalizedLabel = normalizeDivisionLabel(label);
+  const standardDivision = STANDARD_DIVISIONS.find((division) =>
+    division.keys.includes(normalizedLabel)
+  );
+
+  return standardDivision?.label ?? label;
+};
+
 export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[] }) {
   const divisionMap = useMemo(() => {
     const map = new Map<string, ProjectListItem[]>();
 
     for (const project of projects) {
-      const label = getDivisionLabel(project);
+      const label = getDivisionColumnLabel(getDivisionLabel(project));
       const existing = map.get(label) ?? [];
       map.set(label, [...existing, project]);
     }
@@ -27,42 +44,53 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
     return map;
   }, [projects]);
 
-  const columns = Array.from(divisionMap.keys()).sort((a, b) => {
-    const aIndex = STANDARD_DIVISION_ORDER.indexOf(a.toUpperCase());
-    const bIndex = STANDARD_DIVISION_ORDER.indexOf(b.toUpperCase());
-
-    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
-
-    return a.localeCompare(b);
-  });
+  const columns = [
+    ...STANDARD_DIVISIONS.map((division) => division.label),
+    ...Array.from(divisionMap.keys())
+      .filter((label) => !STANDARD_DIVISIONS.some((division) => division.label === label))
+      .sort((a, b) => a.localeCompare(b)),
+  ];
+  const maxRows = Math.max(
+    ...columns.map((divisionLabel) => divisionMap.get(divisionLabel)?.length ?? 0),
+    0
+  );
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-4">
-      {columns.map((divisionLabel) => {
-        const items = divisionMap.get(divisionLabel) ?? [];
+    <div className="-mx-4 overflow-x-auto px-4 lg:-mx-7.5 lg:px-7.5">
+      <div
+        className="grid min-w-[1120px] gap-x-5 gap-y-3"
+        style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(260px, 1fr))` }}
+      >
+        {columns.map((divisionLabel) => {
+          const items = divisionMap.get(divisionLabel) ?? [];
 
-        return (
-          <section key={divisionLabel} className="flex min-w-0 flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="min-w-0 truncate text-sm font-semibold uppercase">
-                {divisionLabel}
-              </h2>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {items.length} Job{items.length !== 1 ? 's' : ''}
-              </span>
+          return (
+            <div key={divisionLabel} className="flex min-w-0 flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="min-w-0 truncate text-xs font-semibold uppercase text-foreground">
+                  {divisionLabel}
+                </h2>
+                <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                  {items.length}
+                </span>
+              </div>
+              <hr className="border-t-2 border-border dark:border-zinc-700/70" />
             </div>
-            <hr className="border-border" />
+          );
+        })}
 
-            <div className="flex flex-col gap-3">
-              {items.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          </section>
-        );
-      })}
+        {Array.from({ length: maxRows }).flatMap((_, rowIndex) =>
+          columns.map((divisionLabel) => {
+            const project = divisionMap.get(divisionLabel)?.[rowIndex];
+
+            return (
+              <div key={`${divisionLabel}-${rowIndex}`} className="min-w-0">
+                {project && <ProjectCard project={project} />}
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

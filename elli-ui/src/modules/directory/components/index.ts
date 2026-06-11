@@ -1,4 +1,3 @@
-export { ComingSoonPlaceholder } from './coming-soon-placeholder';
 export { ContactCard } from './contact-card';
 export { ContactInfoItem } from './contact-info-item';
 export { DetailSidebar } from './detail-sidebar';

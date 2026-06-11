@@ -3,7 +3,6 @@ import type { VendorStatus, VendorType } from '@/modules/directory/schemas/vendo
 export const VENDOR_FORM_SECTIONS = [
   { id: 'info', label: 'Info' },
   { id: 'contacts', label: 'Contacts' },
-  { id: 'compliance-docs', label: 'Compliance Docs' },
 ] as const;
 
 export const VENDOR_TYPE_OPTIONS: { value: VendorType; label: string }[] = [

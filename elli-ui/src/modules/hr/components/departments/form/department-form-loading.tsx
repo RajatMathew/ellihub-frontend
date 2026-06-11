@@ -1,9 +1,10 @@
+import { formPageContainerWithSpacingClassName } from '@/app/components/form-page-layout';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function DepartmentFormLoading() {
   return (
-    <div className="container-fluid space-y-6 py-7.5">
+    <div className={formPageContainerWithSpacingClassName}>
       <div className="space-y-3">
         <Skeleton className="h-4 w-36" />
         <Skeleton className="h-8 w-64" />

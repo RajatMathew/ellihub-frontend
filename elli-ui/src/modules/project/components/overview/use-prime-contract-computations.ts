@@ -9,6 +9,7 @@ interface ComputationInput {
   contract: PrimeContract | undefined;
   primeChangeOrderSummary: PrimeChangeOrderFinancialSummary | undefined;
   totalPOCommitted: number;
+  totalSpent?: number;
   invoiceSummary: unknown;
 }
 
@@ -19,6 +20,7 @@ export interface PrimeContractComputations {
   paidToDate: number;
   balanceDue: number;
   totalPOCommitted: number;
+  totalSpent: number;
   retainagePercent: number;
   retainageAmount: number;
   targetBudgetPercent: number;
@@ -32,6 +34,7 @@ export function usePrimeContractComputations({
   contract,
   primeChangeOrderSummary,
   totalPOCommitted,
+  totalSpent,
   invoiceSummary,
 }: ComputationInput): PrimeContractComputations {
   return useMemo(() => {
@@ -60,8 +63,9 @@ export function usePrimeContractComputations({
       project?.targetBudgetPercent ?? contract?.targetBudgetPercent ?? 100
     );
     const budgetLimit = contractSum * (targetBudgetPercent / 100);
-    const budgetRemaining = budgetLimit - totalPOCommitted;
-    const spentUtilization = budgetLimit > 0 ? (totalPOCommitted / budgetLimit) * 100 : 0;
+    const spentTotal = totalSpent ?? totalPOCommitted;
+    const budgetRemaining = budgetLimit - spentTotal;
+    const spentUtilization = budgetLimit > 0 ? (spentTotal / budgetLimit) * 100 : 0;
 
     return {
       original,
@@ -70,6 +74,7 @@ export function usePrimeContractComputations({
       paidToDate,
       balanceDue,
       totalPOCommitted,
+      totalSpent: spentTotal,
       retainagePercent,
       retainageAmount,
       targetBudgetPercent,
@@ -77,5 +82,5 @@ export function usePrimeContractComputations({
       budgetRemaining,
       spentUtilization,
     };
-  }, [project, contract, primeChangeOrderSummary, totalPOCommitted, invoiceSummary]);
+  }, [project, contract, primeChangeOrderSummary, totalPOCommitted, totalSpent, invoiceSummary]);
 }

@@ -51,14 +51,17 @@ function roleFromEmployee(employee: ProfileSignatureEmployee) {
     return employee?.role?.label || employee?.role?.name || null;
 }
 
-function resolveSignature(source: ProfileSignatureSource, saved?: MailSignatureInput | null) {
-    const templateSignature = getMailTemplateConfig().signature;
+async function getTemplateSignature() {
+    return (await getMailTemplateConfig()).signature;
+}
+
+async function resolveSignature(source: ProfileSignatureSource, saved?: MailSignatureInput | null) {
+    const templateSignature = await getTemplateSignature();
     const employee = source.employee ?? null;
 
     return {
         name: saved?.name || source.user.name || employee?.name || templateSignature.name,
-        role:
-            saved?.role || roleFromEmployee(employee) || source.user.role || templateSignature.role,
+        role: saved?.role || roleFromEmployee(employee) || templateSignature.role,
         email: (
             saved?.email ||
             source.user.email ||
@@ -83,7 +86,7 @@ async function getProfileSource(userId: string): Promise<ProfileSignatureSource>
     });
 
     if (!user) {
-        const templateSignature = getMailTemplateConfig().signature;
+        const templateSignature = await getTemplateSignature();
         return {
             user: {
                 id: userId,

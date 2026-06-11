@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
+import { useAccess } from '@/app/contexts/access-context';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import {
   VendorDetailDialogs,
@@ -11,6 +11,8 @@ import {
   VendorDetailStats,
   VendorDetailToolbar,
   VendorOverviewTab,
+  VendorProjectsTab,
+  VendorPurchaseOrdersTab,
 } from '@/modules/directory/components/vendors/detail';
 import { VENDOR_DETAIL_TABS } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import { useDirectoryActivity } from '@/modules/directory/hooks/shared';
@@ -18,24 +20,10 @@ import {
   useDeleteVendorMutation,
   useVendorDetailQuery,
 } from '@/modules/directory/hooks/vendors.hooks';
-import { DollarSign, FileText, FolderOpen, Package } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-const VENDOR_PLACEHOLDER_ICONS = {
-  projects: FolderOpen,
-  'purchase-orders': Package,
-  'change-orders': FileText,
-  payments: DollarSign,
-} as const;
-
-const VENDOR_PLACEHOLDER_TITLES = {
-  projects: 'Project Assignments',
-  'purchase-orders': 'Purchase Order History',
-  'change-orders': 'Change Order History',
-  payments: 'Payment Log',
-} as const;
-
 export function VendorDetailPage() {
+  const { can } = useAccess();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -44,6 +32,8 @@ export function VendorDetailPage() {
   const { data: vendor, isLoading, isError, refetch } = useVendorDetailQuery(id ?? '');
   const deleteMutation = useDeleteVendorMutation();
   const activity = useDirectoryActivity('vendor', id);
+
+  useBreadcrumbLabel(id ? `/app/directory/vendors/${id}` : undefined, vendor?.name ?? 'Vendor');
 
   if (isLoading) {
     return <DirectoryDetailLoading />;
@@ -74,22 +64,26 @@ export function VendorDetailPage() {
   }
 
   const contacts = mergeLinkedContacts(vendor.contacts, vendor.contactLinks);
+  const canUpdateVendor = can('vendor', 'update');
+  const canDeleteVendor = can('vendor', 'delete');
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <VendorDetailToolbar
         vendor={vendor}
         sidebarOpen={sidebarOpen}
+        canUpdate={canUpdateVendor}
+        canDelete={canDeleteVendor}
         onDelete={() => setDeleteOpen(true)}
         onOpenSidebar={() => setSidebarOpen(true)}
       />
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
-          <VendorDetailStats />
+          <VendorDetailStats vendor={vendor} />
 
-          <Tabs defaultValue="overview">
-            <TabsList variant="line">
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
               {VENDOR_DETAIL_TABS.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}
@@ -101,21 +95,13 @@ export function VendorDetailPage() {
               <VendorOverviewTab vendor={vendor} contacts={contacts} />
             </TabsContent>
 
-            {VENDOR_DETAIL_TABS.filter((tab) => tab.value !== 'overview').map((tab) => {
-              const Icon = VENDOR_PLACEHOLDER_ICONS[tab.value];
-              return (
-                <TabsContent key={tab.value} value={tab.value}>
-                  <Card>
-                    <CardContent>
-                      <ComingSoonPlaceholder
-                        icon={Icon}
-                        title={VENDOR_PLACEHOLDER_TITLES[tab.value]}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              );
-            })}
+            <TabsContent value="projects">
+              <VendorProjectsTab vendor={vendor} />
+            </TabsContent>
+
+            <TabsContent value="purchase-orders">
+              <VendorPurchaseOrdersTab vendor={vendor} />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -132,11 +118,11 @@ export function VendorDetailPage() {
 
       <VendorDetailDialogs
         vendor={vendor}
-        open={deleteOpen}
+        open={deleteOpen && canDeleteVendor}
         isDeleting={deleteMutation.isPending}
         onOpenChange={setDeleteOpen}
         onDelete={() => {
-          if (!id) return;
+          if (!id || !canDeleteVendor) return;
           deleteMutation.mutate(id, {
             onSuccess: () => navigate('..', { relative: 'path' }),
           });

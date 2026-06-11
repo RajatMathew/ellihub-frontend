@@ -13,6 +13,7 @@ import { cva } from 'class-variance-authority';
 
 import { Checkbox } from '@app/components/ui/checkbox';
 import { useDataGrid } from '@app/components/ui/data-grid';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@app/components/ui/tooltip';
 import { cn } from '@app/lib/utils';
 
 const headerCellSpacingVariants = cva('', {
@@ -326,6 +327,59 @@ function DataGridTableBodyRowCell<TData>({
   const bodyCellSpacing = bodyCellSpacingVariants({
     size: props.tableLayout?.dense ? 'dense' : 'default',
   });
+  const textOverflow = cell.column.columnDef.meta?.textOverflow;
+  const preserveTruncatedCellLayout = cell.column.columnDef.meta?.preserveTruncatedCellLayout;
+  const alwaysShowTooltip = cell.column.columnDef.meta?.alwaysShowTooltip;
+  const cellValue = cell.getValue();
+  const tooltipContent =
+    cell.column.columnDef.meta?.tooltipContent?.(row.original, cellValue) ??
+    (typeof cellValue === 'string' || typeof cellValue === 'number' ? cellValue : undefined);
+  const shouldWrapContent = textOverflow === 'truncate' || textOverflow === 'scroll';
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (textOverflow !== 'truncate' || alwaysShowTooltip) {
+      setIsOverflowing(false);
+      return;
+    }
+
+    const element = contentRef.current;
+    if (!element) return;
+
+    const hasOverflow = (target: Element) =>
+      target.scrollWidth > target.clientWidth || target.scrollHeight > target.clientHeight;
+    const checkOverflow = () => {
+      setIsOverflowing(
+        hasOverflow(element) || Array.from(element.querySelectorAll('*')).some(hasOverflow)
+      );
+    };
+
+    checkOverflow();
+
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [alwaysShowTooltip, children, textOverflow, tooltipContent]);
+
+  const content = shouldWrapContent ? (
+    <div
+      ref={contentRef}
+      className={cn(
+        'min-w-0 max-w-full',
+        textOverflow === 'truncate' && !preserveTruncatedCellLayout && 'truncate',
+        textOverflow === 'scroll' &&
+          'max-h-24 overflow-auto whitespace-pre-wrap break-words pr-1 text-left'
+      )}
+    >
+      {children}
+    </div>
+  ) : textOverflow === 'wrap' ? (
+    <div className="min-w-0 max-w-full whitespace-normal break-words">{children}</div>
+  ) : (
+    children
+  );
 
   return (
     <td
@@ -352,7 +406,16 @@ function DataGridTableBodyRowCell<TData>({
           : ''
       )}
     >
-      {children}
+      {textOverflow === 'truncate' && tooltipContent && (alwaysShowTooltip || isOverflowing) ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent className="max-w-96 whitespace-pre-wrap break-words text-left">
+            {tooltipContent}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        content
+      )}
     </td>
   );
 }

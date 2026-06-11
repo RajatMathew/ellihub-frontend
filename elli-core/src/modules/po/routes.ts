@@ -1,23 +1,47 @@
+import {
+    assertActivityEntityAccess,
+    assertFileAccess,
+    assertPoAttachmentActionAccess,
+    assertProjectActionAccess,
+    assertProjectActionForActivityEntity,
+    assertProjectEntityActionAccess,
+    getAccessContext,
+} from '@lib/access';
 import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';
 
 import {
-    AddPoQuickBooksPaymentSchema,
-    AddPoQuickBooksPaymentsSchema,
     AddPoAttachmentSchema,
+    GeneratePoPdfSchema,
     PoCreateSchema,
+    PoFromRfqSchema,
     PoUpdateSchema,
     RemovePoAttachmentSchema,
     SetPoCancelledSchema,
     SetPoDeliveredSchema,
-    SetPoDraftSchema,
     SetPoIssuedSchema,
 } from './models';
 import { PoService } from './service';
 
 const app = new Hono();
+
+function getContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+    const fallbackName = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+    return `${disposition}; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+function getResponseBody(content: Uint8Array): ArrayBuffer {
+    const body = new Uint8Array(content.byteLength);
+    body.set(content);
+    return body.buffer;
+}
+
+function getRequestedBy(c: Context): string {
+    const user = c.get('user');
+    return user?.name || user?.email || 'Elli NY Design Corp';
+}
 
 app.get(
     '/',
@@ -25,62 +49,91 @@ app.get(
     paginationMiddleware({ defaultSize: 25, defaultSortBy: 'createdAt', defaultSortOrder: 'desc' }),
     async (c) => {
         const pagination = c.get('pagination');
-        const { data, count } = await PoService.getPurchaseOrders(pagination);
+        const access = await getAccessContext(c);
+        const { data, count } = await PoService.getPurchaseOrders(pagination, access);
         return success(c, data, 200, 'OK', count);
+    }
+);
+
+app.get('/pdf/default-terms', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const terms = await PoService.getDefaultPdfTerms();
+    return success(c, terms);
+});
+
+app.get('/pdf/terms', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
+    const terms = await PoService.getPdfTermsOptions();
+    return success(c, terms);
+});
+
+app.post(
+    '/:id/pdf',
+    requirePermission({ purchaseOrder: ['read'] }),
+    zValidator('json', GeneratePoPdfSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        await assertActivityEntityAccess(c, 'purchaseOrder', id);
+        const pdf = await PoService.generatePdf(id, getRequestedBy(c), c.req.valid('json'));
+        const headers = new Headers({
+            'Content-Type': pdf.contentType,
+            'Content-Length': String(pdf.bytes.byteLength),
+            'Content-Disposition': getContentDisposition('attachment', pdf.fileName),
+            'Cache-Control': 'private, max-age=0, no-store',
+            'X-PDF-Engine-Cache-Hit': String(pdf.cacheHit),
+        });
+
+        if (pdf.requestHash) {
+            headers.set('X-PDF-Engine-Request-Hash', pdf.requestHash);
+        }
+
+        return new Response(getResponseBody(pdf.bytes), {
+            status: 200,
+            headers,
+        });
+    }
+);
+
+app.post(
+    '/:id/pdf/save',
+    requirePermission({ purchaseOrder: ['update'] }),
+    zValidator('json', GeneratePoPdfSchema),
+    async (c) => {
+        const id = c.req.param('id');
+        await assertProjectEntityActionAccess(c, 'purchaseOrder', 'update', 'purchaseOrder', id);
+        const pdf = await PoService.savePdf(
+            id,
+            getRequestedBy(c),
+            c.get('user')!.id,
+            c.req.valid('json')
+        );
+        const headers = new Headers({
+            'Content-Type': pdf.contentType,
+            'Content-Length': String(pdf.bytes.byteLength),
+            'Content-Disposition': getContentDisposition('attachment', pdf.fileName),
+            'Cache-Control': 'private, max-age=0, no-store',
+            'X-PDF-Engine-Cache-Hit': String(pdf.cacheHit),
+            'X-Saved-File-Id': pdf.savedFileId,
+        });
+
+        if (pdf.requestHash) {
+            headers.set('X-PDF-Engine-Request-Hash', pdf.requestHash);
+        }
+        if (pdf.savedAttachmentId) {
+            headers.set('X-Saved-Attachment-Id', pdf.savedAttachmentId);
+        }
+
+        return new Response(getResponseBody(pdf.bytes), {
+            status: 200,
+            headers,
+        });
     }
 );
 
 app.get('/:id', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
     const id = c.req.param('id');
+    await assertActivityEntityAccess(c, 'purchaseOrder', id);
     const po = await PoService.getPurchaseOrder(id);
     return success(c, po);
 });
-
-app.get('/:id/payments', requirePermission({ purchaseOrder: ['read'] }), async (c) => {
-    const id = c.req.param('id');
-    const payments = await PoService.getQuickBooksPayments(id);
-    return success(c, payments);
-});
-
-app.get(
-    '/:id/quickbooks-payment-options',
-    requirePermission({ purchaseOrder: ['read'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        const options = await PoService.getQuickBooksPaymentOptions(id);
-        return success(c, options);
-    }
-);
-
-app.post(
-    '/:id/payments/quickbooks/bulk',
-    requirePermission({ purchaseOrder: ['update'] }),
-    zValidator('json', AddPoQuickBooksPaymentsSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const payments = await PoService.addQuickBooksPayments(
-            id,
-            c.req.valid('json'),
-            c.get('user')!.id
-        );
-        return success(c, payments, 201);
-    }
-);
-
-app.post(
-    '/:id/payments/quickbooks',
-    requirePermission({ purchaseOrder: ['update'] }),
-    zValidator('json', AddPoQuickBooksPaymentSchema),
-    async (c) => {
-        const id = c.req.param('id');
-        const payment = await PoService.addQuickBooksPayment(
-            id,
-            c.req.valid('json'),
-            c.get('user')!.id
-        );
-        return success(c, payment, 201);
-    }
-);
 
 app.post(
     '/',
@@ -88,6 +141,8 @@ app.post(
     zValidator('json', PoCreateSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectActionAccess(c, 'purchaseOrder', 'create', data.projectId);
+        if (data.rfqId) await assertActivityEntityAccess(c, 'rfq', data.rfqId);
         const po = await PoService.createPurchaseOrder(data, c.get('user')!.id);
         return success(c, po, 201);
     }
@@ -99,34 +154,46 @@ app.put(
     zValidator('json', PoUpdateSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectEntityActionAccess(
+            c,
+            'purchaseOrder',
+            'update',
+            'purchaseOrder',
+            data.id
+        );
+        await assertProjectActionAccess(c, 'purchaseOrder', 'update', data.projectId);
+        if (data.rfqId) await assertActivityEntityAccess(c, 'rfq', data.rfqId);
         const po = await PoService.updatePurchaseOrder(data, c.get('user')!.id);
         return success(c, po);
     }
 );
 
-app.post('/from-rfq/:rfqId', requirePermission({ purchaseOrder: ['create'] }), async (c) => {
-    const rfqId = c.req.param('rfqId');
-    const po = await PoService.createFromRfq(rfqId, c.get('user')!.id);
-    return success(c, po, 201);
-});
-
-app.patch(
-    '/set-draft',
-    requirePermission({ purchaseOrder: ['update'] }),
-    zValidator('json', SetPoDraftSchema),
+app.post(
+    '/from-rfq/:rfqId',
+    requirePermission({ purchaseOrder: ['create'] }),
+    zValidator('json', PoFromRfqSchema),
     async (c) => {
+        const rfqId = c.req.param('rfqId');
         const data = c.req.valid('json');
-        const po = await PoService.setDraft(data, c.get('user')!.id);
-        return success(c, po);
+        await assertProjectActionForActivityEntity(c, 'purchaseOrder', 'create', 'rfq', rfqId);
+        const po = await PoService.createFromRfq(rfqId, data, c.get('user')!.id);
+        return success(c, po, 201);
     }
 );
 
 app.patch(
     '/set-issued',
-    requirePermission({ purchaseOrder: ['update'] }),
+    requirePermission({ purchaseOrder: ['issue'] }),
     zValidator('json', SetPoIssuedSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectEntityActionAccess(
+            c,
+            'purchaseOrder',
+            'issue',
+            'purchaseOrder',
+            data.id
+        );
         const po = await PoService.setIssued(data, c.get('user')!.id);
         return success(c, po);
     }
@@ -134,10 +201,17 @@ app.patch(
 
 app.patch(
     '/set-delivered',
-    requirePermission({ purchaseOrder: ['update'] }),
+    requirePermission({ purchaseOrder: ['deliver'] }),
     zValidator('json', SetPoDeliveredSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectEntityActionAccess(
+            c,
+            'purchaseOrder',
+            'deliver',
+            'purchaseOrder',
+            data.id
+        );
         const po = await PoService.setDelivered(data, c.get('user')!.id);
         return success(c, po);
     }
@@ -145,10 +219,17 @@ app.patch(
 
 app.patch(
     '/set-cancelled',
-    requirePermission({ purchaseOrder: ['update'] }),
+    requirePermission({ purchaseOrder: ['cancel'] }),
     zValidator('json', SetPoCancelledSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectEntityActionAccess(
+            c,
+            'purchaseOrder',
+            'cancel',
+            'purchaseOrder',
+            data.id
+        );
         const po = await PoService.setCancelled(data, c.get('user')!.id);
         return success(c, po);
     }
@@ -160,6 +241,14 @@ app.patch(
     zValidator('json', AddPoAttachmentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertProjectEntityActionAccess(
+            c,
+            'purchaseOrder',
+            'update',
+            'purchaseOrder',
+            data.purchaseOrderId
+        );
+        await assertFileAccess(c, data.documentId);
         const attachment = await PoService.addAttachment(data, c.get('user')!.id);
         return success(c, attachment);
     }
@@ -171,20 +260,8 @@ app.patch(
     zValidator('json', RemovePoAttachmentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertPoAttachmentActionAccess(c, data.id, 'update');
         await PoService.removeAttachment(data, c.get('user')!.id);
-        return success(c, null);
-    }
-);
-
-app.delete(
-    '/:id/payments/:paymentId',
-    requirePermission({ purchaseOrder: ['update'] }),
-    async (c) => {
-        const id = c.req.param('id');
-        const paymentId = c.req.param('paymentId');
-
-        await PoService.removeQuickBooksPayment(id, paymentId, c.get('user')!.id);
-
         return success(c, null);
     }
 );

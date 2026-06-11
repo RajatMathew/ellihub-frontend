@@ -1,5 +1,6 @@
-import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Field, FieldError } from '@/app/components/ui/field';
+import { InputWrapper } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import {
   Select,
   SelectContent,
@@ -11,6 +12,8 @@ import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.cons
 import type { GCFormValues } from '@/modules/directory/schemas/gc.schema';
 import { Controller, type Control } from 'react-hook-form';
 
+import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
+
 interface GCTermsFieldsProps {
   control: Control<GCFormValues>;
 }
@@ -21,13 +24,18 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
       <Controller
         name="paymentTerms"
         control={control}
-        render={({ field }) => (
-          <Field>
-            <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-              Payment Terms
-            </FieldLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger>
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid}>
+            <GCFormFieldLabel required>Payment Terms</GCFormFieldLabel>
+            <Select
+              key={field.value || 'empty-payment-terms'}
+              value={field.value || ''}
+              onValueChange={field.onChange}
+            >
+              <SelectTrigger
+                aria-invalid={fieldState.invalid}
+                className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+              >
                 <SelectValue placeholder="Select terms..." />
               </SelectTrigger>
               <SelectContent>
@@ -38,6 +46,7 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
                 ))}
               </SelectContent>
             </Select>
+            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}
       />
@@ -46,18 +55,16 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <FieldLabel className="text-xs font-semibold uppercase tracking-widest">
-              Retainage %
-            </FieldLabel>
-            <InputWrapper>
-              <Input
-                type="number"
+            <GCFormFieldLabel required>Retainage %</GCFormFieldLabel>
+            <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
+              <NumberInput
+                value={field.value}
+                onValueChange={field.onChange}
                 min={0}
                 max={100}
-                step={0.5}
-                value={field.value}
-                onChange={(event) => field.onChange(Number(event.target.value))}
-                placeholder="10"
+                decimalPlaces={2}
+                placeholder="0"
+                aria-invalid={fieldState.invalid}
               />
             </InputWrapper>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

@@ -9,7 +9,13 @@ export function getGCTypeCode(type: GCType | null | undefined) {
 }
 
 export function getGCPrimaryContact(gc: GeneralContractor) {
-  return gc.contacts?.[0] ?? gc.contactLinks?.[0]?.contact ?? null;
+  return (
+    gc.contacts?.find((contact) => contact.isPrimary) ??
+    gc.contactLinks?.find((link) => link.isPrimary)?.contact ??
+    gc.contacts?.[0] ??
+    gc.contactLinks?.[0]?.contact ??
+    null
+  );
 }
 
 export function getGCTypeOptionLabel(type: GCType) {

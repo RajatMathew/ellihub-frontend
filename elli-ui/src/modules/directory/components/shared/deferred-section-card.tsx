@@ -22,7 +22,7 @@ export function DeferredSectionCard({
     <Card id={id}>
       <CardContent className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold uppercase tracking-wide text-foreground">{title}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
 

@@ -3,6 +3,7 @@ import {
   vendorContactLinkSchema,
   vendorDetailSchema,
   vendorPaginatedResponseSchema,
+  vendorStatsSchema,
   type CreateVendorContactInput,
   type CreateVendorInput,
   type ListVendorsParams,
@@ -11,6 +12,7 @@ import {
   type VendorContactLink,
   type VendorDetail,
   type VendorPaginatedResponse,
+  type VendorStats,
 } from '@/modules/directory/schemas/vendor.schema';
 
 const BASE = '/vendor';
@@ -63,6 +65,11 @@ export const vendorsApi = {
       return raw as VendorDetail;
     }
     return result.data;
+  },
+
+  async stats(): Promise<VendorStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return vendorStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async create(data: CreateVendorInput): Promise<VendorDetail> {

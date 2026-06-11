@@ -1,19 +1,16 @@
 import { memo } from 'react';
 
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 import { Header } from '@app/components/header/header';
 import { mainHeaderConfig, projectsDetailHeaderConfig } from '@app/routing/config';
 
 function HeaderRoutingSetupInner() {
-  return (
-    <Routes>
-      <Route path="project/:projectId/*" element={<Outlet />}>
-        <Route path="*" element={<Header {...projectsDetailHeaderConfig} />} />
-      </Route>
-      <Route index path="*" element={<Header {...mainHeaderConfig} />} />
-    </Routes>
-  );
+  const { pathname } = useLocation();
+  const isProjectSidebar = /\/project\/[^/]+/.test(pathname);
+  const config = isProjectSidebar ? projectsDetailHeaderConfig : mainHeaderConfig;
+
+  return <Header {...config} sidebarMode={isProjectSidebar ? 'project' : 'main'} />;
 }
 
 export const HeaderRoutingSetup = memo(HeaderRoutingSetupInner);

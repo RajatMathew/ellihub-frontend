@@ -2,7 +2,7 @@ import { BadRequestError } from '@utils';
 import axios from 'axios';
 import z from 'zod';
 
-import { QUICKBOOKS_ACCOUNTING_SCOPE, QuickBooksTransactionEntity } from './models';
+import { QUICKBOOKS_ACCOUNTING_SCOPE } from './models';
 
 const QUICKBOOKS_AUTHORIZATION_ENDPOINT = 'https://appcenter.intuit.com/connect/oauth2';
 const QUICKBOOKS_TOKEN_ENDPOINT = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
@@ -11,6 +11,7 @@ const QUICKBOOKS_SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.c
 const QUICKBOOKS_PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
 const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 const DEFAULT_MINOR_VERSION = '75';
+const QUICKBOOKS_MAX_RETRIES = 2;
 
 const QuickBooksTokenResponseSchema = z.object({
     access_token: z.string().min(1),
@@ -40,6 +41,13 @@ const QuickBooksQueryResponseSchema = z
     })
     .passthrough();
 
+const QuickBooksCdcResponseSchema = z
+    .object({
+        CDCResponse: z.array(z.unknown()).optional(),
+        time: z.string().optional(),
+    })
+    .passthrough();
+
 export type QuickBooksTokenResponse = {
     accessToken: string;
     refreshToken: string;
@@ -57,12 +65,18 @@ export type QuickBooksConfigurationStatus = {
     minorVersion: string;
 };
 
+export type QuickBooksEntityName = 'Account' | 'Vendor';
+
+export type QuickBooksCdcResponse = {
+    rowsByEntity: Partial<Record<QuickBooksEntityName, Array<Record<string, unknown>>>>;
+    responseTime: string;
+};
+
 type QuickBooksConfig = QuickBooksConfigurationStatus & {
     configured: true;
     clientId: string;
     clientSecret: string;
     redirectUri: string;
-    frontendUrl: string;
 };
 
 type QuickBooksCompanyInfo = {
@@ -119,7 +133,6 @@ export const getQuickBooksConfig = (): QuickBooksConfig => {
         clientId: process.env.QUICKBOOKS_CLIENT_ID!.trim(),
         clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET!.trim(),
         redirectUri: process.env.QUICKBOOKS_REDIRECT_URI!.trim(),
-        frontendUrl: getFrontendUrl(),
     };
 };
 
@@ -138,6 +151,8 @@ const toTokenResponse = (data: unknown): QuickBooksTokenResponse => {
     };
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -154,6 +169,28 @@ const getFaultMessage = (data: unknown): string | null => {
     const detail = typeof first.Detail === 'string' ? first.Detail : null;
 
     return [message, detail].filter(Boolean).join(': ') || null;
+};
+
+const getRetryAfterMs = (value: unknown): number => {
+    if (typeof value !== 'string') return 1000;
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 1000;
+};
+
+const requestWithRateLimitRetry = async <T>(request: () => Promise<T>): Promise<T> => {
+    let attempt = 0;
+
+    while (true) {
+        try {
+            return await request();
+        } catch (error) {
+            if (!axios.isAxiosError(error) || error.response?.status !== 429) throw error;
+            if (attempt >= QUICKBOOKS_MAX_RETRIES) throw error;
+
+            attempt += 1;
+            await sleep(getRetryAfterMs(error.response.headers?.['retry-after']));
+        }
+    }
 };
 
 export const getQuickBooksClientErrorMessage = (error: unknown): string | null => {
@@ -177,6 +214,33 @@ export const isQuickBooksAuthError = (error: unknown): boolean => {
         }
     }
     return false;
+};
+
+const extractCdcRows = (data: unknown, entities: QuickBooksEntityName[]): QuickBooksCdcResponse => {
+    const parsed = QuickBooksCdcResponseSchema.parse(data);
+    const rowsByEntity: Partial<Record<QuickBooksEntityName, Array<Record<string, unknown>>>> = {};
+
+    for (const entity of entities) rowsByEntity[entity] = [];
+
+    for (const cdcEntry of parsed.CDCResponse ?? []) {
+        if (!isRecord(cdcEntry)) continue;
+        const queryResponses = cdcEntry.QueryResponse;
+        const responseList = Array.isArray(queryResponses) ? queryResponses : [queryResponses];
+
+        for (const response of responseList) {
+            if (!isRecord(response)) continue;
+
+            for (const entity of entities) {
+                const rows = response[entity];
+                if (Array.isArray(rows)) rowsByEntity[entity]!.push(...rows.filter(isRecord));
+            }
+        }
+    }
+
+    return {
+        rowsByEntity,
+        responseTime: parsed.time ?? new Date().toISOString(),
+    };
 };
 
 export const QuickBooksClient = {
@@ -251,17 +315,19 @@ export const QuickBooksClient = {
         accessToken: string
     ): Promise<QuickBooksCompanyInfo> => {
         const config = getQuickBooksConfig();
-        const response = await axios.get(
-            `${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/companyinfo/${encodeURIComponent(
-                realmId
-            )}`,
-            {
-                headers: {
-                    accept: 'application/json',
-                    authorization: `Bearer ${accessToken}`,
-                },
-                params: { minorversion: config.minorVersion },
-            }
+        const response = await requestWithRateLimitRetry(() =>
+            axios.get(
+                `${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/companyinfo/${encodeURIComponent(
+                    realmId
+                )}`,
+                {
+                    headers: {
+                        accept: 'application/json',
+                        authorization: `Bearer ${accessToken}`,
+                    },
+                    params: { minorversion: config.minorVersion },
+                }
+            )
         );
         const parsed = QuickBooksCompanyInfoResponseSchema.parse(response.data);
         const company = parsed.CompanyInfo;
@@ -275,13 +341,12 @@ export const QuickBooksClient = {
     queryEntity: async (
         realmId: string,
         accessToken: string,
-        entity: QuickBooksTransactionEntity,
+        entity: QuickBooksEntityName,
         query: string
     ): Promise<Array<Record<string, unknown>>> => {
         const config = getQuickBooksConfig();
-        const response = await axios.get(
-            `${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/query`,
-            {
+        const response = await requestWithRateLimitRetry(() =>
+            axios.get(`${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/query`, {
                 headers: {
                     accept: 'application/json',
                     authorization: `Bearer ${accessToken}`,
@@ -290,11 +355,35 @@ export const QuickBooksClient = {
                     query,
                     minorversion: config.minorVersion,
                 },
-            }
+            })
         );
         const parsed = QuickBooksQueryResponseSchema.parse(response.data);
         const rows = parsed.QueryResponse?.[entity];
 
         return Array.isArray(rows) ? rows.filter(isRecord) : [];
+    },
+
+    changeDataCapture: async (
+        realmId: string,
+        accessToken: string,
+        entities: QuickBooksEntityName[],
+        changedSince: Date
+    ): Promise<QuickBooksCdcResponse> => {
+        const config = getQuickBooksConfig();
+        const response = await requestWithRateLimitRetry(() =>
+            axios.get(`${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/cdc`, {
+                headers: {
+                    accept: 'application/json',
+                    authorization: `Bearer ${accessToken}`,
+                },
+                params: {
+                    entities: entities.join(','),
+                    changedSince: changedSince.toISOString(),
+                    minorversion: config.minorVersion,
+                },
+            })
+        );
+
+        return extractCdcRows(response.data, entities);
     },
 };

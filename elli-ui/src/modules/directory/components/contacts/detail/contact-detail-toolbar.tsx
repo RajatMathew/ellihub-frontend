@@ -20,6 +20,8 @@ interface ContactDetailToolbarProps {
   roleName: string | null;
   primaryCompanyName: string | null;
   sidebarOpen: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
   onOpenSidebar: () => void;
   onDelete: () => void;
 }
@@ -29,6 +31,8 @@ export function ContactDetailToolbar({
   roleName,
   primaryCompanyName,
   sidebarOpen,
+  canUpdate,
+  canDelete,
   onOpenSidebar,
   onDelete,
 }: ContactDetailToolbarProps) {
@@ -39,7 +43,7 @@ export function ContactDetailToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             <Link to="/app/directory/contacts" className="hover:text-foreground">
               Directory
@@ -50,31 +54,42 @@ export function ContactDetailToolbar({
             </Link>
           </div>
           <ToolbarPageTitle>{contactName}</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">{subtitle || 'Directory contact'}</span>
+          <span className="max-w-full break-words text-sm text-muted-foreground">
+            {subtitle || 'Directory contact'}
+          </span>
         </ToolbarHeading>
 
-        <ToolbarActions>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="edit">
-              <Pencil className="size-4" />
-              Edit Contact
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" mode="icon" aria-label="Contact actions">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-4" />
-                Delete Permanently
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
+          {canUpdate && (
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+              <Link to="edit">
+                <Pencil className="size-4" />
+                Edit Contact
+              </Link>
+            </Button>
+          )}
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" mode="icon" aria-label="Contact actions">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2 className="size-4" />
+                  Delete Permanently
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {!sidebarOpen && (
-            <Button variant="outline" size="sm" onClick={onOpenSidebar}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onOpenSidebar}
+            >
               <PanelRightOpen className="size-4" />
               View Details
             </Button>

@@ -1,7 +1,13 @@
+import { useState } from 'react';
+
 import { Download, FileText, Trash2, Upload } from 'lucide-react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 
 export interface ProjectDetailDocumentRef {
   id: string;
@@ -45,6 +51,8 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
   title = 'Documents',
   emptyMessage = 'No documents attached.',
 }: ProjectDetailDocumentsCardProps<TDocument>) {
+  const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -76,7 +84,23 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
                   <div className="flex min-w-0 items-center gap-3">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
-                      <span className="block truncate text-sm font-medium">{documentName}</span>
+                      {document?.id ? (
+                        <button
+                          type="button"
+                          className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                          onClick={() =>
+                            setPreviewFile({
+                              id: document.id,
+                              name: document.name,
+                              displayName: document.displayName,
+                            })
+                          }
+                        >
+                          {documentName}
+                        </button>
+                      ) : (
+                        <span className="block truncate text-sm font-medium">{documentName}</span>
+                      )}
                       {description && (
                         <span className="text-xs text-muted-foreground">{description}</span>
                       )}
@@ -119,6 +143,14 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
           </div>
         )}
       </CardContent>
+
+      <FilePreviewDialog
+        open={!!previewFile}
+        onOpenChange={(open) => {
+          if (!open) setPreviewFile(null);
+        }}
+        file={previewFile}
+      />
     </Card>
   );
 }

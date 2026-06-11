@@ -83,6 +83,16 @@ export const contactsApi = {
     await api.delete(`${BASE}/${id}`);
   },
 
+  async addTag(contactId: string, tag: string): Promise<Contact> {
+    const res = await api.patch(`${BASE}/tag/add`, { contactId, tag });
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async removeTag(contactId: string, tag: string): Promise<Contact> {
+    const res = await api.patch(`${BASE}/tag/remove`, { contactId, tag });
+    return contactSchema.parse(res.data?.data ?? res.data);
+  },
+
   // TODO: Replace with dedicated sub-resource endpoints when CRUD UI is built
   async addPhone(id: string, phone: { number: string; label: string }): Promise<Contact> {
     const res = await api.post(`${BASE}/${id}/phones`, phone);
@@ -109,6 +119,8 @@ export const contactsApi = {
     contactId: string;
     vendorId?: string | null;
     generalContractorId?: string | null;
+    isPrimary?: boolean;
+    replaceExisting?: boolean;
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/link`, data);
     return res.data?.data ?? res.data;

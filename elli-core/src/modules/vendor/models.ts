@@ -1,3 +1,4 @@
+import { nanoIdSchema } from '@utils/zod';
 import z from 'zod';
 
 export const VendorStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
@@ -11,11 +12,15 @@ export const PaymentTermsSchema = z.enum([
     'DUE_ON_RECEIPT',
 ]);
 
-const VendorEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
+const VendorEmailSchema = z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const trimmed = value.trim().toLowerCase();
+    return trimmed ? trimmed : null;
+}, z.email().nullable().optional());
 
 export const VendorCreateSchema = z.object({
     name: z.string().min(2),
-    typeId: z.ulid().optional().nullable(),
+    typeId: nanoIdSchema.optional().nullable(),
     status: VendorStatusSchema,
     categoryTags: z.array(z.string().min(1)).optional(),
     taxId: z.string().min(1).optional().nullable(),
@@ -31,30 +36,30 @@ export const VendorCreateSchema = z.object({
 export type VendorCreateRequest = z.infer<typeof VendorCreateSchema>;
 
 export const VendorUpdateSchema = VendorCreateSchema.extend({
-    id: z.ulid(),
+    id: nanoIdSchema,
 });
 
 export type VendorUpdateRequest = z.infer<typeof VendorUpdateSchema>;
 
 export const AddVendorDocumentSchema = z.object({
-    vendorId: z.ulid(),
-    fileId: z.ulid(),
+    vendorId: nanoIdSchema,
+    fileId: nanoIdSchema,
     expiresOn: z.iso.date().optional().nullable(),
 });
 
 export type AddVendorDocumentRequest = z.infer<typeof AddVendorDocumentSchema>;
 
 export const UpdateVendorDocumentSchema = z.object({
-    vendorId: z.ulid(),
-    fileId: z.ulid(),
+    vendorId: nanoIdSchema,
+    fileId: nanoIdSchema,
     expiresOn: z.iso.date().optional().nullable(),
 });
 
 export type UpdateVendorDocumentRequest = z.infer<typeof UpdateVendorDocumentSchema>;
 
 export const RemoveVendorDocumentSchema = z.object({
-    vendorId: z.ulid(),
-    fileId: z.ulid(),
+    vendorId: nanoIdSchema,
+    fileId: nanoIdSchema,
 });
 
 export type RemoveVendorDocumentRequest = z.infer<typeof RemoveVendorDocumentSchema>;

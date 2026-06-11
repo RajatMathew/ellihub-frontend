@@ -11,7 +11,6 @@ export const quickBooksConnectionSchema = z.object({
   accessTokenExpiresAt: z.string(),
   refreshTokenExpiresAt: z.string().nullable(),
   tokenHealth: z.enum(['healthy', 'expiring', 'expired', 'unknown']),
-  lastSyncedAt: z.string().nullable(),
   disconnectedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -34,52 +33,66 @@ export const quickBooksAuthorizationSchema = z.object({
   expiresAt: z.string(),
 });
 
-export const quickBooksTransactionEntitySchema = z.enum([
-  'Invoice',
-  'Bill',
-  'Payment',
-  'BillPayment',
-  'Purchase',
-  'PurchaseOrder',
-  'SalesReceipt',
-  'CreditMemo',
-  'RefundReceipt',
-  'VendorCredit',
-  'JournalEntry',
-  'Deposit',
-  'Transfer',
-]);
-
-export const quickBooksTransactionSchema = z.object({
-  entity: quickBooksTransactionEntitySchema,
-  id: z.string(),
-  docNumber: z.string().nullable(),
-  txnDate: z.string().nullable(),
-  displayName: z.string(),
-  totalAmount: z.number().nullable(),
-  currency: z.string().nullable(),
-  privateNote: z.string().nullable(),
-  lastUpdatedTime: z.string().nullable(),
-  raw: z.record(z.string(), z.unknown()),
-});
-
-export const quickBooksTransactionsSchema = z.object({
-  realmId: z.string(),
-  companyName: z.string().nullable(),
-  environment: z.enum(['sandbox', 'production']),
-  fetchedAt: z.string(),
-  entities: z.array(quickBooksTransactionEntitySchema),
-  transactions: z.array(quickBooksTransactionSchema),
-});
-
 export const quickBooksDisconnectSchema = z.object({
   disconnected: z.boolean(),
+});
+
+const quickBooksReferenceSyncStatusEnum = z.enum(['SUCCESS', 'FAILED', 'PARTIAL']);
+const quickBooksReferenceEntityEnum = z.enum(['BANK_ACCOUNT', 'LINE_ITEM_CATEGORY', 'PAYEE']);
+const quickBooksReferenceSyncCountsSchema = z.object({
+  totalReceived: z.number(),
+  createdCount: z.number(),
+  updatedCount: z.number(),
+  deletedCount: z.number(),
+});
+
+export const quickBooksReferenceEntityStatusSchema = quickBooksReferenceSyncCountsSchema.extend({
+  entity: quickBooksReferenceEntityEnum,
+  lastFullSyncedAt: z.string().nullable(),
+  lastCdcSyncedAt: z.string().nullable(),
+  cdcWatermark: z.string().nullable(),
+  lastSyncStatus: quickBooksReferenceSyncStatusEnum.nullable(),
+  lastSyncError: z.string().nullable(),
+});
+
+export const quickBooksReferenceSyncStatusSchema = z.object({
+  provider: z.literal('quickbooks'),
+  connected: z.boolean(),
+  autoDailySyncEnabled: z.boolean(),
+  lastSyncedAt: z.string().nullable(),
+  lastSyncStatus: quickBooksReferenceSyncStatusEnum.nullable(),
+  lastSyncError: z.string().nullable(),
+  totals: quickBooksReferenceSyncCountsSchema,
+  entities: z.array(quickBooksReferenceEntityStatusSchema),
+});
+
+export const quickBooksReferenceEntityResultSchema = quickBooksReferenceSyncCountsSchema.extend({
+  entity: quickBooksReferenceEntityEnum,
+  mode: z.enum(['FULL', 'CDC']),
+  status: quickBooksReferenceSyncStatusEnum,
+  syncedAt: z.string().nullable(),
+  error: z.string().nullable(),
+});
+
+export const quickBooksReferenceSyncResultSchema = quickBooksReferenceSyncCountsSchema.extend({
+  provider: z.literal('quickbooks'),
+  trigger: z.enum(['MANUAL', 'SCHEDULED']),
+  startedAt: z.string(),
+  finishedAt: z.string(),
+  status: quickBooksReferenceSyncStatusEnum,
+  entities: z.array(quickBooksReferenceEntityResultSchema),
+});
+
+export const quickBooksReferenceAutoDailySyncSchema = z.object({
+  autoDailySyncEnabled: z.boolean(),
 });
 
 export type QuickBooksStatus = z.infer<typeof quickBooksStatusSchema>;
 export type QuickBooksConnection = z.infer<typeof quickBooksConnectionSchema>;
 export type QuickBooksAuthorization = z.infer<typeof quickBooksAuthorizationSchema>;
-export type QuickBooksTransactionEntity = z.infer<typeof quickBooksTransactionEntitySchema>;
-export type QuickBooksTransaction = z.infer<typeof quickBooksTransactionSchema>;
-export type QuickBooksTransactions = z.infer<typeof quickBooksTransactionsSchema>;
 export type QuickBooksDisconnect = z.infer<typeof quickBooksDisconnectSchema>;
+export type QuickBooksReferenceSyncStatus = z.infer<typeof quickBooksReferenceSyncStatusSchema>;
+export type QuickBooksReferenceSyncResult = z.infer<typeof quickBooksReferenceSyncResultSchema>;
+export type QuickBooksReferenceAutoDailySync = z.infer<
+  typeof quickBooksReferenceAutoDailySyncSchema
+>;

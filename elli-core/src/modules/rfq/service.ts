@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 
 import { RFQ, RFQAttachment, RFQVendorQuote, type Prisma } from '@db/client';
+import { AccessContext } from '@lib/access';
 import { renderPdf, type PdfJsonObject } from '@lib/pdf-engine';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware';
@@ -17,10 +18,13 @@ import {
     isAllowedFeatureMailSender,
     type TemplateContext,
 } from '@modules/mail/template-service';
+import { PdfNoticeService, type ResolvedPdfNotice } from '@modules/pdf/notice-service';
+import { resolvePdfProfile, type PdfProfile } from '@modules/pdf/profile-service';
+import { PdfTermsService, type ResolvedPdfTerms } from '@modules/pdf/terms-service';
 import { RevisionService } from '@modules/revision';
 import { BadRequestError, ConflictError, NotFoundError } from '@utils';
+import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
-import { ulid } from 'ulid';
 
 import {
     type GenerateVendorPdfRequest,
@@ -36,14 +40,17 @@ import {
     RfqUpdateRequest,
     SubmitQuoteRequest,
     UnawardRfqRequest,
+    VoidAwardRequest,
     VoidRfqRequest,
 } from './models';
 
 import type {
+    FeatureMailDraftBase,
     FeatureMailDraftRequest,
     FeatureMailDraftResponse,
     FeatureMailAttachmentPreview,
     FeatureMailKey,
+    FeatureMailRecipientGroup,
     FeatureMailSendResponse,
     MailSignatureInput,
 } from '@modules/mail/models';
@@ -56,9 +63,27 @@ type RfqVendorPdfResult = {
     cacheHit: boolean;
 };
 
+type SavedRfqVendorPdfResult = RfqVendorPdfResult & {
+    savedFileId: string;
+    savedAttachmentId: string | null;
+};
+
+const rfqVendorRecipientInclude = {
+    contacts: {
+        where: { deletedAt: null },
+        orderBy: [{ isPrimary: 'desc' as const }, { fullName: 'asc' as const }],
+        select: {
+            id: true,
+            fullName: true,
+            email: true,
+            isPrimary: true,
+        },
+    },
+} satisfies Prisma.VendorInclude;
+
 type RfqVendorPdfQuote = Prisma.RFQVendorQuoteGetPayload<{
     include: {
-        vendor: true;
+        vendor: { include: typeof rfqVendorRecipientInclude };
         rfq: {
             include: {
                 project: true;
@@ -69,6 +94,73 @@ type RfqVendorPdfQuote = Prisma.RFQVendorQuoteGetPayload<{
         };
     };
 }>;
+
+type RfqListItem = Prisma.RFQGetPayload<{
+    include: {
+        project: true;
+        type: true;
+        awardedVendor: true;
+    };
+}> & {
+    _count: {
+        invites: number;
+        quotes: number;
+    };
+};
+
+type RfqBidComparison = {
+    rfq: {
+        rfqNumber: string;
+        title: string;
+        estimatedBudget: number | null;
+        bidDeadline: Date;
+        status: { id: string; name: string; label: string };
+    };
+    deliverables: Array<{
+        id: string;
+        sequenceNumber: number | null;
+        description: string;
+        quantity: number;
+        unit: string;
+        estimatedUnitPrice: number | null;
+        estimatedTotal: number | null;
+    }>;
+    quotes: Array<{
+        quoteId: string;
+        vendorId: string;
+        vendorName: string;
+        status: { id: string; name: string; label: string };
+        totalAmount: number;
+        taxAmount: number | null;
+        grandTotal: number;
+        leadTimeDays: number | null;
+        warrantyPeriod: string | null;
+        isResponsive: boolean | null;
+        attachments: Array<{
+            id: string;
+            documentId: string;
+            document: { id: string; name: string; mimeType?: string };
+        }>;
+        lineItems: Array<{
+            deliverableId: string;
+            sequenceNumber: number | null;
+            unitPrice: number;
+            quantity: number;
+            lineTotal: number;
+            notes: string | null;
+            alternateProposed: boolean;
+        }>;
+    }>;
+    statistics: {
+        lowestQuote: number | null;
+        highestQuote: number | null;
+        averageQuote: number | null;
+        medianQuote: number | null;
+        quotesSubmitted: number;
+        quotesExpected: number;
+        budgetVariance: number | null;
+    };
+};
 
 const RFQ_VENDOR_PDF_TEMPLATE_ID = 'rfq_vendor_request_v1';
 const RFQ_VENDOR_MAIL_FEATURE = 'rfq.vendorRequest' satisfies FeatureMailKey;
@@ -84,6 +176,7 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 const quantityFormatter = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
 });
 
@@ -96,6 +189,32 @@ function formatQuantity(value: { toString(): string }): string {
     const numericValue = Number(value.toString());
     if (!Number.isFinite(numericValue)) return value.toString();
     return quantityFormatter.format(numericValue);
+}
+
+function toNumber(value: { toString(): string } | number | null | undefined): number | null {
+    if (value == null) return null;
+    const numericValue = typeof value === 'number' ? value : Number(value.toString());
+    return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function parseLeadTimeDays(value: string | null | undefined): number | null {
+    if (!value) return null;
+    const match = value.match(/\d+/);
+    if (!match) return null;
+    const numericValue = Number(match[0]);
+    return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function getMedian(values: number[]): number | null {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 1) return sorted[middle] ?? null;
+
+    const lower = sorted[middle - 1];
+    const upper = sorted[middle];
+    if (lower == null || upper == null) return null;
+    return (lower + upper) / 2;
 }
 
 function sanitizeFileName(value: string): string {
@@ -115,15 +234,17 @@ function sanitizeFileName(value: string): string {
 function buildRfqVendorPdfData(
     quote: RfqVendorPdfQuote,
     requestedBy: string,
-    pdfRequest: GenerateVendorPdfRequest
+    pdfProfile: PdfProfile,
+    terms: ResolvedPdfTerms,
+    notice: ResolvedPdfNotice
 ): PdfJsonObject {
-    const shipToName = pdfRequest.shipToName;
-    const logoPath = pdfRequest.company.logoPath || 'assets/logo.png';
+    const shipToName = pdfProfile.shipToName || pdfProfile.company.name;
+    const logoPath = pdfProfile.company.logoPath || 'assets/logo.png';
     return {
         company: {
-            name: pdfRequest.company.name,
-            address_lines: pdfRequest.company.addressLines,
-            phone: pdfRequest.company.phone,
+            name: pdfProfile.company.name,
+            address_lines: pdfProfile.company.addressLines,
+            phone: pdfProfile.company.phone,
             logo_path: logoPath,
         },
         rfq: {
@@ -157,14 +278,38 @@ function buildRfqVendorPdfData(
             unit: deliverable.unit.label,
         })),
         deliverables_count: String(quote.rfq.rfqdeliverables.length),
+        terms: {
+            included: terms.included,
+            html: terms.html,
+        },
+        notice: {
+            included: notice.included,
+            title: notice.title,
+            html: notice.html,
+        },
         footer: {
-            left: `${pdfRequest.company.name} - ${quote.rfq.rfqNumber}`,
+            left: `${pdfProfile.company.name} - ${quote.rfq.rfqNumber}`,
         },
     };
 }
 
 function buildRfqVendorPdfFileName(quote: RfqVendorPdfQuote): string {
     return sanitizeFileName(`${quote.rfq.rfqNumber}-${quote.vendor.name}-request-for-quote.pdf`);
+}
+
+function formatSavedPdfTimestamp(date = new Date()): string {
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+
+    return [
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+        `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}-${milliseconds}`,
+    ].join(' ');
+}
+
+function buildSavedRfqVendorPdfFileName(fileName: string): string {
+    const baseName = fileName.toLowerCase().endsWith('.pdf') ? fileName.slice(0, -4) : fileName;
+    return sanitizeFileName(`${baseName} - ${formatSavedPdfTimestamp()}.pdf`);
 }
 
 function buildRfqVendorEmailContext(quote: RfqVendorPdfQuote): TemplateContext {
@@ -178,18 +323,113 @@ function buildRfqVendorEmailContext(quote: RfqVendorPdfQuote): TemplateContext {
     };
 }
 
-function getVendorEmail(quote: RfqVendorPdfQuote): string {
-    const email = quote.vendor.email?.trim().toLowerCase();
-
-    if (!email) {
-        throw new BadRequestError(`Vendor ${quote.vendor.name} does not have an email address`);
-    }
-
-    return email;
+function normalizeRecipientEmail(value: string | null | undefined): string | null {
+    const email = value?.trim().toLowerCase();
+    return email || null;
 }
 
-function getUniqueVendorEmails(quotes: RfqVendorPdfQuote[]): string[] {
-    return [...new Set(quotes.map(getVendorEmail))];
+function uniqueEmails(emails: string[]): string[] {
+    return [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
+}
+
+function buildRfqVendorRecipientGroup(quote: RfqVendorPdfQuote): FeatureMailRecipientGroup {
+    const vendorEmail = normalizeRecipientEmail(quote.vendor.email);
+    const options: FeatureMailRecipientGroup['options'] = [];
+
+    if (vendorEmail) {
+        options.push({
+            id: `vendor:${quote.vendorId}`,
+            type: 'vendor',
+            label: `${quote.vendor.name} (Vendor)`,
+            email: vendorEmail,
+        });
+    }
+
+    for (const contact of quote.vendor.contacts ?? []) {
+        const contactEmail = normalizeRecipientEmail(contact.email);
+        if (!contactEmail) continue;
+
+        options.push({
+            id: `contact:${contact.id}`,
+            type: 'contact',
+            label: contact.isPrimary
+                ? `${contact.fullName} (Primary Contact)`
+                : `${contact.fullName} (Contact)`,
+            email: contactEmail,
+            isPrimary: contact.isPrimary,
+        });
+    }
+
+    return {
+        id: quote.id,
+        label: quote.vendor.name,
+        entityType: 'vendor',
+        entityId: quote.vendorId,
+        quoteId: quote.id,
+        missingEntityEmail: !vendorEmail,
+        options,
+    };
+}
+
+function buildRfqVendorRecipientGroups(quotes: RfqVendorPdfQuote[]): FeatureMailRecipientGroup[] {
+    return quotes.map(buildRfqVendorRecipientGroup);
+}
+
+function getDefaultRfqVendorRecipientEmails(quote: RfqVendorPdfQuote): string[] {
+    const group = buildRfqVendorRecipientGroup(quote);
+    const vendorOption = group.options.find((option) => option.type === 'vendor');
+    if (vendorOption) return [vendorOption.email];
+
+    const primaryContactOption = group.options.find(
+        (option) => option.type === 'contact' && option.isPrimary
+    );
+    if (primaryContactOption) return [primaryContactOption.email];
+
+    const firstContactOption = group.options.find((option) => option.type === 'contact');
+    return firstContactOption ? [firstContactOption.email] : [];
+}
+
+function getDefaultRfqRecipientEmails(quotes: RfqVendorPdfQuote[]): string[] {
+    return uniqueEmails(quotes.flatMap(getDefaultRfqVendorRecipientEmails));
+}
+
+function getSelectedRfqRecipientsByQuote(
+    quotes: RfqVendorPdfQuote[],
+    requestedEmails: string[],
+    options: { requireEveryVendor: boolean }
+): Map<string, string[]> {
+    const requested = new Set(uniqueEmails(requestedEmails));
+    const groups = buildRfqVendorRecipientGroups(quotes);
+    const allowed = new Set(groups.flatMap((group) => group.options.map((option) => option.email)));
+    const invalidEmails = [...requested].filter((email) => !allowed.has(email));
+
+    if (invalidEmails.length) {
+        throw new BadRequestError(
+            `One or more selected RFQ recipients are not linked to the invited vendor: ${invalidEmails.join(', ')}`
+        );
+    }
+
+    const recipientsByQuote = new Map<string, string[]>();
+    const missingVendors: string[] = [];
+
+    for (const group of groups) {
+        const selected = uniqueEmails(
+            group.options.map((option) => option.email).filter((email) => requested.has(email))
+        );
+
+        recipientsByQuote.set(group.id, selected);
+        if (options.requireEveryVendor && selected.length === 0) {
+            missingVendors.push(group.label);
+        }
+    }
+
+    if (missingVendors.length) {
+        throw new BadRequestError(
+            `Select at least one RFQ email recipient for: ${missingVendors.join(', ')}`
+        );
+    }
+
+    return recipientsByQuote;
 }
 
 function getVendorPdfAttachmentId(quoteId: string): string {
@@ -265,36 +505,41 @@ function selectAttachmentPreviews(
     return attachments.filter((attachment) => selected.has(attachment.id));
 }
 
-function getDefaultVendorEmailRequest(
+async function getDefaultVendorEmailRequest(
     quote: RfqVendorPdfQuote,
     signature: MailSignatureInput
-): FeatureMailDraftRequest {
+): Promise<FeatureMailDraftBase> {
     const context = buildRfqVendorEmailContext(quote);
 
     return buildDefaultFeatureMailDraft({
         feature: RFQ_VENDOR_MAIL_FEATURE,
         context,
-        to: [getVendorEmail(quote)],
+        to: getDefaultRfqVendorRecipientEmails(quote),
         signature,
     });
 }
 
-function buildRfqVendorEmailDraft(
+async function buildRfqVendorEmailDraft(
     quote: RfqVendorPdfQuote,
     request: FeatureMailDraftRequest | null,
     mode: 'preview' | 'send',
     signature: MailSignatureInput
-): FeatureMailDraftResponse {
-    const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
+): Promise<FeatureMailDraftResponse> {
+    const template = await getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
     const availableAttachments = [
         buildGeneratedPdfAttachmentPreview(quote),
         ...buildRfqFileAttachmentPreviews(quote),
     ];
     const attachmentIds = resolveSelectedAttachmentIds(request, availableAttachments);
+    const selectedRecipients = request
+        ? (getSelectedRfqRecipientsByQuote([quote], request.to, {
+              requireEveryVendor: mode === 'send',
+          }).get(quote.id) ?? [])
+        : getDefaultRfqVendorRecipientEmails(quote);
     const draft = {
-        ...(request ?? getDefaultVendorEmailRequest(quote, signature)),
+        ...(request ?? (await getDefaultVendorEmailRequest(quote, signature))),
         signature,
-        to: [getVendorEmail(quote)],
+        to: selectedRecipients,
         attachmentIds,
     };
     const html = buildFeatureEmailHtml(draft.body, draft.signature, template.signature, mode);
@@ -313,6 +558,7 @@ function buildRfqVendorEmailDraft(
         html,
         attachments: selectAttachmentPreviews(availableAttachments, draft.attachmentIds),
         signatureAssets: getSignatureAssetMetadata(template.signature),
+        recipientGroups: buildRfqVendorRecipientGroups([quote]),
     };
 }
 
@@ -330,34 +576,43 @@ function buildRfqBulkEmailContext(quotes: RfqVendorPdfQuote[]): TemplateContext 
     };
 }
 
-function getDefaultAllVendorEmailRequest(
+async function getDefaultAllVendorEmailRequest(
     quotes: RfqVendorPdfQuote[],
     signature: MailSignatureInput
-): FeatureMailDraftRequest {
+): Promise<FeatureMailDraftBase> {
     return buildDefaultFeatureMailDraft({
         feature: RFQ_VENDOR_BULK_MAIL_FEATURE,
         context: buildRfqBulkEmailContext(quotes),
-        to: getUniqueVendorEmails(quotes),
+        to: getDefaultRfqRecipientEmails(quotes),
         signature,
     });
 }
 
-function buildRfqAllVendorEmailDraft(
+async function buildRfqAllVendorEmailDraft(
     quotes: RfqVendorPdfQuote[],
     request: FeatureMailDraftRequest | null,
     mode: 'preview' | 'send',
     signature: MailSignatureInput
-): FeatureMailDraftResponse {
-    const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
+): Promise<FeatureMailDraftResponse> {
+    const template = await getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
     const availableAttachments = getUniqueAttachmentPreviews([
         ...quotes.map(buildGeneratedPdfAttachmentPreview),
         ...buildRfqFileAttachmentPreviews(quotes[0]),
     ]);
     const attachmentIds = resolveSelectedAttachmentIds(request, availableAttachments);
+    const selectedRecipients = request
+        ? uniqueEmails(
+              [
+                  ...getSelectedRfqRecipientsByQuote(quotes, request.to, {
+                      requireEveryVendor: mode === 'send',
+                  }).values(),
+              ].flat()
+          )
+        : getDefaultRfqRecipientEmails(quotes);
     const draft = {
-        ...(request ?? getDefaultAllVendorEmailRequest(quotes, signature)),
+        ...(request ?? (await getDefaultAllVendorEmailRequest(quotes, signature))),
         signature,
-        to: getUniqueVendorEmails(quotes),
+        to: selectedRecipients,
         attachmentIds,
     };
     const html = buildFeatureEmailHtml(draft.body, draft.signature, template.signature, mode);
@@ -376,6 +631,7 @@ function buildRfqAllVendorEmailDraft(
         html,
         attachments: selectAttachmentPreviews(availableAttachments, draft.attachmentIds),
         signatureAssets: getSignatureAssetMetadata(template.signature),
+        recipientGroups: buildRfqVendorRecipientGroups(quotes),
     };
 }
 
@@ -384,19 +640,26 @@ async function buildSelectedRfqMailAttachments({
     selectedAttachmentIds,
     requestedBy,
     pdfProfile,
+    pdfRequest = {},
     fileAttachmentCache,
 }: {
     quote: RfqVendorPdfQuote;
     selectedAttachmentIds: string[];
     requestedBy: string;
-    pdfProfile: GenerateVendorPdfRequest;
+    pdfProfile: PdfProfile;
+    pdfRequest?: GenerateVendorPdfRequest;
     fileAttachmentCache?: Map<string, MailAttachment>;
 }): Promise<MailAttachment[]> {
     const selected = new Set(selectedAttachmentIds);
     const attachments: MailAttachment[] = [];
 
     if (selected.has(getVendorPdfAttachmentId(quote.id))) {
-        const pdf = await RfqService.generateVendorPdf(quote.id, requestedBy, pdfProfile);
+        const pdf = await RfqService.generateVendorPdf(
+            quote.id,
+            requestedBy,
+            pdfProfile,
+            pdfRequest
+        );
         attachments.push({
             name: pdf.fileName,
             contentType: pdf.contentType,
@@ -450,17 +713,43 @@ function buildRfqVendorMailInput(
     };
 }
 
+function cleanJsonValue(value: unknown): unknown {
+    if (value === undefined) return undefined;
+    if (value === null || typeof value !== 'object') return value;
+
+    if (Array.isArray(value)) {
+        return value.map((item) => cleanJsonValue(item)).filter((item) => item !== undefined);
+    }
+
+    return Object.fromEntries(
+        Object.entries(value)
+            .map(([key, entryValue]) => [key, cleanJsonValue(entryValue)] as const)
+            .filter(([, entryValue]) => entryValue !== undefined)
+    );
+}
+
+function buildRfqPdfOptionsMetadata(
+    pdfRequest: GenerateVendorPdfRequest
+): Record<string, unknown> | undefined {
+    const cleaned = cleanJsonValue(pdfRequest) as Record<string, unknown>;
+    return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
 function buildRfqVendorMailLogContext({
     feature,
     quote,
     userId,
+    pdfRequest,
     activity,
 }: {
     feature: FeatureMailKey;
     quote: RfqVendorPdfQuote;
     userId: string;
+    pdfRequest?: GenerateVendorPdfRequest;
     activity?: LoggedMailContext['activity'];
 }): LoggedMailContext {
+    const pdfOptions = buildRfqPdfOptionsMetadata(pdfRequest ?? {});
+
     return {
         feature,
         entityType: 'rfq',
@@ -472,7 +761,8 @@ function buildRfqVendorMailLogContext({
             quoteId: quote.id,
             rfqNumber: quote.rfq.rfqNumber,
             vendorName: quote.vendor.name,
-        },
+            ...(pdfOptions ? { pdfOptions } : {}),
+        } as Prisma.InputJsonValue,
         activity,
     };
 }
@@ -481,7 +771,7 @@ async function getRfqVendorQuote(quoteId: string): Promise<RfqVendorPdfQuote> {
     const quote = await prisma.rFQVendorQuote.findUnique({
         where: { id: quoteId },
         include: {
-            vendor: true,
+            vendor: { include: rfqVendorRecipientInclude },
             rfq: {
                 include: {
                     project: true,
@@ -513,7 +803,7 @@ async function getRfqVendorQuotes(rfqId: string): Promise<RfqVendorPdfQuote[]> {
         where: { rfqId },
         orderBy: { createdAt: 'asc' },
         include: {
-            vendor: true,
+            vendor: { include: rfqVendorRecipientInclude },
             rfq: {
                 include: {
                     project: true,
@@ -587,7 +877,7 @@ export const RfqService = {
             const rfq = await tx.rFQ.create({
                 data: {
                     ...rest,
-                    id: ulid(),
+                    id: generateNanoId(),
                     rfqNumber,
                     projectId,
                     typeId,
@@ -598,7 +888,7 @@ export const RfqService = {
 
             await tx.rFQDeliverable.createMany({
                 data: deliverables.map((d) => ({
-                    id: ulid(),
+                    id: generateNanoId(),
                     rfqId: rfq.id,
                     name: d.name,
                     unitId: d.unitId,
@@ -689,7 +979,7 @@ export const RfqService = {
             await tx.rFQDeliverable.deleteMany({ where: { rfqId: id } });
             await tx.rFQDeliverable.createMany({
                 data: deliverables.map((d) => ({
-                    id: ulid(),
+                    id: generateNanoId(),
                     rfqId: id,
                     name: d.name,
                     unitId: d.unitId,
@@ -709,6 +999,29 @@ export const RfqService = {
             });
 
             return updated;
+        });
+    },
+
+    deleteRfq: async (id: string, userId: string): Promise<void> => {
+        const rfq = await prisma.rFQ.findUnique({ where: { id } });
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+        if (rfq.status !== 'DRAFT') {
+            throw new BadRequestError('Only draft RFQs can be deleted');
+        }
+
+        await prisma.rFQ.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+
+        await ActivityLogService.log({
+            userId,
+            entityType: 'rfq',
+            entityId: id,
+            action: 'delete',
+            description: `Deleted RFQ ${rfq.rfqNumber}`,
+            affectedEntityIds: [rfq.projectId],
         });
     },
 
@@ -732,7 +1045,7 @@ export const RfqService = {
         if (existing) throw new ConflictError('Vendor already added to this RFQ');
 
         const quote = await prisma.rFQVendorQuote.create({
-            data: { id: ulid(), rfqId, vendorId },
+            data: { id: generateNanoId(), rfqId, vendorId },
         });
 
         await ActivityLogService.log({
@@ -790,9 +1103,9 @@ export const RfqService = {
 
             await tx.vendorQuoteAttachment.deleteMany({ where: { quoteId: id } });
             if (attachments.length) {
-                const folderId = await FileService.getProjectSubFolderId(
-                    quote.rfq.projectId,
-                    'RFQ',
+                const folderId = await FileService.getOrCreateProjectEntityFolder(
+                    { projectId: quote.rfq.projectId, entityType: 'RFQ', entityId: quote.rfq.id },
+                    userId,
                     tx
                 );
                 for (const documentId of attachments) {
@@ -800,7 +1113,7 @@ export const RfqService = {
                 }
                 await tx.vendorQuoteAttachment.createMany({
                     data: attachments.map((documentId) => ({
-                        id: ulid(),
+                        id: generateNanoId(),
                         quoteId: id,
                         documentId,
                     })),
@@ -857,9 +1170,9 @@ export const RfqService = {
 
             await tx.vendorQuoteAttachment.deleteMany({ where: { quoteId: id } });
             if (attachments.length) {
-                const folderId = await FileService.getProjectSubFolderId(
-                    quote.rfq.projectId,
-                    'RFQ',
+                const folderId = await FileService.getOrCreateProjectEntityFolder(
+                    { projectId: quote.rfq.projectId, entityType: 'RFQ', entityId: quote.rfq.id },
+                    userId,
                     tx
                 );
                 for (const documentId of attachments) {
@@ -867,7 +1180,7 @@ export const RfqService = {
                 }
                 await tx.vendorQuoteAttachment.createMany({
                     data: attachments.map((documentId) => ({
-                        id: ulid(),
+                        id: generateNanoId(),
                         quoteId: id,
                         documentId,
                     })),
@@ -1026,11 +1339,15 @@ export const RfqService = {
         if (existing) throw new ConflictError('File already attached to an RFQ');
 
         return await prisma.$transaction(async (tx) => {
-            const folderId = await FileService.getProjectSubFolderId(rfq.projectId, 'RFQ', tx);
+            const folderId = await FileService.getOrCreateProjectEntityFolder(
+                { projectId: rfq.projectId, entityType: 'RFQ', entityId: rfq.id },
+                userId,
+                tx
+            );
             await FileService.moveFileToFolder(documentId, folderId, tx);
 
             const attachment = await tx.rFQAttachment.create({
-                data: { id: ulid(), rfqId, documentId },
+                data: { id: generateNanoId(), rfqId, documentId },
             });
 
             await ActivityLogService.log({
@@ -1165,6 +1482,45 @@ export const RfqService = {
         });
     },
 
+    voidAwardRfq: async (id: string, request: VoidAwardRequest, userId: string): Promise<RFQ> => {
+        const rfq = await prisma.rFQ.findUnique({
+            where: { id },
+            include: { awardedVendor: true },
+        });
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+        if (rfq.status !== 'AWARDED') {
+            throw new BadRequestError('Only awarded RFQs can have their award voided');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const updated = await tx.rFQ.update({
+                where: { id },
+                data: {
+                    status: 'VOID',
+                    cancellationReason: request.voidReason,
+                },
+            });
+
+            const vendorText = rfq.awardedVendor ? ` to ${rfq.awardedVendor.name}` : '';
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'rfq',
+                entityId: id,
+                action: 'update',
+                description: `Voided award for RFQ ${rfq.rfqNumber}${vendorText}: ${request.voidReason}`,
+                affectedEntityIds: [
+                    rfq.projectId,
+                    ...(rfq.awardedVendorId ? [rfq.awardedVendorId] : []),
+                ],
+                tx,
+            });
+
+            return updated;
+        });
+    },
+
     setVoid: async (request: VoidRfqRequest, userId: string): Promise<RFQ> => {
         const { id, cancellationReason } = request;
 
@@ -1174,8 +1530,8 @@ export const RfqService = {
         if (rfq.status === 'VOID') {
             throw new BadRequestError('RFQ is already voided');
         }
-        if (rfq.status === 'AWARDED') {
-            throw new BadRequestError('Awarded RFQ cannot be voided');
+        if (rfq.status !== 'PUBLISHED' && rfq.status !== 'AWARDED') {
+            throw new BadRequestError('Only published or awarded RFQs can be voided');
         }
 
         const updated = await prisma.rFQ.update({
@@ -1234,15 +1590,16 @@ export const RfqService = {
         request: FeatureMailDraftRequest,
         requestedBy: string,
         userId: string,
-        signature: MailSignatureInput
+        signature: MailSignatureInput,
+        pdfRequest: GenerateVendorPdfRequest = {}
     ): Promise<FeatureMailSendResponse> => {
-        if (!isAllowedFeatureMailSender(RFQ_VENDOR_MAIL_FEATURE, request.from)) {
+        if (!(await isAllowedFeatureMailSender(RFQ_VENDOR_MAIL_FEATURE, request.from))) {
             throw new BadRequestError('Selected sender is not allowed');
         }
 
         const quote = await getRfqVendorQuote(quoteId);
-        const template = getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
-        const draft = buildRfqVendorEmailDraft(quote, request, 'send', signature);
+        const template = await getFeatureMailTemplate(RFQ_VENDOR_MAIL_FEATURE);
+        const draft = await buildRfqVendorEmailDraft(quote, request, 'send', signature);
         if (!template.pdfProfile) {
             throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
         }
@@ -1252,6 +1609,7 @@ export const RfqService = {
             feature: RFQ_VENDOR_MAIL_FEATURE,
             quote,
             userId,
+            pdfRequest,
             activity: {
                 entityType: 'rfq',
                 entityId: quote.rfqId,
@@ -1268,6 +1626,7 @@ export const RfqService = {
                 selectedAttachmentIds: draft.attachmentIds,
                 requestedBy,
                 pdfProfile: template.pdfProfile,
+                pdfRequest,
             });
 
             attachments = [...inlineAttachments, ...selectedAttachments];
@@ -1295,15 +1654,19 @@ export const RfqService = {
         request: FeatureMailDraftRequest,
         requestedBy: string,
         userId: string,
-        signature: MailSignatureInput
+        signature: MailSignatureInput,
+        pdfRequest: GenerateVendorPdfRequest = {}
     ): Promise<FeatureMailSendResponse> => {
-        if (!isAllowedFeatureMailSender(RFQ_VENDOR_BULK_MAIL_FEATURE, request.from)) {
+        if (!(await isAllowedFeatureMailSender(RFQ_VENDOR_BULK_MAIL_FEATURE, request.from))) {
             throw new BadRequestError('Selected sender is not allowed');
         }
 
         const quotes = await getRfqVendorQuotes(rfqId);
-        const template = getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
-        const draft = buildRfqAllVendorEmailDraft(quotes, request, 'send', signature);
+        const template = await getFeatureMailTemplate(RFQ_VENDOR_BULK_MAIL_FEATURE);
+        const draft = await buildRfqAllVendorEmailDraft(quotes, request, 'send', signature);
+        const recipientsByQuote = getSelectedRfqRecipientsByQuote(quotes, draft.to, {
+            requireEveryVendor: true,
+        });
         if (!template.pdfProfile) {
             throw new BadRequestError('RFQ vendor mail PDF profile is not configured');
         }
@@ -1316,28 +1679,32 @@ export const RfqService = {
             inlineAttachments = await buildSignatureInlineAttachments(template.signature);
         } catch (error) {
             await Promise.all(
-                quotes.map((quote) =>
-                    logFailedMailAttempt(
-                        buildRfqVendorMailInput(draft, [getVendorEmail(quote)]),
+                quotes.map((quote) => {
+                    const quoteRecipients = recipientsByQuote.get(quote.id) ?? [];
+                    return logFailedMailAttempt(
+                        buildRfqVendorMailInput(draft, quoteRecipients),
                         buildRfqVendorMailLogContext({
                             feature: RFQ_VENDOR_BULK_MAIL_FEATURE,
                             quote,
                             userId,
+                            pdfRequest,
                             activity: false,
                         }),
                         error
-                    )
-                )
+                    );
+                })
             );
             throw error;
         }
 
         for (const quote of quotes) {
-            const mailInput = buildRfqVendorMailInput(draft, [getVendorEmail(quote)]);
+            const quoteRecipients = recipientsByQuote.get(quote.id) ?? [];
+            const mailInput = buildRfqVendorMailInput(draft, quoteRecipients);
             const mailContext = buildRfqVendorMailLogContext({
                 feature: RFQ_VENDOR_BULK_MAIL_FEATURE,
                 quote,
                 userId,
+                pdfRequest,
                 activity: false,
             });
             let selectedAttachments: MailAttachment[];
@@ -1348,6 +1715,7 @@ export const RfqService = {
                     selectedAttachmentIds: draft.attachmentIds,
                     requestedBy,
                     pdfProfile: template.pdfProfile,
+                    pdfRequest,
                     fileAttachmentCache,
                 });
             } catch (error) {
@@ -1389,7 +1757,8 @@ export const RfqService = {
     generateVendorPdf: async (
         quoteId: string,
         requestedBy: string,
-        pdfRequest: GenerateVendorPdfRequest
+        pdfProfile?: PdfProfile | null,
+        pdfRequest: GenerateVendorPdfRequest = {}
     ): Promise<RfqVendorPdfResult> => {
         const quote = await getRfqVendorQuote(quoteId);
 
@@ -1398,11 +1767,16 @@ export const RfqService = {
         }
 
         const fileName = buildRfqVendorPdfFileName(quote);
+        const [resolvedPdfProfile, terms, notice] = await Promise.all([
+            resolvePdfProfile(pdfProfile),
+            PdfTermsService.resolveForRequest('rfq', pdfRequest),
+            PdfNoticeService.resolveForRequest('rfq', pdfRequest),
+        ]);
         const pdf = await renderPdf({
             template_id: RFQ_VENDOR_PDF_TEMPLATE_ID,
-            data: buildRfqVendorPdfData(quote, requestedBy, pdfRequest),
+            data: buildRfqVendorPdfData(quote, requestedBy, resolvedPdfProfile, terms, notice),
             branding: {
-                company_name: pdfRequest.company.name,
+                company_name: resolvedPdfProfile.company.name,
             },
             settings: {
                 filename: fileName,
@@ -1412,6 +1786,71 @@ export const RfqService = {
         return {
             ...pdf,
             fileName,
+        };
+    },
+
+    saveVendorPdf: async (
+        quoteId: string,
+        requestedBy: string,
+        userId: string,
+        pdfRequest: GenerateVendorPdfRequest = {}
+    ): Promise<SavedRfqVendorPdfResult> => {
+        const pdf = await RfqService.generateVendorPdf(quoteId, requestedBy, null, pdfRequest);
+        const quote = await prisma.rFQVendorQuote.findUnique({
+            where: { id: quoteId },
+            include: {
+                vendor: true,
+                rfq: {
+                    select: {
+                        id: true,
+                        projectId: true,
+                        rfqNumber: true,
+                        deletedAt: true,
+                    },
+                },
+            },
+        });
+        if (!quote) throw new NotFoundError('Vendor invite not found');
+        checkDeletedAt(quote.rfq);
+
+        const folderId = await FileService.getOrCreateProjectEntityFolder(
+            { projectId: quote.rfq.projectId, entityType: 'RFQ', entityId: quote.rfq.id },
+            userId
+        );
+        const savedFileName = buildSavedRfqVendorPdfFileName(pdf.fileName);
+        const saved = await FileService.saveGeneratedFile(
+            {
+                name: savedFileName,
+                displayName: savedFileName,
+                parentId: folderId,
+                mimeType: pdf.contentType,
+                content: pdf.bytes,
+                afterCreate: async (file, tx) => {
+                    const attachment = await tx.rFQAttachment.create({
+                        data: { id: generateNanoId(), rfqId: quote.rfq.id, documentId: file.id },
+                    });
+
+                    await ActivityLogService.log({
+                        userId,
+                        entityType: 'rfq',
+                        entityId: quote.rfq.id,
+                        action: 'create',
+                        description: `Saved generated PDF ${file.name} to RFQ ${quote.rfq.rfqNumber}`,
+                        affectedEntityIds: [file.id, quote.rfq.projectId, quote.vendorId, quote.id],
+                        tx,
+                    });
+
+                    return { attachmentId: attachment.id };
+                },
+            },
+            userId
+        );
+
+        return {
+            ...pdf,
+            fileName: saved.file.name,
+            savedFileId: saved.file.id,
+            savedAttachmentId: saved.result?.attachmentId ?? null,
         };
     },
 
@@ -1425,9 +1864,19 @@ export const RfqService = {
                     awardedVendor: true,
                     rfqdeliverables: { include: { unit: true } },
                     rfqattachments: { include: { document: true } },
+                    purchaseOrders: {
+                        where: { deletedAt: null, status: { not: 'CANCELLED' } },
+                        select: {
+                            id: true,
+                            poNumber: true,
+                            vendorId: true,
+                            rfqId: true,
+                            status: true,
+                        },
+                    },
                     vendorQuotes: {
                         include: {
-                            vendor: true,
+                            vendor: { include: rfqVendorRecipientInclude },
                             attachments: { include: { document: true } },
                         },
                     },
@@ -1485,16 +1934,123 @@ export const RfqService = {
         } as RFQ;
     },
 
+    getBidComparison: async (id: string): Promise<RfqBidComparison> => {
+        const rfq = await prisma.rFQ.findUnique({
+            where: { id },
+            include: {
+                rfqdeliverables: {
+                    where: { deletedAt: null },
+                    orderBy: { createdAt: 'asc' },
+                    include: { unit: true },
+                },
+                vendorQuotes: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        vendor: true,
+                        attachments: {
+                            include: { document: true },
+                            orderBy: { createdAt: 'asc' },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!rfq) throw new NotFoundError('RFQ not found');
+        checkDeletedAt(rfq);
+
+        const submittedQuotes = rfq.vendorQuotes.filter(
+            (quote) => quote.hasSubmittedQuote && quote.quotedAmount !== null
+        );
+        const quoteTotals = submittedQuotes
+            .map((quote) => toNumber(quote.quotedAmount))
+            .filter((value): value is number => value !== null);
+        const lowestQuote = quoteTotals.length ? Math.min(...quoteTotals) : null;
+        const highestQuote = quoteTotals.length ? Math.max(...quoteTotals) : null;
+        const averageQuote = quoteTotals.length
+            ? quoteTotals.reduce((sum, value) => sum + value, 0) / quoteTotals.length
+            : null;
+
+        return {
+            rfq: {
+                rfqNumber: rfq.rfqNumber,
+                title: rfq.title,
+                estimatedBudget: null,
+                bidDeadline: rfq.bidDeadline,
+                status: { id: rfq.status, name: rfq.status, label: rfq.status },
+            },
+            deliverables: rfq.rfqdeliverables.map((deliverable, index) => {
+                const quantity = toNumber(deliverable.quantity) ?? 0;
+
+                return {
+                    id: deliverable.id,
+                    sequenceNumber: index + 1,
+                    description: deliverable.name,
+                    quantity,
+                    unit: deliverable.unit.label,
+                    estimatedUnitPrice: null,
+                    estimatedTotal: null,
+                };
+            }),
+            quotes: submittedQuotes.map((quote) => {
+                const quotedAmount = toNumber(quote.quotedAmount) ?? 0;
+                const status = quote.isAwarded
+                    ? { id: 'AWARDED', name: 'AWARDED', label: 'Awarded' }
+                    : { id: 'QUOTED', name: 'QUOTED', label: 'Quoted' };
+
+                return {
+                    quoteId: quote.id,
+                    vendorId: quote.vendorId,
+                    vendorName: quote.vendor.name,
+                    status,
+                    totalAmount: quotedAmount,
+                    taxAmount: null,
+                    grandTotal: quotedAmount,
+                    leadTimeDays: parseLeadTimeDays(quote.leadTime),
+                    warrantyPeriod: null,
+                    isResponsive: null,
+                    attachments: quote.attachments
+                        .filter((attachment) => !attachment.document.deletedAt)
+                        .map((attachment) => ({
+                            id: attachment.id,
+                            documentId: attachment.documentId,
+                            document: {
+                                id: attachment.document.id,
+                                name:
+                                    attachment.document.displayName ||
+                                    attachment.document.name ||
+                                    attachment.document.id,
+                                ...(attachment.document.mimeType
+                                    ? { mimeType: attachment.document.mimeType }
+                                    : {}),
+                            },
+                        })),
+                    lineItems: [],
+                };
+            }),
+            statistics: {
+                lowestQuote,
+                highestQuote,
+                averageQuote,
+                medianQuote: getMedian(quoteTotals),
+                quotesSubmitted: submittedQuotes.length,
+                quotesExpected: rfq.vendorQuotes.length,
+                budgetVariance: null,
+            },
+        };
+    },
+
     getRfqs: async (
-        params: PaginationParams
+        params: PaginationParams,
+        access?: AccessContext
     ): Promise<{
-        data: RFQ[];
+        data: RfqListItem[];
         count: number;
     }> => {
         const { filter, skip, take, sortBy, sortOrder, search } = params;
         const { projectId, status, typeId, awardedVendorId, ...restFilter } = filter || {};
 
-        const whereClause = {
+        const whereClause: Prisma.RFQWhereInput = {
             deletedAt: null,
             ...restFilter,
             ...(projectId && { projectId }),
@@ -1508,11 +2064,28 @@ export const RfqService = {
                 ],
             }),
         };
+        const scopedWhereClause: Prisma.RFQWhereInput =
+            access && access.projectScope !== 'all'
+                ? {
+                      AND: [
+                          whereClause,
+                          access.employeeId
+                              ? {
+                                    project: {
+                                        teamMembers: {
+                                            some: { employeeId: access.employeeId },
+                                        },
+                                    },
+                                }
+                              : { id: { in: [] } },
+                      ],
+                  }
+                : whereClause;
 
-        const [count, data] = await prisma.$transaction([
-            prisma.rFQ.count({ where: whereClause }),
+        const [count, rfqs] = await prisma.$transaction([
+            prisma.rFQ.count({ where: scopedWhereClause }),
             prisma.rFQ.findMany({
-                where: whereClause,
+                where: scopedWhereClause,
                 skip,
                 take,
                 orderBy: {
@@ -1522,9 +2095,22 @@ export const RfqService = {
                     project: true,
                     type: true,
                     awardedVendor: true,
+                    vendorQuotes: {
+                        select: {
+                            hasSubmittedQuote: true,
+                        },
+                    },
                 },
             }),
         ]);
+
+        const data = rfqs.map(({ vendorQuotes, ...rfq }) => ({
+            ...rfq,
+            _count: {
+                invites: vendorQuotes.length,
+                quotes: vendorQuotes.filter((quote) => quote.hasSubmittedQuote).length,
+            },
+        }));
 
         return { data, count };
     },

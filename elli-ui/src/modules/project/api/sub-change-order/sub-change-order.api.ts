@@ -1,4 +1,9 @@
 import api from '@/app/api';
+import {
+  getGeneratedPdfFileFromResponse,
+  sanitizeDownloadName,
+  type GeneratedPdfFile,
+} from '@/app/lib/generated-pdf';
 
 import {
   scoPaginatedResponseSchema,
@@ -13,6 +18,7 @@ import {
   type SCODetail,
   type SCOListItem,
   type CreateSCOInput,
+  type GenerateSCOPdfInput,
   type UpdateSCOInput,
   type SCOLineItemInput,
 } from '@/modules/project/schemas/sub-change-order';
@@ -40,6 +46,7 @@ export const scoApi = {
     if (params?.sortBy) query.sortBy = params.sortBy;
     if (params?.sortOrder) query.sortOrder = params.sortOrder;
     if (params?.projectId) query.projectId = params.projectId;
+    if (params?.purchaseOrderId) query.purchaseOrderId = params.purchaseOrderId;
     if (params?.status) query.status = params.status;
     if (params?.changeTypeId) query.changeTypeId = params.changeTypeId;
     if (params?.search) query.search = params.search;
@@ -128,6 +135,34 @@ export const scoApi = {
     return result.data;
   },
 
+  async generatePdf(
+    id: string,
+    data: GenerateSCOPdfInput,
+    scoNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
+  async savePdf(
+    id: string,
+    data: GenerateSCOPdfInput,
+    scoNumber?: string | null
+  ): Promise<GeneratedPdfFile> {
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf/save`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
+    const fallbackName = sanitizeDownloadName(`${scoNumber || 'sub-change-order'}.pdf`);
+
+    return getGeneratedPdfFileFromResponse(res, fallbackName);
+  },
+
   async addLineItem(scoId: string, data: SCOLineItemInput) {
     const res = await api.post(`${LEGACY_BASE}/${scoId}/line-items`, data);
     return res.data?.data ?? res.data;
@@ -154,11 +189,6 @@ export const scoApi = {
 
   async voidSCO(id: string, data: { reason: string }): Promise<SCODetail> {
     await api.patch(`${LIST_BASE}/set-void`, { id, voidReason: data.reason });
-    return this.getById(id);
-  },
-
-  async revertToDraft(id: string): Promise<SCODetail> {
-    await api.patch(`${LIST_BASE}/set-draft`, { id });
     return this.getById(id);
   },
 };

@@ -1,3 +1,4 @@
+import { assertFileAccess } from '@lib/access';
 import { paginationMiddleware } from '@middleware';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
@@ -70,6 +71,7 @@ app.patch(
     zValidator('json', AddGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         const document = await GcService.addDocumentToGc(data, c.get('user')!.id);
         return success(c, document);
     }
@@ -81,6 +83,7 @@ app.patch(
     zValidator('json', UpdateGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         const document = await GcService.updateGcDocument(data, c.get('user')!.id);
         return success(c, document);
     }
@@ -92,6 +95,7 @@ app.patch(
     zValidator('json', RemoveGcDocumentSchema),
     async (c) => {
         const data = c.req.valid('json');
+        await assertFileAccess(c, data.fileId);
         await GcService.removeDocumentFromGc(data, c.get('user')!.id);
         return success(c, null);
     }

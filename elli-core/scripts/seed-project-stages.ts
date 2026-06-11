@@ -1,8 +1,16 @@
 import { prisma } from '@lib/prisma';
 import { LookupType } from '@modules/lookup/models';
-import { ulid } from 'ulid';
+import { generateNanoId } from '@utils/generateNanoId';
 
-const stages = ['INSTALLATION', 'FABRICATION', 'SUBMITTALS', 'BUYOUT', 'CLOSEOUT', 'PUNCHLIST'];
+const stages = [
+    'ONBOARDING',
+    'SUBMITTALS',
+    'BUYOUT',
+    'INSTALLATION',
+    'FABRICATION',
+    'PUNCHLIST',
+    'CLOSEOUT',
+];
 
 export const seedProjectStages = async () => {
     console.log('Seeding project stages...');
@@ -17,7 +25,7 @@ export const seedProjectStages = async () => {
         } else {
             const result = await prisma.lookup.create({
                 data: {
-                    id: ulid(),
+                    id: generateNanoId(),
                     type: LookupType.PROJECT_STAGE,
                     label,
                 },

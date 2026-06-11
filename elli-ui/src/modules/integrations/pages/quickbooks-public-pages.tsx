@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useSession } from '@/app/api';
 import { Button } from '@/app/components/ui/button';
 
-const QUICKBOOKS_INTEGRATION_PATH = '/app/integrations/quickbooks';
+const QUICKBOOKS_INTEGRATION_PATH = '/app/settings/integrations';
 const SIGN_IN_TO_QUICKBOOKS = `/sign-in?next=${encodeURIComponent(QUICKBOOKS_INTEGRATION_PATH)}`;
 
 function QuickBooksPublicPage({
@@ -23,7 +23,7 @@ function QuickBooksPublicPage({
   const { data } = useSession();
   const isSignedIn = Boolean(data?.session);
   const to = isSignedIn ? QUICKBOOKS_INTEGRATION_PATH : SIGN_IN_TO_QUICKBOOKS;
-  const label = isSignedIn ? 'Go to QuickBooks integration' : actionLabel;
+  const label = isSignedIn ? 'Go to integrations' : actionLabel;
 
   return (
     <div className="space-y-6 text-center">

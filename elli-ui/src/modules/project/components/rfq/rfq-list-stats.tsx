@@ -1,6 +1,4 @@
-import { ClipboardList, Send, Trophy } from 'lucide-react';
-
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 
 interface RFQListStatsProps {
   total: number;
@@ -10,26 +8,35 @@ interface RFQListStatsProps {
 
 export function RFQListStats({ total, active, awarded }: RFQListStatsProps) {
   return (
-    <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:mb-7.5 lg:grid-cols-3">
-      <StatsCard
-        icon={<ClipboardList className="size-6 text-muted-foreground" />}
-        bgClass="bg-muted/50"
+    <StatsBar variant="cards" className="mb-5 lg:mb-7.5">
+      <StatsBarItem
+        variant="card"
         label="Total RFQs"
         value={total}
+        dotColor="bg-label-lighter"
+        valueColor="text-foreground"
+        valueSize="big"
+        className="w-56 sm:w-64"
       />
-      <StatsCard
-        icon={<Send className="size-6 text-primary" />}
-        bgClass="bg-primary/10"
+      <StatsBarItem
+        variant="card"
         label="Active"
         value={active}
         description="Published & Evaluation"
+        dotColor="bg-primary"
+        valueColor="text-foreground"
+        valueSize="big"
+        className="w-56 sm:w-64"
       />
-      <StatsCard
-        icon={<Trophy className="size-6 text-success" />}
-        bgClass="bg-success/10"
+      <StatsBarItem
+        variant="card"
         label="Awarded"
         value={awarded}
+        dotColor="bg-success"
+        valueColor="text-foreground"
+        valueSize="big"
+        className="w-56 sm:w-64"
       />
-    </div>
+    </StatsBar>
   );
 }

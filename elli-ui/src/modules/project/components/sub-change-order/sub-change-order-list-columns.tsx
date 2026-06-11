@@ -13,10 +13,13 @@ import {
   SubChangeOrderDateCell,
   SubChangeOrderNumberCell,
   SubChangeOrderPurchaseOrderCell,
-  SubChangeOrderRequestedByCell,
   SubChangeOrderStatusCell,
   SubChangeOrderTypeCell,
 } from './sub-change-order-list-column-cells';
+import {
+  getSubChangeOrderPurchaseOrderLabel,
+  getSubChangeOrderTypeLabel,
+} from './sub-change-order-list-utils';
 
 export function useSubChangeOrderListColumns({
   projectId,
@@ -33,6 +36,11 @@ export function useSubChangeOrderListColumns({
         cell: ({ row }) => <SubChangeOrderNumberCell sco={row.original} />,
         meta: {
           headerClassName: 'min-w-48',
+          textOverflow: 'truncate',
+          preserveTruncatedCellLayout: true,
+          alwaysShowTooltip: true,
+          tooltipContent: (sco) =>
+            [sco.scoNumber ?? '-', sco.title ?? sco.description].filter(Boolean).join('\n'),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -49,6 +57,8 @@ export function useSubChangeOrderListColumns({
         ),
         meta: {
           headerClassName: 'min-w-44',
+          textOverflow: 'truncate',
+          tooltipContent: (sco) => getSubChangeOrderPurchaseOrderLabel(sco),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-32" />
@@ -73,17 +83,13 @@ export function useSubChangeOrderListColumns({
         ),
         meta: {
           headerClassName: 'min-w-36',
+          textOverflow: 'truncate',
+          tooltipContent: (sco) =>
+            getSubChangeOrderTypeLabel(
+              sco,
+              sco.changeTypeId ? changeTypeLabelById.get(sco.changeTypeId) : undefined
+            ),
           skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'requestedBy',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Requested By" />,
-        cell: ({ row }) => <SubChangeOrderRequestedByCell sco={row.original} />,
-        meta: {
-          headerClassName: 'min-w-36',
-          skeleton: <Skeleton className="h-3.5 w-24" />,
         },
         enableSorting: false,
       },

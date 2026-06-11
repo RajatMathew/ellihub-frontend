@@ -1,9 +1,8 @@
 import { useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { Card, CardContent } from '@/app/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { ComingSoonPlaceholder } from '@/modules/directory/components/coming-soon-placeholder';
+import { useAccess } from '@/app/contexts/access-context';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   ContactDetailDialogs,
   ContactDetailLoading,
@@ -21,10 +20,10 @@ import { useContactActivity } from '@/modules/directory/hooks/contacts/use-conta
 import { useContactEntityLinks } from '@/modules/directory/hooks/contacts/use-contact-entity-links';
 import { useContactMethodEditor } from '@/modules/directory/hooks/contacts/use-contact-method-editor';
 import { useContactTags } from '@/modules/directory/hooks/contacts/use-contact-tags';
-import { FolderOpen } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export function ContactDetailPage() {
+  const { can } = useAccess();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -32,6 +31,11 @@ export function ContactDetailPage() {
 
   const { data: contact, isLoading, isError, refetch } = useContactDetailQuery(id ?? '');
   const deleteMutation = useDeleteContactMutation();
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/contacts/${id}` : undefined,
+    contact?.fullName ?? 'Contact'
+  );
 
   const roleName = contact?.professionalRole?.label ?? contact?.professionalRole?.name ?? null;
   const { allMergedLinks, primaryCompanyName } = useContactEntityLinks(contact);
@@ -68,19 +72,23 @@ export function ContactDetailPage() {
   }
 
   const companyNames = allMergedLinks.map((link) => link.name);
+  const canUpdateContact = can('contact', 'update');
+  const canDeleteContact = can('contact', 'delete');
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
       <ContactDetailToolbar
         contactName={contact.fullName}
         roleName={roleName}
         primaryCompanyName={primaryCompanyName}
         sidebarOpen={sidebarOpen}
+        canUpdate={canUpdateContact}
+        canDelete={canDeleteContact}
         onOpenSidebar={() => setSidebarOpen(true)}
         onDelete={() => setDeleteOpen(true)}
       />
 
-      <div className="flex flex-col gap-6 pt-5 xl:flex-row">
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">
           <ContactDetailStats
             roleName={roleName}
@@ -88,32 +96,15 @@ export function ContactDetailPage() {
             tagCount={contact.tags.length}
           />
 
-          <Tabs defaultValue="overview">
-            <TabsList variant="line">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <ContactPersonalDetailsCard
-                  roleName={roleName}
-                  companyNames={companyNames}
-                  tags={contact.tags}
-                  tagEditor={tagEditor}
-                />
-                <ContactInfoCard contact={contact} editor={methodEditor} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="projects">
-              <Card>
-                <CardContent>
-                  <ComingSoonPlaceholder icon={FolderOpen} title="Project Assignments" />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
+            <ContactPersonalDetailsCard
+              roleName={roleName}
+              companyNames={companyNames}
+              tags={contact.tags}
+              tagEditor={tagEditor}
+            />
+            <ContactInfoCard contact={contact} editor={methodEditor} />
+          </div>
         </div>
 
         <ContactDetailSidebar
@@ -130,11 +121,11 @@ export function ContactDetailPage() {
       <ContactDetailDialogs
         contact={contact}
         methods={methodEditor}
-        deleteOpen={deleteOpen}
+        deleteOpen={deleteOpen && canDeleteContact}
         isDeleting={deleteMutation.isPending}
         onDeleteOpenChange={setDeleteOpen}
         onDelete={() => {
-          if (!id) return;
+          if (!id || !canDeleteContact) return;
           deleteMutation.mutate(id, {
             onSuccess: () => navigate('..', { relative: 'path' }),
           });
