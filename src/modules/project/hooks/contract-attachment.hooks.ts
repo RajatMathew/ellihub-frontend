@@ -5,7 +5,6 @@ import { toastApiError } from '@/app/lib/toast-api-error';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { contractAttachmentKeys } from '@/modules/project/constants/contract-attachment.keys';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import { projectContractKeys } from '@/modules/project/constants/project-contract.keys';
 import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 
@@ -37,7 +36,6 @@ export const usePinPrimeContractsMutation = () => {
       await invalidateProjectQueries(qc, [
         contractAttachmentKeys.list(projectId),
         contractAttachmentKeys.candidates(projectId),
-        projectContractKeys.detail(projectId),
       ]);
       qc.invalidateQueries({ queryKey: filesKeys.all });
       toast.success('Prime contract pinned.');
@@ -85,7 +83,6 @@ export const useUnpinPrimeContractsMutation = () => {
       await invalidateProjectQueries(qc, [
         contractAttachmentKeys.list(projectId),
         contractAttachmentKeys.candidates(projectId),
-        projectContractKeys.detail(projectId),
         projectKeys.detail(projectId),
       ]);
       qc.invalidateQueries({ queryKey: filesKeys.all });
@@ -111,7 +108,6 @@ export const useSetPrimeContractPrimaryMutation = () => {
       await invalidateProjectQueries(qc, [
         contractAttachmentKeys.list(projectId),
         contractAttachmentKeys.candidates(projectId),
-        projectContractKeys.detail(projectId),
         projectKeys.detail(projectId),
       ]);
       qc.invalidateQueries({ queryKey: filesKeys.all });

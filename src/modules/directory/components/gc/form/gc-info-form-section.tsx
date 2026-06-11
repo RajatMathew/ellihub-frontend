@@ -50,6 +50,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                     placeholder="e.g. Navillus Inc."
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
+                    data-testid="gc-name-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -71,6 +72,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                   emptyMessage="No types found."
                   disabled={gcTypeOptions.length === 0}
                   className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                  testId="gc-type-select"
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -94,6 +96,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                     placeholder="https://..."
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
+                    data-testid="gc-website-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -120,6 +123,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                    data-testid="gc-status-select"
                   >
                     <SelectValue placeholder="Select status..." />
                   </SelectTrigger>

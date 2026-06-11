@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "decimal.js": "^10.6.0",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
@@ -61,6 +63,7 @@
     "@eslint/js": "^9.39.1",
     "@faker-js/faker": "^10.4.0",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "@playwright/test": "^1.60.0",
     "@react-grab/mcp": "^0.1.26",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",

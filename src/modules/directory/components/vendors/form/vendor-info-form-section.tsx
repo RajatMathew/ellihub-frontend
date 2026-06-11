@@ -83,6 +83,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     placeholder="e.g. Acme Construction Services"
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
+                    data-testid="vendor-name-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -106,6 +107,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     placeholder="vendor@example.com"
                     aria-invalid={fieldState.invalid}
                     autoComplete="email"
+                    data-testid="vendor-email-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -129,6 +131,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    data-testid="vendor-type-select"
                   >
                     <SelectValue placeholder="Select vendor type..." />
                   </SelectTrigger>
@@ -165,6 +168,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    data-testid="vendor-status-select"
                   >
                     <SelectValue placeholder="Select status..." />
                   </SelectTrigger>
@@ -199,6 +203,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
                     maxLength={10}
+                    data-testid="vendor-tax-id-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -223,6 +228,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                     placeholder="https://..."
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
+                    data-testid="vendor-website-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -244,6 +250,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    data-testid="vendor-payment-terms-select"
                   >
                     <SelectValue placeholder="Select terms..." />
                   </SelectTrigger>

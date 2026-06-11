@@ -317,7 +317,12 @@ export default function RFQFormPage() {
                       <InputWrapper
                         className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
                       >
-                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                        <Input
+                          type="date"
+                          {...field}
+                          aria-invalid={fieldState.invalid}
+                          data-testid="rfq-bid-deadline-input"
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -337,6 +342,7 @@ export default function RFQFormPage() {
                         <SelectTrigger
                           aria-invalid={fieldState.invalid}
                           className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                          data-testid="rfq-type-select"
                         >
                           <span
                             className={
@@ -379,6 +385,7 @@ export default function RFQFormPage() {
                         placeholder="e.g. Structural Steel Supply"
                         aria-invalid={fieldState.invalid}
                         autoComplete="off"
+                        data-testid="rfq-title-input"
                       />
                     </InputWrapper>
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -399,6 +406,7 @@ export default function RFQFormPage() {
                       rows={4}
                       aria-invalid={fieldState.invalid}
                       className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
+                      data-testid="rfq-description-input"
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>

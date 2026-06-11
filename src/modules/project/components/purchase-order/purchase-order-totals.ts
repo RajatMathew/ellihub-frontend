@@ -1,4 +1,10 @@
 import { formatPercent } from '@/app/lib/helpers';
+import {
+  calculateCommercialDocumentTotalsDecimal,
+  calculateRoundedLineAmountDecimal,
+  roundMoneyDecimal,
+  toMoneyNumber,
+} from '@/modules/project/lib/commercial-decimal';
 
 type PurchaseOrderAmountLike = string | number | null | undefined;
 
@@ -19,25 +25,20 @@ export type PurchaseOrderTotalsInput = {
   taxAmount?: PurchaseOrderAmountLike;
 };
 
-function toNumber(value: PurchaseOrderAmountLike) {
+export function toNumber(value: PurchaseOrderAmountLike) {
   const numericValue = Number(value ?? 0);
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 export function roundMoney(value: PurchaseOrderAmountLike) {
-  const numericValue = toNumber(value);
-  return Math.round((numericValue + Number.EPSILON) * 100) / 100;
+  return toMoneyNumber(value);
 }
 
 export function calculateRoundedLineAmount(item: PurchaseOrderLineAmountLike) {
-  const quantity = toNumber(item.quantity ?? item.qty);
-  const unitPrice = toNumber(item.unitPrice);
-  const hasUnitCalculation = (item.quantity != null || item.qty != null) && item.unitPrice != null;
-
-  return hasUnitCalculation ? roundMoney(quantity * unitPrice) : roundMoney(item.amount);
+  return calculateRoundedLineAmountDecimal(item).toNumber();
 }
 
-export function calculatePurchaseOrderTotals({
+export function calculatePurchaseOrderTotalsDecimal({
   lineItems,
   subtotal,
   amount,
@@ -45,42 +46,44 @@ export function calculatePurchaseOrderTotals({
   shippingHandlingFee,
   taxPercent,
 }: PurchaseOrderTotalsInput) {
-  const hasLineItems = lineItems != null && lineItems.length > 0;
-  const calculatedSubtotal =
-    hasLineItems
-      ? lineItems.reduce((sum, item) => {
-          return roundMoney(sum + calculateRoundedLineAmount(item));
-        }, 0)
-      : roundMoney(subtotal ?? amount);
+  return calculateCommercialDocumentTotalsDecimal({
+    lineItems,
+    subtotal,
+    amount,
+    negotiatedDiscount,
+    shippingHandlingFee,
+    taxPercent,
+  });
+}
 
-  const discount = Math.min(Math.max(roundMoney(negotiatedDiscount), 0), calculatedSubtotal);
-  const shippingHandling = Math.max(roundMoney(shippingHandlingFee), 0);
-  const taxableAmount = roundMoney(calculatedSubtotal - discount + shippingHandling);
-  const taxRate = Math.max(toNumber(taxPercent), 0);
-  const taxAmount = roundMoney((taxableAmount * taxRate) / 100);
+export function calculatePurchaseOrderTotals(input: PurchaseOrderTotalsInput) {
+  const totals = calculatePurchaseOrderTotalsDecimal(input);
 
   return {
-    subtotal: calculatedSubtotal,
-    negotiatedDiscount: discount,
-    shippingHandlingFee: shippingHandling,
-    taxableAmount,
-    taxAmount,
-    total: roundMoney(taxableAmount + taxAmount),
+    subtotal: totals.subtotal.toNumber(),
+    negotiatedDiscount: totals.negotiatedDiscount.toNumber(),
+    shippingHandlingFee: totals.shippingHandlingFee.toNumber(),
+    taxableAmount: totals.taxableAmount.toNumber(),
+    taxAmount: totals.taxAmount.toNumber(),
+    total: totals.total.toNumber(),
   };
 }
 
 export function calculateEffectivePurchaseOrderTotals(input: PurchaseOrderTotalsInput) {
-  const totals = calculatePurchaseOrderTotals({
+  const totals = calculatePurchaseOrderTotalsDecimal({
     ...input,
     subtotal: input.subtotal ?? input.amount,
   });
-  const storedTaxAmount = input.taxAmount == null ? null : roundMoney(input.taxAmount);
+  const storedTaxAmount = input.taxAmount == null ? null : roundMoneyDecimal(input.taxAmount);
   const taxAmount = storedTaxAmount ?? totals.taxAmount;
 
   return {
-    ...totals,
-    taxAmount,
-    total: roundMoney(totals.taxableAmount + taxAmount),
+    subtotal: totals.subtotal.toNumber(),
+    negotiatedDiscount: totals.negotiatedDiscount.toNumber(),
+    shippingHandlingFee: totals.shippingHandlingFee.toNumber(),
+    taxableAmount: totals.taxableAmount.toNumber(),
+    taxAmount: taxAmount.toNumber(),
+    total: roundMoneyDecimal(totals.taxableAmount.plus(taxAmount)).toNumber(),
   };
 }
 

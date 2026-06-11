@@ -1,5 +1,14 @@
 import { z } from 'zod';
-import { calculateRoundedLineAmount } from '@/modules/project/components/purchase-order/purchase-order-totals';
+import {
+  sumRoundedLineAmountsDecimal,
+  toCommercialDecimal,
+} from '@/modules/project/lib/commercial-decimal';
+import {
+  moneySchema,
+  percentSchema,
+  quantitySchema,
+  rateSchema,
+} from '@/modules/project/lib/commercial-validation';
 
 // --- Status ---
 
@@ -203,9 +212,9 @@ export type SCOChangeType = z.infer<typeof scoChangeTypeSchema>;
 
 export const scoLineItemInputSchema = z.object({
   description: z.string().min(1, 'Description is required'),
-  quantity: z.number().min(0, 'Quantity must be >= 0'),
+  quantity: quantitySchema(),
   unitId: z.string().min(1, 'Unit is required'),
-  unitPrice: z.number().min(0, 'Unit price must be >= 0'),
+  unitPrice: rateSchema(),
   costCodeId: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -220,9 +229,9 @@ const baseSCOInputSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
-  negotiatedDiscount: z.number().min(0, 'Negotiated discount must be >= 0').optional(),
-  shippingHandlingFee: z.number().min(0, 'Shipping and handling fee must be >= 0').optional(),
-  taxPercent: z.number().min(0).max(100).optional(),
+  negotiatedDiscount: moneySchema('Negotiated discount').optional(),
+  shippingHandlingFee: moneySchema('Shipping and handling fee').optional(),
+  taxPercent: percentSchema('Tax percent').optional(),
   changeTypeId: z.string().min(1, 'Change type is required'),
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
@@ -231,11 +240,8 @@ function validateSCODiscount(
   value: z.infer<typeof baseSCOInputSchema>,
   ctx: z.RefinementCtx
 ) {
-    const subtotal = value.lineItems.reduce(
-      (sum, item) => sum + calculateRoundedLineAmount(item),
-      0
-    );
-    if ((value.negotiatedDiscount ?? 0) > subtotal) {
+    const subtotal = sumRoundedLineAmountsDecimal(value.lineItems);
+    if (toCommercialDecimal(value.negotiatedDiscount).greaterThan(subtotal)) {
       ctx.addIssue({
         code: 'custom',
         path: ['negotiatedDiscount'],

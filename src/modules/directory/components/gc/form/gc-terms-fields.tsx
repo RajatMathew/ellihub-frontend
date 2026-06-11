@@ -35,6 +35,7 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
               <SelectTrigger
                 aria-invalid={fieldState.invalid}
                 className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                data-testid="gc-payment-terms-select"
               >
                 <SelectValue placeholder="Select terms..." />
               </SelectTrigger>
@@ -65,6 +66,7 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
                 decimalPlaces={2}
                 placeholder="0"
                 aria-invalid={fieldState.invalid}
+                data-testid="gc-retainage-percent-input"
               />
             </InputWrapper>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

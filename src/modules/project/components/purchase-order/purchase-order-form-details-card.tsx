@@ -73,6 +73,7 @@ export function PurchaseOrderFormDetailsCard({
                   emptyMessage="No vendors found."
                   disabled={isVendorLocked}
                   className={fieldState.invalid ? invalidControlClassName : undefined}
+                  testId="po-vendor-select"
                 />
                 {isVendorLocked && (
                   <p className="text-xs text-muted-foreground">
@@ -87,27 +88,36 @@ export function PurchaseOrderFormDetailsCard({
           <Controller
             name="tradeCategoryId"
             control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <RequiredFieldLabel>Trade Category</RequiredFieldLabel>
-                <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                  <SelectTrigger
-                    aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? invalidControlClassName : undefined}
-                  >
-                    <SelectValue placeholder="Select trade..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tradeCategoryOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
+            render={({ field, fieldState }) => {
+              const selectedOption = tradeCategoryOptions.find(
+                (option) => option.value === field.value
+              );
+
+              return (
+                <Field data-invalid={fieldState.invalid}>
+                  <RequiredFieldLabel>Trade Category</RequiredFieldLabel>
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      aria-invalid={fieldState.invalid}
+                      className={fieldState.invalid ? invalidControlClassName : undefined}
+                      data-testid="po-trade-category-select"
+                    >
+                      <span className={selectedOption ? undefined : 'text-muted-foreground'}>
+                        {selectedOption?.label ?? 'Select trade...'}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tradeCategoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                </Field>
+              );
+            }}
           />
         </div>
 
@@ -124,6 +134,7 @@ export function PurchaseOrderFormDetailsCard({
                 placeholder="Select RFQ..."
                 searchPlaceholder="Search RFQs..."
                 emptyMessage="No awarded RFQs found."
+                testId="po-rfq-select"
               />
             </Field>
           )}
@@ -141,6 +152,7 @@ export function PurchaseOrderFormDetailsCard({
                 rows={3}
                 aria-invalid={fieldState.invalid}
                 className={fieldState.invalid ? invalidControlClassName : undefined}
+                data-testid="po-description-input"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -155,7 +167,12 @@ export function PurchaseOrderFormDetailsCard({
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel className={fieldLabelClassName}>Expected Delivery Date</FieldLabel>
                 <InputWrapper className={fieldState.invalid ? invalidControlClassName : undefined}>
-                  <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                  <Input
+                    type="date"
+                    {...field}
+                    aria-invalid={fieldState.invalid}
+                    data-testid="po-expected-date-input"
+                  />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -172,6 +189,7 @@ export function PurchaseOrderFormDetailsCard({
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? invalidControlClassName : undefined}
+                    data-testid="po-payment-terms-select"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -211,6 +229,7 @@ export function PurchaseOrderFormDetailsCard({
                     }}
                     autoComplete="off"
                     aria-invalid={fieldState.invalid}
+                    data-testid="po-lead-time-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -233,9 +252,10 @@ export function PurchaseOrderFormDetailsCard({
                     ref={field.ref}
                     min={0}
                     max={100}
-                    decimalPlaces={2}
+                    decimalPlaces={3}
                     placeholder="0"
                     aria-invalid={fieldState.invalid}
+                    data-testid="po-retainage-percent-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -255,6 +275,7 @@ export function PurchaseOrderFormDetailsCard({
                   rows={3}
                   aria-invalid={fieldState.invalid}
                   className={fieldState.invalid ? invalidControlClassName : undefined}
+                  data-testid="po-address-input"
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -274,6 +295,7 @@ export function PurchaseOrderFormDetailsCard({
                 rows={3}
                 aria-invalid={fieldState.invalid}
                 className={fieldState.invalid ? invalidControlClassName : undefined}
+                data-testid="po-ship-to-address-input"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -292,6 +314,7 @@ export function PurchaseOrderFormDetailsCard({
                 rows={2}
                 aria-invalid={fieldState.invalid}
                 className={fieldState.invalid ? invalidControlClassName : undefined}
+                data-testid="po-notes-input"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>

@@ -49,7 +49,6 @@ import {
   useCreateProjectMutation,
   useCreateScheduleEntryMutation,
   useDivisionsQuery,
-  useProjectContractQuery,
   useProjectDetailQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
@@ -76,6 +75,28 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const projectInvalidControlClassName = formInvalidControlClassName;
+const paymentTermValues = new Set(PAYMENT_TERMS_OPTIONS.map((option) => option.value));
+
+function normalizeProjectPaymentTerms(value: unknown): ProjectFormValues['paymentTerms'] {
+  if (!value) return '';
+
+  const normalized = String(value)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  if (paymentTermValues.has(normalized as (typeof PAYMENT_TERMS_OPTIONS)[number]['value'])) {
+    return normalized;
+  }
+
+  if (normalized.includes('15')) return 'NET_15';
+  if (normalized.includes('30')) return 'NET_30';
+  if (normalized.includes('45')) return 'NET_45';
+  if (normalized.includes('60')) return 'NET_60';
+  if (normalized.includes('90')) return 'NET_90';
+  if (normalized.includes('DUE') || normalized.includes('RECEIPT')) return 'DUE_ON_RECEIPT';
+
+  return '';
+}
 
 function ProjectFormFieldLabel({
   children,
@@ -101,7 +122,6 @@ export default function ProjectForm() {
   );
   const canTransferLeadPM =
     !isEditMode || existingProject?.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
-  const { data: existingContract } = useProjectContractQuery(isEditMode ? projectId! : '');
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
@@ -185,9 +205,14 @@ export default function ProjectForm() {
 
   // Pre-fill form when editing
   useEffect(() => {
+    let paymentTermsSyncTimeout: number | undefined;
+
     if (isEditMode && existingProject) {
-      const contract = existingContract ?? existingProject.primeContract;
+      const contract = existingProject.primeContract;
       const nextFieldwireProjectName = existingProject.fieldwireProjectName ?? '';
+      const nextPaymentTerms = normalizeProjectPaymentTerms(
+        existingProject.paymentTerms ?? contract?.paymentTerms
+      );
       reset({
         name: existingProject.name,
         description: existingProject.description ?? '',
@@ -204,12 +229,13 @@ export default function ProjectForm() {
         city: existingProject.city ?? '',
         state: existingProject.state ?? '',
         zipCode: existingProject.zipCode ?? '',
-        contractValue: Number(contract?.contractValue ?? 0),
-        contractType: contract?.contractType ?? '',
-        retainagePercent: contract?.retainagePercent ?? 0,
-        targetBudgetPercent: contract?.targetBudgetPercent ?? 0,
-        taxRate: Number(contract?.taxRate ?? 0),
-        paymentTerms: contract?.paymentTerms ?? '',
+        contractValue: Number(existingProject.contractValue ?? contract?.contractValue ?? 0),
+        contractType: existingProject.contractType ?? contract?.contractType ?? '',
+        retainagePercent: existingProject.retainagePercent ?? contract?.retainagePercent ?? 0,
+        targetBudgetPercent:
+          existingProject.targetBudgetPercent ?? contract?.targetBudgetPercent ?? 0,
+        taxRate: Number(existingProject.taxRate ?? 0),
+        paymentTerms: nextPaymentTerms,
         estimatedStartDate: toDateInputValue(
           existingProject.estimatedStartDate ?? contract?.estimatedStartDate
         ),
@@ -232,8 +258,21 @@ export default function ProjectForm() {
           existingProject.actualCompletionDate ?? contract?.actualCompletionDate
         ),
       });
+
+      paymentTermsSyncTimeout = window.setTimeout(() => {
+        setValue('paymentTerms', nextPaymentTerms, {
+          shouldDirty: false,
+          shouldValidate: true,
+        });
+      });
     }
-  }, [isEditMode, existingProject, existingContract, reset]);
+
+    return () => {
+      if (paymentTermsSyncTimeout !== undefined) {
+        window.clearTimeout(paymentTermsSyncTimeout);
+      }
+    };
+  }, [isEditMode, existingProject, reset, setValue]);
 
   /* ---- Contract documents (pre-upload selection) ---- */
 
@@ -794,7 +833,12 @@ export default function ProjectForm() {
                     <Field>
                       <ProjectFormFieldLabel>Contract Number</ProjectFormFieldLabel>
                       <InputWrapper>
-                        <Input {...field} placeholder="e.g. C-2026-001" autoComplete="off" />
+                        <Input
+                          {...field}
+                          data-testid="project-contract-number-input"
+                          placeholder="e.g. C-2026-001"
+                          autoComplete="off"
+                        />
                       </InputWrapper>
                     </Field>
                   )}
@@ -807,7 +851,12 @@ export default function ProjectForm() {
                     <Field>
                       <ProjectFormFieldLabel>Contract Type</ProjectFormFieldLabel>
                       <InputWrapper>
-                        <Input {...field} placeholder="e.g. Lump Sum, GMP" autoComplete="off" />
+                        <Input
+                          {...field}
+                          data-testid="project-contract-type-input"
+                          placeholder="e.g. Lump Sum, GMP"
+                          autoComplete="off"
+                        />
                       </InputWrapper>
                     </Field>
                   )}
@@ -845,7 +894,7 @@ export default function ProjectForm() {
                     <Field>
                       <ProjectFormFieldLabel>Payment Terms</ProjectFormFieldLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="project-payment-terms-select">
                           <SelectValue placeholder="Select payment terms..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -879,6 +928,7 @@ export default function ProjectForm() {
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
+                          data-testid="project-contract-value-input"
                           min={0}
                           decimalPlaces={2}
                           placeholder="0.00"
@@ -905,6 +955,7 @@ export default function ProjectForm() {
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
+                          data-testid="project-retainage-percent-input"
                           min={0}
                           max={100}
                           decimalPlaces={2}
@@ -936,6 +987,7 @@ export default function ProjectForm() {
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
+                          data-testid="project-target-budget-percent-input"
                           min={0}
                           max={100}
                           decimalPlaces={2}
@@ -964,6 +1016,7 @@ export default function ProjectForm() {
                           onBlur={field.onBlur}
                           name={field.name}
                           ref={field.ref}
+                          data-testid="project-tax-rate-input"
                           min={0}
                           max={100}
                           decimalPlaces={2}
@@ -993,7 +1046,11 @@ export default function ProjectForm() {
                       <Field>
                         <ProjectFormFieldLabel>Estimated Start Date</ProjectFormFieldLabel>
                         <InputWrapper>
-                          <Input type="date" {...field} />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="project-estimated-start-date-input"
+                          />
                         </InputWrapper>
                       </Field>
                     )}
@@ -1006,7 +1063,11 @@ export default function ProjectForm() {
                       <Field>
                         <ProjectFormFieldLabel>Estimated End Date</ProjectFormFieldLabel>
                         <InputWrapper>
-                          <Input type="date" {...field} />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="project-estimated-end-date-input"
+                          />
                         </InputWrapper>
                       </Field>
                     )}
@@ -1022,7 +1083,7 @@ export default function ProjectForm() {
                       <Field>
                         <ProjectFormFieldLabel>Inactive Date</ProjectFormFieldLabel>
                         <InputWrapper>
-                          <Input type="date" {...field} />
+                          <Input type="date" {...field} data-testid="project-inactive-date-input" />
                         </InputWrapper>
                       </Field>
                     )}
@@ -1039,7 +1100,12 @@ export default function ProjectForm() {
                             fieldState.invalid ? projectInvalidControlClassName : undefined
                           }
                         >
-                          <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="project-tco-date-input"
+                            aria-invalid={fieldState.invalid}
+                          />
                         </InputWrapper>
                         {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                       </Field>
@@ -1056,7 +1122,11 @@ export default function ProjectForm() {
                       <Field>
                         <ProjectFormFieldLabel>Actual Start Date</ProjectFormFieldLabel>
                         <InputWrapper>
-                          <Input type="date" {...field} />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="project-actual-start-date-input"
+                          />
                         </InputWrapper>
                       </Field>
                     )}
@@ -1069,7 +1139,11 @@ export default function ProjectForm() {
                       <Field>
                         <ProjectFormFieldLabel>Actual Completion Date</ProjectFormFieldLabel>
                         <InputWrapper>
-                          <Input type="date" {...field} />
+                          <Input
+                            type="date"
+                            {...field}
+                            data-testid="project-actual-completion-date-input"
+                          />
                         </InputWrapper>
                       </Field>
                     )}

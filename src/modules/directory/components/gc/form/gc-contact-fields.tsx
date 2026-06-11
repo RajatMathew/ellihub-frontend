@@ -27,6 +27,7 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
                   type="email"
                   placeholder="info@company.com"
                   aria-invalid={fieldState.invalid}
+                  data-testid="gc-email-input"
                 />
               </InputWrapper>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -49,6 +50,7 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
                   type="tel"
                   placeholder="(555) 000-0000"
                   aria-invalid={fieldState.invalid}
+                  data-testid="gc-phone-input"
                 />
               </InputWrapper>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -69,6 +71,7 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
                 {...field}
                 placeholder="200 Commerce St, Dallas TX 75201"
                 aria-invalid={fieldState.invalid}
+                data-testid="gc-address-input"
               />
             </InputWrapper>
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

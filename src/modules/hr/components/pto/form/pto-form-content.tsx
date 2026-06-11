@@ -74,6 +74,7 @@ export function PTOFormContent({
                       placeholder="Search and select staff..."
                       disabled={isEmployeesLoading}
                       className={fieldState.invalid ? ptoInvalidControlClassName : undefined}
+                      testId="pto-employee-select"
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
@@ -94,6 +95,7 @@ export function PTOFormContent({
                     placeholder="Select leave type..."
                     disabled={isTypesLoading}
                     className={fieldState.invalid ? ptoInvalidControlClassName : undefined}
+                    testId="pto-type-select"
                   />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
@@ -102,8 +104,18 @@ export function PTOFormContent({
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <DateField control={control} name="startDate" label="Commencement Date" />
-            <DateField control={control} name="endDate" label="Conclusion Date" />
+            <DateField
+              control={control}
+              name="startDate"
+              label="Commencement Date"
+              testId="pto-start-date-input"
+            />
+            <DateField
+              control={control}
+              name="endDate"
+              label="Conclusion Date"
+              testId="pto-end-date-input"
+            />
           </div>
 
           <Controller
@@ -120,6 +132,7 @@ export function PTOFormContent({
                     fieldState.invalid && ptoInvalidControlClassName
                   )}
                   aria-invalid={fieldState.invalid}
+                  data-testid="pto-reason-input"
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -139,10 +152,12 @@ function DateField({
   control,
   name,
   label,
+  testId,
 }: {
   control: Control<CreatePTOInput>;
   name: 'startDate' | 'endDate';
   label: string;
+  testId: string;
 }) {
   return (
     <Controller
@@ -153,7 +168,7 @@ function DateField({
           <RequiredFieldLabel>{label}</RequiredFieldLabel>
           <InputWrapper className={fieldState.invalid ? ptoInvalidControlClassName : undefined}>
             <Calendar className="size-4 text-muted-foreground" />
-            <Input {...field} type="date" aria-invalid={fieldState.invalid} />
+            <Input {...field} type="date" aria-invalid={fieldState.invalid} data-testid={testId} />
           </InputWrapper>
           {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
         </Field>
