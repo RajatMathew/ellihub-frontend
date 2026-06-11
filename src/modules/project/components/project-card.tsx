@@ -125,9 +125,8 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
   const spendUtilizationLabel = `${Math.round(spendUtilization)}%`;
   const stageLabel = getLookupLabel(project.stage);
   const fallbackStatusLabel = getLookupLabel(project.statusRef ?? project.status);
-  const fullBadgeLabel = stageLabel ?? fallbackStatusLabel;
-  const badgeLabel = fullBadgeLabel;
-  const badgeDotClassName = getProjectStageSwatchClassName(fullBadgeLabel);
+  const badgeLabel = stageLabel ?? fallbackStatusLabel;
+  const badgeDotClassName = getProjectStageSwatchClassName(badgeLabel);
   const balanceClassName = budgetRemaining < 0 ? 'text-destructive' : 'text-foreground';
   const projectIdentifier = project.jobNumber ?? project.contractNumber ?? project.id;
   const tcoDateLabel = formatProjectDate(project.tcoDate ?? project.estimatedEndDate);
