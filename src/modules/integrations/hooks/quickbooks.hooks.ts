@@ -17,6 +17,27 @@ export const useQuickBooksReferenceSyncStatusQuery = () =>
     queryFn: quickBooksApi.getReferenceSyncStatus,
   });
 
+export const useQuickBooksBankAccountsQuery = (enabled = true) =>
+  useQuery({
+    queryKey: integrationsKeys.quickBooksBankAccounts(),
+    queryFn: quickBooksApi.listBankAccounts,
+    enabled,
+  });
+
+export const useQuickBooksCategoriesQuery = (enabled = true) =>
+  useQuery({
+    queryKey: integrationsKeys.quickBooksCategories(),
+    queryFn: quickBooksApi.listCategories,
+    enabled,
+  });
+
+export const useQuickBooksVendorsQuery = (enabled = true) =>
+  useQuery({
+    queryKey: integrationsKeys.quickBooksVendors(),
+    queryFn: quickBooksApi.listVendors,
+    enabled,
+  });
+
 export const useStartQuickBooksConnectionMutation = () =>
   useMutation({
     mutationFn: quickBooksApi.createAuthorizationUrl,
