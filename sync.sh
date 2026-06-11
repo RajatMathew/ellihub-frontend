@@ -312,6 +312,72 @@ push_all() {
     pause
 }
 
+force_sync_all() {
+
+    echo
+    echo "======================================="
+    echo "FORCE SYNC ALL"
+    echo "======================================="
+    echo
+    echo "This will OVERWRITE:"
+    echo "  elli-core"
+    echo "  elli-ui"
+    echo "  elli-engine"
+    echo
+    echo "Any local changes inside those folders will be lost."
+    echo
+
+    read -rp "Type YES to continue: " confirm
+
+    [[ "$confirm" != "YES" ]] && return
+
+    echo
+    echo "Fetching remotes..."
+
+    git fetch elli-core "$CORE_BRANCH"
+    git fetch elli-ui "$UI_BRANCH"
+    git fetch elli-engine "$ENGINE_BRANCH"
+
+    echo
+    echo "Resetting elli-core..."
+
+    rm -rf elli-core
+    mkdir -p elli-core
+
+    git --work-tree=elli-core checkout \
+        "remotes/elli-core/$CORE_BRANCH" \
+        -- .
+
+    echo
+    echo "Resetting elli-ui..."
+
+    rm -rf elli-ui
+    mkdir -p elli-ui
+
+    git --work-tree=elli-ui checkout \
+        "remotes/elli-ui/$UI_BRANCH" \
+        -- .
+
+    echo
+    echo "Resetting elli-engine..."
+
+    rm -rf elli-engine
+    mkdir -p elli-engine
+
+    git --work-tree=elli-engine checkout \
+        "remotes/elli-engine/$ENGINE_BRANCH" \
+        -- .
+
+    git add elli-core elli-ui elli-engine
+
+    echo
+    echo "Force sync completed."
+    echo
+    git status --short
+
+    pause
+}
+
 ########################################
 # Main Menu
 ########################################
@@ -329,8 +395,9 @@ main_menu() {
         echo "4) Refresh Remotes"
         echo "5) Sync All Subtrees"
         echo "6) Push All Subtrees"
+        echo "7) Force Sync All"
         echo
-        echo "7) Exit"
+        echo "8) Exit"
         echo
 
         read -rp "Select option: " option
@@ -362,6 +429,10 @@ main_menu() {
                 ;;
 
             7)
+                force_sync_all
+                ;;
+
+            8)
                 exit 0
                 ;;
 
