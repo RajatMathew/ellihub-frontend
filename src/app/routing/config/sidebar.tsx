@@ -11,6 +11,16 @@ export const mainSidebarMenu: MenuConfig = [
   },
   { type: 'separator' },
   {
+    type: 'menu',
+    children: [
+      {
+        title: 'Monthly Bills',
+        path: '../monthly-bills',
+      },
+    ],
+  },
+  { type: 'separator' },
+  {
     type: 'group-collapsed',
     title: 'Catalog',
     children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
