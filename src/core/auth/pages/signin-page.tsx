@@ -64,8 +64,8 @@ export function SignInPageComponent() {
   const form = useForm<SigninSchemaType>({
     resolver: zodResolver(getSigninSchema()),
     defaultValues: {
-      email: 'admin@elli.com',
-      password: 'password123',
+      email: '',
+      password: '',
       rememberMe: true,
     },
   });
