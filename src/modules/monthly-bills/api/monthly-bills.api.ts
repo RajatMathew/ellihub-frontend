@@ -1,7 +1,10 @@
 import api from '@/app/api';
 import {
   monthlyBillProjectGroupsSchema,
+  plannedPaymentRecordSchema,
   type MonthlyBillProjectGroup,
+  type PlannedPaymentRecord,
+  type UpsertPlannedPaymentPayload,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 
 const BASE = '/monthly-bills';
@@ -22,6 +25,16 @@ export const monthlyBillsApi = {
     const res = await api.get(BASE, { params });
     const raw = res.data?.data ?? res.data;
     const result = monthlyBillProjectGroupsSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async upsertPlannedPayment(payload: UpsertPlannedPaymentPayload): Promise<PlannedPaymentRecord> {
+    const res = await api.put(`${BASE}/planned-payment`, payload);
+    const raw = res.data?.data ?? res.data;
+    const result = plannedPaymentRecordSchema.safeParse(raw);
     if (!result.success) {
       throw result.error;
     }

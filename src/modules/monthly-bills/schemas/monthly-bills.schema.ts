@@ -50,3 +50,24 @@ export const monthlyBillProjectGroupSchema = z.object({
 export type MonthlyBillProjectGroup = z.infer<typeof monthlyBillProjectGroupSchema>;
 
 export const monthlyBillProjectGroupsSchema = z.array(monthlyBillProjectGroupSchema);
+
+export const upsertPlannedPaymentSchema = z.object({
+  purchaseOrderId: z.string(),
+  month: z.number().int().min(1).max(12),
+  year: z.number().int(),
+  amount: z.number().nonnegative(),
+  isReady: z.boolean().optional(),
+});
+
+export type UpsertPlannedPaymentPayload = z.infer<typeof upsertPlannedPaymentSchema>;
+
+export const plannedPaymentRecordSchema = z.object({
+  id: z.string(),
+  purchaseOrderId: z.string(),
+  month: z.number(),
+  year: z.number(),
+  amount: z.coerce.number(),
+  isReady: z.boolean(),
+});
+
+export type PlannedPaymentRecord = z.infer<typeof plannedPaymentRecordSchema>;

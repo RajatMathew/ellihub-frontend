@@ -15,7 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { useUpsertPlannedPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import type {
   MonthlyBillItem,
   MonthlyBillProjectGroup,
@@ -38,6 +40,24 @@ function getProjectTitle(group: MonthlyBillProjectGroup) {
   return group.project.jobNumber
     ? `${group.project.name} - ${group.project.jobNumber}`
     : group.project.name;
+}
+
+/**
+ * A key derived from the group's server data for the selected month. Changing it remounts the
+ * card so the To Pay / Ready inputs re-seed from fresh server values (e.g. after a save refetch
+ * or switching months), while leaving them untouched while the user is editing.
+ */
+function getProjectCardKey(group: MonthlyBillProjectGroup, selectedDate: Date) {
+  const period = `${getYear(selectedDate)}-${getMonth(selectedDate)}`;
+  const bills = group.bills
+    .map(
+      (bill) =>
+        `${bill.purchaseOrder.id}:${bill.plannedPayment?.amount ?? 0}:${
+          bill.plannedPayment?.isReady ?? false
+        }`
+    )
+    .join('|');
+  return `${group.project.id}:${period}:${bills}`;
 }
 
 /** Payments whose transaction date falls within the selected billing month. */
@@ -99,7 +119,11 @@ export function MonthlyBillsTable({
   return (
     <div className="space-y-5">
       {groups.map((group) => (
-        <MonthlyBillsProjectCard key={group.project.id} group={group} selectedDate={selectedDate} />
+        <MonthlyBillsProjectCard
+          key={getProjectCardKey(group, selectedDate)}
+          group={group}
+          selectedDate={selectedDate}
+        />
       ))}
     </div>
   );
@@ -114,9 +138,17 @@ function MonthlyBillsProjectCard({
 }) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
+  const month = getMonth(selectedDate) + 1;
+  const year = getYear(selectedDate);
+
+  const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [toPayById, setToPayById] = useState<Record<string, number>>({});
+  const [toPayById, setToPayById] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
+    )
+  );
   const [readyById, setReadyById] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
@@ -151,6 +183,19 @@ function MonthlyBillsProjectCard({
       if (checked) next.add(id);
       else next.delete(id);
       return next;
+    });
+
+  const commitToPay = (purchaseOrderId: string, amount: number) =>
+    upsertPlannedPayment.mutate({ purchaseOrderId, month, year, amount });
+
+  // The endpoint requires an amount, so send the row's current To Pay value alongside the flag.
+  const commitReady = (purchaseOrderId: string, isReady: boolean) =>
+    upsertPlannedPayment.mutate({
+      purchaseOrderId,
+      month,
+      year,
+      amount: toPayById[purchaseOrderId] ?? 0,
+      isReady,
     });
 
   return (
@@ -248,15 +293,13 @@ function MonthlyBillsProjectCard({
                     {formatCurrency(bill.balance)}
                   </TableCell>
                   <TableCell className="py-3 text-right">
-                    <NumberInput
+                    <ToPayCell
                       value={toPayById[id] ?? 0}
-                      onValueChange={(value) =>
+                      poNumber={bill.purchaseOrder.poNumber}
+                      onChange={(value) =>
                         setToPayById((current) => ({ ...current, [id]: value }))
                       }
-                      decimalPlaces={2}
-                      min={0}
-                      aria-label={`To pay for ${bill.purchaseOrder.poNumber}`}
-                      className="ml-auto h-8 w-24 text-right"
+                      onCommit={(value) => commitToPay(id, value)}
                     />
                   </TableCell>
                   <TableCell className="py-3 text-center">
@@ -264,9 +307,10 @@ function MonthlyBillsProjectCard({
                       size="sm"
                       aria-label={`Mark ${bill.purchaseOrder.poNumber} ready`}
                       checked={readyById[id] ?? false}
-                      onCheckedChange={(checked) =>
-                        setReadyById((current) => ({ ...current, [id]: checked }))
-                      }
+                      onCheckedChange={(checked) => {
+                        setReadyById((current) => ({ ...current, [id]: checked }));
+                        commitReady(id, checked);
+                      }}
                     />
                   </TableCell>
                 </TableRow>
@@ -297,6 +341,35 @@ function MonthlyBillsProjectCard({
         </Table>
       </div>
     </Card>
+  );
+}
+
+/** To Pay input. Updates the row total immediately, but debounces the API save. */
+function ToPayCell({
+  value,
+  poNumber,
+  onChange,
+  onCommit,
+}: {
+  value: number;
+  poNumber: string;
+  onChange: (value: number) => void;
+  onCommit: (value: number) => void;
+}) {
+  const debouncedCommit = useDebouncedCallback(onCommit, 600);
+
+  return (
+    <NumberInput
+      value={value}
+      onValueChange={(next) => {
+        onChange(next);
+        debouncedCommit(next);
+      }}
+      decimalPlaces={2}
+      min={0}
+      aria-label={`To pay for ${poNumber}`}
+      className="ml-auto h-8 w-24 text-right"
+    />
   );
 }
 
