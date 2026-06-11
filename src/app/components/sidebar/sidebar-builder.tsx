@@ -38,6 +38,11 @@ function filterMenuForAccess(
       const children = item.children.filter((child) => {
         const path = child.path ?? '';
         if (path.includes('projects')) return access.access?.projectScope !== 'none';
+        if (path.includes('monthly-bills')) {
+          return (
+            access.isAdmin || access.access?.role === 'pm' || access.access?.role === 'accountant'
+          );
+        }
         if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
         if (path.includes('directory/contacts')) return access.can('contact', 'read');
         if (path.includes('directory/general-contractors')) {
@@ -46,7 +51,8 @@ function filterMenuForAccess(
         if (path.includes('directory/vendors')) return access.can('vendor', 'read');
         if (path.includes('hr/employees')) return access.can('employee', 'read');
         if (path.includes('hr/departments')) return access.can('department', 'read');
-        if (path.includes('hr/pto')) return access.can('leave', 'view') || access.can('leave', 'create');
+        if (path.includes('hr/pto'))
+          return access.can('leave', 'view') || access.can('leave', 'create');
         if (path.includes('files')) return access.isAdmin;
         if (path.includes('activity-log')) return access.can('activityLog', 'read');
         if (path.includes('settings')) {

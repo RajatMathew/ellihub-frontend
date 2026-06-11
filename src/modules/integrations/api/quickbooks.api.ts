@@ -1,13 +1,19 @@
 import api from '@/app/api';
 import {
   quickBooksAuthorizationSchema,
+  quickBooksBankAccountsSchema,
   quickBooksDisconnectSchema,
+  quickBooksLineItemCategoriesSchema,
+  quickBooksPayeesSchema,
   quickBooksReferenceAutoDailySyncSchema,
   quickBooksReferenceSyncResultSchema,
   quickBooksReferenceSyncStatusSchema,
   quickBooksStatusSchema,
   type QuickBooksAuthorization,
+  type QuickBooksBankAccount,
   type QuickBooksDisconnect,
+  type QuickBooksLineItemCategory,
+  type QuickBooksPayee,
   type QuickBooksReferenceAutoDailySync,
   type QuickBooksReferenceSyncResult,
   type QuickBooksReferenceSyncStatus,
@@ -45,5 +51,20 @@ export const quickBooksApi = {
   async updateReferenceAutoDailySync(enabled: boolean): Promise<QuickBooksReferenceAutoDailySync> {
     const res = await api.patch(`${BASE}/reference-sync/auto-daily`, { enabled });
     return quickBooksReferenceAutoDailySyncSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async listBankAccounts(): Promise<QuickBooksBankAccount[]> {
+    const res = await api.get(`${BASE}/bank-accounts`);
+    return quickBooksBankAccountsSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async listCategories(): Promise<QuickBooksLineItemCategory[]> {
+    const res = await api.get(`${BASE}/categories`);
+    return quickBooksLineItemCategoriesSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async listVendors(): Promise<QuickBooksPayee[]> {
+    const res = await api.get(`${BASE}/vendors`);
+    return quickBooksPayeesSchema.parse(res.data?.data ?? res.data);
   },
 };
