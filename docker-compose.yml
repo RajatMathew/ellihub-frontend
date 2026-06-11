@@ -68,6 +68,10 @@ services:
       CLIENT_URL: ${CLIENT_URL:?CLIENT_URL is required}
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-azure}
+      FILE_UPLOAD_MAX_BYTES: ${FILE_UPLOAD_MAX_BYTES:-52428800}
+      BLOB_SAS_URL: ${BLOB_SAS_URL:-}
+      BLOB_SAS_TOKEN: ${BLOB_SAS_TOKEN:-}
       PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://z-pdf:8000}
       PDF_ENGINE_API_KEY_HEADER: ${PDF_ENGINE_API_KEY_HEADER:-X-API-Key}
       PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:?PDF_ENGINE_API_KEYS is required}
@@ -93,6 +97,11 @@ services:
       MAIL_ASSET_DIR: ${MAIL_ASSET_DIR:-src/modules/mail/assets}
       MAIL_TEMPLATE_DIR: ${MAIL_TEMPLATE_DIR:-src/modules/mail/templates}
       SEED_API_KEY: ${SEED_API_KEY:-}
+      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-mistral}
+      AGENT_KEY_ENCRYPTION_KEY: ${AGENT_KEY_ENCRYPTION_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GLM_API_KEY: ${GLM_API_KEY:-}
     depends_on:
       z-db:
         condition: service_healthy
@@ -135,6 +144,7 @@ services:
       PDF_ENGINE_CORS_ALLOW_METHODS: ${PDF_ENGINE_CORS_ALLOW_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
       PDF_ENGINE_CORS_ALLOW_HEADERS: ${PDF_ENGINE_CORS_ALLOW_HEADERS:-Content-Type,Authorization,X-API-Key}
       PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:?PDF_ENGINE_API_KEYS is required}
+      PDF_ENGINE_API_KEY: ${PDF_ENGINE_API_KEY:?PDF_ENGINE_API_KEY is required}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).read()"]
       interval: 30s
@@ -148,6 +158,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.nginx
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_ENABLE_MOCK_DATA_FILL: ${VITE_ENABLE_MOCK_DATA_FILL:-false}
     restart: unless-stopped
     expose:
       - "80"
