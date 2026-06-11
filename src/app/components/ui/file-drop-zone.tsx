@@ -140,6 +140,7 @@ interface FileDropZoneBaseProps {
   disabled?: boolean;
   showSelectedPreview?: boolean;
   className?: string;
+  testId?: string;
 }
 
 interface SingleFileDropZoneProps extends FileDropZoneBaseProps {
@@ -290,6 +291,7 @@ export function FileDropZone(props: FileDropZoneProps): ReactElement {
             multiple={isMultiple}
             disabled={disabled}
             onChange={handleInputChange}
+            data-testid={props.testId}
           />
         </div>
       )}

@@ -411,6 +411,7 @@ export function InvoiceFormPage() {
                         triggerClassName={
                           fieldState.invalid ? invoiceInvalidControlClassName : undefined
                         }
+                        testId="invoice-purchase-order-select"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -435,6 +436,7 @@ export function InvoiceFormPage() {
                         triggerClassName={
                           fieldState.invalid ? invoiceInvalidControlClassName : undefined
                         }
+                        testId="invoice-vendor-select"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -457,6 +459,7 @@ export function InvoiceFormPage() {
                           placeholder="INV-001"
                           autoComplete="off"
                           aria-invalid={fieldState.invalid}
+                          data-testid="invoice-number-input"
                         />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -473,7 +476,12 @@ export function InvoiceFormPage() {
                       <InputWrapper
                         className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
                       >
-                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                        <Input
+                          type="date"
+                          {...field}
+                          aria-invalid={fieldState.invalid}
+                          data-testid="invoice-date-input"
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -489,7 +497,12 @@ export function InvoiceFormPage() {
                       <InputWrapper
                         className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
                       >
-                        <Input type="date" {...field} aria-invalid={fieldState.invalid} />
+                        <Input
+                          type="date"
+                          {...field}
+                          aria-invalid={fieldState.invalid}
+                          data-testid="invoice-due-date-input"
+                        />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -503,7 +516,12 @@ export function InvoiceFormPage() {
                 render={({ field }) => (
                   <Field>
                     <FieldLabel className={invoiceFieldLabelClassName}>Notes</FieldLabel>
-                    <Textarea {...field} placeholder="Additional notes..." rows={4} />
+                    <Textarea
+                      {...field}
+                      placeholder="Additional notes..."
+                      rows={4}
+                      data-testid="invoice-notes-input"
+                    />
                   </Field>
                 )}
               />
@@ -547,6 +565,7 @@ export function InvoiceFormPage() {
                               placeholder="0.00"
                               aria-invalid={fieldState.invalid}
                               className="text-right"
+                              data-testid="invoice-total-amount-input"
                             />
                           </InputWrapper>
                         </div>
@@ -578,6 +597,7 @@ export function InvoiceFormPage() {
                             placeholder="0"
                             aria-invalid={fieldState.invalid}
                             className="text-right"
+                            data-testid="invoice-tax-rate-input"
                           />
                         </InputWrapper>
                       )}
@@ -635,6 +655,7 @@ export function InvoiceFormPage() {
                           ? 'No SCOs found for this purchase order.'
                           : 'Select a purchase order first.'
                       }
+                      testId="invoice-related-scos-select"
                     />
                   </Field>
                 )}
@@ -645,6 +666,7 @@ export function InvoiceFormPage() {
           <ProjectFormDocumentsCard
             selectedFiles={selectedFiles}
             existingDocuments={isEdit && invoiceDetail ? invoiceDetail.attachments : undefined}
+            fileInputTestId="invoice-file-input"
             onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
             onRemoveFile={(index) =>
               setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))

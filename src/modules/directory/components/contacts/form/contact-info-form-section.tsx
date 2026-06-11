@@ -58,6 +58,7 @@ export function ContactInfoFormSection({
                     placeholder="e.g. Michael Chen"
                     aria-invalid={fieldState.invalid}
                     autoComplete="off"
+                    data-testid="contact-full-name-input"
                   />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -80,6 +81,7 @@ export function ContactInfoFormSection({
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
                     className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                    data-testid="contact-role-select"
                   >
                     <div className="flex items-center gap-2">
                       <Building2 className="size-4 text-muted-foreground" />
@@ -124,6 +126,7 @@ export function ContactInfoFormSection({
                       placeholder="m.chen@company.com"
                       aria-invalid={isInvalid}
                       autoComplete="off"
+                      data-testid="contact-email-input"
                     />
                   </InputWrapper>
                   {fieldState.error && <FieldError errors={[fieldState.error]} />}
@@ -157,6 +160,7 @@ export function ContactInfoFormSection({
                       placeholder="(555) 000-0000"
                       aria-invalid={fieldState.invalid}
                       autoComplete="off"
+                      data-testid="contact-phone-input"
                     />
                   </InputWrapper>
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

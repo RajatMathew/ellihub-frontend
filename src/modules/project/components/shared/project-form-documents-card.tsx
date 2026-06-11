@@ -16,6 +16,7 @@ interface ProjectFormDocumentsCardProps {
   disabled?: boolean;
   title?: string;
   existingTitle?: string;
+  fileInputTestId?: string;
 }
 
 function fileSizeLabel(size: number) {
@@ -36,6 +37,7 @@ export function ProjectFormDocumentsCard({
   disabled = false,
   title = 'Documents',
   existingTitle = 'Existing Documents',
+  fileInputTestId,
 }: ProjectFormDocumentsCardProps) {
   return (
     <Card id="documents">
@@ -51,6 +53,7 @@ export function ProjectFormDocumentsCard({
             if (file) onAddFile(file);
           }}
           disabled={disabled}
+          testId={fileInputTestId}
         />
 
         {selectedFiles.length > 0 && (

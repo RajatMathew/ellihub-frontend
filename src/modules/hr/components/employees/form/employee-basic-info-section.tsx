@@ -32,6 +32,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             label="Full Legal Name"
             required
             placeholder="e.g. Robert J. Oppenheimer"
+            testId="employee-name-input"
             icon={<UserPlus className="size-4 text-muted-foreground" />}
           />
           <EmployeeTextField
@@ -41,6 +42,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             required
             placeholder="robert@contractor-corp.com"
             type="email"
+            testId="employee-email-input"
             icon={<Mail className="size-4 text-muted-foreground" />}
           />
         </div>
@@ -51,6 +53,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             name="phoneNumber"
             label="Contact Number"
             placeholder="(555) 000-0000"
+            testId="employee-phone-input"
             icon={<Phone className="size-4 text-muted-foreground" />}
           />
           <EmployeeTextField
@@ -58,6 +61,7 @@ export function EmployeeBasicInfoSection({ control }: { control: Control<CreateE
             name="address"
             label="Physical Address"
             placeholder="123 Industrial St, NY"
+            testId="employee-address-input"
             icon={<MapPin className="size-4 text-muted-foreground" />}
           />
         </div>
@@ -73,6 +77,7 @@ function EmployeeTextField({
   required = false,
   placeholder,
   type = 'text',
+  testId,
   icon,
 }: {
   control: Control<CreateEmployeeInput>;
@@ -81,6 +86,7 @@ function EmployeeTextField({
   required?: boolean;
   placeholder: string;
   type?: string;
+  testId?: string;
   icon?: ReactNode;
 }) {
   return (
@@ -100,6 +106,7 @@ function EmployeeTextField({
               type={type}
               placeholder={placeholder}
               autoComplete="off"
+              data-testid={testId}
             />
           </InputWrapper>
           {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
