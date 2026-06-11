@@ -17,18 +17,22 @@ import {
 } from '@/app/components/ui/table';
 import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { MarkPaymentDialog } from '@/modules/monthly-bills/components/mark-payment-dialog';
+import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
 import { useUpsertPlannedPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import type {
   MonthlyBillItem,
   MonthlyBillProjectGroup,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { format, getMonth, getYear } from 'date-fns';
-import { AlertCircle, ClipboardList, ExternalLink, RefreshCcw } from 'lucide-react';
+import { AlertCircle, ClipboardList, CreditCard, ExternalLink, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface MonthlyBillsTableProps {
   groups: MonthlyBillProjectGroup[];
   selectedDate: Date;
+  /** Whether the current user (admin or accountant) can mark payments. */
+  canMarkPayment: boolean;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -74,6 +78,7 @@ function getMonthPayments(bill: MonthlyBillItem, selectedDate: Date) {
 export function MonthlyBillsTable({
   groups,
   selectedDate,
+  canMarkPayment,
   isLoading,
   isError,
   onRetry,
@@ -99,7 +104,7 @@ export function MonthlyBillsTable({
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
-        <MonthlyBillsTableSkeleton selectedDate={selectedDate} />
+        <MonthlyBillsTableSkeleton selectedDate={selectedDate} canMarkPayment={canMarkPayment} />
       </Card>
     );
   }
@@ -123,6 +128,7 @@ export function MonthlyBillsTable({
           key={getProjectCardKey(group, selectedDate)}
           group={group}
           selectedDate={selectedDate}
+          canMarkPayment={canMarkPayment}
         />
       ))}
     </div>
@@ -132,9 +138,11 @@ export function MonthlyBillsTable({
 function MonthlyBillsProjectCard({
   group,
   selectedDate,
+  canMarkPayment,
 }: {
   group: MonthlyBillProjectGroup;
   selectedDate: Date;
+  canMarkPayment: boolean;
 }) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
@@ -143,6 +151,7 @@ function MonthlyBillsProjectCard({
 
   const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
 
+  const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [toPayById, setToPayById] = useState<Record<string, number>>(() =>
     Object.fromEntries(
@@ -229,6 +238,7 @@ function MonthlyBillsProjectCard({
               <TableHead className="h-10 min-w-28 text-right">Balance</TableHead>
               <TableHead className="h-10 min-w-28 text-right">To Pay</TableHead>
               <TableHead className="h-10 w-20 text-center">Ready</TableHead>
+              {canMarkPayment && <TableHead className="h-10 min-w-40 text-center" />}
             </TableRow>
           </TableHeader>
 
@@ -277,7 +287,7 @@ function MonthlyBillsProjectCard({
                   <TableCell className="py-3">
                     <PaymentsCell
                       payments={monthPayments}
-                      hasPlanned={Boolean(bill.plannedPayment)}
+                      poNumber={bill.purchaseOrder.poNumber}
                     />
                   </TableCell>
                   <TableCell className="py-3 text-right text-sm text-muted-foreground">
@@ -313,6 +323,19 @@ function MonthlyBillsProjectCard({
                       }}
                     />
                   </TableCell>
+                  {canMarkPayment && (
+                    <TableCell className="py-3 text-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPaymentBill(bill)}
+                      >
+                        <CreditCard className="size-3.5" />
+                        Mark Payment
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
@@ -336,10 +359,25 @@ function MonthlyBillsProjectCard({
                 {formatCurrency(totals.toPay)}
               </TableCell>
               <TableCell />
+              {canMarkPayment && <TableCell />}
             </TableRow>
           </TableFooter>
         </Table>
       </div>
+
+      {paymentBill && (
+        <MarkPaymentDialog
+          key={paymentBill.purchaseOrder.id}
+          open={Boolean(paymentBill)}
+          onOpenChange={(next) => {
+            if (!next) setPaymentBill(null);
+          }}
+          bill={paymentBill}
+          amount={toPayById[paymentBill.purchaseOrder.id] ?? 0}
+          month={month}
+          year={year}
+        />
+      )}
     </Card>
   );
 }
@@ -375,41 +413,45 @@ function ToPayCell({
 
 function PaymentsCell({
   payments,
-  hasPlanned,
+  poNumber,
 }: {
   payments: MonthlyBillItem['payments'];
-  hasPlanned: boolean;
+  poNumber: string;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="flex flex-col gap-0.5 text-sm">
+    <div className="flex flex-col items-start gap-0.5 text-sm">
       {payments.length === 0 ? (
         <span className="font-medium text-primary">No payments yet</span>
       ) : (
-        payments.map((payment) =>
-          payment.transactionUrl ? (
-            <a
-              key={payment.id}
-              href={payment.transactionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-primary hover:text-primary/80"
-            >
-              {payment.transactionId ?? 'View payment'}
-              <ExternalLink className="size-3" />
-            </a>
-          ) : (
-            <span key={payment.id} className="font-medium text-foreground">
-              {payment.transactionId ?? 'Payment'}
-            </span>
-          )
-        )
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="font-medium text-primary hover:text-primary/80 hover:underline"
+        >
+          {payments.length} payment{payments.length === 1 ? '' : 's'}
+        </button>
       )}
-      {hasPlanned && <span className="text-xs text-muted-foreground">View 1 planned</span>}
+      {payments.length > 0 && (
+        <PaymentsDialog
+          open={open}
+          onOpenChange={setOpen}
+          payments={payments}
+          poNumber={poNumber}
+        />
+      )}
     </div>
   );
 }
 
-function MonthlyBillsTableSkeleton({ selectedDate }: { selectedDate: Date }) {
+function MonthlyBillsTableSkeleton({
+  selectedDate,
+  canMarkPayment,
+}: {
+  selectedDate: Date;
+  canMarkPayment: boolean;
+}) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
 
@@ -436,6 +478,7 @@ function MonthlyBillsTableSkeleton({ selectedDate }: { selectedDate: Date }) {
               <TableHead className="h-10 min-w-28 text-right">Balance</TableHead>
               <TableHead className="h-10 min-w-28 text-right">To Pay</TableHead>
               <TableHead className="h-10 w-20 text-center">Ready</TableHead>
+              {canMarkPayment && <TableHead className="h-10 min-w-40 text-center" />}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -474,6 +517,11 @@ function MonthlyBillsTableSkeleton({ selectedDate }: { selectedDate: Date }) {
                 <TableCell className="py-3">
                   <Skeleton className="mx-auto h-5 w-8 rounded-full" />
                 </TableCell>
+                {canMarkPayment && (
+                  <TableCell className="py-3">
+                    <Skeleton className="mx-auto h-8 w-32 rounded-md" />
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

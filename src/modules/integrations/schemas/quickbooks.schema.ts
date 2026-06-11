@@ -87,6 +87,51 @@ export const quickBooksReferenceAutoDailySyncSchema = z.object({
   autoDailySyncEnabled: z.boolean(),
 });
 
+export const quickBooksBankAccountSchema = z.object({
+  id: z.string(),
+  realmId: z.string(),
+  qbId: z.string(),
+  name: z.string(),
+  fullyQualifiedName: z.string().nullable(),
+  accountSubType: z.string().nullable(),
+  currencyCode: z.string().nullable(),
+  active: z.boolean(),
+  deletedAt: z.string().nullable(),
+});
+
+export const quickBooksLineItemCategorySchema = z.object({
+  id: z.string(),
+  realmId: z.string(),
+  qbId: z.string(),
+  name: z.string(),
+  fullyQualifiedName: z.string().nullable(),
+  accountType: z.string().nullable(),
+  accountSubType: z.string().nullable(),
+  currencyCode: z.string().nullable(),
+  active: z.boolean(),
+  deletedAt: z.string().nullable(),
+});
+
+export const quickBooksPayeeSchema = z.object({
+  id: z.string(),
+  realmId: z.string(),
+  qbId: z.string(),
+  displayName: z.string(),
+  companyName: z.string().nullable(),
+  primaryEmail: z.string().nullable(),
+  primaryPhone: z.string().nullable(),
+  active: z.boolean(),
+  deletedAt: z.string().nullable(),
+});
+
+export const quickBooksBankAccountsSchema = z.array(quickBooksBankAccountSchema);
+export const quickBooksLineItemCategoriesSchema = z.array(quickBooksLineItemCategorySchema);
+export const quickBooksPayeesSchema = z.array(quickBooksPayeeSchema);
+
+export type QuickBooksBankAccount = z.infer<typeof quickBooksBankAccountSchema>;
+export type QuickBooksLineItemCategory = z.infer<typeof quickBooksLineItemCategorySchema>;
+export type QuickBooksPayee = z.infer<typeof quickBooksPayeeSchema>;
+
 export type QuickBooksStatus = z.infer<typeof quickBooksStatusSchema>;
 export type QuickBooksConnection = z.infer<typeof quickBooksConnectionSchema>;
 export type QuickBooksAuthorization = z.infer<typeof quickBooksAuthorizationSchema>;

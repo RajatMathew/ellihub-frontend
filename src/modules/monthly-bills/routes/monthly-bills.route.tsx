@@ -47,6 +47,8 @@ function MonthlyBillsSubcontractorPage({
   selectedDate: Date;
   enabled: boolean;
 }) {
+  const { access, isAdmin } = useAccess();
+  const canMarkPayment = isAdmin || access?.role === 'accountant';
   const { startDate, endDate } = getMonthlyBillDateRange(selectedDate);
   const monthlyBillsQuery = useMonthlyBillsQuery(
     {
@@ -62,6 +64,7 @@ function MonthlyBillsSubcontractorPage({
     <MonthlyBillsTable
       groups={monthlyBillsQuery.data ?? []}
       selectedDate={selectedDate}
+      canMarkPayment={canMarkPayment}
       isLoading={monthlyBillsQuery.isLoading}
       isError={monthlyBillsQuery.isError}
       onRetry={() => void monthlyBillsQuery.refetch()}

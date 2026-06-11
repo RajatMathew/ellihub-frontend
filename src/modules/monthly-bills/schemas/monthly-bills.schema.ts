@@ -71,3 +71,19 @@ export const plannedPaymentRecordSchema = z.object({
 });
 
 export type PlannedPaymentRecord = z.infer<typeof plannedPaymentRecordSchema>;
+
+// Matches the backend PATCH /monthly-bills/mark-payment contract. The amount, transaction date,
+// and doc number are derived server-side from the ready planned payment, so they aren't sent here.
+export const markPaymentSchema = z.object({
+  purchaseOrderId: z.string(),
+  month: z.number().int().min(1).max(12),
+  year: z.number().int(),
+  /** Confirmed QuickBooks payee reference id. */
+  qbVendorId: z.string().min(1),
+  /** QuickBooks bank account reference id. */
+  bankAccountId: z.string().min(1),
+  /** QuickBooks line-item category reference id. */
+  categoryId: z.string().min(1),
+});
+
+export type MarkPaymentPayload = z.infer<typeof markPaymentSchema>;
