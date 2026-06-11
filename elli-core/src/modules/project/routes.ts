@@ -1,15 +1,15 @@
 import {
     assertEmployeeSelfOrAdmin,
-    assertProjectActionAccess,
     assertProjectAccess,
+    assertProjectActionAccess,
     assertProjectManagementAccess,
     assertProjectScheduleManagementAccess,
     canManageProject,
-    getCurrentProjectTeamRole,
     getAccessContext,
+    getCurrentProjectTeamRole,
     getProjectActionCapabilities,
 } from '@lib/access';
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 import { success, zValidator } from '@utils';
 import { Context, Hono } from 'hono';
 import { requireAnyPermission, requirePermission } from 'src/middleware/auth';
@@ -20,15 +20,15 @@ import {
     AddTeamMemberSchema,
     PinPrimeContractsSchema,
     PrimeContractAttachmentParamsSchema,
-    PromoteTeamMemberSchema,
     ProjectCreateSchema,
     ProjectUpdateSchema,
+    PromoteTeamMemberSchema,
     RemoveScheduleSchema,
     RemoveTeamMemberSchema,
     SetPrimeContractPrimarySchema,
     UnpinPrimeContractsSchema,
-    UpdateTeamMemberRoleSchema,
     UpdateScheduleSchema,
+    UpdateTeamMemberRoleSchema,
 } from './models';
 import { ProjectService } from './service';
 

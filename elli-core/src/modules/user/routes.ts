@@ -1,5 +1,5 @@
 import { getAccessContext, permissionResponseForAccess } from '@lib/access';
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 import { BadRequestError, success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requireAdminMiddleware } from 'src/middleware/auth';

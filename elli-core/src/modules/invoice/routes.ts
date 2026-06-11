@@ -6,7 +6,7 @@ import {
     assertProjectEntityActionAccess,
     getAccessContext,
 } from '@lib/access';
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';

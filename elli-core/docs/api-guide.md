@@ -110,36 +110,36 @@ const app = new Hono();
 
 // Create
 app.post('/', zValidator('json', userCreateSchema), async (c) => {
-  const data = c.req.valid('json');
-  const user = await userService.createUser(data);
-  return success(c, user, 'User created');
+    const data = c.req.valid('json');
+    const user = await userService.createUser(data);
+    return success(c, user, 'User created');
 });
 
 // Read (single)
 app.get('/:id', zValidator('param', userIdSchema), async (c) => {
-  const { id } = c.req.valid('param');
-  const user = await userService.getUserById(id);
-  return success(c, user, 'User fetched');
+    const { id } = c.req.valid('param');
+    const user = await userService.getUserById(id);
+    return success(c, user, 'User fetched');
 });
 
 // Update
 app.put(
-  '/:id',
-  zValidator('param', userIdSchema),
-  zValidator('json', userUpdateSchema),
-  async (c) => {
-    const { id } = c.req.valid('param');
-    const data = c.req.valid('json');
-    const user = await userService.updateUser(id, data);
-    return success(c, user, 'User updated');
-  }
+    '/:id',
+    zValidator('param', userIdSchema),
+    zValidator('json', userUpdateSchema),
+    async (c) => {
+        const { id } = c.req.valid('param');
+        const data = c.req.valid('json');
+        const user = await userService.updateUser(id, data);
+        return success(c, user, 'User updated');
+    }
 );
 
 // Delete
 app.delete('/:id', zValidator('param', userIdSchema), async (c) => {
-  const { id } = c.req.valid('param');
-  await userService.deleteUser(id);
-  return success(c, null, 'User deleted');
+    const { id } = c.req.valid('param');
+    await userService.deleteUser(id);
+    return success(c, null, 'User deleted');
 });
 
 export default app;
@@ -152,17 +152,17 @@ export default app;
 import { z } from 'zod';
 
 export const userCreateSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
+    name: z.string().min(1),
+    email: z.string().email(),
 });
 
 export const userUpdateSchema = z.object({
-  name: z.string().optional(),
-  email: z.string().email().optional(),
+    name: z.string().optional(),
+    email: z.string().email().optional(),
 });
 
 export const userIdSchema = z.object({
-  id: z.string().uuid(),
+    id: z.string().uuid(),
 });
 ```
 
@@ -170,12 +170,12 @@ export const userIdSchema = z.object({
 
 ```typescript
 // src/modules/user/routes/user.route.ts
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 
 app.get('/', paginationMiddleware({ defaultSize: 10 }), async (c) => {
-  const pagination = c.get('pagination');
-  const { data, count } = await userService.getUsersPaginated(pagination);
-  return success(c, data, 'Users fetched', count);
+    const pagination = c.get('pagination');
+    const { data, count } = await userService.getUsersPaginated(pagination);
+    return success(c, data, 'Users fetched', count);
 });
 ```
 
@@ -183,9 +183,9 @@ app.get('/', paginationMiddleware({ defaultSize: 10 }), async (c) => {
 
 ```typescript
 app.get('/search', zValidator('query', z.object({ q: z.string().min(1) })), async (c) => {
-  const { q } = c.req.valid('query');
-  const results = await userService.searchUsers(q);
-  return success(c, results, 'Search results');
+    const { q } = c.req.valid('query');
+    const results = await userService.searchUsers(q);
+    return success(c, results, 'Search results');
 });
 ```
 
@@ -196,9 +196,9 @@ app.get('/search', zValidator('query', z.object({ q: z.string().min(1) })), asyn
 import { NotFoundError } from '@utils';
 
 export async function getUserById(id: string) {
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) throw new NotFoundError('User not found');
-  return user;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundError('User not found');
+    return user;
 }
 ```
 

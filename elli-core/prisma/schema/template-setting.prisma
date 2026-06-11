@@ -13,8 +13,8 @@ model TemplateSetting {
   updatedBy String?
   deletedBy String?
   deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([kind, key])
   @@index([kind, key, isDefault])

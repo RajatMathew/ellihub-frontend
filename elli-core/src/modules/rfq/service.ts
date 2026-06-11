@@ -4,7 +4,7 @@ import { RFQ, RFQAttachment, RFQVendorQuote, type Prisma } from '@db/client';
 import { AccessContext } from '@lib/access';
 import { renderPdf, type PdfJsonObject } from '@lib/pdf-engine';
 import { prisma } from '@lib/prisma';
-import { PaginationParams } from '@middleware';
+import { PaginationParams } from '@middleware/pagination';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { logFailedMailAttempt, sendLoggedMail, type LoggedMailContext } from '@modules/mail';
@@ -27,7 +27,6 @@ import { generateNanoId } from '@utils/generateNanoId';
 import { checkDeletedAt } from '@utils/soft-delete';
 
 import {
-    type GenerateVendorPdfRequest,
     AddRfqAttachmentRequest,
     AddVendorRequest,
     AwardRfqRequest,
@@ -42,13 +41,13 @@ import {
     UnawardRfqRequest,
     VoidAwardRequest,
     VoidRfqRequest,
+    type GenerateVendorPdfRequest,
 } from './models';
 
 import type {
     FeatureMailDraftBase,
     FeatureMailDraftRequest,
     FeatureMailDraftResponse,
-    FeatureMailAttachmentPreview,
     FeatureMailKey,
     FeatureMailRecipientGroup,
     FeatureMailSendResponse,
@@ -749,6 +748,13 @@ function buildRfqVendorMailLogContext({
     activity?: LoggedMailContext['activity'];
 }): LoggedMailContext {
     const pdfOptions = buildRfqPdfOptionsMetadata(pdfRequest ?? {});
+
+    const metadata: Prisma.InputJsonValue = {
+        quoteId: quote.id,
+        rfqNumber: quote.rfq.rfqNumber,
+        vendorName: quote.vendor.name,
+        ...(pdfOptions ? { pdfOptions: pdfOptions as Prisma.InputJsonValue } : {}),
+    };
 
     return {
         feature,

@@ -1,41 +1,41 @@
 {
     "sourceWorkbook": "CF-KOREAN AIR..v3.xlsx",
     "project": {
-        "Project_Name": "JFK NTO Korean Air Lounge",
+        "Project_Name": "JFK T1- Korean Air Lounge",
         "Project_Description": "Seed placeholder description for JFK NTO Korean Air Lounge; client to replace with confirmed project scope.",
         "Project_Number": "31200",
         "Project_Status": "ACTIVE",
-        "Lead_PM": "RANDOM_PM",
-        "Division": "SCA",
-        "Contract_Category": "SCA",
-        "Contract_Type": "Prime Contract",
+        "Lead_PM": "Sebastian",
+        "Division": "CIVIL",
+        "Contract_Category": "CIVIL",
+        "Contract_Type": "Lump Sum",
         "GC_Name": "Holt Construction",
         "GC_Contact": "Madelyne Grabowski",
         "Address": "50 East Washington Avenue\nPearl River, NY  10965",
-        "TCO_Date": "2026-06-15",
-        "Stage": "Submitals",
-        "Normalized_Stage": "SUBMITTALS",
-        "Payment_Terms": "NET_90",
-        "Retainage_Percent": "10",
-        "Target_Budget_Percent": "70",
+        "TCO_Date": null,
+        "Stage": "INSTALLATION",
+        "Normalized_Stage": "INSTALLATION",
+        "Payment_Terms": "NET_45",
+        "Retainage_Percent": "5",
+        "Target_Budget_Percent": "60",
         "Tax_Rate": "0"
     },
     "primeContract": {
         "Contract_ID": "25-049.011",
         "Contract_Type": "Prime Contract",
-        "Division": "SCA",
-        "Contract_Category": "SCA",
+        "Division": "CIVIL",
+        "Contract_Category": "CIVIL",
         "GC_Name": "Holt Construction",
         "GC_Contact_Name": "Madelyne Grabowski",
         "GC_Contact_Email": "mgrabowski@holtcc.com",
         "GC_Contact_Phone": "845-735-4054",
         "Original_Contract_Value": "1400000",
-        "Retainage_Percent": "10",
-        "Target_Budget_Percent": "70",
+        "Retainage_Percent": "5",
+        "Target_Budget_Percent": "60",
         "Tax_Rate": "0",
-        "TCO_Date": "2026-06-15",
-        "Payment_Terms": "Net 90",
-        "Normalized_Payment_Terms": "NET_90",
+        "TCO_Date": null,
+        "Payment_Terms": "Net 45",
+        "Normalized_Payment_Terms": "NET_45",
         "Contract_Document_Link": null,
         "Contract_Scheduled_Document_Link": null,
         "Contract_Document_File": {
@@ -63,19 +63,19 @@
         {
             "Contract_ID": "25-049.011",
             "Contract_Type": "Prime Contract",
-            "Division": "SCA",
-            "Contract_Category": "SCA",
+            "Division": "CIVIL",
+            "Contract_Category": "CIVIL",
             "GC_Name": "Holt Construction",
             "GC_Contact_Name": "Madelyne Grabowski",
             "GC_Contact_Email": "mgrabowski@holtcc.com",
             "GC_Contact_Phone": "845-735-4054",
             "Original_Contract_Value": "1400000",
-            "Retainage_Percent": "10",
-            "Target_Budget_Percent": "70",
+            "Retainage_Percent": "5",
+            "Target_Budget_Percent": "60",
             "Tax_Rate": "0",
-            "TCO_Date": "2026-06-15",
-            "Payment_Terms": "Net 90",
-            "Normalized_Payment_Terms": "NET_90",
+            "TCO_Date": null,
+            "Payment_Terms": "Net 45",
+            "Normalized_Payment_Terms": "NET_45",
             "Contract_Document_Link": null,
             "Contract_Scheduled_Document_Link": null,
             "Contract_Document_File": {
@@ -103,7 +103,7 @@
     "rfqs": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "RFQ_ID": "RFQ-2025-1616",
             "Title": "Solid Plain Sliced Walnut Lumber Supply",
             "Vendor": "Holt & Bugbee / Lenoble Lumber",
@@ -115,7 +115,7 @@
     "rfqLineItems": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "RFQ_ID": "RFQ-2025-1616",
             "Item": "Solid Plain Sliced Walnut",
             "Unit": null,
@@ -126,7 +126,7 @@
     "rfqAttachments": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "RFQ_ID": "RFQ-2025-1616",
             "Document_Name": null,
             "Document_Link": null
@@ -135,7 +135,7 @@
     "purchaseOrders": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-08-25",
@@ -155,7 +155,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25761",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-08-25",
@@ -175,7 +175,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25764",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-08-25",
@@ -195,7 +195,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25775",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-08-25",
@@ -215,7 +215,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25819",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-11-11",
@@ -235,7 +235,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "26080",
             "Linked_RFQ_ID": null,
             "Issue_Date": "2025-08-25",
@@ -257,9 +257,9 @@
     "poLineItems": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
-            "Item": "Shop drawings set – millwork shop drawings for JFK T1 Korean Airlines per your request. Includes 1 revision per Elli and 2 per architect notes. 18 days of work.",
+            "Item": "Shop drawings set \u2013 millwork shop drawings for JFK T1 Korean Airlines per your request. Includes 1 revision per Elli and 2 per architect notes. 18 days of work.",
             "Qty": "1",
             "Unit": "LS",
             "Unit_Price": "2225",
@@ -267,7 +267,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25761",
             "Item": "D2S 1\" 5/4 FAS KD WALNUT, 6\"+W X 2P/7-8'",
             "Qty": "14",
@@ -277,7 +277,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25761",
             "Item": "Delivery Charge",
             "Qty": "1",
@@ -287,7 +287,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25764",
             "Item": "Secure worker",
             "Qty": "1",
@@ -297,7 +297,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25775",
             "Item": "3/4 4x8 A1 PS WALNUT SMN MDF",
             "Qty": "1",
@@ -307,7 +307,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25775",
             "Item": "Handling-APC (as per Quote 6783263-00)",
             "Qty": "1",
@@ -317,9 +317,9 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25819",
-            "Item": "Samples of 1” round steel tubes and powder coating finish PPB-8034 Melted Bronze",
+            "Item": "Samples of 1\u201d round steel tubes and powder coating finish PPB-8034 Melted Bronze",
             "Qty": "1",
             "Unit": "LS",
             "Unit_Price": "500",
@@ -327,7 +327,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "26080",
             "Item": "CUSTOM LOUNGE BANQUETTE W/CABINETRY",
             "Qty": "1",
@@ -337,7 +337,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "26080",
             "Item": "Crating & Packaging",
             "Qty": "1",
@@ -347,7 +347,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "26080",
             "Item": "Freight (as per proposal #31155)",
             "Qty": "1",
@@ -359,7 +359,7 @@
     "poPayments": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "Date": "2025-10-10",
             "CHK#": "1141",
@@ -368,7 +368,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "Date": "2025-11-10",
             "CHK#": "157",
@@ -377,7 +377,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "Date": "2025-12-12",
             "CHK#": "1197",
@@ -386,7 +386,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25761",
             "Date": "2025-12-12",
             "CHK#": "1196",
@@ -395,7 +395,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25764",
             "Date": "2025-10-20",
             "CHK#": "Amex",
@@ -404,7 +404,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25775",
             "Date": "2025-12-12",
             "CHK#": "1195",
@@ -413,7 +413,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25819",
             "Date": "2025-11-11",
             "CHK#": null,
@@ -424,7 +424,7 @@
     "poChangeOrders": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "PO_CO_ID": "25741-01",
             "Name": "CO25741-01 Millwork Shop Drawings",
@@ -442,7 +442,7 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_ID": "25741",
             "PO_CO_ID": "25741-02",
             "Name": "CO25741-02 Additional Revisions",
@@ -462,10 +462,10 @@
     "poCoLineItems": [
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_CO_ID": "25741-01",
             "Category": "Services",
-            "Cost_Code": "—",
+            "Cost_Code": "\u2014",
             "Item": "Millwork shop drawings for JFK T1 Korean Airlines additional benches",
             "Qty": "1",
             "Unit_Type": "LS",
@@ -474,10 +474,10 @@
         },
         {
             "PROJECT NUMBER": "31200",
-            "PROJECT NAME": "JFK NTO Korean Air Lounge",
+            "PROJECT NAME": "JFK T1- Korean Air Lounge",
             "PO_CO_ID": "25741-02",
             "Category": "Services",
-            "Cost_Code": "—",
+            "Cost_Code": "\u2014",
             "Item": "Additional revisions/changes and change scale to all drawings for this project per your request",
             "Qty": "1",
             "Unit_Type": "LS",

@@ -1,5 +1,5 @@
 import { assertRevisionEntityAccess } from '@lib/access';
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 import { success } from '@utils';
 import { Hono } from 'hono';
 import { requirePermission } from 'src/middleware/auth';

@@ -1,192 +1,34 @@
 services:
-  z-db:
-    image: postgres:17
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
-    volumes:
-      - z_volume_db:/var/lib/postgresql/data
-    networks:
-      - z_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  z-db-backup:
+  api:
     build:
       context: .
-      dockerfile: Dockerfile.backup
-    restart: unless-stopped
-    environment:
-      PGHOST: z-db
-      PGPORT: 5432
-      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
-      BACKUP_DIR: /backups
-      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
-      BACKUP_CLOUD_REMOTE: ${BACKUP_CLOUD_REMOTE:-}
-      RCLONE_CONFIG_BACKUP_TYPE: ${RCLONE_CONFIG_BACKUP_TYPE:-}
-      RCLONE_CONFIG_BACKUP_PROVIDER: ${RCLONE_CONFIG_BACKUP_PROVIDER:-}
-      RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID: ${RCLONE_CONFIG_BACKUP_ACCESS_KEY_ID:-}
-      RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY: ${RCLONE_CONFIG_BACKUP_SECRET_ACCESS_KEY:-}
-      RCLONE_CONFIG_BACKUP_REGION: ${RCLONE_CONFIG_BACKUP_REGION:-}
-      RCLONE_CONFIG_BACKUP_ENDPOINT: ${RCLONE_CONFIG_BACKUP_ENDPOINT:-}
-      RCLONE_CONFIG_BACKUP_ACCOUNT: ${RCLONE_CONFIG_BACKUP_ACCOUNT:-}
-      RCLONE_CONFIG_BACKUP_KEY: ${RCLONE_CONFIG_BACKUP_KEY:-}
-    volumes:
-      - ./backups:/backups
-    depends_on:
-      z-db:
-        condition: service_healthy
-    networks:
-      - z_network
-
-  z-api:
-    build:
-      context: ./elli-core
-      dockerfile: docker/prod.Dockerfile
-      args:
-        DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-        BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:-http://localhost}
-        BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
-        CLIENT_URL: ${CLIENT_URL:-http://localhost}
-        NODE_ENV: ${NODE_ENV:-development}
-    restart: unless-stopped
-    expose:
-      - "3000"
-    environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-      BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:?BETTER_AUTH_BASE_URL is required}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-      CLIENT_URL: ${CLIENT_URL:?CLIENT_URL is required}
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3000}
-      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-azure}
-      FILE_UPLOAD_MAX_BYTES: ${FILE_UPLOAD_MAX_BYTES:-52428800}
-      BLOB_SAS_URL: ${BLOB_SAS_URL:-}
-      BLOB_SAS_TOKEN: ${BLOB_SAS_TOKEN:-}
-      PDF_ENGINE_URL: ${PDF_ENGINE_URL:-http://z-pdf:8000}
-      PDF_ENGINE_API_KEY_HEADER: ${PDF_ENGINE_API_KEY_HEADER:-X-API-Key}
-      PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:?PDF_ENGINE_API_KEYS is required}
-      PDF_ENGINE_API_KEY: ${PDF_ENGINE_API_KEY:?PDF_ENGINE_API_KEY is required}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_REGION: ${S3_REGION:-}
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
-      FIELDWIRE_API_TOKEN: ${FIELDWIRE_API_TOKEN:-}
-      QUICKBOOKS_CLIENT_ID: ${QUICKBOOKS_CLIENT_ID:-}
-      QUICKBOOKS_CLIENT_SECRET: ${QUICKBOOKS_CLIENT_SECRET:-}
-      QUICKBOOKS_REDIRECT_URI: ${QUICKBOOKS_REDIRECT_URI:-http://localhost/api/v1/integrations/quickbooks/callback}
-      QUICKBOOKS_ENVIRONMENT: ${QUICKBOOKS_ENVIRONMENT:-sandbox}
-      QUICKBOOKS_MINOR_VERSION: ${QUICKBOOKS_MINOR_VERSION:-75}
-      QUICKBOOKS_TOKEN_ENCRYPTION_KEY: ${QUICKBOOKS_TOKEN_ENCRYPTION_KEY:-}
-      MS_TENANT_ID: ${MS_TENANT_ID:-}
-      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
-      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
-      ALLOWED_SENDERS: ${ALLOWED_SENDERS:-}
-      MAIL_ALLOWED_SENDERS: ${MAIL_ALLOWED_SENDERS:-}
-      MAIL_ALLOW_CUSTOM_SENDER: ${MAIL_ALLOW_CUSTOM_SENDER:-false}
-      MAIL_ASSET_DIR: ${MAIL_ASSET_DIR:-src/modules/mail/assets}
-      MAIL_TEMPLATE_DIR: ${MAIL_TEMPLATE_DIR:-src/modules/mail/templates}
-      SEED_API_KEY: ${SEED_API_KEY:-}
-      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-mistral}
-      AGENT_KEY_ENCRYPTION_KEY: ${AGENT_KEY_ENCRYPTION_KEY:-}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      GLM_API_KEY: ${GLM_API_KEY:-}
-    depends_on:
-      z-db:
-        condition: service_healthy
-      z-pdf:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "bun -e \"fetch('http://127.0.0.1:3000').then((r) => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))\""]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    networks:
-      - z_network
-
-  z-pdf:
-    build:
-      context: ./elli-engine
       dockerfile: docker/Dockerfile
       target: production
+    container_name: pdf-engine
     restart: unless-stopped
     expose:
       - "8000"
     volumes:
-      - z_volume_pdf:/app/storage
+      - pdf-engine-storage:/app/storage
     environment:
       PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
-      PDF_ENGINE_TEMPLATES_DIR: ${PDF_ENGINE_TEMPLATES_DIR:-/app/templates}
       PDF_ENGINE_STORAGE_DIR: ${PDF_ENGINE_STORAGE_DIR:-/app/storage}
       PDF_ENGINE_CACHE_DIR: ${PDF_ENGINE_CACHE_DIR:-/app/storage/cache}
       PDF_ENGINE_GENERATED_DIR: ${PDF_ENGINE_GENERATED_DIR:-/app/storage/generated}
       PDF_ENGINE_BATCH_DIR: ${PDF_ENGINE_BATCH_DIR:-/app/storage/batch}
       PDF_ENGINE_PREVIEWS_DIR: ${PDF_ENGINE_PREVIEWS_DIR:-/app/storage/previews}
       PDF_ENGINE_TEMP_DIR: ${PDF_ENGINE_TEMP_DIR:-/app/storage/temp}
-      PDF_ENGINE_RENDER_TIMEOUT_SECONDS: ${PDF_ENGINE_RENDER_TIMEOUT_SECONDS:-10.0}
-      PDF_ENGINE_MAX_PAYLOAD_BYTES: ${PDF_ENGINE_MAX_PAYLOAD_BYTES:-250000}
-      PDF_ENGINE_MAX_BATCH_ITEMS: ${PDF_ENGINE_MAX_BATCH_ITEMS:-25}
-      PDF_ENGINE_BATCH_CHUNK_SIZE: ${PDF_ENGINE_BATCH_CHUNK_SIZE:-100}
-      PDF_ENGINE_ALLOWED_HOSTS: ${PDF_ENGINE_ALLOWED_HOSTS:?PDF_ENGINE_ALLOWED_HOSTS is required}
-      PDF_ENGINE_CORS_ALLOW_ORIGINS: ${PDF_ENGINE_CORS_ALLOW_ORIGINS:?PDF_ENGINE_CORS_ALLOW_ORIGINS is required}
-      PDF_ENGINE_CORS_ALLOW_METHODS: ${PDF_ENGINE_CORS_ALLOW_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
-      PDF_ENGINE_CORS_ALLOW_HEADERS: ${PDF_ENGINE_CORS_ALLOW_HEADERS:-Content-Type,Authorization,X-API-Key}
-      PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:?PDF_ENGINE_API_KEYS is required}
-      PDF_ENGINE_API_KEY: ${PDF_ENGINE_API_KEY:?PDF_ENGINE_API_KEY is required}
+      PDF_ENGINE_ALLOWED_HOSTS: ${PDF_ENGINE_ALLOWED_HOSTS:-*}
+      PDF_ENGINE_CORS_ALLOW_ORIGINS: ${PDF_ENGINE_CORS_ALLOW_ORIGINS:-*}
+      PDF_ENGINE_CORS_ALLOW_METHODS: ${PDF_ENGINE_CORS_ALLOW_METHODS:-*}
+      PDF_ENGINE_CORS_ALLOW_HEADERS: ${PDF_ENGINE_CORS_ALLOW_HEADERS:-*}
+      PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:-local-dev-key}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).read()"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
-    networks:
-      - z_network
-
-  z-nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
-        VITE_ENABLE_MOCK_DATA_FILL: ${VITE_ENABLE_MOCK_DATA_FILL:-false}
-    restart: unless-stopped
-    expose:
-      - "80"
-    volumes:
-      - z_volume_nginx_logs:/var/log/nginx
-    depends_on:
-      z-api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - z_network
-
-networks:
-  z_network:
-    name: z_network
-    driver: bridge
 
 volumes:
-  z_volume_db:
-    name: z_volume_db
-  z_volume_pdf:
-    name: z_volume_pdf
-  z_volume_nginx_logs:
-    name: z_volume_nginx_logs
+  pdf-engine-storage:

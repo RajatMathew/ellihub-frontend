@@ -9,7 +9,7 @@ import {
 import { AccessContext, mergeProjectAccessWhere } from '@lib/access';
 import { ProjectTeamRole } from '@lib/permissions';
 import { prisma } from '@lib/prisma';
-import { PaginationParams } from '@middleware';
+import { PaginationParams } from '@middleware/pagination';
 import { ActivityLogService } from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { FieldwireClient } from '@modules/prime-change-order/fieldwire-client';
@@ -26,15 +26,15 @@ import {
     PinPrimeContractsRequest,
     ProjectCreateRequest,
     ProjectUpdateRequest,
-    RemovePrimeContractRequest,
     PromoteTeamMemberRequest,
+    RemovePrimeContractRequest,
     RemoveScheduleRequest,
     RemoveTeamMemberRequest,
-    SetPrimeContractPrimaryRequest,
     SetPrimaryPrimeContractRequest,
+    SetPrimeContractPrimaryRequest,
     UnpinPrimeContractsRequest,
-    UpdateTeamMemberRoleRequest,
     UpdateScheduleRequest,
+    UpdateTeamMemberRoleRequest,
 } from './models';
 
 type ProjectListFinancialFields = {

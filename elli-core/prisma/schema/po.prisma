@@ -38,6 +38,8 @@ model PurchaseOrder {
   paymentTerms PaymentTerms
   notes        String?      @db.Text
 
+  fullyPaid Boolean @default(false)
+
   // research block
   issuedBy           String?
   issuedAt           DateTime?
@@ -58,7 +60,9 @@ model PurchaseOrder {
   lineItems       PurchaseOrderLineItem[]
   attachments     POAttachment[]
   invoices        Invoice[]
+  poPayments      PoPayment[]
   subChangeOrders SubChangeOrder[]        @relation("POSubChangeOrders")
+  plannedPayments PlannedPOPayment[]
 
   @@index([projectId])
   @@index([vendorId])
@@ -138,8 +142,8 @@ model SubChangeOrder {
   taxPercent          Decimal? @db.Decimal(6, 3)
   taxAmount           Decimal? @db.Decimal(15, 2)
 
-  changeType      Lookup? @relation("SCOChangeType", fields: [changeTypeId], references: [id])
-  changeTypeId    String?
+  changeType   Lookup? @relation("SCOChangeType", fields: [changeTypeId], references: [id])
+  changeTypeId String?
 
   approvedBy      String?
   approvedAt      DateTime?

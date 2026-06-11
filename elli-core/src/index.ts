@@ -7,7 +7,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { cors_config } from '@lib/cors';
 import { syncDefaultOrganizationAccess } from '@lib/organization-hooks';
 import { startScheduler } from '@lib/scheduler';
-import { performanceMiddleware } from '@middleware';
+import { performanceMiddleware } from '@middleware/performance';
 import { NotFoundError } from '@utils';
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';

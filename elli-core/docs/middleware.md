@@ -22,15 +22,15 @@ The `paginationMiddleware` is a flexible middleware for parsing and managing pag
 
 ```typescript
 type PaginationParams = {
-  page: number;
-  size: number;
-  skip: number;
-  take: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  fields?: string[];
-  search?: string;
-  filter?: Record<string, any>;
+    page: number;
+    size: number;
+    skip: number;
+    take: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    fields?: string[];
+    search?: string;
+    filter?: Record<string, any>;
 };
 ```
 
@@ -38,12 +38,12 @@ type PaginationParams = {
 
 ```typescript
 interface IPaginationOptions {
-  defaultSize?: number;
-  maxSize?: number;
-  defaultSortBy?: string;
-  defaultSortOrder?: 'asc' | 'desc';
-  defaultFields?: string[];
-  allowedSortFields?: string[];
+    defaultSize?: number;
+    maxSize?: number;
+    defaultSortBy?: string;
+    defaultSortOrder?: 'asc' | 'desc';
+    defaultFields?: string[];
+    allowedSortFields?: string[];
 }
 ```
 
@@ -51,12 +51,12 @@ interface IPaginationOptions {
 
 ```typescript
 interface IPaginationResponse {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
 }
 ```
 
@@ -65,13 +65,13 @@ interface IPaginationResponse {
 **Basic Example (see `example/routes/pagination_example.route/index.ts`):**
 
 ```typescript
-import { paginationMiddleware } from '@middleware';
+import { paginationMiddleware } from '@middleware/pagination';
 
 app.get('/', paginationMiddleware({ defaultSize: 5 }), async (c: Context) => {
-  const { skip, take } = c.get('pagination');
-  const items = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
-  const paginatedItems = items.slice(skip, skip + take);
-  return success(c, paginatedItems, 'Paginated items fetched successfully', items.length);
+    const { skip, take } = c.get('pagination');
+    const items = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
+    const paginatedItems = items.slice(skip, skip + take);
+    return success(c, paginatedItems, 'Paginated items fetched successfully', items.length);
 });
 ```
 
@@ -79,19 +79,19 @@ app.get('/', paginationMiddleware({ defaultSize: 5 }), async (c: Context) => {
 
 ```typescript
 app.get(
-  '/projects',
-  paginationMiddleware({
-    defaultSize: 20,
-    maxSize: 100,
-    defaultSortBy: 'updatedAt',
-    defaultSortOrder: 'desc',
-    allowedSortFields: ['name', 'updatedAt', 'status'],
-    defaultFields: ['id', 'name', 'status'],
-  }),
-  async (c: Context) => {
-    const pagination = c.get('pagination');
-    // Use pagination object for DB query
-  }
+    '/projects',
+    paginationMiddleware({
+        defaultSize: 20,
+        maxSize: 100,
+        defaultSortBy: 'updatedAt',
+        defaultSortOrder: 'desc',
+        allowedSortFields: ['name', 'updatedAt', 'status'],
+        defaultFields: ['id', 'name', 'status'],
+    }),
+    async (c: Context) => {
+        const pagination = c.get('pagination');
+        // Use pagination object for DB query
+    }
 );
 ```
 
@@ -107,18 +107,18 @@ app.get(
 
 ```json
 {
-  "data": [
-    /* array of items */
-  ],
-  "pagination": {
-    "currentPage": 2,
-    "totalPages": 5,
-    "totalItems": 100,
-    "itemsPerPage": 20,
-    "hasNextPage": true,
-    "hasPreviousPage": true
-  },
-  "message": "Paginated items fetched successfully"
+    "data": [
+        /* array of items */
+    ],
+    "pagination": {
+        "currentPage": 2,
+        "totalPages": 5,
+        "totalItems": 100,
+        "itemsPerPage": 20,
+        "hasNextPage": true,
+        "hasPreviousPage": true
+    },
+    "message": "Paginated items fetched successfully"
 }
 ```
 
@@ -165,9 +165,9 @@ const startTime = c.get('startTime');
 
 ```typescript
 app.get('/items', performanceMiddleware, async (c: Context) => {
-  const start = c.get('startTime');
-  // ... handle request ...
-  const duration = performance.now() - start;
-  console.log(`Request took ${duration}ms`);
+    const start = c.get('startTime');
+    // ... handle request ...
+    const duration = performance.now() - start;
+    console.log(`Request took ${duration}ms`);
 });
 ```
