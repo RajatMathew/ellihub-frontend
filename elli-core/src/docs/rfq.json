@@ -1,0 +1,597 @@
+{
+    "paths": {
+        "/rfq": {
+            "get": {
+                "tags": ["RFQ"],
+                "summary": "List RFQs (paginated)",
+                "operationId": "listRfqs",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25, "maximum": 100 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by rfqNumber or title" },
+                    { "name": "projectId", "in": "query", "schema": { "type": "string" }, "description": "Filter by project ULID" },
+                    { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "AWARDED", "VOID"] } },
+                    { "name": "typeId", "in": "query", "schema": { "type": "string" }, "description": "Filter by RFQ type lookup ULID" },
+                    { "name": "awardedVendorId", "in": "query", "schema": { "type": "string" }, "description": "Filter by awarded vendor ULID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of RFQs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "array", "items": { "$ref": "#/components/schemas/RFQ" } },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires rfq:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "post": {
+                "tags": ["RFQ"],
+                "summary": "Create an RFQ (auto-generates rfqNumber as {jobNumber}-NNN)",
+                "operationId": "createRfq",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqCreateRequest" } } }
+                },
+                "responses": {
+                    "201": {
+                        "description": "RFQ created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/RFQ" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation error / project missing job number", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Project / type / unit / cost code not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "put": {
+                "tags": ["RFQ"],
+                "summary": "Update RFQ (DRAFT only, replaces deliverables)",
+                "operationId": "updateRfq",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RfqUpdateRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "RFQ updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/RFQ" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/{id}": {
+            "get": {
+                "tags": ["RFQ"],
+                "summary": "Get an RFQ by ID (with deliverables, attachments, vendor quotes)",
+                "operationId": "getRfq",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "RFQ ULID" }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RFQ details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/RFQ" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": { "description": "RFQ not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/{id}/set-draft": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Set RFQ status to DRAFT",
+                "operationId": "setRfqDraft",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/{id}/set-published": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Set RFQ status to PUBLISHED",
+                "operationId": "setRfqPublished",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/set-void": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Void an RFQ (with cancellation reason)",
+                "operationId": "setRfqVoid",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VoidRfqRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already voided / awarded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/award": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Award the RFQ to a vendor quote",
+                "operationId": "awardRfq",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AwardRfqRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "RFQ not PUBLISHED or quote not submitted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/un-award": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Revert an award; RFQ returns to PUBLISHED",
+                "operationId": "unawardRfq",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UnawardRfqRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in AWARDED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/attachment/add": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Attach a file to the RFQ (DRAFT only)",
+                "operationId": "addRfqAttachment",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddRfqAttachmentRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to an RFQ", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/attachment/remove": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Remove an RFQ attachment (DRAFT only)",
+                "operationId": "removeRfqAttachment",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveRfqAttachmentRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/add": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Add a vendor to a PUBLISHED RFQ (no quote info)",
+                "operationId": "addRfqVendor",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddVendorRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "RFQ not PUBLISHED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Vendor already added", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/remove": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Remove a vendor from the RFQ",
+                "operationId": "removeRfqVendor",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveVendorRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Awarded quote cannot be removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/{id}/pdf": {
+            "post": {
+                "tags": ["RFQ"],
+                "summary": "Generate a vendor-specific RFQ PDF",
+                "operationId": "generateRfqVendorPdf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "RFQVendorQuote ULID"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenerateRfqVendorPdfRequest" } } }
+                },
+                "responses": {
+                    "200": {
+                        "description": "PDF generated",
+                        "content": {
+                            "application/pdf": {
+                                "schema": { "type": "string", "format": "binary" }
+                            }
+                        }
+                    },
+                    "400": { "description": "RFQ has no deliverables or deleted resource", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "403": { "description": "Insufficient permissions (requires rfq:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Vendor quote not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "500": { "description": "PDF engine failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/submit-quote": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Submit a vendor's quote (first-time submission)",
+                "operationId": "submitVendorQuote",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitQuoteRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already submitted / RFQ not PUBLISHED / awarded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/edit-quote": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Edit an already-submitted vendor quote",
+                "operationId": "editVendorQuote",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EditQuoteRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not yet submitted / RFQ not PUBLISHED / awarded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/remove-quote": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Clear a vendor's submitted quote (vendor row remains)",
+                "operationId": "removeVendorQuote",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveQuoteRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Nothing to remove / RFQ not PUBLISHED / awarded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/rfq/vendor/decline-quote": {
+            "patch": {
+                "tags": ["RFQ"],
+                "summary": "Vendor declines to quote",
+                "operationId": "declineVendorQuote",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeclineQuoteRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already submitted / declined / awarded / RFQ not PUBLISHED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "RFQDeliverableResponse": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "name": { "type": "string" },
+                    "unitId": { "type": "string" },
+                    "unit": { "type": "object", "description": "Lookup row for the unit" },
+                    "quantity": { "type": "string" },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "RFQAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "VendorQuoteAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "quoteId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "RFQVendorQuote": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "rfqId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
+                    "hasSubmittedQuote": { "type": "boolean" },
+                    "submittedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "declinedToQuote": { "type": "boolean" },
+                    "declineReason": { "type": "string", "nullable": true },
+                    "quotedAmount": { "type": "string", "nullable": true },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "isAwarded": { "type": "boolean" },
+                    "notes": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/VendorQuoteAttachment" } }
+                }
+            },
+            "RFQ": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
+                    "rfqNumber": { "type": "string" },
+                    "title": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "AWARDED", "VOID"] },
+                    "bidDeadline": { "type": "string", "format": "date" },
+                    "typeId": { "type": "string" },
+                    "type": { "type": "object", "description": "Lookup row for the RFQ type" },
+                    "awardedVendorId": { "type": "string", "nullable": true },
+                    "awardedVendor": { "$ref": "#/components/schemas/Vendor", "nullable": true },
+                    "awardedAmount": { "type": "string", "nullable": true },
+                    "cancellationReason": { "type": "string", "nullable": true },
+                    "createdBy": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rfqdeliverables": { "type": "array", "items": { "$ref": "#/components/schemas/RFQDeliverableResponse" } },
+                    "rfqattachments": { "type": "array", "items": { "$ref": "#/components/schemas/RFQAttachment" } },
+                    "vendorQuotes": { "type": "array", "items": { "$ref": "#/components/schemas/RFQVendorQuote" } }
+                }
+            },
+            "RfqDeliverable": {
+                "type": "object",
+                "required": ["name", "unitId", "quantity"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "unitId": { "type": "string", "description": "Lookup ULID (UNIT)" },
+                    "quantity": { "type": "number", "exclusiveMinimum": 0 },
+                    "costCodeId": { "type": "string", "nullable": true }
+                }
+            },
+            "RfqCreateRequest": {
+                "type": "object",
+                "required": ["projectId", "title", "bidDeadline", "typeId", "deliverables"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "title": { "type": "string", "minLength": 1 },
+                    "description": { "type": "string", "nullable": true },
+                    "bidDeadline": { "type": "string", "format": "date" },
+                    "typeId": { "type": "string" },
+                    "deliverables": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/components/schemas/RfqDeliverable" }
+                    }
+                }
+            },
+            "RfqUpdateRequest": {
+                "type": "object",
+                "required": ["id", "title", "bidDeadline", "typeId", "deliverables"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string", "minLength": 1 },
+                    "description": { "type": "string", "nullable": true },
+                    "bidDeadline": { "type": "string", "format": "date" },
+                    "typeId": { "type": "string" },
+                    "deliverables": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/components/schemas/RfqDeliverable" }
+                    }
+                }
+            },
+            "VoidRfqRequest": {
+                "type": "object",
+                "required": ["id", "cancellationReason"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "cancellationReason": { "type": "string", "minLength": 1 }
+                }
+            },
+            "AwardRfqRequest": {
+                "type": "object",
+                "required": ["quoteId"],
+                "properties": {
+                    "quoteId": { "type": "string", "description": "RFQVendorQuote ULID" }
+                }
+            },
+            "UnawardRfqRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQ ULID" }
+                }
+            },
+            "AddRfqAttachmentRequest": {
+                "type": "object",
+                "required": ["rfqId", "documentId"],
+                "properties": {
+                    "rfqId": { "type": "string" },
+                    "documentId": { "type": "string" }
+                }
+            },
+            "RemoveRfqAttachmentRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string" }
+                }
+            },
+            "AddVendorRequest": {
+                "type": "object",
+                "required": ["rfqId", "vendorId"],
+                "properties": {
+                    "rfqId": { "type": "string" },
+                    "vendorId": { "type": "string" }
+                }
+            },
+            "GenerateRfqVendorPdfRequest": {
+                "type": "object",
+                "required": ["company", "shipToName"],
+                "properties": {
+                    "company": {
+                        "type": "object",
+                        "required": ["name", "addressLines", "phone"],
+                        "properties": {
+                            "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+                            "addressLines": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+                            },
+                            "phone": { "type": "string", "minLength": 1, "maxLength": 40 },
+                            "logoPath": { "type": "string", "maxLength": 240, "default": "assets/logo.png" }
+                        }
+                    },
+                    "shipToName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                    }
+                }
+            },
+            "RemoveVendorRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQVendorQuote ULID" }
+                }
+            },
+            "SubmitQuoteRequest": {
+                "type": "object",
+                "required": ["id", "quotedAmount", "attachments"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQVendorQuote ULID" },
+                    "quotedAmount": { "type": "number", "minimum": 0 },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "attachments": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "minItems": 1
+                    }
+                }
+            },
+            "EditQuoteRequest": {
+                "type": "object",
+                "required": ["id", "quotedAmount"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQVendorQuote ULID" },
+                    "quotedAmount": { "type": "number", "minimum": 0 },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "attachments": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "default": []
+                    }
+                }
+            },
+            "RemoveQuoteRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQVendorQuote ULID" }
+                }
+            },
+            "DeclineQuoteRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "RFQVendorQuote ULID" },
+                    "declineReason": { "type": "string", "nullable": true }
+                }
+            }
+        }
+    }
+}
