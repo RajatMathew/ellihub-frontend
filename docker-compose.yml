@@ -41,7 +41,7 @@ services:
       RCLONE_CONFIG_BACKUP_ACCOUNT: ${RCLONE_CONFIG_BACKUP_ACCOUNT:-}
       RCLONE_CONFIG_BACKUP_KEY: ${RCLONE_CONFIG_BACKUP_KEY:-}
     volumes:
-      - ./backups:/backups
+      - z_volume_db_backups:/backups
     depends_on:
       z-db:
         condition: service_healthy
@@ -182,6 +182,8 @@ networks:
 volumes:
   z_volume_db:
     name: z_volume_db
+  z_volume_db_backups:
+    name: z_volume_db_backups
   z_volume_pdf:
     name: z_volume_pdf
   z_volume_nginx_logs:

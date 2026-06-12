@@ -15,6 +15,7 @@ run_backup() {
   echo "Starting PostgreSQL backup: $backup_file"
   pg_dump -Fc --no-owner --no-privileges --file="$backup_file"
   echo "PostgreSQL backup complete: $backup_file"
+  ls -lh "$BACKUP_DIR"
 
   if [ -n "${BACKUP_CLOUD_REMOTE:-}" ]; then
     destination="${BACKUP_CLOUD_REMOTE%/}/$(basename "$backup_file")"
