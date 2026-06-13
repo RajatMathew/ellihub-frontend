@@ -28,9 +28,9 @@ import {
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
-import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { useAccess } from '@/app/contexts/access-context';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -39,6 +39,7 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
+import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import {
   PurchaseOrderCancelDialog,
   PurchaseOrderDetailLineItemsCard,
@@ -51,8 +52,8 @@ import {
   formatPurchaseOrderTaxLabel,
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
-  InfoRow,
   DocumentEmailWizardDialog,
+  InfoRow,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
   ProjectDetailPageLoading,
@@ -63,8 +64,8 @@ import {
   TRADE_CATEGORY_BADGE_VARIANTS,
   TRADE_CATEGORY_LABELS,
 } from '@/modules/project/constants/purchase-order';
-import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
+import { useInvoicesByPurchaseOrderQuery } from '@/modules/project/hooks/invoice';
 import {
   useAddPOAttachmentMutation,
   useCancelPOMutation,
@@ -75,7 +76,6 @@ import {
   useRemovePOAttachmentMutation,
   useSavePOPdfMutation,
 } from '@/modules/project/hooks/purchase-order';
-import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import { useSCOsByPurchaseOrderQuery } from '@/modules/project/hooks/sub-change-order';
 import {
   useProjectEntityFolderQuery,
@@ -86,9 +86,7 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  ClipboardList,
   Clock,
-  DollarSign,
   ExternalLink,
   FileText,
   History,
@@ -97,9 +95,7 @@ import {
   PanelRightOpen,
   Pencil,
   PlusCircle,
-  Receipt,
   ShieldAlert,
-  TrendingUp,
   Truck,
   XCircle,
 } from 'lucide-react';
@@ -115,10 +111,12 @@ function calcOverdueDays(expectedDate: string | null | undefined): number {
 }
 
 function hasHtmlText(value: string): boolean {
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .trim().length > 0;
+  return (
+    value
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .trim().length > 0
+  );
 }
 
 /* ---- Page ---- */
@@ -278,9 +276,7 @@ export function PODetailPage() {
         ? defaultPdfNoticeOption.html
         : pdfNoticeHtml;
     const nextIncludeNotice =
-      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
-        ? true
-        : pdfIncludeNotice;
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml) ? true : pdfIncludeNotice;
     const shouldEnableDefaultTerms =
       !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
     const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
@@ -320,7 +316,9 @@ export function PODetailPage() {
     if (!emailTarget || !po) return;
 
     if (!vendorEmail) {
-      toast.info(`${po.vendor?.name ?? 'Vendor'} does not have a vendor email. Select a contact recipient if available.`);
+      toast.info(
+        `${po.vendor?.name ?? 'Vendor'} does not have a vendor email. Select a contact recipient if available.`
+      );
     }
 
     const request = preparePdfRequest();
@@ -423,8 +421,7 @@ export function PODetailPage() {
   const canSavePdf = projectActions?.purchaseOrder?.update === true;
   const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
   const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
-  const canCancel =
-    projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
+  const canCancel = projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
   const canRecordDelivery =
     projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
   const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
@@ -645,48 +642,53 @@ export function PODetailPage() {
           )}
 
           {/* ---- Stat cards ---- */}
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            <StatsCard
-              icon={<DollarSign className="size-5 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar
+            variant="cards"
+            width="full"
+            columns={{ sm: 2, xl: 3, '2xl': 5 }}
+            className="min-w-0"
+          >
+            <StatsBarItem
+              variant="card"
               label="PO Total"
               value={formatCurrency(poTotal)}
               description="Base contract amount"
-              compactValue
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<TrendingUp className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
+            <StatsBarItem
+              variant="card"
               label="SCO Total"
               value={scoTotal > 0 ? `+${formatCurrency(scoTotal)}` : formatCurrency(0)}
               description="Approved change orders"
-              compactValue
+              dotColor="bg-label-lighter"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<ClipboardList className="size-5 text-info" />}
-              bgClass="bg-info/10"
+            <StatsBarItem
+              variant="card"
               label="Total Commitment"
               value={formatCurrency(totalCommitment)}
               description="PO + approved SCOs"
-              compactValue
+              dotColor="bg-info"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<CheckCircle2 className="size-5 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Amount Paid"
               value={formatCurrency(amountPaid)}
               description="Via linked invoices"
-              compactValue
+              dotColor="bg-success"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Receipt className="size-5 text-warning" />}
-              bgClass="bg-warning/10"
+            <StatsBarItem
+              variant="card"
               label="Balance Due"
               value={formatCurrency(balanceDue)}
               description="Remaining balance"
-              compactValue
+              dotColor="bg-warning"
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {/* ---- Cancelled reason banner ---- */}
           {isCancelled && (po as { cancellationReason?: string | null }).cancellationReason && (

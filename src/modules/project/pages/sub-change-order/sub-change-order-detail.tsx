@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
@@ -38,18 +38,18 @@ import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import {
+  calculateEffectivePurchaseOrderTotals,
+  calculateRoundedLineAmount,
+  formatPurchaseOrderTaxLabel,
+  type PurchaseOrderLineAmountLike,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
+import {
   DocumentEmailWizardDialog,
   InfoRow,
   PdfGenerateDialog,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
-import {
-  calculateEffectivePurchaseOrderTotals,
-  calculateRoundedLineAmount,
-  formatPurchaseOrderTaxLabel,
-  type PurchaseOrderLineAmountLike,
-} from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -58,8 +58,8 @@ import {
   useGenerateSCOPdfMutation,
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
-  useSCODetailQuery,
   useSaveSCOPdfMutation,
+  useSCODetailQuery,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
 import {
@@ -71,21 +71,17 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  ClipboardList,
   Clock,
-  DollarSign,
   Download,
   ExternalLink,
   FileText,
   History,
-  Link2,
   Mail,
   PanelRightOpen,
   Pencil,
   PlusCircle,
   ShieldAlert,
   Trash2,
-  TrendingUp,
   Upload,
   XCircle,
 } from 'lucide-react';
@@ -140,10 +136,12 @@ function money(value: unknown): string {
 }
 
 function hasHtmlText(value: string): boolean {
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .trim().length > 0;
+  return (
+    value
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .trim().length > 0
+  );
 }
 
 function lineAmount(value: PurchaseOrderLineAmountLike): number {
@@ -226,9 +224,7 @@ export function SCODetailPage() {
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
-  const costCodeMap = new Map(
-    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
-  );
+  const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = (sco?.attachments ?? []) as {
     id: string;
     documentId?: string;
@@ -410,9 +406,7 @@ export function SCODetailPage() {
         ? defaultPdfNoticeOption.html
         : pdfNoticeHtml;
     const nextIncludeNotice =
-      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
-        ? true
-        : pdfIncludeNotice;
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml) ? true : pdfIncludeNotice;
     const shouldEnableDefaultTerms =
       !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
     const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
@@ -704,36 +698,40 @@ export function SCODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard
-              icon={<DollarSign className="size-5 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 4 }}>
+            <StatsBarItem
+              variant="card"
               label="SCO Amount"
               value={money(amount)}
               description="Line item total"
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<TrendingUp className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
+            <StatsBarItem
+              variant="card"
               label="Shipping and Handling Fee"
               value={money(shippingHandlingFee)}
               description="Added shipping and handling fee"
+              dotColor="bg-label-lighter"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<ClipboardList className="size-5 text-info" />}
-              bgClass="bg-info/10"
+            <StatsBarItem
+              variant="card"
               label="Total"
               value={money(totalAmount)}
               description="SCO total"
+              dotColor="bg-info"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Link2 className="size-5 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Linked PO"
               value={purchaseOrderLabel}
               description={String(purchaseOrderStatus)}
+              dotColor="bg-success"
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {hasReasonBanner && (
             <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
@@ -945,7 +943,9 @@ export function SCODetailPage() {
                         <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                       )}
                       {shippingHandlingFee !== 0 && (
-                        <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                        <InfoRow label="Shipping and Handling Fee">
+                          {money(shippingHandlingFee)}
+                        </InfoRow>
                       )}
                       {taxAmount !== 0 && (
                         <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
@@ -1019,9 +1019,7 @@ export function SCODetailPage() {
                           <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
                             Subtotal
                           </td>
-                          <td className="pt-3 text-right tabular-nums text-sm">
-                            {money(amount)}
-                          </td>
+                          <td className="pt-3 text-right tabular-nums text-sm">{money(amount)}</td>
                         </tr>
                         {negotiatedDiscount !== 0 && (
                           <tr>
@@ -1198,7 +1196,9 @@ export function SCODetailPage() {
                     <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                   )}
                   {shippingHandlingFee !== 0 && (
-                    <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                    <InfoRow label="Shipping and Handling Fee">
+                      {money(shippingHandlingFee)}
+                    </InfoRow>
                   )}
                   {taxAmount !== 0 && (
                     <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>

@@ -33,7 +33,7 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
@@ -70,7 +70,6 @@ import {
 } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
-import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -96,13 +95,13 @@ import {
   useProjectEntityFolderQuery,
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
+import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
   CheckCircle2,
   ChevronDown,
   Clock,
-  DollarSign,
   FileText,
   History,
   Mail,
@@ -123,10 +122,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function hasHtmlText(value: string): boolean {
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .trim().length > 0;
+  return (
+    value
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .trim().length > 0
+  );
 }
 
 function normalizeEmail(value: string | null | undefined): string | null {
@@ -198,12 +199,7 @@ export default function RFQDetailPage() {
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
-  const {
-    data: rfq,
-    isLoading,
-    isError,
-    refetch: refetchRfqDetail,
-  } = useRFQDetailQuery(rfqId);
+  const { data: rfq, isLoading, isError, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
   const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
@@ -618,8 +614,7 @@ export default function RFQDetailPage() {
       })
       .catch(() => {
         // The mutation hook shows the API error toast.
-      }
-    );
+      });
   }
 
   function saveVendorPdfToFiles(
@@ -1063,29 +1058,32 @@ export default function RFQDetailPage() {
         {/* Left column */}
         <div className="min-w-0 flex-1 space-y-5">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <StatsCard
-              icon={<Users className="size-6 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 3 }}>
+            <StatsBarItem
+              variant="card"
               label="Vendors Invited"
               value={invites.length}
-              description="Total Invited"
+              description="Total invited"
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<FileText className="size-6 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Quotes Received"
               value={quotes.length}
-              description="Active Bids"
+              description="Active bids"
+              dotColor="bg-success"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<DollarSign className="size-6 text-warning" />}
-              bgClass="bg-warning/10"
+            <StatsBarItem
+              variant="card"
               label="Lowest Quote"
               value={lowestQuote != null ? formatCurrency(lowestQuote) : '—'}
-              description={lowestQuote != null ? 'Lowest Current Bid' : undefined}
+              description={lowestQuote != null ? 'Lowest current bid' : 'No quotes yet'}
+              dotColor="bg-warning"
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {/* Quick Actions */}
           {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
