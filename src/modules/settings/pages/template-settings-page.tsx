@@ -132,6 +132,8 @@ const KEY_OPTIONS: Record<TemplateSettingKind, Option[]> = {
     { value: 'auth.passwordReset', label: 'Forgot password email' },
     { value: 'rfq.vendorRequest', label: 'RFQ email to one vendor' },
     { value: 'rfq.vendorRequestAll', label: 'RFQ email to all vendors' },
+    { value: 'purchaseOrder.vendorIssue', label: 'Purchase order email' },
+    { value: 'subChangeOrder.vendorApproval', label: 'SCO email' },
   ],
   MAIL_SENDER_GROUP: [
     { value: 'auth', label: 'Account emails' },
@@ -147,12 +149,16 @@ const DEFAULT_SENDER_GROUP_BY_FEATURE: Record<string, string> = {
   'auth.passwordReset': 'auth',
   'rfq.vendorRequest': 'rfq',
   'rfq.vendorRequestAll': 'rfq',
+  'purchaseOrder.vendorIssue': 'po',
+  'subChangeOrder.vendorApproval': 'changeOrder',
 };
 
 const DEFAULT_PDF_PROFILE_BY_FEATURE: Record<string, string | undefined> = {
   'auth.passwordReset': undefined,
   'rfq.vendorRequest': 'elliDefault',
   'rfq.vendorRequestAll': 'elliDefault',
+  'purchaseOrder.vendorIssue': 'elliDefault',
+  'subChangeOrder.vendorApproval': 'elliDefault',
 };
 
 const EMAIL_VARIABLES: Record<string, string[]> = {
@@ -174,6 +180,28 @@ const EMAIL_VARIABLES: Record<string, string[]> = {
     'rfqTitle',
     'bidDeadline',
   ],
+  'purchaseOrder.vendorIssue': [
+    'vendorName',
+    'projectName',
+    'projectNumber',
+    'poNumber',
+    'poDescription',
+    'expectedDate',
+    'issuedDate',
+    'tradeCategory',
+    'total',
+  ],
+  'subChangeOrder.vendorApproval': [
+    'vendorName',
+    'projectName',
+    'projectNumber',
+    'scoNumber',
+    'scoTitle',
+    'poNumber',
+    'changeType',
+    'approvedDate',
+    'total',
+  ],
 };
 
 const EMAIL_PREVIEW_VALUES: Record<string, string> = {
@@ -187,6 +215,16 @@ const EMAIL_PREVIEW_VALUES: Record<string, string> = {
   rfqNumber: 'RFQ-014',
   rfqTitle: 'Classroom Casework',
   bidDeadline: 'Jun 18, 2026',
+  poNumber: 'PO-135',
+  poDescription: 'Classroom millwork materials',
+  expectedDate: 'Jul 15, 2026',
+  issuedDate: 'Jun 13, 2026',
+  tradeCategory: 'Material',
+  total: '$36,720.00',
+  scoNumber: 'PO-135-01',
+  scoTitle: 'Additional hardware allowance',
+  changeType: 'Added Scope',
+  approvedDate: 'Jun 20, 2026',
 };
 
 const DEFAULT_SIGNATURE_IMAGES: MailSignatureTemplateValue['images'] = [

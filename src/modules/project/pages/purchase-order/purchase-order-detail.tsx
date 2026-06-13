@@ -30,12 +30,15 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useAccess } from '@/app/contexts/access-context';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
+import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import {
   PurchaseOrderCancelDialog,
   PurchaseOrderDetailLineItemsCard,
@@ -49,6 +52,7 @@ import {
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
   InfoRow,
+  DocumentEmailWizardDialog,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
   ProjectDetailPageLoading,
@@ -88,6 +92,7 @@ import {
   ExternalLink,
   FileText,
   History,
+  Mail,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
@@ -99,6 +104,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 /* ---- helpers ---- */
 
@@ -119,14 +125,19 @@ function hasHtmlText(value: string): boolean {
 
 export function PODetailPage() {
   const { projectId = '', poId = '' } = useParams<{ projectId: string; poId: string }>();
+  const { can } = useAccess();
 
-  const { data: po, isLoading } = usePODetailQuery(poId);
+  const { data: po, isLoading, refetch: refetchPoDetail } = usePODetailQuery(poId);
   const { data: project } = useProjectDetailQuery(projectId);
   const { data: linkedInvoices = [], isLoading: isLinkedInvoicesLoading } =
     useInvoicesByPurchaseOrderQuery(poId);
   const { data: linkedSCOs = [], isLoading: isLinkedSCOsLoading } =
     useSCOsByPurchaseOrderQuery(poId);
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+  const {
+    data: activityData,
+    isLoading: isActivityLoading,
+    refetch: refetchActivity,
+  } = useActivityLogQuery({
     entityType: 'purchaseOrder',
     entityId: poId,
     size: 50,
@@ -171,6 +182,7 @@ export function PODetailPage() {
   const recordDeliveryMutation = useRecordDeliveryMutation();
   const generatePdfMutation = useGeneratePOPdfMutation();
   const savePdfMutation = useSavePOPdfMutation();
+  const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -193,6 +205,12 @@ export function PODetailPage() {
   const [pdfTermsHtml, setPdfTermsHtml] = useState('');
   const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
   const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const emailTarget = useMemo<FeatureMailTarget | null>(
+    () => (poId ? { feature: 'purchaseOrder.vendorIssue', entityId: poId } : null),
+    [poId]
+  );
+  const emailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
   // Cancel dialog
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -245,7 +263,7 @@ export function PODetailPage() {
     );
   }
 
-  function openPdfOptions() {
+  function preparePdfRequest(): GeneratePOPdfInput {
     const shouldEnableDefaultNotice =
       !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
     const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
@@ -281,15 +299,43 @@ export function PODetailPage() {
     if (nextIncludeTerms) {
       setPdfIncludeTerms(true);
     }
-    setPdfPreview(null);
-    setPdfOptionsOpen(true);
-    generatePdfPreview({
+
+    return {
       addWarningNotice: nextIncludeNotice,
       warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
       warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
       addTermsAndConditions: nextIncludeTerms,
       termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
-    });
+    };
+  }
+
+  function openPdfOptions() {
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function openEmailFlow() {
+    if (!emailTarget || !po) return;
+
+    if (!vendorEmail) {
+      toast.info(`${po.vendor?.name ?? 'Vendor'} does not have a vendor email. Select a contact recipient if available.`);
+    }
+
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    sendEmailMutation.reset();
+    setEmailOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function handleEmailOpenChange(open: boolean) {
+    setEmailOpen(open);
+    if (!open) {
+      sendEmailMutation.reset();
+      setPdfPreview(null);
+    }
   }
 
   function handlePdfIncludeNoticeChange(includeNotice: boolean) {
@@ -382,6 +428,7 @@ export function PODetailPage() {
   const canRecordDelivery =
     projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
   const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
+  const canEmailPO = can('mail', 'send') && (isIssued || isDelivered);
   const canUseActionsMenu = canEdit || canCancel;
 
   const isOverdue =
@@ -392,7 +439,10 @@ export function PODetailPage() {
   const overdueDays = isOverdue ? calcOverdueDays(po.expectedDate) : 0;
 
   const isActionPending =
-    issueMutation.isPending || cancelMutation.isPending || recordDeliveryMutation.isPending;
+    issueMutation.isPending ||
+    cancelMutation.isPending ||
+    recordDeliveryMutation.isPending ||
+    sendEmailMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -489,6 +539,12 @@ export function PODetailPage() {
               <FileText className="size-4" />
               Generate PDF
             </Button>
+            {canEmailPO && (
+              <Button variant="outline" size="sm" onClick={openEmailFlow}>
+                <Mail className="size-4" />
+                Email PO
+              </Button>
+            )}
             {canIssue && (
               <Button size="sm" onClick={() => setIssueOpen(true)}>
                 <CheckCircle2 className="size-4" />
@@ -999,6 +1055,55 @@ export function PODetailPage() {
           }}
         />
       )}
+
+      <DocumentEmailWizardDialog
+        open={emailOpen}
+        onOpenChange={handleEmailOpenChange}
+        title="Email Purchase Order"
+        pdfTitle={po.poNumber ?? 'Purchase Order'}
+        pdfSectionLabel="Purchase Order PDF"
+        sendLabel="Send PO Email"
+        draft={emailDraftQuery.data ?? null}
+        isDraftLoading={emailDraftQuery.isLoading}
+        isGenerating={generatePdfMutation.isPending}
+        isSaving={savePdfMutation.isPending}
+        isSending={sendEmailMutation.isPending}
+        canSavePdf={canSavePdf}
+        pdfPreviewFile={pdfPreview}
+        includeNotice={pdfIncludeNotice}
+        noticeTitle={pdfNoticeTitle}
+        noticeHtml={pdfNoticeHtml}
+        noticeOptions={pdfNoticeOptions}
+        selectedNoticeOptionId={pdfNoticeTemplateId}
+        includeTerms={pdfIncludeTerms}
+        termsHtml={pdfTermsHtml}
+        termsOptions={pdfTermsOptions}
+        selectedTermsOptionId={pdfTermsTemplateId}
+        onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+        onNoticeOptionChange={handlePdfNoticeTemplateChange}
+        onNoticeTitleChange={setPdfNoticeTitle}
+        onNoticeHtmlChange={setPdfNoticeHtml}
+        onIncludeTermsChange={handlePdfIncludeTermsChange}
+        onTermsOptionChange={handlePdfTermsTemplateChange}
+        onTermsHtmlChange={setPdfTermsHtml}
+        onGeneratePdf={(data) => {
+          generatePdfPreview(data);
+        }}
+        onSavePdf={(data) => {
+          savePdfToFiles(data);
+        }}
+        onSend={async (payload, pdfOptions) => {
+          if (!emailTarget) return;
+          await sendEmailMutation.mutateAsync({
+            feature: emailTarget.feature,
+            entityId: emailTarget.entityId,
+            draft: payload,
+            pdfOptions,
+          });
+          await Promise.all([refetchPoDetail(), refetchActivity()]);
+          handleEmailOpenChange(false);
+        }}
+      />
 
       {/* ---- Issue PO confirmation ---- */}
       <ConfirmDialog

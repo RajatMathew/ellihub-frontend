@@ -39,6 +39,9 @@ type RfqEmailWizardDialogProps = {
   open: boolean;
   title: string;
   pdfTitle: string;
+  pdfSectionLabel?: string;
+  sendLabel?: string;
+  sendingLabel?: string;
   onOpenChange: (open: boolean) => void;
   draft: FeatureMailDraft | null;
   isDraftLoading: boolean;
@@ -119,6 +122,9 @@ export function RfqEmailWizardDialog({
   open,
   title,
   pdfTitle,
+  pdfSectionLabel = 'RFQ PDF',
+  sendLabel = 'Send RFQ Email',
+  sendingLabel = 'Sending...',
   onOpenChange,
   draft,
   isDraftLoading,
@@ -215,6 +221,7 @@ export function RfqEmailWizardDialog({
         {step === 'pdf' ? (
           <PdfWizardStep
             pdfTitle={pdfTitle}
+            pdfSectionLabel={pdfSectionLabel}
             includeNotice={includeNotice}
             noticeTitle={noticeTitle}
             noticeHtml={noticeHtml}
@@ -253,8 +260,8 @@ export function RfqEmailWizardDialog({
             draft={draft}
             isSending={isSending}
             recipientsReadOnly
-            sendLabel="Send RFQ Email"
-            sendingLabel="Sending..."
+            sendLabel={sendLabel}
+            sendingLabel={sendingLabel}
             footerStart={
               <Button variant="outline" disabled={isSending} onClick={() => setStep('pdf')}>
                 <ArrowLeft className="size-4" />
@@ -285,6 +292,7 @@ function StepPill({ active, children }: { active: boolean; children: string }) {
 
 function PdfWizardStep({
   pdfTitle,
+  pdfSectionLabel,
   includeNotice,
   noticeTitle,
   noticeHtml,
@@ -327,7 +335,9 @@ function PdfWizardStep({
       <DialogBody className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-3">
         <div className="min-h-0 overflow-y-auto border-b p-5 lg:border-b-0 lg:border-e">
           <div className="mb-5">
-            <div className="text-xs font-semibold uppercase text-muted-foreground">RFQ PDF</div>
+            <div className="text-xs font-semibold uppercase text-muted-foreground">
+              {pdfSectionLabel}
+            </div>
             <div className="mt-1 text-sm font-medium">{pdfTitle}</div>
           </div>
           <div className="space-y-5">

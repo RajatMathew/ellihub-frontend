@@ -22,6 +22,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { StatsCard } from '@/app/components/ui/stats-card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
@@ -33,8 +34,11 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
+import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
 import {
+  DocumentEmailWizardDialog,
   InfoRow,
   PdfGenerateDialog,
   ProjectDetailPageLoading,
@@ -75,6 +79,7 @@ import {
   FileText,
   History,
   Link2,
+  Mail,
   PanelRightOpen,
   Pencil,
   PlusCircle,
@@ -85,6 +90,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 /* eslint-disable react-refresh/only-export-components -- constant workflow definition used by this page component */
 
@@ -167,6 +173,7 @@ function DetailField({
 
 export function SCODetailPage() {
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
+  const { can } = useAccess();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
   const { data: project } = useProjectDetailQuery(projectId);
@@ -213,6 +220,7 @@ export function SCODetailPage() {
   const voidMutation = useVoidSCOMutation();
   const generatePdfMutation = useGenerateSCOPdfMutation();
   const savePdfMutation = useSaveSCOPdfMutation();
+  const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
@@ -241,12 +249,22 @@ export function SCODetailPage() {
   const [pdfTermsHtml, setPdfTermsHtml] = useState('');
   const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
   const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const emailTarget = useMemo<FeatureMailTarget | null>(
+    () => (scoId ? { feature: 'subChangeOrder.vendorApproval', entityId: scoId } : null),
+    [scoId]
+  );
+  const emailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
   // Workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+  const {
+    data: activityData,
+    isLoading: isActivityLoading,
+    refetch: refetchActivity,
+  } = useActivityLogQuery({
     entityType: 'subChangeOrder',
     entityId: scoId,
     size: 50,
@@ -310,6 +328,7 @@ export function SCODetailPage() {
   const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
   const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
   const canSavePdf = projectActions?.subChangeOrder?.update === true;
+  const canEmailSCO = can('mail', 'send') && isApproved;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -376,7 +395,7 @@ export function SCODetailPage() {
     );
   }
 
-  function openPdfOptions() {
+  function preparePdfRequest(): GenerateSCOPdfInput {
     const shouldEnableDefaultNotice =
       !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
     const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
@@ -412,15 +431,49 @@ export function SCODetailPage() {
     if (nextIncludeTerms) {
       setPdfIncludeTerms(true);
     }
-    setPdfPreview(null);
-    setPdfOptionsOpen(true);
-    generatePdfPreview({
+
+    return {
       addWarningNotice: nextIncludeNotice,
       warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
       warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
       addTermsAndConditions: nextIncludeTerms,
       termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
-    });
+    };
+  }
+
+  function openPdfOptions() {
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function openEmailFlow() {
+    if (!emailTarget || !sco) return;
+
+    const vendorEmail =
+      typeof purchaseOrderDetail?.vendor?.email === 'string'
+        ? purchaseOrderDetail.vendor.email
+        : undefined;
+    if (!vendorEmail) {
+      toast.info(
+        `${purchaseOrderDetail?.vendor?.name ?? 'Vendor'} does not have a vendor email. Select a contact recipient if available.`
+      );
+    }
+
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    sendEmailMutation.reset();
+    setEmailOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function handleEmailOpenChange(open: boolean) {
+    setEmailOpen(open);
+    if (!open) {
+      sendEmailMutation.reset();
+      setPdfPreview(null);
+    }
   }
 
   function handlePdfIncludeNoticeChange(includeNotice: boolean) {
@@ -459,7 +512,10 @@ export function SCODetailPage() {
   }
 
   const isActionPending =
-    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending;
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    voidMutation.isPending ||
+    sendEmailMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -565,6 +621,12 @@ export function SCODetailPage() {
               <FileText className="size-4" />
               Generate PDF
             </Button>
+            {canEmailSCO && (
+              <Button variant="outline" size="sm" onClick={openEmailFlow}>
+                <Mail className="size-4" />
+                Email SCO
+              </Button>
+            )}
 
             {/* Approve - only on DRAFT */}
             {canApprove && (
@@ -1250,6 +1312,55 @@ export function SCODetailPage() {
           }}
         />
       )}
+
+      <DocumentEmailWizardDialog
+        open={emailOpen}
+        onOpenChange={handleEmailOpenChange}
+        title="Email SCO"
+        pdfTitle={sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
+        pdfSectionLabel="SCO PDF"
+        sendLabel="Send SCO Email"
+        draft={emailDraftQuery.data ?? null}
+        isDraftLoading={emailDraftQuery.isLoading}
+        isGenerating={generatePdfMutation.isPending}
+        isSaving={savePdfMutation.isPending}
+        isSending={sendEmailMutation.isPending}
+        canSavePdf={canSavePdf}
+        pdfPreviewFile={pdfPreview}
+        includeNotice={pdfIncludeNotice}
+        noticeTitle={pdfNoticeTitle}
+        noticeHtml={pdfNoticeHtml}
+        noticeOptions={pdfNoticeOptions}
+        selectedNoticeOptionId={pdfNoticeTemplateId}
+        includeTerms={pdfIncludeTerms}
+        termsHtml={pdfTermsHtml}
+        termsOptions={pdfTermsOptions}
+        selectedTermsOptionId={pdfTermsTemplateId}
+        onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+        onNoticeOptionChange={handlePdfNoticeTemplateChange}
+        onNoticeTitleChange={setPdfNoticeTitle}
+        onNoticeHtmlChange={setPdfNoticeHtml}
+        onIncludeTermsChange={handlePdfIncludeTermsChange}
+        onTermsOptionChange={handlePdfTermsTemplateChange}
+        onTermsHtmlChange={setPdfTermsHtml}
+        onGeneratePdf={(data) => {
+          generatePdfPreview(data);
+        }}
+        onSavePdf={(data) => {
+          savePdfToFiles(data);
+        }}
+        onSend={async (payload, pdfOptions) => {
+          if (!emailTarget) return;
+          await sendEmailMutation.mutateAsync({
+            feature: emailTarget.feature,
+            entityId: emailTarget.entityId,
+            draft: payload,
+            pdfOptions,
+          });
+          await refetchActivity();
+          handleEmailOpenChange(false);
+        }}
+      />
 
       {/* ---- Workflow action dialog (no reason) ---- */}
       {activeAction && !activeAction.needsReason && (
