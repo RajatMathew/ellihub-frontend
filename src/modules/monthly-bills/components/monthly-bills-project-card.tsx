@@ -1,10 +1,11 @@
 import { Card } from '@/app/components/ui/card';
 import { Checkbox } from '@/app/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableFooter, TableRow } from '@/app/components/ui/table';
-import { formatCurrency } from '@/app/lib/helpers';
+import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
 import { MarkPaymentDialog } from '@/modules/monthly-bills/components/mark-payment-dialog';
 import { MonthlyBillRow } from '@/modules/monthly-bills/components/monthly-bills-row';
 import { MonthlyBillsTableHeader } from '@/modules/monthly-bills/components/monthly-bills-table-header';
+import { MonthlyBillsTotalsRow } from '@/modules/monthly-bills/components/monthly-bills-totals-row';
+import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { useUpsertPlannedPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import {
   getMonthPayments,
@@ -23,6 +24,7 @@ interface MonthlyBillsProjectCardProps {
   selectedDate: Date;
   canMarkPayment: boolean;
   editMode: boolean;
+  visibleColumns: Set<MonthlyBillColumnKey>;
 }
 
 export function MonthlyBillsProjectCard({
@@ -30,6 +32,7 @@ export function MonthlyBillsProjectCard({
   selectedDate,
   canMarkPayment,
   editMode,
+  visibleColumns,
 }: MonthlyBillsProjectCardProps) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
@@ -104,6 +107,7 @@ export function MonthlyBillsProjectCard({
           <MonthlyBillsTableHeader
             monthName={monthName}
             canMarkPayment={canMarkPayment}
+            visibleColumns={visibleColumns}
             selectAllSlot={
               <Checkbox
                 size="sm"
@@ -127,6 +131,7 @@ export function MonthlyBillsProjectCard({
                   toPay={toPayById[id] ?? 0}
                   ready={readyById[id] ?? false}
                   canMarkPayment={canMarkPayment}
+                  visibleColumns={visibleColumns}
                   editMode={editMode}
                   onToggle={(checked) => toggleOne(id, checked)}
                   onToPayChange={(value) =>
@@ -144,28 +149,11 @@ export function MonthlyBillsProjectCard({
           </TableBody>
 
           <TableFooter>
-            <TableRow className="hover:bg-transparent">
-              <TableCell
-                colSpan={4}
-                className="py-3 text-right text-sm font-semibold text-foreground"
-              >
-                Totals
-              </TableCell>
-              <TableCell />
-              <TableCell className="py-3 text-right text-sm font-semibold text-foreground">
-                {formatCurrency(totals.paidThisMonth)}
-              </TableCell>
-              <TableCell />
-              <TableCell className="py-3 text-right text-sm font-semibold text-foreground">
-                {formatCurrency(totals.totalPaid)}
-              </TableCell>
-              <TableCell />
-              <TableCell className="py-3 text-right text-sm font-semibold text-foreground">
-                {formatCurrency(totals.toPay)}
-              </TableCell>
-              <TableCell />
-              {canMarkPayment && <TableCell />}
-            </TableRow>
+            <MonthlyBillsTotalsRow
+              totals={totals}
+              visibleColumns={visibleColumns}
+              canMarkPayment={canMarkPayment}
+            />
           </TableFooter>
         </Table>
       </div>

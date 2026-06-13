@@ -2,8 +2,13 @@ import { Button } from '@/app/components/ui/button';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
 import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { MonthlyBillsColumnToggle } from '@/modules/monthly-bills/components/monthly-bills-column-toggle';
 import { MonthlyBillsFilters } from '@/modules/monthly-bills/components/monthly-bills-filters';
 import { MonthlyBillsTable } from '@/modules/monthly-bills/components/monthly-bills-table';
+import {
+  getDefaultMonthlyBillColumns,
+  type MonthlyBillColumnKey,
+} from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { useMonthlyBillsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import { useMonthlyBillsVendorFilterOptions } from '@/modules/monthly-bills/hooks/use-monthly-bills-vendor-filter-options';
 import {
@@ -26,6 +31,15 @@ export function MonthlyBillsSubcontractorPage({
   const { access, isAdmin } = useAccess();
   const canMarkPayment = isAdmin || access?.role === 'accountant';
   const [editMode, setEditMode] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(getDefaultMonthlyBillColumns);
+
+  const toggleColumn = (key: MonthlyBillColumnKey) =>
+    setVisibleColumns((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   // Filters
   const [searchInput, setSearchInput] = useState('');
@@ -111,17 +125,22 @@ export function MonthlyBillsSubcontractorPage({
           onClearFilters={clearFilters}
         />
 
-        <Button
-          type="button"
-          variant={editMode ? 'primary' : 'outline'}
-          size="sm"
-          aria-pressed={editMode}
-          className="shrink-0"
-          onClick={() => setEditMode((current) => !current)}
-        >
-          {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-          {editMode ? 'Done' : 'Edit'}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <MonthlyBillsColumnToggle
+            visibleColumns={visibleColumns}
+            onToggleColumn={toggleColumn}
+          />
+          <Button
+            type="button"
+            variant={editMode ? 'primary' : 'outline'}
+            size="sm"
+            aria-pressed={editMode}
+            onClick={() => setEditMode((current) => !current)}
+          >
+            {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+            {editMode ? 'Done' : 'Edit'}
+          </Button>
+        </div>
       </div>
 
       <MonthlyBillsTable
@@ -129,6 +148,7 @@ export function MonthlyBillsSubcontractorPage({
         selectedDate={selectedDate}
         canMarkPayment={canMarkPayment}
         editMode={editMode}
+        visibleColumns={visibleColumns}
         isLoading={monthlyBillsQuery.isLoading}
         isError={monthlyBillsQuery.isError}
         onRetry={() => void monthlyBillsQuery.refetch()}

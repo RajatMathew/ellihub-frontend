@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/app/components/ui/card';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { MonthlyBillsProjectCard } from '@/modules/monthly-bills/components/monthly-bills-project-card';
 import { MonthlyBillsTableSkeleton } from '@/modules/monthly-bills/components/monthly-bills-table-skeleton';
+import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getProjectCardKey } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillProjectGroup } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ClipboardList } from 'lucide-react';
@@ -13,6 +14,7 @@ interface MonthlyBillsTableProps {
   canMarkPayment: boolean;
   /** When false, the To Pay / Ready inputs are read-only. */
   editMode: boolean;
+  visibleColumns: Set<MonthlyBillColumnKey>;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -23,6 +25,7 @@ export function MonthlyBillsTable({
   selectedDate,
   canMarkPayment,
   editMode,
+  visibleColumns,
   isLoading,
   isError,
   onRetry,
@@ -35,7 +38,11 @@ export function MonthlyBillsTable({
 
   if (isLoading) {
     return (
-      <MonthlyBillsTableSkeleton selectedDate={selectedDate} canMarkPayment={canMarkPayment} />
+      <MonthlyBillsTableSkeleton
+        selectedDate={selectedDate}
+        canMarkPayment={canMarkPayment}
+        visibleColumns={visibleColumns}
+      />
     );
   }
 
@@ -52,6 +59,7 @@ export function MonthlyBillsTable({
           selectedDate={selectedDate}
           canMarkPayment={canMarkPayment}
           editMode={editMode}
+          visibleColumns={visibleColumns}
         />
       ))}
     </div>
