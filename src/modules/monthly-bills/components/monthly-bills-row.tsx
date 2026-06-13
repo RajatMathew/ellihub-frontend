@@ -1,27 +1,26 @@
 import { Button } from '@/app/components/ui/button';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { Switch } from '@/app/components/ui/switch';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { PaymentsCell, ToPayCell } from '@/modules/monthly-bills/components/monthly-bills-cells';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import { ChevronRight, CreditCard, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 interface MonthlyBillRowProps {
   bill: MonthlyBillItem;
   projectId: string;
   selectedDate: Date;
-  selected: boolean;
   toPay: number;
   ready: boolean;
   canMarkPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
   /** When false, the To Pay / Ready inputs are read-only. */
   editMode: boolean;
-  onToggle: (checked: boolean) => void;
   onToPayChange: (value: number) => void;
   onToPayCommit: (value: number) => void;
   onReadyChange: (checked: boolean) => void;
@@ -32,13 +31,11 @@ export function MonthlyBillRow({
   bill,
   projectId,
   selectedDate,
-  selected,
   toPay,
   ready,
   canMarkPayment,
   visibleColumns,
   editMode,
-  onToggle,
   onToPayChange,
   onToPayCommit,
   onReadyChange,
@@ -47,17 +44,24 @@ export function MonthlyBillRow({
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
   const paidThisMonth = sumPayments(getMonthPayments(bill, selectedDate));
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
+  const [expanded, setExpanded] = useState(false);
+  // Chevron column + visible data columns + optional Mark Payment column.
+  const colSpan = 1 + visibleColumns.size + (canMarkPayment ? 1 : 0);
 
   return (
-    <TableRow data-state={selected ? 'selected' : undefined}>
-      <TableCell className="py-3">
-        <Checkbox
-          size="sm"
-          aria-label={`Select ${poNumber}`}
-          checked={selected}
-          onCheckedChange={(checked) => onToggle(checked === true)}
-        />
-      </TableCell>
+    <>
+      <TableRow data-state={expanded ? 'selected' : undefined}>
+        <TableCell className="py-3">
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            aria-expanded={expanded}
+            aria-label={expanded ? `Collapse ${poNumber} details` : `Expand ${poNumber} details`}
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight className={cn('size-4 transition-transform', expanded && 'rotate-90')} />
+          </button>
+        </TableCell>
       {show('poNumber') && (
         <TableCell className="py-3">
           <Link
@@ -136,6 +140,22 @@ export function MonthlyBillRow({
           </Button>
         </TableCell>
       )}
-    </TableRow>
+      </TableRow>
+
+      {expanded && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={colSpan} className="border-l-2 border-primary bg-muted/30 px-6 py-4">
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">Details for {poNumber}</p>
+              <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. This is placeholder content
+                for the expanded bill view — line items, payment history, and notes will go here.
+              </p>
+              <p>Vendor: {vendor.name}</p>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }

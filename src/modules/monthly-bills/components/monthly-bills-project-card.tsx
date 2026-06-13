@@ -1,5 +1,4 @@
 import { Card } from '@/app/components/ui/card';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
 import { MarkPaymentDialog } from '@/modules/monthly-bills/components/mark-payment-dialog';
 import { MonthlyBillRow } from '@/modules/monthly-bills/components/monthly-bills-row';
@@ -42,7 +41,6 @@ export function MonthlyBillsProjectCard({
   const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
 
   const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [toPayById, setToPayById] = useState<Record<string, number>>(() =>
     Object.fromEntries(
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
@@ -53,10 +51,6 @@ export function MonthlyBillsProjectCard({
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
     )
   );
-
-  const billIds = useMemo(() => group.bills.map((bill) => bill.purchaseOrder.id), [group.bills]);
-  const allSelected = billIds.length > 0 && billIds.every((id) => selectedIds.has(id));
-  const someSelected = billIds.some((id) => selectedIds.has(id));
 
   const totals = useMemo(() => {
     return group.bills.reduce(
@@ -69,16 +63,6 @@ export function MonthlyBillsProjectCard({
       { paidThisMonth: 0, totalPaid: 0, toPay: 0 }
     );
   }, [group.bills, selectedDate, toPayById]);
-
-  const toggleAll = (checked: boolean) => setSelectedIds(checked ? new Set(billIds) : new Set());
-
-  const toggleOne = (id: string, checked: boolean) =>
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
 
   const commitToPay = (purchaseOrderId: string, amount: number) =>
     upsertPlannedPayment.mutate({ purchaseOrderId, month, year, amount });
@@ -108,14 +92,6 @@ export function MonthlyBillsProjectCard({
             monthName={monthName}
             canMarkPayment={canMarkPayment}
             visibleColumns={visibleColumns}
-            selectAllSlot={
-              <Checkbox
-                size="sm"
-                aria-label="Select all purchase orders"
-                checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                onCheckedChange={(checked) => toggleAll(checked === true)}
-              />
-            }
           />
 
           <TableBody>
@@ -127,13 +103,11 @@ export function MonthlyBillsProjectCard({
                   bill={bill}
                   projectId={group.project.id}
                   selectedDate={selectedDate}
-                  selected={selectedIds.has(id)}
                   toPay={toPayById[id] ?? 0}
                   ready={readyById[id] ?? false}
                   canMarkPayment={canMarkPayment}
                   visibleColumns={visibleColumns}
                   editMode={editMode}
-                  onToggle={(checked) => toggleOne(id, checked)}
                   onToPayChange={(value) =>
                     setToPayById((current) => ({ ...current, [id]: value }))
                   }

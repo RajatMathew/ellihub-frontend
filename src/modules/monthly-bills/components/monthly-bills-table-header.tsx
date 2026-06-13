@@ -1,27 +1,24 @@
 import { TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import type { ReactNode } from 'react';
 
 interface MonthlyBillsTableHeaderProps {
   monthName: string;
   canMarkPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
-  /** Select-all checkbox for the live table; omitted in the skeleton. */
-  selectAllSlot?: ReactNode;
 }
 
 export function MonthlyBillsTableHeader({
   monthName,
   canMarkPayment,
   visibleColumns,
-  selectAllSlot,
 }: MonthlyBillsTableHeaderProps) {
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
 
   return (
     <TableHeader>
       <TableRow className="hover:bg-transparent">
-        <TableHead className="h-10 w-12">{selectAllSlot}</TableHead>
+        {/* Chevron expand/collapse column */}
+        <TableHead className="h-10 w-12" />
         {show('poNumber') && <TableHead className="h-10 min-w-44">PO #</TableHead>}
         {show('issueDate') && <TableHead className="h-10 min-w-28">PO Issue Date</TableHead>}
         {show('vendor') && <TableHead className="h-10 min-w-32">Vendor</TableHead>}
