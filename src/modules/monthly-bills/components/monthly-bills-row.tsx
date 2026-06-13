@@ -3,7 +3,11 @@ import { Switch } from '@/app/components/ui/switch';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { PaymentsCell, ToPayCell } from '@/modules/monthly-bills/components/monthly-bills-cells';
+import {
+  PaymentsCell,
+  SubChangeOrdersCell,
+  ToPayCell,
+} from '@/modules/monthly-bills/components/monthly-bills-cells';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
@@ -42,7 +46,8 @@ export function MonthlyBillRow({
   onMarkPayment,
 }: MonthlyBillRowProps) {
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
-  const paidThisMonth = sumPayments(getMonthPayments(bill, selectedDate));
+  const monthPayments = getMonthPayments(bill, selectedDate);
+  const paidThisMonth = sumPayments(monthPayments);
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
   const [expanded, setExpanded] = useState(false);
   // Chevron column + visible data columns + optional Mark Payment column.
@@ -64,15 +69,22 @@ export function MonthlyBillRow({
         </TableCell>
       {show('poNumber') && (
         <TableCell className="py-3">
-          <Link
-            to={`/app/project/${projectId}/purchase-orders/${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80"
-          >
-            {poNumber}
-            <ExternalLink className="size-3.5" />
-          </Link>
+          <div className="flex flex-col items-start gap-0.5">
+            <Link
+              to={`/app/project/${projectId}/purchase-orders/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80"
+            >
+              {poNumber}
+              <ExternalLink className="size-3.5" />
+            </Link>
+            <SubChangeOrdersCell
+              subChangeOrders={bill.purchaseOrder.subChangeOrders}
+              poNumber={poNumber}
+              projectId={projectId}
+            />
+          </div>
         </TableCell>
       )}
       {show('issueDate') && (
@@ -87,7 +99,7 @@ export function MonthlyBillRow({
       )}
       {show('payments') && (
         <TableCell className="py-3">
-          <PaymentsCell payments={getMonthPayments(bill, selectedDate)} poNumber={poNumber} />
+          <PaymentsCell payments={monthPayments} poNumber={poNumber} />
         </TableCell>
       )}
       {show('paidThisMonth') && (

@@ -70,7 +70,7 @@ export function MonthlyBillsSubcontractorPage({
       .filter((option) => !query || option.label.toLowerCase().includes(query));
   }, [tradeCategories, tradeCategorySearch]);
 
-  const vendorIds = useMemo(() => selectedVendors.map((vendor) => vendor.value), [selectedVendors]);
+  const vendorIds = selectedVendors.map((vendor) => vendor.value);
   const hasActiveFilters = Boolean(search || vendorIds.length || tradeCategoryIds.length);
 
   const { startDate, endDate } = getMonthlyBillDateRange(selectedDate);

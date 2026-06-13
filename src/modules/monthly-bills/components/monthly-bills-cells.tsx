@@ -1,7 +1,11 @@
 import { NumberInput } from '@/app/components/ui/number-input';
 import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
-import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import { SubChangeOrdersDialog } from '@/modules/monthly-bills/components/sub-change-orders-dialog';
+import type {
+  MonthlyBillItem,
+  MonthlyBillSubChangeOrder,
+} from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { useState } from 'react';
 
 interface ToPayCellProps {
@@ -62,5 +66,43 @@ export function PaymentsCell({ payments, poNumber }: PaymentsCellProps) {
         />
       )}
     </div>
+  );
+}
+
+interface SubChangeOrdersCellProps {
+  subChangeOrders: MonthlyBillSubChangeOrder[];
+  poNumber: string;
+  projectId: string;
+}
+
+/** Trigger shown under the PO number; opens a modal listing the PO's linked sub change orders. */
+export function SubChangeOrdersCell({
+  subChangeOrders,
+  poNumber,
+  projectId,
+}: SubChangeOrdersCellProps) {
+  const [open, setOpen] = useState(false);
+
+  if (subChangeOrders.length === 0) {
+    return <span className="text-xs text-muted-foreground">No change orders</span>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+      >
+        {subChangeOrders.length} change order{subChangeOrders.length === 1 ? '' : 's'}
+      </button>
+      <SubChangeOrdersDialog
+        open={open}
+        onOpenChange={setOpen}
+        subChangeOrders={subChangeOrders}
+        poNumber={poNumber}
+        projectId={projectId}
+      />
+    </>
   );
 }

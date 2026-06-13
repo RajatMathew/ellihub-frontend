@@ -5,11 +5,20 @@ export const monthlyBillVendorSchema = z.object({
   name: z.string(),
 });
 
+export const monthlyBillSubChangeOrderSchema = z.object({
+  id: z.string(),
+  scoNumber: z.string(),
+  amount: z.coerce.number(),
+});
+
+export type MonthlyBillSubChangeOrder = z.infer<typeof monthlyBillSubChangeOrderSchema>;
+
 export const monthlyBillPurchaseOrderSchema = z.object({
   id: z.string(),
   poNumber: z.string(),
   vendor: monthlyBillVendorSchema,
   issuedAt: z.string().nullable().optional(),
+  subChangeOrders: z.array(monthlyBillSubChangeOrderSchema).default([]),
 });
 
 export const monthlyBillPlannedPaymentSchema = z.object({

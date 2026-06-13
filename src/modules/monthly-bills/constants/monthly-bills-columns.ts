@@ -22,8 +22,6 @@ export const MONTHLY_BILL_VALUE_COLUMNS = new Set<MonthlyBillColumnKey>([
   'toPay',
 ]);
 
-export const MONTHLY_BILL_COLUMN_KEYS = MONTHLY_BILL_COLUMNS.map((column) => column.key);
-
 export function getDefaultMonthlyBillColumns() {
-  return new Set<MonthlyBillColumnKey>(MONTHLY_BILL_COLUMN_KEYS);
+  return new Set<MonthlyBillColumnKey>(MONTHLY_BILL_COLUMNS.map((column) => column.key));
 }

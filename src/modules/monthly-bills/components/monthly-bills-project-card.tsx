@@ -52,17 +52,27 @@ export function MonthlyBillsProjectCard({
     )
   );
 
-  const totals = useMemo(() => {
-    return group.bills.reduce(
-      (acc, bill) => {
-        acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
-        acc.totalPaid += bill.totalPaid;
-        acc.toPay += toPayById[bill.purchaseOrder.id] ?? 0;
-        return acc;
-      },
-      { paidThisMonth: 0, totalPaid: 0, toPay: 0 }
-    );
-  }, [group.bills, selectedDate, toPayById]);
+  // Server-derived sums only depend on the fetched bills, so they don't recompute while the user
+  // edits To Pay values.
+  const serverTotals = useMemo(
+    () =>
+      group.bills.reduce(
+        (acc, bill) => {
+          acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
+          acc.totalPaid += bill.totalPaid;
+          return acc;
+        },
+        { paidThisMonth: 0, totalPaid: 0 }
+      ),
+    [group.bills, selectedDate]
+  );
+
+  const toPayTotal = useMemo(
+    () => group.bills.reduce((sum, bill) => sum + (toPayById[bill.purchaseOrder.id] ?? 0), 0),
+    [group.bills, toPayById]
+  );
+
+  const totals = { ...serverTotals, toPay: toPayTotal };
 
   const commitToPay = (purchaseOrderId: string, amount: number) =>
     upsertPlannedPayment.mutate({ purchaseOrderId, month, year, amount });
