@@ -87,3 +87,13 @@ export const markPaymentSchema = z.object({
 });
 
 export type MarkPaymentPayload = z.infer<typeof markPaymentSchema>;
+
+// The user-editable portion of the mark-payment form. purchaseOrderId/month/year come from the
+// selected bill's context, so they live outside the form and are merged in on submit.
+export const markPaymentFormSchema = markPaymentSchema.pick({
+  qbVendorId: true,
+  bankAccountId: true,
+  categoryId: true,
+});
+
+export type MarkPaymentFormData = z.infer<typeof markPaymentFormSchema>;
