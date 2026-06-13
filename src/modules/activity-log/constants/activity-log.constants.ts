@@ -1,6 +1,7 @@
 import type { BadgeProps } from '@/app/components/ui/badge';
 
 export const ACTIVITY_ENTITY_OPTIONS = [
+  { value: 'user', label: 'User' },
   { value: 'contact', label: 'Contact' },
   { value: 'vendor', label: 'Vendor' },
   { value: 'gc', label: 'General Contractor' },
