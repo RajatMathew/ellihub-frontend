@@ -163,7 +163,7 @@ export const useSubmitQuoteMutation = () => {
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.submitQuote(data),
     onSuccess: async (_, { rfqId }) => {
-      await invalidateRFQQueries(qc, rfqId);
+      await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);
       toast.success('Quote submitted.');
     },
     onError: (err) => toastApiError(err, 'Failed to submit quote.'),
@@ -180,7 +180,7 @@ export const useEditQuoteMutation = () => {
       data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
     }) => rfqApi.editQuote(data),
     onSuccess: async (_, { rfqId }) => {
-      await invalidateRFQQueries(qc, rfqId);
+      await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);
       toast.success('Quote updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update quote.'),
