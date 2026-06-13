@@ -10,12 +10,12 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { useFilteredTeamMembers } from '@/modules/project/hooks/use-filtered-team-members';
-import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 import type {
   ProjectTeamAssignment,
   ProjectTeamRole,
 } from '@/modules/project/schemas/project-team.schema';
-import { UserPlus } from 'lucide-react';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
+import { UserPlus, Users } from 'lucide-react';
 
 import { AddTeamMemberForm } from './add-team-member-form';
 import { EmptyTeamState } from './empty-team-state';
@@ -104,21 +104,33 @@ export function ProjectTeamDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader className="pb-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <DialogTitle className="text-lg font-semibold">Project Team</DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage team members and their roles
-                </p>
+        <DialogContent className="flex max-h-[min(86vh,760px)] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)] lg:w-full">
+          <DialogHeader className="mb-0 border-b px-4 py-4 pr-12 sm:py-5 sm:pl-5 sm:pr-14">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Users className="size-4" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <DialogTitle className="text-base font-semibold sm:text-lg">
+                    Project Team
+                  </DialogTitle>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span>
+                      {totalMembers} {totalMembers === 1 ? 'member' : 'members'}
+                    </span>
+                    {project.leadPM?.name && (
+                      <span className="min-w-0 truncate">Lead PM: {project.leadPM.name}</span>
+                    )}
+                  </div>
+                </div>
               </div>
               {onAddMember && !showAddMember && hasMembers && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowAddMember(true)}
-                  className="shrink-0"
+                  className="w-full shrink-0 justify-center sm:w-auto"
                 >
                   <UserPlus className="size-4" />
                   Add Member
@@ -126,9 +138,9 @@ export function ProjectTeamDialog({
               )}
             </div>
           </DialogHeader>
-          <DialogBody className="space-y-4">
+          <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
             {onAddMember && showAddMember && (
-              <div className="pb-4 border-b">
+              <div className="rounded-md border bg-muted/20 p-3 sm:p-4">
                 <AddTeamMemberForm
                   employeeOptions={employeeOptions}
                   onAdd={handleAddMember}
@@ -140,8 +152,8 @@ export function ProjectTeamDialog({
             {hasMembers ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {totalMembers} {totalMembers === 1 ? 'member' : 'members'}
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Team Members
                   </p>
                 </div>
                 <TeamMemberGrid
@@ -172,7 +184,9 @@ export function ProjectTeamDialog({
             ) : onAddMember ? (
               <EmptyTeamState onAddMember={() => setShowAddMember(true)} />
             ) : (
-              <p className="text-sm text-muted-foreground">No team members assigned.</p>
+              <div className="rounded-md border border-dashed py-10 text-center">
+                <p className="text-sm text-muted-foreground">No team members assigned.</p>
+              </div>
             )}
           </DialogBody>
         </DialogContent>

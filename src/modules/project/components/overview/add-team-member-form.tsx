@@ -1,7 +1,6 @@
-import { UserPlus, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import { UserPlus, X } from 'lucide-react';
 
 interface EmployeeOption {
   value: string;
@@ -14,11 +13,7 @@ interface AddTeamMemberFormProps {
   onCancel: () => void;
 }
 
-export function AddTeamMemberForm({
-  employeeOptions,
-  onAdd,
-  onCancel,
-}: AddTeamMemberFormProps) {
+export function AddTeamMemberForm({ employeeOptions, onAdd, onCancel }: AddTeamMemberFormProps) {
   const handleAdd = async (employeeId: string | null) => {
     if (employeeId) {
       await onAdd(employeeId);
@@ -27,17 +22,21 @@ export function AddTeamMemberForm({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center size-8 rounded-full bg-primary/10 shrink-0">
-          <UserPlus className="size-4 text-primary" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+            <UserPlus className="size-4 text-primary" />
+          </div>
+          <h4 className="truncate text-sm font-semibold">Add Team Member</h4>
         </div>
-        <div className="flex-1">
-          <h4 className="text-sm font-medium">Add Team Member</h4>
-          <p className="text-xs text-muted-foreground">
-            Select an employee to add to this project
-          </p>
-        </div>
-        <Button variant="ghost" mode="icon" size="sm" onClick={onCancel}>
+        <Button
+          variant="ghost"
+          mode="icon"
+          size="sm"
+          onClick={onCancel}
+          aria-label="Cancel adding team member"
+          className="shrink-0"
+        >
           <X className="size-4" />
         </Button>
       </div>

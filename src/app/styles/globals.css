@@ -194,9 +194,9 @@
     @apply border-border;
   }
 
-  html {
+  /* html {
     overflow-x: hidden;
-  }
+  } */
 
   body {
     @apply bg-background text-foreground;
