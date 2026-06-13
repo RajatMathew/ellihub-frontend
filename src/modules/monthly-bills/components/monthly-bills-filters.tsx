@@ -52,7 +52,7 @@ export function MonthlyBillsFilters({
       <InputWrapper variant="sm" className="w-full sm:w-60">
         <Search className="size-4" />
         <Input
-          placeholder="Search PO # or vendor..."
+          placeholder="Search PO #, vendor, or project..."
           value={searchInput}
           onChange={(event) => onSearchChange(event.target.value)}
         />
