@@ -5,6 +5,7 @@ import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order/sub-change-order-list-utils';
 import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
+import { getProjectStageSwatchClassName } from '@/modules/project/lib/project-stage-colors';
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Link } from 'react-router-dom';
 
@@ -47,38 +48,6 @@ const getLookupLabel = (
   if (typeof value === 'string') return value;
 
   return value.label ?? value.name ?? value.id;
-};
-
-const getStageAbbreviation = (label: string | undefined): string | undefined => {
-  if (!label) return undefined;
-
-  const words = label.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return words
-      .map((word) => word[0])
-      .join('')
-      .slice(0, 4)
-      .toUpperCase();
-  }
-
-  return label.slice(0, 4).toUpperCase();
-};
-
-const getStageDotClassName = (label: string | undefined): string => {
-  const normalizedLabel = (label ?? '').toUpperCase();
-
-  if (normalizedLabel.includes('PUNCH')) return 'bg-orange-500';
-  if (normalizedLabel.includes('FABRICATION')) return 'bg-red-600';
-  if (normalizedLabel.includes('CLOSEOUT')) return 'bg-teal-600';
-  if (
-    normalizedLabel.includes('INSTALLATION') ||
-    normalizedLabel.includes('SUBMITTAL') ||
-    normalizedLabel.includes('BUYOUT')
-  ) {
-    return 'bg-green-600';
-  }
-
-  return 'bg-gray-500';
 };
 
 function ProjectPartyName({
@@ -156,9 +125,8 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
   const spendUtilizationLabel = `${Math.round(spendUtilization)}%`;
   const stageLabel = getLookupLabel(project.stage);
   const fallbackStatusLabel = getLookupLabel(project.statusRef ?? project.status);
-  const fullBadgeLabel = stageLabel ?? fallbackStatusLabel;
-  const badgeLabel = getStageAbbreviation(fullBadgeLabel);
-  const badgeDotClassName = getStageDotClassName(fullBadgeLabel);
+  const badgeLabel = stageLabel ?? fallbackStatusLabel;
+  const badgeDotClassName = getProjectStageSwatchClassName(badgeLabel);
   const balanceClassName = budgetRemaining < 0 ? 'text-destructive' : 'text-foreground';
   const projectIdentifier = project.jobNumber ?? project.contractNumber ?? project.id;
   const tcoDateLabel = formatProjectDate(project.tcoDate ?? project.estimatedEndDate);
@@ -168,7 +136,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-border bg-card shadow-none transition-colors duration-200 hover:border-foreground/20 dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:hover:border-zinc-600/80">
+      <Card className="h-full rounded-lg border-zinc-400/60 bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-zinc-400/80 hover:shadow-md hover:shadow-zinc-950/10 dark:border-zinc-600/80 dark:bg-zinc-950/50 dark:hover:border-zinc-500/70 dark:hover:shadow-black/30">
         <CardContent className="flex flex-col gap-2.5 p-3.5 sm:p-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -178,18 +146,10 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
               <ProjectName name={project.name} />
             </div>
             {badgeLabel && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-border bg-background px-1.5 text-[0.625rem] font-semibold tracking-[0.1em] text-muted-foreground dark:border-zinc-700/80 dark:bg-zinc-950/60">
-                    <span
-                      className={cn('size-1.5 rounded-[2px]', badgeDotClassName)}
-                      aria-hidden="true"
-                    />
-                    {badgeLabel}
-                  </span>
-                </TooltipTrigger>
-                {fullBadgeLabel && <TooltipContent side="top">{fullBadgeLabel}</TooltipContent>}
-              </Tooltip>
+              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-zinc-400/70 bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground dark:border-zinc-600/80 dark:bg-zinc-950/60">
+                <span className={cn('size-1.5 rounded-[2px]', badgeDotClassName)} aria-hidden="true" />
+                {badgeLabel}
+              </span>
             )}
           </div>
 

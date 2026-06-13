@@ -41,6 +41,7 @@ type InfiniteSearchSelectProps = {
   triggerClassName?: string;
   contentClassName?: string;
   placeholderClassName?: string;
+  testId?: string;
 };
 
 export function InfiniteSearchSelect({
@@ -61,6 +62,7 @@ export function InfiniteSearchSelect({
   triggerClassName,
   contentClassName,
   placeholderClassName,
+  testId,
 }: InfiniteSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -82,6 +84,7 @@ export function InfiniteSearchSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
+          data-testid={testId}
           className={cn(
             'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
             triggerClassName,

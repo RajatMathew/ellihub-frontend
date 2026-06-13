@@ -49,6 +49,7 @@ export function DepartmentGeneralInfoSection({ control }: DepartmentGeneralInfoS
                   placeholder="e.g. Engineering, Sales, Human Resources"
                   aria-invalid={fieldState.invalid}
                   autoComplete="off"
+                  data-testid="department-name-input"
                 />
               </InputWrapper>
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -70,6 +71,7 @@ export function DepartmentGeneralInfoSection({ control }: DepartmentGeneralInfoS
                   fieldState.invalid && departmentInvalidControlClassName
                 )}
                 aria-invalid={fieldState.invalid}
+                data-testid="department-description-input"
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>

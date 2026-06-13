@@ -38,6 +38,7 @@ type InfiniteMultiSearchSelectProps = {
   searchPlaceholder?: string;
   emptyMessage?: string;
   loadingMessage?: string;
+  testId?: string;
 };
 
 export function InfiniteMultiSearchSelect({
@@ -55,6 +56,7 @@ export function InfiniteMultiSearchSelect({
   searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
   loadingMessage = 'Loading...',
+  testId,
 }: InfiniteMultiSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -86,6 +88,7 @@ export function InfiniteMultiSearchSelect({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
+          data-testid={testId}
           className="flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="flex min-w-0 flex-1 flex-wrap gap-1">

@@ -78,6 +78,9 @@ export function HeaderBreadcrumbs() {
     }
   }
 
+  const breadcrumbItemClassName =
+    'cursor-pointer rounded-md px-2 py-1 font-medium transition-colors hover:bg-accent hover:text-foreground';
+
   return (
     <Breadcrumb className="lg:-translate-x-2">
       <BreadcrumbList className="gap-0.5 text-sm font-medium">
@@ -89,7 +92,7 @@ export function HeaderBreadcrumbs() {
             <BreadcrumbItem className="gap-0.5">
               {crumb.isLast || index === 0 ? (
                 <BreadcrumbPage
-                  className={`cursor-pointer rounded-md px-2 py-1 font-medium transition-colors hover:bg-zinc-100 hover:text-foreground ${
+                  className={`${breadcrumbItemClassName} ${
                     crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 >
@@ -98,7 +101,7 @@ export function HeaderBreadcrumbs() {
               ) : (
                 <BreadcrumbLink
                   asChild
-                  className="cursor-pointer rounded-md px-2 py-1 font-medium text-muted-foreground transition-colors hover:bg-zinc-100 hover:text-foreground"
+                  className={`${breadcrumbItemClassName} text-muted-foreground`}
                 >
                   <Link to={crumb.path}>{crumb.label}</Link>
                 </BreadcrumbLink>

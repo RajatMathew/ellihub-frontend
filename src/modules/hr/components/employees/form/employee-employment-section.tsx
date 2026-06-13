@@ -55,7 +55,12 @@ export function EmployeeEmploymentSection({
                   className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
                 >
                   <Calendar className="size-4 text-muted-foreground" />
-                  <Input {...field} type="date" value={field.value ?? ''} />
+                  <Input
+                    {...field}
+                    type="date"
+                    value={field.value ?? ''}
+                    data-testid="employee-start-date-input"
+                  />
                 </InputWrapper>
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -71,6 +76,9 @@ export function EmployeeEmploymentSection({
                   <EmployeeFormFieldLabel>Link Auth User</EmployeeFormFieldLabel>
                   <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <span data-testid="employee-create-account-switch" className="sr-only">
+                      {field.value ? 'enabled' : 'disabled'}
+                    </span>
                     <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                       Create login access for this employee
                     </span>
@@ -92,6 +100,7 @@ export function EmployeeEmploymentSection({
                   onValueChange={(value) => field.onChange(value || '')}
                   placeholder="Select role..."
                   className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                  testId="employee-role-select"
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
               </Field>

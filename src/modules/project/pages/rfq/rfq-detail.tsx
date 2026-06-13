@@ -70,6 +70,7 @@ import {
 } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
+import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -496,14 +497,10 @@ export default function RFQDetailPage() {
   const attachments = rfq.attachments ?? [];
   const comparisonSubtitle = rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : rfq.title;
 
-  const quoteGrandTotals = quotes.map((q) => q.grandTotal).filter((v): v is number => v != null);
-  const lowestQuote = quoteGrandTotals.length > 0 ? Math.min(...quoteGrandTotals) : null;
-  const highestQuote = quoteGrandTotals.length > 0 ? Math.max(...quoteGrandTotals) : null;
-
-  const deliverablesTotal = deliverables.reduce(
-    (sum, d) => sum + (d.estimatedTotal ?? (d.estimatedUnitPrice ?? 0) * (d.quantity ?? 0)),
-    0
-  );
+  const { deliverablesTotal, lowestQuote, highestQuote } = calculateRFQFinancialSummary({
+    deliverables,
+    quotes,
+  });
   const hasFinancialSummary =
     deliverablesTotal > 0 ||
     lowestQuote != null ||
