@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { Card } from '@/app/components/ui/card';
 import {
-  getRFQStatusName,
   getRFQTrackValue,
   RFQListConfirmDialogs,
   RFQListFilters,
@@ -18,6 +17,7 @@ import {
   useDeleteRFQMutation,
   useRFQListParams,
   useRFQListQuery,
+  useRFQStatsQuery,
   useRFQStatusesQuery,
   type RFQListParamPatch,
 } from '@/modules/project/hooks/rfq';
@@ -58,9 +58,9 @@ export default function RFQListPage() {
   };
 
   const { data, isLoading, isError, refetch } = useRFQListQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = useRFQStatsQuery(projectId);
   const { data: statuses } = useRFQStatusesQuery();
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
-  const { data: allData } = useRFQListQuery({ projectId, size: 100 });
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
   const { mutate: voidRFQ, isPending: isVoidPending } = useCancelRFQMutation();
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
@@ -76,17 +76,6 @@ export default function RFQListPage() {
     [rawListData, trackFilter]
   );
   const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
-  const allRfqs = useMemo(() => allData?.data ?? [], [allData?.data]);
-  const kpis = useMemo(() => {
-    const total = allRfqs.length;
-    const active = allRfqs.filter((rfq) => {
-      const statusName = getRFQStatusName(rfq);
-      return statusName === 'PUBLISHED' || statusName === 'EVALUATION';
-    }).length;
-    const awarded = allRfqs.filter((rfq) => getRFQStatusName(rfq) === 'AWARDED').length;
-
-    return { total, active, awarded };
-  }, [allRfqs]);
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!trackFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -100,9 +89,12 @@ export default function RFQListPage() {
     setVoidTarget(rfq);
     setVoidReason('');
   }, []);
-  const handleCreatePOTarget = useCallback((rfq: RFQListItem) => {
-    navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfq.id}`);
-  }, [navigate, projectId]);
+  const handleCreatePOTarget = useCallback(
+    (rfq: RFQListItem) => {
+      navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfq.id}`);
+    },
+    [navigate, projectId]
+  );
   const columns = useRFQListColumns({
     onDelete: handleDeleteTarget,
     onVoid: handleVoidTarget,
@@ -183,7 +175,7 @@ export default function RFQListPage() {
   return (
     <div className="container-fluid py-7.5">
       <RFQListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
-      <RFQListStats total={kpis.total} active={kpis.active} awarded={kpis.awarded} />
+      <RFQListStats stats={stats} isLoading={isStatsLoading} />
 
       <Card className="overflow-hidden">
         <RFQListFilters

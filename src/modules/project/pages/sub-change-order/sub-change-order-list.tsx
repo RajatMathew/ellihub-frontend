@@ -1,31 +1,32 @@
 import { useMemo } from 'react';
 
-import {
-  type SortingState,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
-
 import { Card } from '@/app/components/ui/card';
 import {
   SubChangeOrderListFilters,
   SubChangeOrderListHeader,
+  SubChangeOrderListStats,
   SubChangeOrderListTable,
   useSubChangeOrderListColumns,
 } from '@/modules/project/components/sub-change-order';
 import {
-  SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
   isSubChangeOrderSortByField,
+  SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
 } from '@/modules/project/constants/sub-change-order';
 import {
   useSCOChangeTypesQuery,
   useSCOsQuery,
+  useSCOStatsQuery,
   useSubChangeOrderListParams,
   type SubChangeOrderListParamPatch,
 } from '@/modules/project/hooks/sub-change-order';
 import type { ListSCOsParams } from '@/modules/project/schemas/sub-change-order';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { useParams } from 'react-router-dom';
 
 export function SubChangeOrderListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -55,13 +56,14 @@ export function SubChangeOrderListPage() {
   };
 
   const { data, isLoading, isError, refetch } = useSCOsQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = useSCOStatsQuery(projectId);
   const { data: changeTypes } = useSCOChangeTypesQuery();
   const listData = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!changeTypeFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
   const changeTypeLabelById = useMemo(
     () =>
@@ -69,9 +71,9 @@ export function SubChangeOrderListPage() {
         (changeTypes ?? []).map((type) => [
           type.id,
           type.label ?? type.name ?? type.code ?? type.id,
-        ]),
+        ])
       ),
-    [changeTypes],
+    [changeTypes]
   );
 
   const columns = useSubChangeOrderListColumns({ projectId, changeTypeLabelById });
@@ -99,9 +101,7 @@ export function SubChangeOrderListPage() {
       }
       if (next.pageSize !== size) {
         patches.size =
-          next.pageSize === SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE
-            ? undefined
-            : String(next.pageSize);
+          next.pageSize === SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
         patches.page = undefined;
       }
 
@@ -128,10 +128,8 @@ export function SubChangeOrderListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <SubChangeOrderListHeader
-        hasActiveFilters={hasActiveFilters}
-        totalCount={totalCount}
-      />
+      <SubChangeOrderListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
+      <SubChangeOrderListStats stats={stats} isLoading={isStatsLoading} />
 
       <Card className="overflow-hidden">
         <SubChangeOrderListFilters

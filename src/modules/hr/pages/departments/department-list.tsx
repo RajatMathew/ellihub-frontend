@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import {
   DepartmentDeleteDialog,
+  DepartmentListStats,
   DepartmentListToolbar,
   DepartmentsTableCard,
   useDepartmentListColumns,
@@ -13,6 +14,7 @@ import {
 import {
   useDeleteDepartmentMutation,
   useDepartmentsQuery,
+  useDepartmentStatsQuery,
 } from '@/modules/hr/hooks/departments.hooks';
 import { useDepartmentListParams } from '@/modules/hr/hooks/departments/use-department-list-params';
 import type { ListDepartmentsParams } from '@/modules/hr/schemas/department.schema';
@@ -53,6 +55,7 @@ export default function DepartmentListPage() {
   );
 
   const { data, isLoading, isError, isRefetching, refetch } = useDepartmentsQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = useDepartmentStatsQuery();
   const deleteMutation = useDeleteDepartmentMutation();
   const listData = data?.data ?? [];
   const totalCount = data?.pagination.totalItems ?? 0;
@@ -125,6 +128,7 @@ export default function DepartmentListPage() {
   return (
     <div className="container-fluid py-7.5">
       <DepartmentListToolbar totalCount={totalCount} searchQuery={searchQuery} />
+      <DepartmentListStats stats={stats} isLoading={isStatsLoading} />
 
       <DepartmentsTableCard
         table={table}

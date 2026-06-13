@@ -2,11 +2,16 @@ import { useState } from 'react';
 
 import {
   EmployeeDeleteDialog,
+  EmployeeListStats,
   EmployeeListToolbar,
   EmployeesTableCard,
   useEmployeeListColumns,
 } from '@/modules/hr/components/employees/list';
-import { useDeleteEmployeeMutation, useEmployeesQuery } from '@/modules/hr/hooks/employees.hooks';
+import {
+  useDeleteEmployeeMutation,
+  useEmployeesQuery,
+  useEmployeeStatsQuery,
+} from '@/modules/hr/hooks/employees.hooks';
 import { useEmployeeListParams } from '@/modules/hr/hooks/employees/use-employee-list-params';
 import {
   getCoreRowModel,
@@ -20,6 +25,7 @@ export default function EmployeeListPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data, isLoading, isError, refetch, isRefetching } = useEmployeesQuery(listParams.params);
+  const { data: stats, isLoading: isStatsLoading } = useEmployeeStatsQuery();
   const deleteMutation = useDeleteEmployeeMutation();
 
   const listData = data?.data ?? [];
@@ -72,6 +78,7 @@ export default function EmployeeListPage() {
   return (
     <div className="container-fluid py-7.5">
       <EmployeeListToolbar totalCount={totalCount} searchQuery={listParams.searchQuery} />
+      <EmployeeListStats stats={stats} isLoading={isStatsLoading} />
 
       <EmployeesTableCard
         table={table}

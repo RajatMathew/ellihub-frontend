@@ -1,6 +1,6 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
-import { costCodesApi, type CostCodeCountFilters } from '@/modules/catalog/api/costcodes.api';
+import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
 import { costCodeCategoriesKeys } from '@/modules/catalog/constants/costcode-categories.keys';
 import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import type {
@@ -64,10 +64,10 @@ export const useCostCodesQuery = (filters?: CostCodeFilters) =>
     queryFn: () => costCodesApi.list(filters),
   });
 
-export const useCostCodeCountQuery = (filters?: CostCodeCountFilters) =>
+export const useCostCodeStatsQuery = () =>
   useQuery({
-    queryKey: costCodesKeys.count(filters),
-    queryFn: () => costCodesApi.count(filters),
+    queryKey: costCodesKeys.stats(),
+    queryFn: () => costCodesApi.stats(),
   });
 
 /* ---- cost code mutations ---- */

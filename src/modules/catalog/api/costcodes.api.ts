@@ -2,14 +2,14 @@ import api from '@/app/api';
 import {
   costCodePaginatedResponseSchema,
   costCodeSchema,
+  costCodeStatsSchema,
   type CostCode,
   type CostCodeCreate,
   type CostCodeFilters,
+  type CostCodeStats,
 } from '@/modules/catalog/schemas/costcode.schema';
 
 const BASE = '/cost-code';
-
-export type CostCodeCountFilters = Pick<CostCodeFilters, 'costCodeCategoryId' | 'search'>;
 
 export const costCodesApi = {
   async list(filters?: CostCodeFilters): Promise<{ data: CostCode[]; count: number }> {
@@ -30,10 +30,9 @@ export const costCodesApi = {
     });
   },
 
-  async count(filters?: CostCodeCountFilters): Promise<number> {
-    const result = await this.list({ ...filters, page: 1, size: 1 });
-
-    return result.count;
+  async stats(): Promise<CostCodeStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return costCodeStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async get(id: string): Promise<CostCode> {

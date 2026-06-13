@@ -1,7 +1,7 @@
-import { toastApiError } from '@/app/lib/toast-api-error';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
-import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -33,6 +33,13 @@ export const useRFQListQuery = (params: ListRFQParams) =>
     queryKey: [...rfqKeys.list(params.projectId || 'all'), params],
     queryFn: () => rfqApi.list(params),
     enabled: !!params.projectId,
+  });
+
+export const useRFQStatsQuery = (projectId: string) =>
+  useQuery({
+    queryKey: rfqKeys.stats(projectId),
+    queryFn: () => rfqApi.stats(projectId),
+    enabled: !!projectId,
   });
 
 export const useRFQStatusesQuery = () =>

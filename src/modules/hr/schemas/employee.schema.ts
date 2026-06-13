@@ -82,6 +82,18 @@ export const employeePaginatedResponseSchema = z.object({
 
 export type EmployeePaginatedResponse = z.infer<typeof employeePaginatedResponseSchema>;
 
+export const employeeStatsSchema = z.object({
+  totalEmployees: z.number(),
+  activeEmployees: z.number(),
+  onLeaveEmployees: z.number(),
+  linkedUsers: z.number(),
+  unlinkedEmployees: z.number(),
+  assignedToDepartment: z.number(),
+  withoutDepartment: z.number(),
+});
+
+export type EmployeeStats = z.infer<typeof employeeStatsSchema>;
+
 // Input schema for creation
 const createEmployeeBaseSchema = z.object({
   name: z.string().min(1, 'Name is required'),

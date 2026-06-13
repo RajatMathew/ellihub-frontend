@@ -224,6 +224,19 @@ export const invoicePaginatedResponseSchema = z.object({
 
 export type InvoicePaginatedResponse = z.infer<typeof invoicePaginatedResponseSchema>;
 
+export const invoiceStatsSchema = z.object({
+  totalInvoices: z.number(),
+  paidInvoices: z.number(),
+  unpaidInvoices: z.number(),
+  disputedInvoices: z.number(),
+  overdueInvoices: z.number(),
+  totalAmount: z.coerce.number(),
+  paidAmount: z.coerce.number(),
+  unpaidAmount: z.coerce.number(),
+});
+
+export type InvoiceStats = z.infer<typeof invoiceStatsSchema>;
+
 /* ---- Summary (from GET /projects/:id/invoice-summary) ---- */
 
 export const statusSummarySchema = z.object({

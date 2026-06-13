@@ -1,18 +1,16 @@
 import { useState } from 'react';
 
 import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
-import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
 import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
 import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
 import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
 import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
 import { CostCodesTableCard } from '@/modules/catalog/components/cost-codes-table-card';
 import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
-import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import {
   useCostCodeCategoriesQuery,
-  useCostCodeCountQuery,
   useCostCodesQuery,
+  useCostCodeStatsQuery,
   useCreateCostCodeMutation,
   useDeleteCostCodeMutation,
   useUpdateCostCodeMutation,
@@ -22,7 +20,6 @@ import type {
   CostCodeCreate,
   CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
-import { useQueries } from '@tanstack/react-query';
 import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -52,7 +49,7 @@ export function CostCodesListPage() {
     search: searchQuery || undefined,
     costCodeCategoryId: categoryFilter,
   });
-  const { data: totalCostCodesCount, isLoading: isTotalCostCodesLoading } = useCostCodeCountQuery();
+  const { data: stats, isLoading: isStatsLoading } = useCostCodeStatsQuery();
   const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
   const deleteMutation = useDeleteCostCodeMutation();
   const createMutation = useCreateCostCodeMutation();
@@ -62,21 +59,9 @@ export function CostCodesListPage() {
   const [editingCostCode, setEditingCostCode] = useState<CostCode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCode | null>(null);
 
-  const categoryCountQueries = useQueries({
-    queries: categories.slice(0, 4).map((cat) => ({
-      queryKey: costCodesKeys.count({ costCodeCategoryId: cat.id }),
-      queryFn: () => costCodesApi.count({ costCodeCategoryId: cat.id }),
-    })),
-  });
-
   const listData = data?.data ?? [];
   const totalCount = data?.count ?? 0;
   const hasActiveFilters = !!searchQuery || !!categoryFilter;
-  const totalStatsCount = totalCostCodesCount ?? (!hasActiveFilters ? totalCount : 0);
-  const isStatsLoading =
-    isTotalCostCodesLoading ||
-    isCategoriesLoading ||
-    categoryCountQueries.some((query) => query.isLoading);
 
   const columns = useCostCodeColumns({
     onEdit: setEditingCostCode,
@@ -119,13 +104,7 @@ export function CostCodesListPage() {
         onCreate={() => setCreateModalOpen(true)}
       />
 
-      <CostCodesStatsBar
-        totalCount={totalStatsCount}
-        categories={categories}
-        categoryCountQueries={categoryCountQueries}
-        isLoading={isStatsLoading}
-        className="mb-5 lg:mb-7.5"
-      />
+      <CostCodesStatsBar isLoading={isStatsLoading} stats={stats} className="mb-5 lg:mb-7.5" />
 
       <CostCodesTableCard
         table={table}

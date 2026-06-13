@@ -2,11 +2,13 @@ import api from '@/app/api';
 import {
   ptoPaginatedResponseSchema,
   ptoSchema,
+  ptoStatsSchema,
   type CreatePTOInput,
   type ListPTOParams,
   type PTO,
   type PTODecisionInput,
   type PTOPaginatedResponse,
+  type PTOStats,
   type UpdatePTOInput,
 } from '@/modules/hr/schemas/pto.schema';
 
@@ -28,6 +30,11 @@ export const ptoApi = {
       },
     };
     return ptoPaginatedResponseSchema.parse(raw);
+  },
+
+  async stats(): Promise<PTOStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return ptoStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async getById(id: string): Promise<PTO> {
