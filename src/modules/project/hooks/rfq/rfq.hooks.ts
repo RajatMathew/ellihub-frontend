@@ -160,7 +160,7 @@ export const useSubmitQuoteMutation = () => {
       data,
     }: {
       rfqId: string;
-      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+      data: { id: string; quotedAmount: number; leadTime?: string; attachments: string[] };
     }) => rfqApi.submitQuote(data),
     onSuccess: async (_, { rfqId }) => {
       await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);
@@ -177,7 +177,7 @@ export const useEditQuoteMutation = () => {
       data,
     }: {
       rfqId: string;
-      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+      data: { id: string; quotedAmount: number; leadTime?: string; attachments: string[] };
     }) => rfqApi.editQuote(data),
     onSuccess: async (_, { rfqId }) => {
       await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);

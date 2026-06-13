@@ -385,7 +385,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     leadTime?: string;
-    attachments?: string[];
+    attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
     return res.data?.data ?? res.data;
@@ -395,7 +395,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     leadTime?: string;
-    attachments?: string[];
+    attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/edit-quote`, data);
     return res.data?.data ?? res.data;

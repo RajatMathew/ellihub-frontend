@@ -450,6 +450,7 @@ export default function RFQDetailPage() {
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
   const canSaveVendorPdf = projectActions?.rfq?.update === true;
+  const hasQuoteAttachment = existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
 
   const isActionPending =
     publishMutation.isPending ||
@@ -1854,12 +1855,14 @@ export default function RFQDetailPage() {
                   disabled={
                     !quoteAmount ||
                     quoteAmount <= 0 ||
+                    !hasQuoteAttachment ||
                     submitQuoteMutation.isPending ||
                     updateQuoteMutation.isPending ||
                     uploadFileMutation.isPending
                   }
                   onClick={async () => {
                     if (!quoteAmount || quoteAmount <= 0) return;
+                    if (!hasQuoteAttachment) return;
 
                     try {
                       let fileIds: string[] = [];
