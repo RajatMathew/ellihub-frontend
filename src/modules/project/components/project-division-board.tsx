@@ -74,7 +74,7 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
                   {items.length}
                 </span>
               </div>
-              <hr className="border-t-2 border-border dark:border-zinc-700/70" />
+              <hr className="border-t-2 border-foreground" />
             </div>
           );
         })}
