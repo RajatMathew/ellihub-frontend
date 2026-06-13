@@ -3,7 +3,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function DepartmentDetailLoading() {
   return (
-    <div className="container-fluid max-w-full space-y-6 overflow-x-hidden py-5 sm:py-7.5">
+    <div className="container-fluid max-w-full space-y-6 overflow-x-hidden pb-5">
       <div className="space-y-3">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-8 w-64" />

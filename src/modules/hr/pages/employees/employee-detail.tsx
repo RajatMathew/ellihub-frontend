@@ -77,7 +77,7 @@ export default function EmployeeDetailPage() {
   }
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden pb-5">
       <EmployeeDetailToolbar
         employee={employee}
         sidebarOpen={sidebarOpen}
