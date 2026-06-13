@@ -157,7 +157,7 @@ export function ProjectToolbarHeader({
     <Toolbar className="bg-white dark:bg-background">
       <ToolbarWrapper>
         <ToolbarHeading>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
             {(project?.status || project?.statusRef) &&
               (() => {
@@ -219,7 +219,7 @@ export function ProjectToolbarHeader({
               </Badge>
             ) : null}
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
             {project?.name && title !== project.name && (
               <span>
                 <span className="font-medium">Project:</span> {project.name}
