@@ -11,6 +11,8 @@ interface MonthlyBillsTableProps {
   selectedDate: Date;
   /** Whether the current user (admin or accountant) can mark payments. */
   canMarkPayment: boolean;
+  /** When false, the To Pay / Ready inputs are read-only. */
+  editMode: boolean;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -20,6 +22,7 @@ export function MonthlyBillsTable({
   groups,
   selectedDate,
   canMarkPayment,
+  editMode,
   isLoading,
   isError,
   onRetry,
@@ -48,6 +51,7 @@ export function MonthlyBillsTable({
           group={group}
           selectedDate={selectedDate}
           canMarkPayment={canMarkPayment}
+          editMode={editMode}
         />
       ))}
     </div>

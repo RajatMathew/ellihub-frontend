@@ -7,12 +7,13 @@ import { useState } from 'react';
 interface ToPayCellProps {
   value: number;
   poNumber: string;
+  disabled?: boolean;
   onChange: (value: number) => void;
   onCommit: (value: number) => void;
 }
 
 /** To Pay input. Updates the row total immediately, but debounces the API save. */
-export function ToPayCell({ value, poNumber, onChange, onCommit }: ToPayCellProps) {
+export function ToPayCell({ value, poNumber, disabled, onChange, onCommit }: ToPayCellProps) {
   const debouncedCommit = useDebouncedCallback(onCommit, 600);
 
   return (
@@ -24,6 +25,7 @@ export function ToPayCell({ value, poNumber, onChange, onCommit }: ToPayCellProp
       }}
       decimalPlaces={2}
       min={0}
+      disabled={disabled}
       aria-label={`To pay for ${poNumber}`}
       className="ml-auto h-8 w-24 text-right"
     />

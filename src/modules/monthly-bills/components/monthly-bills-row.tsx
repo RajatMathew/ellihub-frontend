@@ -17,6 +17,8 @@ interface MonthlyBillRowProps {
   toPay: number;
   ready: boolean;
   canMarkPayment: boolean;
+  /** When false, the To Pay / Ready inputs are read-only. */
+  editMode: boolean;
   onToggle: (checked: boolean) => void;
   onToPayChange: (value: number) => void;
   onToPayCommit: (value: number) => void;
@@ -32,6 +34,7 @@ export function MonthlyBillRow({
   toPay,
   ready,
   canMarkPayment,
+  editMode,
   onToggle,
   onToPayChange,
   onToPayCommit,
@@ -87,6 +90,7 @@ export function MonthlyBillRow({
         <ToPayCell
           value={toPay}
           poNumber={poNumber}
+          disabled={!editMode}
           onChange={onToPayChange}
           onCommit={onToPayCommit}
         />
@@ -96,6 +100,7 @@ export function MonthlyBillRow({
           size="sm"
           aria-label={`Mark ${poNumber} ready`}
           checked={ready}
+          disabled={!editMode}
           onCheckedChange={onReadyChange}
         />
       </TableCell>

@@ -22,12 +22,14 @@ interface MonthlyBillsProjectCardProps {
   group: MonthlyBillProjectGroup;
   selectedDate: Date;
   canMarkPayment: boolean;
+  editMode: boolean;
 }
 
 export function MonthlyBillsProjectCard({
   group,
   selectedDate,
   canMarkPayment,
+  editMode,
 }: MonthlyBillsProjectCardProps) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
@@ -125,6 +127,7 @@ export function MonthlyBillsProjectCard({
                   toPay={toPayById[id] ?? 0}
                   ready={readyById[id] ?? false}
                   canMarkPayment={canMarkPayment}
+                  editMode={editMode}
                   onToggle={(checked) => toggleOne(id, checked)}
                   onToPayChange={(value) =>
                     setToPayById((current) => ({ ...current, [id]: value }))
