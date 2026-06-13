@@ -11,8 +11,8 @@ import { FileText, Paperclip, Trash2, Upload } from 'lucide-react';
 
 interface RFQDetailAttachmentsCardProps {
   attachments: RFQAttachment[];
-  canEdit: boolean;
   canUpload: boolean;
+  canRemove: boolean;
   isRemoving: boolean;
   onUpload: () => void;
   onRemove: (attachmentId: string) => void;
@@ -20,8 +20,8 @@ interface RFQDetailAttachmentsCardProps {
 
 export function RFQDetailAttachmentsCard({
   attachments,
-  canEdit,
   canUpload,
+  canRemove,
   isRemoving,
   onUpload,
   onRemove,
@@ -34,8 +34,8 @@ export function RFQDetailAttachmentsCard({
         <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Attachments ({attachments.length})
         </CardTitle>
-        {canEdit && (
-          <Button variant="outline" size="sm" disabled={!canUpload} onClick={onUpload}>
+        {canUpload && (
+          <Button variant="outline" size="sm" onClick={onUpload}>
             <Upload className="size-4" />
             Add Attachment
           </Button>
@@ -70,7 +70,7 @@ export function RFQDetailAttachmentsCard({
                       <div className="text-xs text-muted-foreground">Document</div>
                     </div>
                   </div>
-                  {canEdit && (
+                  {canRemove && (
                     <Button
                       variant="ghost"
                       mode="icon"

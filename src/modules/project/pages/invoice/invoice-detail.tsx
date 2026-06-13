@@ -257,6 +257,7 @@ export function InvoiceDetailPage() {
   const canDisputeInvoice = projectActions?.invoice?.dispute === true;
   const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
   const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
+  const canUploadInvoiceAttachment = projectActions?.invoice?.update === true;
   const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
   const totalAmount = invoiceAmount + taxAmount;
@@ -499,7 +500,7 @@ export function InvoiceDetailPage() {
 
               <ProjectDetailDocumentsCard
                 documents={attachments}
-                canUpload={canEditInvoice && !!invoiceUploadFolderId}
+                canUpload={canUploadInvoiceAttachment && !!invoiceUploadFolderId}
                 canRemove={canEditInvoice}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -898,7 +899,7 @@ export function InvoiceDetailPage() {
         isPending={resolveDisputeMutation.isPending}
       />
 
-      {canEditInvoice && invoiceUploadFolderId && (
+      {canUploadInvoiceAttachment && invoiceUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}

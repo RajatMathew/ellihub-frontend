@@ -420,6 +420,7 @@ export function PODetailPage() {
   const projectActions = project?.capabilities?.actions;
   const canSavePdf = projectActions?.purchaseOrder?.update === true;
   const canEdit = projectActions?.purchaseOrder?.update === true && isDraft;
+  const canUploadBackupDocuments = projectActions?.purchaseOrder?.update === true && !isCancelled;
   const canIssue = projectActions?.purchaseOrder?.issue === true && isDraft;
   const canCancel = projectActions?.purchaseOrder?.cancel === true && !isCancelled && !isDelivered;
   const canRecordDelivery =
@@ -815,7 +816,7 @@ export function PODetailPage() {
                 title="Backup Documents"
                 emptyMessage="No backup documents attached."
                 documents={attachments}
-                canUpload={canEdit && !!poUploadFolderId}
+                canUpload={canUploadBackupDocuments && !!poUploadFolderId}
                 canRemove={canEdit}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -1206,7 +1207,7 @@ export function PODetailPage() {
       </Dialog>
 
       {/* ---- Upload file dialog ---- */}
-      {canEdit && poUploadFolderId && (
+      {canUploadBackupDocuments && poUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}
