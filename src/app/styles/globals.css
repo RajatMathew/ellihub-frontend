@@ -24,6 +24,7 @@
   --muted: var(--color-zinc-100);
   --muted-foreground: var(--color-zinc-500);
   --project-tabs-background: #f8f9fa;
+  --sidebar-hover-foreground: var(--color-green-400);
   --accent: var(--color-zinc-100);
   --accent-foreground: var(--color-zinc-900);
   --success: var(--color-emerald-600);
@@ -77,6 +78,7 @@
   --muted: var(--color-zinc-800);
   --muted-foreground: var(--color-zinc-400);
   --project-tabs-background: #131313;
+  --sidebar-hover-foreground: var(--color-green-400);
   --accent: var(--color-zinc-800);
   --accent-foreground: var(--color-zinc-50);
   --success: var(--color-emerald-500);
@@ -123,6 +125,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-project-tabs-background: var(--project-tabs-background);
+  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);
