@@ -4,6 +4,7 @@ import { useLocation } from 'react-router';
 import { useLoadingBar } from 'react-top-loading-bar';
 
 import { ErrorBoundary } from '@app/components/error/error-boundary';
+import { HelpCenterRail } from '@core/help/components/help-center-panel';
 
 import { AppRoutingSetup, HeaderRoutingSetup } from './setup';
 
@@ -41,7 +42,8 @@ export function AppRouting() {
   }, [location]);
 
   return (
-    <div className="bg-main-background lg:border-e lg:border-b lg:border-border grow min-w-0 lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:overflow-y-auto lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
+    <>
+          <div className="bg-main-background lg:border-e lg:border-b lg:border-border grow min-w-0 lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:overflow-y-auto lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
       <main
         className="grow min-w-0 lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto bg-main-background"
         role="content"
@@ -52,6 +54,8 @@ export function AppRouting() {
         </ErrorBoundary>
       </main>
     </div>
+      <HelpCenterRail />
+    </>
   );
 }
 

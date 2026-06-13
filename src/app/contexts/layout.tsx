@@ -6,7 +6,10 @@ interface LayoutState {
   bodyClassName: string;
   isMobile: boolean;
   isSidebarOpen: boolean;
+  isHelpOpen: boolean;
   sidebarToggle: () => void;
+  helpToggle: () => void;
+  setHelpOpen: (open: boolean) => void;
 }
 
 // Create the context
