@@ -1,5 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 
+import '@app/styles/globals.css';
+
 import { HelpLayout } from './components/layouts/HelpLayout';
 import HelpPage from './pages/HelpPage';
 

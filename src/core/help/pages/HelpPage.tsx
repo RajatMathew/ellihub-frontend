@@ -1,38 +1,54 @@
-// src/pages/help/HelpPage.tsx
+import { useNavigate, useParams } from 'react-router-dom';
 
-import ReactMarkdown from 'react-markdown';
-import { useParams } from 'react-router-dom';
-import rehypeSlug from 'rehype-slug';
-import remarkGfm from 'remark-gfm';
+import { Separator } from '@app/components/ui/separator';
+import { HelpArticleNav } from '@core/help/components/help-article-nav';
+import { HelpMarkdown } from '@core/help/components/help-markdown';
+import { getHelpArticle, helpSections } from '@core/help/utils/loadHelp';
 
-import { helpPages } from '@core/help/utils/loadHelp';
-
-function Callout({ children }: { children: React.ReactNode }) {
-  return <div className="my-4 rounded border-l-4 border-blue-500 bg-blue-50 p-4">{children}</div>;
+function getArticlePath(slug: string) {
+  return slug === 'index' ? '/help' : `/help/${slug}`;
 }
 
 export default function HelpPage() {
   const { slug } = useParams();
-  const page = helpPages.find((p) => p.slug === (slug ?? 'index'));
+  const navigate = useNavigate();
+  const article = getHelpArticle(slug);
 
-  if (!page) return <div>Page not found</div>;
+  if (!article) {
+    return <div className="p-6 text-sm text-muted-foreground">No help article is available.</div>;
+  }
 
   return (
-    <article className="prose max-w-none dark:prose-invert">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSlug]}
-        components={{
-          blockquote({ children }) {
-            return <Callout>{children}</Callout>;
-          },
-          img({ src, alt }) {
-            return <img src={src ?? ''} alt={alt ?? ''} className="my-6 rounded border" />;
-          },
-        }}
-      >
-        {page.content}
-      </ReactMarkdown>
-    </article>
+    <div className="flex min-h-screen bg-background">
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-background px-5">
+          <div>
+            <p className="text-xs font-medium uppercase text-muted-foreground">ElliHub</p>
+            <h1 className="text-base font-semibold">Help Center</h1>
+          </div>
+        </header>
+
+        <div className="border-b md:hidden">
+          <HelpArticleNav
+            className="max-h-80 border-e-0"
+            onSelect={(nextArticle) => navigate(getArticlePath(nextArticle.slug))}
+            sections={helpSections}
+            selectedSlug={article.slug}
+          />
+        </div>
+
+        <article className="w-full px-6 py-8 lg:px-10">
+          <div className="mb-5 space-y-2">
+            <p className="text-xs font-medium uppercase text-muted-foreground">{article.section}</p>
+            <h2 className="text-3xl font-semibold tracking-normal">{article.title}</h2>
+            {article.description && (
+              <p className="text-sm text-muted-foreground">{article.description}</p>
+            )}
+          </div>
+          <Separator className="mb-5" />
+          <HelpMarkdown content={article.content} title={article.title} />
+        </article>
+      </div>
+    </div>
   );
 }
