@@ -9,3 +9,4 @@ export { lookupKeys } from '@/modules/lookup/constants/lookup.keys';
 import { useLookupsQuery } from '@/modules/lookup/hooks';
 
 export const useDivisionsQuery = () => useLookupsQuery('PROJECT_DIVISION');
+export const useProjectContractTypesQuery = () => useLookupsQuery('PROJECT_CONTRACT_TYPE');

@@ -438,6 +438,7 @@ export default function RFQDetailPage() {
     ) ?? [];
   const projectActions = project?.capabilities?.actions;
   const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
+  const canUploadRfqAttachment = projectActions?.rfq?.update === true && !isTerminal;
   const canManagePublishedRfq = projectActions?.rfq?.update === true && isPublished;
   const canStateRfq = projectActions?.rfq?.state === true;
   const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
@@ -1144,8 +1145,8 @@ export default function RFQDetailPage() {
 
           <RFQDetailAttachmentsCard
             attachments={attachments}
-            canEdit={canEditDraftRfq}
-            canUpload={canEditDraftRfq && !!rfqUploadFolderId}
+            canUpload={canUploadRfqAttachment && !!rfqUploadFolderId}
+            canRemove={canEditDraftRfq}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
             onRemove={(attachmentId) => {
@@ -1156,7 +1157,7 @@ export default function RFQDetailPage() {
             }}
           />
 
-          {canEditDraftRfq && rfqUploadFolderId && (
+          {canUploadRfqAttachment && rfqUploadFolderId && (
             <UploadFileDialog
               open={uploadOpen}
               onOpenChange={setUploadOpen}
