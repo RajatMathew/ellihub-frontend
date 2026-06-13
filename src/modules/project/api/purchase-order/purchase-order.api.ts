@@ -9,13 +9,15 @@ import {
   poPaginatedResponseSchema,
   poPdfDefaultTermsSchema,
   poPdfTermsOptionsSchema,
+  poStatsSchema,
   type CreatePOInput,
   type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
+  type POPaginatedResponse,
   type POPdfDefaultTerms,
   type POPdfTermsOption,
-  type POPaginatedResponse,
+  type POStats,
 } from '@/modules/project/schemas/purchase-order';
 
 const BASE = '/po';
@@ -97,11 +99,10 @@ export const poApi = {
     data: GeneratePOPdfInput,
     poNumber?: string | null
   ): Promise<GeneratedPdfFile> {
-    const res = await api.post<Blob>(
-      `${LIST_BASE}/${id}/pdf`,
-      data,
-      { responseType: 'blob', timeout: 0 }
-    );
+    const res = await api.post<Blob>(`${LIST_BASE}/${id}/pdf`, data, {
+      responseType: 'blob',
+      timeout: 0,
+    });
     const fallbackName = sanitizeDownloadName(`${poNumber || 'purchase-order'}.pdf`);
 
     return getGeneratedPdfFileFromResponse(res, fallbackName);
@@ -180,6 +181,16 @@ export const poApi = {
       },
     };
     const result = poPaginatedResponseSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async stats(projectId: string): Promise<POStats> {
+    const res = await api.get(`${LIST_BASE}/project/${projectId}/stats`);
+    const raw = res.data?.data ?? res.data;
+    const result = poStatsSchema.safeParse(raw);
     if (!result.success) {
       throw result.error;
     }

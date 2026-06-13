@@ -3,10 +3,12 @@ import {
   employeePaginatedResponseSchema,
   employeeProjectSchema,
   employeeSchema,
+  employeeStatsSchema,
   type CreateEmployeeInput,
   type Employee,
   type EmployeePaginatedResponse,
   type EmployeeProject,
+  type EmployeeStats,
   type LinkEmployeeUserInput,
   type ListEmployeesParams,
   type UpdateEmployeeInput,
@@ -66,6 +68,11 @@ export const employeesApi = {
         pageSize: pagination.pageSize ?? pagination.itemsPerPage ?? params.size ?? 25,
       },
     });
+  },
+
+  async stats(): Promise<EmployeeStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return employeeStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async getById(id: string): Promise<Employee> {

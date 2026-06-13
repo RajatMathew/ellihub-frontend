@@ -1,18 +1,11 @@
 import { useMemo } from 'react';
 
-import {
-  type SortingState,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
-
 import { Card } from '@/app/components/ui/card';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import {
   InvoiceListFilters,
   InvoiceListHeader,
+  InvoiceListStats,
   InvoiceListTable,
   useInvoiceListColumns,
 } from '@/modules/project/components/invoice';
@@ -23,11 +16,19 @@ import {
 import {
   useInvoiceListParams,
   useInvoiceListQuery,
+  useInvoiceStatsQuery,
   usePurchaseOrderFilterOptions,
   useVendorFilterOptions,
   type InvoiceListParamPatch,
 } from '@/modules/project/hooks/invoice';
 import type { ListInvoiceParams } from '@/modules/project/schemas/invoice';
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import { useParams } from 'react-router-dom';
 
 export function InvoiceListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -66,19 +67,20 @@ export function InvoiceListPage() {
   };
 
   const { data, isLoading, isError, refetch } = useInvoiceListQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = useInvoiceStatsQuery(projectId);
   const listData = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasActiveFilters =
     !!searchQuery || !!vendorFilter || !!purchaseOrderFilter || paidFilter !== undefined;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
 
   const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
     if (!vendorFilter) return undefined;
     const invoice = listData.find(
-      (item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter,
+      (item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter
     );
     return { value: vendorFilter, label: invoice?.vendor?.name ?? vendorFilter };
   }, [listData, vendorFilter]);
@@ -88,7 +90,7 @@ export function InvoiceListPage() {
     const invoice = listData.find(
       (item) =>
         item.purchaseOrderId === purchaseOrderFilter ||
-        item.purchaseOrder?.id === purchaseOrderFilter,
+        item.purchaseOrder?.id === purchaseOrderFilter
     );
     return {
       value: purchaseOrderFilter,
@@ -159,6 +161,7 @@ export function InvoiceListPage() {
   return (
     <div className="container-fluid py-7.5">
       <InvoiceListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
+      <InvoiceListStats stats={stats} isLoading={isStatsLoading} />
 
       <Card className="overflow-hidden">
         <InvoiceListFilters

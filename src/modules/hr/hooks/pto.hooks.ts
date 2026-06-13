@@ -16,6 +16,12 @@ export const usePTOListQuery = (params: ListPTOParams) =>
     queryFn: () => ptoApi.list(params),
   });
 
+export const usePTOStatsQuery = () =>
+  useQuery({
+    queryKey: ptoKeys.stats(),
+    queryFn: () => ptoApi.stats(),
+  });
+
 export const usePTODetailQuery = (id: string) =>
   useQuery({
     queryKey: ptoKeys.detail(id),
@@ -28,7 +34,7 @@ export const useCreatePTOMutation = () => {
   return useMutation({
     mutationFn: (data: CreatePTOInput) => ptoApi.create(data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ptoKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
       toast.success('Time off request submitted');
     },
     onError: (error) => toastApiError(error, 'Failed to submit request'),
@@ -40,7 +46,7 @@ export const useUpdatePTOMutation = () => {
   return useMutation({
     mutationFn: (data: UpdatePTOInput) => ptoApi.update(data),
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ptoKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
       void queryClient.invalidateQueries({ queryKey: ptoKeys.detail(data.id) });
       toast.success('Time off request updated');
     },
@@ -53,7 +59,7 @@ export const useDeletePTOMutation = () => {
   return useMutation({
     mutationFn: (id: string) => ptoApi.delete(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ptoKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
       toast.success('Time off request deleted');
     },
     onError: (error) => toastApiError(error, 'Failed to delete request'),
@@ -65,7 +71,7 @@ export const useApprovePTOMutation = () => {
   return useMutation({
     mutationFn: (data: PTODecisionInput) => ptoApi.approve(data),
     onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ptoKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
       void queryClient.invalidateQueries({ queryKey: ptoKeys.detail(variables.id) });
       toast.success('Request approved');
     },
@@ -78,7 +84,7 @@ export const useRejectPTOMutation = () => {
   return useMutation({
     mutationFn: (data: PTODecisionInput) => ptoApi.reject(data),
     onSuccess: (_, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ptoKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
       void queryClient.invalidateQueries({ queryKey: ptoKeys.detail(variables.id) });
       toast.success('Request rejected');
     },

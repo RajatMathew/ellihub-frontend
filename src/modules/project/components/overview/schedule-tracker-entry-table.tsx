@@ -35,8 +35,8 @@ interface ScheduleTrackerEntryTableProps {
   onChangeAdd: (draft: ScheduleTrackerDraft) => void;
   onChangeEdit: (entryId: string, draft: ScheduleTrackerDraft) => void;
   onDelete: (entryId: string) => void;
-  onDownload: (file: ScheduleFile) => void;
   onEdit: (entry: ProjectScheduleEntry) => void;
+  onPreview: (file: ScheduleFile) => void;
   onSaveAdd: () => void;
   onSaveEdit: () => void;
 }
@@ -60,8 +60,8 @@ export function ScheduleTrackerEntryTable({
   onChangeAdd,
   onChangeEdit,
   onDelete,
-  onDownload,
   onEdit,
+  onPreview,
   onSaveAdd,
   onSaveEdit,
 }: ScheduleTrackerEntryTableProps) {
@@ -100,8 +100,8 @@ export function ScheduleTrackerEntryTable({
                   isDeleting={isDeleting}
                   isReadOnly={isReadOnly}
                   onDelete={onDelete}
-                  onDownload={onDownload}
                   onEdit={onEdit}
+                  onPreview={onPreview}
                 />
               )
             )}

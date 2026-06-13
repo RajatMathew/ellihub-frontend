@@ -2,10 +2,12 @@ import api from '@/app/api';
 import {
   departmentDetailSchema,
   departmentPaginatedResponseSchema,
+  departmentStatsSchema,
   type AssignEmployeeInput,
   type CreateDepartmentInput,
   type DepartmentDetail,
   type DepartmentPaginatedResponse,
+  type DepartmentStats,
   type ListDepartmentsParams,
   type RemoveEmployeeInput,
   type UpdateDepartmentInput,
@@ -37,6 +39,11 @@ export const departmentsApi = {
       },
     };
     return departmentPaginatedResponseSchema.parse(raw);
+  },
+
+  async stats(): Promise<DepartmentStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return departmentStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async getById(id: string): Promise<DepartmentDetail> {

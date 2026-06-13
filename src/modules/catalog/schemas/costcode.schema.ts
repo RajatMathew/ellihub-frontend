@@ -41,6 +41,18 @@ export const costCodePaginatedResponseSchema = z.object({
 
 export type CostCodePaginatedResponse = z.infer<typeof costCodePaginatedResponseSchema>;
 
+export const costCodeStatsCategorySchema = costCodeCategoryRefSchema.extend({
+  count: z.number(),
+});
+
+export const costCodeStatsSchema = z.object({
+  totalCostCodes: z.number(),
+  totalCategories: z.number(),
+  categories: z.array(costCodeStatsCategorySchema),
+});
+
+export type CostCodeStats = z.infer<typeof costCodeStatsSchema>;
+
 export const costCodeFiltersSchema = z.object({
   page: z.number().min(1).optional(),
   size: z.number().min(1).optional(),

@@ -20,8 +20,9 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
@@ -33,19 +34,22 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
+import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
-import {
-  InfoRow,
-  PdfGenerateDialog,
-  ProjectDetailPageLoading,
-} from '@/modules/project/components/shared';
-import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
 import {
   calculateEffectivePurchaseOrderTotals,
   calculateRoundedLineAmount,
   formatPurchaseOrderTaxLabel,
   type PurchaseOrderLineAmountLike,
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
+import {
+  DocumentEmailWizardDialog,
+  InfoRow,
+  PdfGenerateDialog,
+  ProjectDetailPageLoading,
+} from '@/modules/project/components/shared';
+import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -54,8 +58,8 @@ import {
   useGenerateSCOPdfMutation,
   useRejectSCOMutation,
   useRemoveSCOAttachmentMutation,
-  useSCODetailQuery,
   useSaveSCOPdfMutation,
+  useSCODetailQuery,
   useVoidSCOMutation,
 } from '@/modules/project/hooks/sub-change-order';
 import {
@@ -67,24 +71,22 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  ClipboardList,
   Clock,
-  DollarSign,
   Download,
   ExternalLink,
   FileText,
   History,
-  Link2,
+  Mail,
   PanelRightOpen,
   Pencil,
   PlusCircle,
   ShieldAlert,
   Trash2,
-  TrendingUp,
   Upload,
   XCircle,
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 /* eslint-disable react-refresh/only-export-components -- constant workflow definition used by this page component */
 
@@ -134,10 +136,12 @@ function money(value: unknown): string {
 }
 
 function hasHtmlText(value: string): boolean {
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .trim().length > 0;
+  return (
+    value
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .trim().length > 0
+  );
 }
 
 function lineAmount(value: PurchaseOrderLineAmountLike): number {
@@ -167,6 +171,7 @@ function DetailField({
 
 export function SCODetailPage() {
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
+  const { can } = useAccess();
 
   const { data: sco, isLoading } = useSCODetailQuery(scoId);
   const { data: project } = useProjectDetailQuery(projectId);
@@ -213,14 +218,13 @@ export function SCODetailPage() {
   const voidMutation = useVoidSCOMutation();
   const generatePdfMutation = useGenerateSCOPdfMutation();
   const savePdfMutation = useSaveSCOPdfMutation();
+  const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
   const uploadFileMutation = useUploadFileMutation();
   const downloadFile = useDownloadFile();
 
-  const costCodeMap = new Map(
-    costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`])
-  );
+  const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = (sco?.attachments ?? []) as {
     id: string;
     documentId?: string;
@@ -241,12 +245,22 @@ export function SCODetailPage() {
   const [pdfTermsHtml, setPdfTermsHtml] = useState('');
   const [pdfTermsTemplateId, setPdfTermsTemplateId] = useState('');
   const [pdfDefaultTermsApplied, setPdfDefaultTermsApplied] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const emailTarget = useMemo<FeatureMailTarget | null>(
+    () => (scoId ? { feature: 'subChangeOrder.vendorApproval', entityId: scoId } : null),
+    [scoId]
+  );
+  const emailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
 
   // Workflow dialog state
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
+  const {
+    data: activityData,
+    isLoading: isActivityLoading,
+    refetch: refetchActivity,
+  } = useActivityLogQuery({
     entityType: 'subChangeOrder',
     entityId: scoId,
     size: 50,
@@ -310,6 +324,7 @@ export function SCODetailPage() {
   const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
   const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
   const canSavePdf = projectActions?.subChangeOrder?.update === true;
+  const canEmailSCO = can('mail', 'send') && isApproved;
 
   /* ---- Execute a workflow action ---- */
   function executeAction(action: WorkflowAction, reason?: string) {
@@ -376,7 +391,7 @@ export function SCODetailPage() {
     );
   }
 
-  function openPdfOptions() {
+  function preparePdfRequest(): GenerateSCOPdfInput {
     const shouldEnableDefaultNotice =
       !pdfDefaultNoticeApplied && pdfNoticeConfig?.includeByDefault === true;
     const shouldApplyDefaultNotice = shouldEnableDefaultNotice || pdfIncludeNotice;
@@ -391,9 +406,7 @@ export function SCODetailPage() {
         ? defaultPdfNoticeOption.html
         : pdfNoticeHtml;
     const nextIncludeNotice =
-      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml)
-        ? true
-        : pdfIncludeNotice;
+      shouldApplyDefaultNotice && hasHtmlText(nextNoticeHtml) ? true : pdfIncludeNotice;
     const shouldEnableDefaultTerms =
       !pdfDefaultTermsApplied && pdfTermsConfig?.includeByDefault === true;
     const shouldApplyDefaultTerms = shouldEnableDefaultTerms || pdfIncludeTerms;
@@ -412,15 +425,49 @@ export function SCODetailPage() {
     if (nextIncludeTerms) {
       setPdfIncludeTerms(true);
     }
-    setPdfPreview(null);
-    setPdfOptionsOpen(true);
-    generatePdfPreview({
+
+    return {
       addWarningNotice: nextIncludeNotice,
       warningNoticeTitle: nextIncludeNotice ? nextNoticeTitle : undefined,
       warningNoticeHtml: nextIncludeNotice ? nextNoticeHtml : undefined,
       addTermsAndConditions: nextIncludeTerms,
       termsAndConditionsHtml: nextIncludeTerms ? nextTermsHtml : undefined,
-    });
+    };
+  }
+
+  function openPdfOptions() {
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    setPdfOptionsOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function openEmailFlow() {
+    if (!emailTarget || !sco) return;
+
+    const vendorEmail =
+      typeof purchaseOrderDetail?.vendor?.email === 'string'
+        ? purchaseOrderDetail.vendor.email
+        : undefined;
+    if (!vendorEmail) {
+      toast.info(
+        `${purchaseOrderDetail?.vendor?.name ?? 'Vendor'} does not have a vendor email. Select a contact recipient if available.`
+      );
+    }
+
+    const request = preparePdfRequest();
+    setPdfPreview(null);
+    sendEmailMutation.reset();
+    setEmailOpen(true);
+    generatePdfPreview(request);
+  }
+
+  function handleEmailOpenChange(open: boolean) {
+    setEmailOpen(open);
+    if (!open) {
+      sendEmailMutation.reset();
+      setPdfPreview(null);
+    }
   }
 
   function handlePdfIncludeNoticeChange(includeNotice: boolean) {
@@ -459,7 +506,10 @@ export function SCODetailPage() {
   }
 
   const isActionPending =
-    approveMutation.isPending || rejectMutation.isPending || voidMutation.isPending;
+    approveMutation.isPending ||
+    rejectMutation.isPending ||
+    voidMutation.isPending ||
+    sendEmailMutation.isPending;
 
   if (isLoading) {
     return <ProjectDetailPageLoading statsCount={5} />;
@@ -565,6 +615,12 @@ export function SCODetailPage() {
               <FileText className="size-4" />
               Generate PDF
             </Button>
+            {canEmailSCO && (
+              <Button variant="outline" size="sm" onClick={openEmailFlow}>
+                <Mail className="size-4" />
+                Email SCO
+              </Button>
+            )}
 
             {/* Approve - only on DRAFT */}
             {canApprove && (
@@ -642,36 +698,40 @@ export function SCODetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard
-              icon={<DollarSign className="size-5 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 4 }}>
+            <StatsBarItem
+              variant="card"
               label="SCO Amount"
               value={money(amount)}
               description="Line item total"
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<TrendingUp className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
+            <StatsBarItem
+              variant="card"
               label="Shipping and Handling Fee"
               value={money(shippingHandlingFee)}
               description="Added shipping and handling fee"
+              dotColor="bg-label-lighter"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<ClipboardList className="size-5 text-info" />}
-              bgClass="bg-info/10"
+            <StatsBarItem
+              variant="card"
               label="Total"
               value={money(totalAmount)}
               description="SCO total"
+              dotColor="bg-info"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Link2 className="size-5 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Linked PO"
               value={purchaseOrderLabel}
               description={String(purchaseOrderStatus)}
+              dotColor="bg-success"
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {hasReasonBanner && (
             <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
@@ -883,7 +943,9 @@ export function SCODetailPage() {
                         <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                       )}
                       {shippingHandlingFee !== 0 && (
-                        <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                        <InfoRow label="Shipping and Handling Fee">
+                          {money(shippingHandlingFee)}
+                        </InfoRow>
                       )}
                       {taxAmount !== 0 && (
                         <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
@@ -957,9 +1019,7 @@ export function SCODetailPage() {
                           <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
                             Subtotal
                           </td>
-                          <td className="pt-3 text-right tabular-nums text-sm">
-                            {money(amount)}
-                          </td>
+                          <td className="pt-3 text-right tabular-nums text-sm">{money(amount)}</td>
                         </tr>
                         {negotiatedDiscount !== 0 && (
                           <tr>
@@ -1136,7 +1196,9 @@ export function SCODetailPage() {
                     <InfoRow label="Negotiated Discount">-{money(negotiatedDiscount)}</InfoRow>
                   )}
                   {shippingHandlingFee !== 0 && (
-                    <InfoRow label="Shipping and Handling Fee">{money(shippingHandlingFee)}</InfoRow>
+                    <InfoRow label="Shipping and Handling Fee">
+                      {money(shippingHandlingFee)}
+                    </InfoRow>
                   )}
                   {taxAmount !== 0 && (
                     <InfoRow label={formatPurchaseOrderTaxLabel(taxPercent)}>
@@ -1250,6 +1312,55 @@ export function SCODetailPage() {
           }}
         />
       )}
+
+      <DocumentEmailWizardDialog
+        open={emailOpen}
+        onOpenChange={handleEmailOpenChange}
+        title="Email SCO"
+        pdfTitle={sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
+        pdfSectionLabel="SCO PDF"
+        sendLabel="Send SCO Email"
+        draft={emailDraftQuery.data ?? null}
+        isDraftLoading={emailDraftQuery.isLoading}
+        isGenerating={generatePdfMutation.isPending}
+        isSaving={savePdfMutation.isPending}
+        isSending={sendEmailMutation.isPending}
+        canSavePdf={canSavePdf}
+        pdfPreviewFile={pdfPreview}
+        includeNotice={pdfIncludeNotice}
+        noticeTitle={pdfNoticeTitle}
+        noticeHtml={pdfNoticeHtml}
+        noticeOptions={pdfNoticeOptions}
+        selectedNoticeOptionId={pdfNoticeTemplateId}
+        includeTerms={pdfIncludeTerms}
+        termsHtml={pdfTermsHtml}
+        termsOptions={pdfTermsOptions}
+        selectedTermsOptionId={pdfTermsTemplateId}
+        onIncludeNoticeChange={handlePdfIncludeNoticeChange}
+        onNoticeOptionChange={handlePdfNoticeTemplateChange}
+        onNoticeTitleChange={setPdfNoticeTitle}
+        onNoticeHtmlChange={setPdfNoticeHtml}
+        onIncludeTermsChange={handlePdfIncludeTermsChange}
+        onTermsOptionChange={handlePdfTermsTemplateChange}
+        onTermsHtmlChange={setPdfTermsHtml}
+        onGeneratePdf={(data) => {
+          generatePdfPreview(data);
+        }}
+        onSavePdf={(data) => {
+          savePdfToFiles(data);
+        }}
+        onSend={async (payload, pdfOptions) => {
+          if (!emailTarget) return;
+          await sendEmailMutation.mutateAsync({
+            feature: emailTarget.feature,
+            entityId: emailTarget.entityId,
+            draft: payload,
+            pdfOptions,
+          });
+          await refetchActivity();
+          handleEmailOpenChange(false);
+        }}
+      />
 
       {/* ---- Workflow action dialog (no reason) ---- */}
       {activeAction && !activeAction.needsReason && (

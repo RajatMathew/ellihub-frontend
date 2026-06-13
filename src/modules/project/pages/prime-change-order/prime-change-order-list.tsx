@@ -71,7 +71,8 @@ export function PrimeChangeOrderListPage() {
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!totalCostMin || !!totalCostMax;
   const { data, isLoading, isError, refetch } = usePrimeChangeOrdersQuery(filters);
   const { data: projectDetail } = useProjectDetailQuery(projectId);
-  const { data: statusSummary } = usePrimeChangeOrderStatusSummaryQuery(projectId);
+  const { data: statusSummary, isLoading: isLoadingStatusSummary } =
+    usePrimeChangeOrderStatusSummaryQuery(projectId);
   const { data: syncStatus, isLoading: isLoadingSyncStatus } =
     usePrimeChangeOrderSyncStatusQuery(projectId);
   const syncMutation = useSyncPrimeChangeOrdersMutation();
@@ -139,7 +140,7 @@ export function PrimeChangeOrderListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <div className="space-y-5">
+      <div>
         <PrimeChangeOrderListHeader
           projectId={projectId}
           totalCount={totalCount}
@@ -153,7 +154,7 @@ export function PrimeChangeOrderListPage() {
         />
 
         {syncStatus?.syncStatus.lastSyncError && (
-          <Alert variant="destructive" appearance="light">
+          <Alert variant="destructive" appearance="light" className="mb-5">
             <AlertIcon>
               <AlertCircle className="size-5" />
             </AlertIcon>
@@ -167,6 +168,7 @@ export function PrimeChangeOrderListPage() {
         <PrimeChangeOrderStatusSummary
           statusFilter={statusFilter}
           statusSummary={statusSummary}
+          isLoading={isLoadingStatusSummary}
           onStatusChange={(statusName) =>
             updateParams({
               statusName,

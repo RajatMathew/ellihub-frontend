@@ -1,5 +1,5 @@
-import { toastApiError } from '@/app/lib/toast-api-error';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import { scoApi } from '@/modules/project/api/sub-change-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
@@ -15,7 +15,11 @@ import type {
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-function invalidateSCOQueries(queryClient: QueryClient, scoId?: string, purchaseOrderId?: string | null) {
+function invalidateSCOQueries(
+  queryClient: QueryClient,
+  scoId?: string,
+  purchaseOrderId?: string | null
+) {
   const queryKeys = scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all];
 
   if (!purchaseOrderId) {
@@ -38,6 +42,13 @@ export const useSCOsQuery = (params?: ListSCOsParams) =>
     queryKey: [...scoKeys.list(), params],
     queryFn: () => scoApi.list(params),
     enabled: !!params?.projectId,
+  });
+
+export const useSCOStatsQuery = (projectId: string) =>
+  useQuery({
+    queryKey: scoKeys.stats(projectId),
+    queryFn: () => scoApi.stats(projectId),
+    enabled: !!projectId,
   });
 
 export const useSCOSummaryQuery = (projectId: string) =>
@@ -208,7 +219,9 @@ export const useSaveSCOPdfMutation = () => {
         scoKeys.detail(id),
         filesKeys.all,
         activityLogKeys.all,
-        ...(purchaseOrderId ? [scoKeys.byPurchaseOrder(purchaseOrderId), poKeys.detail(purchaseOrderId)] : []),
+        ...(purchaseOrderId
+          ? [scoKeys.byPurchaseOrder(purchaseOrderId), poKeys.detail(purchaseOrderId)]
+          : []),
       ]);
       toast.success('PDF saved to Files.');
     },

@@ -1,6 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { PTOListToolbar, PTOTableCard, usePTOListColumns } from '@/modules/hr/components/pto/list';
+import {
+  PTOListStats,
+  PTOListToolbar,
+  PTOTableCard,
+  usePTOListColumns,
+} from '@/modules/hr/components/pto/list';
 import {
   PTODecisionDialog,
   PTODeleteDialog,
@@ -14,6 +19,7 @@ import {
   useApprovePTOMutation,
   useDeletePTOMutation,
   usePTOListQuery,
+  usePTOStatsQuery,
   useRejectPTOMutation,
 } from '@/modules/hr/hooks/pto.hooks';
 import { usePTOListParams } from '@/modules/hr/hooks/pto/use-pto-list-params';
@@ -52,6 +58,7 @@ export default function PTOListPage() {
   );
 
   const { data, isLoading, isError, isRefetching, refetch } = usePTOListQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = usePTOStatsQuery();
   const approveMutation = useApprovePTOMutation();
   const rejectMutation = useRejectPTOMutation();
   const deleteMutation = useDeletePTOMutation();
@@ -134,6 +141,7 @@ export default function PTOListPage() {
   return (
     <div className="container-fluid py-7.5">
       <PTOListToolbar totalCount={totalCount} searchQuery={searchQuery} />
+      <PTOListStats stats={stats} isLoading={isStatsLoading} />
 
       <div className="pt-5">
         <PTOTableCard

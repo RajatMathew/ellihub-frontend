@@ -95,6 +95,16 @@ export const ptoPaginatedResponseSchema = z.object({
 
 export type PTOPaginatedResponse = z.infer<typeof ptoPaginatedResponseSchema>;
 
+export const ptoStatsSchema = z.object({
+  totalRequests: z.number(),
+  pendingRequests: z.number(),
+  approvedRequests: z.number(),
+  rejectedRequests: z.number(),
+  upcomingApprovedRequests: z.number(),
+});
+
+export type PTOStats = z.infer<typeof ptoStatsSchema>;
+
 export const listPTOParamsSchema = z.object({
   page: z.number().min(1).optional().default(1),
   size: z.number().min(1).optional().default(10),

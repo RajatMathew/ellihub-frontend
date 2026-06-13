@@ -2,9 +2,11 @@ import api from '@/app/api';
 import {
   costCodePaginatedResponseSchema,
   costCodeSchema,
+  costCodeStatsSchema,
   type CostCode,
   type CostCodeCreate,
   type CostCodeFilters,
+  type CostCodeStats,
 } from '@/modules/catalog/schemas/costcode.schema';
 
 const BASE = '/cost-code';
@@ -26,6 +28,11 @@ export const costCodesApi = {
         res.data?.count ??
         (Array.isArray(res.data?.data) ? res.data.pagination.totalItems : (res.data?.count ?? 0)),
     });
+  },
+
+  async stats(): Promise<CostCodeStats> {
+    const res = await api.get(`${BASE}/stats`);
+    return costCodeStatsSchema.parse(res.data?.data ?? res.data);
   },
 
   async get(id: string): Promise<CostCode> {

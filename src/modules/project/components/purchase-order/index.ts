@@ -7,6 +7,7 @@ export * from './purchase-order-form-line-items-card';
 export * from './purchase-order-list-columns';
 export * from './purchase-order-list-filters';
 export * from './purchase-order-list-header';
+export * from './purchase-order-list-stats';
 export * from './purchase-order-list-table';
 export * from './purchase-order-pdf-dialog';
 export { getPurchaseOrderRfqLabel } from './purchase-order-list-utils';

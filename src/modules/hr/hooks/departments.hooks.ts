@@ -18,6 +18,12 @@ export const useDepartmentsQuery = (params?: ListDepartmentsParams) =>
     queryFn: () => departmentsApi.list(params),
   });
 
+export const useDepartmentStatsQuery = () =>
+  useQuery({
+    queryKey: departmentsKeys.stats(),
+    queryFn: () => departmentsApi.stats(),
+  });
+
 export const useDepartmentDetailQuery = (id: string) =>
   useQuery({
     queryKey: departmentsKeys.detail(id),
