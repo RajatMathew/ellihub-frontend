@@ -10,12 +10,14 @@ import {
   rfqAttachmentSchema,
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
+  rfqStatsSchema,
   rfqStatusSchema,
   type CreateRFQInput,
   type ListRFQParams,
   type RFQDeliverableInput,
   type RFQDetail,
   type RFQPaginatedResponse,
+  type RFQStats,
   type RFQStatus,
   type UpdateRFQInput,
   type VoidAwardInput,
@@ -28,6 +30,8 @@ export type BidComparisonQuote = {
   vendorName: string;
   status: { id: string; name: string; label: string } | null;
   totalAmount: number | null;
+  negotiationAmount?: number | null;
+  vendorCoupon?: boolean;
   taxAmount: number | null;
   grandTotal: number | null;
   leadTimeDays: number | null;
@@ -94,6 +98,8 @@ type RFQApiVendorQuote = RFQApiObject & {
   vendorId?: string | null;
   hasSubmittedQuote?: boolean | null;
   quotedAmount?: unknown;
+  negotiationAmount?: unknown;
+  vendorCoupon?: boolean | null;
   leadTime?: string | number | null;
   notes?: string | null;
 };
@@ -158,6 +164,8 @@ function normalizeRFQ(item: unknown) {
         ...q,
         totalAmount: q.quotedAmount,
         grandTotal: q.quotedAmount,
+        negotiationAmount: q.negotiationAmount,
+        vendorCoupon: q.vendorCoupon ?? false,
         leadTimeDays: leadTime ? parseInt(leadTime, 10) : undefined,
         notes: leadTime ? `${leadTime} days` : q.notes,
         vendor: q.vendor ?? (q.vendorId ? { id: q.vendorId } : undefined),
@@ -211,6 +219,17 @@ export const rfqApi = {
     const result = rfqPaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.list] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async stats(projectId: string): Promise<RFQStats> {
+    const res = await api.get(`${BASE}/project/${projectId}/stats`);
+    const raw = res.data?.data ?? res.data;
+    const result = rfqStatsSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[rfqApi.stats] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -371,8 +390,10 @@ export const rfqApi = {
   async submitQuote(data: {
     id: string;
     quotedAmount: number;
+    negotiationAmount?: number | null;
+    vendorCoupon?: boolean;
     leadTime?: string;
-    attachments?: string[];
+    attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
     return res.data?.data ?? res.data;
@@ -381,8 +402,10 @@ export const rfqApi = {
   async editQuote(data: {
     id: string;
     quotedAmount: number;
+    negotiationAmount?: number | null;
+    vendorCoupon?: boolean;
     leadTime?: string;
-    attachments?: string[];
+    attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/edit-quote`, data);
     return res.data?.data ?? res.data;
@@ -430,8 +453,8 @@ export const rfqApi = {
     return result.data;
   },
 
-  async award(quoteId: string): Promise<RFQDetail> {
-    const res = await api.patch(`${BASE}/award`, { quoteId });
+  async award(quoteId: string, data?: { negotiationAmount?: number | null }): Promise<RFQDetail> {
+    const res = await api.patch(`${BASE}/award`, { quoteId, ...data });
     const raw = normalizeRFQ(res.data?.data ?? res.data);
     const result = rfqDetailSchema.safeParse(raw);
     if (!result.success) {

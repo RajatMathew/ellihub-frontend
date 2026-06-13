@@ -1,10 +1,9 @@
-import { z } from 'zod';
-
 import api from '@/app/api';
 import {
   invoiceDetailSchema,
   invoiceListItemSchema,
   invoicePaginatedResponseSchema,
+  invoiceStatsSchema,
   invoiceStatusSchema,
   invoiceSummarySchema,
   type CreateInvoiceInput,
@@ -16,11 +15,13 @@ import {
   type InvoicePaginatedResponse,
   type InvoiceRejectInput,
   type InvoiceResolveDisputeInput,
+  type InvoiceStats,
   type InvoiceStatus,
   type InvoiceSummary,
   type ListInvoiceParams,
   type UpdateInvoiceInput,
 } from '@/modules/project/schemas/invoice';
+import { z } from 'zod';
 
 const BASE = '/invoice';
 
@@ -55,6 +56,17 @@ export const invoiceApi = {
     const result = invoicePaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
       console.error('[invoiceApi.list] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async stats(projectId: string): Promise<InvoiceStats> {
+    const res = await api.get(`${BASE}/project/${projectId}/stats`);
+    const raw = res.data?.data ?? res.data;
+    const result = invoiceStatsSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[invoiceApi.stats] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

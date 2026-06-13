@@ -77,7 +77,12 @@ export const featureMailDraftSchema = featureMailDraftBaseSchema.extend({
 
 export type FeatureMailDraft = z.infer<typeof featureMailDraftSchema>;
 
-export const featureMailKeySchema = z.enum(['rfq.vendorRequest', 'rfq.vendorRequestAll']);
+export const featureMailKeySchema = z.enum([
+  'rfq.vendorRequest',
+  'rfq.vendorRequestAll',
+  'purchaseOrder.vendorIssue',
+  'subChangeOrder.vendorApproval',
+]);
 
 export type FeatureMailKey = z.infer<typeof featureMailKeySchema>;
 

@@ -1,5 +1,5 @@
-import { toastApiError } from '@/app/lib/toast-api-error';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import { poApi } from '@/modules/project/api/purchase-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
@@ -27,6 +27,13 @@ export const usePOsQuery = (params?: ListPOsParams) =>
   useQuery({
     queryKey: [...poKeys.list(), params],
     queryFn: () => poApi.list(params),
+  });
+
+export const usePOStatsQuery = (projectId: string) =>
+  useQuery({
+    queryKey: poKeys.stats(projectId),
+    queryFn: () => poApi.stats(projectId),
+    enabled: !!projectId,
   });
 
 export const usePODetailQuery = (id: string) =>

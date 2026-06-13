@@ -20,6 +20,12 @@ export const useEmployeesQuery = (
   });
 };
 
+export const useEmployeeStatsQuery = () =>
+  useQuery({
+    queryKey: employeesKeys.stats(),
+    queryFn: () => employeesApi.stats(),
+  });
+
 export const useEmployeeDetailQuery = (id: string) => {
   return useQuery({
     queryKey: employeesKeys.detail(id),

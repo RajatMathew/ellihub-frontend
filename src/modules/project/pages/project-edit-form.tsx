@@ -35,6 +35,7 @@ import {
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
   useDivisionsQuery,
+  useProjectContractTypesQuery,
   useProjectDetailQuery,
   useProjectEmployeeOptionsQuery,
   useProjectStagesQuery,
@@ -106,6 +107,7 @@ function ProjectEditFormInner({
 
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
+  const contractTypesQuery = useProjectContractTypesQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
   const canTransferLeadPM = project.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
   const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canTransferLeadPM);
@@ -123,6 +125,11 @@ function ProjectEditFormInner({
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
+  const contractTypeOptions =
+    contractTypesQuery.data?.map((type) => {
+      const label = type.label || type.name || type.id;
+      return { value: label, label };
+    }) ?? [];
   const gcOptions =
     gcsQuery.data?.data?.map((gc) => ({
       value: gc.id,
@@ -610,9 +617,18 @@ function ProjectEditFormInner({
                     <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                       Contract Type
                     </FieldLabel>
-                    <InputWrapper>
-                      <Input {...field} placeholder="e.g. Lump Sum, GMP" autoComplete="off" />
-                    </InputWrapper>
+                    <Select value={field.value || undefined} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select contract type..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contractTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                 )}
               />

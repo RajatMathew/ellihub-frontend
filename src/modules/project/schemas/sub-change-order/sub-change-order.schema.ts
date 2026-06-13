@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   sumRoundedLineAmountsDecimal,
   toCommercialDecimal,
@@ -9,6 +8,7 @@ import {
   quantitySchema,
   rateSchema,
 } from '@/modules/project/lib/commercial-validation';
+import { z } from 'zod';
 
 // --- Status ---
 
@@ -140,6 +140,19 @@ export const scoPaginatedResponseSchema = z.object({
 
 export type SCOPaginatedResponse = z.infer<typeof scoPaginatedResponseSchema>;
 
+export const scoStatsSchema = z.object({
+  totalSubChangeOrders: z.number(),
+  draftSubChangeOrders: z.number(),
+  approvedSubChangeOrders: z.number(),
+  rejectedSubChangeOrders: z.number(),
+  voidSubChangeOrders: z.number(),
+  totalAmount: z.coerce.number(),
+  approvedAmount: z.coerce.number(),
+  pendingAmount: z.coerce.number(),
+});
+
+export type SCOStats = z.infer<typeof scoStatsSchema>;
+
 // --- List params ---
 
 export const listSCOsParamsSchema = z.object({
@@ -236,18 +249,15 @@ const baseSCOInputSchema = z.object({
   lineItems: z.array(scoLineItemInputSchema).min(1, 'At least one line item is required'),
 });
 
-function validateSCODiscount(
-  value: z.infer<typeof baseSCOInputSchema>,
-  ctx: z.RefinementCtx
-) {
-    const subtotal = sumRoundedLineAmountsDecimal(value.lineItems);
-    if (toCommercialDecimal(value.negotiatedDiscount).greaterThan(subtotal)) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['negotiatedDiscount'],
-        message: 'Negotiated discount cannot exceed subtotal',
-      });
-    }
+function validateSCODiscount(value: z.infer<typeof baseSCOInputSchema>, ctx: z.RefinementCtx) {
+  const subtotal = sumRoundedLineAmountsDecimal(value.lineItems);
+  if (toCommercialDecimal(value.negotiatedDiscount).greaterThan(subtotal)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['negotiatedDiscount'],
+      message: 'Negotiated discount cannot exceed subtotal',
+    });
+  }
 }
 
 export const createSCOInputSchema = baseSCOInputSchema.superRefine(validateSCODiscount);
@@ -280,16 +290,13 @@ export const scoLineItemSchema = z
     lineNumber: z.number().optional(),
     sequenceNumber: z.number().optional(),
     description: z.string(),
-    unit: z.preprocess(
-      (value) => {
-        if (typeof value === 'object' && value !== null) {
-          const ref = value as { label?: unknown; name?: unknown; id?: unknown };
-          return ref.label ?? ref.name ?? ref.id ?? undefined;
-        }
-        return value;
-      },
-      z.string().nullable().optional(),
-    ),
+    unit: z.preprocess((value) => {
+      if (typeof value === 'object' && value !== null) {
+        const ref = value as { label?: unknown; name?: unknown; id?: unknown };
+        return ref.label ?? ref.name ?? ref.id ?? undefined;
+      }
+      return value;
+    }, z.string().nullable().optional()),
     unitId: z.string().nullable().optional(),
     quantity: z.coerce.number().optional(),
     qty: z.coerce.number().optional(),
@@ -368,11 +375,7 @@ export const scoDetailSchema = z
       .passthrough()
       .nullable()
       .optional(),
-    rfq: z
-      .object({ id: z.string(), rfqNumber: z.string() })
-      .passthrough()
-      .nullable()
-      .optional(),
+    rfq: z.object({ id: z.string(), rfqNumber: z.string() }).passthrough().nullable().optional(),
     createdBy: z.string().optional(),
     approvedBy: z.string().nullable().optional(),
     approvedAt: z.string().nullable().optional(),
@@ -385,17 +388,24 @@ export const scoDetailSchema = z
     retainagePercent: z.coerce.number().optional(),
     paymentTerms: z.string().optional(),
     lineItems: z.array(scoLineItemSchema).optional().default([]),
-    attachments: z.array(z.object({ id: z.string(), documentId: z.string().nullable().optional() }).passthrough()).optional().default([]),
+    attachments: z
+      .array(
+        z.object({ id: z.string(), documentId: z.string().nullable().optional() }).passthrough()
+      )
+      .optional()
+      .default([]),
     statusHistory: z
       .array(
-        z.object({
-          id: z.string(),
-          fromStatus: z.string().nullable().optional(),
-          toStatus: z.string(),
-          changedBy: z.string(),
-          changedAt: z.string(),
-          reason: z.string().nullable().optional(),
-        }).passthrough(),
+        z
+          .object({
+            id: z.string(),
+            fromStatus: z.string().nullable().optional(),
+            toStatus: z.string(),
+            changedBy: z.string(),
+            changedAt: z.string(),
+            reason: z.string().nullable().optional(),
+          })
+          .passthrough()
       )
       .optional()
       .default([]),

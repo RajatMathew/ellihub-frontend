@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
   Dialog,
@@ -31,9 +32,10 @@ import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
+import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
@@ -70,7 +72,6 @@ import {
 } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
-import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
 import {
   useAddRFQAttachmentMutation,
   useAddVendorMutation,
@@ -96,13 +97,13 @@ import {
   useProjectEntityFolderQuery,
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
+import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
 import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
   CheckCircle2,
   ChevronDown,
   Clock,
-  DollarSign,
   FileText,
   History,
   Mail,
@@ -123,10 +124,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 function hasHtmlText(value: string): boolean {
-  return value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .trim().length > 0;
+  return (
+    value
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .trim().length > 0
+  );
 }
 
 function normalizeEmail(value: string | null | undefined): string | null {
@@ -198,12 +201,7 @@ export default function RFQDetailPage() {
   const { projectId = '', rfqId = '' } = useParams<{ projectId: string; rfqId: string }>();
   const navigate = useNavigate();
 
-  const {
-    data: rfq,
-    isLoading,
-    isError,
-    refetch: refetchRfqDetail,
-  } = useRFQDetailQuery(rfqId);
+  const { data: rfq, isLoading, isError, refetch: refetchRfqDetail } = useRFQDetailQuery(rfqId);
   const { data: project } = useProjectDetailQuery(projectId);
   useBreadcrumbLabel(
     projectId && rfqId ? `/app/project/${projectId}/rfqs/${rfqId}` : undefined,
@@ -281,6 +279,8 @@ export default function RFQDetailPage() {
   const [, setQuoteVendorId] = useState<string>('');
   const [quoteInviteId, setQuoteInviteId] = useState<string>('');
   const [quoteAmount, setQuoteAmount] = useState<number | ''>('');
+  const [quoteNegotiationAmount, setQuoteNegotiationAmount] = useState<number | ''>('');
+  const [quoteVendorCoupon, setQuoteVendorCoupon] = useState(false);
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
   const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
@@ -295,7 +295,8 @@ export default function RFQDetailPage() {
 
   // Award dialog
   const [awardOpen, setAwardOpen] = useState(false);
-  const [awardQuoteIds, setAwardQuoteIds] = useState<string[]>([]);
+  const [awardQuoteId, setAwardQuoteId] = useState('');
+  const [awardNegotiationAmount, setAwardNegotiationAmount] = useState<number | ''>('');
 
   // Upload attachment dialog
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -442,6 +443,7 @@ export default function RFQDetailPage() {
     ) ?? [];
   const projectActions = project?.capabilities?.actions;
   const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
+  const canUploadRfqAttachment = projectActions?.rfq?.update === true && !isTerminal;
   const canManagePublishedRfq = projectActions?.rfq?.update === true && isPublished;
   const canStateRfq = projectActions?.rfq?.state === true;
   const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
@@ -454,6 +456,8 @@ export default function RFQDetailPage() {
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
   const canSaveVendorPdf = projectActions?.rfq?.update === true;
+  const hasQuoteAttachment =
+    quoteVendorCoupon || existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
 
   const isActionPending =
     publishMutation.isPending ||
@@ -524,12 +528,16 @@ export default function RFQDetailPage() {
     if (existingQuoteId) {
       const eq = quotes.find((q) => q.id === existingQuoteId);
       setQuoteAmount(eq?.grandTotal ?? eq?.totalAmount ?? '');
+      setQuoteNegotiationAmount(eq?.negotiationAmount ?? '');
+      setQuoteVendorCoupon(eq?.vendorCoupon ?? false);
       // Use leadTimeDays if available (numeric), fallback to notes but strip non-numeric
       const lt = eq?.leadTimeDays?.toString() || eq?.notes?.replace(/[^0-9]/g, '') || '';
       setQuoteLeadTime(lt);
       setExistingAttachments(eq?.attachments ?? []);
     } else {
       setQuoteAmount('');
+      setQuoteNegotiationAmount('');
+      setQuoteVendorCoupon(false);
       setQuoteLeadTime('');
       setExistingAttachments([]);
     }
@@ -541,6 +549,8 @@ export default function RFQDetailPage() {
     setQuoteVendorId('');
     setQuoteInviteId('');
     setQuoteAmount('');
+    setQuoteNegotiationAmount('');
+    setQuoteVendorCoupon(false);
     setQuoteLeadTime('');
     setEditingQuoteId(null);
     setIsQuoteViewOnly(false);
@@ -549,7 +559,9 @@ export default function RFQDetailPage() {
   }
 
   function handleAwardFromTable(quoteId: string) {
-    setAwardQuoteIds([quoteId]);
+    const quote = quotes.find((item) => item.id === quoteId);
+    setAwardQuoteId(quoteId);
+    setAwardNegotiationAmount(quote?.negotiationAmount ?? quote?.grandTotal ?? quote?.totalAmount ?? '');
     setAwardOpen(true);
   }
 
@@ -618,8 +630,7 @@ export default function RFQDetailPage() {
       })
       .catch(() => {
         // The mutation hook shows the API error toast.
-      }
-    );
+      });
   }
 
   function saveVendorPdfToFiles(
@@ -1063,29 +1074,32 @@ export default function RFQDetailPage() {
         {/* Left column */}
         <div className="min-w-0 flex-1 space-y-5">
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <StatsCard
-              icon={<Users className="size-6 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 3 }}>
+            <StatsBarItem
+              variant="card"
               label="Vendors Invited"
               value={invites.length}
-              description="Total Invited"
+              description="Total invited"
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<FileText className="size-6 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Quotes Received"
               value={quotes.length}
-              description="Active Bids"
+              description="Active bids"
+              dotColor="bg-success"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<DollarSign className="size-6 text-warning" />}
-              bgClass="bg-warning/10"
+            <StatsBarItem
+              variant="card"
               label="Lowest Quote"
               value={lowestQuote != null ? formatCurrency(lowestQuote) : '—'}
-              description={lowestQuote != null ? 'Lowest Current Bid' : undefined}
+              description={lowestQuote != null ? 'Lowest current bid' : 'No quotes yet'}
+              dotColor="bg-warning"
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {/* Quick Actions */}
           {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
@@ -1145,8 +1159,8 @@ export default function RFQDetailPage() {
 
           <RFQDetailAttachmentsCard
             attachments={attachments}
-            canEdit={canEditDraftRfq}
-            canUpload={canEditDraftRfq && !!rfqUploadFolderId}
+            canUpload={canUploadRfqAttachment && !!rfqUploadFolderId}
+            canRemove={canEditDraftRfq}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
             onRemove={(attachmentId) => {
@@ -1157,7 +1171,7 @@ export default function RFQDetailPage() {
             }}
           />
 
-          {canEditDraftRfq && rfqUploadFolderId && (
+          {canUploadRfqAttachment && rfqUploadFolderId && (
             <UploadFileDialog
               open={uploadOpen}
               onOpenChange={setUploadOpen}
@@ -1574,8 +1588,7 @@ export default function RFQDetailPage() {
                                   size="sm"
                                   className="mt-3 w-full"
                                   onClick={() => {
-                                    setAwardQuoteIds([comparisonQuote.quoteId]);
-                                    setAwardOpen(true);
+                                    handleAwardFromTable(comparisonQuote.quoteId);
                                   }}
                                 >
                                   <Trophy className="size-4" />
@@ -1739,6 +1752,23 @@ export default function RFQDetailPage() {
 
             <Field>
               <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
+                Negotiation Amount
+              </FieldLabel>
+              <InputWrapper>
+                <span className="text-muted-foreground text-sm">$</span>
+                <NumberInput
+                  value={typeof quoteNegotiationAmount === 'number' ? quoteNegotiationAmount : 0}
+                  onValueChange={setQuoteNegotiationAmount}
+                  min={0}
+                  decimalPlaces={2}
+                  placeholder="0.00"
+                  disabled={isQuoteViewOnly}
+                />
+              </InputWrapper>
+            </Field>
+
+            <Field>
+              <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                 Lead Time (Days)
               </FieldLabel>
               <InputWrapper>
@@ -1757,6 +1787,15 @@ export default function RFQDetailPage() {
                 />
               </InputWrapper>
             </Field>
+
+            <label className="flex items-start gap-3 rounded-md border bg-muted/20 p-3 text-sm">
+              <Checkbox
+                checked={quoteVendorCoupon}
+                disabled={isQuoteViewOnly}
+                onCheckedChange={(checked) => setQuoteVendorCoupon(checked === true)}
+              />
+              <span className="min-w-0 font-medium text-foreground">Vendor Coupon</span>
+            </label>
 
             <Field>
               <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
@@ -1856,12 +1895,14 @@ export default function RFQDetailPage() {
                   disabled={
                     !quoteAmount ||
                     quoteAmount <= 0 ||
+                    !hasQuoteAttachment ||
                     submitQuoteMutation.isPending ||
                     updateQuoteMutation.isPending ||
                     uploadFileMutation.isPending
                   }
                   onClick={async () => {
                     if (!quoteAmount || quoteAmount <= 0) return;
+                    if (!hasQuoteAttachment) return;
 
                     try {
                       let fileIds: string[] = [];
@@ -1890,6 +1931,12 @@ export default function RFQDetailPage() {
                           data: {
                             id: quoteInviteId,
                             quotedAmount: quoteAmount,
+                            negotiationAmount:
+                              typeof quoteNegotiationAmount === 'number' &&
+                              quoteNegotiationAmount > 0
+                                ? quoteNegotiationAmount
+                                : null,
+                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },
@@ -1900,6 +1947,12 @@ export default function RFQDetailPage() {
                           data: {
                             id: quoteInviteId,
                             quotedAmount: quoteAmount,
+                            negotiationAmount:
+                              typeof quoteNegotiationAmount === 'number' &&
+                              quoteNegotiationAmount > 0
+                                ? quoteNegotiationAmount
+                                : null,
+                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },
@@ -2188,7 +2241,8 @@ export default function RFQDetailPage() {
         onOpenChange={(open) => {
           if (!open) {
             setAwardOpen(false);
-            setAwardQuoteIds([]);
+            setAwardQuoteId('');
+            setAwardNegotiationAmount('');
           }
         }}
       >
@@ -2198,28 +2252,27 @@ export default function RFQDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Select one or more vendors to award this RFQ.
+              Select one vendor to award this RFQ.
             </p>
-            <div className="space-y-2">
+            <RadioGroup
+              value={awardQuoteId}
+              onValueChange={(quoteId) => {
+                const quote = quotes.find((item) => item.id === quoteId);
+                setAwardQuoteId(quoteId);
+                setAwardNegotiationAmount(
+                  quote?.negotiationAmount ?? quote?.grandTotal ?? quote?.totalAmount ?? ''
+                );
+              }}
+              className="space-y-2"
+            >
               {quotes.map((q) => {
                 const currentlyAwarded = !!q.isAwarded;
-                const isSelected = awardQuoteIds.includes(q.id);
                 return (
                   <label
                     key={q.id}
                     className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer hover:bg-accent ${currentlyAwarded ? 'border-success/50 bg-success/5' : ''}`}
                   >
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={isSelected || currentlyAwarded}
-                      disabled={currentlyAwarded}
-                      onChange={() => {
-                        setAwardQuoteIds((prev) =>
-                          prev.includes(q.id) ? prev.filter((id) => id !== q.id) : [...prev, q.id]
-                        );
-                      }}
-                    />
+                    <RadioGroupItem value={q.id} disabled={currentlyAwarded} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{q.vendor?.name ?? 'Unknown Vendor'}</span>
@@ -2236,35 +2289,55 @@ export default function RFQDetailPage() {
                   </label>
                 );
               })}
-            </div>
+            </RadioGroup>
+
+            <Field>
+              <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
+                Negotiation Amount
+              </FieldLabel>
+              <InputWrapper>
+                <span className="text-muted-foreground text-sm">$</span>
+                <NumberInput
+                  value={typeof awardNegotiationAmount === 'number' ? awardNegotiationAmount : 0}
+                  onValueChange={setAwardNegotiationAmount}
+                  min={0}
+                  decimalPlaces={2}
+                  placeholder="0.00"
+                />
+              </InputWrapper>
+            </Field>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setAwardOpen(false);
-                setAwardQuoteIds([]);
+                setAwardQuoteId('');
+                setAwardNegotiationAmount('');
               }}
             >
               Cancel
             </Button>
             <Button
-              disabled={awardQuoteIds.length === 0 || isActionPending}
+              disabled={!awardQuoteId || isActionPending}
               onClick={async () => {
-                for (const qId of awardQuoteIds) {
-                  const selectedQuote = quotes.find((q) => q.id === qId);
-                  if (!selectedQuote) continue;
-                  try {
-                    await awardMutation.mutateAsync({
-                      rfqId,
-                      quoteId: qId,
-                    });
-                  } catch {
-                    break;
-                  }
+                const selectedQuote = quotes.find((q) => q.id === awardQuoteId);
+                if (!selectedQuote) return;
+                try {
+                  await awardMutation.mutateAsync({
+                    rfqId,
+                    quoteId: awardQuoteId,
+                    negotiationAmount:
+                      typeof awardNegotiationAmount === 'number' && awardNegotiationAmount > 0
+                        ? awardNegotiationAmount
+                        : null,
+                  });
+                } catch {
+                  return;
                 }
                 setAwardOpen(false);
-                setAwardQuoteIds([]);
+                setAwardQuoteId('');
+                setAwardNegotiationAmount('');
               }}
             >
               {awardMutation.isPending ? 'Processing...' : 'Award'}

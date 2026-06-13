@@ -1,8 +1,3 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
 import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
@@ -19,6 +14,10 @@ import {
   type CostCodeCreate,
   type CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 /* ---- category queries ---- */
 export const useCostCodeCategoriesQuery = () =>
@@ -63,6 +62,12 @@ export const useCostCodesQuery = (filters?: CostCodeFilters) =>
   useQuery({
     queryKey: [...costCodesKeys.list(), filters],
     queryFn: () => costCodesApi.list(filters),
+  });
+
+export const useCostCodeStatsQuery = () =>
+  useQuery({
+    queryKey: costCodesKeys.stats(),
+    queryFn: () => costCodesApi.stats(),
   });
 
 /* ---- cost code mutations ---- */

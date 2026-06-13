@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
 import {
+  ContactListStats,
   ContactsPageHeader,
   ContactsTableCard,
   useContactListColumns,
@@ -15,6 +16,7 @@ import {
 import {
   useContactsQuery,
   useDeleteContactMutation,
+  useDirectoryKpisQuery,
   useProfessionalRolesQuery,
   useVendorsQuery,
 } from '@/modules/directory/hooks';
@@ -56,6 +58,7 @@ export function ContactsListPage() {
   );
 
   const { data, isLoading, isError, refetch } = useContactsQuery(filters);
+  const { data: stats, isLoading: isStatsLoading } = useDirectoryKpisQuery();
   const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
   const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const deleteMutation = useDeleteContactMutation();
@@ -159,6 +162,7 @@ export function ContactsListPage() {
         hasActiveFilters={hasActiveFilters}
         canCreate={can('contact', 'create')}
       />
+      <ContactListStats stats={stats} isLoading={isStatsLoading} />
 
       <ContactsTableCard
         table={table}

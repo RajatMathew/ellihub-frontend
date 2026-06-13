@@ -1,6 +1,7 @@
 import type { BadgeProps } from '@/app/components/ui/badge';
 
 export const ACTIVITY_ENTITY_OPTIONS = [
+  { value: 'user', label: 'User' },
   { value: 'contact', label: 'Contact' },
   { value: 'vendor', label: 'Vendor' },
   { value: 'gc', label: 'General Contractor' },
@@ -16,6 +17,7 @@ export const ACTIVITY_ENTITY_OPTIONS = [
   { value: 'primeChangeOrder', label: 'Prime Change Order' },
   { value: 'subChangeOrder', label: 'Sub Change Order' },
   { value: 'invoice', label: 'Invoice' },
+  { value: 'template', label: 'Template' },
 ] as const;
 
 export const ACTIVITY_ACTION_OPTIONS = [

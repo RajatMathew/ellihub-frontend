@@ -1,7 +1,7 @@
-import { toastApiError } from '@/app/lib/toast-api-error';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
-import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
+import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
 import { rfqApi } from '@/modules/project/api/rfq';
 import { rfqKeys } from '@/modules/project/constants/rfq';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -33,6 +33,13 @@ export const useRFQListQuery = (params: ListRFQParams) =>
     queryKey: [...rfqKeys.list(params.projectId || 'all'), params],
     queryFn: () => rfqApi.list(params),
     enabled: !!params.projectId,
+  });
+
+export const useRFQStatsQuery = (projectId: string) =>
+  useQuery({
+    queryKey: rfqKeys.stats(projectId),
+    queryFn: () => rfqApi.stats(projectId),
+    enabled: !!projectId,
   });
 
 export const useRFQStatusesQuery = () =>
@@ -153,10 +160,17 @@ export const useSubmitQuoteMutation = () => {
       data,
     }: {
       rfqId: string;
-      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+      data: {
+        id: string;
+        quotedAmount: number;
+        negotiationAmount?: number | null;
+        vendorCoupon?: boolean;
+        leadTime?: string;
+        attachments: string[];
+      };
     }) => rfqApi.submitQuote(data),
     onSuccess: async (_, { rfqId }) => {
-      await invalidateRFQQueries(qc, rfqId);
+      await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);
       toast.success('Quote submitted.');
     },
     onError: (err) => toastApiError(err, 'Failed to submit quote.'),
@@ -170,10 +184,17 @@ export const useEditQuoteMutation = () => {
       data,
     }: {
       rfqId: string;
-      data: { id: string; quotedAmount: number; leadTime?: string; attachments?: string[] };
+      data: {
+        id: string;
+        quotedAmount: number;
+        negotiationAmount?: number | null;
+        vendorCoupon?: boolean;
+        leadTime?: string;
+        attachments: string[];
+      };
     }) => rfqApi.editQuote(data),
     onSuccess: async (_, { rfqId }) => {
-      await invalidateRFQQueries(qc, rfqId);
+      await invalidateProjectQueries(qc, [rfqKeys.all, rfqKeys.detail(rfqId), filesKeys.all]);
       toast.success('Quote updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update quote.'),
@@ -321,7 +342,14 @@ export const useCancelRFQMutation = () => {
 export const useAwardRFQMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ quoteId }: { rfqId: string; quoteId: string }) => rfqApi.award(quoteId),
+    mutationFn: ({
+      quoteId,
+      negotiationAmount,
+    }: {
+      rfqId: string;
+      quoteId: string;
+      negotiationAmount?: number | null;
+    }) => rfqApi.award(quoteId, { negotiationAmount }),
     onSuccess: async (_, { rfqId }) => {
       await invalidateRFQQueries(qc, rfqId);
       toast.success('RFQ awarded.');

@@ -4,23 +4,24 @@ import {
   sanitizeDownloadName,
   type GeneratedPdfFile,
 } from '@/app/lib/generated-pdf';
-
 import {
-  scoPaginatedResponseSchema,
-  scoSummarySchema,
   scoChangeTypeSchema,
   scoDetailSchema,
   scoListItemSchema,
-  type ListSCOsParams,
-  type SCOPaginatedResponse,
-  type SCOSummary,
-  type SCOChangeType,
-  type SCODetail,
-  type SCOListItem,
+  scoPaginatedResponseSchema,
+  scoStatsSchema,
+  scoSummarySchema,
   type CreateSCOInput,
   type GenerateSCOPdfInput,
-  type UpdateSCOInput,
+  type ListSCOsParams,
+  type SCOChangeType,
+  type SCODetail,
   type SCOLineItemInput,
+  type SCOListItem,
+  type SCOPaginatedResponse,
+  type SCOStats,
+  type SCOSummary,
+  type UpdateSCOInput,
 } from '@/modules/project/schemas/sub-change-order';
 
 const LEGACY_BASE = '/sco';
@@ -66,6 +67,17 @@ export const scoApi = {
     const result = scoPaginatedResponseSchema.safeParse(raw);
     if (!result.success) {
       console.error('[scoApi.list] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async stats(projectId: string): Promise<SCOStats> {
+    const res = await api.get(`${LIST_BASE}/project/${projectId}/stats`);
+    const raw = res.data?.data ?? res.data;
+    const result = scoStatsSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[scoApi.stats] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

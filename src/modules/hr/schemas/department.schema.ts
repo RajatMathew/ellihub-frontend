@@ -68,6 +68,15 @@ export const departmentPaginatedResponseSchema = z.object({
 
 export type DepartmentPaginatedResponse = z.infer<typeof departmentPaginatedResponseSchema>;
 
+export const departmentStatsSchema = z.object({
+  totalDepartments: z.number(),
+  assignedEmployees: z.number(),
+  unassignedEmployees: z.number(),
+  emptyDepartments: z.number(),
+});
+
+export type DepartmentStats = z.infer<typeof departmentStatsSchema>;
+
 export const createDepartmentInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),

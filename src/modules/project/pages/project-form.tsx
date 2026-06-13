@@ -49,6 +49,7 @@ import {
   useCreateProjectMutation,
   useCreateScheduleEntryMutation,
   useDivisionsQuery,
+  useProjectContractTypesQuery,
   useProjectDetailQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
@@ -124,6 +125,7 @@ export default function ProjectForm() {
     !isEditMode || existingProject?.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
+  const contractTypesQuery = useProjectContractTypesQuery();
   const gcsQuery = useGCsQuery({ limit: 1000 });
   const employeesQuery = useEmployeesQuery(
     { size: 1000 },
@@ -143,6 +145,11 @@ export default function ProjectForm() {
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
+  const contractTypeOptions =
+    contractTypesQuery.data?.map((type) => {
+      const label = type.label || type.name || type.id;
+      return { value: label, label };
+    }) ?? [];
   const gcOptions =
     gcsQuery.data?.data?.map((gc) => ({
       value: gc.id,
@@ -850,14 +857,18 @@ export default function ProjectForm() {
                   render={({ field }) => (
                     <Field>
                       <ProjectFormFieldLabel>Contract Type</ProjectFormFieldLabel>
-                      <InputWrapper>
-                        <Input
-                          {...field}
-                          data-testid="project-contract-type-input"
-                          placeholder="e.g. Lump Sum, GMP"
-                          autoComplete="off"
-                        />
-                      </InputWrapper>
+                      <Select value={field.value || undefined} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="project-contract-type-select">
+                          <SelectValue placeholder="Select contract type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contractTypeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </Field>
                   )}
                 />

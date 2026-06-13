@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   sumRoundedLineAmountsDecimal,
   toCommercialDecimal,
@@ -9,6 +8,7 @@ import {
   quantitySchema,
   rateSchema,
 } from '@/modules/project/lib/commercial-validation';
+import { z } from 'zod';
 
 // --- Enums ---
 
@@ -180,6 +180,17 @@ export const poPaginatedResponseSchema = z.object({
 });
 
 export type POPaginatedResponse = z.infer<typeof poPaginatedResponseSchema>;
+
+export const poStatsSchema = z.object({
+  totalPurchaseOrders: z.number(),
+  draftPurchaseOrders: z.number(),
+  issuedPurchaseOrders: z.number(),
+  deliveredPurchaseOrders: z.number(),
+  cancelledPurchaseOrders: z.number(),
+  totalCommitted: z.coerce.number(),
+});
+
+export type POStats = z.infer<typeof poStatsSchema>;
 
 // --- List params ---
 

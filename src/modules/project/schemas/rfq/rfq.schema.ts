@@ -1,6 +1,9 @@
+import {
+  moneySchema,
+  quantitySchema,
+  rateSchema,
+} from '@/modules/project/lib/commercial-validation';
 import { z } from 'zod';
-
-import { moneySchema, quantitySchema, rateSchema } from '@/modules/project/lib/commercial-validation';
 
 /* ---- Shared / lookup schemas ---- */
 
@@ -69,6 +72,16 @@ export const rfqPaginatedResponseSchema = z.object({
 });
 
 export type RFQPaginatedResponse = z.infer<typeof rfqPaginatedResponseSchema>;
+
+export const rfqStatsSchema = z.object({
+  totalRfqs: z.number(),
+  draftRfqs: z.number(),
+  activeRfqs: z.number(),
+  awardedRfqs: z.number(),
+  voidRfqs: z.number(),
+});
+
+export type RFQStats = z.infer<typeof rfqStatsSchema>;
 
 /* ---- List query params ---- */
 
@@ -188,6 +201,8 @@ export const rfqQuoteSchema = z
     status: rfqStatusSchema.nullable().optional(),
     totalAmount: z.coerce.number().nullable().optional(),
     grandTotal: z.coerce.number().nullable().optional(),
+    negotiationAmount: z.coerce.number().nullable().optional(),
+    vendorCoupon: z.boolean().optional().default(false),
     isAwarded: z.boolean().optional(),
     notes: z.string().nullable().optional(),
     leadTimeDays: z.number().nullable().optional(),

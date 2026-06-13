@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
-import { StatsCard } from '@/app/components/ui/stats-card';
+import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
@@ -51,6 +51,7 @@ import {
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddInvoiceAttachmentMutation,
   useDisputeInvoiceMutation,
@@ -60,7 +61,6 @@ import {
   useRemoveInvoiceAttachmentMutation,
   useResolveDisputeInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
-import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useProjectEntityFolderQuery,
@@ -75,7 +75,6 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  CreditCard,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
@@ -258,6 +257,7 @@ export function InvoiceDetailPage() {
   const canDisputeInvoice = projectActions?.invoice?.dispute === true;
   const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
   const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
+  const canUploadInvoiceAttachment = projectActions?.invoice?.update === true;
   const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
   const totalAmount = invoiceAmount + taxAmount;
@@ -400,43 +400,48 @@ export function InvoiceDetailPage() {
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-            <StatsCard
-              icon={<Receipt className="size-5 text-primary" />}
-              bgClass="bg-primary/10"
+          <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 3, '2xl': 5 }}>
+            <StatsBarItem
+              variant="card"
               label="Invoice Amount"
               value={money(invoiceAmount)}
               description="Before tax"
+              dotColor="bg-primary"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Receipt className="size-5 text-info" />}
-              bgClass="bg-info/10"
+            <StatsBarItem
+              variant="card"
               label="Tax"
               value={money(taxAmount)}
               description={formatPercent(invoice.taxRate)}
+              dotColor="bg-info"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Receipt className="size-5 text-muted-foreground" />}
-              bgClass="bg-muted/60"
+            <StatsBarItem
+              variant="card"
               label="Total"
               value={money(totalAmount)}
               description="Amount + tax"
+              dotColor="bg-label-lighter"
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<CreditCard className="size-5 text-success" />}
-              bgClass="bg-success/10"
+            <StatsBarItem
+              variant="card"
               label="Payment"
               value={isPaid ? 'Paid' : 'Unpaid'}
               description={invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No payment recorded'}
+              dotColor={isPaid ? 'bg-success' : 'bg-warning'}
+              valueColor="text-foreground"
             />
-            <StatsCard
-              icon={<Calendar className="size-5 text-warning" />}
-              bgClass="bg-warning/10"
+            <StatsBarItem
+              variant="card"
               label="Due Date"
               value={dateOrDash(invoice.dueDate)}
               description={isPastDue ? 'Past due' : 'Payment due'}
+              dotColor={isPastDue ? 'bg-destructive' : 'bg-warning'}
+              valueColor="text-foreground"
             />
-          </div>
+          </StatsBar>
 
           {isDisputed && invoice.disputeReason && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
@@ -495,7 +500,7 @@ export function InvoiceDetailPage() {
 
               <ProjectDetailDocumentsCard
                 documents={attachments}
-                canUpload={canEditInvoice && !!invoiceUploadFolderId}
+                canUpload={canUploadInvoiceAttachment && !!invoiceUploadFolderId}
                 canRemove={canEditInvoice}
                 onUpload={() => setUploadOpen(true)}
                 onDownload={(document) => downloadFile.mutate(document)}
@@ -894,7 +899,7 @@ export function InvoiceDetailPage() {
         isPending={resolveDisputeMutation.isPending}
       />
 
-      {canEditInvoice && invoiceUploadFolderId && (
+      {canUploadInvoiceAttachment && invoiceUploadFolderId && (
         <UploadFileDialog
           open={uploadOpen}
           onOpenChange={setUploadOpen}

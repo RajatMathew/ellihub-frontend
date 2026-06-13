@@ -23,8 +23,8 @@ export function VendorDetailDialogs({
       title="Archive Vendor"
       description={
         <>
-          This will set <strong>{vendor.name}</strong> to inactive. Purchase orders and projects
-          referencing this vendor will keep their association. Are you sure?
+          This will archive <strong>{vendor.name}</strong>. Vendors linked to purchase orders, RFQs,
+          or sub change orders cannot be archived.
         </>
       }
       confirmLabel="Archive"
