@@ -1,6 +1,6 @@
 const PROJECT_STAGE_SWATCH_CLASSES: Array<[string, string]> = [
   ['INSTALLATION', 'bg-blue-600'],
-  ['FABRICATION', 'bg-amber-500'],
+  ['FABRICATION', 'bg-amber-600'],
   ['SUBMITTAL', 'bg-violet-600'],
   ['BUYOUT', 'bg-cyan-600'],
   ['CLOSEOUT', 'bg-slate-500'],

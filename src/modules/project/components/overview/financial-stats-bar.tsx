@@ -40,7 +40,7 @@ export function FinancialStatsBar({
       : `${approvedCOsCount} approved COs`;
 
   return (
-    <StatsBar variant="cards" width="full">
+    <StatsBar variant="cards" width="full" columns={{ base: 1, sm: 2, xl: 4 }}>
       <StatsBarItem
         variant="card"
         label="Original"

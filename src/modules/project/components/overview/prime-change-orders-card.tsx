@@ -1,12 +1,12 @@
-import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function getStatusVariant(status: string) {
   if (status === 'Approved') return 'success';
@@ -21,15 +21,17 @@ interface PrimeChangeOrdersCardProps {
   projectId: string;
   pcos: PrimeChangeOrder[];
   isLoading?: boolean;
+  className?: string;
 }
 
 export function PrimeChangeOrdersCard({
   projectId,
   pcos,
   isLoading = false,
+  className,
 }: PrimeChangeOrdersCardProps) {
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-xs font-semibold tracking-widest uppercase">
           Prime Change Orders
@@ -50,8 +52,8 @@ export function PrimeChangeOrdersCard({
                 key={pco.id}
                 className="flex flex-col gap-2 rounded-lg bg-muted/30 p-3 hover:bg-muted/50 transition-colors"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span className="shrink-0 text-xs font-mono text-muted-foreground">
                       {pco.referenceNumber ?? '-'}
                     </span>
@@ -64,7 +66,7 @@ export function PrimeChangeOrdersCard({
                       {pco.statusName}
                     </Badge>
                   </div>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums">
+                  <span className="ml-auto shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums">
                     {pco.totalCost == null ? '-' : formatCurrency(pco.totalCost)}
                   </span>
                 </div>

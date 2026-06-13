@@ -9,23 +9,19 @@ export function SidebarHeader() {
   const { sidebarToggle } = useLayout();
 
   return (
-    <div className="flex border-b border-border items-center gap-2 h-[calc(var(--header-height)-1px)]">
-      <div className="flex items-center w-full">
-        {/* Sidebar header */}
-        <div className="flex w-full grow items-center justify-between px-5 gap-2.5">
-          <>
-            <SidebarLogo />
-          </>
-          {/* Sidebar toggle */}
-          <Button
-            mode="icon"
-            variant="ghost"
-            onClick={sidebarToggle}
-            className="hidden lg:inline-flex text-muted-foreground hover:text-foreground"
-          >
-            <PanelRight className="opacity-100" />
-          </Button>
-        </div>
+    <div className="mb-1 mt-1 flex h-[calc(var(--header-height)-1px)] items-center">
+      <div className="flex w-full grow items-center justify-between gap-2.5 px-2.5">
+        <SidebarLogo />
+        <Button
+          aria-label="Collapse sidebar"
+          mode="icon"
+          size="md"
+          variant="ghost"
+          onClick={sidebarToggle}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <PanelRight className="opacity-100" />
+        </Button>
       </div>
     </div>
   );

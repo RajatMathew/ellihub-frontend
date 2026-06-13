@@ -43,12 +43,12 @@ export function ProjectSidebarSwitcher() {
   };
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5">
+    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5 py-2.5">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-lg border border-emerald-800/70 bg-emerald-950/75 px-3 py-2 text-emerald-50 shadow-none hover:border-emerald-700/80 hover:bg-emerald-900/70 hover:text-white"
+            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-lg border border-emerald-800/70 bg-emerald-950/75 px-3 py-2 text-emerald-50 shadow-none hover:border-emerald-700/80 hover:bg-emerald-900/70 hover:text-white data-[state=open]:border-emerald-700/80 data-[state=open]:bg-emerald-900/70 data-[state=open]:text-white"
           >
             <span
               className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-400"

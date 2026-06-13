@@ -56,6 +56,7 @@ export const lookupTypeSchema = z.enum([
   'PROJECT_STATUS',
   'PROJECT_DIVISION',
   'PROJECT_STAGE',
+  'PROJECT_CONTRACT_TYPE',
   'GC_TYPE',
   'PROFESSIONAL_ROLE',
   'PAYMENT_METHOD',

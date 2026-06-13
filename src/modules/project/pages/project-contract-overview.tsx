@@ -237,18 +237,19 @@ export default function ProjectContractOverview() {
         />
 
         {/* ---- Contract Details + Financial Summary + Budget ---- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <ContractDetailsSimpleCard project={project} />
           <FinancialSummarySimpleCard computations={computations} />
           <BudgetCard
             totalSpent={totalSpent}
             budgetLimit={computations.budgetLimit}
             targetBudgetPercent={computations.targetBudgetPercent}
+            className="md:col-span-2 xl:col-span-1"
           />
         </div>
 
         {/* ---- Contract Documents + Payments + Recent Activity ---- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <ContractDocumentsSimpleCard
             documents={docs}
             isLoading={isLoadingAttachments}
@@ -265,7 +266,12 @@ export default function ProjectContractOverview() {
             isSettingPrimary={setPrimeContractPrimaryMutation.isPending}
           />
           <PaymentsPlaceholderCard />
-          <PrimeChangeOrdersCard projectId={projectId} pcos={recentPCOs} isLoading={false} />
+          <PrimeChangeOrdersCard
+            projectId={projectId}
+            pcos={recentPCOs}
+            isLoading={false}
+            className="md:col-span-2 xl:col-span-1"
+          />
         </div>
 
         {/* ---- Team Dialog ---- */}

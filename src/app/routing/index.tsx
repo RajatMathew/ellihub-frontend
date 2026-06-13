@@ -43,17 +43,17 @@ export function AppRouting() {
 
   return (
     <>
-      <div className="bg-muted/20 lg:border-e lg:border-b lg:border-border grow min-w-0 lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:in-data-[help-open=true]:max-w-[calc(100vw-var(--sidebar-width)-var(--help-panel-width))] lg:in-data-[sidebar-open=false]:in-data-[help-open=true]:max-w-[calc(100vw-var(--sidebar-collapsed-width)-var(--help-panel-width))] lg:overflow-y-auto lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:in-data-[help-open=true]:me-(--help-panel-width) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
-        <main
-          className="grow min-w-0 lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto bg-muted/20"
-          role="content"
-        >
-          <HeaderRoutingSetup />
-          <ErrorBoundary>
-            <AppRoutingSetup />
-          </ErrorBoundary>
-        </main>
-      </div>
+          <div className="bg-main-background lg:border-e lg:border-b lg:border-border grow min-w-0 lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:overflow-y-auto lg:in-data-[sidebar-open=false]:border-s pt-(--header-height-mobile) lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
+      <main
+        className="grow min-w-0 lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))] overflow-auto bg-main-background"
+        role="content"
+      >
+        <HeaderRoutingSetup />
+        <ErrorBoundary>
+          <AppRoutingSetup />
+        </ErrorBoundary>
+      </main>
+    </div>
       <HelpCenterRail />
     </>
   );

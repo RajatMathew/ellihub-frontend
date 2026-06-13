@@ -27,7 +27,7 @@ import type {
   MailSignature,
 } from '@/modules/mail/schemas/mail.schema';
 import { featureMailDraftPayloadSchema } from '@/modules/mail/schemas/mail.schema';
-import { FileText, Info, Send, X } from 'lucide-react';
+import { FileText, Info, Send } from 'lucide-react';
 
 type EmailComposePreviewDialogProps = {
   open: boolean;
@@ -138,16 +138,6 @@ export function EmailComposePreviewForm({
     () => buildLocalPreview(draft, previewPayload),
     [draft, previewPayload]
   );
-  const selectedAttachments = useMemo(() => {
-    const attachmentById = new Map(
-      draft.attachments.map((attachment) => [attachment.id, attachment])
-    );
-
-    return form.attachmentIds.flatMap((id) => {
-      const attachment = attachmentById.get(id);
-      return attachment ? [attachment] : [];
-    });
-  }, [draft.attachments, form.attachmentIds]);
   const canSend = isPayloadValid && missingRecipientGroups.length === 0;
 
   async function handleSend() {
@@ -278,30 +268,35 @@ export function EmailComposePreviewForm({
               Attachments
             </div>
             <div className="space-y-2">
-              {selectedAttachments.length > 0 ? (
-                selectedAttachments.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center gap-2 text-sm">
-                    <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      mode="icon"
-                      className="size-7"
-                      aria-label={`Remove ${attachment.name}`}
-                      onClick={() =>
-                        setForm((current) => ({
-                          ...current,
-                          attachmentIds: current.attachmentIds.filter((id) => id !== attachment.id),
-                        }))
-                      }
+              {draft.attachments.length > 0 ? (
+                draft.attachments.map((attachment) => {
+                  const checked = form.attachmentIds.includes(attachment.id);
+
+                  return (
+                    <label
+                      key={attachment.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-background"
                     >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))
+                      <Checkbox
+                        checked={checked}
+                        disabled={isSending}
+                        onCheckedChange={(nextChecked) =>
+                          setForm((current) => ({
+                            ...current,
+                            attachmentIds:
+                              nextChecked === true
+                                ? Array.from(new Set([...current.attachmentIds, attachment.id]))
+                                : current.attachmentIds.filter((id) => id !== attachment.id),
+                          }))
+                        }
+                      />
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
+                    </label>
+                  );
+                })
               ) : (
-                <div className="text-sm text-muted-foreground">No attachments selected.</div>
+                <div className="text-sm text-muted-foreground">No attachments available.</div>
               )}
             </div>
           </div>
