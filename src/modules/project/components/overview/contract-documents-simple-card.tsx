@@ -8,6 +8,7 @@ import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
+import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
@@ -15,6 +16,7 @@ import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 import { FileText, Pin, PinOff, Star, StarOff, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface ContractDocumentsSimpleCardProps {
   documents: ContractAttachment[];
@@ -59,6 +61,15 @@ export function ContractDocumentsSimpleCard({
     const fileItem = await uploadMutation.mutateAsync(payload);
     await onUploadAndPin?.(fileItem.id);
     setUploadOpen(false);
+  };
+
+  const handlePreviewDocument = (file: FilePreviewItem) => {
+    if (file.deletedAt) {
+      toast.error('This file no longer exists or has been deleted.');
+      return;
+    }
+
+    setPreviewFile(file);
   };
 
   return (
@@ -111,13 +122,24 @@ export function ContractDocumentsSimpleCard({
 
               return (
                 <div key={att.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-                  <FileText className="size-4 text-muted-foreground shrink-0" />
+                  <FileTypeIcon
+                    fileType={document?.type ?? 'FILE'}
+                    mimeType={document?.mimeType}
+                    fileName={documentName}
+                    className="size-4 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     {document?.id ? (
                       <button
                         type="button"
                         className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                        onClick={() => setPreviewFile(document)}
+                        aria-label={`Open preview for ${documentName}`}
+                        title={
+                          document?.deletedAt
+                            ? 'This file no longer exists or has been deleted.'
+                            : 'Open preview'
+                        }
+                        onClick={() => handlePreviewDocument(document)}
                       >
                         {documentName}
                       </button>
@@ -145,11 +167,7 @@ export function ContractDocumentsSimpleCard({
                           }
                           onClick={() => onSetPrimary(att.id, !isPrimary)}
                         >
-                          {isPrimary ? (
-                            <StarOff className="size-4" />
-                          ) : (
-                            <Star className="size-4" />
-                          )}
+                          {isPrimary ? <StarOff className="size-4" /> : <Star className="size-4" />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>

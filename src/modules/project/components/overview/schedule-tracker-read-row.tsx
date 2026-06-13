@@ -1,6 +1,7 @@
 import { Button } from '@/app/components/ui/button';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatDate } from '@/app/lib/helpers';
+import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { formatSchedulePrimeChangeOrderLabel } from '@/modules/project/components/overview/schedule-tracker-types';
 import type {
   ProjectScheduleEntry,
@@ -13,8 +14,8 @@ interface ScheduleTrackerReadRowProps {
   isDeleting: boolean;
   isReadOnly?: boolean;
   onDelete: (entryId: string) => void;
-  onDownload: (file: ScheduleFile) => void;
   onEdit: (entry: ProjectScheduleEntry) => void;
+  onPreview: (file: ScheduleFile) => void;
 }
 
 export function ScheduleTrackerReadRow({
@@ -22,11 +23,12 @@ export function ScheduleTrackerReadRow({
   isDeleting,
   isReadOnly = false,
   onDelete,
-  onDownload,
   onEdit,
+  onPreview,
 }: ScheduleTrackerReadRowProps) {
   const file = entry.file;
   const isFileDeleted = !!file?.deletedAt;
+  const fileName = file?.displayName || file?.name || 'Document';
   const primeChangeOrderLabel = entry.primeChangeOrder
     ? formatSchedulePrimeChangeOrderLabel(entry.primeChangeOrder)
     : entry.primeChangeOrderId
@@ -56,19 +58,28 @@ export function ScheduleTrackerReadRow({
         </span>
       </TableCell>
       <TableCell>
-        {file?.name ? (
+        {file?.id ? (
           <button
             type="button"
-            className={`inline-block max-w-full truncate text-xs hover:underline ${
+            className={`inline-flex max-w-full items-center gap-1.5 text-xs hover:underline ${
               isFileDeleted ? 'text-destructive' : 'text-primary'
             }`}
-            title={isFileDeleted ? 'This file no longer exists or has been deleted.' : file.name}
+            aria-label={`Open preview for ${fileName}`}
+            title={
+              isFileDeleted ? 'This file no longer exists or has been deleted.' : 'Open preview'
+            }
             onClick={(event) => {
               event.stopPropagation();
-              onDownload(file);
+              onPreview(file);
             }}
           >
-            {file.name}
+            <FileTypeIcon
+              fileType={file.type ?? 'FILE'}
+              mimeType={file.mimeType}
+              fileName={fileName}
+              className="size-3.5 shrink-0"
+            />
+            <span className="truncate">{fileName}</span>
           </button>
         ) : (
           <span className="text-muted-foreground">-</span>

@@ -153,7 +153,7 @@ export function ScheduleTrackerCard({
     setUploadTarget(null);
   };
 
-  const handlePreview = (file: ScheduleFile) => {
+  const handlePreviewFile = (file: ScheduleFile) => {
     if (file.deletedAt) {
       toast.error('This file no longer exists or has been deleted.');
       return;
@@ -204,13 +204,13 @@ export function ScheduleTrackerCard({
         onChangeAdd={setNewEntry}
         onChangeEdit={(id, draft) => setEditingEntry({ id, draft })}
         onDelete={(id) => void deleteMutation.mutateAsync({ projectId, id })}
-        onDownload={handlePreview}
         onEdit={(entry) =>
           setEditingEntry({
             id: entry.id,
             draft: createScheduleTrackerDraftFromEntry(entry),
           })
         }
+        onPreview={handlePreviewFile}
         onSaveAdd={() => void handleAddEntry()}
         onSaveEdit={() => void handleSaveEdit()}
       />
