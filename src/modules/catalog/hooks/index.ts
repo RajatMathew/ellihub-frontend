@@ -1,11 +1,6 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
-import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
+import { costCodesApi, type CostCodeCountFilters } from '@/modules/catalog/api/costcodes.api';
 import { costCodeCategoriesKeys } from '@/modules/catalog/constants/costcode-categories.keys';
 import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import type {
@@ -19,6 +14,10 @@ import {
   type CostCodeCreate,
   type CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 /* ---- category queries ---- */
 export const useCostCodeCategoriesQuery = () =>
@@ -63,6 +62,12 @@ export const useCostCodesQuery = (filters?: CostCodeFilters) =>
   useQuery({
     queryKey: [...costCodesKeys.list(), filters],
     queryFn: () => costCodesApi.list(filters),
+  });
+
+export const useCostCodeCountQuery = (filters?: CostCodeCountFilters) =>
+  useQuery({
+    queryKey: costCodesKeys.count(filters),
+    queryFn: () => costCodesApi.count(filters),
   });
 
 /* ---- cost code mutations ---- */

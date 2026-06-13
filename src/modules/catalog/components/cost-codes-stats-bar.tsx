@@ -1,13 +1,12 @@
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
-import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 import type { UseQueryResult } from '@tanstack/react-query';
 
 interface CostCodesStatsBarProps {
   totalCount: number;
   categories: CostCodeCategory[];
-  categoryCountQueries: UseQueryResult<{ data: CostCode[]; count: number }>[];
+  categoryCountQueries: UseQueryResult<number>[];
   isLoading?: boolean;
   className?: string;
 }
@@ -58,7 +57,7 @@ export function CostCodesStatsBar({
           variant="card"
           key={cat.id}
           label={cat.name}
-          value={(categoryCountQueries[i]?.data?.count ?? 0).toString()}
+          value={(categoryCountQueries[i]?.data ?? 0).toString()}
           description={cat.description ?? 'Category'}
           dotColor="bg-primary"
           valueColor="text-foreground"

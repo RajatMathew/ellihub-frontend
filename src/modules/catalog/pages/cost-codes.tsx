@@ -11,6 +11,7 @@ import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-d
 import { costCodesKeys } from '@/modules/catalog/constants/costcodes.keys';
 import {
   useCostCodeCategoriesQuery,
+  useCostCodeCountQuery,
   useCostCodesQuery,
   useCreateCostCodeMutation,
   useDeleteCostCodeMutation,
@@ -51,6 +52,7 @@ export function CostCodesListPage() {
     search: searchQuery || undefined,
     costCodeCategoryId: categoryFilter,
   });
+  const { data: totalCostCodesCount, isLoading: isTotalCostCodesLoading } = useCostCodeCountQuery();
   const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
   const deleteMutation = useDeleteCostCodeMutation();
   const createMutation = useCreateCostCodeMutation();
@@ -62,16 +64,19 @@ export function CostCodesListPage() {
 
   const categoryCountQueries = useQueries({
     queries: categories.slice(0, 4).map((cat) => ({
-      queryKey: [...costCodesKeys.list(), { costCodeCategoryId: cat.id, size: 1 }],
-      queryFn: () => costCodesApi.list({ costCodeCategoryId: cat.id, page: 1, size: 1 }),
+      queryKey: costCodesKeys.count({ costCodeCategoryId: cat.id }),
+      queryFn: () => costCodesApi.count({ costCodeCategoryId: cat.id }),
     })),
   });
 
   const listData = data?.data ?? [];
   const totalCount = data?.count ?? 0;
   const hasActiveFilters = !!searchQuery || !!categoryFilter;
+  const totalStatsCount = totalCostCodesCount ?? (!hasActiveFilters ? totalCount : 0);
   const isStatsLoading =
-    isFetching || isCategoriesLoading || categoryCountQueries.some((query) => query.isLoading);
+    isTotalCostCodesLoading ||
+    isCategoriesLoading ||
+    categoryCountQueries.some((query) => query.isLoading);
 
   const columns = useCostCodeColumns({
     onEdit: setEditingCostCode,
@@ -115,7 +120,7 @@ export function CostCodesListPage() {
       />
 
       <CostCodesStatsBar
-        totalCount={totalCount}
+        totalCount={totalStatsCount}
         categories={categories}
         categoryCountQueries={categoryCountQueries}
         isLoading={isStatsLoading}

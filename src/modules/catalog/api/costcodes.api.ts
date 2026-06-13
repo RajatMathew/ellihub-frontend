@@ -9,6 +9,8 @@ import {
 
 const BASE = '/cost-code';
 
+export type CostCodeCountFilters = Pick<CostCodeFilters, 'costCodeCategoryId' | 'search'>;
+
 export const costCodesApi = {
   async list(filters?: CostCodeFilters): Promise<{ data: CostCode[]; count: number }> {
     const params: Record<string, unknown> = {};
@@ -26,6 +28,12 @@ export const costCodesApi = {
         res.data?.count ??
         (Array.isArray(res.data?.data) ? res.data.pagination.totalItems : (res.data?.count ?? 0)),
     });
+  },
+
+  async count(filters?: CostCodeCountFilters): Promise<number> {
+    const result = await this.list({ ...filters, page: 1, size: 1 });
+
+    return result.count;
   },
 
   async get(id: string): Promise<CostCode> {
