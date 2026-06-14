@@ -48,8 +48,8 @@ export function MonthlyBillsFilters({
   onClearFilters,
 }: MonthlyBillsFiltersProps) {
   return (
-    <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
-      <InputWrapper variant="sm" className="w-full sm:w-60">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
+      <InputWrapper variant="sm" className="w-full xl:w-64">
         <Search className="size-4" />
         <Input
           placeholder="Search PO #, vendor, or project..."
@@ -58,7 +58,7 @@ export function MonthlyBillsFilters({
         />
       </InputWrapper>
 
-      <div className="w-full sm:w-56">
+      <div className="w-full xl:w-56">
         <InfiniteMultiSearchSelect
           options={vendorPicker.options}
           value={vendorIds}
@@ -75,7 +75,7 @@ export function MonthlyBillsFilters({
         />
       </div>
 
-      <div className="w-full sm:w-56">
+      <div className="w-full xl:w-56">
         <InfiniteMultiSearchSelect
           options={tradeCategoryOptions}
           value={tradeCategoryIds}
@@ -89,7 +89,12 @@ export function MonthlyBillsFilters({
       </div>
 
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-full text-xs sm:w-auto"
+          onClick={onClearFilters}
+        >
           <X className="size-3.5" />
           Clear
         </Button>

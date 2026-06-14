@@ -1,5 +1,6 @@
-import { Card } from '@/app/components/ui/card';
-import { formatMonthlyBillMonthNumber } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { format } from 'date-fns';
+import { ClipboardList } from 'lucide-react';
 
 interface MonthlyBillsTabPageProps {
   title: string;
@@ -9,13 +10,20 @@ interface MonthlyBillsTabPageProps {
 /** Placeholder section for tabs (Recurring / Material / Summary) not yet implemented. */
 export function MonthlyBillsTabPage({ title, selectedDate }: MonthlyBillsTabPageProps) {
   return (
-    <Card className="space-y-3 p-6">
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-      <div className="space-y-1 text-sm text-muted-foreground">
-        <p>
-          month: {formatMonthlyBillMonthNumber(selectedDate)}, year: {selectedDate.getFullYear()}
-        </p>
-      </div>
+    <Card>
+      <CardContent>
+        <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex size-11 items-center justify-center rounded-md bg-muted">
+            <ClipboardList className="size-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">
+              No bills configured for {format(selectedDate, 'MMMM yyyy')}.
+            </p>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -30,7 +30,7 @@ export function SubChangeOrdersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Sub Change Orders</DialogTitle>
           <DialogDescription>
@@ -40,9 +40,12 @@ export function SubChangeOrdersDialog({
         </DialogHeader>
 
         <DialogBody>
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="divide-y divide-border rounded-md border border-border">
             {subChangeOrders.map((sco) => (
-              <li key={sco.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <li
+                key={sco.id}
+                className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <Link
                   to={`/app/project/${projectId}/sub-change-order/${sco.id}`}
                   target="_blank"
@@ -59,7 +62,7 @@ export function SubChangeOrdersDialog({
             ))}
           </ul>
 
-          <div className="mt-4 flex items-center justify-between px-1 text-sm font-semibold text-foreground">
+          <div className="mt-4 flex items-center justify-between gap-3 px-1 text-sm font-semibold text-foreground">
             <span>Total</span>
             <span>{formatCurrency(total)}</span>
           </div>

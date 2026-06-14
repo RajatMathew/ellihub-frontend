@@ -1,23 +1,33 @@
+import { useState } from 'react';
+
 import { NumberInput } from '@/app/components/ui/number-input';
 import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
+import { cn } from '@/app/lib/utils';
 import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
 import { SubChangeOrdersDialog } from '@/modules/monthly-bills/components/sub-change-orders-dialog';
 import type {
   MonthlyBillItem,
   MonthlyBillSubChangeOrder,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { useState } from 'react';
 
 interface ToPayCellProps {
   value: number;
   poNumber: string;
   disabled?: boolean;
+  className?: string;
   onChange: (value: number) => void;
   onCommit: (value: number) => void;
 }
 
 /** To Pay input. Updates the row total immediately, but debounces the API save. */
-export function ToPayCell({ value, poNumber, disabled, onChange, onCommit }: ToPayCellProps) {
+export function ToPayCell({
+  value,
+  poNumber,
+  disabled,
+  className,
+  onChange,
+  onCommit,
+}: ToPayCellProps) {
   const debouncedCommit = useDebouncedCallback(onCommit, 600);
 
   return (
@@ -31,7 +41,7 @@ export function ToPayCell({ value, poNumber, disabled, onChange, onCommit }: ToP
       min={0}
       disabled={disabled}
       aria-label={`To pay for ${poNumber}`}
-      className="ml-auto h-8 w-24 text-right"
+      className={cn('ml-auto h-8 w-24 text-right', className)}
     />
   );
 }

@@ -18,24 +18,60 @@ export function MonthlyBillsTableHeader({
     <TableHeader>
       <TableRow className="hover:bg-transparent">
         {/* Chevron expand/collapse column */}
-        <TableHead className="h-10 w-12" />
-        {show('poNumber') && <TableHead className="h-10 min-w-44">PO #</TableHead>}
-        {show('issueDate') && <TableHead className="h-10 min-w-28">PO Issue Date</TableHead>}
-        {show('vendor') && <TableHead className="h-10 min-w-32">Vendor</TableHead>}
+        <TableHead className="h-10 w-12 text-xs font-semibold uppercase tracking-normal" />
+        {show('poNumber') && (
+          <TableHead className="h-10 min-w-44 text-xs font-semibold uppercase tracking-normal">
+            PO #
+          </TableHead>
+        )}
+        {show('issueDate') && (
+          <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
+            PO Issue Date
+          </TableHead>
+        )}
+        {show('vendor') && (
+          <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
+            Vendor
+          </TableHead>
+        )}
         {show('payments') && (
-          <TableHead className="h-10 min-w-40">Payments in {monthName}</TableHead>
+          <TableHead className="h-10 min-w-40 text-xs font-semibold uppercase tracking-normal">
+            Payments in {monthName}
+          </TableHead>
         )}
         {show('paidThisMonth') && (
-          <TableHead className="h-10 min-w-28 text-right">Paid This Month</TableHead>
+          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+            Paid This Month
+          </TableHead>
         )}
-        {show('original') && <TableHead className="h-10 min-w-28 text-right">Original</TableHead>}
+        {show('original') && (
+          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+            Original
+          </TableHead>
+        )}
         {show('totalPaid') && (
-          <TableHead className="h-10 min-w-28 text-right">Total Paid</TableHead>
+          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+            Total Paid
+          </TableHead>
         )}
-        {show('balance') && <TableHead className="h-10 min-w-28 text-right">Balance</TableHead>}
-        {show('toPay') && <TableHead className="h-10 min-w-28 text-right">To Pay</TableHead>}
-        {show('ready') && <TableHead className="h-10 w-20 text-center">Ready</TableHead>}
-        {canMarkPayment && <TableHead className="h-10 min-w-40 text-center" />}
+        {show('balance') && (
+          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+            Balance
+          </TableHead>
+        )}
+        {show('toPay') && (
+          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+            To Pay
+          </TableHead>
+        )}
+        {show('ready') && (
+          <TableHead className="h-10 w-20 text-center text-xs font-semibold uppercase tracking-normal">
+            Ready
+          </TableHead>
+        )}
+        {canMarkPayment && (
+          <TableHead className="h-10 min-w-40 text-center text-xs font-semibold uppercase tracking-normal" />
+        )}
       </TableRow>
     </TableHeader>
   );

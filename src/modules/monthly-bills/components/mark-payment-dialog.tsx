@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -17,10 +19,10 @@ import {
   useQuickBooksVendorsQuery,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
 import { MarkPaymentReferenceSelect } from '@/modules/monthly-bills/components/mark-payment-reference-select';
-import { MarkPaymentVendorField } from '@/modules/monthly-bills/components/mark-payment-vendor-field';
-import { findVendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
 import { MarkPaymentSummary } from '@/modules/monthly-bills/components/mark-payment-summary';
+import { MarkPaymentVendorField } from '@/modules/monthly-bills/components/mark-payment-vendor-field';
 import { useMarkPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
+import { findVendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
 import {
   markPaymentFormSchema,
   type MarkPaymentFormData,
@@ -29,7 +31,6 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { CreditCard } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 interface MarkPaymentDialogProps {
@@ -95,7 +96,7 @@ export function MarkPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Mark Payment</DialogTitle>
           <DialogDescription>
@@ -114,7 +115,7 @@ export function MarkPaymentDialog({
               />
 
               {!isReady && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
                   Mark the bill as <span className="font-semibold">Ready</span> before recording a
                   payment.
                 </div>
@@ -150,7 +151,9 @@ export function MarkPaymentDialog({
                 <div className="space-y-1.5">
                   <Label htmlFor="mark-payment-paid-date">Paid Date</Label>
                   <Input id="mark-payment-paid-date" value={paymentDate} readOnly disabled />
-                  <p className="text-xs text-muted-foreground">Stamped automatically when posted.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Stamped automatically when posted.
+                  </p>
                 </div>
               </div>
             </DialogBody>

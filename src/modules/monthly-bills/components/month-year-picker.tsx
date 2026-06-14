@@ -75,7 +75,7 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
   };
 
   return (
-    <div className="flex w-fit items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-1 shadow-sm">
+    <div className="flex w-fit items-center gap-0.5 rounded-md border border-border bg-background px-1 py-1 shadow-sm">
       <button
         type="button"
         onClick={() => go(-1)}

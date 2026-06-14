@@ -15,7 +15,7 @@ export function MarkPaymentSummary({
   balance,
 }: MarkPaymentSummaryProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <SummaryItem label="Amount" value={formatCurrency(amount)} emphasize />
       <SummaryItem label="Payee" value={vendorName} />
       <SummaryItem label="PO" value={poNumber} />

@@ -20,10 +20,7 @@ import {
   getMonthlyBillDateFromSearch,
   getMonthlyBillMonthSearch,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
-import {
-  MonthlyBillsSubcontractorPage,
-  MonthlyBillsTabPage,
-} from '@/modules/monthly-bills/pages';
+import { MonthlyBillsSubcontractorPage, MonthlyBillsTabPage } from '@/modules/monthly-bills/pages';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 
 export default function MonthlyBillsRoute() {
@@ -50,13 +47,16 @@ export default function MonthlyBillsRoute() {
   if (!canAccess) return <Forbidden />;
 
   return (
-    <div className="container-fluid py-4">
-      <Toolbar className="-mt-4 mb-4 gap-3 pb-3 pt-4">
+    <div className="container-fluid py-7.5">
+      <Toolbar className="gap-4">
         <ToolbarWrapper>
-          <ToolbarHeading className="gap-2 lg:gap-2">
+          <ToolbarHeading className="gap-2">
             <ToolbarPageTitle>Monthly Bills</ToolbarPageTitle>
+            <span className="text-sm text-muted-foreground">
+              Outstanding purchase order bills by billing period
+            </span>
           </ToolbarHeading>
-          <ToolbarActions>
+          <ToolbarActions className="w-full justify-start sm:w-auto sm:justify-end">
             <MonthYearPicker date={selectedDate} onChange={handleMonthChange} />
           </ToolbarActions>
         </ToolbarWrapper>
@@ -64,26 +64,28 @@ export default function MonthlyBillsRoute() {
         <MonthlyBillsTabs selectedDate={selectedDate} />
       </Toolbar>
 
-      <Routes>
-        <Route index element={<Navigate to={defaultTabPath} replace />} />
-        {MONTHLY_BILL_TABS.map((tab) => (
-          <Route
-            key={tab.path}
-            path={tab.path}
-            element={
-              tab.path === 'subcontractor' ? (
-                <MonthlyBillsSubcontractorPage
-                  selectedDate={selectedDate}
-                  enabled={canAccess && !isLoading}
-                />
-              ) : (
-                <MonthlyBillsTabPage title={tab.pageTitle} selectedDate={selectedDate} />
-              )
-            }
-          />
-        ))}
-        <Route path="*" element={<Navigate to={defaultTabPath} replace />} />
-      </Routes>
+      <div className="min-w-0">
+        <Routes>
+          <Route index element={<Navigate to={defaultTabPath} replace />} />
+          {MONTHLY_BILL_TABS.map((tab) => (
+            <Route
+              key={tab.path}
+              path={tab.path}
+              element={
+                tab.path === 'subcontractor' ? (
+                  <MonthlyBillsSubcontractorPage
+                    selectedDate={selectedDate}
+                    enabled={canAccess && !isLoading}
+                  />
+                ) : (
+                  <MonthlyBillsTabPage title={tab.pageTitle} selectedDate={selectedDate} />
+                )
+              }
+            />
+          ))}
+          <Route path="*" element={<Navigate to={defaultTabPath} replace />} />
+        </Routes>
+      </div>
     </div>
   );
 }

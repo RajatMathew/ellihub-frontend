@@ -29,7 +29,7 @@ export function MonthlyBillsColumnToggle({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="shrink-0">
+        <Button type="button" variant="outline" size="sm" className="w-full shrink-0 sm:w-auto">
           <Columns3 className="size-3.5" />
           Columns
           {hiddenCount > 0 && (

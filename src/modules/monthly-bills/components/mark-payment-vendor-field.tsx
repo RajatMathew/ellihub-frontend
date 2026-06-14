@@ -33,7 +33,7 @@ export function MarkPaymentVendorField({
       name="qbVendorId"
       render={({ field }) =>
         vendorMatch ? (
-          <FormItem className="space-y-2.5 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <FormItem className="space-y-2.5 rounded-md border border-warning/40 bg-warning/10 p-4">
             <p className="text-sm font-semibold text-foreground">Confirm QuickBooks vendor</p>
             <p className="text-xs text-muted-foreground">
               ElliHub vendor &ldquo;{vendorName}&rdquo; looks similar to an existing QuickBooks
@@ -67,9 +67,7 @@ export function MarkPaymentVendorField({
             <Select value={field.value} onValueChange={field.onChange}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={isLoading ? 'Loading…' : 'Select QuickBooks vendor'}
-                  />
+                  <SelectValue placeholder={isLoading ? 'Loading…' : 'Select QuickBooks vendor'} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>

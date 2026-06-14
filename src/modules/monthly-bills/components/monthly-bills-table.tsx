@@ -1,4 +1,3 @@
-import { Card, CardContent } from '@/app/components/ui/card';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { MonthlyBillsProjectCard } from '@/modules/monthly-bills/components/monthly-bills-project-card';
 import { MonthlyBillsTableSkeleton } from '@/modules/monthly-bills/components/monthly-bills-table-skeleton';
@@ -32,7 +31,9 @@ export function MonthlyBillsTable({
 }: MonthlyBillsTableProps) {
   if (isError) {
     return (
-      <QueryErrorState title="Failed to load monthly bills" onRetry={onRetry} />
+      <div className="border-t p-4 sm:p-5">
+        <QueryErrorState title="Failed to load monthly bills" onRetry={onRetry} />
+      </div>
     );
   }
 
@@ -51,7 +52,7 @@ export function MonthlyBillsTable({
   }
 
   return (
-    <div className="space-y-5">
+    <div>
       {groups.map((group) => (
         <MonthlyBillsProjectCard
           key={getProjectCardKey(group, selectedDate)}
@@ -68,16 +69,18 @@ export function MonthlyBillsTable({
 
 function MonthlyBillsEmptyState() {
   return (
-    <Card className="overflow-hidden">
-      <CardContent>
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <ClipboardList className="size-10 text-muted-foreground/50" />
+    <div className="border-t px-4 py-12 sm:px-5">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="flex size-11 items-center justify-center rounded-md bg-muted">
+          <ClipboardList className="size-5 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
           <p className="text-sm font-medium">No monthly bills</p>
           <p className="text-xs text-muted-foreground">
             Unpaid purchase orders for this period will appear here once available.
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

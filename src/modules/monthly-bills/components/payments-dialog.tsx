@@ -22,7 +22,7 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Payments</DialogTitle>
           <DialogDescription>
@@ -31,9 +31,12 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
         </DialogHeader>
 
         <DialogBody>
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="divide-y divide-border rounded-md border border-border">
             {payments.map((payment) => (
-              <li key={payment.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <li
+                key={payment.id}
+                className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-foreground">
                     {payment.amount !== undefined ? formatCurrency(payment.amount) : '—'}
@@ -67,7 +70,7 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
             ))}
           </ul>
 
-          <div className="mt-4 flex items-center justify-between px-1 text-sm font-semibold text-foreground">
+          <div className="mt-4 flex items-center justify-between gap-3 px-1 text-sm font-semibold text-foreground">
             <span>Total</span>
             <span>{formatCurrency(total)}</span>
           </div>
