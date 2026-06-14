@@ -75,10 +75,12 @@ export function MonthlyBillsProjectCard({
       group.bills.reduce(
         (acc, bill) => {
           acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
+          acc.original += bill.original;
           acc.totalPaid += bill.totalPaid;
+          acc.balance += bill.balance;
           return acc;
         },
-        { paidThisMonth: 0, totalPaid: 0 }
+        { paidThisMonth: 0, original: 0, totalPaid: 0, balance: 0 }
       ),
     [group.bills, selectedDate]
   );

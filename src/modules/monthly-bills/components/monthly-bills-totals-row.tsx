@@ -8,7 +8,9 @@ import {
 
 interface MonthlyBillsTotals {
   paidThisMonth: number;
+  original: number;
   totalPaid: number;
+  balance: number;
   toPay: number;
 }
 
@@ -31,7 +33,9 @@ export function MonthlyBillsTotalsRow({
   const valueByColumn: Record<string, number> = {
     payments: totals.paidThisMonth,
     paidThisMonth: totals.paidThisMonth,
+    original: totals.original,
     totalPaid: totals.totalPaid,
+    balance: totals.balance,
     toPay: totals.toPay,
   };
   const labelColumnKey =
