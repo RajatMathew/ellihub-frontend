@@ -38,7 +38,7 @@ export function MonthlyBillsTableSkeleton({
 }: MonthlyBillsTableSkeletonProps) {
   const monthName = format(selectedDate, 'MMMM');
   const columns = MONTHLY_BILL_COLUMNS.filter((column) => visibleColumns.has(column.key));
-  const hasActions = canUpdateBills || canMarkPayment;
+  const hasActions = canMarkPayment;
 
   return (
     <div>

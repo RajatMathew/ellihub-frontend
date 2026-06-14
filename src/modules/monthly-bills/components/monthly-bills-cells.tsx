@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { Button } from '@/app/components/ui/button';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { cn } from '@/app/lib/utils';
 import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
@@ -8,35 +9,97 @@ import type {
   MonthlyBillItem,
   MonthlyBillSubChangeOrder,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import { Loader2, Pencil, Save } from 'lucide-react';
 
 interface ToPayCellProps {
   value: number;
   poNumber: string;
-  disabled?: boolean;
+  canEdit?: boolean;
+  isBulkEditing?: boolean;
+  isEditing?: boolean;
+  isSaving?: boolean;
+  hasChanges?: boolean;
   className?: string;
+  inputClassName?: string;
   onChange: (value: number) => void;
+  onEdit?: () => void;
+  onSave?: () => void;
 }
 
 /** To Pay input. Updates the row draft immediately; callers decide when to save it. */
 export function ToPayCell({
   value,
   poNumber,
-  disabled,
+  canEdit = false,
+  isBulkEditing = false,
+  isEditing = false,
+  isSaving = false,
+  hasChanges = false,
   className,
+  inputClassName,
   onChange,
+  onEdit,
+  onSave,
 }: ToPayCellProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputEnabled = canEdit && (isBulkEditing || isEditing) && !isSaving;
+  const showInlineAction = canEdit && !isBulkEditing;
+
+  useEffect(() => {
+    if (!inputEnabled || !isEditing || isBulkEditing) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [inputEnabled, isBulkEditing, isEditing]);
+
   return (
-    <NumberInput
-      value={value}
-      onValueChange={(next) => {
-        onChange(next);
-      }}
-      decimalPlaces={2}
-      min={0}
-      disabled={disabled}
-      aria-label={`To pay for ${poNumber}`}
-      className={cn('ml-auto h-8 w-24 text-right', className)}
-    />
+    <div className={cn('ml-auto flex items-center justify-end gap-1', className)}>
+      <NumberInput
+        ref={inputRef}
+        value={value}
+        onValueChange={(next) => {
+          onChange(next);
+        }}
+        decimalPlaces={2}
+        min={0}
+        disabled={!inputEnabled}
+        aria-label={`To pay for ${poNumber}`}
+        className={cn('h-8 w-24 text-right', hasChanges && 'border-primary/60', inputClassName)}
+      />
+      {showInlineAction &&
+        (isEditing ? (
+          <Button
+            type="button"
+            mode="icon"
+            size="sm"
+            disabled={isSaving}
+            onClick={onSave}
+            aria-label={`Save to pay amount for ${poNumber}`}
+          >
+            {isSaving ? (
+              <Loader2 className="size-3.5 animate-spin text-white!" />
+            ) : (
+              <Save className="size-3.5 text-white!" />
+            )}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            mode="icon"
+            size="sm"
+            disabled={isSaving}
+            onClick={onEdit}
+            aria-label={`Edit to pay amount for ${poNumber}`}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        ))}
+    </div>
   );
 }
 

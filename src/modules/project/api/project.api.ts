@@ -6,31 +6,40 @@ import {
   fieldwireProjectOptionSchema,
   projectDetailSchema,
   projectPaginatedResponseSchema,
+  projectStatsSchema,
   type CreateProjectInput,
   type FieldwireProjectOption,
   type ListProjectsParams,
   type ProjectDetail,
   type ProjectPaginatedResponse,
+  type ProjectStats,
   type UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
 
 const BASE = '/project';
 
+const buildListQuery = (params?: ListProjectsParams) => {
+  const query: Record<string, string | number> = {};
+  const status = params?.status ?? params?.statusId;
+
+  if (params?.page != null) query.page = params.page;
+  if (params?.size != null) query.size = params.size;
+  if (params?.sortBy) query.sortBy = params.sortBy;
+  if (params?.sortOrder) query.sortOrder = params.sortOrder;
+  if (params?.search) query.search = params.search;
+  if (status) query.status = status;
+  if (params?.division) query.division = params.division;
+  if (params?.stageId) query.stageId = params.stageId;
+  if (params?.gcId) query.gcId = params.gcId;
+  if (params?.leadPMId) query.leadPMId = params.leadPMId;
+  if (params?.year != null) query.year = params.year;
+
+  return query;
+};
+
 export const projectApi = {
   async list(params?: ListProjectsParams): Promise<ProjectPaginatedResponse> {
-    const query: Record<string, string | number> = {};
-    if (params?.page != null) query.page = params.page;
-    if (params?.size != null) query.size = params.size;
-    if (params?.sortBy) query.sortBy = params.sortBy;
-    if (params?.sortOrder) query.sortOrder = params.sortOrder;
-    if (params?.search) query.search = params.search;
-    if (params?.statusId) query.statusId = params.statusId;
-    if (params?.division) query.division = params.division;
-    if (params?.stageId) query.stageId = params.stageId;
-    if (params?.gcId) query.gcId = params.gcId;
-    if (params?.leadPMId) query.leadPMId = params.leadPMId;
-    if (params?.year != null) query.year = params.year;
-
+    const query = buildListQuery(params);
     const res = await api.get(BASE, { params: query });
     const raw = {
       data: res.data?.data ?? res.data ?? [],
@@ -49,6 +58,21 @@ export const projectApi = {
       console.error('[projectApi.list] Raw response:', JSON.stringify(raw, null, 2));
       throw result.error;
     }
+    return result.data;
+  },
+
+  async stats(params?: ListProjectsParams): Promise<ProjectStats> {
+    const query = buildListQuery(params);
+    const res = await api.get(`${BASE}/stats`, { params: query });
+    const raw = res.data?.data ?? res.data;
+    const result = projectStatsSchema.safeParse(raw);
+
+    if (!result.success) {
+      console.error('[projectApi.stats] Zod parse error:', result.error.issues);
+      console.error('[projectApi.stats] Raw response:', JSON.stringify(raw, null, 2));
+      throw result.error;
+    }
+
     return result.data;
   },
 

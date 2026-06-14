@@ -10,12 +10,11 @@ interface MonthlyBillsTableHeaderProps {
 
 export function MonthlyBillsTableHeader({
   monthName,
-  canUpdateBills,
   canMarkPayment,
   visibleColumns,
 }: MonthlyBillsTableHeaderProps) {
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
-  const hasActions = canUpdateBills || canMarkPayment;
+  const hasActions = canMarkPayment;
 
   return (
     <TableHeader>
@@ -73,7 +72,7 @@ export function MonthlyBillsTableHeader({
           </TableHead>
         )}
         {hasActions && (
-          <TableHead className="h-10 min-w-56 text-center text-xs font-semibold uppercase tracking-normal" />
+          <TableHead className="h-10 min-w-36 text-center text-xs font-semibold uppercase tracking-normal" />
         )}
       </TableRow>
     </TableHeader>

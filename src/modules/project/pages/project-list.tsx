@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { type Ref, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import {
@@ -16,77 +16,89 @@ import { ProjectListEmptyState } from '@/modules/project/components/project-list
 import { ProjectListLoading } from '@/modules/project/components/project-list-loading';
 import { ProjectStatusSummary } from '@/modules/project/components/project-status-summary';
 import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
-import { useProjectsQuery } from '@/modules/project/hooks';
-import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
-import { Plus } from 'lucide-react';
+import { useInfiniteProjectsQuery, useProjectStatsQuery } from '@/modules/project/hooks';
+import type { ProjectStatusEnum } from '@/modules/project/schemas/project.schema';
+import { Loader2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const getProjectYearDate = (project: ProjectListItem): string | null | undefined => {
-  return project.tcoDate ?? project.estimatedEndDate;
-};
+const PROJECT_STATUSES = ['ACTIVE', 'INACTIVE', 'CLOSED', 'COMPLETED'] as const;
 
-const getProjectYear = (project: ProjectListItem): number | null => {
-  const projectYearDate = getProjectYearDate(project);
-  if (!projectYearDate) return null;
-
-  const year = Number.parseInt(projectYearDate.slice(0, 4), 10);
-  return Number.isInteger(year) ? year : null;
-};
-
-const getProjectYearSortValue = (project: ProjectListItem): number => {
-  const projectYearDate = getProjectYearDate(project);
-  if (!projectYearDate) return 0;
-
-  const value = new Date(projectYearDate).getTime();
-  return Number.isFinite(value) ? value : 0;
-};
-
-const getProjectStatusId = (project: ProjectListItem): string | undefined => {
-  return project.statusRef?.id ?? project.status ?? undefined;
+const parseProjectStatus = (value: string | null): ProjectStatusEnum | undefined => {
+  if (!value) return undefined;
+  return PROJECT_STATUSES.includes(value as ProjectStatusEnum)
+    ? (value as ProjectStatusEnum)
+    : undefined;
 };
 
 export function ProjectList() {
   const { can } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const yearParam = searchParams.get('year');
   const year = yearParam ? Number(yearParam) : null;
-  const statusId = searchParams.get('statusId') ?? undefined;
+  const status = parseProjectStatus(searchParams.get('status') ?? searchParams.get('statusId'));
 
-  const { data, isLoading, isError, refetch } = useProjectsQuery({
-    size: 100,
-    sortBy: 'tcoDate',
-    sortOrder: 'desc',
-    year: year ?? undefined,
-  });
-
-  const summaryProjects = useMemo(
-    () =>
-      (data?.data ?? [])
-        .filter((project) => year === null || getProjectYear(project) === year)
-        .sort((a, b) => getProjectYearSortValue(b) - getProjectYearSortValue(a)),
-    [data?.data, year]
+  const listParams = useMemo(
+    () => ({
+      size: 100,
+      sortBy: 'tcoDate',
+      sortOrder: 'desc' as const,
+      year: year ?? undefined,
+      status,
+    }),
+    [status, year]
   );
+  const statsParams = useMemo(
+    () => ({
+      year: year ?? undefined,
+      status,
+    }),
+    [status, year]
+  );
+
+  const projectsQuery = useInfiniteProjectsQuery(listParams);
+  const statsQuery = useProjectStatsQuery(statsParams);
+
   const projects = useMemo(
-    () =>
-      summaryProjects.filter((project) => {
-        if (!statusId) return true;
-
-        return getProjectStatusId(project) === statusId;
-      }),
-    [summaryProjects, statusId]
+    () => projectsQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [projectsQuery.data?.pages]
   );
+  const totalProjects =
+    projectsQuery.data?.pages[0]?.pagination.totalItems ?? statsQuery.data?.totalProjects ?? 0;
+  const hasProjects = projects.length > 0;
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !projectsQuery.hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && !projectsQuery.isFetchingNextPage) {
+          void projectsQuery.fetchNextPage();
+        }
+      },
+      { rootMargin: '360px 0px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [projectsQuery.fetchNextPage, projectsQuery.hasNextPage, projectsQuery.isFetchingNextPage]);
 
   const handleYearChange = useCallback(
     (y: number | null) => {
-      updateParams({ year: y === null ? undefined : String(y), statusId: undefined });
+      updateParams({
+        year: y === null ? undefined : String(y),
+        status: undefined,
+        statusId: undefined,
+      });
     },
     [updateParams]
   );
 
   const handleStatusClick = useCallback(
     (id: string | undefined) => {
-      updateParams({ statusId: id });
+      updateParams({ status: id, statusId: undefined });
     },
     [updateParams]
   );
@@ -113,22 +125,40 @@ export function ProjectList() {
         <ProjectYearTabs activeYear={year} onYearChange={handleYearChange} />
       </Toolbar>
 
-      {isLoading ? (
+      {projectsQuery.isLoading ? (
         <ProjectListLoading />
-      ) : isError ? (
-        <QueryErrorState title="Unable to load projects" onRetry={() => void refetch()} />
+      ) : projectsQuery.isError ? (
+        <QueryErrorState
+          title="Unable to load projects"
+          onRetry={() => {
+            void projectsQuery.refetch();
+            void statsQuery.refetch();
+          }}
+        />
       ) : (
         <>
-          {summaryProjects.length > 0 && (
+          {(statsQuery.data?.statusSummary.length ?? 0) > 0 && (
             <ProjectStatusSummary
-              projects={summaryProjects}
-              activeStatusId={statusId}
+              items={statsQuery.data?.statusSummary ?? []}
+              activeStatusId={status}
               onStatusClick={handleStatusClick}
             />
           )}
 
-          {projects.length > 0 ? (
-            <ProjectDivisionBoard projects={projects} />
+          {hasProjects ? (
+            <>
+              <ProjectDivisionBoard
+                projects={projects}
+                divisionSummary={statsQuery.data?.divisionSummary}
+              />
+              <ProjectListLoadMore
+                ref={loadMoreRef}
+                loadedCount={projects.length}
+                totalCount={totalProjects}
+                hasNextPage={Boolean(projectsQuery.hasNextPage)}
+                isFetchingNextPage={projectsQuery.isFetchingNextPage}
+              />
+            </>
           ) : (
             <ProjectListEmptyState year={year} />
           )}
@@ -139,3 +169,35 @@ export function ProjectList() {
 }
 
 export default ProjectList;
+
+interface ProjectListLoadMoreProps {
+  loadedCount: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+}
+
+function ProjectListLoadMore({
+  ref,
+  loadedCount,
+  totalCount,
+  hasNextPage,
+  isFetchingNextPage,
+}: ProjectListLoadMoreProps & { ref: Ref<HTMLDivElement> }) {
+  return (
+    <div ref={ref} className="flex min-h-14 items-center justify-center px-4 py-5 text-xs">
+      {isFetchingNextPage ? (
+        <span className="inline-flex items-center gap-2 font-medium text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Loading more projects
+        </span>
+      ) : (
+        <span className="font-medium text-muted-foreground">
+          {hasNextPage
+            ? `Loaded ${loadedCount} of ${totalCount} projects`
+            : `Showing ${loadedCount} of ${totalCount} projects`}
+        </span>
+      )}
+    </div>
+  );
+}

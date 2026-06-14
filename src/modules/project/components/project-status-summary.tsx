@@ -1,19 +1,17 @@
-import { useMemo } from 'react';
-
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
+import type { ProjectStatusStatsItem } from '@/modules/project/schemas/project.schema';
 
 interface StatusGroup {
   id: string;
   label: string;
   dotClassName: string;
-  total: number;
+  totalContractValue: number;
   count: number;
 }
 
 interface ProjectStatusSummaryProps {
-  projects: ProjectListItem[];
+  items: ProjectStatusStatsItem[];
   activeStatusId?: string;
   onStatusClick: (id: string | undefined) => void;
 }
@@ -81,52 +79,18 @@ const getStatusTone = (value: string) => {
   );
 };
 
-const getProjectContractSum = (project: ProjectListItem): number => {
-  const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
-  const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
-
-  return project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
-};
-
 export function ProjectStatusSummary({
-  projects,
+  items,
   activeStatusId,
   onStatusClick,
 }: ProjectStatusSummaryProps) {
-  const groups = useMemo(() => {
-    const map = new Map<string, StatusGroup>();
-
-    for (const project of projects) {
-      const status = project.statusRef ?? project.status;
-      if (!status) continue;
-
-      let id: string;
-      let label: string;
-      let dotClassName: string;
-
-      if (typeof status === 'string') {
-        id = status;
-        label = STATUS_LABELS[id] ?? id;
-        dotClassName = getStatusDotClassName(id);
-      } else {
-        id = status.id;
-        label = status.label || status.name || 'Unknown';
-        dotClassName = getStatusDotClassName(status.name ?? status.label ?? status.id);
-      }
-
-      const existing = map.get(id);
-      const value = getProjectContractSum(project);
-
-      if (existing) {
-        existing.total += value;
-        existing.count += 1;
-      } else {
-        map.set(id, { id, label, dotClassName, total: value, count: 1 });
-      }
-    }
-
-    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [projects]);
+  const groups: StatusGroup[] = items.map((item) => ({
+    id: item.id,
+    label: item.label || STATUS_LABELS[item.id] || item.id,
+    dotClassName: getStatusDotClassName(item.id),
+    totalContractValue: item.totalContractValue,
+    count: item.count,
+  }));
 
   const columnClassName =
     groups.length >= 4
@@ -182,7 +146,7 @@ export function ProjectStatusSummary({
 
                 <div className="space-y-0.5">
                   <div className="truncate text-[19px] font-semibold leading-none text-foreground">
-                    {formatCurrency(group.total)}
+                    {formatCurrency(group.totalContractValue)}
                   </div>
                   <div className="text-[12px] font-medium text-label-lighter">
                     {group.count} project{group.count !== 1 ? 's' : ''}

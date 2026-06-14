@@ -22,7 +22,6 @@ interface MonthlyBillsTotalsRowProps {
 export function MonthlyBillsTotalsRow({
   totals,
   visibleColumns,
-  canUpdateBills,
   canMarkPayment,
 }: MonthlyBillsTotalsRowProps) {
   const columns = MONTHLY_BILL_COLUMNS.filter((column) => visibleColumns.has(column.key));
@@ -37,7 +36,7 @@ export function MonthlyBillsTotalsRow({
     totalPaid: totals.totalPaid,
     toPay: totals.toPay,
   };
-  const hasActions = canUpdateBills || canMarkPayment;
+  const hasActions = canMarkPayment;
 
   return (
     <TableRow className="hover:bg-transparent">

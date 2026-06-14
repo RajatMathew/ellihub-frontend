@@ -13,7 +13,7 @@ import {
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { ChevronDown, CreditCard, ExternalLink, Loader2, Pencil, Save, X } from 'lucide-react';
+import { ChevronDown, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface MonthlyBillMobileCardProps {
@@ -24,16 +24,17 @@ interface MonthlyBillMobileCardProps {
   ready: boolean;
   canUpdateBills: boolean;
   canMarkPayment: boolean;
+  canRecordPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
   isBulkEditing: boolean;
-  isEditing: boolean;
-  isSaving: boolean;
-  hasChanges: boolean;
+  isAmountEditing: boolean;
+  isAmountSaving: boolean;
+  isReadySaving: boolean;
+  hasAmountChanges: boolean;
   onToPayChange: (value: number) => void;
   onReadyChange: (checked: boolean) => void;
-  onEdit: () => void;
-  onCancelEdit: () => void;
-  onSave: () => void;
+  onAmountEdit: () => void;
+  onAmountSave: () => void;
   onMarkPayment: () => void;
 }
 
@@ -45,16 +46,17 @@ export function MonthlyBillMobileCard({
   ready,
   canUpdateBills,
   canMarkPayment,
+  canRecordPayment,
   visibleColumns,
   isBulkEditing,
-  isEditing,
-  isSaving,
-  hasChanges,
+  isAmountEditing,
+  isAmountSaving,
+  isReadySaving,
+  hasAmountChanges,
   onToPayChange,
   onReadyChange,
-  onEdit,
-  onCancelEdit,
-  onSave,
+  onAmountEdit,
+  onAmountSave,
   onMarkPayment,
 }: MonthlyBillMobileCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -121,9 +123,16 @@ export function MonthlyBillMobileCard({
             <ToPayCell
               value={toPay}
               poNumber={poNumber}
-              disabled={!isEditing || isSaving}
+              canEdit={canUpdateBills}
+              isBulkEditing={isBulkEditing}
+              isEditing={isAmountEditing}
+              isSaving={isAmountSaving}
+              hasChanges={hasAmountChanges}
               onChange={onToPayChange}
-              className="ml-0 h-9 w-full"
+              onEdit={onAmountEdit}
+              onSave={onAmountSave}
+              className="ml-0 w-full"
+              inputClassName="h-9 min-w-0 flex-1"
             />
           </div>
         )}
@@ -135,7 +144,7 @@ export function MonthlyBillMobileCard({
               size="sm"
               aria-label={`Mark ${poNumber} ready`}
               checked={ready}
-              disabled={!isEditing || isSaving}
+              disabled={!canUpdateBills || isReadySaving}
               onCheckedChange={onReadyChange}
             />
           </div>
@@ -159,54 +168,12 @@ export function MonthlyBillMobileCard({
           <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
           Details
         </Button>
-        {canUpdateBills &&
-          !isBulkEditing &&
-          (isEditing ? (
-            <>
-              <Button
-                type="button"
-                size="sm"
-                disabled={isSaving || !hasChanges}
-                onClick={onSave}
-                className="h-8 text-xs"
-              >
-                {isSaving ? (
-                  <Loader2 className="size-4 animate-spin text-white!" />
-                ) : (
-                  <Save className="size-4 text-white!" />
-                )}
-                Save
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isSaving}
-                onClick={onCancelEdit}
-                className="h-8 text-xs"
-              >
-                <X className="size-3.5" />
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onEdit}
-              className="h-8 text-xs"
-            >
-              <Pencil className="size-3.5" />
-              Edit
-            </Button>
-          ))}
         {canMarkPayment && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={isEditing || isSaving}
+            disabled={!canRecordPayment}
             onClick={onMarkPayment}
             className="h-8 text-xs sm:ml-auto"
           >

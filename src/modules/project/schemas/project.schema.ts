@@ -272,6 +272,31 @@ export const projectPaginatedResponseSchema = z.object({
 
 export type ProjectPaginatedResponse = z.infer<typeof projectPaginatedResponseSchema>;
 
+export const projectStatusStatsItemSchema = z.object({
+  id: ProjectStatusSchema,
+  label: z.string(),
+  count: z.coerce.number(),
+  totalContractValue: z.coerce.number(),
+});
+
+export const projectDivisionStatsItemSchema = z.object({
+  id: z.string().nullable(),
+  label: z.string(),
+  count: z.coerce.number(),
+  totalContractValue: z.coerce.number(),
+});
+
+export const projectStatsSchema = z.object({
+  totalProjects: z.coerce.number(),
+  totalContractValue: z.coerce.number(),
+  statusSummary: z.array(projectStatusStatsItemSchema),
+  divisionSummary: z.array(projectDivisionStatsItemSchema),
+});
+
+export type ProjectStatusStatsItem = z.infer<typeof projectStatusStatsItemSchema>;
+export type ProjectDivisionStatsItem = z.infer<typeof projectDivisionStatsItemSchema>;
+export type ProjectStats = z.infer<typeof projectStatsSchema>;
+
 export const createProjectInputSchema = z.object({
   name: z.string().min(1, 'Project name is required').max(255),
   description: z.string().min(1, 'Description is required'),
@@ -307,6 +332,7 @@ export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
 export const listProjectsParamsSchema = z.object({
   search: z.string().optional(),
   statusId: z.string().optional(),
+  status: ProjectStatusSchema.optional(),
   division: divisionSchema.optional(),
   stageId: z.string().optional(),
   gcId: z.string().optional(),

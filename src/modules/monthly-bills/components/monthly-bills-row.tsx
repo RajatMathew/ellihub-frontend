@@ -14,7 +14,7 @@ import {
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { ChevronRight, CreditCard, ExternalLink, Loader2, Pencil, Save, X } from 'lucide-react';
+import { ChevronRight, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface MonthlyBillRowProps {
@@ -25,16 +25,17 @@ interface MonthlyBillRowProps {
   ready: boolean;
   canUpdateBills: boolean;
   canMarkPayment: boolean;
+  canRecordPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
   isBulkEditing: boolean;
-  isEditing: boolean;
-  isSaving: boolean;
-  hasChanges: boolean;
+  isAmountEditing: boolean;
+  isAmountSaving: boolean;
+  isReadySaving: boolean;
+  hasAmountChanges: boolean;
   onToPayChange: (value: number) => void;
   onReadyChange: (checked: boolean) => void;
-  onEdit: () => void;
-  onCancelEdit: () => void;
-  onSave: () => void;
+  onAmountEdit: () => void;
+  onAmountSave: () => void;
   onMarkPayment: () => void;
 }
 
@@ -46,16 +47,17 @@ export function MonthlyBillRow({
   ready,
   canUpdateBills,
   canMarkPayment,
+  canRecordPayment,
   visibleColumns,
   isBulkEditing,
-  isEditing,
-  isSaving,
-  hasChanges,
+  isAmountEditing,
+  isAmountSaving,
+  isReadySaving,
+  hasAmountChanges,
   onToPayChange,
   onReadyChange,
-  onEdit,
-  onCancelEdit,
-  onSave,
+  onAmountEdit,
+  onAmountSave,
   onMarkPayment,
 }: MonthlyBillRowProps) {
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
@@ -63,8 +65,7 @@ export function MonthlyBillRow({
   const paidThisMonth = sumPayments(monthPayments);
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
   const [expanded, setExpanded] = useState(false);
-  const hasActions = canUpdateBills || canMarkPayment;
-  const colSpan = 1 + visibleColumns.size + (hasActions ? 1 : 0);
+  const colSpan = 1 + visibleColumns.size + (canMarkPayment ? 1 : 0);
 
   return (
     <>
@@ -141,8 +142,14 @@ export function MonthlyBillRow({
             <ToPayCell
               value={toPay}
               poNumber={poNumber}
-              disabled={!isEditing || isSaving}
+              canEdit={canUpdateBills}
+              isBulkEditing={isBulkEditing}
+              isEditing={isAmountEditing}
+              isSaving={isAmountSaving}
+              hasChanges={hasAmountChanges}
               onChange={onToPayChange}
+              onEdit={onAmountEdit}
+              onSave={onAmountSave}
             />
           </TableCell>
         )}
@@ -152,60 +159,24 @@ export function MonthlyBillRow({
               size="sm"
               aria-label={`Mark ${poNumber} ready`}
               checked={ready}
-              disabled={!isEditing || isSaving}
+              disabled={!canUpdateBills || isReadySaving}
               onCheckedChange={onReadyChange}
             />
           </TableCell>
         )}
-        {hasActions && (
+        {canMarkPayment && (
           <TableCell className="py-3 text-center">
             <div className="flex flex-wrap justify-center gap-1.5">
-              {canUpdateBills &&
-                !isBulkEditing &&
-                (isEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isSaving || !hasChanges}
-                      onClick={onSave}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="size-4 animate-spin text-white!" />
-                      ) : (
-                        <Save className="size-4 text-white!" />
-                      )}
-                      Save
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isSaving}
-                      onClick={onCancelEdit}
-                    >
-                      <X className="size-3.5" />
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-                    <Pencil className="size-3.5" />
-                    Edit
-                  </Button>
-                ))}
-              {canMarkPayment && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isEditing || isSaving}
-                  onClick={onMarkPayment}
-                >
-                  <CreditCard className="size-3.5" />
-                  Mark Payment
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!canRecordPayment}
+                onClick={onMarkPayment}
+              >
+                <CreditCard className="size-3.5" />
+                Mark Payment
+              </Button>
             </div>
           </TableCell>
         )}

@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 
-import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
+import type {
+  ProjectDivisionStatsItem,
+  ProjectListItem,
+} from '@/modules/project/schemas/project.schema';
 
 import { ProjectCard } from './project-card';
 
@@ -31,7 +34,13 @@ const getDivisionColumnLabel = (label: string): string => {
   return standardDivision?.label ?? label;
 };
 
-export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[] }) {
+export function ProjectDivisionBoard({
+  projects,
+  divisionSummary,
+}: {
+  projects: ProjectListItem[];
+  divisionSummary?: ProjectDivisionStatsItem[];
+}) {
   const divisionMap = useMemo(() => {
     const map = new Map<string, ProjectListItem[]>();
 
@@ -44,9 +53,20 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
     return map;
   }, [projects]);
 
+  const divisionTotalMap = useMemo(() => {
+    const map = new Map<string, number>();
+
+    for (const division of divisionSummary ?? []) {
+      const label = getDivisionColumnLabel(division.label);
+      map.set(label, (map.get(label) ?? 0) + division.count);
+    }
+
+    return map;
+  }, [divisionSummary]);
+
   const columns = [
     ...STANDARD_DIVISIONS.map((division) => division.label),
-    ...Array.from(divisionMap.keys())
+    ...Array.from(new Set([...divisionMap.keys(), ...divisionTotalMap.keys()]))
       .filter((label) => !STANDARD_DIVISIONS.some((division) => division.label === label))
       .sort((a, b) => a.localeCompare(b)),
   ];
@@ -63,6 +83,9 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
       >
         {columns.map((divisionLabel) => {
           const items = divisionMap.get(divisionLabel) ?? [];
+          const totalItems = divisionTotalMap.get(divisionLabel) ?? items.length;
+          const countLabel =
+            items.length === totalItems ? items.length : `${items.length}/${totalItems}`;
 
           return (
             <div key={divisionLabel} className="flex min-w-0 flex-col gap-2">
@@ -71,7 +94,7 @@ export function ProjectDivisionBoard({ projects }: { projects: ProjectListItem[]
                   {divisionLabel}
                 </h2>
                 <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                  {items.length}
+                  {countLabel}
                 </span>
               </div>
               <hr className="border-t-2 border-foreground" />

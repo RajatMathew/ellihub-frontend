@@ -9,7 +9,7 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const hasProjectCapabilities = (project: ProjectDetail) =>
@@ -37,6 +37,21 @@ export const useProjectsQuery = (params?: ListProjectsParams) =>
   useQuery({
     queryKey: [...projectKeys.list(), params],
     queryFn: () => projectApi.list(params),
+  });
+
+export const useInfiniteProjectsQuery = (params?: ListProjectsParams) =>
+  useInfiniteQuery({
+    queryKey: [...projectKeys.list(), 'infinite', params],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => projectApi.list({ ...params, page: Number(pageParam) }),
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+  });
+
+export const useProjectStatsQuery = (params?: ListProjectsParams) =>
+  useQuery({
+    queryKey: [...projectKeys.stats(), params],
+    queryFn: () => projectApi.stats(params),
   });
 
 export const useProjectDetailQuery = (id: string) =>
