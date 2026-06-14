@@ -104,9 +104,7 @@ export const projectSidebarMenu: MenuConfig = [
     type: 'menu',
     children: [{ title: 'Back to Projects', path: '../../projects', icon: ArrowLeft }],
   },
-  { type: 'separator' },
   { type: 'custom', render: () => <ProjectSidebarSwitcher /> },
-  { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Overview', path: '../overview' }],

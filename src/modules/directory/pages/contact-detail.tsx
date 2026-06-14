@@ -76,7 +76,7 @@ export function ContactDetailPage() {
   const canDeleteContact = can('contact', 'delete');
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden py-5 sm:py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden pb-5">
       <ContactDetailToolbar
         contactName={contact.fullName}
         roleName={roleName}

@@ -54,13 +54,15 @@ function ProjectPartyName({
   name,
   fallback,
   className,
+  maxLength = 22,
 }: {
   name: string | null | undefined;
   fallback: string;
   className?: string;
+  maxLength?: number;
 }) {
-  const displayName = name ? truncateName(name) : fallback;
-  const shouldShowTooltip = Boolean(name && name.length > 17);
+  const displayName = name ? truncateName(name, maxLength) : fallback;
+  const shouldShowTooltip = Boolean(name && name.length > maxLength);
 
   if (!shouldShowTooltip) {
     return <span className={cn('min-w-0 truncate', className)}>{displayName}</span>;
@@ -82,7 +84,7 @@ function ProjectName({ name }: { name: string }) {
 
   if (!shouldShowTooltip) {
     return (
-      <span className="mt-1 line-clamp-2 text-xs font-medium leading-tight text-muted-foreground">
+      <span className="line-clamp-2 text-sm font-medium leading-tight text-foreground">
         {displayName}
       </span>
     );
@@ -91,7 +93,7 @@ function ProjectName({ name }: { name: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="mt-1 line-clamp-2 text-xs font-medium leading-tight text-muted-foreground">
+        <span className="line-clamp-2 text-sm font-medium leading-tight text-foreground">
           {displayName}
         </span>
       </TooltipTrigger>
@@ -136,24 +138,26 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-zinc-400/60 bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-zinc-400/80 hover:shadow-md hover:shadow-zinc-950/10 dark:border-zinc-600/80 dark:bg-zinc-950/50 dark:hover:border-zinc-500/70 dark:hover:shadow-black/30">
-        <CardContent className="flex flex-col gap-2.5 p-3.5 sm:p-3.5">
-          <div className="flex items-start justify-between gap-3">
+      <Card className="h-full rounded-lg border-zinc-300/70 bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-zinc-400/60 hover:shadow-md hover:shadow-zinc-950/10 dark:border-zinc-600/80 dark:bg-zinc-950/50 dark:hover:border-zinc-500/70 dark:hover:shadow-black/30">
+        <CardContent className="flex flex-col gap-2 p-3.5 sm:p-3.5">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold leading-tight text-foreground">
                 {projectIdentifier}
               </span>
-              <ProjectName name={project.name} />
             </div>
             {badgeLabel && (
-              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-zinc-400/70 bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground dark:border-zinc-600/80 dark:bg-zinc-950/60">
+              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-zinc-300/80 bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75 dark:border-zinc-600/80 dark:bg-zinc-950/60">
                 <span className={cn('size-1.5 rounded-[2px]', badgeDotClassName)} aria-hidden="true" />
                 {badgeLabel}
               </span>
             )}
           </div>
+          <div className="pt-0.5">
+            <ProjectName name={project.name} />
+          </div>
 
-          <div className="flex items-center justify-between gap-4 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center justify-between gap-4 pt-0.5 text-xs font-medium text-cyan-700 dark:text-cyan-300">
             <ProjectPartyName name={project.gc?.name} fallback="No GC assigned" />
             <ProjectPartyName
               name={project.leadPM?.name}

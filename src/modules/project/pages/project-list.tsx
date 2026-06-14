@@ -77,8 +77,6 @@ export function ProjectList() {
     [summaryProjects, statusId]
   );
 
-  const totalCount = data?.pagination.totalItems ?? summaryProjects.length;
-
   const handleYearChange = useCallback(
     (y: number | null) => {
       updateParams({ year: y === null ? undefined : String(y), statusId: undefined });
@@ -112,11 +110,7 @@ export function ProjectList() {
           )}
         </ToolbarWrapper>
 
-        <ProjectYearTabs
-          activeYear={year}
-          totalCount={totalCount}
-          onYearChange={handleYearChange}
-        />
+        <ProjectYearTabs activeYear={year} onYearChange={handleYearChange} />
       </Toolbar>
 
       {isLoading ? (

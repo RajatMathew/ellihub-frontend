@@ -1,20 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Progress } from '@/app/components/ui/progress';
 import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 
 interface BudgetCardProps {
   totalSpent: number;
   budgetLimit: number;
   targetBudgetPercent: number;
+  className?: string;
 }
 
 export function BudgetCard({
   totalSpent,
   budgetLimit,
   targetBudgetPercent,
+  className,
 }: BudgetCardProps) {
-  const committedUtilization =
-    budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0;
+  const committedUtilization = budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0;
   const remaining = budgetLimit - totalSpent;
 
   const getUtilizationColor = (utilization: number) => {
@@ -24,11 +26,9 @@ export function BudgetCard({
   };
 
   return (
-    <Card className="flex min-h-80 flex-col">
+    <Card className={cn('flex min-h-80 flex-col', className)}>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
-          Budget
-        </CardTitle>
+        <CardTitle className="text-xs font-semibold tracking-widest uppercase">Budget</CardTitle>
       </CardHeader>
       <CardContent className="flex grow flex-col p-0 sm:p-0">
         <div className="flex flex-col px-5 py-5">
@@ -36,7 +36,7 @@ export function BudgetCard({
             <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
               Total Spent
             </div>
-            <div className="text-2xl font-bold tabular-nums leading-tight">
+            <div className="text-2xl font-bold tabular-nums leading-tight whitespace-nowrap">
               {formatCurrency(totalSpent)}
             </div>
           </div>
@@ -47,7 +47,7 @@ export function BudgetCard({
                 <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase leading-tight">
                   Spent Utilization
                 </span>
-                <span className="text-sm font-bold tabular-nums leading-snug">
+                <span className="text-sm font-bold tabular-nums leading-snug whitespace-nowrap">
                   {Math.round(committedUtilization)}%
                 </span>
               </div>
@@ -62,19 +62,19 @@ export function BudgetCard({
               <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
                 Remaining
               </div>
-              <div className="text-base font-bold text-zinc-700 tabular-nums leading-tight">
+              <div className="text-base font-bold text-zinc-700 tabular-nums leading-tight whitespace-nowrap">
                 {formatCurrency(remaining)}
               </div>
             </div>
           </div>
         </div>
         <div className="mt-auto flex min-h-24 items-center border-t border-separator bg-muted/40 px-5 py-5">
-          <div className="flex w-full items-center justify-between">
+          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <div>
               <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
                 Limit
               </div>
-              <div className="text-sm font-bold tabular-nums leading-tight">
+              <div className="text-sm font-bold tabular-nums leading-tight whitespace-nowrap">
                 {formatCurrency(budgetLimit)}
               </div>
             </div>
@@ -82,7 +82,7 @@ export function BudgetCard({
               <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
                 Budget %
               </div>
-              <div className="text-sm font-bold tabular-nums leading-tight">
+              <div className="text-sm font-bold tabular-nums leading-tight whitespace-nowrap">
                 {targetBudgetPercent}% TCV
               </div>
             </div>

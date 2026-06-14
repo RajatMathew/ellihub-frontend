@@ -14,7 +14,7 @@ export function ProjectDetailPageLoading({
   sidebarCards = 2,
 }: ProjectDetailPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
       <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
@@ -51,7 +51,7 @@ export function ProjectDetailPageLoading({
 
 export function ProjectFormPageLoading({ sections = 3 }: ProjectFormPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
       <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">

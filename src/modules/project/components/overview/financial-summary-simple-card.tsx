@@ -1,8 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
-
-import { InfoRow } from '@/modules/project/components/shared';
 import type { PrimeContractComputations } from '@/modules/project/components/overview/use-prime-contract-computations';
+import { InfoRow } from '@/modules/project/components/shared';
 
 interface FinancialSummarySimpleCardProps {
   computations: PrimeContractComputations;
@@ -13,9 +12,7 @@ const formatSignedCurrency = (value: number): string => {
   return `+${formatCurrency(value)}`;
 };
 
-export function FinancialSummarySimpleCard({
-  computations,
-}: FinancialSummarySimpleCardProps) {
+export function FinancialSummarySimpleCard({ computations }: FinancialSummarySimpleCardProps) {
   const approvedCOsValueClassName =
     computations.approvedCOs < 0
       ? 'text-destructive text-sm font-bold tabular-nums'
@@ -35,7 +32,7 @@ export function FinancialSummarySimpleCard({
               label="Original Contract"
               className="uppercase"
               labelClassName="text-foreground text-sm font-bold"
-              valueClassName="text-sm font-bold tabular-nums"
+              valueClassName="whitespace-nowrap text-sm font-bold tabular-nums"
             >
               {formatCurrency(computations.original)}
             </InfoRow>
@@ -43,7 +40,7 @@ export function FinancialSummarySimpleCard({
               label="Approved COs"
               labelVariant="light"
               labelClassName="text-sm font-medium"
-              valueClassName={approvedCOsValueClassName}
+              valueClassName={`whitespace-nowrap ${approvedCOsValueClassName}`}
             >
               {formatSignedCurrency(computations.approvedCOs)}
             </InfoRow>
@@ -53,7 +50,7 @@ export function FinancialSummarySimpleCard({
               label="Contract Sum"
               className="uppercase"
               labelClassName="text-foreground text-sm font-bold"
-              valueClassName="text-sm font-bold tabular-nums"
+              valueClassName="whitespace-nowrap text-sm font-bold tabular-nums"
             >
               {formatCurrency(computations.contractSum)}
             </InfoRow>
@@ -61,7 +58,7 @@ export function FinancialSummarySimpleCard({
               label="Paid to Date"
               labelVariant="light"
               labelClassName="text-sm font-medium"
-              valueClassName="text-muted-foreground text-sm font-bold tabular-nums"
+              valueClassName="whitespace-nowrap text-muted-foreground text-sm font-bold tabular-nums"
             >
               {formatCurrency(computations.paidToDate)}
             </InfoRow>
@@ -70,7 +67,7 @@ export function FinancialSummarySimpleCard({
             label="Balance Due"
             className="pt-3.5 uppercase"
             labelClassName="text-foreground text-sm font-bold"
-            valueClassName="text-info text-sm font-bold tabular-nums"
+            valueClassName="whitespace-nowrap text-info text-sm font-bold tabular-nums"
           >
             {formatCurrency(computations.balanceDue)}
           </InfoRow>
@@ -81,7 +78,7 @@ export function FinancialSummarySimpleCard({
               label="Retainage %:"
               labelVariant="light"
               labelClassName="text-sm font-medium"
-              valueClassName="text-sm font-bold tabular-nums"
+              valueClassName="whitespace-nowrap text-sm font-bold tabular-nums"
             >
               {formatPercent(computations.retainagePercent)}
             </InfoRow>
@@ -89,7 +86,7 @@ export function FinancialSummarySimpleCard({
               label="Retainage Amount:"
               labelVariant="light"
               labelClassName="text-sm font-medium"
-              valueClassName="text-sm font-bold tabular-nums"
+              valueClassName="whitespace-nowrap text-sm font-bold tabular-nums"
             >
               {formatCurrency(computations.retainageAmount)}
             </InfoRow>

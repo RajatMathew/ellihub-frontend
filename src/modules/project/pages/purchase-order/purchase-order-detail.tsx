@@ -448,7 +448,7 @@ export function PODetailPage() {
 
   if (!po) {
     return (
-      <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
+      <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
         <p className="text-sm text-muted-foreground">Purchase order not found.</p>
       </div>
     );
@@ -484,7 +484,7 @@ export function PODetailPage() {
   const vendorEmail = typeof po.vendor?.email === 'string' ? po.vendor.email : undefined;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 py-5 sm:px-6 lg:px-7.5 lg:py-7.5">
+    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>

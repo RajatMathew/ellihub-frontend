@@ -9,18 +9,22 @@
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
   --background: #fff;
+  --main-background: #f5f5f5;
   --form-background: var(--color-zinc-100);
   --foreground: var(--color-zinc-950);
   --card: var(--color-white);
   --card-foreground: var(--color-zinc-950);
   --popover: var(--color-white);
   --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-green-600);
+  --primary: var(--color-emerald-600);
+  --primary-hover: var(--color-emerald-700);
   --primary-foreground: var(--color-white);
   --secondary: var(--color-zinc-100);
   --secondary-foreground: var(--color-zinc-900);
   --muted: var(--color-zinc-100);
   --muted-foreground: var(--color-zinc-500);
+  --project-tabs-background: #f8f9fa;
+  --sidebar-hover-foreground: var(--color-green-400);
   --accent: var(--color-zinc-100);
   --accent-foreground: var(--color-zinc-900);
   --success: var(--color-emerald-600);
@@ -57,6 +61,7 @@
 
 .dark {
   --background: #0f0f0f;
+  --main-background: var(--background);
   --form-background: var(--color-zinc-900);
   /* zinc-950 but standard black */
   --foreground: var(--color-zinc-50);
@@ -65,12 +70,15 @@
   --card-foreground: var(--color-zinc-50);
   --popover: oklch(14.43% 0.005 200);
   --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-green-400);
-  --primary-foreground: var(--color-green-950);
+  --primary: var(--color-emerald-600);
+  --primary-hover: var(--color-emerald-700);
+  --primary-foreground: var(--color-white);
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
   --muted: var(--color-zinc-800);
   --muted-foreground: var(--color-zinc-400);
+  --project-tabs-background: #131313;
+  --sidebar-hover-foreground: var(--color-green-400);
   --accent: var(--color-zinc-800);
   --accent-foreground: var(--color-zinc-50);
   --success: var(--color-emerald-500);
@@ -107,6 +115,7 @@
 @theme inline {
   /** Base Colors **/
   --color-background: var(--background);
+  --color-main-background: var(--main-background);
   --color-form-background: var(--form-background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -115,9 +124,12 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-project-tabs-background: var(--project-tabs-background);
+  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -181,6 +193,10 @@
   * {
     @apply border-border;
   }
+
+  /* html {
+    overflow-x: hidden;
+  } */
 
   body {
     @apply bg-background text-foreground;
