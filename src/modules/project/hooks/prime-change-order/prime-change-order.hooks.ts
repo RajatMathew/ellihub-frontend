@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { primeChangeOrderApi } from '@/modules/project/api/prime-change-order';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
+import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type { ListPrimeChangeOrderParams } from '@/modules/project/schemas/prime-change-order';
 
@@ -46,6 +47,7 @@ export const useSyncPrimeChangeOrdersMutation = () => {
         primeChangeOrderKeys.statusSummary(projectId),
         primeChangeOrderKeys.financialSummary(projectId),
         primeChangeOrderKeys.syncStatus(projectId),
+        projectKeys.list(),
       ]);
       toast.success(
         `Synced ${result.summary.totalReceived} Fieldwire change order${

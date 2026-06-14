@@ -3,8 +3,6 @@ import { Progress } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order/sub-change-order-list-utils';
-import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import { getProjectStageSwatchClassName } from '@/modules/project/lib/project-stage-colors';
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Link } from 'react-router-dom';
@@ -103,26 +101,18 @@ function ProjectName({ name }: { name: string }) {
 }
 
 export function ProjectCard({ project }: { project: ProjectListItem }) {
-  const { data: approvedSCOs } = useSCOsQuery({
-    projectId: project.id,
-    status: 'APPROVED',
-    page: 1,
-    size: 100,
-  });
   const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
   const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
   const revisedContractValue =
     project.revisedContractValue ?? originalContractValue + approvedChangeOrdersTotal;
   const totalPOCommitted = project.totalPOCommitted ?? 0;
-  const approvedSCOTotal = (approvedSCOs?.data ?? []).reduce(
-    (sum, sco) => sum + getSubChangeOrderTotalAmount(sco),
-    0
-  );
-  const totalSpent = totalPOCommitted + approvedSCOTotal;
+  const approvedSCOTotal = project.approvedSCOTotal ?? 0;
+  const totalSpent = project.totalSpent ?? totalPOCommitted + approvedSCOTotal;
   const targetBudgetPercent = project.targetBudgetPercent ?? 100;
   const budgetLimit = project.budgetLimit ?? revisedContractValue * (targetBudgetPercent / 100);
   const budgetRemaining = project.budgetRemaining ?? budgetLimit - totalSpent;
-  const spendUtilization = budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0;
+  const spendUtilization =
+    project.spendUtilization ?? (budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0);
   const progressValue = Math.min(Math.max(spendUtilization, 0), 100);
   const spendUtilizationLabel = `${Math.round(spendUtilization)}%`;
   const stageLabel = getLookupLabel(project.stage);

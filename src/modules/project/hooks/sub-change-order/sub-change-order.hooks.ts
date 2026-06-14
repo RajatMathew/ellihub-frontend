@@ -3,6 +3,7 @@ import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import { scoApi } from '@/modules/project/api/sub-change-order';
 import { poKeys } from '@/modules/project/constants/purchase-order';
+import { projectKeys } from '@/modules/project/constants/project.keys';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type {
@@ -20,7 +21,9 @@ function invalidateSCOQueries(
   scoId?: string,
   purchaseOrderId?: string | null
 ) {
-  const queryKeys = scoId ? [scoKeys.all, scoKeys.detail(scoId)] : [scoKeys.all];
+  const queryKeys = scoId
+    ? [scoKeys.all, scoKeys.detail(scoId), projectKeys.list()]
+    : [scoKeys.all, projectKeys.list()];
 
   if (!purchaseOrderId) {
     return invalidateProjectQueries(queryClient, queryKeys);
