@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { NumberInput } from '@/app/components/ui/number-input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
 import { SubChangeOrdersDialog } from '@/modules/monthly-bills/components/sub-change-orders-dialog';
@@ -68,36 +69,47 @@ export function ToPayCell({
         min={0}
         disabled={!inputEnabled}
         aria-label={`To pay for ${poNumber}`}
-        className={cn('h-8 w-24 text-right', hasChanges && 'border-primary/60', inputClassName)}
+        className={cn('h-8 w-24 text-left', hasChanges && 'border-primary/60', inputClassName)}
       />
       {showInlineAction &&
         (isEditing ? (
-          <Button
-            type="button"
-            mode="icon"
-            size="sm"
-            disabled={isSaving}
-            onClick={onSave}
-            aria-label={`Save to pay amount for ${poNumber}`}
-          >
-            {isSaving ? (
-              <Loader2 className="size-3.5 animate-spin text-white!" />
-            ) : (
-              <Save className="size-3.5 text-white!" />
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                mode="icon"
+                size="sm"
+                disabled={isSaving}
+                onClick={onSave}
+                aria-label={`Save to pay amount for ${poNumber}`}
+              >
+                {isSaving ? (
+                  <Loader2 className="size-3.5 animate-spin text-white!" />
+                ) : (
+                  <Save className="size-3.5 text-white!" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Save</TooltipContent>
+          </Tooltip>
         ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            mode="icon"
-            size="sm"
-            disabled={isSaving}
-            onClick={onEdit}
-            aria-label={`Edit to pay amount for ${poNumber}`}
-          >
-            <Pencil className="size-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                mode="icon"
+                size="sm"
+                disabled={isSaving}
+                onClick={onEdit}
+                aria-label={`Edit to pay amount for ${poNumber}`}
+                className="hover:bg-muted-foreground/10 data-[state=open]:bg-muted-foreground/10"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit</TooltipContent>
+          </Tooltip>
         ))}
     </div>
   );
@@ -119,7 +131,7 @@ export function PaymentsCell({ payments, poNumber }: PaymentsCellProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="font-medium text-primary hover:text-primary/80 hover:underline"
+          className="cursor-pointer font-medium text-primary hover:text-primary/80 hover:underline"
         >
           {payments.length} payment{payments.length === 1 ? '' : 's'}
         </button>

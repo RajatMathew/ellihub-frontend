@@ -45,7 +45,6 @@ export function MonthlyBillsProjectCard({
   onBulkSaveComplete,
 }: MonthlyBillsProjectCardProps) {
   const monthName = format(selectedDate, 'MMMM');
-  const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
   const month = getMonth(selectedDate) + 1;
   const year = getYear(selectedDate);
 
@@ -285,14 +284,13 @@ export function MonthlyBillsProjectCard({
       <div className="bg-muted/20 px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground">
+            <h3 className="truncate text-base font-semibold text-foreground">
               {getProjectTitle(group)}
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span>
                 {group.bills.length} {group.bills.length === 1 ? 'PO' : 'POs'}
               </span>
-              <span>{monthLabel}</span>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:min-w-[30rem]">

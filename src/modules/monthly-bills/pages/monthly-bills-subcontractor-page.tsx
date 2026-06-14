@@ -179,7 +179,7 @@ export function MonthlyBillsSubcontractorPage({
 
       <Card className="overflow-hidden">
         <CardHeader className="items-stretch gap-3 2xl:flex-row 2xl:items-center">
-          <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
+          <CardTitle className="text-base font-semibold tracking-normal text-foreground">
             Subcontractor Bills
           </CardTitle>
           <CardToolbar className="w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">

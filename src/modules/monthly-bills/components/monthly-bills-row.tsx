@@ -17,7 +17,6 @@ import {
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { format } from 'date-fns';
 import { ChevronRight, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -67,7 +66,6 @@ export function MonthlyBillRow({
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
   const monthPayments = getMonthPayments(bill, selectedDate);
   const paidThisMonth = sumPayments(monthPayments);
-  const paidMonthLabel = format(selectedDate, 'MMM');
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
   const showVendorInfo = show('vendor') || show('issueDate');
   const showPaymentInfo = show('payments') || show('paidThisMonth');
@@ -134,7 +132,7 @@ export function MonthlyBillRow({
               {show('payments') && <PaymentsCell payments={monthPayments} poNumber={poNumber} />}
               {show('paidThisMonth') && paidThisMonth > 0 && (
                 <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                  Paid in {paidMonthLabel}: {formatCurrency(paidThisMonth)}
+                  Total: {formatCurrency(paidThisMonth)}
                 </span>
               )}
               {!show('payments') && paidThisMonth === 0 && (

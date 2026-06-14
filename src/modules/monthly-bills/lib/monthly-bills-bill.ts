@@ -6,7 +6,7 @@ import { getMonth, getYear } from 'date-fns';
 
 export function getProjectTitle(group: MonthlyBillProjectGroup) {
   return group.project.jobNumber
-    ? `${group.project.name} - ${group.project.jobNumber}`
+    ? `${group.project.jobNumber} ${group.project.name}`
     : group.project.name;
 }
 
