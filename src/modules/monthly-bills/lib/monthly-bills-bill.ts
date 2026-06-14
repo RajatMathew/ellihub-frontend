@@ -4,6 +4,8 @@ import type {
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { getMonth, getYear } from 'date-fns';
 
+import { sumMonthlyBillMoney } from './monthly-bills-money';
+
 export function getProjectTitle(group: MonthlyBillProjectGroup) {
   return group.project.jobNumber
     ? `${group.project.jobNumber} ${group.project.name}`
@@ -40,5 +42,5 @@ export function getMonthPayments(bill: MonthlyBillItem, selectedDate: Date) {
 }
 
 export function sumPayments(payments: MonthlyBillItem['payments']) {
-  return payments.reduce((sum, payment) => sum + (payment.amount ?? 0), 0);
+  return sumMonthlyBillMoney(payments.map((payment) => payment.amount));
 }

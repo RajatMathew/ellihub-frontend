@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ExternalLink } from 'lucide-react';
 
@@ -18,7 +19,7 @@ interface PaymentsDialogProps {
 }
 
 export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: PaymentsDialogProps) {
-  const total = payments.reduce((sum, payment) => sum + (payment.amount ?? 0), 0);
+  const total = sumMonthlyBillMoney(payments.map((payment) => payment.amount));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

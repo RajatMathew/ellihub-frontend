@@ -1,6 +1,7 @@
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 
 interface MonthlyBillDetailsProps {
@@ -20,9 +21,8 @@ export function MonthlyBillDetails({
 }: MonthlyBillDetailsProps) {
   const monthPayments = getMonthPayments(bill, selectedDate);
   const paidThisMonth = sumPayments(monthPayments);
-  const changeOrderTotal = bill.purchaseOrder.subChangeOrders.reduce(
-    (sum, sco) => sum + sco.amount,
-    0
+  const changeOrderTotal = sumMonthlyBillMoney(
+    bill.purchaseOrder.subChangeOrders.map((sco) => sco.amount)
   );
   const plannedAmount = toPay ?? bill.plannedPayment?.amount ?? 0;
   const isReady = ready ?? bill.plannedPayment?.isReady ?? false;

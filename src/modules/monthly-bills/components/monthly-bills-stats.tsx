@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { ListStatsCards } from '@/app/components/ui/list-stats-cards';
 import { formatCurrency } from '@/app/lib/helpers';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillProjectGroup } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 
 interface MonthlyBillsStatsProps {
@@ -12,33 +13,20 @@ interface MonthlyBillsStatsProps {
 }
 
 export function MonthlyBillsStats({ groups, selectedDate, isLoading }: MonthlyBillsStatsProps) {
-  const stats = useMemo(
-    () =>
-      groups.reduce(
-        (acc, group) => {
-          acc.projectCount += 1;
-          acc.billCount += group.bills.length;
+  const stats = useMemo(() => {
+    const bills = groups.flatMap((group) => group.bills);
 
-          for (const bill of group.bills) {
-            acc.balance += bill.balance;
-            acc.planned += bill.plannedPayment?.amount ?? 0;
-            acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
-            if (bill.plannedPayment?.isReady) acc.readyCount += 1;
-          }
-
-          return acc;
-        },
-        {
-          projectCount: 0,
-          billCount: 0,
-          balance: 0,
-          planned: 0,
-          paidThisMonth: 0,
-          readyCount: 0,
-        }
+    return {
+      projectCount: groups.length,
+      billCount: bills.length,
+      balance: sumMonthlyBillMoney(bills.map((bill) => bill.balance)),
+      planned: sumMonthlyBillMoney(bills.map((bill) => bill.plannedPayment?.amount)),
+      paidThisMonth: sumMonthlyBillMoney(
+        bills.map((bill) => sumPayments(getMonthPayments(bill, selectedDate)))
       ),
-    [groups, selectedDate]
-  );
+      readyCount: bills.filter((bill) => bill.plannedPayment?.isReady).length,
+    };
+  }, [groups, selectedDate]);
 
   return (
     <ListStatsCards

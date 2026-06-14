@@ -69,7 +69,12 @@ export function ToPayCell({
         min={0}
         disabled={!inputEnabled}
         aria-label={`To pay for ${poNumber}`}
-        className={cn('h-8 w-24 text-left', hasChanges && 'border-primary/60', inputClassName)}
+        className={cn(
+          'h-8 w-24 text-left',
+          value > 0 ? 'text-foreground disabled:opacity-100' : 'text-muted-foreground',
+          hasChanges && 'border-primary/60',
+          inputClassName
+        )}
       />
       {showInlineAction &&
         (isEditing ? (

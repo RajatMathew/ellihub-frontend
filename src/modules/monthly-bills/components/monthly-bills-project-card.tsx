@@ -14,6 +14,7 @@ import {
   getProjectTitle,
   sumPayments,
 } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type {
   MonthlyBillItem,
   MonthlyBillProjectGroup,
@@ -71,26 +72,23 @@ export function MonthlyBillsProjectCard({
   const [readySavingById, setReadySavingById] = useState<Record<string, boolean>>({});
 
   const serverTotals = useMemo(
-    () =>
-      group.bills.reduce(
-        (acc, bill) => {
-          acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
-          acc.original += bill.original;
-          acc.totalPaid += bill.totalPaid;
-          acc.balance += bill.balance;
-          return acc;
-        },
-        { paidThisMonth: 0, original: 0, totalPaid: 0, balance: 0 }
+    () => ({
+      paidThisMonth: sumMonthlyBillMoney(
+        group.bills.map((bill) => sumPayments(getMonthPayments(bill, selectedDate)))
       ),
+      original: sumMonthlyBillMoney(group.bills.map((bill) => bill.original)),
+      totalPaid: sumMonthlyBillMoney(group.bills.map((bill) => bill.totalPaid)),
+      balance: sumMonthlyBillMoney(group.bills.map((bill) => bill.balance)),
+    }),
     [group.bills, selectedDate]
   );
 
   const toPayTotal = useMemo(
-    () => group.bills.reduce((sum, bill) => sum + (toPayById[bill.purchaseOrder.id] ?? 0), 0),
+    () => sumMonthlyBillMoney(group.bills.map((bill) => toPayById[bill.purchaseOrder.id] ?? 0)),
     [group.bills, toPayById]
   );
   const balanceTotal = useMemo(
-    () => group.bills.reduce((sum, bill) => sum + bill.balance, 0),
+    () => sumMonthlyBillMoney(group.bills.map((bill) => bill.balance)),
     [group.bills]
   );
   const readyCount = useMemo(

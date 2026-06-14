@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { formatCurrency } from '@/app/lib/helpers';
+import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillSubChangeOrder } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -26,7 +27,7 @@ export function SubChangeOrdersDialog({
   poNumber,
   projectId,
 }: SubChangeOrdersDialogProps) {
-  const total = subChangeOrders.reduce((sum, sco) => sum + sco.amount, 0);
+  const total = sumMonthlyBillMoney(subChangeOrders.map((sco) => sco.amount));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
