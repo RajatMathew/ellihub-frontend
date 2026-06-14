@@ -1,0 +1,160 @@
+import { Card } from '@/app/components/ui/card';
+import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
+import { MarkPaymentDialog } from '@/modules/monthly-bills/components/mark-payment-dialog';
+import { MonthlyBillRow } from '@/modules/monthly-bills/components/monthly-bills-row';
+import { MonthlyBillsTableHeader } from '@/modules/monthly-bills/components/monthly-bills-table-header';
+import { MonthlyBillsTotalsRow } from '@/modules/monthly-bills/components/monthly-bills-totals-row';
+import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
+import { useUpsertPlannedPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
+import {
+  getMonthPayments,
+  getProjectTitle,
+  sumPayments,
+} from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import type {
+  MonthlyBillItem,
+  MonthlyBillProjectGroup,
+} from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import { format, getMonth, getYear } from 'date-fns';
+import { useMemo, useState } from 'react';
+
+interface MonthlyBillsProjectCardProps {
+  group: MonthlyBillProjectGroup;
+  selectedDate: Date;
+  canMarkPayment: boolean;
+  editMode: boolean;
+  visibleColumns: Set<MonthlyBillColumnKey>;
+}
+
+export function MonthlyBillsProjectCard({
+  group,
+  selectedDate,
+  canMarkPayment,
+  editMode,
+  visibleColumns,
+}: MonthlyBillsProjectCardProps) {
+  const monthName = format(selectedDate, 'MMMM');
+  const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
+  const month = getMonth(selectedDate) + 1;
+  const year = getYear(selectedDate);
+
+  const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
+
+  const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
+  const [toPayById, setToPayById] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
+    )
+  );
+  const [readyById, setReadyById] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
+    )
+  );
+
+  // Server-derived sums only depend on the fetched bills, so they don't recompute while the user
+  // edits To Pay values.
+  const serverTotals = useMemo(
+    () =>
+      group.bills.reduce(
+        (acc, bill) => {
+          acc.paidThisMonth += sumPayments(getMonthPayments(bill, selectedDate));
+          acc.totalPaid += bill.totalPaid;
+          return acc;
+        },
+        { paidThisMonth: 0, totalPaid: 0 }
+      ),
+    [group.bills, selectedDate]
+  );
+
+  const toPayTotal = useMemo(
+    () => group.bills.reduce((sum, bill) => sum + (toPayById[bill.purchaseOrder.id] ?? 0), 0),
+    [group.bills, toPayById]
+  );
+
+  const totals = { ...serverTotals, toPay: toPayTotal };
+
+  const commitToPay = (purchaseOrderId: string, amount: number) =>
+    upsertPlannedPayment.mutate({ purchaseOrderId, month, year, amount });
+
+  // The endpoint requires an amount, so send the row's current To Pay value alongside the flag.
+  const commitReady = (purchaseOrderId: string, isReady: boolean) =>
+    upsertPlannedPayment.mutate({
+      purchaseOrderId,
+      month,
+      year,
+      amount: toPayById[purchaseOrderId] ?? 0,
+      isReady,
+    });
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
+        <h3 className="text-sm font-semibold text-foreground">{getProjectTitle(group)}</h3>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {monthLabel}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table className="min-w-5xl">
+          <MonthlyBillsTableHeader
+            monthName={monthName}
+            canMarkPayment={canMarkPayment}
+            visibleColumns={visibleColumns}
+          />
+
+          <TableBody>
+            {group.bills.map((bill) => {
+              const id = bill.purchaseOrder.id;
+              return (
+                <MonthlyBillRow
+                  key={id}
+                  bill={bill}
+                  projectId={group.project.id}
+                  selectedDate={selectedDate}
+                  toPay={toPayById[id] ?? 0}
+                  ready={readyById[id] ?? false}
+                  canMarkPayment={canMarkPayment}
+                  visibleColumns={visibleColumns}
+                  editMode={editMode}
+                  onToPayChange={(value) =>
+                    setToPayById((current) => ({ ...current, [id]: value }))
+                  }
+                  onToPayCommit={(value) => commitToPay(id, value)}
+                  onReadyChange={(checked) => {
+                    setReadyById((current) => ({ ...current, [id]: checked }));
+                    commitReady(id, checked);
+                  }}
+                  onMarkPayment={() => setPaymentBill(bill)}
+                />
+              );
+            })}
+          </TableBody>
+
+          <TableFooter>
+            <MonthlyBillsTotalsRow
+              totals={totals}
+              visibleColumns={visibleColumns}
+              canMarkPayment={canMarkPayment}
+            />
+          </TableFooter>
+        </Table>
+      </div>
+
+      {paymentBill && (
+        <MarkPaymentDialog
+          key={paymentBill.purchaseOrder.id}
+          open={Boolean(paymentBill)}
+          onOpenChange={(next) => {
+            if (!next) setPaymentBill(null);
+          }}
+          bill={paymentBill}
+          amount={toPayById[paymentBill.purchaseOrder.id] ?? 0}
+          month={month}
+          year={year}
+        />
+      )}
+    </Card>
+  );
+}

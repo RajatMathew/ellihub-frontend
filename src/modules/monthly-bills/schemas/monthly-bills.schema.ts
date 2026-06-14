@@ -5,11 +5,20 @@ export const monthlyBillVendorSchema = z.object({
   name: z.string(),
 });
 
+export const monthlyBillSubChangeOrderSchema = z.object({
+  id: z.string(),
+  scoNumber: z.string(),
+  amount: z.coerce.number(),
+});
+
+export type MonthlyBillSubChangeOrder = z.infer<typeof monthlyBillSubChangeOrderSchema>;
+
 export const monthlyBillPurchaseOrderSchema = z.object({
   id: z.string(),
   poNumber: z.string(),
   vendor: monthlyBillVendorSchema,
   issuedAt: z.string().nullable().optional(),
+  subChangeOrders: z.array(monthlyBillSubChangeOrderSchema).default([]),
 });
 
 export const monthlyBillPlannedPaymentSchema = z.object({
@@ -87,3 +96,13 @@ export const markPaymentSchema = z.object({
 });
 
 export type MarkPaymentPayload = z.infer<typeof markPaymentSchema>;
+
+// The user-editable portion of the mark-payment form. purchaseOrderId/month/year come from the
+// selected bill's context, so they live outside the form and are merged in on submit.
+export const markPaymentFormSchema = markPaymentSchema.pick({
+  qbVendorId: true,
+  bankAccountId: true,
+  categoryId: true,
+});
+
+export type MarkPaymentFormData = z.infer<typeof markPaymentFormSchema>;

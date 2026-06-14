@@ -7,70 +7,24 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
-import { Card } from '@/app/components/ui/card';
 import { useAccess } from '@/app/contexts/access-context';
 import { MonthYearPicker } from '@/modules/monthly-bills/components/month-year-picker';
-import { MonthlyBillsTable } from '@/modules/monthly-bills/components/monthly-bills-table';
 import { MonthlyBillsTabs } from '@/modules/monthly-bills/components/monthly-bills-tabs';
 import {
   MONTHLY_BILL_TABS,
   MONTHLY_BILLS_ALLOWED_ROLES,
   MONTHLY_BILLS_DEFAULT_PATH,
 } from '@/modules/monthly-bills/constants/monthly-bills.constants';
-import { useMonthlyBillsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import {
   formatMonthlyBillMonthNumber,
   getMonthlyBillDateFromSearch,
-  getMonthlyBillDateRange,
-  getMonthlyBillMonthNumber,
   getMonthlyBillMonthSearch,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import {
+  MonthlyBillsSubcontractorPage,
+  MonthlyBillsTabPage,
+} from '@/modules/monthly-bills/pages';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
-
-function MonthlyBillsTabPage({ title, selectedDate }: { title: string; selectedDate: Date }) {
-  return (
-    <Card className="space-y-3 p-6">
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-      <div className="space-y-1 text-sm text-muted-foreground">
-        <p>
-          month: {formatMonthlyBillMonthNumber(selectedDate)}, year: {selectedDate.getFullYear()}
-        </p>
-      </div>
-    </Card>
-  );
-}
-
-function MonthlyBillsSubcontractorPage({
-  selectedDate,
-  enabled,
-}: {
-  selectedDate: Date;
-  enabled: boolean;
-}) {
-  const { access, isAdmin } = useAccess();
-  const canMarkPayment = isAdmin || access?.role === 'accountant';
-  const { startDate, endDate } = getMonthlyBillDateRange(selectedDate);
-  const monthlyBillsQuery = useMonthlyBillsQuery(
-    {
-      startDate,
-      endDate,
-      month: getMonthlyBillMonthNumber(selectedDate),
-      year: selectedDate.getFullYear(),
-    },
-    enabled
-  );
-
-  return (
-    <MonthlyBillsTable
-      groups={monthlyBillsQuery.data ?? []}
-      selectedDate={selectedDate}
-      canMarkPayment={canMarkPayment}
-      isLoading={monthlyBillsQuery.isLoading}
-      isError={monthlyBillsQuery.isError}
-      onRetry={() => void monthlyBillsQuery.refetch()}
-    />
-  );
-}
 
 export default function MonthlyBillsRoute() {
   const { access, isAdmin, isLoading } = useAccess();
@@ -97,7 +51,7 @@ export default function MonthlyBillsRoute() {
 
   return (
     <div className="container-fluid py-4">
-      <Toolbar className="gap-3 -mt-4 pt-4 pb-3 mb-4">
+      <Toolbar className="-mt-4 mb-4 gap-3 pb-3 pt-4">
         <ToolbarWrapper>
           <ToolbarHeading className="gap-2 lg:gap-2">
             <ToolbarPageTitle>Monthly Bills</ToolbarPageTitle>

@@ -18,12 +18,25 @@ export interface MonthlyBillsQueryParams {
   /** 1-12. */
   month: number;
   year: number;
+  /** Free-text match against PO number or vendor name. */
+  search?: string;
+  /** Filter to one or more vendors. */
+  vendorId?: string[];
+  /** Filter to one or more PO trade categories. */
+  tradeCategoryId?: string[];
 }
 
 export const monthlyBillsApi = {
   // Identity (role + employee) is derived server-side from the auth session, so it is not sent here.
   async listMonthlyBills(params: MonthlyBillsQueryParams): Promise<MonthlyBillProjectGroup[]> {
-    const res = await api.get(BASE, { params });
+    const { vendorId, tradeCategoryId, search, ...rest } = params;
+    // The endpoint takes multi-select filters as a comma-separated list (e.g. ?vendorId=a,b).
+    const query: Record<string, string | number> = { ...rest };
+    if (search) query.search = search;
+    if (vendorId?.length) query.vendorId = vendorId.join(',');
+    if (tradeCategoryId?.length) query.tradeCategoryId = tradeCategoryId.join(',');
+
+    const res = await api.get(BASE, { params: query });
     const raw = res.data?.data ?? res.data;
     const result = monthlyBillProjectGroupsSchema.safeParse(raw);
     if (!result.success) {
