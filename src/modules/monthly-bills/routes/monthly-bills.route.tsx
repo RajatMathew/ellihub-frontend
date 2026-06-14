@@ -48,13 +48,10 @@ export default function MonthlyBillsRoute() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar className="gap-4">
+      <Toolbar className="gap-3 pt-5 pb-3 mb-4">
         <ToolbarWrapper>
           <ToolbarHeading className="gap-2">
             <ToolbarPageTitle>Monthly Bills</ToolbarPageTitle>
-            <span className="text-sm text-muted-foreground">
-              Outstanding purchase order bills by billing period
-            </span>
           </ToolbarHeading>
           <ToolbarActions className="w-full justify-start sm:w-auto sm:justify-end">
             <MonthYearPicker date={selectedDate} onChange={handleMonthChange} />
