@@ -18,7 +18,9 @@ export type MonthlyBillColumnKey = (typeof MONTHLY_BILL_COLUMNS)[number]['key'];
 /** Columns whose footer cell shows a currency total rather than an empty cell. */
 export const MONTHLY_BILL_VALUE_COLUMNS = new Set<MonthlyBillColumnKey>([
   'paidThisMonth',
+  'original',
   'totalPaid',
+  'balance',
   'toPay',
 ]);
 
