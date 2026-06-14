@@ -1,7 +1,8 @@
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import {
-  MONTHLY_BILL_COLUMNS,
+  getMonthlyBillRenderedColumns,
   MONTHLY_BILL_VALUE_COLUMNS,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
@@ -24,14 +25,16 @@ export function MonthlyBillsTotalsRow({
   visibleColumns,
   canMarkPayment,
 }: MonthlyBillsTotalsRowProps) {
-  const columns = MONTHLY_BILL_COLUMNS.filter((column) => visibleColumns.has(column.key));
-  const firstValueIndex = columns.findIndex((column) =>
-    MONTHLY_BILL_VALUE_COLUMNS.has(column.key)
-  );
+  const columns = getMonthlyBillRenderedColumns(visibleColumns);
+  const isValueColumn = (key: MonthlyBillColumnKey) =>
+    (key === 'payments' && visibleColumns.has('paidThisMonth')) ||
+    MONTHLY_BILL_VALUE_COLUMNS.has(key);
+  const firstValueIndex = columns.findIndex((column) => isValueColumn(column.key));
   // Columns before the first value column (plus the always-present select column) collapse into a
   // single right-aligned "Totals" label cell, mirroring the original layout.
   const splitIndex = firstValueIndex === -1 ? columns.length : firstValueIndex;
   const valueByColumn: Record<string, number> = {
+    payments: totals.paidThisMonth,
     paidThisMonth: totals.paidThisMonth,
     totalPaid: totals.totalPaid,
     toPay: totals.toPay,
@@ -47,10 +50,13 @@ export function MonthlyBillsTotalsRow({
         Totals
       </TableCell>
       {columns.slice(splitIndex).map((column) =>
-        MONTHLY_BILL_VALUE_COLUMNS.has(column.key) ? (
+        isValueColumn(column.key) ? (
           <TableCell
             key={column.key}
-            className="py-3 text-right text-sm font-semibold text-foreground"
+            className={cn(
+              'py-3 text-sm font-semibold text-foreground',
+              column.key !== 'totalPaid' && 'text-right'
+            )}
           >
             {formatCurrency(valueByColumn[column.key])}
           </TableCell>

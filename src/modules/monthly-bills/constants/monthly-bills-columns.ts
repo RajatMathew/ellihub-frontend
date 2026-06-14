@@ -25,3 +25,17 @@ export const MONTHLY_BILL_VALUE_COLUMNS = new Set<MonthlyBillColumnKey>([
 export function getDefaultMonthlyBillColumns() {
   return new Set<MonthlyBillColumnKey>(MONTHLY_BILL_COLUMNS.map((column) => column.key));
 }
+
+export function getMonthlyBillRenderedColumns(visibleColumns: Set<MonthlyBillColumnKey>) {
+  return MONTHLY_BILL_COLUMNS.filter((column) => {
+    if (column.key === 'issueDate') return false;
+    if (column.key === 'paidThisMonth') return false;
+    if (column.key === 'vendor') {
+      return visibleColumns.has('vendor') || visibleColumns.has('issueDate');
+    }
+    if (column.key === 'payments') {
+      return visibleColumns.has('payments') || visibleColumns.has('paidThisMonth');
+    }
+    return visibleColumns.has(column.key);
+  });
+}

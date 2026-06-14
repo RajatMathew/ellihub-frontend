@@ -114,7 +114,7 @@ export function PaymentsCell({ payments, poNumber }: PaymentsCellProps) {
   return (
     <div className="flex flex-col items-start gap-0.5 text-sm">
       {payments.length === 0 ? (
-        <span className="font-medium text-primary">No payments yet</span>
+        <span className="font-medium text-muted-foreground">No payments yet</span>
       ) : (
         <button
           type="button"

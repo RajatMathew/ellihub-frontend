@@ -14,6 +14,8 @@ export function MonthlyBillsTableHeader({
   visibleColumns,
 }: MonthlyBillsTableHeaderProps) {
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
+  const showVendorInfo = show('vendor') || show('issueDate');
+  const showPaymentInfo = show('payments') || show('paidThisMonth');
   const hasActions = canMarkPayment;
 
   return (
@@ -22,42 +24,32 @@ export function MonthlyBillsTableHeader({
         {/* Chevron expand/collapse column */}
         <TableHead className="h-10 w-12 text-xs font-semibold uppercase tracking-normal" />
         {show('poNumber') && (
-          <TableHead className="h-10 min-w-44 text-xs font-semibold uppercase tracking-normal">
+          <TableHead className="h-10 min-w-36 text-xs font-semibold uppercase tracking-normal">
             PO #
           </TableHead>
         )}
-        {show('issueDate') && (
-          <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
-            PO Issue Date
+        {showVendorInfo && (
+          <TableHead className="h-10 min-w-64 text-xs font-semibold uppercase tracking-normal">
+            {show('vendor') ? 'Vendor' : 'PO Issue Date'}
           </TableHead>
         )}
-        {show('vendor') && (
-          <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
-            Vendor
-          </TableHead>
-        )}
-        {show('payments') && (
+        {showPaymentInfo && (
           <TableHead className="h-10 min-w-40 text-xs font-semibold uppercase tracking-normal">
-            Payments in {monthName}
-          </TableHead>
-        )}
-        {show('paidThisMonth') && (
-          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
-            Paid This Month
+            {show('payments') ? `Payments in ${monthName}` : 'Paid This Month'}
           </TableHead>
         )}
         {show('original') && (
-          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+          <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
             Original
           </TableHead>
         )}
         {show('totalPaid') && (
-          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+          <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
             Total Paid
           </TableHead>
         )}
         {show('balance') && (
-          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
+          <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
             Balance
           </TableHead>
         )}

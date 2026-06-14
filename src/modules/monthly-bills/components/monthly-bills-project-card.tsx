@@ -123,11 +123,11 @@ export function MonthlyBillsProjectCard({
     const id = bill.purchaseOrder.id;
     return Boolean(
       canMarkPayment &&
-        (readyById[id] ?? false) &&
-        getSavedAmount(bill) > 0 &&
-        !hasAmountChanges(bill) &&
-        !(amountSavingById[id] ?? false) &&
-        !(readySavingById[id] ?? false)
+      (readyById[id] ?? false) &&
+      getSavedAmount(bill) > 0 &&
+      !hasAmountChanges(bill) &&
+      !(amountSavingById[id] ?? false) &&
+      !(readySavingById[id] ?? false)
     );
   };
 
@@ -335,7 +335,7 @@ export function MonthlyBillsProjectCard({
       </div>
 
       <div className="hidden overflow-x-auto lg:block">
-        <Table className="min-w-[1120px]">
+        <Table className="min-w-230">
           <MonthlyBillsTableHeader
             monthName={monthName}
             canUpdateBills={canUpdateBills}

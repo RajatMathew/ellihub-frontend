@@ -11,9 +11,13 @@ import {
   SubChangeOrdersCell,
   ToPayCell,
 } from '@/modules/monthly-bills/components/monthly-bills-cells';
-import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
+import {
+  getMonthlyBillRenderedColumns,
+  type MonthlyBillColumnKey,
+} from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import { format } from 'date-fns';
 import { ChevronRight, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -63,9 +67,13 @@ export function MonthlyBillRow({
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
   const monthPayments = getMonthPayments(bill, selectedDate);
   const paidThisMonth = sumPayments(monthPayments);
+  const paidMonthLabel = format(selectedDate, 'MMM');
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
+  const showVendorInfo = show('vendor') || show('issueDate');
+  const showPaymentInfo = show('payments') || show('paidThisMonth');
   const [expanded, setExpanded] = useState(false);
-  const colSpan = 1 + visibleColumns.size + (canMarkPayment ? 1 : 0);
+  const colSpan =
+    1 + getMonthlyBillRenderedColumns(visibleColumns).length + (canMarkPayment ? 1 : 0);
 
   return (
     <>
@@ -102,38 +110,51 @@ export function MonthlyBillRow({
             </div>
           </TableCell>
         )}
-        {show('issueDate') && (
-          <TableCell className="py-3 text-sm text-muted-foreground">
-            {issuedAt
-              ? formatDate(issuedAt, { month: '2-digit', day: '2-digit', year: 'numeric' })
-              : '-'}
+        {showVendorInfo && (
+          <TableCell className="min-w-64 py-3">
+            <div className="min-w-0">
+              {show('vendor') && (
+                <p className="break-words text-sm font-medium leading-5 text-foreground">
+                  {vendor.name}
+                </p>
+              )}
+              {show('issueDate') && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {issuedAt
+                    ? formatDate(issuedAt, { month: '2-digit', day: '2-digit', year: 'numeric' })
+                    : 'No issue date'}
+                </p>
+              )}
+            </div>
           </TableCell>
         )}
-        {show('vendor') && (
-          <TableCell className="py-3 text-sm font-medium text-foreground">{vendor.name}</TableCell>
-        )}
-        {show('payments') && (
+        {showPaymentInfo && (
           <TableCell className="py-3">
-            <PaymentsCell payments={monthPayments} poNumber={poNumber} />
-          </TableCell>
-        )}
-        {show('paidThisMonth') && (
-          <TableCell className="py-3 text-right text-sm text-muted-foreground">
-            {paidThisMonth > 0 ? formatCurrency(paidThisMonth) : '-'}
+            <div className="flex flex-col items-start gap-0.5">
+              {show('payments') && <PaymentsCell payments={monthPayments} poNumber={poNumber} />}
+              {show('paidThisMonth') && paidThisMonth > 0 && (
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                  Paid in {paidMonthLabel}: {formatCurrency(paidThisMonth)}
+                </span>
+              )}
+              {!show('payments') && paidThisMonth === 0 && (
+                <span className="text-sm text-muted-foreground">-</span>
+              )}
+            </div>
           </TableCell>
         )}
         {show('original') && (
-          <TableCell className="py-3 text-right text-sm font-medium text-foreground">
+          <TableCell className="py-3 text-sm font-medium text-foreground">
             {formatCurrency(bill.original)}
           </TableCell>
         )}
         {show('totalPaid') && (
-          <TableCell className="py-3 text-right text-sm text-muted-foreground">
+          <TableCell className="py-3 text-sm font-medium text-foreground">
             {formatCurrency(bill.totalPaid)}
           </TableCell>
         )}
         {show('balance') && (
-          <TableCell className="py-3 text-right text-sm font-semibold text-foreground">
+          <TableCell className="py-3 text-sm font-semibold text-foreground">
             {formatCurrency(bill.balance)}
           </TableCell>
         )}

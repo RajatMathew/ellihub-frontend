@@ -2,7 +2,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableRow } from '@/app/components/ui/table';
 import { MonthlyBillsTableHeader } from '@/modules/monthly-bills/components/monthly-bills-table-header';
 import {
-  MONTHLY_BILL_COLUMNS,
+  getMonthlyBillRenderedColumns,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { format } from 'date-fns';
@@ -11,14 +11,14 @@ const SKELETON_GROUP_COUNT = 2;
 const SKELETON_ROW_COUNT = 3;
 
 const SKELETON_BAR_BY_COLUMN: Record<MonthlyBillColumnKey, string> = {
-  poNumber: 'h-3.5 w-36',
+  poNumber: 'h-3.5 w-28',
   issueDate: 'h-3.5 w-20',
-  vendor: 'h-3.5 w-24',
+  vendor: 'h-3.5 w-48',
   payments: 'h-3.5 w-28',
   paidThisMonth: 'ml-auto h-3.5 w-16',
-  original: 'ml-auto h-3.5 w-20',
-  totalPaid: 'ml-auto h-3.5 w-20',
-  balance: 'ml-auto h-3.5 w-20',
+  original: 'h-3.5 w-20',
+  totalPaid: 'h-3.5 w-20',
+  balance: 'h-3.5 w-20',
   toPay: 'ml-auto h-8 w-24 rounded-md',
   ready: 'mx-auto h-5 w-8 rounded-full',
 };
@@ -37,7 +37,7 @@ export function MonthlyBillsTableSkeleton({
   visibleColumns,
 }: MonthlyBillsTableSkeletonProps) {
   const monthName = format(selectedDate, 'MMMM');
-  const columns = MONTHLY_BILL_COLUMNS.filter((column) => visibleColumns.has(column.key));
+  const columns = getMonthlyBillRenderedColumns(visibleColumns);
   const hasActions = canMarkPayment;
 
   return (
@@ -81,7 +81,7 @@ export function MonthlyBillsTableSkeleton({
           </div>
 
           <div className="hidden overflow-x-auto lg:block">
-            <Table className="min-w-[1120px]">
+            <Table className="min-w-230">
               <MonthlyBillsTableHeader
                 monthName={monthName}
                 canUpdateBills={canUpdateBills}
@@ -96,7 +96,23 @@ export function MonthlyBillsTableSkeleton({
                     </TableCell>
                     {columns.map((column) => (
                       <TableCell key={column.key} className="py-3">
-                        <Skeleton className={SKELETON_BAR_BY_COLUMN[column.key]} />
+                        {column.key === 'vendor' && visibleColumns.has('issueDate') ? (
+                          <div className="space-y-1.5">
+                            {visibleColumns.has('vendor') && (
+                              <Skeleton className={SKELETON_BAR_BY_COLUMN.vendor} />
+                            )}
+                            <Skeleton className={SKELETON_BAR_BY_COLUMN.issueDate} />
+                          </div>
+                        ) : column.key === 'payments' && visibleColumns.has('paidThisMonth') ? (
+                          <div className="space-y-1.5">
+                            {visibleColumns.has('payments') && (
+                              <Skeleton className={SKELETON_BAR_BY_COLUMN.payments} />
+                            )}
+                            <Skeleton className={SKELETON_BAR_BY_COLUMN.paidThisMonth} />
+                          </div>
+                        ) : (
+                          <Skeleton className={SKELETON_BAR_BY_COLUMN[column.key]} />
+                        )}
                       </TableCell>
                     ))}
                     {hasActions && (
