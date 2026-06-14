@@ -25,17 +25,20 @@ const SKELETON_BAR_BY_COLUMN: Record<MonthlyBillColumnKey, string> = {
 
 interface MonthlyBillsTableSkeletonProps {
   selectedDate: Date;
+  canUpdateBills: boolean;
   canMarkPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
 }
 
 export function MonthlyBillsTableSkeleton({
   selectedDate,
+  canUpdateBills,
   canMarkPayment,
   visibleColumns,
 }: MonthlyBillsTableSkeletonProps) {
   const monthName = format(selectedDate, 'MMMM');
   const columns = MONTHLY_BILL_COLUMNS.filter((column) => visibleColumns.has(column.key));
+  const hasActions = canUpdateBills || canMarkPayment;
 
   return (
     <div>
@@ -81,6 +84,7 @@ export function MonthlyBillsTableSkeleton({
             <Table className="min-w-[1120px]">
               <MonthlyBillsTableHeader
                 monthName={monthName}
+                canUpdateBills={canUpdateBills}
                 canMarkPayment={canMarkPayment}
                 visibleColumns={visibleColumns}
               />
@@ -95,7 +99,7 @@ export function MonthlyBillsTableSkeleton({
                         <Skeleton className={SKELETON_BAR_BY_COLUMN[column.key]} />
                       </TableCell>
                     ))}
-                    {canMarkPayment && (
+                    {hasActions && (
                       <TableCell className="py-3">
                         <Skeleton className="mx-auto h-8 w-32 rounded-md" />
                       </TableCell>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
@@ -19,21 +19,30 @@ import type {
   MonthlyBillProjectGroup,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { format, getMonth, getYear } from 'date-fns';
+import { toast } from 'sonner';
 
 interface MonthlyBillsProjectCardProps {
   group: MonthlyBillProjectGroup;
   selectedDate: Date;
+  canUpdateBills: boolean;
   canMarkPayment: boolean;
-  editMode: boolean;
+  bulkEditMode: boolean;
+  bulkSaveVersion: number;
+  bulkCancelVersion: number;
   visibleColumns: Set<MonthlyBillColumnKey>;
+  onBulkSaveComplete: (result: { version: number; saved: number; failed: number }) => void;
 }
 
 export function MonthlyBillsProjectCard({
   group,
   selectedDate,
+  canUpdateBills,
   canMarkPayment,
-  editMode,
+  bulkEditMode,
+  bulkSaveVersion,
+  bulkCancelVersion,
   visibleColumns,
+  onBulkSaveComplete,
 }: MonthlyBillsProjectCardProps) {
   const monthName = format(selectedDate, 'MMMM');
   const monthLabel = format(selectedDate, 'MMMM yyyy').toUpperCase();
@@ -53,6 +62,8 @@ export function MonthlyBillsProjectCard({
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
     )
   );
+  const [editingById, setEditingById] = useState<Record<string, boolean>>({});
+  const [savingById, setSavingById] = useState<Record<string, boolean>>({});
 
   const serverTotals = useMemo(
     () =>
@@ -82,17 +93,106 @@ export function MonthlyBillsProjectCard({
 
   const totals = { ...serverTotals, toPay: toPayTotal };
 
-  const commitToPay = (purchaseOrderId: string, amount: number) =>
-    upsertPlannedPayment.mutate({ purchaseOrderId, month, year, amount });
+  const resetBillDraft = (bill: MonthlyBillItem) => {
+    const id = bill.purchaseOrder.id;
+    setToPayById((current) => ({ ...current, [id]: bill.plannedPayment?.amount ?? 0 }));
+    setReadyById((current) => ({ ...current, [id]: bill.plannedPayment?.isReady ?? false }));
+  };
 
-  const commitReady = (purchaseOrderId: string, isReady: boolean) =>
-    upsertPlannedPayment.mutate({
-      purchaseOrderId,
-      month,
-      year,
-      amount: toPayById[purchaseOrderId] ?? 0,
-      isReady,
-    });
+  const hasBillChanges = (bill: MonthlyBillItem) => {
+    const id = bill.purchaseOrder.id;
+    return (
+      (toPayById[id] ?? 0) !== (bill.plannedPayment?.amount ?? 0) ||
+      (readyById[id] ?? false) !== (bill.plannedPayment?.isReady ?? false)
+    );
+  };
+
+  const handleSaveBill = async (bill: MonthlyBillItem) => {
+    const id = bill.purchaseOrder.id;
+    setSavingById((current) => ({ ...current, [id]: true }));
+
+    try {
+      await upsertPlannedPayment.mutateAsync({
+        purchaseOrderId: id,
+        month,
+        year,
+        amount: toPayById[id] ?? 0,
+        isReady: readyById[id] ?? false,
+      });
+      setEditingById((current) => ({ ...current, [id]: false }));
+      toast.success('Planned payment saved.');
+    } catch {
+      // The mutation hook shows the API error toast.
+    } finally {
+      setSavingById((current) => ({ ...current, [id]: false }));
+    }
+  };
+
+  const handleCancelEdit = (bill: MonthlyBillItem) => {
+    const id = bill.purchaseOrder.id;
+    resetBillDraft(bill);
+    setEditingById((current) => ({ ...current, [id]: false }));
+  };
+
+  const setBillsSaving = (bills: MonthlyBillItem[], isSaving: boolean) => {
+    setSavingById((current) => ({
+      ...current,
+      ...Object.fromEntries(bills.map((bill) => [bill.purchaseOrder.id, isSaving])),
+    }));
+  };
+
+  useEffect(() => {
+    if (bulkCancelVersion === 0) return;
+
+    group.bills.forEach(resetBillDraft);
+    setEditingById({});
+  }, [bulkCancelVersion, group.bills]);
+
+  useEffect(() => {
+    if (bulkSaveVersion === 0) return;
+
+    const changedBills = group.bills.filter(hasBillChanges);
+    if (changedBills.length === 0) {
+      onBulkSaveComplete({ version: bulkSaveVersion, saved: 0, failed: 0 });
+      return;
+    }
+
+    let cancelled = false;
+    setBillsSaving(changedBills, true);
+
+    const saveChangedBills = async () => {
+      const results = await Promise.allSettled(
+        changedBills.map((bill) =>
+          upsertPlannedPayment.mutateAsync({
+            purchaseOrderId: bill.purchaseOrder.id,
+            month,
+            year,
+            amount: toPayById[bill.purchaseOrder.id] ?? 0,
+            isReady: readyById[bill.purchaseOrder.id] ?? false,
+          })
+        )
+      );
+
+      if (cancelled) return;
+
+      setBillsSaving(changedBills, false);
+
+      const failed = results.filter((result) => result.status === 'rejected').length;
+      const saved = results.length - failed;
+
+      if (failed === 0) {
+        setEditingById({});
+      }
+
+      onBulkSaveComplete({ version: bulkSaveVersion, saved, failed });
+    };
+
+    void saveChangedBills();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bulkSaveVersion]);
 
   return (
     <section className="border-t first:border-t-0">
@@ -128,15 +228,20 @@ export function MonthlyBillsProjectCard({
               selectedDate={selectedDate}
               toPay={toPayById[id] ?? 0}
               ready={readyById[id] ?? false}
+              canUpdateBills={canUpdateBills}
               canMarkPayment={canMarkPayment}
               visibleColumns={visibleColumns}
-              editMode={editMode}
+              isBulkEditing={bulkEditMode}
+              isEditing={bulkEditMode || (editingById[id] ?? false)}
+              isSaving={savingById[id] ?? false}
+              hasChanges={hasBillChanges(bill)}
               onToPayChange={(value) => setToPayById((current) => ({ ...current, [id]: value }))}
-              onToPayCommit={(value) => commitToPay(id, value)}
-              onReadyChange={(checked) => {
-                setReadyById((current) => ({ ...current, [id]: checked }));
-                commitReady(id, checked);
-              }}
+              onReadyChange={(checked) =>
+                setReadyById((current) => ({ ...current, [id]: checked }))
+              }
+              onEdit={() => setEditingById((current) => ({ ...current, [id]: true }))}
+              onCancelEdit={() => handleCancelEdit(bill)}
+              onSave={() => void handleSaveBill(bill)}
               onMarkPayment={() => setPaymentBill(bill)}
             />
           );
@@ -147,6 +252,7 @@ export function MonthlyBillsProjectCard({
         <Table className="min-w-[1120px]">
           <MonthlyBillsTableHeader
             monthName={monthName}
+            canUpdateBills={canUpdateBills}
             canMarkPayment={canMarkPayment}
             visibleColumns={visibleColumns}
           />
@@ -162,17 +268,22 @@ export function MonthlyBillsProjectCard({
                   selectedDate={selectedDate}
                   toPay={toPayById[id] ?? 0}
                   ready={readyById[id] ?? false}
+                  canUpdateBills={canUpdateBills}
                   canMarkPayment={canMarkPayment}
                   visibleColumns={visibleColumns}
-                  editMode={editMode}
+                  isBulkEditing={bulkEditMode}
+                  isEditing={bulkEditMode || (editingById[id] ?? false)}
+                  isSaving={savingById[id] ?? false}
+                  hasChanges={hasBillChanges(bill)}
                   onToPayChange={(value) =>
                     setToPayById((current) => ({ ...current, [id]: value }))
                   }
-                  onToPayCommit={(value) => commitToPay(id, value)}
-                  onReadyChange={(checked) => {
-                    setReadyById((current) => ({ ...current, [id]: checked }));
-                    commitReady(id, checked);
-                  }}
+                  onReadyChange={(checked) =>
+                    setReadyById((current) => ({ ...current, [id]: checked }))
+                  }
+                  onEdit={() => setEditingById((current) => ({ ...current, [id]: true }))}
+                  onCancelEdit={() => handleCancelEdit(bill)}
+                  onSave={() => void handleSaveBill(bill)}
                   onMarkPayment={() => setPaymentBill(bill)}
                 />
               );
@@ -183,6 +294,7 @@ export function MonthlyBillsProjectCard({
             <MonthlyBillsTotalsRow
               totals={totals}
               visibleColumns={visibleColumns}
+              canUpdateBills={canUpdateBills}
               canMarkPayment={canMarkPayment}
             />
           </TableFooter>
@@ -198,6 +310,7 @@ export function MonthlyBillsProjectCard({
           }}
           bill={paymentBill}
           amount={toPayById[paymentBill.purchaseOrder.id] ?? 0}
+          isReady={readyById[paymentBill.purchaseOrder.id] ?? false}
           month={month}
           year={year}
         />

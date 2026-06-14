@@ -3,16 +3,19 @@ import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/mon
 
 interface MonthlyBillsTableHeaderProps {
   monthName: string;
+  canUpdateBills: boolean;
   canMarkPayment: boolean;
   visibleColumns: Set<MonthlyBillColumnKey>;
 }
 
 export function MonthlyBillsTableHeader({
   monthName,
+  canUpdateBills,
   canMarkPayment,
   visibleColumns,
 }: MonthlyBillsTableHeaderProps) {
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
+  const hasActions = canUpdateBills || canMarkPayment;
 
   return (
     <TableHeader>
@@ -69,8 +72,8 @@ export function MonthlyBillsTableHeader({
             Ready
           </TableHead>
         )}
-        {canMarkPayment && (
-          <TableHead className="h-10 min-w-40 text-center text-xs font-semibold uppercase tracking-normal" />
+        {hasActions && (
+          <TableHead className="h-10 min-w-56 text-center text-xs font-semibold uppercase tracking-normal" />
         )}
       </TableRow>
     </TableHeader>

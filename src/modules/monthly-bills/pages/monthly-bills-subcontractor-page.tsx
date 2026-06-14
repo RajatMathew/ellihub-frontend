@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -20,7 +20,8 @@ import {
   getMonthlyBillDateRange,
   getMonthlyBillMonthNumber,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
-import { Check, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface MonthlyBillsSubcontractorPageProps {
   selectedDate: Date;
@@ -31,10 +32,21 @@ export function MonthlyBillsSubcontractorPage({
   selectedDate,
   enabled,
 }: MonthlyBillsSubcontractorPageProps) {
-  const { access, isAdmin } = useAccess();
-  const canMarkPayment = isAdmin || access?.role === 'accountant';
-  const [editMode, setEditMode] = useState(false);
+  const { can } = useAccess();
+  const canUpdateBills = can('monthlyBills', 'update');
+  const canMarkPayment = can('monthlyBills', 'mark-payment');
   const [visibleColumns, setVisibleColumns] = useState(getDefaultMonthlyBillColumns);
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkSaveVersion, setBulkSaveVersion] = useState(0);
+  const [bulkCancelVersion, setBulkCancelVersion] = useState(0);
+  const bulkSaveRef = useRef({
+    version: 0,
+    expected: 0,
+    completed: 0,
+    saved: 0,
+    failed: 0,
+  });
 
   const toggleColumn = (key: MonthlyBillColumnKey) =>
     setVisibleColumns((current) => {
@@ -108,6 +120,55 @@ export function MonthlyBillsSubcontractorPage({
     setTradeCategorySearch('');
   };
 
+  const handleBulkSave = () => {
+    const groups = monthlyBillsQuery.data ?? [];
+    if (groups.length === 0) return;
+
+    setBulkSaveVersion((current) => {
+      const version = current + 1;
+      bulkSaveRef.current = {
+        version,
+        expected: groups.length,
+        completed: 0,
+        saved: 0,
+        failed: 0,
+      };
+      return version;
+    });
+    setBulkSaving(true);
+  };
+
+  const handleBulkSaveComplete = (result: { version: number; saved: number; failed: number }) => {
+    const state = bulkSaveRef.current;
+    if (result.version !== state.version) return;
+
+    state.completed += 1;
+    state.saved += result.saved;
+    state.failed += result.failed;
+
+    if (state.completed < state.expected) return;
+
+    setBulkSaving(false);
+
+    if (state.failed > 0) {
+      toast.error(`Saved ${state.saved} planned payment(s). ${state.failed} failed.`);
+      return;
+    }
+
+    setBulkEditMode(false);
+    if (state.saved > 0) {
+      toast.success(`Saved ${state.saved} planned payment(s).`);
+    } else {
+      toast.info('No monthly bill changes to save.');
+    }
+  };
+
+  const handleBulkCancel = () => {
+    setBulkCancelVersion((current) => current + 1);
+    setBulkEditMode(false);
+    setBulkSaving(false);
+  };
+
   return (
     <div>
       <MonthlyBillsStats
@@ -117,11 +178,11 @@ export function MonthlyBillsSubcontractorPage({
       />
 
       <Card className="overflow-hidden">
-        <CardHeader className="items-stretch gap-3 xl:flex-row xl:items-center">
+        <CardHeader className="items-stretch gap-3 2xl:flex-row 2xl:items-center">
           <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
             Subcontractor Bills
           </CardTitle>
-          <CardToolbar className="w-full flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:items-center">
+          <CardToolbar className="w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">
             <MonthlyBillsFilters
               searchInput={searchInput}
               vendorIds={vendorIds}
@@ -139,22 +200,52 @@ export function MonthlyBillsSubcontractorPage({
               onClearFilters={clearFilters}
             />
 
-            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end 2xl:w-auto">
               <MonthlyBillsColumnToggle
                 visibleColumns={visibleColumns}
                 onToggleColumn={toggleColumn}
               />
-              <Button
-                type="button"
-                variant={editMode ? 'primary' : 'outline'}
-                size="sm"
-                aria-pressed={editMode}
-                onClick={() => setEditMode((current) => !current)}
-                className="w-full sm:w-auto"
-              >
-                {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-                {editMode ? 'Done' : 'Edit'}
-              </Button>
+              {canUpdateBills &&
+                (bulkEditMode ? (
+                  <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={bulkSaving}
+                      onClick={handleBulkSave}
+                      className="min-w-28"
+                    >
+                      {bulkSaving ? (
+                        <Loader2 className="size-4 animate-spin text-white!" />
+                      ) : (
+                        <Save className="size-4 text-white!" />
+                      )}
+                      Save All
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={bulkSaving}
+                      onClick={handleBulkCancel}
+                      className="min-w-24"
+                    >
+                      <X className="size-3.5" />
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBulkEditMode(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <Pencil className="size-3.5" />
+                    Bulk Edit
+                  </Button>
+                ))}
             </div>
           </CardToolbar>
         </CardHeader>
@@ -162,12 +253,16 @@ export function MonthlyBillsSubcontractorPage({
         <MonthlyBillsTable
           groups={monthlyBillsQuery.data ?? []}
           selectedDate={selectedDate}
+          canUpdateBills={canUpdateBills}
           canMarkPayment={canMarkPayment}
-          editMode={editMode}
+          bulkEditMode={bulkEditMode}
+          bulkSaveVersion={bulkSaveVersion}
+          bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
           isLoading={monthlyBillsQuery.isLoading}
           isError={monthlyBillsQuery.isError}
           onRetry={() => void monthlyBillsQuery.refetch()}
+          onBulkSaveComplete={handleBulkSaveComplete}
         />
       </Card>
     </div>

@@ -9,25 +9,31 @@ import { ClipboardList } from 'lucide-react';
 interface MonthlyBillsTableProps {
   groups: MonthlyBillProjectGroup[];
   selectedDate: Date;
-  /** Whether the current user (admin or accountant) can mark payments. */
+  canUpdateBills: boolean;
   canMarkPayment: boolean;
-  /** When false, the To Pay / Ready inputs are read-only. */
-  editMode: boolean;
+  bulkEditMode: boolean;
+  bulkSaveVersion: number;
+  bulkCancelVersion: number;
   visibleColumns: Set<MonthlyBillColumnKey>;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  onBulkSaveComplete: (result: { version: number; saved: number; failed: number }) => void;
 }
 
 export function MonthlyBillsTable({
   groups,
   selectedDate,
+  canUpdateBills,
   canMarkPayment,
-  editMode,
+  bulkEditMode,
+  bulkSaveVersion,
+  bulkCancelVersion,
   visibleColumns,
   isLoading,
   isError,
   onRetry,
+  onBulkSaveComplete,
 }: MonthlyBillsTableProps) {
   if (isError) {
     return (
@@ -41,6 +47,7 @@ export function MonthlyBillsTable({
     return (
       <MonthlyBillsTableSkeleton
         selectedDate={selectedDate}
+        canUpdateBills={canUpdateBills}
         canMarkPayment={canMarkPayment}
         visibleColumns={visibleColumns}
       />
@@ -58,9 +65,13 @@ export function MonthlyBillsTable({
           key={getProjectCardKey(group, selectedDate)}
           group={group}
           selectedDate={selectedDate}
+          canUpdateBills={canUpdateBills}
           canMarkPayment={canMarkPayment}
-          editMode={editMode}
+          bulkEditMode={bulkEditMode}
+          bulkSaveVersion={bulkSaveVersion}
+          bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
+          onBulkSaveComplete={onBulkSaveComplete}
         />
       ))}
     </div>

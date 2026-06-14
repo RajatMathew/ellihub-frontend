@@ -38,6 +38,7 @@ interface MarkPaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   bill: MonthlyBillItem;
   amount: number;
+  isReady?: boolean;
   month: number;
   year: number;
 }
@@ -47,6 +48,7 @@ export function MarkPaymentDialog({
   onOpenChange,
   bill,
   amount,
+  isReady: isReadyOverride,
   month,
   year,
 }: MarkPaymentDialogProps) {
@@ -79,7 +81,7 @@ export function MarkPaymentDialog({
   const paymentDate = useMemo(() => format(new Date(), 'MMM d, yyyy'), []);
 
   // The backend only posts a payment for a planned payment that has been marked ready.
-  const isReady = bill.plannedPayment?.isReady ?? false;
+  const isReady = isReadyOverride ?? bill.plannedPayment?.isReady ?? false;
   const canSubmit = isReady && amount > 0 && !markPayment.isPending;
 
   const handleSubmit = (values: MarkPaymentFormData) => {

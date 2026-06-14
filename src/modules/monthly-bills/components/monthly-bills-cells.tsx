@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { NumberInput } from '@/app/components/ui/number-input';
-import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { cn } from '@/app/lib/utils';
 import { PaymentsDialog } from '@/modules/monthly-bills/components/payments-dialog';
 import { SubChangeOrdersDialog } from '@/modules/monthly-bills/components/sub-change-orders-dialog';
@@ -16,26 +15,21 @@ interface ToPayCellProps {
   disabled?: boolean;
   className?: string;
   onChange: (value: number) => void;
-  onCommit: (value: number) => void;
 }
 
-/** To Pay input. Updates the row total immediately, but debounces the API save. */
+/** To Pay input. Updates the row draft immediately; callers decide when to save it. */
 export function ToPayCell({
   value,
   poNumber,
   disabled,
   className,
   onChange,
-  onCommit,
 }: ToPayCellProps) {
-  const debouncedCommit = useDebouncedCallback(onCommit, 600);
-
   return (
     <NumberInput
       value={value}
       onValueChange={(next) => {
         onChange(next);
-        debouncedCommit(next);
       }}
       decimalPlaces={2}
       min={0}
