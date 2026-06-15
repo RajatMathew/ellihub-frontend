@@ -94,7 +94,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { isAdmin, can } = useAccess();
   const canSyncFieldwire = can('primeChangeOrder', 'sync');
   const canSyncQuickBooks = can('integration', 'sync');
-  const canAccessDevTools = can('devtools', 'access');
   const canManageTemplates = can('template', 'read');
   const canManageIntegrations = can('integration', 'read');
   const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
@@ -277,65 +276,64 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </Link>
           </DropdownMenuItem> */}
 
-          {canAccessDevTools && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="flex items-center gap-2">
-                <Bug /> Debug
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="" className="flex items-center gap-2">
-                    <Coffee />
-                    Logger
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="#"
-                    onClick={() => window.toggleDevtools()}
-                    className="flex items-center gap-2"
-                  >
-                    <FileText />
-                    Query Devtools
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <Bug /> Debug
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48" slot="content" avoidCollisions={true}>
-                    <DropdownMenuItem asChild>
-                      <a href="#" onClick={handleCheckUpdate} className="flex items-center gap-2">
-                        <HistoryIcon />
-                        Check for Updates
-                      </a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <button
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('pwa-update-available'));
-                        }}
-                      >
-                        <Bug />
-                        Fake PWA Update
-                      </button>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <button
-                        onClick={() => {
-                          debugForceUpdate();
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Bug />
-                        Force Update(API)
-                      </button>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2">
+              <Bug /> Developer Settings
+            </DropdownMenuSubTrigger>
+
+            <DropdownMenuSubContent className="w-48">
+              <DropdownMenuItem asChild>
+                <Link to="" className="flex items-center gap-2">
+                  <Coffee />
+                  Logger
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href="#"
+                  onClick={() => window.toggleDevtools()}
+                  className="flex items-center gap-2"
+                >
+                  <FileText />
+                  Query Devtools
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <Bug /> Debug
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48" slot="content" avoidCollisions={true}>
+                  <DropdownMenuItem asChild>
+                    <a href="#" onClick={handleCheckUpdate} className="flex items-center gap-2">
+                      <HistoryIcon />
+                      Check for Updates
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('pwa-update-available'));
+                      }}
+                    >
+                      <Bug />
+                      Fake PWA Update
+                    </button>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <button
+                      onClick={() => {
+                        debugForceUpdate();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Bug />
+                      Force Update(API)
+                    </button>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
           {/* Language Submenu with Radio Group */}
           {/* <DropdownMenuSub>
