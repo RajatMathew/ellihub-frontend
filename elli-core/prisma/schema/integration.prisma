@@ -1,0 +1,228 @@
+model QuickBooksConnection {
+  id                       String                     @id
+  realmId                  String                     @unique
+  companyName              String?
+  environment              QuickBooksEnvironment      @default(SANDBOX)
+  status                   QuickBooksConnectionStatus @default(CONNECTED)
+  scope                    String
+  accessToken              String                     @db.Text
+  refreshToken             String                     @db.Text
+  tokenType                String                     @default("bearer")
+  accessTokenExpiresAt     DateTime
+  refreshTokenExpiresAt    DateTime?
+  connectedById            String?
+  connectedBy              User?                      @relation("QuickBooksConnections", fields: [connectedById], references: [id], onDelete: SetNull)
+  lastSyncedAt             DateTime?
+  referenceAutoSyncEnabled Boolean                    @default(true)
+  disconnectedAt           DateTime?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+
+  referenceSyncStates QuickBooksReferenceSyncState[]
+  bankAccounts        QuickBooksBankAccount[]
+  lineItemCategories  QuickBooksLineItemCategory[]
+  payees              QuickBooksPayee[]
+  vendorMappings      QuickBooksVendorMapping[]
+  referenceSyncLocks  QuickBooksReferenceSyncLock[]
+
+  @@index([status])
+  @@index([connectedById])
+}
+
+model QuickBooksOAuthState {
+  id         String   @id
+  state      String   @unique
+  userId     String
+  user       User     @relation("QuickBooksOAuthStates", fields: [userId], references: [id], onDelete: Cascade)
+  redirectTo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model QuickBooksReferenceSyncState {
+  id           String                    @id
+  connectionId String
+  connection   QuickBooksConnection      @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  realmId      String
+  entity       QuickBooksReferenceEntity
+
+  lastFullSyncedAt DateTime?
+  lastCdcSyncedAt  DateTime?
+  cdcWatermark     DateTime?
+  lastSyncStatus   QuickBooksReferenceSyncStatus?
+  lastSyncError    String?                       @db.Text
+
+  totalReceived Int @default(0)
+  createdCount  Int @default(0)
+  updatedCount  Int @default(0)
+  deletedCount  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([realmId, entity])
+  @@index([connectionId])
+  @@index([entity])
+  @@index([lastSyncStatus])
+}
+
+model QuickBooksReferenceSyncLock {
+  realmId      String @id
+  connectionId String
+  connection   QuickBooksConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  ownerId      String
+  lockedAt     DateTime
+  expiresAt    DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([connectionId])
+  @@index([expiresAt])
+  @@index([ownerId])
+}
+
+model QuickBooksBankAccount {
+  id           String               @id
+  connectionId String
+  connection   QuickBooksConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  realmId      String
+  quickBooksId String
+
+  name                String
+  fullyQualifiedName  String?
+  classification      String?
+  accountType         String?
+  accountSubType      String?
+  currentBalance                Decimal? @db.Decimal(15, 2)
+  currentBalanceWithSubAccounts Decimal? @db.Decimal(15, 2)
+  currencyCode                  String?
+  active              Boolean?
+  syncToken           String?
+  quickBooksCreatedAt DateTime?
+  quickBooksUpdatedAt DateTime?
+  lastSyncedAt        DateTime?
+  deletedAt           DateTime?
+  raw                 Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([realmId, quickBooksId])
+  @@index([connectionId])
+  @@index([deletedAt])
+}
+
+model QuickBooksVendorMapping {
+  id String @id
+
+  connectionId String
+  connection   QuickBooksConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  realmId      String
+
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  quickBooksPayeeId String
+  quickBooksPayee   QuickBooksPayee @relation(fields: [quickBooksPayeeId], references: [id], onDelete: Cascade)
+  quickBooksId      String
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([realmId, vendorId])
+  @@unique([realmId, quickBooksId])
+  @@index([connectionId])
+  @@index([vendorId])
+  @@index([quickBooksPayeeId])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model QuickBooksLineItemCategory {
+  id           String               @id
+  connectionId String
+  connection   QuickBooksConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  realmId      String
+  quickBooksId String
+
+  name                String
+  fullyQualifiedName  String?
+  classification      String?
+  accountType         String?
+  accountSubType      String?
+  currentBalance                Decimal? @db.Decimal(15, 2)
+  currentBalanceWithSubAccounts Decimal? @db.Decimal(15, 2)
+  currencyCode                  String?
+  description         String? @db.Text
+  active              Boolean?
+  syncToken           String?
+  quickBooksCreatedAt DateTime?
+  quickBooksUpdatedAt DateTime?
+  lastSyncedAt        DateTime?
+  deletedAt           DateTime?
+  raw                 Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([realmId, quickBooksId])
+  @@index([connectionId])
+  @@index([deletedAt])
+}
+
+model QuickBooksPayee {
+  id           String               @id
+  connectionId String
+  connection   QuickBooksConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  realmId      String
+  quickBooksId String
+
+  displayName         String
+  companyName         String?
+  givenName           String?
+  familyName          String?
+  primaryEmail        String?
+  primaryPhone        String?
+  active              Boolean?
+  syncToken           String?
+  quickBooksUpdatedAt DateTime?
+  deletedAt           DateTime?
+  raw                 Json
+
+  vendorMappings QuickBooksVendorMapping[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([realmId, quickBooksId])
+  @@index([connectionId])
+  @@index([deletedAt])
+}
+
+enum QuickBooksEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum QuickBooksConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+}
+
+enum QuickBooksReferenceEntity {
+  BANK_ACCOUNT
+  LINE_ITEM_CATEGORY
+  PAYEE
+}
+
+enum QuickBooksReferenceSyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
