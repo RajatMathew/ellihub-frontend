@@ -1,0 +1,321 @@
+{
+    "paths": {
+        "/invoice": {
+            "get": {
+                "tags": ["Invoice"],
+                "summary": "List invoices (paginated)",
+                "operationId": "listInvoices",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[projectId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[vendorId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[purchaseOrderId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[isPaid]", "in": "query", "schema": { "type": "boolean" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Invoice" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Invoice"],
+                "summary": "Update an invoice (unpaid only; project/vendor immutable)",
+                "operationId": "updateInvoice",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InvoiceUpdateRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Invoice" } } }] } } } },
+                    "400": { "description": "Already paid / project or vendor change attempted / PO or SCO mismatch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Duplicate invoice number for vendor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "post": {
+                "tags": ["Invoice"],
+                "summary": "Create an invoice (attachments moved to project INVOICE subfolder)",
+                "operationId": "createInvoice",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InvoiceCreateRequest" } } }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Invoice" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "PO / SCO project or vendor mismatch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Project / vendor / PO / SCO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Duplicate invoice number for vendor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/by-po/{poId}": {
+            "get": {
+                "tags": ["Invoice"],
+                "summary": "List all invoices linked to a purchase order (not paginated)",
+                "operationId": "getInvoicesByPo",
+                "parameters": [{ "name": "poId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Purchase order ULID" }],
+                "responses": {
+                    "200": {
+                        "description": "All invoices linked to the PO, newest first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Invoice" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": { "description": "Insufficient permissions (requires invoice:read)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Purchase order not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/{id}": {
+            "get": {
+                "tags": ["Invoice"],
+                "summary": "Get an invoice by id",
+                "operationId": "getInvoice",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Invoice" } } }] } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/mark-paid": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Mark an invoice as paid",
+                "operationId": "markInvoicePaid",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarkInvoicePaidRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already paid or disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Invoice / payment method not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/mark-unpaid": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Revert an invoice to unpaid (clears payment fields)",
+                "operationId": "markInvoiceUnpaid",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MarkInvoiceUnpaidRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not currently paid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/dispute": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Flag an invoice as disputed",
+                "operationId": "disputeInvoice",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DisputeInvoiceRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/resolve-dispute": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Resolve an invoice dispute",
+                "operationId": "resolveInvoiceDispute",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResolveInvoiceDisputeRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not disputed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/attachment/add": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Attach a file to an unpaid invoice (moved to project INVOICE subfolder)",
+                "operationId": "addInvoiceAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddInvoiceAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Invoice already paid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Invoice / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/invoice/attachment/remove": {
+            "patch": {
+                "tags": ["Invoice"],
+                "summary": "Remove an invoice attachment (unpaid invoice; must leave at least one)",
+                "operationId": "removeInvoiceAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveInvoiceAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Invoice paid or last attachment", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "InvoiceCreateRequest": {
+                "type": "object",
+                "required": ["projectId", "vendorId", "invoiceNumber", "invoiceDate", "dueDate", "totalAmount", "attachments"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "purchaseOrderId": { "type": "string", "nullable": true },
+                    "invoiceNumber": { "type": "string" },
+                    "invoiceDate": { "type": "string", "format": "date" },
+                    "dueDate": { "type": "string", "format": "date" },
+                    "totalAmount": { "type": "number", "minimum": 0 },
+                    "taxAmount": { "type": "number", "minimum": 0, "nullable": true },
+                    "taxRate": { "type": "number", "minimum": 0, "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "relatedSCOIds": { "type": "array", "items": { "type": "string" }, "default": [] },
+                    "attachments": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+                }
+            },
+            "InvoiceUpdateRequest": {
+                "type": "object",
+                "required": ["id", "projectId", "vendorId", "invoiceNumber", "invoiceDate", "dueDate", "totalAmount"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "purchaseOrderId": { "type": "string", "nullable": true },
+                    "invoiceNumber": { "type": "string" },
+                    "invoiceDate": { "type": "string", "format": "date" },
+                    "dueDate": { "type": "string", "format": "date" },
+                    "totalAmount": { "type": "number", "minimum": 0 },
+                    "taxAmount": { "type": "number", "minimum": 0, "nullable": true },
+                    "taxRate": { "type": "number", "minimum": 0, "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "relatedSCOIds": { "type": "array", "items": { "type": "string" }, "default": [] }
+                }
+            },
+            "AddInvoiceAttachmentRequest": {
+                "type": "object",
+                "required": ["invoiceId", "documentId"],
+                "properties": { "invoiceId": { "type": "string" }, "documentId": { "type": "string" } }
+            },
+            "RemoveInvoiceAttachmentRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "MarkInvoicePaidRequest": {
+                "type": "object",
+                "required": ["id", "paidDate", "paymentMethodId"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "paidDate": { "type": "string", "format": "date" },
+                    "paymentMethodId": { "type": "string" },
+                    "paymentReference": { "type": "string", "nullable": true },
+                    "paymentNotes": { "type": "string", "nullable": true }
+                }
+            },
+            "MarkInvoiceUnpaidRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "DisputeInvoiceRequest": {
+                "type": "object",
+                "required": ["id", "disputeReason"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "disputeReason": { "type": "string" }
+                }
+            },
+            "ResolveInvoiceDisputeRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "InvoiceAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "invoiceId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" }
+                }
+            },
+            "Invoice": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "invoiceNumber": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
+                    "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
+                    "purchaseOrderId": { "type": "string", "nullable": true },
+                    "purchaseOrder": { "$ref": "#/components/schemas/PurchaseOrder", "nullable": true },
+                    "invoiceDate": { "type": "string", "format": "date-time" },
+                    "dueDate": { "type": "string", "format": "date-time" },
+                    "totalAmount": { "type": "string" },
+                    "taxAmount": { "type": "string", "nullable": true },
+                    "taxRate": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "relatedSCOIds": { "type": "array", "items": { "type": "string" } },
+                    "relatedSCOs": {
+                        "type": "array",
+                        "description": "Hydrated SubChangeOrder objects for the IDs in relatedSCOIds. Populated by GET /invoice/{id}; may be omitted on list endpoints.",
+                        "items": { "$ref": "#/components/schemas/SubChangeOrder" }
+                    },
+                    "paidDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "paymentReference": { "type": "string", "nullable": true },
+                    "paymentMethodId": { "type": "string", "nullable": true },
+                    "paymentMethod": { "type": "object", "nullable": true, "description": "Lookup row for payment method" },
+                    "paymentNotes": { "type": "string", "nullable": true },
+                    "isPaid": { "type": "boolean" },
+                    "isDisputed": { "type": "boolean" },
+                    "disputeReason": { "type": "string", "nullable": true },
+                    "disputedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "resolvedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/InvoiceAttachment" } }
+                }
+            }
+        }
+    }
+}
