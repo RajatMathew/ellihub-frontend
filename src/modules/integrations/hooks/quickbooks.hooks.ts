@@ -19,10 +19,11 @@ export const useQuickBooksStatusQuery = () =>
     queryFn: quickBooksApi.getStatus,
   });
 
-export const useQuickBooksReferenceSyncStatusQuery = () =>
+export const useQuickBooksReferenceSyncStatusQuery = (enabled = true) =>
   useQuery({
     queryKey: integrationsKeys.quickBooksReferenceSyncStatus(),
     queryFn: quickBooksApi.getReferenceSyncStatus,
+    enabled,
   });
 
 export const useQuickBooksBankAccountsQuery = (enabled = true) =>

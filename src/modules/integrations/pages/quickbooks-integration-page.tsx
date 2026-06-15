@@ -8,8 +8,9 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { QuickBooksStatusCard } from '@/modules/integrations/components/quickbooks-status-card';
+import { useAccess } from '@/app/contexts/access-context';
 import { QuickBooksReferenceSyncCard } from '@/modules/integrations/components/quickbooks-reference-sync-card';
+import { QuickBooksStatusCard } from '@/modules/integrations/components/quickbooks-status-card';
 import {
   useDisconnectQuickBooksMutation,
   useQuickBooksReferenceSyncStatusQuery,
@@ -18,7 +19,6 @@ import {
   useSyncQuickBooksReferenceDataMutation,
   useUpdateQuickBooksReferenceAutoDailySyncMutation,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
-import { useAccess } from '@/app/contexts/access-context';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -50,11 +50,13 @@ export default function QuickBooksIntegrationPage() {
     if (result === 'connected') {
       toast.success('QuickBooks connected.');
       void statusQuery.refetch();
+      void referenceSyncStatusQuery.refetch();
     }
 
     if (result === 'disconnected') {
       toast.info('QuickBooks has been disconnected.');
       void statusQuery.refetch();
+      void referenceSyncStatusQuery.refetch();
     }
 
     if (result === 'error') {
@@ -66,7 +68,7 @@ export default function QuickBooksIntegrationPage() {
     next.delete('reason');
     next.delete('realmId');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, statusQuery]);
+  }, [referenceSyncStatusQuery, searchParams, setSearchParams, statusQuery]);
 
   if (statusQuery.isLoading) {
     return <QuickBooksPageLoading />;
