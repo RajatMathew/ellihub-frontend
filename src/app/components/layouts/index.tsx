@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { LayoutProvider } from '@app/providers/layout';
 import { getTitleForPathname, routeTree } from '@app/routing/config';
 
-const DEFAULT_TITLE = 'Elle Hub';
+const DEFAULT_TITLE = 'Elli Hub';
 
 interface AppLayoutProps {
   children: React.ReactNode;

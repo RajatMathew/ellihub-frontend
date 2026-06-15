@@ -17,7 +17,7 @@
 //             <h3 className="text-base font-semibold text-gray-900">System Update Available</h3>
 
 //             <p className="mt-1 text-sm text-gray-600">
-//               A newer version of Elle Hub is ready to install.
+//               A newer version of Elli Hub is ready to install.
 //             </p>
 //           </div>
 
@@ -97,7 +97,7 @@ export function PwaUpdateModal() {
             <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-primary border-t-transparent" />
           </div>
 
-          <h2 className="mt-6 text-lg font-semibold text-gray-900">Updating Elle Hub</h2>
+          <h2 className="mt-6 text-lg font-semibold text-gray-900">Updating Elli Hub</h2>
 
           <p className="mt-2 text-xs leading-5 text-gray-600">
             Installing the latest version. Please keep this window open while we restart the
@@ -134,7 +134,7 @@ export function PwaUpdateModal() {
               </h3>
 
               <p className="mt-1 text-xs leading-5 text-gray-600">
-                A newer version of Elle Hub is ready to install.
+                A newer version of Elli Hub is ready to install.
               </p>
 
               <div className="mt-3 flex items-center gap-2">
