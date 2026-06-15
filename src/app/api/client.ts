@@ -30,6 +30,16 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error: AxiosError<any>) => {
+    // Unpack blob error if present
+    if (error.response?.data instanceof Blob && error.response.data.type === 'application/json') {
+      try {
+        const text = await error.response.data.text();
+        error.response.data = JSON.parse(text);
+      } catch (e) {
+        // ignore parsing error
+      }
+    }
+
     const status = error.response?.status;
     const code = error.response?.data?.code;
 

@@ -675,15 +675,19 @@ export default function RFQDetailPage() {
 
   function saveVendorPdfToFiles(
     target: { quoteId: string; vendorName: string },
-    data: GeneratePdfTermsInput
+    data: GeneratePdfTermsInput,
+    options?: { openPdfDialog?: boolean }
   ) {
+    const openPdfDialog = options?.openPdfDialog ?? true;
     saveVendorPdfMutation.mutate(
       { quoteId: target.quoteId, vendorName: target.vendorName, rfqId, data },
       {
         onSuccess: (file) => {
           setVendorPdfPreview(file);
           setVendorPdfPreviewStale(false);
-          setVendorPdfOptionsOpen(true);
+          if (openPdfDialog) {
+            setVendorPdfOptionsOpen(true);
+          }
         },
       }
     );
@@ -741,6 +745,10 @@ export default function RFQDetailPage() {
   }
 
   function handleGenerateVendorPdf(inviteId: string, vendorName: string) {
+    if (!deliverables.length) {
+      toast.error('RFQ must have at least one deliverable to generate a PDF.');
+      return;
+    }
     const target = { quoteId: inviteId, vendorName };
     const request = prepareVendorPdfTarget(target);
     setVendorPdfOptionsOpen(true);
@@ -836,6 +844,10 @@ export default function RFQDetailPage() {
     target: FeatureMailTarget,
     pdfTarget: { quoteId: string; vendorName: string }
   ) {
+    if (!deliverables.length) {
+      toast.error('RFQ must have at least one deliverable to generate a PDF.');
+      return;
+    }
     const request = prepareVendorPdfTarget(pdfTarget);
     setEmailTarget(target);
     sendVendorEmailMutation.reset();
@@ -977,7 +989,7 @@ export default function RFQDetailPage() {
         }}
         onSavePdf={(data) => {
           if (!vendorPdfTarget) return;
-          saveVendorPdfToFiles(vendorPdfTarget, data);
+          saveVendorPdfToFiles(vendorPdfTarget, data, { openPdfDialog: false });
         }}
         onSend={async (payload, pdfOptions) => {
           if (!emailTarget) return;

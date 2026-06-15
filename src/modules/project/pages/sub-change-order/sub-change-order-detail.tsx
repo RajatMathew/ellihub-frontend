@@ -436,6 +436,10 @@ export function SCODetailPage() {
   }
 
   function openPdfOptions() {
+    if (!sco?.lineItems || sco.lineItems.length === 0) {
+      toast.error('SCO must have at least one line item to generate a PDF.');
+      return;
+    }
     const request = preparePdfRequest();
     setPdfPreview(null);
     setPdfOptionsOpen(true);
@@ -444,6 +448,11 @@ export function SCODetailPage() {
 
   function openEmailFlow() {
     if (!emailTarget || !sco) return;
+
+    if (!sco?.lineItems || sco.lineItems.length === 0) {
+      toast.error('SCO must have at least one line item to generate a PDF.');
+      return;
+    }
 
     const vendorEmail =
       typeof purchaseOrderDetail?.vendor?.email === 'string'

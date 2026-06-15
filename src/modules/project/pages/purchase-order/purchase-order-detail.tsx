@@ -307,6 +307,10 @@ export function PODetailPage() {
   }
 
   function openPdfOptions() {
+    if (!po?.lineItems?.length) {
+      toast.error('Purchase order must have at least one line item to generate a PDF.');
+      return;
+    }
     const request = preparePdfRequest();
     setPdfPreview(null);
     setPdfOptionsOpen(true);
@@ -315,6 +319,11 @@ export function PODetailPage() {
 
   function openEmailFlow() {
     if (!emailTarget || !po) return;
+
+    if (!po.lineItems || po.lineItems.length === 0) {
+      toast.error('Purchase order must have at least one line item to generate a PDF.');
+      return;
+    }
 
     if (!vendorEmail) {
       toast.info(
