@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ data.rfq.number }}</title>
+  </head>
+  <body>
+    {% include "partials/footer.html" %}
+
+    <main class="rfq">
+      <section class="topline">
+        <div class="brand">
+          {% if data.company.logo_path %}
+          <img src="{{ data.company.logo_path }}" alt="{{ data.company.name }}" />
+          {% else %}
+          <h1>{{ data.company.name }}</h1>
+          {% endif %}
+          <div class="company-details">
+            {% for line in data.company.address_lines %}
+            <p>{{ line }}</p>
+            {% endfor %}
+            <p>{{ data.company.phone }}</p>
+          </div>
+        </div>
+
+        <div class="document-title">
+          <p>Request for Quote</p>
+          <h2>{{ data.rfq.number }}</h2>
+        </div>
+      </section>
+
+      <section class="summary-table">
+        <table>
+          <tr>
+            <th>Issued</th>
+            <td>{{ data.rfq.issued_on }}</td>
+            <th>Needed By</th>
+            <td>{{ data.rfq.needed_by }}</td>
+          </tr>
+          <tr>
+            <th>Project</th>
+            <td>{{ data.project.number }}</td>
+            <th>Type</th>
+            <td>{{ data.rfq.type }}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="title-block">
+        <h1>{{ data.rfq.title }}</h1>
+        {% if data.rfq.description %}
+        <p>{{ data.rfq.description }}</p>
+        {% endif %}
+      </section>
+
+      <section class="party-table">
+        <table>
+          <tr>
+            <th>Vendor</th>
+            <th>Project / Request</th>
+          </tr>
+          <tr>
+            <td>
+              <strong>{{ data.vendor.name }}</strong>
+              {% if data.vendor.address %}<span>{{ data.vendor.address }}</span>{% endif %}
+              {% if data.vendor.email %}<span>{{ data.vendor.email }}</span>{% endif %}
+              {% if data.vendor.phone %}<span>{{ data.vendor.phone }}</span>{% endif %}
+            </td>
+            <td>
+              <strong>{{ data.project.name }}</strong>
+              {% if data.project.contract_number %}<span>Contract: {{ data.project.contract_number }}</span>{% endif %}
+              <span>Ship To: {{ data.request.ship_to }}</span>
+              <span>Requested By: {{ data.request.requested_by }}</span>
+            </td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="items">
+        <div class="items-heading">
+          <h2>Items</h2>
+          <span>{{ data.deliverables_count }} total</span>
+        </div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th class="sequence-col">#</th>
+              <th>Description</th>
+              <th class="quantity-col">Qty</th>
+              <th class="unit-col">Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in data.deliverables %}
+            <tr>
+              <td class="sequence-col">{{ item.sequence }}</td>
+              <td>{{ item.description }}</td>
+              <td class="quantity-col">{{ item.quantity }}</td>
+              <td class="unit-col">{{ item.unit }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      {% if data.notice and data.notice.included %}
+      <section class="notice-callout">
+        <div class="notice-title">
+          <span class="notice-icon">!</span>
+          <span>{{ data.notice.title }}</span>
+        </div>
+        <div class="notice-content">{{ data.notice.html | safe }}</div>
+      </section>
+      {% endif %}
+
+      {% if data.terms and data.terms.included %}
+      <section class="terms-page">
+        <h1>Terms and Conditions</h1>
+        <div class="terms-content">{{ data.terms.html | safe }}</div>
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
