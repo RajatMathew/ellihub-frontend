@@ -86,8 +86,8 @@ export const plannedPaymentRecordSchema = z.object({
 
 export type PlannedPaymentRecord = z.infer<typeof plannedPaymentRecordSchema>;
 
-// Matches the backend PATCH /monthly-bills/mark-payment contract. The amount, transaction date,
-// and doc number are derived server-side from the ready planned payment, so they aren't sent here.
+// Matches the backend PATCH /monthly-bills/mark-payment contract. The amount and transaction date
+// are derived server-side from the ready planned payment. No check/document number is sent.
 export const markPaymentSchema = z.object({
   purchaseOrderId: z.string(),
   month: z.number().int().min(1).max(12),
