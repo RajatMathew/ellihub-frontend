@@ -19,6 +19,7 @@ import { useMonthlyBillsVendorFilterOptions } from '@/modules/monthly-bills/hook
 import {
   getMonthlyBillDateRange,
   getMonthlyBillMonthNumber,
+  isCurrentMonthlyBillDate,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,11 +36,17 @@ export function MonthlyBillsSubcontractorPage({
   const { can } = useAccess();
   const canUpdateBills = can('monthlyBills', 'update');
   const canMarkPayment = can('monthlyBills', 'mark-payment');
+  const isCurrentPeriod = isCurrentMonthlyBillDate(selectedDate);
+  const canUpdateCurrentBills = canUpdateBills && isCurrentPeriod;
+  const canMarkCurrentPayment = canMarkPayment && isCurrentPeriod;
   const [visibleColumns, setVisibleColumns] = useState(getDefaultMonthlyBillColumns);
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkSaveVersion, setBulkSaveVersion] = useState(0);
   const [bulkCancelVersion, setBulkCancelVersion] = useState(0);
+  const effectiveBulkEditMode = isCurrentPeriod && bulkEditMode;
+  const effectiveBulkSaving = isCurrentPeriod && bulkSaving;
+  const effectiveBulkSaveVersion = isCurrentPeriod ? bulkSaveVersion : 0;
   const bulkSaveRef = useRef({
     active: false,
     version: 0,
@@ -122,6 +129,8 @@ export function MonthlyBillsSubcontractorPage({
   };
 
   const handleBulkSave = () => {
+    if (!isCurrentPeriod) return;
+
     const groups = monthlyBillsQuery.data ?? [];
     if (groups.length === 0) return;
 
@@ -211,17 +220,17 @@ export function MonthlyBillsSubcontractorPage({
                 visibleColumns={visibleColumns}
                 onToggleColumn={toggleColumn}
               />
-              {canUpdateBills &&
-                (bulkEditMode ? (
+              {canUpdateCurrentBills &&
+                (effectiveBulkEditMode ? (
                   <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
                     <Button
                       type="button"
                       size="sm"
-                      disabled={bulkSaving}
+                      disabled={effectiveBulkSaving}
                       onClick={handleBulkSave}
                       className="min-w-28"
                     >
-                      {bulkSaving ? (
+                      {effectiveBulkSaving ? (
                         <Loader2 className="size-4 animate-spin text-white!" />
                       ) : (
                         <Save className="size-4 text-white!" />
@@ -232,7 +241,7 @@ export function MonthlyBillsSubcontractorPage({
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={bulkSaving}
+                      disabled={effectiveBulkSaving}
                       onClick={handleBulkCancel}
                       className="min-w-24"
                     >
@@ -259,10 +268,10 @@ export function MonthlyBillsSubcontractorPage({
         <MonthlyBillsTable
           groups={monthlyBillsQuery.data ?? []}
           selectedDate={selectedDate}
-          canUpdateBills={canUpdateBills}
-          canMarkPayment={canMarkPayment}
-          bulkEditMode={bulkEditMode}
-          bulkSaveVersion={bulkSaveVersion}
+          canUpdateBills={canUpdateCurrentBills}
+          canMarkPayment={canMarkCurrentPayment}
+          bulkEditMode={effectiveBulkEditMode}
+          bulkSaveVersion={effectiveBulkSaveVersion}
           bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
           isLoading={monthlyBillsQuery.isLoading}

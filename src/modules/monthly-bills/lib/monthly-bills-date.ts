@@ -4,6 +4,10 @@ export function getInitialMonthlyBillDate() {
   return startOfMonth(new Date());
 }
 
+export function isCurrentMonthlyBillDate(date: Date, now = new Date()) {
+  return getMonth(date) === getMonth(now) && getYear(date) === getYear(now);
+}
+
 export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
   const initialDate = getInitialMonthlyBillDate();
   const month = Number(searchParams.get('month'));
