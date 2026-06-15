@@ -205,6 +205,7 @@ export const rfqQuoteSchema = z
     vendorCoupon: z.boolean().optional().default(false),
     isAwarded: z.boolean().optional(),
     notes: z.string().nullable().optional(),
+    leadTime: z.string().nullable().optional(),
     leadTimeDays: z.number().nullable().optional(),
     submittedAt: z.string().nullable().optional(),
     attachments: z.array(rfqQuoteAttachmentSchema).optional().default([]),

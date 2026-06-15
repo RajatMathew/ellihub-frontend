@@ -83,7 +83,9 @@ export function RFQVendorDesktopTable({
               <td className="py-2.5 pr-4 text-right tabular-nums">
                 {row.grandTotal != null ? formatCurrency(row.grandTotal) : '-'}
               </td>
-              <td className="py-2.5 pr-4 text-sm text-muted-foreground">{row.leadTime || '-'}</td>
+              <td className="py-2.5 pr-4 text-sm text-muted-foreground max-w-[200px] break-words whitespace-normal">
+                {row.leadTime || '-'}
+              </td>
               <td className="py-2.5 text-right">
                 {!isTerminal && (
                   <DropdownMenu>

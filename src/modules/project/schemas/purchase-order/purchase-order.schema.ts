@@ -99,6 +99,8 @@ const poSubChangeOrderRefSchema = z
     amount: z.coerce.number().nullable().optional(),
     negotiatedDiscount: z.coerce.number().nullable().optional(),
     shippingHandlingFee: z.coerce.number().nullable().optional(),
+    taxPercent: z.coerce.number().nullable().optional(),
+    taxAmount: z.coerce.number().nullable().optional(),
     status: z.string().nullable().optional(),
   })
   .passthrough();
