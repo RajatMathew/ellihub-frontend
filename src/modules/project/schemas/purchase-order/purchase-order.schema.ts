@@ -240,6 +240,23 @@ export const poLineItemSchema = z
 
 export type POLineItem = z.infer<typeof poLineItemSchema>;
 
+export const poPaymentSchema = z
+  .object({
+    id: z.string(),
+    purchaseOrderId: z.string(),
+    amount: z.coerce.number(),
+    qbVendorId: z.string().nullable().optional(),
+    bankAccountId: z.string().nullable().optional(),
+    txnDate: z.string().nullable().optional(),
+    transactionId: z.string().nullable().optional(),
+    transactionUrl: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export type POPayment = z.infer<typeof poPaymentSchema>;
+
 export const poDetailSchema = z
   .object({
     id: z.string(),
@@ -294,6 +311,7 @@ export const poDetailSchema = z
     vendor: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     lineItems: z.array(poLineItemSchema).optional().default([]),
     attachments: z.array(poAttachmentSchema).optional().default([]),
+    poPayments: z.array(poPaymentSchema).optional().default([]),
     createdAt: z.string().optional(),
     updatedAt: z.string().optional(),
   })

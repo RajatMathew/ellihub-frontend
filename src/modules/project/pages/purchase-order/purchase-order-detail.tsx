@@ -45,6 +45,7 @@ import {
   PurchaseOrderDetailLineItemsCard,
   PurchaseOrderDetailLinkedInvoicesCard,
   PurchaseOrderDetailLinkedSCOsCard,
+  PurchaseOrderDetailPaymentsCard,
   PurchaseOrderPdfDialog,
 } from '@/modules/project/components/purchase-order';
 import {
@@ -808,10 +809,7 @@ export function PODetailPage() {
                 taxPercent={po.taxPercent}
                 total={poTotal}
               />
-            </div>
 
-            {/* Right column: Placeholder sections */}
-            <div className="min-w-0 space-y-5 2xl:col-span-2">
               <ProjectDetailDocumentsCard
                 title="Backup Documents"
                 emptyMessage="No backup documents attached."
@@ -824,8 +822,11 @@ export function PODetailPage() {
                   removeAttachmentMutation.mutate({ poId, attachmentId: attachment.id })
                 }
               />
+            </div>
 
-              {/* Hidden until backend exposes purchase-order payment history in the API response. */}
+            {/* Right column: Placeholder sections */}
+            <div className="min-w-0 space-y-5 2xl:col-span-2">
+              <PurchaseOrderDetailPaymentsCard payments={po.poPayments ?? []} />
 
               <PurchaseOrderDetailLinkedInvoicesCard
                 projectId={projectId}

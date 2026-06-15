@@ -2,6 +2,7 @@ export * from './purchase-order-cancel-dialog';
 export * from './purchase-order-detail-line-items-card';
 export * from './purchase-order-detail-linked-invoices-card';
 export * from './purchase-order-detail-linked-scos-card';
+export * from './purchase-order-detail-payments-card';
 export * from './purchase-order-form-details-card';
 export * from './purchase-order-form-line-items-card';
 export * from './purchase-order-list-columns';
