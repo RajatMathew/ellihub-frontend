@@ -1,0 +1,3 @@
+ALTER TABLE "SubCOLineItem"
+ALTER COLUMN "quantity" TYPE DECIMAL(10, 2)
+USING "quantity"::DECIMAL(10, 2);
