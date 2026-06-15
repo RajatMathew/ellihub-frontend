@@ -74,10 +74,10 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api($|\/)/],
       },
       manifest: {
-        name: 'Elli Hub',
-        short_name: 'Elli Hub',
+        name: 'ElliHub',
+        short_name: 'ElliHub',
         description:
-          'Elli Hub is a powerful and user-friendly platform designed to streamline your workflow and enhance productivity.',
+          'ElliHub is a powerful and user-friendly platform designed to streamline your workflow and enhance productivity.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         start_url: '/',
