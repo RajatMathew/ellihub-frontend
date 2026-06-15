@@ -1,0 +1,1026 @@
+{
+    "paths": {
+        "/file/search": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Search and filter files and folders",
+                "operationId": "searchFiles",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by file/folder name"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["FILE", "FOLDER"] },
+                        "description": "Filter by type"
+                    },
+                    {
+                        "name": "mimeType",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by MIME type (partial match)"
+                    },
+                    {
+                        "name": "parentId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by parent folder ID"
+                    },
+                    {
+                        "name": "createdBy",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by creator user ID"
+                    },
+                    {
+                        "name": "createdFrom",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Filter by creation date (from)"
+                    },
+                    {
+                        "name": "createdTo",
+                        "in": "query",
+                        "schema": { "type": "string", "format": "date-time" },
+                        "description": "Filter by creation date (to)"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["name", "size", "createdAt", "updatedAt", "type", "mimeType"],
+                            "default": "createdAt"
+                        },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+                        "description": "Sort direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of files and folders",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/FileItem"
+                                                    }
+                                                },
+                                                "pagination": {
+                                                    "$ref": "#/components/schemas/PaginationInfo"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/upload": {
+            "post": {
+                "tags": ["File"],
+                "summary": "Upload a file",
+                "operationId": "uploadFile",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["file", "data"],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "File to upload. Allowed extensions: .csv, .docx, .jpeg, .jpg, .pdf, .png, .pptx, .txt, .webp, .xlsx. Default maximum size is 50 MB."
+                                    },
+                                    "data": {
+                                        "type": "string",
+                                        "description": "JSON string with file metadata: {\"name\": \"file.pdf\", \"parentId\": \"ULID (optional)\", \"displayName\": \"My File (optional)\", \"size\": 1024, \"mimeType\": \"application/pdf\"}. The size must match the uploaded file. If parentId is omitted, file is placed in the temp folder."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "File uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "type": "string" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid file or metadata",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/download/{id}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get download link for a file",
+                "operationId": "getDownloadLink",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "File ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Download link generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "string",
+                                                    "description": "Temporary storage download URL"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/read/{id}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Read file bytes inline or as an attachment",
+                "operationId": "readFile",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "File ID (ULID)"
+                    },
+                    {
+                        "name": "disposition",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["inline", "attachment"],
+                            "default": "inline"
+                        },
+                        "description": "Use attachment to force browser download"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Raw file stream",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": { "type": "string", "format": "binary" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/root": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get root folder",
+                "operationId": "getRootFolder",
+                "responses": {
+                    "200": {
+                        "description": "Root folder",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Root folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/folder": {
+            "post": {
+                "tags": ["File"],
+                "summary": "Create a new folder",
+                "operationId": "createFolder",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/FolderCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Folder created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - protected folder name",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/rename": {
+            "put": {
+                "tags": ["File"],
+                "summary": "Rename a file or folder",
+                "operationId": "renameFileOrFolder",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/FileFolderRenameRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "File or folder renamed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/FileItem" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - protected or non-deletable item",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File or folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/folder/{id}/export": {
+            "post": {
+                "tags": ["File"],
+                "summary": "Start a folder ZIP export job",
+                "operationId": "startFolderZipExport",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Folder ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Export job accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/FileExportJob"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/export/{id}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get folder ZIP export job status",
+                "operationId": "getFolderZipExportJob",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Export job ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Export job status. Completed jobs include a temporary storage download URL.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/FileExportJob"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Export job not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/folder/{id}/breadcrumbs": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get folder breadcrumbs from root",
+                "operationId": "getFolderBreadcrumbs",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Folder ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Breadcrumbs from root to the given folder",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Breadcrumb"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/folder/{id}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get folder details with children",
+                "operationId": "getFolderDetails",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Folder ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Folder details with children",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/FolderWithChildren"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["File"],
+                "summary": "Delete a folder (soft delete)",
+                "operationId": "deleteFolder",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Folder ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Folder deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - folder not empty or non-deletable",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/{id}": {
+            "delete": {
+                "tags": ["File"],
+                "summary": "Delete a file (soft delete)",
+                "operationId": "deleteFile",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "File ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - non-deletable file",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/project/{projectId}/folder": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get project root folder ID",
+                "operationId": "getProjectFolderId",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project root folder ID",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "string",
+                                                    "description": "Project root folder ID"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file/project/{projectId}/folder/{type}": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Get project sub-folder ID by type",
+                "operationId": "getProjectSubFolderId",
+                "parameters": [
+                    {
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Project ID"
+                    },
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "INVOICE",
+                                "RFQ",
+                                "PURCHASE_ORDER",
+                                "PURCHASE_ORDER_CO",
+                                "PRIME_CO",
+                                "PRIME_CONTRACT",
+                                "SCHEDULE"
+                            ]
+                        },
+                        "description": "Protected folder type"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project sub-folder ID",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "string",
+                                                    "description": "Sub-folder ID"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Project or sub-folder not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "FileItem": {
+                "type": "object",
+                "description": "Represents a file or folder",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "name": { "type": "string" },
+                    "displayName": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Optional display name"
+                    },
+                    "type": { "type": "string", "enum": ["FILE", "FOLDER"] },
+                    "parentId": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Parent folder ULID (null for root)"
+                    },
+                    "objectId": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Storage object key (files only)"
+                    },
+                    "mimeType": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "MIME type (files only)"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "File size in bytes"
+                    },
+                    "protectedFolderType": {
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "PROJECT_ROOT",
+                            "INVOICE",
+                            "RFQ",
+                            "PURCHASE_ORDER",
+                            "PURCHASE_ORDER_CO",
+                            "PRIME_CO",
+                            "PRIME_CONTRACT",
+                            "SCHEDULE"
+                        ]
+                    },
+                    "isDeletable": { "type": "boolean" },
+                    "private": { "type": "boolean" },
+                    "createdBy": { "type": "string" },
+                    "createdByUser": {
+                        "$ref": "#/components/schemas/UserBrief",
+                        "description": "Included on get/list responses"
+                    },
+                    "deletedBy": { "type": "string", "nullable": true },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "UserBrief": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "image": { "type": "string", "nullable": true }
+                }
+            },
+            "FolderWithChildren": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/FileItem" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "children": {
+                                "type": "array",
+                                "items": { "$ref": "#/components/schemas/FileItem" }
+                            }
+                        }
+                    }
+                ]
+            },
+            "Breadcrumb": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "Folder ULID" },
+                    "name": { "type": "string", "description": "Folder name" }
+                }
+            },
+            "FileExportJob": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "folderId": { "type": "string" },
+                    "status": {
+                        "type": "string",
+                        "enum": ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "EXPIRED"]
+                    },
+                    "fileName": { "type": "string" },
+                    "totalFiles": { "type": "integer" },
+                    "processedFiles": { "type": "integer" },
+                    "totalBytes": { "type": "string" },
+                    "processedBytes": { "type": "string" },
+                    "error": { "type": "string", "nullable": true },
+                    "downloadUrl": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Temporary storage URL returned only for completed, non-expired jobs"
+                    },
+                    "expiresAt": { "type": "string", "format": "date-time" },
+                    "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "FolderCreateRequest": {
+                "type": "object",
+                "required": ["name", "parentId"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Folder name (cannot use protected names: root, projects, rfq, etc.)"
+                    },
+                    "parentId": {
+                        "type": "string",
+                        "description": "Parent folder ULID"
+                    }
+                }
+            },
+            "FileFolderRenameRequest": {
+                "type": "object",
+                "required": ["id", "name"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "File or folder ULID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "New name"
+                    }
+                }
+            },
+            "FileUploadData": {
+                "type": "object",
+                "required": ["name", "size"],
+                "description": "Metadata sent as JSON string in the 'data' form field. Uploads are limited to the configured max size and allowed document/image extensions. If parentId is omitted, file is uploaded to the temp folder.",
+                "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "displayName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Optional display name"
+                    },
+                    "parentId": {
+                        "type": "string",
+                        "description": "Parent folder ULID (optional — defaults to temp folder)"
+                    },
+                    "size": { "type": "integer", "description": "File size in bytes" },
+                    "mimeType": { "type": "string", "description": "MIME type (optional)" }
+                }
+            }
+        }
+    }
+}
