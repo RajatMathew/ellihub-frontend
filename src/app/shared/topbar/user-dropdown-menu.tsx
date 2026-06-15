@@ -10,15 +10,11 @@ import {
   Bug,
   Check,
   Coffee,
-  CreditCard,
   FileText,
-  Globe,
   HistoryIcon,
   Moon,
   RefreshCcw,
   Settings,
-  Shield,
-  SquareCode,
   UserCircle,
   Users,
 } from 'lucide-react';
@@ -27,14 +23,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { debugForceUpdate, useSession } from '@app/api';
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -44,14 +37,14 @@ import {
 import { Switch } from '@app/components/ui/switch';
 import { useAccess } from '@app/contexts/access-context';
 
-const I18N_LANGUAGES = [
-  {
-    label: 'English',
-    code: 'en',
-    direction: 'ltr',
-    flag: 'https://i.pravatar.cc/300?img=1',
-  },
-];
+// const I18N_LANGUAGES = [
+//   {
+//     label: 'English',
+//     code: 'en',
+//     direction: 'ltr',
+//     flag: 'https://i.pravatar.cc/300?img=1',
+//   },
+// ];
 
 function formatSyncLabel(value: string | null | undefined, isLoading: boolean) {
   if (isLoading) return 'Loading sync status...';
@@ -88,7 +81,7 @@ function formatQuickBooksSyncLabel({
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const navigate = useNavigate();
-  const currenLanguage = I18N_LANGUAGES[0];
+  // const currenLanguage = I18N_LANGUAGES[0];
   const { theme, setTheme } = useTheme();
   const [fieldwireSyncOpen, setFieldwireSyncOpen] = useState(false);
   const [quickBooksSyncOpen, setQuickBooksSyncOpen] = useState(false);
@@ -101,6 +94,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { isAdmin, can } = useAccess();
   const canSyncFieldwire = can('primeChangeOrder', 'sync');
   const canSyncQuickBooks = can('integration', 'sync');
+  const canAccessDevTools = can('devtools', 'access');
   const canManageTemplates = can('template', 'read');
   const canManageIntegrations = can('integration', 'read');
   const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
@@ -116,7 +110,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
     lastSyncedAt: quickBooksSyncStatusQuery.data?.lastSyncedAt,
   });
   const showSynchronization = canSyncFieldwire || canSyncQuickBooks;
-  const userImage = data?.user?.image ?? 'https://i.pravatar.cc/300';
 
   async function handleCheckUpdate() {
     const hasUpdate = await forceCheckForUpdate();
@@ -136,11 +129,11 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           {/* Header */}
           <div className="flex items-center justify-between p-3">
             <div className="flex items-center gap-2">
-              <img
+              {/* <img
                 className="size-10 rounded-full border-2 border-green-500"
                 src={userImage}
                 alt="User avatar"
-              />
+              /> */}
               <div className="flex flex-col">
                 <Link
                   to="/app/profile"
@@ -156,9 +149,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 </a>
               </div>
             </div>
-            <Badge variant="primary" appearance="light" size="sm">
-              Pro
-            </Badge>
           </div>
 
           <DropdownMenuSeparator />
@@ -177,30 +167,30 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
               Settings
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-48">
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link to="#" className="flex items-center gap-2">
                   <Coffee />
                   Get Started
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem asChild>
                 <Link to="/app/profile" className="flex items-center gap-2">
                   <FileText />
                   My Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link to="#" className="flex items-center gap-2">
                   <CreditCard />
                   Billing
                 </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              </DropdownMenuItem> */}
+              {/* <DropdownMenuItem asChild>
                 <Link to="#" className="flex items-center gap-2">
                   <Shield />
                   Security
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               {isAdmin && (
                 <DropdownMenuItem asChild>
                   <Link to="/app/settings/members" className="flex items-center gap-2">
@@ -228,12 +218,12 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
-          <DropdownMenuItem asChild>
+          {/* <DropdownMenuItem asChild>
             <Link to="/changes-log" className="flex items-center gap-2">
               <HistoryIcon />
               Changes Log
             </Link>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
           {showSynchronization && (
             <DropdownMenuSub>
@@ -280,73 +270,75 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuSub>
           )}
 
-          <DropdownMenuItem asChild>
+          {/* <DropdownMenuItem asChild>
             <Link to="/help" className="flex items-center gap-2">
               <SquareCode />
               Help Center
             </Link>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2">
-              <Bug /> Debug
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48">
-              <DropdownMenuItem asChild>
-                <Link to="" className="flex items-center gap-2">
-                  <Coffee />
-                  Logger
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a
-                  href="#"
-                  onClick={() => window.toggleDevtools()}
-                  className="flex items-center gap-2"
-                >
-                  <FileText />
-                  Query Devtools
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <Bug /> Debug
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-48" slot="content" avoidCollisions={true}>
-                  <DropdownMenuItem asChild>
-                    <a href="#" onClick={handleCheckUpdate} className="flex items-center gap-2">
-                      <HistoryIcon />
-                      Check for Updates
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <button
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('pwa-update-available'));
-                      }}
-                    >
-                      <Bug />
-                      Fake PWA Update
-                    </button>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <button
-                      onClick={() => {
-                        debugForceUpdate();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Bug />
-                      Force Update(API)
-                    </button>
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {canAccessDevTools && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <Bug /> Debug
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="" className="flex items-center gap-2">
+                    <Coffee />
+                    Logger
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a
+                    href="#"
+                    onClick={() => window.toggleDevtools()}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText />
+                    Query Devtools
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <Bug /> Debug
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-48" slot="content" avoidCollisions={true}>
+                    <DropdownMenuItem asChild>
+                      <a href="#" onClick={handleCheckUpdate} className="flex items-center gap-2">
+                        <HistoryIcon />
+                        Check for Updates
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('pwa-update-available'));
+                        }}
+                      >
+                        <Bug />
+                        Fake PWA Update
+                      </button>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <button
+                        onClick={() => {
+                          debugForceUpdate();
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Bug />
+                        Force Update(API)
+                      </button>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
 
           {/* Language Submenu with Radio Group */}
-          <DropdownMenuSub>
+          {/* <DropdownMenuSub>
             <DropdownMenuSubTrigger className="flex items-center gap-2 *:data-[slot=dropdown-menu-sub-trigger-indicator]:hidden hover:**:data-[slot=badge]:border-input data-[state=open]:**:data-[slot=badge]:border-input">
               <Globe />
               <span className="flex items-center justify-between gap-2 grow relative">
@@ -375,7 +367,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 ))}
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          </DropdownMenuSub> */}
 
           <DropdownMenuSeparator />
 
