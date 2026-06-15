@@ -1,0 +1,5 @@
+{
+  "name": "Sub Change Order",
+  "version": "1.0.0",
+  "description": "Compact sub change order document with linked purchase order context, totals, optional warning box, and optional terms page."
+}
