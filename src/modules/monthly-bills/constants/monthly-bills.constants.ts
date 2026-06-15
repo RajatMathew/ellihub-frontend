@@ -1,7 +1,6 @@
 export const MONTHLY_BILL_TABS = [
   { label: 'Recurring', path: 'recurring', pageTitle: 'Recurring page' },
   { label: 'Subcontractor', path: 'subcontractor', pageTitle: 'Subcontractor page' },
-  { label: 'Material', path: 'material', pageTitle: 'Material page' },
   { label: 'Summary', path: 'summary', pageTitle: 'Summary page' },
 ] as const;
 
