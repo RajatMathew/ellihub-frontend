@@ -7,7 +7,7 @@ interface MonthlyBillsTabPageProps {
   selectedDate: Date;
 }
 
-/** Placeholder section for tabs (Recurring / Material / Summary) not yet implemented. */
+/** Placeholder section for recurring and summary tabs not yet implemented. */
 export function MonthlyBillsTabPage({ title, selectedDate }: MonthlyBillsTabPageProps) {
   return (
     <Card>

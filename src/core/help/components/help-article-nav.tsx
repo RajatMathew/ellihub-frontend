@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 
-import { Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
+import { Button } from '@app/components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -50,7 +52,18 @@ export function HelpArticleNav({
 
   return (
     <aside className={cn('flex min-h-0 flex-col border-e bg-muted/70', className)}>
-      <div className="border-b p-4">
+      <div className="border-b p-4 flex flex-col gap-3">
+        <Button
+          asChild
+          className="justify-start -ms-2 px-2 text-muted-foreground hover:text-foreground"
+          size="sm"
+          variant="ghost"
+        >
+          <Link to="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to home
+          </Link>
+        </Button>
         <InputGroup>
           <InputWrapper>
             <Search />

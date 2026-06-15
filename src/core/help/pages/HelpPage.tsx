@@ -37,7 +37,7 @@ export default function HelpPage() {
           />
         </div>
 
-        <article className="w-full px-6 py-8 lg:px-10">
+        <article className="mx-auto w-full max-w-4xl px-6 py-8 lg:px-10">
           <div className="mb-5 space-y-2">
             <p className="text-xs font-medium uppercase text-muted-foreground">{article.section}</p>
             <h2 className="text-3xl font-semibold tracking-normal">{article.title}</h2>
