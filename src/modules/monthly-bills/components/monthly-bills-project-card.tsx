@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
@@ -50,6 +50,7 @@ export function MonthlyBillsProjectCard({
   const year = getYear(selectedDate);
 
   const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
+  const handledBulkSaveVersionRef = useRef(bulkSaveVersion);
 
   const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
   const [savedToPayById, setSavedToPayById] = useState<Record<string, number>>(() =>
@@ -226,7 +227,14 @@ export function MonthlyBillsProjectCard({
   }, [bulkCancelVersion, group.bills, savedToPayById]);
 
   useEffect(() => {
-    if (bulkSaveVersion === 0) return;
+    if (
+      bulkSaveVersion === 0 ||
+      handledBulkSaveVersionRef.current === bulkSaveVersion
+    ) {
+      return;
+    }
+
+    handledBulkSaveVersionRef.current = bulkSaveVersion;
 
     const changedBills = group.bills.filter(hasAmountChanges);
     if (changedBills.length === 0) {

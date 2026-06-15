@@ -41,6 +41,7 @@ export function MonthlyBillsSubcontractorPage({
   const [bulkSaveVersion, setBulkSaveVersion] = useState(0);
   const [bulkCancelVersion, setBulkCancelVersion] = useState(0);
   const bulkSaveRef = useRef({
+    active: false,
     version: 0,
     expected: 0,
     completed: 0,
@@ -127,6 +128,7 @@ export function MonthlyBillsSubcontractorPage({
     setBulkSaveVersion((current) => {
       const version = current + 1;
       bulkSaveRef.current = {
+        active: true,
         version,
         expected: groups.length,
         completed: 0,
@@ -140,7 +142,7 @@ export function MonthlyBillsSubcontractorPage({
 
   const handleBulkSaveComplete = (result: { version: number; saved: number; failed: number }) => {
     const state = bulkSaveRef.current;
-    if (result.version !== state.version) return;
+    if (!state.active || result.version !== state.version) return;
 
     state.completed += 1;
     state.saved += result.saved;
@@ -148,7 +150,9 @@ export function MonthlyBillsSubcontractorPage({
 
     if (state.completed < state.expected) return;
 
+    state.active = false;
     setBulkSaving(false);
+    setBulkSaveVersion(0);
 
     if (state.failed > 0) {
       toast.error(`Saved ${state.saved} planned payment(s). ${state.failed} failed.`);
@@ -164,7 +168,9 @@ export function MonthlyBillsSubcontractorPage({
   };
 
   const handleBulkCancel = () => {
+    bulkSaveRef.current.active = false;
     setBulkCancelVersion((current) => current + 1);
+    setBulkSaveVersion(0);
     setBulkEditMode(false);
     setBulkSaving(false);
   };
