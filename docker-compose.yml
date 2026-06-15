@@ -11,7 +11,11 @@ services:
     networks:
       - z_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -102,6 +106,8 @@ services:
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       GLM_API_KEY: ${GLM_API_KEY:-}
+      ALLOW_EMAIL_SENDING: ${ALLOW_EMAIL_SENDING:-false}
+
     depends_on:
       z-db:
         condition: service_healthy
@@ -140,7 +146,13 @@ services:
       PDF_ENGINE_API_KEYS: ${PDF_ENGINE_API_KEYS:?PDF_ENGINE_API_KEYS is required}
       PDF_ENGINE_API_KEY: ${PDF_ENGINE_API_KEY:?PDF_ENGINE_API_KEY is required}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).read()"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3).read()",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
