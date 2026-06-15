@@ -144,7 +144,7 @@ export function MonthlyBillMobileCard({
               size="sm"
               aria-label={`Mark ${poNumber} ready`}
               checked={ready}
-              disabled={!canUpdateBills || isReadySaving}
+              disabled={!canUpdateBills || toPay <= 0 || isReadySaving}
               onCheckedChange={onReadyChange}
             />
           </div>

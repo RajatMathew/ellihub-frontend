@@ -60,13 +60,18 @@ export type MonthlyBillProjectGroup = z.infer<typeof monthlyBillProjectGroupSche
 
 export const monthlyBillProjectGroupsSchema = z.array(monthlyBillProjectGroupSchema);
 
-export const upsertPlannedPaymentSchema = z.object({
-  purchaseOrderId: z.string(),
-  month: z.number().int().min(1).max(12),
-  year: z.number().int(),
-  amount: z.number().nonnegative(),
-  isReady: z.boolean().optional(),
-});
+export const upsertPlannedPaymentSchema = z
+  .object({
+    purchaseOrderId: z.string(),
+    month: z.number().int().min(1).max(12),
+    year: z.number().int(),
+    amount: z.number().nonnegative(),
+    isReady: z.boolean().optional(),
+  })
+  .refine((value) => value.isReady !== true || value.amount > 0, {
+    message: 'Ready bills must have a planned payment amount greater than zero.',
+    path: ['isReady'],
+  });
 
 export type UpsertPlannedPaymentPayload = z.infer<typeof upsertPlannedPaymentSchema>;
 

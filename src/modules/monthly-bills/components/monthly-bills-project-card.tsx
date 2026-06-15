@@ -65,7 +65,10 @@ export function MonthlyBillsProjectCard({
   );
   const [readyById, setReadyById] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
-      group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
+      group.bills.map((bill) => [
+        bill.purchaseOrder.id,
+        (bill.plannedPayment?.amount ?? 0) > 0 && (bill.plannedPayment?.isReady ?? false),
+      ])
     )
   );
   const [amountEditingById, setAmountEditingById] = useState<Record<string, boolean>>({});
@@ -93,8 +96,12 @@ export function MonthlyBillsProjectCard({
     [group.bills]
   );
   const readyCount = useMemo(
-    () => group.bills.filter((bill) => readyById[bill.purchaseOrder.id]).length,
-    [group.bills, readyById]
+    () =>
+      group.bills.filter((bill) => {
+        const id = bill.purchaseOrder.id;
+        return (toPayById[id] ?? 0) > 0 && (readyById[id] ?? false);
+      }).length,
+    [group.bills, readyById, toPayById]
   );
 
   const totals = { ...serverTotals, toPay: toPayTotal };
@@ -114,9 +121,10 @@ export function MonthlyBillsProjectCard({
   const getSavedAmount = (bill: MonthlyBillItem) =>
     savedToPayById[bill.purchaseOrder.id] ?? bill.plannedPayment?.amount ?? 0;
 
+  const getDraftAmount = (bill: MonthlyBillItem) => toPayById[bill.purchaseOrder.id] ?? 0;
+
   const hasAmountChanges = (bill: MonthlyBillItem) => {
-    const id = bill.purchaseOrder.id;
-    return (toPayById[id] ?? 0) !== getSavedAmount(bill);
+    return getDraftAmount(bill) !== getSavedAmount(bill);
   };
 
   const canRecordPayment = (bill: MonthlyBillItem) => {
@@ -133,9 +141,11 @@ export function MonthlyBillsProjectCard({
 
   const handleSaveAmount = async (bill: MonthlyBillItem) => {
     const id = bill.purchaseOrder.id;
-    const amount = toPayById[id] ?? 0;
+    const amount = getDraftAmount(bill);
+    const currentReady = readyById[id] ?? false;
+    const nextReady = amount > 0 && currentReady;
 
-    if (!hasAmountChanges(bill)) {
+    if (!hasAmountChanges(bill) && nextReady === currentReady) {
       setAmountEditingById((current) => ({ ...current, [id]: false }));
       return;
     }
@@ -148,9 +158,10 @@ export function MonthlyBillsProjectCard({
         month,
         year,
         amount,
-        isReady: readyById[id] ?? false,
+        isReady: nextReady,
       });
       setSavedToPayById((current) => ({ ...current, [id]: amount }));
+      setReadyById((current) => ({ ...current, [id]: nextReady }));
       setAmountEditingById((current) => ({ ...current, [id]: false }));
       toast.success('To Pay amount saved.');
     } catch {
@@ -162,7 +173,13 @@ export function MonthlyBillsProjectCard({
 
   const handleReadyChange = async (bill: MonthlyBillItem, checked: boolean) => {
     const id = bill.purchaseOrder.id;
+    const amount = getDraftAmount(bill);
     const previous = readyById[id] ?? false;
+
+    if (checked && amount <= 0) {
+      setReadyById((current) => ({ ...current, [id]: false }));
+      return;
+    }
 
     setReadyById((current) => ({ ...current, [id]: checked }));
     setReadySavingById((current) => ({ ...current, [id]: true }));
@@ -172,9 +189,11 @@ export function MonthlyBillsProjectCard({
         purchaseOrderId: id,
         month,
         year,
-        amount: getSavedAmount(bill),
+        amount,
         isReady: checked,
       });
+      setSavedToPayById((current) => ({ ...current, [id]: amount }));
+      setAmountEditingById((current) => ({ ...current, [id]: false }));
       toast.success(checked ? 'Bill marked ready.' : 'Bill marked not ready.');
     } catch {
       setReadyById((current) => ({ ...current, [id]: previous }));
@@ -191,12 +210,22 @@ export function MonthlyBillsProjectCard({
     }));
   };
 
+  const handleToPayChange = (id: string, value: number) => {
+    setToPayById((current) => ({ ...current, [id]: value }));
+    if (value <= 0) {
+      setReadyById((current) => ({ ...current, [id]: false }));
+    }
+  };
+
   useEffect(() => {
     const serverAmounts = Object.fromEntries(
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
     );
     const serverReady = Object.fromEntries(
-      group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.isReady ?? false])
+      group.bills.map((bill) => [
+        bill.purchaseOrder.id,
+        (bill.plannedPayment?.amount ?? 0) > 0 && (bill.plannedPayment?.isReady ?? false),
+      ])
     );
 
     setSavedToPayById((current) => ({ ...current, ...serverAmounts }));
@@ -216,6 +245,13 @@ export function MonthlyBillsProjectCard({
   useEffect(() => {
     if (bulkCancelVersion === 0) return;
 
+    const serverReady = Object.fromEntries(
+      group.bills.map((bill) => [
+        bill.purchaseOrder.id,
+        (bill.plannedPayment?.amount ?? 0) > 0 && (bill.plannedPayment?.isReady ?? false),
+      ])
+    );
+
     setToPayById((current) => {
       const next = { ...current };
       group.bills.forEach((bill) => {
@@ -223,6 +259,7 @@ export function MonthlyBillsProjectCard({
       });
       return next;
     });
+    setReadyById((current) => ({ ...current, ...serverReady }));
     setAmountEditingById({});
   }, [bulkCancelVersion, group.bills, savedToPayById]);
 
@@ -252,8 +289,8 @@ export function MonthlyBillsProjectCard({
             purchaseOrderId: bill.purchaseOrder.id,
             month,
             year,
-            amount: toPayById[bill.purchaseOrder.id] ?? 0,
-            isReady: readyById[bill.purchaseOrder.id] ?? false,
+            amount: getDraftAmount(bill),
+            isReady: getDraftAmount(bill) > 0 && (readyById[bill.purchaseOrder.id] ?? false),
           })
         )
       );
@@ -270,7 +307,17 @@ export function MonthlyBillsProjectCard({
         results.forEach((result, index) => {
           if (result.status !== 'fulfilled') return;
           const bill = changedBills[index];
-          next[bill.purchaseOrder.id] = toPayById[bill.purchaseOrder.id] ?? 0;
+          next[bill.purchaseOrder.id] = getDraftAmount(bill);
+        });
+        return next;
+      });
+      setReadyById((current) => {
+        const next = { ...current };
+        results.forEach((result, index) => {
+          if (result.status !== 'fulfilled') return;
+          const bill = changedBills[index];
+          const id = bill.purchaseOrder.id;
+          next[id] = getDraftAmount(bill) > 0 && (current[id] ?? false);
         });
         return next;
       });
@@ -319,8 +366,8 @@ export function MonthlyBillsProjectCard({
               bill={bill}
               projectId={group.project.id}
               selectedDate={selectedDate}
-              toPay={toPayById[id] ?? 0}
-              ready={readyById[id] ?? false}
+              toPay={getDraftAmount(bill)}
+              ready={getDraftAmount(bill) > 0 && (readyById[id] ?? false)}
               canUpdateBills={canUpdateBills}
               canMarkPayment={canMarkPayment}
               canRecordPayment={canRecordPayment(bill)}
@@ -330,7 +377,7 @@ export function MonthlyBillsProjectCard({
               isAmountSaving={amountSavingById[id] ?? false}
               isReadySaving={readySavingById[id] ?? false}
               hasAmountChanges={amountChanged}
-              onToPayChange={(value) => setToPayById((current) => ({ ...current, [id]: value }))}
+              onToPayChange={(value) => handleToPayChange(id, value)}
               onReadyChange={(checked) => void handleReadyChange(bill, checked)}
               onAmountEdit={() => setAmountEditingById((current) => ({ ...current, [id]: true }))}
               onAmountSave={() => void handleSaveAmount(bill)}
@@ -359,8 +406,8 @@ export function MonthlyBillsProjectCard({
                   bill={bill}
                   projectId={group.project.id}
                   selectedDate={selectedDate}
-                  toPay={toPayById[id] ?? 0}
-                  ready={readyById[id] ?? false}
+                  toPay={getDraftAmount(bill)}
+                  ready={getDraftAmount(bill) > 0 && (readyById[id] ?? false)}
                   canUpdateBills={canUpdateBills}
                   canMarkPayment={canMarkPayment}
                   canRecordPayment={canRecordPayment(bill)}
@@ -370,9 +417,7 @@ export function MonthlyBillsProjectCard({
                   isAmountSaving={amountSavingById[id] ?? false}
                   isReadySaving={readySavingById[id] ?? false}
                   hasAmountChanges={amountChanged}
-                  onToPayChange={(value) =>
-                    setToPayById((current) => ({ ...current, [id]: value }))
-                  }
+                  onToPayChange={(value) => handleToPayChange(id, value)}
                   onReadyChange={(checked) => void handleReadyChange(bill, checked)}
                   onAmountEdit={() =>
                     setAmountEditingById((current) => ({ ...current, [id]: true }))
@@ -404,7 +449,9 @@ export function MonthlyBillsProjectCard({
           }}
           bill={paymentBill}
           amount={getSavedAmount(paymentBill)}
-          isReady={readyById[paymentBill.purchaseOrder.id] ?? false}
+          isReady={
+            getSavedAmount(paymentBill) > 0 && (readyById[paymentBill.purchaseOrder.id] ?? false)
+          }
           month={month}
           year={year}
         />
