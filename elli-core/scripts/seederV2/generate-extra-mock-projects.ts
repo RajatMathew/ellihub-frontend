@@ -284,7 +284,7 @@ const buildSeed = (
         return {
             'PROJECT NUMBER': projectNumber,
             'PROJECT NAME': projectName,
-            PO_ID: `M${String(globalPurchaseOrderStartIndex + poNumber).padStart(3, '0')}`,
+            PO_ID: `PO-M${String(globalPurchaseOrderStartIndex + poNumber).padStart(3, '0')}`,
             Linked_RFQ_ID: poIndex % 3 === 0 ? null : linkedRfq,
             Issue_Date: issueDate,
             Status: faker.helpers.arrayElement(['DRAFT', 'ISSUED', 'DELIVERED']),
@@ -352,7 +352,7 @@ const buildSeed = (
                 'PROJECT NUMBER': projectNumber,
                 'PROJECT NAME': projectName,
                 PO_ID: po.PO_ID,
-                PO_CO_ID: `${projectNumber}-SCO-${String(scoIndex + 1).padStart(3, '0')}`,
+                PO_CO_ID: `${po.PO_ID}-SCO-${String(scoIndex + 1).padStart(3, '0')}`,
                 Name: `${sample(constructionPackages, index + scoIndex)} field change ${scoIndex + 1}`,
                 Description: `${sample(constructionItems, index + scoIndex)} required after field coordination.`,
                 Reason: sample(scoReasons, index + scoIndex),

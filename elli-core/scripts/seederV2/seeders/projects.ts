@@ -168,6 +168,38 @@ const rfqNumberFromValue = (value: unknown): string | null => {
     return `RFQ-2025-${raw}`;
 };
 
+const escapeRegExp = (value: string): string => {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+const poNumberFromValue = (value: unknown): string | null => {
+    const raw = text(value);
+    if (!raw) return null;
+    if (/^PO-/i.test(raw)) return `PO-${raw.slice(3)}`;
+    return `PO-${raw}`;
+};
+
+const scoNumberFromValue = (
+    scoValue: unknown,
+    poNumberRaw: string,
+    poNumber: string
+): string | null => {
+    const raw = text(scoValue);
+    if (!raw) return null;
+
+    const poNumberRegex = new RegExp(`^${escapeRegExp(poNumber)}-?`, 'i');
+    if (poNumberRegex.test(raw)) {
+        return raw.replace(poNumberRegex, `${poNumber}-`);
+    }
+
+    const prefixRegex = new RegExp(`^${escapeRegExp(poNumberRaw)}-?`, 'i');
+    if (prefixRegex.test(raw)) {
+        return raw.replace(prefixRegex, `${poNumber}-`);
+    }
+
+    return `${poNumber}-${raw}`;
+};
+
 const scoStatusFromText = (value: unknown): SCOStatus => {
     const normalized = (text(value) ?? '').toUpperCase();
     if (normalized === 'APPROVED' || normalized === 'CLOSED') return SCOStatus.APPROVED;
@@ -838,15 +870,18 @@ const seedSubChangeOrders = async (
     const changeTypeId = await ensureLookup(LookupType.SCO_CHANGE_TYPE, 'Other');
 
     for (const coRow of seed.poChangeOrders ?? []) {
-        const scoNumber = text(coRow.PO_CO_ID);
-        const poNumber = text(coRow.PO_ID);
-        if (!scoNumber || !poNumber) continue;
+        const scoNumberRaw = text(coRow.PO_CO_ID);
+        const poNumberRaw = text(coRow.PO_ID);
+        if (!scoNumberRaw || !poNumberRaw) continue;
 
-        const po = poIdsByWorkbookId.get(poNumber);
+        const po = poIdsByWorkbookId.get(poNumberRaw);
         if (!po) {
             skippedMissingPoCount += 1;
             continue;
         }
+
+        const poNumber = poNumberFromValue(poNumberRaw)!;
+        const scoNumber = scoNumberFromValue(scoNumberRaw, poNumberRaw, poNumber)!;
 
         let sco = await prisma.subChangeOrder.findUnique({ where: { scoNumber } });
         if (!sco) {
@@ -894,7 +929,7 @@ const seedSubChangeOrders = async (
         }
 
         const lineRows = (seed.poCoLineItems ?? []).filter(
-            (row) => text(row.PO_CO_ID) === scoNumber
+            (row) => text(row.PO_CO_ID) === scoNumberRaw
         );
         const rowsToSeed =
             lineRows.length > 0
@@ -1117,9 +1152,11 @@ export const seedProjectSeed = async (
     let linkedPoAttachmentCount = 0;
 
     for (const poRow of seed.purchaseOrders) {
-        const poNumber = text(poRow.PO_ID);
+        const poNumberRaw = text(poRow.PO_ID);
         const vendorName = text(poRow.Vendor);
-        if (!poNumber || !vendorName) continue;
+        if (!poNumberRaw || !vendorName) continue;
+
+        const poNumber = poNumberFromValue(poNumberRaw)!;
 
         const existingPo = await prisma.purchaseOrder.findUnique({ where: { poNumber } });
         if (existingPo) {
@@ -1139,7 +1176,7 @@ export const seedProjectSeed = async (
             ))
                 ? 1
                 : 0;
-            poIdsByWorkbookId.set(poNumber, { id: existingPo.id, vendorId: existingPo.vendorId });
+            poIdsByWorkbookId.set(poNumberRaw, { id: existingPo.id, vendorId: existingPo.vendorId });
             skippedPoCount += 1;
             continue;
         }
@@ -1184,7 +1221,7 @@ export const seedProjectSeed = async (
             },
         });
 
-        poIdsByWorkbookId.set(poNumber, { id: createdPo.id, vendorId });
+        poIdsByWorkbookId.set(poNumberRaw, { id: createdPo.id, vendorId });
         linkedPoAttachmentCount += (await ensurePoAttachment(
             createdPo.id,
             project.id,
