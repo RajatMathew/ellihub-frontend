@@ -1,0 +1,695 @@
+{
+    "paths": {
+        "/cost-code/categories": {
+            "get": {
+                "tags": ["Cost Code Categories"],
+                "summary": "List all cost code categories",
+                "operationId": "listCostCodeCategories",
+                "responses": {
+                    "200": {
+                        "description": "List of categories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/CostCodeCategory" }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Cost Code Categories"],
+                "summary": "Create a cost code category",
+                "operationId": "createCostCodeCategory",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CostCodeCategoryCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Category created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCodeCategory" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:create)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Category already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Cost Code Categories"],
+                "summary": "Update a cost code category",
+                "operationId": "updateCostCodeCategory",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CostCodeCategoryUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Category updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCodeCategory" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Category name already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/cost-code/categories/{id}": {
+            "get": {
+                "tags": ["Cost Code Categories"],
+                "summary": "Get a cost code category by ID",
+                "operationId": "getCostCodeCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Category ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCodeCategory" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Cost Code Categories"],
+                "summary": "Delete a cost code category (soft delete)",
+                "operationId": "deleteCostCodeCategory",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Category ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCodeGroup:delete)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/cost-code": {
+            "get": {
+                "tags": ["Cost Codes"],
+                "summary": "List cost codes (paginated)",
+                "operationId": "listCostCodes",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 25, "maximum": 100 },
+                        "description": "Items per page"
+                    },
+                    {
+                        "name": "sortBy",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["code", "name", "createdAt", "updatedAt"], "default": "code" },
+                        "description": "Field to sort by"
+                    },
+                    {
+                        "name": "sortOrder",
+                        "in": "query",
+                        "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+                        "description": "Sort direction"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Search by name or code"
+                    },
+                    {
+                        "name": "costCodeCategoryId",
+                        "in": "query",
+                        "schema": { "type": "string" },
+                        "description": "Filter by category ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of cost codes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": { "$ref": "#/components/schemas/CostCode" }
+                                                },
+                                                "pagination": { "$ref": "#/components/schemas/PaginationInfo" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Cost Codes"],
+                "summary": "Create a cost code",
+                "operationId": "createCostCode",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CostCodeCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cost code created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCode" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:create)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Cost code already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Cost Codes"],
+                "summary": "Update a cost code",
+                "operationId": "updateCostCode",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CostCodeUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cost code updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCode" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:update)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cost code not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Cost code name/code already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/cost-code/{id}": {
+            "get": {
+                "tags": ["Cost Codes"],
+                "summary": "Get a cost code by ID",
+                "operationId": "getCostCode",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Cost code ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cost code details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/CostCode" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:read)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cost code not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Cost Codes"],
+                "summary": "Delete a cost code (soft delete)",
+                "operationId": "deleteCostCode",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Cost code ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cost code deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Insufficient permissions (requires costCode:delete)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cost code not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CostCodeCategory": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "CostCodeCategoryCreateRequest": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 2 },
+                    "description": { "type": "string", "nullable": true }
+                }
+            },
+            "CostCodeCategoryUpdateRequest": {
+                "type": "object",
+                "required": ["id"],
+                "description": "All fields except id are optional",
+                "properties": {
+                    "id": { "type": "string", "description": "Category ID (ULID)" },
+                    "name": { "type": "string", "minLength": 2 },
+                    "description": { "type": "string", "nullable": true }
+                }
+            },
+            "CostCode": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "name": { "type": "string" },
+                    "code": { "type": "string" },
+                    "description": { "type": "string" },
+                    "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "CostCodeCreateRequest": {
+                "type": "object",
+                "required": ["name", "code", "costCodeCategoryId", "description"],
+                "properties": {
+                    "name": { "type": "string", "minLength": 2 },
+                    "code": { "type": "string", "minLength": 2 },
+                    "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
+                    "description": { "type": "string", "minLength": 1 }
+                }
+            },
+            "CostCodeUpdateRequest": {
+                "type": "object",
+                "required": ["id"],
+                "description": "All fields except id are optional",
+                "properties": {
+                    "id": { "type": "string", "description": "Cost code ID (ULID)" },
+                    "name": { "type": "string", "minLength": 2 },
+                    "code": { "type": "string", "minLength": 2 },
+                    "costCodeCategoryId": { "type": "string", "description": "Category ULID" },
+                    "description": { "type": "string", "minLength": 1 }
+                }
+            }
+        }
+    }
+}
