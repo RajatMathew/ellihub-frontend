@@ -1,8 +1,12 @@
+import { quickBooksVendorMappingSchema } from '@/modules/integrations/schemas/quickbooks.schema';
 import { z } from 'zod';
 
 export const monthlyBillVendorSchema = z.object({
   id: z.string(),
   name: z.string(),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  quickBooksMapping: quickBooksVendorMappingSchema.nullable().optional(),
 });
 
 export const monthlyBillSubChangeOrderSchema = z.object({
@@ -98,16 +102,31 @@ export const markPaymentSchema = z.object({
   bankAccountId: z.string().min(1),
   /** QuickBooks line-item category reference id. */
   categoryId: z.string().min(1),
+  saveVendorMapping: z.boolean().optional().default(false),
 });
 
 export type MarkPaymentPayload = z.infer<typeof markPaymentSchema>;
 
+export const markPaymentResultSchema = z.object({
+  id: z.string(),
+  purchaseOrderId: z.string(),
+  amount: z.coerce.number(),
+  qbVendorId: z.string(),
+  bankAccountId: z.string(),
+  txnDate: z.string().nullable().optional(),
+  transactionId: z.string(),
+  transactionUrl: z.string(),
+});
+
+export type MarkPaymentResult = z.infer<typeof markPaymentResultSchema>;
+
 // The user-editable portion of the mark-payment form. purchaseOrderId/month/year come from the
 // selected bill's context, so they live outside the form and are merged in on submit.
-export const markPaymentFormSchema = markPaymentSchema.pick({
-  qbVendorId: true,
-  bankAccountId: true,
-  categoryId: true,
+export const markPaymentFormSchema = z.object({
+  qbVendorId: z.string().min(1),
+  bankAccountId: z.string().min(1),
+  categoryId: z.string().min(1),
+  saveVendorMapping: z.boolean(),
 });
 
 export type MarkPaymentFormData = z.infer<typeof markPaymentFormSchema>;

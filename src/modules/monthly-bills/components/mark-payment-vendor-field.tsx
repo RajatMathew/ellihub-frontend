@@ -1,92 +1,165 @@
+import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/app/components/ui/form';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import type { QuickBooksPayee } from '@/modules/integrations/schemas/quickbooks.schema';
+  InfiniteSearchSelect,
+  type InfiniteSearchSelectOption,
+} from '@/app/components/ui/infinite-search-select';
+import type { QuickBooksVendorMapping } from '@/modules/integrations/schemas/quickbooks.schema';
 import type { VendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
 import type { MarkPaymentFormData } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Link2Off, Plus } from 'lucide-react';
 import type { Control } from 'react-hook-form';
 
 interface MarkPaymentVendorFieldProps {
   control: Control<MarkPaymentFormData>;
-  vendors: QuickBooksPayee[];
+  options: InfiniteSearchSelectOption[];
   vendorMatch: VendorMatch | null;
   vendorName: string;
+  mapping: QuickBooksVendorMapping | null;
+  search: string;
+  onSearchChange: (value: string) => void;
   isLoading: boolean;
+  isFetchingNextPage: boolean;
+  hasNextPage: boolean;
+  onFetchNextPage: () => void;
+  onCreateVendor: () => void;
+  onUnmapVendor: () => void;
+  isUnmapping: boolean;
 }
 
 export function MarkPaymentVendorField({
   control,
-  vendors,
+  options,
   vendorMatch,
   vendorName,
+  mapping,
+  search,
+  onSearchChange,
   isLoading,
+  isFetchingNextPage,
+  hasNextPage,
+  onFetchNextPage,
+  onCreateVendor,
+  onUnmapVendor,
+  isUnmapping,
 }: MarkPaymentVendorFieldProps) {
   return (
-    <FormField
-      control={control}
-      name="qbVendorId"
-      render={({ field }) =>
-        vendorMatch ? (
-          <FormItem className="space-y-2.5 rounded-md border border-warning/40 bg-warning/10 p-4">
-            <p className="text-sm font-semibold text-foreground">Confirm QuickBooks vendor</p>
-            <p className="text-xs text-muted-foreground">
-              ElliHub vendor &ldquo;{vendorName}&rdquo; looks similar to an existing QuickBooks
-              vendor. Confirm the mapping before posting so a duplicate vendor is not created.
-            </p>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <FormControl>
-                <SelectTrigger className="h-auto bg-background py-2.5">
-                  <div className="flex items-center gap-2.5 text-start">
-                    <CheckCircle2 className="size-5 shrink-0 text-success" />
-                    <div className="flex flex-col">
-                      <SelectValue placeholder="Select the matching QuickBooks vendor" />
-                      <span className="text-xs text-muted-foreground">{vendorMatch.reason}</span>
+    <div className="space-y-3">
+      <FormField
+        control={control}
+        name="qbVendorId"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <FormLabel>QuickBooks Vendor</FormLabel>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onCreateVendor}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="size-3.5" />
+                Create Vendor
+              </Button>
+            </div>
+
+            {mapping ? (
+              <div className="flex flex-col gap-3 rounded-md border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium text-foreground">
+                      Mapped to {mapping.displayName}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {mapping.primaryEmail ?? mapping.companyName ?? 'Saved QuickBooks mapping'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  appearance="ghost"
+                  size="sm"
+                  onClick={onUnmapVendor}
+                  disabled={isUnmapping}
+                  className="w-full sm:w-auto"
+                >
+                  <Link2Off className="size-3.5" />
+                  Unmap
+                </Button>
+              </div>
+            ) : (
+              vendorMatch && (
+                <div className="rounded-md border border-warning/40 bg-warning/10 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-foreground">
+                        Suggested match: {vendorMatch.vendor.displayName}
+                      </p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        ElliHub vendor &ldquo;{vendorName}&rdquo; looks similar.{' '}
+                        {vendorMatch.reason}
+                      </p>
                     </div>
                   </div>
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {vendors.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.qbId}>
-                    {vendor.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        ) : (
-          <FormItem className="space-y-1.5">
-            <FormLabel>QuickBooks Vendor</FormLabel>
-            <Select value={field.value} onValueChange={field.onChange}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoading ? 'Loading…' : 'Select QuickBooks vendor'} />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {vendors.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.qbId}>
-                    {vendor.displayName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!isLoading && vendors.length === 0 && (
+                </div>
+              )
+            )}
+
+            <FormControl>
+              <InfiniteSearchSelect
+                options={options}
+                value={field.value || null}
+                onValueChange={(value) => field.onChange(value ?? '')}
+                search={search}
+                onSearchChange={onSearchChange}
+                isLoading={isLoading}
+                isFetchingNextPage={isFetchingNextPage}
+                hasNextPage={hasNextPage}
+                onFetchNextPage={onFetchNextPage}
+                placeholder={isLoading ? 'Loading...' : 'Select QuickBooks vendor'}
+                searchPlaceholder="Search QuickBooks vendors..."
+                emptyMessage="No QuickBooks vendors found."
+                loadingMessage="Loading QuickBooks vendors..."
+              />
+            </FormControl>
+
+            {!isLoading && options.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                No QuickBooks vendors found. Connect QuickBooks and sync reference data first.
+                No QuickBooks vendors found. Sync reference data or create a new vendor.
               </p>
             )}
             <FormMessage />
           </FormItem>
-        )
-      }
-    />
+        )}
+      />
+
+      {!mapping && (
+        <FormField
+          control={control}
+          name="saveVendorMapping"
+          render={({ field }) => (
+            <FormItem className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+              </FormControl>
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm font-medium">Remember this mapping</FormLabel>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Auto-select this QuickBooks vendor for future {vendorName} payments.
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
+      )}
+    </div>
   );
 }

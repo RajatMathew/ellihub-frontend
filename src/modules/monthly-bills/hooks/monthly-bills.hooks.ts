@@ -9,7 +9,6 @@ import type {
   UpsertPlannedPaymentPayload,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 export const useMonthlyBillsQuery = (params: MonthlyBillsQueryParams, enabled = true) =>
   useQuery({
@@ -31,13 +30,8 @@ export const useUpsertPlannedPaymentMutation = () => {
 };
 
 export const useMarkPaymentMutation = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: MarkPaymentPayload) => monthlyBillsApi.markPayment(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.all });
-      toast.success('Payment recorded.');
-    },
     onError: (error) => toastApiError(error, 'Failed to record payment.'),
   });
 };

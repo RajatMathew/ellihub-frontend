@@ -120,7 +120,7 @@ export const quickBooksPayeeSchema = z.object({
   companyName: z.string().nullable(),
   primaryEmail: z.string().nullable(),
   primaryPhone: z.string().nullable(),
-  active: z.boolean(),
+  active: z.boolean().nullable(),
   deletedAt: z.string().nullable(),
 });
 
@@ -128,9 +128,64 @@ export const quickBooksBankAccountsSchema = z.array(quickBooksBankAccountSchema)
 export const quickBooksLineItemCategoriesSchema = z.array(quickBooksLineItemCategorySchema);
 export const quickBooksPayeesSchema = z.array(quickBooksPayeeSchema);
 
+export const quickBooksPayeePaginatedResponseSchema = z.object({
+  data: z.array(quickBooksPayeeSchema),
+  pagination: z.object({
+    currentPage: z.number(),
+    totalPages: z.number(),
+    hasNextPage: z.boolean(),
+    hasPreviousPage: z.boolean(),
+    totalItems: z.number(),
+    itemsPerPage: z.number(),
+  }),
+});
+
+export const quickBooksVendorMappingSchema = z.object({
+  id: z.string(),
+  vendorId: z.string(),
+  realmId: z.string(),
+  quickBooksPayeeId: z.string(),
+  qbVendorId: z.string(),
+  displayName: z.string(),
+  companyName: z.string().nullable(),
+  primaryEmail: z.string().nullable(),
+  primaryPhone: z.string().nullable(),
+});
+
+export const quickBooksCreateVendorPayloadSchema = z.object({
+  displayName: z.string().trim().min(1),
+  companyName: z.string().trim().optional().nullable(),
+  primaryEmail: z.string().trim().email().optional().nullable(),
+  primaryPhone: z.string().trim().optional().nullable(),
+  vendorId: z.string().optional(),
+  saveMapping: z.boolean().optional(),
+});
+
+export const quickBooksCreateVendorResultSchema = z.object({
+  vendor: quickBooksPayeeSchema,
+  mapping: quickBooksVendorMappingSchema.nullable(),
+});
+
+export const quickBooksMapVendorPayloadSchema = z.object({
+  vendorId: z.string(),
+  qbVendorId: z.string(),
+});
+
+export const quickBooksUnmapVendorResultSchema = z.object({
+  unmapped: z.boolean(),
+});
+
 export type QuickBooksBankAccount = z.infer<typeof quickBooksBankAccountSchema>;
 export type QuickBooksLineItemCategory = z.infer<typeof quickBooksLineItemCategorySchema>;
 export type QuickBooksPayee = z.infer<typeof quickBooksPayeeSchema>;
+export type QuickBooksPayeePaginatedResponse = z.infer<
+  typeof quickBooksPayeePaginatedResponseSchema
+>;
+export type QuickBooksVendorMapping = z.infer<typeof quickBooksVendorMappingSchema>;
+export type QuickBooksCreateVendorPayload = z.infer<typeof quickBooksCreateVendorPayloadSchema>;
+export type QuickBooksCreateVendorResult = z.infer<typeof quickBooksCreateVendorResultSchema>;
+export type QuickBooksMapVendorPayload = z.infer<typeof quickBooksMapVendorPayloadSchema>;
+export type QuickBooksUnmapVendorResult = z.infer<typeof quickBooksUnmapVendorResultSchema>;
 
 export type QuickBooksStatus = z.infer<typeof quickBooksStatusSchema>;
 export type QuickBooksConnection = z.infer<typeof quickBooksConnectionSchema>;

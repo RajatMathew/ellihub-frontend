@@ -1,8 +1,10 @@
 import api from '@/app/api';
 import {
   monthlyBillProjectGroupsSchema,
+  markPaymentResultSchema,
   plannedPaymentRecordSchema,
   type MarkPaymentPayload,
+  type MarkPaymentResult,
   type MonthlyBillProjectGroup,
   type PlannedPaymentRecord,
   type UpsertPlannedPaymentPayload,
@@ -55,9 +57,13 @@ export const monthlyBillsApi = {
     return result.data;
   },
 
-  // Returns the created PoPayment record; left untyped since the table only needs to refetch.
-  async markPayment(payload: MarkPaymentPayload): Promise<unknown> {
+  async markPayment(payload: MarkPaymentPayload): Promise<MarkPaymentResult> {
     const res = await api.patch(`${BASE}/mark-payment`, payload);
-    return res.data?.data ?? res.data;
+    const raw = res.data?.data ?? res.data;
+    const result = markPaymentResultSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
   },
 };

@@ -7,7 +7,9 @@ import { MonthlyBillMobileCard } from '@/modules/monthly-bills/components/monthl
 import { MonthlyBillRow } from '@/modules/monthly-bills/components/monthly-bills-row';
 import { MonthlyBillsTableHeader } from '@/modules/monthly-bills/components/monthly-bills-table-header';
 import { MonthlyBillsTotalsRow } from '@/modules/monthly-bills/components/monthly-bills-totals-row';
+import { PaymentMarkedDialog } from '@/modules/monthly-bills/components/payment-marked-dialog';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
+import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
 import { useUpsertPlannedPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import {
   getMonthPayments,
@@ -16,9 +18,11 @@ import {
 } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type {
+  MarkPaymentResult,
   MonthlyBillItem,
   MonthlyBillProjectGroup,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import { useQueryClient } from '@tanstack/react-query';
 import { format, getMonth, getYear } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -49,10 +53,16 @@ export function MonthlyBillsProjectCard({
   const month = getMonth(selectedDate) + 1;
   const year = getYear(selectedDate);
 
+  const queryClient = useQueryClient();
   const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
   const handledBulkSaveVersionRef = useRef(bulkSaveVersion);
 
   const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
+  const [markedPayment, setMarkedPayment] = useState<{
+    payment: MarkPaymentResult;
+    bill: MonthlyBillItem;
+    amount: number;
+  } | null>(null);
   const [savedToPayById, setSavedToPayById] = useState<Record<string, number>>(() =>
     Object.fromEntries(
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
@@ -264,10 +274,7 @@ export function MonthlyBillsProjectCard({
   }, [bulkCancelVersion, group.bills, savedToPayById]);
 
   useEffect(() => {
-    if (
-      bulkSaveVersion === 0 ||
-      handledBulkSaveVersionRef.current === bulkSaveVersion
-    ) {
+    if (bulkSaveVersion === 0 || handledBulkSaveVersionRef.current === bulkSaveVersion) {
       return;
     }
 
@@ -447,6 +454,14 @@ export function MonthlyBillsProjectCard({
           onOpenChange={(next) => {
             if (!next) setPaymentBill(null);
           }}
+          onPaymentMarked={(payment) => {
+            setMarkedPayment({
+              payment,
+              bill: paymentBill,
+              amount: getSavedAmount(paymentBill),
+            });
+            setPaymentBill(null);
+          }}
           bill={paymentBill}
           amount={getSavedAmount(paymentBill)}
           isReady={
@@ -454,6 +469,23 @@ export function MonthlyBillsProjectCard({
           }
           month={month}
           year={year}
+        />
+      )}
+
+      {markedPayment && (
+        <PaymentMarkedDialog
+          open={Boolean(markedPayment)}
+          onOpenChange={(next) => {
+            if (!next) {
+              setMarkedPayment(null);
+              void queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.all });
+            }
+          }}
+          payment={markedPayment.payment}
+          amount={markedPayment.amount}
+          vendorName={markedPayment.bill.purchaseOrder.vendor.name}
+          poNumber={markedPayment.bill.purchaseOrder.poNumber}
+          balance={markedPayment.bill.balance}
         />
       )}
     </section>

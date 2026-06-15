@@ -8,4 +8,7 @@ export const integrationsKeys = {
   quickBooksBankAccounts: () => [...integrationsKeys.quickBooks(), 'bank-accounts'] as const,
   quickBooksCategories: () => [...integrationsKeys.quickBooks(), 'categories'] as const,
   quickBooksVendors: () => [...integrationsKeys.quickBooks(), 'vendors'] as const,
+  quickBooksVendorOptions: (params?: unknown) =>
+    [...integrationsKeys.quickBooks(), 'vendor-options', params] as const,
+  quickBooksVendorMappings: () => [...integrationsKeys.quickBooks(), 'vendor-mappings'] as const,
 };

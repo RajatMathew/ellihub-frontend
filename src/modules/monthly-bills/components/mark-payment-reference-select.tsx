@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import type { MarkPaymentFormData } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import type { Control, FieldPath } from 'react-hook-form';
+import type { Control } from 'react-hook-form';
 
 /** Shared shape of the QuickBooks bank-account and category reference records. */
 interface ReferenceOption {
@@ -19,7 +19,7 @@ interface ReferenceOption {
 
 interface MarkPaymentReferenceSelectProps {
   control: Control<MarkPaymentFormData>;
-  name: FieldPath<MarkPaymentFormData>;
+  name: 'bankAccountId' | 'categoryId';
   label: string;
   options: ReferenceOption[];
   isLoading: boolean;
@@ -44,7 +44,7 @@ export function MarkPaymentReferenceSelect({
           <Select value={field.value} onValueChange={field.onChange}>
             <FormControl>
               <SelectTrigger>
-                <SelectValue placeholder={isLoading ? 'Loading…' : placeholder} />
+                <SelectValue placeholder={isLoading ? 'Loading...' : placeholder} />
               </SelectTrigger>
             </FormControl>
             <SelectContent>
