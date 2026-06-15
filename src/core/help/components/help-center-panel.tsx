@@ -102,7 +102,7 @@ export function HelpCenterRail({ className }: { className?: string }) {
                 variant="ghost"
               >
                 <ArrowLeft />
-                Help
+                Back
               </Button>
               <div className="mb-4 space-y-2">
                 <p className="text-xs font-medium uppercase text-muted-foreground">
