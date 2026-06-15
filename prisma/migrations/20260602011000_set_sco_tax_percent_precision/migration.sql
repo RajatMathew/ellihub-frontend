@@ -1,0 +1,1 @@
+ALTER TABLE "SubChangeOrder" ALTER COLUMN "taxPercent" TYPE DECIMAL(6, 3);
