@@ -1,0 +1,30 @@
+model CostCodeCategory {
+  id          String    @id
+  name        String
+  description String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  costCodes CostCode[]
+
+  @@unique([name])
+  @@index([deletedAt])
+}
+
+model CostCode {
+  id                 String           @id
+  name               String
+  code               String
+  description        String           @default("")
+  costCodeCategory   CostCodeCategory @relation(fields: [costCodeCategoryId], references: [id])
+  costCodeCategoryId String
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([name])
+  @@unique([code])
+  @@index([deletedAt])
+}
