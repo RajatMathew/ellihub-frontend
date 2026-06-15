@@ -1,0 +1,15 @@
+<header class="header">
+  <div class="brand">
+    {% if data.company.logo_path %}
+    <img src="{{ data.company.logo_path }}" alt="{{ data.company.name }}" />
+    {% else %}
+    <h1>{{ data.company.name }}</h1>
+    {% endif %}
+    <div class="company-details">
+      {% for line in data.company.address_lines %}
+      <p>{{ line }}</p>
+      {% endfor %}
+      <p>{{ data.company.phone }}</p>
+    </div>
+  </div>
+</header>
