@@ -66,7 +66,3 @@ After submitting, confirm the employee's sick leave request appears in the Time 
 - The request dates and notes match the employee's leave need.
 - **Submit Request** is selected after reviewing the form.
 - The submitted employee request appears in the Time Off list.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_To_Submit_A_New_Sick_Leave_Request__9h-cH0GaRmedMw7yj-rAcw)

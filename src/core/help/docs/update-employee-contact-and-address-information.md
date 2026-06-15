@@ -66,7 +66,3 @@ The profile contact details should now show the saved values.
 - The entered contact details are correct for that employee.
 - **Save Profile** is selected after reviewing the changes.
 - The profile shows the saved contact information after the update.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_To_Update_Employee_Contact_And_Address_Information__WYC2528WS1-56iLmqWRa1A)

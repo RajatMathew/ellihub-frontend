@@ -51,7 +51,3 @@ Select **Assign to Department** after reviewing the selected employee.
 - The employee search result matches the employee who should be assigned.
 - **Assign to Department** is selected after reviewing the employee.
 - The department profile reflects the updated employee assignment after saving.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Assigning_an_Employee_to_a_Department__EkVJUbxGSkm2WiCdFLBzKw)

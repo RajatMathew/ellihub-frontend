@@ -64,7 +64,3 @@ After saving, close the confirmation toast or review the updated contact record.
 - The replacement general contractor is selected from the search results.
 - **Replace Association** is confirmed before saving.
 - **Save Changes** is selected after the replacement.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_to_Replace_a_Group_Contact_Association__T6jiozgAT4KQardfSTDd7Q)

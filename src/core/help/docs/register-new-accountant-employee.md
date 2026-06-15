@@ -115,7 +115,3 @@ After saving, confirm the employee profile and system access status.
 - Auth role setup can be skipped and completed later from the employee profile.
 - Emergency contact details are entered.
 - **Create Employee** is selected after review.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_To_Add_A_New_Employee_To_The_HR_System__f8IzAV7YTneEBROkqt3TLg)

@@ -132,7 +132,3 @@ Open **Purchase Orders** and confirm the PO appears with the correct vendor, sta
 - PO is issued only after the draft details are correct.
 - Email sender, recipients, body, and attachments are reviewed before sending.
 - Project financials and Purchase Orders list reflect the issued PO.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Create_and_Issue_a_New_Purchase_Order__N65AWu1dQQubOpVkLCtdlA)

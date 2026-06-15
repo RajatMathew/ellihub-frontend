@@ -86,7 +86,3 @@ Confirm the RFQ detail page opens and the RFQ number is assigned. Newly created 
 - At least one deliverable is entered with quantity and unit.
 - Supporting documents are added when needed.
 - The created RFQ opens with an RFQ number.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_To_Create_A_New_RFQ_In_Your_Project__016CoiNyQZa_HAFlEFjoWQ)

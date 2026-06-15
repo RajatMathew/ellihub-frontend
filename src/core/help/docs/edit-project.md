@@ -95,7 +95,3 @@ Confirm the header shows the new stage.
 - **Save Changes** is selected when editing through the full project form.
 - Status is changed to **Inactive** only when the project should no longer be treated as active.
 - The project overview or header reflects the final stage and status.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Manage_Project_Stages_and_Status_Settings__Yh8qYHEmQ52b9EMxdXUlAw)

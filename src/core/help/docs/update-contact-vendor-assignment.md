@@ -57,7 +57,3 @@ Use **Team Directory** to return to the broader directory area.
 - The **Vendor** tab is selected in the association section.
 - The selected vendor is the company that should own or represent the contact.
 - **Save Changes** is selected after the vendor is updated.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/Updating_Vendor_Assignment_for_a_Contact__8HL-F7UARAyFr6UrMgd3yw)

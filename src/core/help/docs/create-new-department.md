@@ -55,7 +55,3 @@ After saving, confirm the department appears in the departments list.
 - The description explains the department's responsibilities.
 - **Create Department** is selected after reviewing the details.
 - The new department appears in the departments list after saving.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Create_a_New_Department__TDUg3CtFQS-dk-lyqNEOWA)

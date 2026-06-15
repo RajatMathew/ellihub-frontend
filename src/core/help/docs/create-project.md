@@ -174,9 +174,3 @@ The project detail page opens with the saved project information available for r
 - Contract documents are attached if they are available at setup.
 - The new project appears in the project portfolio after saving.
 - The saved project opens from its project card.
-
-## Scribe Source
-
-[Open the create project Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_To_Create_A_New_Project_In_The_System__c1xlXwduRvybYHTIdDuUGQ)
-
-[Open the access project Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Access_a_Specific_Project_in_the_Application__MYD8rQyER0yHp0Ad3nTdLA)

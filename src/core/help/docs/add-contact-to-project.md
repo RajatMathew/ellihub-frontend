@@ -89,7 +89,3 @@ Review the contact details, then select **Create Contact**.
 - Phone number is entered when available.
 - Tags describe the contact clearly.
 - **Create Contact** is selected after review.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_to_Add_a_New_Contact_to_Your_Project__Jo39yfiLQze0vc1fugX9Dw)
