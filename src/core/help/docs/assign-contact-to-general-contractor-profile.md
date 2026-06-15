@@ -55,7 +55,3 @@ After saving, confirm the contact appears on the general contractor profile.
 - The contact search result matches the person you want to link.
 - **Save Changes** is selected after adding the contact.
 - The contact appears on the profile after saving.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_to_Assign_a_Contact_to_a_General_Contractor_Profile__b5xtKM1gSvG9O72qEPBbIQ)

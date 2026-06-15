@@ -67,7 +67,3 @@ Review the **Reference** column to confirm change order references are available
 - **Save Changes** is selected after updating the Fieldwire reference.
 - Prime Change Orders shows the Fieldwire project and last sync details.
 - The **Reference** column is available for synced Fieldwire references.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Updating_Project_References_in_Fieldwire__S2Stm9QzRm2rgsmgqbXBaA)

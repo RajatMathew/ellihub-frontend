@@ -46,7 +46,7 @@ export function HelpCenterRail({ className }: { className?: string }) {
     <aside
       aria-label="Help"
       className={cn(
-        'fixed inset-y-0 end-0 z-30 flex w-full flex-col border-s bg-background shadow-xl transition-transform sm:w-(--help-panel-width) lg:shadow-none',
+        'fixed inset-y-0 end-0 z-30 flex w-full flex-col border-s bg-background shadow-xl transition-transform sm:w-(--help-panel-width) lg:shadow-left-panel',
         className
       )}
     >
@@ -57,7 +57,7 @@ export function HelpCenterRail({ className }: { className?: string }) {
             <Button asChild size="sm" variant="outline">
               <Link target="_blank" to={articlePath}>
                 <ExternalLink />
-                Open
+                Open in new tab
               </Link>
             </Button>
             <Button
@@ -84,7 +84,7 @@ export function HelpCenterRail({ className }: { className?: string }) {
                   setQuery(event.target.value);
                   setSelectedSlug(null);
                 }}
-                placeholder="Describe your issue"
+                placeholder="Search help"
                 value={query}
               />
             </InputWrapper>

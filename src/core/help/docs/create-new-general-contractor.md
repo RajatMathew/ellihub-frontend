@@ -83,7 +83,3 @@ Select **Create GC** after the required details are complete.
 - Financial defaults are reviewed.
 - Contacts are linked only if they are known during creation.
 - **Create GC** is selected after review.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_To_Create_A_New_General_Contractor__JgGSKobKTuqap2qizr9kCQ)

@@ -54,7 +54,3 @@ After saving, confirm the contact shows **No entity linked**.
 - **Remove** is selected in the confirmation action.
 - **Save Changes** is selected after removing the link.
 - The contact shows **No entity linked** after saving.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/xWC6G2OrQtKE15qH-L_K_Q/viewer/How_to_Remove_a_Linked_Entity_from_a_Contact__NKZXQcB9TGeTvB4TwKOCcA)

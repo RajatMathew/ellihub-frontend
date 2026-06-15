@@ -138,7 +138,3 @@ Confirm the RFQ status changes to **Awarded** and the financial summary shows th
 - Vendor email recipients, subject, body, and attached RFQ PDF are reviewed before sending.
 - Awarded vendor and negotiation amount are confirmed before selecting **Award**.
 - RFQ status changes to **Awarded** after completion.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Publish_RFQs_and_Award_Vendor_Contracts__5XklFIBMR6-LJmUg4x8ysw)

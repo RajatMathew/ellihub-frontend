@@ -98,7 +98,3 @@ Confirm the invoice keeps the uploaded document and links back to the correct pu
 - Vendor invoice or backup documents are attached.
 - Created invoice opens with the expected invoice number and unpaid status.
 - Linked purchase order card points back to the correct PO.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Create_a_New_Invoice_From_a_Purchase_Order__7Fpcp3KySHq0uLMIoKPp1w)

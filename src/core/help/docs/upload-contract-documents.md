@@ -92,7 +92,3 @@ Confirm the uploaded contract document is available in the **Prime Contract** fo
 - Additional contract files are uploaded separately when needed.
 - Key contract documents are pinned only when they should appear on the project overview.
 - Uploaded documents are visible in **Files > Prime Contract**.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Upload_and_Pin_Project_Files__ci8MXcvaTayEcrZ2r1cubg)

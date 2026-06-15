@@ -142,7 +142,3 @@ Return to the PO record and verify the purchase order still shows the same appro
 - Approval confirmation is completed only after the SCO is correct.
 - **View PO** shows the approved SCO amount on the linked purchase order.
 - The PO's change amount links back to the correct SCO record.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Creating_and_Approving_a_Sub_Change_Order__2e9LVRDXSweVbdWcvWOqng)

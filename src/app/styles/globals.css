@@ -57,6 +57,7 @@
   --label-light: lab(47.8878 1.65477 -5.77283);
   --label-lighter: lab(35.1166 1.78212 -6.1173);
   --separator: lab(96.1634 0.0993311 -0.364041);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
 }
 
 .dark {
@@ -109,6 +110,7 @@
   --label-light: lab(70 2 -7);
   --label-lighter: lab(60 2 -7);
   --separator: var(--color-zinc-800);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.3), -1px 0 4px rgba(0, 0, 0, 0.2);
 }
 
 /** Theme Setup **/
@@ -162,6 +164,7 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  --shadow-left-panel: var(--left-panel-shadow);
 
   /** Animations **/
   --animate-marquee: marquee var(--duration) infinite linear;

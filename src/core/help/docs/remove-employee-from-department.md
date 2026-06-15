@@ -41,7 +41,3 @@ After the update, confirm the department roster reflects the removal.
 - The employee row belongs to the employee who should be removed.
 - **Remove from Department** is selected from that employee's actions menu.
 - The department roster reflects the removal after the update.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Removing_an_Employee_From_a_Department__ohGbRmQZQXaM7TmzaUWEyQ)

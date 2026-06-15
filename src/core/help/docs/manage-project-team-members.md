@@ -88,7 +88,3 @@ Confirm the team list reflects the updated membership.
 - The selected role matches the employee's project responsibility.
 - Lead PM transfer is reviewed before confirming.
 - Removed members no longer appear in the project team list.
-
-## Scribe Source
-
-[Open the original Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/Managing_Team_Members_and_Roles_in_Project_Overview__eSWeCtKwSMqP7Sj4b9wIdw)
