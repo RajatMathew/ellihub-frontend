@@ -1,129 +1,182 @@
 ---
 title: Creating a Project
-description: Create a project from the portfolio, complete project info, add contract details, and attach contract documents.
+description: Create a project from the portfolio, add project details, assign stakeholders, and enter contract information.
 section: Projects Page
 sectionOrder: 1
 order: 2
-tags: projects, create, new project, portfolio, contract, fieldwire
+tags: projects, create, new project, portfolio, contract, fieldwire, scribe
 ---
 
 # Creating a Project
 
-Use **New Project** when a job is ready to be tracked in ElliHub Finance. A project becomes the workspace for contract value, budget progress, RFQs, purchase orders, invoices, files, and project activity.
+Use **New Project** when a job is ready to be tracked in ElliHub Finance. The screenshots below show sample values only; enter the real project identifiers, address, stakeholders, contract values, percentages, and dates for the project being created.
 
-[embed: Creating a New Project in the Application](https://scribehow.com/embed/Creating_a_New_Project_in_the_Application__4JM_XENOS7WqayR4McwwuQ?as=scrollable)
+## Start from Projects
 
-[embed: Creating a project video walkthrough](https://drive.google.com/file/d/1RGF7ZsWn55hpY1l489GT5peCS0ZsE_dd/preview)
+Open **Projects** from the left sidebar or navigate to the Projects page.
 
-## Start from the portfolio
+![Projects page](/help/scribe/create-new-project-in-system/scribe-assets/step-01.jpeg)
 
-1. Open **Projects** from the left sidebar.
-2. Select **New Project** in the top-right corner.
-3. The form opens on **Project Info**.
+Select **New Project**.
 
-![Project Portfolio screen with the New Project button](/help/screenshots/project-portfolio-new-project.png)
+![New Project action](/help/scribe/create-new-project-in-system/scribe-assets/step-02.jpeg)
 
-> The project is not created until you select **Create Project**. You can cancel from the top-right action bar before saving.
+## Set Project Status and Stage
 
-## Project Info
+Use the project stage selector to choose the current workflow stage for the job.
 
-Complete the operational details first. Required fields are marked with a red asterisk.
+![Project stage selector](/help/scribe/create-new-project-in-system/scribe-assets/step-03.jpeg)
 
-![New Project form showing the Project Info step](/help/screenshots/new-project-project-info.png)
+Choose the stage that matches the project, such as **Onboarding** for a newly started setup.
 
-| Field | What to enter |
-| --- | --- |
-| **Project Status** | Usually **Active** for a new job. |
-| **Project Stage** | The current workflow stage, such as fabrication, installation, or submittals. |
-| **Project ID / Job #** | Internal project or job number. If left unchanged, the system may show a generated value. |
-| **Fieldwire Project** | Link the project to Fieldwire when a matching Fieldwire project already exists. |
-| **Project Name** | The official title users should see on project cards, reports, and documents. |
-| **Description / Scope** | A short scope of work. Include enough context for finance and operations teams. |
+![Project stage selected](/help/scribe/create-new-project-in-system/scribe-assets/step-04.jpeg)
 
-## Location
+## Enter Project Identity
 
-Add the project address so reports and project records are searchable by place.
+Review or replace the generated **Project ID / Job #** with the internal job number used by the team.
 
-- **Street Address**
-- **City**
-- **State**
-- **Zip Code**
+![Project ID field](/help/scribe/create-new-project-in-system/scribe-assets/step-05.jpeg)
 
-Use the two-letter state code when possible, such as `NY`.
+Use **Fieldwire Project** when the project should be linked to an existing Fieldwire project.
 
-![Location and Key Stakeholders fields](/help/screenshots/new-project-location-stakeholders.png)
+![Fieldwire Project field](/help/scribe/create-new-project-in-system/scribe-assets/step-07.jpeg)
 
-## Key Stakeholders
+Enter the official project title.
 
-Select the people and companies responsible for the project.
+![Project title field](/help/scribe/create-new-project-in-system/scribe-assets/step-08.jpeg)
 
-| Field | Notes |
-| --- | --- |
-| **General Contractor** | Required. If the GC is missing, add it from **Directory > General Contractors** first. |
-| **Lead PM** | Required. This controls project ownership and who is shown as the lead project manager. |
+Add a short scope or description so finance and operations teams can recognize the work.
 
-> If a contractor or PM is unavailable in the dropdown, create or update that record before saving the project. This keeps reporting clean and avoids duplicate names later.
+![Project description field](/help/scribe/create-new-project-in-system/scribe-assets/step-10.jpeg)
 
-## Contract
+## Add Location Details
 
-Open the **Contract** step to add financial and schedule details.
+Complete the address fields for the project location.
 
-![Contract financial fields](/help/screenshots/new-project-contract-financials.png)
+![Street address field](/help/scribe/create-new-project-in-system/scribe-assets/step-12.jpeg)
 
-| Field | What it affects |
-| --- | --- |
-| **Contract Number** | Reference number for the prime contract. |
-| **Contract Type** | Example: Lump Sum, GMP, Time & Material. |
-| **Contract Category / Division** | Required. Determines where the project appears in portfolio columns. |
-| **Payment Terms** | Used for billing context and collections workflow. |
-| **Contract Value** | Original contract amount. |
-| **Retainage %** | Retainage held from billing. |
-| **Target Budget %** | Budget target used for project financial tracking. |
-| **Tax Rate %** | Tax rate used where applicable. |
+Enter the city.
 
-## Dates
+![City field](/help/scribe/create-new-project-in-system/scribe-assets/step-14.jpeg)
 
-Fill dates that are known at project creation. The **TCO Date** is required.
+Enter the state or state abbreviation.
 
-| Date | Use when |
-| --- | --- |
-| **Estimated Start Date** | The planned start date is known. |
-| **Estimated End Date** | The planned completion date is known. |
-| **Inactive Date** | The project should become inactive on a specific date. |
-| **TCO Date** | Required turnover or target completion date. |
-| **Actual Start Date** | Work has already started. |
-| **Actual Completion Date** | Work is already complete. |
+![State field](/help/scribe/create-new-project-in-system/scribe-assets/step-16.jpeg)
 
-![Dates and Contract Documents fields](/help/screenshots/new-project-contract-documents.png)
+Enter the ZIP or postal code.
 
-## Contract Documents
+![ZIP code field](/help/scribe/create-new-project-in-system/scribe-assets/step-18.jpeg)
 
-For new projects, you can attach prime contract documents before saving.
+## Assign Key Stakeholders
 
-1. Drag files into **Contract Documents**, or select files from your computer.
-2. Review the selected file list.
-3. Remove any incorrect files before creating the project.
+Select the general contractor for the project.
 
-The files are uploaded after the project is created and appear in the project’s contract documents area.
+![General contractor selector](/help/scribe/create-new-project-in-system/scribe-assets/step-20.jpeg)
 
-## Save the project
+Choose the correct contractor from the list.
 
-Select **Create Project** when both steps are complete.
+![General contractor selected](/help/scribe/create-new-project-in-system/scribe-assets/step-21.jpeg)
 
-After saving:
+Select the lead project manager.
 
-- The project appears in the **Project Portfolio**.
-- It is grouped under the selected **Contract Category / Division**.
-- Financial cards use the contract values and dates you entered.
-- Attached contract files are added to the project documents.
+![Lead PM selector](/help/scribe/create-new-project-in-system/scribe-assets/step-22.jpeg)
 
-## Quick checklist
+Choose the employee who should own the project.
 
-- Project stage is selected.
-- Project name and scope are clear.
-- General contractor and lead PM are correct.
-- Division/category matches where the project should appear in the portfolio.
-- TCO date is entered.
-- Contract documents are attached if available.
+![Lead PM selected](/help/scribe/create-new-project-in-system/scribe-assets/step-24.jpeg)
 
-[video: Project creation walkthrough](/help/project-creation.mp4)
+## Enter Contract Details
+
+Enter the contract number or reference.
+
+![Contract number field](/help/scribe/create-new-project-in-system/scribe-assets/step-25.jpeg)
+
+Select the contract type.
+
+![Contract type selector](/help/scribe/create-new-project-in-system/scribe-assets/step-27.jpeg)
+
+Choose the correct contract type, such as **Lump Sum** when that matches the agreement.
+
+![Contract type selected](/help/scribe/create-new-project-in-system/scribe-assets/step-28.jpeg)
+
+Select the contract division or category.
+
+![Division selector](/help/scribe/create-new-project-in-system/scribe-assets/step-29.jpeg)
+
+Choose the division where the project should be grouped in the portfolio.
+
+![Division selected](/help/scribe/create-new-project-in-system/scribe-assets/step-30.jpeg)
+
+## Add Financial Values
+
+Enter the contract value.
+
+![Contract value field](/help/scribe/create-new-project-in-system/scribe-assets/step-31.jpeg)
+
+Enter the retainage percentage if retainage applies.
+
+![Retainage field](/help/scribe/create-new-project-in-system/scribe-assets/step-33.jpeg)
+
+Enter the target budget percentage.
+
+![Target budget field](/help/scribe/create-new-project-in-system/scribe-assets/step-35.jpeg)
+
+Enter the tax rate percentage if the project requires one.
+
+![Tax rate field](/help/scribe/create-new-project-in-system/scribe-assets/step-37.jpeg)
+
+## Add Dates
+
+Use the date fields to enter the known project schedule and required turnover or completion information.
+
+![First date field](/help/scribe/create-new-project-in-system/scribe-assets/step-39.jpeg)
+
+Continue filling the remaining date fields that apply.
+
+![Second date field](/help/scribe/create-new-project-in-system/scribe-assets/step-40.jpeg)
+
+Complete the required date fields before creating the project.
+
+![Additional date field](/help/scribe/create-new-project-in-system/scribe-assets/step-41.jpeg)
+
+## Create and Confirm
+
+Attach any contract documents that should be uploaded with the project, then select **Create Project** after reviewing the project info, stakeholders, contract values, and dates.
+
+![Create Project action](/help/scribe/create-new-project-in-system/scribe-assets/step-42.jpeg)
+
+After saving, return to the project portfolio and confirm the new project appears in the list.
+
+![Project portfolio after save](/help/scribe/create-new-project-in-system/scribe-assets/step-43.jpeg)
+
+## Open the Saved Project
+
+From the **Projects** page, locate the project in the portfolio.
+
+![Project portfolio with saved project](/help/scribe/access-specific-project/scribe-assets/step-01.jpeg)
+
+Select the project card to open it.
+
+![Select project card](/help/scribe/access-specific-project/scribe-assets/step-02.jpeg)
+
+The project detail page opens with the saved project information available for review or editing.
+
+![Project detail page](/help/scribe/access-specific-project/scribe-assets/step-03.jpeg)
+
+## Quick Checklist
+
+- Project stage matches the current workflow.
+- Project ID, title, and scope are correct.
+- Location details are complete.
+- General contractor and lead PM are assigned.
+- Contract number, type, division, value, retainage, budget target, and tax rate are reviewed.
+- Required project dates are entered.
+- Contract documents are attached if they are available at setup.
+- The new project appears in the project portfolio after saving.
+- The saved project opens from its project card.
+
+## Scribe Source
+
+[Open the create project Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_To_Create_A_New_Project_In_The_System__c1xlXwduRvybYHTIdDuUGQ)
+
+[Open the access project Scribe walkthrough](https://scribehow.com/o/JYWM_1hvRfaDJdn6VtGojg/viewer/How_to_Access_a_Specific_Project_in_the_Application__MYD8rQyER0yHp0Ad3nTdLA)
