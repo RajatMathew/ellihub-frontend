@@ -1,0 +1,92 @@
+[
+  {
+    "vendorId": "",
+    "tradeCategory": "MATERIAL",
+    "description": "Structural steel package for Phase 1 foundation work",
+    "contactName": "Jane Smith",
+    "contactEmail": "jane.smith@steelco.com",
+    "contactPhone": "(555) 123-4567",
+    "leadTime": "3-4 weeks",
+    "issueDate": "2026-03-08",
+    "expectedDate": "2026-04-15",
+    "shipToAddress": "123 Job Site Rd, Los Angeles CA 90001",
+    "taxPercent": 8.5,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10,
+    "notes": "Rush order — confirm with PM before issuing.",
+    "vendorNotes": "Please include packing slip with each delivery.",
+    "lineItems": [
+      { "description": "W12x26 Steel Beams", "quantity": 50, "unit": "EA", "unitPrice": 245.00, "notes": "Grade A36" },
+      { "description": "Steel Anchor Bolts 3/4\"", "quantity": 200, "unit": "EA", "unitPrice": 8.50 },
+      { "description": "Base Plates 12x12x1\"", "quantity": 25, "unit": "EA", "unitPrice": 78.00 }
+    ]
+  },
+  {
+    "vendorId": "",
+    "tradeCategory": "LABOR",
+    "description": "Electrical rough-in labor for floors 3-6, Building B",
+    "contactName": "Marcus Webb",
+    "contactEmail": "m.webb@alphaelectric.com",
+    "contactPhone": "(310) 987-6543",
+    "leadTime": "1 week",
+    "issueDate": "2026-03-10",
+    "expectedDate": "2026-05-01",
+    "shipToAddress": "450 Commerce Blvd, Suite 200, Burbank CA 91505",
+    "taxPercent": 0,
+    "paymentTerms": "NET_15",
+    "retainagePercent": 5,
+    "notes": "Coordinate with MEP foreman before mobilization.",
+    "vendorNotes": "Certified payroll required weekly. Union labor only.",
+    "lineItems": [
+      { "description": "Foreman (Journeyman Electrician)", "quantity": 120, "unit": "HR", "unitPrice": 95.00 },
+      { "description": "Apprentice Electrician", "quantity": 240, "unit": "HR", "unitPrice": 58.00 },
+      { "description": "Conduit Installation — EMT 3/4\"", "quantity": 850, "unit": "LF", "unitPrice": 4.75 },
+      { "description": "Panel Rough-In (200A sub-panel)", "quantity": 4, "unit": "EA", "unitPrice": 1200.00 }
+    ]
+  },
+  {
+    "vendorId": "",
+    "tradeCategory": "EQUIPMENT",
+    "description": "Tower crane rental and operator for structural steel erection",
+    "contactName": "Donna Reyes",
+    "contactEmail": "donna.reyes@cranewest.com",
+    "contactPhone": "(213) 555-0192",
+    "leadTime": "2 weeks",
+    "issueDate": "2026-03-15",
+    "expectedDate": "2026-06-30",
+    "shipToAddress": "789 Industrial Pkwy, Compton CA 90220",
+    "taxPercent": 7.25,
+    "paymentTerms": "NET_45",
+    "retainagePercent": 0,
+    "notes": "Mobilization date TBD pending permit approval.",
+    "vendorNotes": "Operator certifications to be submitted 5 days before start.",
+    "lineItems": [
+      { "description": "Tower Crane Mobilization / Demobilization", "quantity": 1, "unit": "LS", "unitPrice": 18500.00 },
+      { "description": "Tower Crane Monthly Rental", "quantity": 4, "unit": "MO", "unitPrice": 12000.00 },
+      { "description": "Certified Crane Operator", "quantity": 500, "unit": "HR", "unitPrice": 115.00 }
+    ]
+  },
+  {
+    "vendorId": "",
+    "tradeCategory": "FABRICATION",
+    "description": "Custom millwork and casework for lobby and reception areas",
+    "contactName": "Tomas Herrera",
+    "contactEmail": "therrera@precisionmill.com",
+    "contactPhone": "(818) 334-7700",
+    "leadTime": "6-8 weeks",
+    "issueDate": "2026-03-12",
+    "expectedDate": "2026-05-20",
+    "shipToAddress": "55 Grand Ave, Downtown LA CA 90012",
+    "taxPercent": 9.5,
+    "paymentTerms": "NET_60",
+    "retainagePercent": 15,
+    "notes": "Shop drawings required before fabrication begins. Architect approval needed.",
+    "vendorNotes": "Deliver to loading dock B only. Call 24 hrs ahead.",
+    "lineItems": [
+      { "description": "Reception Desk — White Oak Veneer", "quantity": 1, "unit": "EA", "unitPrice": 8400.00 },
+      { "description": "Built-In Shelving Units (8ft)", "quantity": 6, "unit": "EA", "unitPrice": 1250.00 },
+      { "description": "Lobby Feature Wall Paneling", "quantity": 320, "unit": "SF", "unitPrice": 42.00 },
+      { "description": "Solid Surface Countertops", "quantity": 45, "unit": "LF", "unitPrice": 185.00 }
+    ]
+  }
+]
