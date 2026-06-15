@@ -71,6 +71,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false,
+        navigateFallbackDenylist: [/^\/api($|\/)/],
       },
       manifest: {
         name: 'Elli Hub',
