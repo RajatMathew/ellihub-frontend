@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Citnalta Construction Corp.",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "1601 Locust Avenue, Bohemia, NY 11719",
+    "email": "stevep@citnalta.com",
+    "phone": "631-563-1110",
+    "website": null,
+    "fax": "631-563-3765",
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "E.W. Howell Construction Group",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "245 Newtown Rad, Suite 600, Plainview, NY 11803",
+    "email": "dsanginario@ewhowell.com",
+    "phone": "516-921-7100",
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Gilbane Building Company",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "88 Pine St, 27th Fl, New York, NY 10005",
+    "email": "rescobar@gilbaneco.com",
+    "phone": "212-896-1026",
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Hunter Roberts Construction Group",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "55 Water St, 51st Fl, New York, NY 10041",
+    "email": "adarji@hrcg.com",
+    "phone": "212-699-4809",
+    "website": null,
+    "fax": "646-924-3653",
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Leon DeMatteis Construction Corp.",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "820 Elmpont Road, Elmont, NY 11003",
+    "email": "ks@dematteisorg.com",
+    "phone": "516-285-5500",
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "MPCC Corp.",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "81 Rockdale Ave, New Rochelle, NY 10801",
+    "email": "alex@mpcccorp.com",
+    "phone": "914-636-000",
+    "website": null,
+    "fax": "914-636-0019",
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Office of the General Services",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "80-45 Winchester Blvd, Queens Village, NY 11427",
+    "email": "nicole.prewitt@ogs.ny.gov",
+    "phone": "718-776-4441",
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Pavarini McGovern",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "330 West 34 St, 12 Fl, New York,NY 10001",
+    "email": "lucy.swain@pavmcgovern.com",
+    "phone": null,
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Prismatic Development",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": "60 US Highway 46, Fairfield, NJ 07004",
+    "email": "rpalmer@prisdev.com",
+    "phone": "973-882-1133",
+    "website": null,
+    "fax": "866-567-2803",
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  },
+  {
+    "name": "Structuretone",
+    "gcTypeId": null,
+    "status": "ACTIVE",
+    "address": null,
+    "email": "andrew.smith@structuretone.com",
+    "phone": null,
+    "website": null,
+    "fax": null,
+    "paymentTerms": "NET_30",
+    "retainagePercent": 10
+  }
+]
