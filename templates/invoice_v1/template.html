@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ data.invoice_number }}</title>
+  </head>
+  <body>
+    {% include "partials/header.html" %}
+
+    <main class="invoice">
+      <section class="meta">
+        <div>
+          <span>Invoice</span>
+          <strong>{{ data.invoice_number }}</strong>
+        </div>
+        <div>
+          <span>Date</span>
+          <strong>{{ data.issue_date }}</strong>
+        </div>
+      </section>
+
+      <section class="bill-to">
+        <h2>Bill To</h2>
+        <p>{{ data.customer.name }}</p>
+        <p>{{ data.customer.email }}</p>
+      </section>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in data["items"] %}
+          <tr>
+            <td>{{ item.description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit_price }}</td>
+            <td>{{ item.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if data.get("notes") %}
+      <section class="notes">
+        <h3>Notes</h3>
+        <p>{{ data["notes"] }}</p>
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
