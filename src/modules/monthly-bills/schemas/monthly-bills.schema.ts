@@ -90,12 +90,15 @@ export const plannedPaymentRecordSchema = z.object({
 
 export type PlannedPaymentRecord = z.infer<typeof plannedPaymentRecordSchema>;
 
-// Matches the backend PATCH /monthly-bills/mark-payment contract. The amount and transaction date
-// are derived server-side from the ready planned payment. No check/document number is sent.
+// Matches the backend PATCH /monthly-bills/mark-payment contract. The amount is derived
+// server-side from the ready planned payment. No check/document number is sent.
 export const markPaymentSchema = z.object({
   purchaseOrderId: z.string(),
   month: z.number().int().min(1).max(12),
   year: z.number().int(),
+  txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Payment date is required.'),
+  description: z.string().trim().min(1, 'Line item description is required.').max(4000),
+  memo: z.string().trim().max(4000).optional().default(''),
   /** Confirmed QuickBooks payee reference id. */
   qbVendorId: z.string().min(1),
   /** QuickBooks bank account reference id. */
@@ -126,6 +129,9 @@ export const markPaymentFormSchema = z.object({
   qbVendorId: z.string().min(1),
   bankAccountId: z.string().min(1),
   categoryId: z.string().min(1),
+  txnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Payment date is required.'),
+  description: z.string().trim().min(1, 'Line item description is required.').max(4000),
+  memo: z.string().trim().max(4000),
   saveVendorMapping: z.boolean(),
 });
 

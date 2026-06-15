@@ -54,8 +54,8 @@ export function MonthlyBillsTableHeader({
           </TableHead>
         )}
         {show('toPay') && (
-          <TableHead className="h-10 min-w-28 text-right text-xs font-semibold uppercase tracking-normal">
-            To Pay
+          <TableHead className="h-10 min-w-36 text-left text-xs font-semibold uppercase tracking-normal">
+            Planned payment
           </TableHead>
         )}
         {show('ready') && (

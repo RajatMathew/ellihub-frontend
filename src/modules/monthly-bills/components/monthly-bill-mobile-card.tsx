@@ -119,7 +119,7 @@ export function MonthlyBillMobileCard({
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         {show('toPay') && (
           <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">To Pay</p>
+            <p className="text-xs font-medium text-muted-foreground">Planned payment</p>
             <ToPayCell
               value={toPay}
               poNumber={poNumber}

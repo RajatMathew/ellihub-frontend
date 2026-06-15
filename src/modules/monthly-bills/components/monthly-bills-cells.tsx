@@ -27,7 +27,7 @@ interface ToPayCellProps {
   onSave?: () => void;
 }
 
-/** To Pay input. Updates the row draft immediately; callers decide when to save it. */
+/** Planned payment input. Updates the row draft immediately; callers decide when to save it. */
 export function ToPayCell({
   value,
   poNumber,
@@ -68,7 +68,7 @@ export function ToPayCell({
         decimalPlaces={2}
         min={0}
         disabled={!inputEnabled}
-        aria-label={`To pay for ${poNumber}`}
+        aria-label={`Planned payment for ${poNumber}`}
         className={cn(
           'h-8 w-24 text-left',
           value > 0 ? 'text-foreground disabled:opacity-100' : 'text-muted-foreground',
@@ -86,7 +86,7 @@ export function ToPayCell({
                 size="sm"
                 disabled={isSaving}
                 onClick={onSave}
-                aria-label={`Save to pay amount for ${poNumber}`}
+                aria-label={`Save planned payment amount for ${poNumber}`}
               >
                 {isSaving ? (
                   <Loader2 className="size-3.5 animate-spin text-white!" />
@@ -107,7 +107,7 @@ export function ToPayCell({
                 size="sm"
                 disabled={isSaving}
                 onClick={onEdit}
-                aria-label={`Edit to pay amount for ${poNumber}`}
+                aria-label={`Edit planned payment amount for ${poNumber}`}
                 className="hover:bg-muted-foreground/10 data-[state=open]:bg-muted-foreground/10"
               >
                 <Pencil className="size-3.5" />

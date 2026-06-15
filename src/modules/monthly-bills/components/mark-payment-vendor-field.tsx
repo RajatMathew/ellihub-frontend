@@ -143,15 +143,15 @@ export function MarkPaymentVendorField({
           control={control}
           name="saveVendorMapping"
           render={({ field }) => (
-            <FormItem className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+            <FormItem className="flex flex-row items-start justify-start gap-3 rounded-md border border-border bg-muted/30 p-3">
               <FormControl>
                 <Checkbox
                   checked={field.value}
                   onCheckedChange={(checked) => field.onChange(checked === true)}
                 />
               </FormControl>
-              <div className="space-y-0.5">
-                <FormLabel className="text-sm font-medium">Remember this mapping</FormLabel>
+              <div className="flex flex-col gap-0.5 text-left">
+                <FormLabel className="text-sm font-medium cursor-pointer select-none">Remember this mapping</FormLabel>
                 <p className="text-xs leading-5 text-muted-foreground">
                   Auto-select this QuickBooks vendor for future {vendorName} payments.
                 </p>

@@ -23,7 +23,7 @@ export const useUpsertPlannedPaymentMutation = () => {
     mutationFn: (payload: UpsertPlannedPaymentPayload) =>
       monthlyBillsApi.upsertPlannedPayment(payload),
     // Keep every month's cached bills in sync with what was just persisted, so the
-    // To Pay / Ready values re-seed correctly when navigating between months.
+    // Planned payment / Ready values re-seed correctly when navigating between months.
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.all }),
     onError: (error) => toastApiError(error, 'Failed to save planned payment.'),
   });

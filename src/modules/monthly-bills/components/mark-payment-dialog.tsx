@@ -10,11 +10,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { Form } from '@/app/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/app/components/ui/form';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
+import { Textarea } from '@/app/components/ui/textarea';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   useQuickBooksBankAccountsQuery,
   useQuickBooksCategoriesQuery,
@@ -81,6 +90,25 @@ function quickBooksMappingToOption(
   };
 }
 
+function padTwo(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function getPeriodDateRange(month: number, year: number) {
+  const monthValue = padTwo(month);
+  const lastDay = new Date(year, month, 0).getDate();
+  const min = `${year}-${monthValue}-01`;
+  const max = `${year}-${monthValue}-${padTwo(lastDay)}`;
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const defaultDate = today >= min && today <= max ? today : min;
+
+  return { min, max, defaultDate };
+}
+
+function buildDefaultLineDescription(bill: MonthlyBillItem) {
+  return `PO#${bill.purchaseOrder.poNumber} - Partial Payment ${bill.payments.length + 1}`;
+}
+
 export function MarkPaymentDialog({
   open,
   onOpenChange,
@@ -109,6 +137,8 @@ export function MarkPaymentDialog({
     [currentMapping]
   );
   const selectedVendorOption = selectedMappingOption ?? createdVendorOption;
+  const dateRange = useMemo(() => getPeriodDateRange(month, year), [month, year]);
+  const defaultLineDescription = useMemo(() => buildDefaultLineDescription(bill), [bill]);
 
   const bankAccountsQuery = useQuickBooksBankAccountsQuery(open);
   const categoriesQuery = useQuickBooksCategoriesQuery(open);
@@ -131,9 +161,36 @@ export function MarkPaymentDialog({
       qbVendorId: sourceMapping?.qbVendorId ?? '',
       bankAccountId: '',
       categoryId: '',
+      txnDate: dateRange.defaultDate,
+      description: defaultLineDescription,
+      memo: '',
       saveVendorMapping: false,
     },
   });
+
+  useEffect(() => {
+    if (!open) return;
+
+    form.reset({
+      qbVendorId: sourceMapping?.qbVendorId ?? '',
+      bankAccountId: '',
+      categoryId: '',
+      txnDate: dateRange.defaultDate,
+      description: defaultLineDescription,
+      memo: '',
+      saveVendorMapping: false,
+    });
+    setVendorSearchInput('');
+    setCreatedVendorOption(undefined);
+    setMappingOverride(undefined);
+  }, [
+    bill.purchaseOrder.id,
+    dateRange.defaultDate,
+    defaultLineDescription,
+    form,
+    open,
+    sourceMapping?.qbVendorId,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -149,9 +206,6 @@ export function MarkPaymentDialog({
       form.setValue('saveVendorMapping', true);
     }
   }, [currentMapping, form, open, vendorMatch]);
-
-  // The server stamps the transaction date when posting; shown read-only for context.
-  const paymentDate = useMemo(() => format(new Date(), 'MMM d, yyyy'), []);
 
   // The backend only posts a payment for a planned payment that has been marked ready.
   const isReady = isReadyOverride ?? bill.plannedPayment?.isReady ?? false;
@@ -248,23 +302,89 @@ export function MarkPaymentDialog({
                     placeholder="Select bank account"
                   />
 
-                  <MarkPaymentReferenceSelect
+                  <FormField
                     control={form.control}
-                    name="categoryId"
-                    label="Category"
-                    options={categoriesQuery.data ?? []}
-                    isLoading={categoriesQuery.isLoading}
-                    placeholder="Select category"
+                    name="txnDate"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel>Payment Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            min={dateRange.min}
+                            max={dateRange.max}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Must be between {format(new Date(`${dateRange.min}T00:00:00`), 'MMM d')}{' '}
+                          and {format(new Date(`${dateRange.max}T00:00:00`), 'MMM d, yyyy')}.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
+                </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="mark-payment-paid-date">Paid Date</Label>
-                    <Input id="mark-payment-paid-date" value={paymentDate} readOnly disabled />
-                    <p className="text-xs text-muted-foreground">
-                      Stamped automatically when posted.
-                    </p>
+                <div className="space-y-4 rounded-md border bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        QuickBooks Line Item
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        This appears under Category details in QuickBooks.
+                      </p>
+                    </div>
+                    <div className="text-sm font-semibold tabular-nums text-foreground">
+                      {formatCurrency(amount)}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <MarkPaymentReferenceSelect
+                      control={form.control}
+                      name="categoryId"
+                      label="Category"
+                      options={categoriesQuery.data ?? []}
+                      isLoading={categoriesQuery.isLoading}
+                      placeholder="Select category"
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder={defaultLineDescription} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="memo"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel>Memo</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          placeholder="Add an optional memo for QuickBooks"
+                          className="min-h-24"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </DialogBody>
 
               <DialogFooter>

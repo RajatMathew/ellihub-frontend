@@ -9,7 +9,7 @@ export const MONTHLY_BILL_COLUMNS = [
   { key: 'original', label: 'Original' },
   { key: 'totalPaid', label: 'Total Paid' },
   { key: 'balance', label: 'Balance' },
-  { key: 'toPay', label: 'To Pay' },
+  { key: 'toPay', label: 'Planned payment' },
   { key: 'ready', label: 'Ready' },
 ] as const;
 

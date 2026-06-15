@@ -173,7 +173,7 @@ export function MonthlyBillsProjectCard({
       setSavedToPayById((current) => ({ ...current, [id]: amount }));
       setReadyById((current) => ({ ...current, [id]: nextReady }));
       setAmountEditingById((current) => ({ ...current, [id]: false }));
-      toast.success('To Pay amount saved.');
+      toast.success('Planned payment amount saved.');
     } catch {
       // The mutation hook shows the API error toast.
     } finally {

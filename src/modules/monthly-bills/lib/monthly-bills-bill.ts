@@ -14,7 +14,7 @@ export function getProjectTitle(group: MonthlyBillProjectGroup) {
 
 /**
  * A key derived from the group's server data for the selected month. Changing it remounts the
- * card so the To Pay / Ready inputs re-seed from fresh server values (e.g. after a save refetch
+ * card so the planned payment / Ready inputs re-seed from fresh server values (e.g. after a save refetch
  * or switching months), while leaving them untouched while the user is editing.
  */
 export function getProjectCardKey(group: MonthlyBillProjectGroup, selectedDate: Date) {
