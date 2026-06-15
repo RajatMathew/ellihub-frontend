@@ -9,7 +9,7 @@ export function HelpLayout() {
   const selectedArticle = getHelpArticle(slug);
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-screen w-full bg-background text-foreground">
       <HelpArticleNav
         className="hidden w-80 shrink-0 md:flex"
         onSelect={(article) =>
