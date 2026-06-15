@@ -18,7 +18,6 @@ import {
   useDeleteContactMutation,
   useDirectoryKpisQuery,
   useProfessionalRolesQuery,
-  useVendorsQuery,
 } from '@/modules/directory/hooks';
 import { useContactListParams } from '@/modules/directory/hooks/contacts/use-contact-list-params';
 import type { Contact, ListContactsParams } from '@/modules/directory/schemas/contact.schema';
@@ -29,6 +28,8 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { toast } from 'sonner';
+
+const emptyVendorNames = new Map<string, string>();
 
 export function ContactsListPage() {
   const { can } = useAccess();
@@ -60,7 +61,6 @@ export function ContactsListPage() {
   const { data, isLoading, isError, refetch } = useContactsQuery(filters);
   const { data: stats, isLoading: isStatsLoading } = useDirectoryKpisQuery();
   const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
-  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
   const deleteMutation = useDeleteContactMutation();
   const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
 
@@ -68,13 +68,7 @@ export function ContactsListPage() {
   const totalCount = data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = !!searchQuery || !!roleFilter;
 
-  const vendorNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const vendor of vendorsData?.data ?? []) {
-      map.set(vendor.id, vendor.name);
-    }
-    return map;
-  }, [vendorsData]);
+  const vendorNames = emptyVendorNames;
 
   const handleDelete = useCallback(
     (contact: Contact) => {

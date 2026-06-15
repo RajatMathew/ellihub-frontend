@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field } from '@/app/components/ui/field';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
@@ -16,12 +17,24 @@ import { ContactFormFieldLabel } from './contact-form-field';
 interface ContactAssociationSectionProps {
   associations: ContactAssociationsState;
   vendorOptions: DirectorySelectOption[];
+  vendorSearch: string;
+  onVendorSearchChange: (value: string) => void;
+  isVendorLoading?: boolean;
+  isVendorFetchingNextPage?: boolean;
+  hasMoreVendors?: boolean;
+  onFetchMoreVendors?: () => void;
   gcOptions: DirectorySelectOption[];
 }
 
 export function ContactAssociationSection({
   associations,
   vendorOptions,
+  vendorSearch,
+  onVendorSearchChange,
+  isVendorLoading = false,
+  isVendorFetchingNextPage = false,
+  hasMoreVendors = false,
+  onFetchMoreVendors,
   gcOptions,
 }: ContactAssociationSectionProps) {
   const [activeTab, setActiveTab] = useState<'VENDOR' | 'GC'>(
@@ -65,18 +78,27 @@ export function ContactAssociationSection({
               <ContactFormFieldLabel>Vendor</ContactFormFieldLabel>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
-                  <SearchableSelect
+                  <InfiniteSearchSelect
                     options={vendorOptions.filter(
                       (option) =>
                         !associations.vendorLinks.some((link) => link.vendorId === option.value)
                     )}
                     value={null}
                     onValueChange={(vendorId) => {
-                      if (vendorId) associations.handleAddAssociation(vendorId, 'VENDOR');
+                      if (!vendorId) return;
+                      const selected = vendorOptions.find((option) => option.value === vendorId);
+                      associations.handleAddAssociation(vendorId, 'VENDOR', selected?.label);
                     }}
+                    search={vendorSearch}
+                    onSearchChange={onVendorSearchChange}
+                    isLoading={isVendorLoading}
+                    isFetchingNextPage={isVendorFetchingNextPage}
+                    hasNextPage={hasMoreVendors}
+                    onFetchNextPage={onFetchMoreVendors}
                     placeholder="Search vendors..."
                     searchPlaceholder="Search vendors..."
                     emptyMessage="No vendors found."
+                    loadingMessage="Loading vendors..."
                   />
                 </div>
                 <Button

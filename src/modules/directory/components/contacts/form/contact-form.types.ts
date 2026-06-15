@@ -8,16 +8,19 @@ export interface DirectorySelectOption {
 export interface ContactVendorAssociation {
   vendorId: string;
   isPrimary: boolean;
+  name?: string;
 }
 
 export interface ContactGCAssociation {
   generalContractorId: string;
   isPrimary: boolean;
+  name?: string;
 }
 
 export interface PendingContactAssociation {
   id: string;
   type: ContactAssociationType;
+  name?: string;
 }
 
 export interface PendingContactUnlink {

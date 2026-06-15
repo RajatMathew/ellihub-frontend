@@ -30,6 +30,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
+import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
@@ -41,10 +42,12 @@ import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
-import { cn } from '@/app/lib/utils';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
-import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
+import {
+  useVendorPickerOptions,
+  type VendorPickerOption,
+} from '@/modules/directory/hooks/vendors/use-vendor-picker-options';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -135,6 +138,21 @@ function hasHtmlText(value: string): boolean {
 function normalizeEmail(value: string | null | undefined): string | null {
   const email = value?.trim().toLowerCase();
   return email || null;
+}
+
+function resolveVendorPickerSelection(
+  ids: string[],
+  options: VendorPickerOption[],
+  previousOptions: VendorPickerOption[]
+) {
+  return ids.map(
+    (id) =>
+      options.find((option) => option.value === id) ??
+      previousOptions.find((option) => option.value === id) ?? {
+        value: id,
+        label: id,
+      }
+  );
 }
 
 /* ---- Quote Document Preview ---- */
@@ -269,10 +287,18 @@ export default function RFQDetailPage() {
   // Publish dialog
   const [publishOpen, setPublishOpen] = useState(false);
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
+  const [publishVendorSearch, setPublishVendorSearch] = useState('');
+  const [publishSelectedVendorOptions, setPublishSelectedVendorOptions] = useState<
+    VendorPickerOption[]
+  >([]);
 
   // Invite vendors dialog
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteVendorIds, setInviteVendorIds] = useState<string[]>([]);
+  const [inviteVendorSearch, setInviteVendorSearch] = useState('');
+  const [inviteSelectedVendorOptions, setInviteSelectedVendorOptions] = useState<
+    VendorPickerOption[]
+  >([]);
 
   // Upload / edit quotation dialog
   const [quoteOpen, setQuoteOpen] = useState(false);
@@ -423,9 +449,26 @@ export default function RFQDetailPage() {
     });
   }, [activityData]);
 
-  // Vendor data for dialogs
-  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
-  const vendors = vendorsData?.data ?? [];
+  const alreadyInvitedVendorIds = useMemo(
+    () =>
+      (rfq?.invites ?? [])
+        .map((invite) => invite.vendor?.id ?? invite.vendorId)
+        .filter((id): id is string => Boolean(id)),
+    [rfq?.invites]
+  );
+  const publishVendorPicker = useVendorPickerOptions({
+    search: publishVendorSearch,
+    selectedOptions: publishSelectedVendorOptions,
+    enabled: publishOpen,
+    queryScope: 'rfq-publish-picker',
+  });
+  const inviteVendorPicker = useVendorPickerOptions({
+    search: inviteVendorSearch,
+    selectedOptions: inviteSelectedVendorOptions,
+    excludedIds: alreadyInvitedVendorIds,
+    enabled: inviteOpen,
+    queryScope: 'rfq-invite-picker',
+  });
 
   const statusObj = typeof rfq?.status === 'object' ? rfq.status : null;
   const statusName = statusObj?.name ?? (typeof rfq?.status === 'string' ? rfq.status : '');
@@ -510,9 +553,6 @@ export default function RFQDetailPage() {
     lowestQuote != null ||
     highestQuote != null ||
     (isAwarded && (rfq.awardedAmount != null || !!rfq.awardedVendor));
-
-  // IDs of vendors already invited
-  const alreadyInvitedIds = new Set(invites.map((inv) => inv.vendor?.id).filter(Boolean));
 
   function openQuoteDialog(
     inviteId: string,
@@ -1985,6 +2025,8 @@ export default function RFQDetailPage() {
           if (!open) {
             setInviteOpen(false);
             setInviteVendorIds([]);
+            setInviteVendorSearch('');
+            setInviteSelectedVendorOptions([]);
           }
         }}
       >
@@ -1996,51 +2038,29 @@ export default function RFQDetailPage() {
             <p className="text-sm text-muted-foreground">
               Select additional vendors to invite to this RFQ.
             </p>
-            <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
-              {vendors
-                .filter((v) => !alreadyInvitedIds.has(v.id))
-                .map((v) => {
-                  const isInactive = v.status === 'INACTIVE';
-
-                  return (
-                    <label
-                      key={v.id}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
-                        isInactive
-                          ? 'cursor-not-allowed opacity-60'
-                          : 'cursor-pointer hover:bg-accent'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-primary disabled:cursor-not-allowed"
-                        checked={inviteVendorIds.includes(v.id)}
-                        disabled={isInactive}
-                        onChange={(e) => {
-                          if (isInactive) return;
-                          if (e.target.checked) {
-                            setInviteVendorIds((prev) => [...prev, v.id]);
-                          } else {
-                            setInviteVendorIds((prev) => prev.filter((id) => id !== v.id));
-                          }
-                        }}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{v.name}</span>
-                      {isInactive && (
-                        <Badge variant="secondary" size="sm" className="shrink-0">
-                          Inactive
-                        </Badge>
-                      )}
-                    </label>
-                  );
-                })}
-              {vendors.filter((v) => !alreadyInvitedIds.has(v.id)).length === 0 && (
-                <p className="text-sm text-muted-foreground py-2 text-center">
-                  All vendors have already been invited.
-                </p>
-              )}
-            </div>
+            <InfiniteMultiSearchSelect
+              options={inviteVendorPicker.options}
+              value={inviteVendorIds}
+              onValueChange={(nextIds) => {
+                setInviteVendorIds(nextIds);
+                setInviteSelectedVendorOptions((previous) =>
+                  resolveVendorPickerSelection(nextIds, inviteVendorPicker.options, previous)
+                );
+              }}
+              search={inviteVendorSearch}
+              onSearchChange={setInviteVendorSearch}
+              isLoading={inviteVendorPicker.isLoading}
+              isFetchingNextPage={inviteVendorPicker.isFetchingNextPage}
+              hasNextPage={inviteVendorPicker.hasNextPage}
+              onFetchNextPage={inviteVendorPicker.fetchNextPage}
+              placeholder="Select vendors..."
+              searchPlaceholder="Search vendors..."
+              emptyMessage={
+                inviteVendorSearch ? 'No matching vendors found.' : 'No vendors available to invite.'
+              }
+              loadingMessage="Loading vendors..."
+              testId="rfq-invite-vendors-select"
+            />
             <p className="text-xs text-muted-foreground">{inviteVendorIds.length} selected</p>
           </div>
           <DialogFooter>
@@ -2049,6 +2069,8 @@ export default function RFQDetailPage() {
               onClick={() => {
                 setInviteOpen(false);
                 setInviteVendorIds([]);
+                setInviteVendorSearch('');
+                setInviteSelectedVendorOptions([]);
               }}
             >
               Cancel
@@ -2064,6 +2086,8 @@ export default function RFQDetailPage() {
                   );
                   setInviteOpen(false);
                   setInviteVendorIds([]);
+                  setInviteVendorSearch('');
+                  setInviteSelectedVendorOptions([]);
                   toast.success(inviteVendorIds.length === 1 ? 'Vendor added.' : 'Vendors added.');
                 } catch {
                   // error toast already shown by mutation
@@ -2083,6 +2107,8 @@ export default function RFQDetailPage() {
           if (!open) {
             setPublishOpen(false);
             setSelectedVendorIds([]);
+            setPublishVendorSearch('');
+            setPublishSelectedVendorOptions([]);
           }
         }}
       >
@@ -2095,47 +2121,29 @@ export default function RFQDetailPage() {
               Select vendors to invite. The RFQ requires at least {rfq.minimumVendors ?? 1}{' '}
               vendor(s).
             </p>
-            <div className="max-h-60 overflow-y-auto space-y-1 rounded-md border p-3">
-              {vendors.map((v) => {
-                const isInactive = v.status === 'INACTIVE';
-
-                return (
-                  <label
-                    key={v.id}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded px-1.5 py-1.5 text-sm',
-                      isInactive
-                        ? 'cursor-not-allowed opacity-60'
-                        : 'cursor-pointer hover:bg-accent'
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-primary disabled:cursor-not-allowed"
-                      checked={selectedVendorIds.includes(v.id)}
-                      disabled={isInactive}
-                      onChange={(e) => {
-                        if (isInactive) return;
-                        if (e.target.checked) {
-                          setSelectedVendorIds((prev) => [...prev, v.id]);
-                        } else {
-                          setSelectedVendorIds((prev) => prev.filter((id) => id !== v.id));
-                        }
-                      }}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{v.name}</span>
-                    {isInactive && (
-                      <Badge variant="secondary" size="sm" className="shrink-0">
-                        Inactive
-                      </Badge>
-                    )}
-                  </label>
+            <InfiniteMultiSearchSelect
+              options={publishVendorPicker.options}
+              value={selectedVendorIds}
+              onValueChange={(nextIds) => {
+                setSelectedVendorIds(nextIds);
+                setPublishSelectedVendorOptions((previous) =>
+                  resolveVendorPickerSelection(nextIds, publishVendorPicker.options, previous)
                 );
-              })}
-              {vendors.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2 text-center">No vendors found.</p>
-              )}
-            </div>
+              }}
+              search={publishVendorSearch}
+              onSearchChange={setPublishVendorSearch}
+              isLoading={publishVendorPicker.isLoading}
+              isFetchingNextPage={publishVendorPicker.isFetchingNextPage}
+              hasNextPage={publishVendorPicker.hasNextPage}
+              onFetchNextPage={publishVendorPicker.fetchNextPage}
+              placeholder="Select vendors..."
+              searchPlaceholder="Search vendors..."
+              emptyMessage={
+                publishVendorSearch ? 'No matching vendors found.' : 'No vendors found.'
+              }
+              loadingMessage="Loading vendors..."
+              testId="rfq-publish-vendors-select"
+            />
             <p className="text-xs text-muted-foreground">
               {selectedVendorIds.length} selected (min {rfq.minimumVendors ?? 1})
             </p>
@@ -2146,6 +2154,8 @@ export default function RFQDetailPage() {
               onClick={() => {
                 setPublishOpen(false);
                 setSelectedVendorIds([]);
+                setPublishVendorSearch('');
+                setPublishSelectedVendorOptions([]);
               }}
             >
               Cancel
@@ -2168,6 +2178,8 @@ export default function RFQDetailPage() {
 
                   setPublishOpen(false);
                   setSelectedVendorIds([]);
+                  setPublishVendorSearch('');
+                  setPublishSelectedVendorOptions([]);
                 } catch {
                   // handled
                 }

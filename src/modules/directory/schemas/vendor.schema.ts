@@ -331,6 +331,7 @@ export const listVendorsParamsSchema = z.object({
   type: vendorTypeSchema.optional(),
   status: vendorStatusSchema.optional(),
   categoryTag: z.string().optional(),
+  excludeIds: z.array(z.string()).optional(),
   page: z.number().min(1).optional(),
   limit: z.number().min(1).optional(),
   sortBy: z.enum(['name', 'type', 'status', 'createdAt']).optional(),

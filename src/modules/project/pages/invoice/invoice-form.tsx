@@ -21,7 +21,7 @@ import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
-import { useVendorsQuery } from '@/modules/directory/hooks';
+import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
@@ -81,8 +81,8 @@ export function InvoiceFormPage() {
   );
   const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
   const { data: invoiceFolderId } = useProjectFolderQuery(projectId || undefined, 'invoice');
-  const { data: vendorsData } = useVendorsQuery({ page: 1, limit: 1000 });
 
+  const [vendorSearch, setVendorSearch] = useState('');
   const [poSearch, setPoSearch] = useState('');
   const [scoSearch, setScoSearch] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -108,15 +108,6 @@ export function InvoiceFormPage() {
         description: po.vendor?.name ?? po.description ?? undefined,
       })),
     [posData]
-  );
-
-  const vendorOptions = useMemo(
-    () =>
-      (vendorsData?.data ?? []).map((vendor) => ({
-        value: vendor.id,
-        label: vendor.name,
-      })),
-    [vendorsData]
   );
 
   const defaultValues: CreateInvoiceInput = {
@@ -190,19 +181,19 @@ export function InvoiceFormPage() {
   const selectedVendorLabel =
     selectedPurchaseOrder?.vendor?.name ??
     (invoiceDetail?.vendorId === selectedVendorId ? invoiceDetail.vendor?.name : undefined);
-  const invoiceVendorOptions = useMemo(() => {
-    if (!selectedVendorId || vendorOptions.some((option) => option.value === selectedVendorId)) {
-      return vendorOptions;
-    }
-
-    return [
-      {
-        value: selectedVendorId,
-        label: selectedVendorLabel ?? selectedVendorId,
-      },
-      ...vendorOptions,
-    ];
-  }, [selectedVendorId, selectedVendorLabel, vendorOptions]);
+  const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
+    if (!selectedVendorId) return undefined;
+    return {
+      value: selectedVendorId,
+      label: selectedVendorLabel ?? selectedVendorId,
+    };
+  }, [selectedVendorId, selectedVendorLabel]);
+  const vendorPicker = useVendorPickerOptions({
+    search: vendorSearch,
+    selectedOptions: selectedVendorOption ? [selectedVendorOption] : [],
+    queryScope: 'invoice-form-picker',
+  });
+  const vendorOptions = vendorPicker.options;
 
   useEffect(() => {
     setValue('taxAmount', taxAmount, {
@@ -222,7 +213,10 @@ export function InvoiceFormPage() {
 
     reset({
       projectId,
-      vendorId: randomPoData?.vendorId ?? vendorOptions[0]?.value ?? '',
+      vendorId:
+        randomPoData?.vendorId ??
+        vendorOptions.find((option) => !option.disabled)?.value ??
+        '',
       purchaseOrderId: randomPo?.value ?? '',
       invoiceNumber: fakeInvoiceNumber(),
       invoiceDate: new Date().toISOString().slice(0, 10),
@@ -425,14 +419,20 @@ export function InvoiceFormPage() {
                     <Field data-invalid={fieldState.invalid}>
                       <InvoiceRequiredFieldLabel>Vendor</InvoiceRequiredFieldLabel>
                       <InfiniteSearchSelect
-                        options={invoiceVendorOptions}
+                        options={vendorOptions}
                         value={field.value || null}
                         onValueChange={(value) => field.onChange(value ?? '')}
-                        search=""
-                        onSearchChange={() => undefined}
+                        search={vendorSearch}
+                        onSearchChange={setVendorSearch}
+                        isLoading={vendorPicker.isLoading}
+                        isFetchingNextPage={vendorPicker.isFetchingNextPage}
+                        hasNextPage={vendorPicker.hasNextPage}
+                        onFetchNextPage={vendorPicker.fetchNextPage}
                         disabled={isVendorLocked}
                         placeholder="Select vendor..."
+                        searchPlaceholder="Search vendors..."
                         emptyMessage="No vendors found."
+                        loadingMessage="Loading vendors..."
                         triggerClassName={
                           fieldState.invalid ? invoiceInvalidControlClassName : undefined
                         }

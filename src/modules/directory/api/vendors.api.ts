@@ -34,6 +34,7 @@ export const vendorsApi = {
     }
     if (params?.status) query.status = params.status;
     if (params?.categoryTag) query.categoryTag = params.categoryTag;
+    if (params?.excludeIds?.length) query.excludeIds = params.excludeIds.join(',');
 
     const res = await api.get(BASE, { params: query });
     const raw = {

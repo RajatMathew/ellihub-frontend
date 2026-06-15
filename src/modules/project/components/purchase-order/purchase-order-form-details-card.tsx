@@ -8,6 +8,7 @@ import {
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
@@ -29,6 +30,12 @@ import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 interface PurchaseOrderFormDetailsCardProps {
   control: Control<CreatePOInput>;
   vendorOptions: PurchaseOrderFormOption[];
+  vendorSearch: string;
+  onVendorSearchChange: (value: string) => void;
+  isVendorLoading?: boolean;
+  isVendorFetchingNextPage?: boolean;
+  hasMoreVendors?: boolean;
+  onFetchMoreVendors?: () => void;
   tradeCategoryOptions: PurchaseOrderFormOption[];
   rfqOptions: PurchaseOrderFormOption[];
   isVendorLocked?: boolean;
@@ -41,6 +48,12 @@ const invalidControlClassName = formInvalidControlClassName;
 export function PurchaseOrderFormDetailsCard({
   control,
   vendorOptions,
+  vendorSearch,
+  onVendorSearchChange,
+  isVendorLoading = false,
+  isVendorFetchingNextPage = false,
+  hasMoreVendors = false,
+  onFetchMoreVendors,
   tradeCategoryOptions,
   rfqOptions,
   isVendorLocked = false,
@@ -64,15 +77,22 @@ export function PurchaseOrderFormDetailsCard({
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <RequiredFieldLabel>Vendor</RequiredFieldLabel>
-                <SearchableSelect
+                <InfiniteSearchSelect
                   options={vendorOptions}
                   value={field.value || null}
                   onValueChange={(value) => field.onChange(value ?? '')}
+                  search={vendorSearch}
+                  onSearchChange={onVendorSearchChange}
+                  isLoading={isVendorLoading}
+                  isFetchingNextPage={isVendorFetchingNextPage}
+                  hasNextPage={hasMoreVendors}
+                  onFetchNextPage={onFetchMoreVendors}
                   placeholder="Select vendor..."
                   searchPlaceholder="Search vendors..."
                   emptyMessage="No vendors found."
+                  loadingMessage="Loading vendors..."
                   disabled={isVendorLocked}
-                  className={fieldState.invalid ? invalidControlClassName : undefined}
+                  triggerClassName={fieldState.invalid ? invalidControlClassName : undefined}
                   testId="po-vendor-select"
                 />
                 {isVendorLocked && (

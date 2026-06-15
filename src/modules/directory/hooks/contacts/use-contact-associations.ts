@@ -45,6 +45,7 @@ export function useContactAssociations({
       return {
         id: vendorLink.vendorId,
         name:
+          vendorLink.name ??
           vendorOptions.find((option) => option.value === vendorLink.vendorId)?.label ??
           'Current Vendor',
         type: 'VENDOR' as const,
@@ -56,6 +57,7 @@ export function useContactAssociations({
       return {
         id: gcLink.generalContractorId,
         name:
+          gcLink.name ??
           gcOptions.find((option) => option.value === gcLink.generalContractorId)?.label ??
           'Current GC',
         type: 'GC' as const,
@@ -70,19 +72,25 @@ export function useContactAssociations({
   const selectedAssociationIsPrimary = vendorLinks[0]?.isPrimary ?? gcLinks[0]?.isPrimary ?? false;
 
   const replaceAssociation = (next: PendingContactAssociation) => {
-    setVendorLinks(next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true }] : []);
-    setGCLinks(next.type === 'GC' ? [{ generalContractorId: next.id, isPrimary: true }] : []);
+    setVendorLinks(
+      next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true, name: next.name }] : []
+    );
+    setGCLinks(
+      next.type === 'GC'
+        ? [{ generalContractorId: next.id, isPrimary: true, name: next.name }]
+        : []
+    );
   };
 
-  const handleAddAssociation = (id: string, type: ContactAssociationType) => {
+  const handleAddAssociation = (id: string, type: ContactAssociationType, name?: string) => {
     if (currentAssociation) {
       if (currentAssociation.id === id && currentAssociation.type === type) return;
-      setPendingAssociation({ id, type });
+      setPendingAssociation({ id, type, name });
       setShowReplaceConfirm(true);
       return;
     }
 
-    replaceAssociation({ id, type });
+    replaceAssociation({ id, type, name });
   };
 
   const confirmReplace = () => {
@@ -111,11 +119,11 @@ export function useContactAssociations({
   };
 
   const handleVendorCreated = (vendor: { id: string; name: string }) => {
-    handleAddAssociation(vendor.id, 'VENDOR');
+    handleAddAssociation(vendor.id, 'VENDOR', vendor.name);
   };
 
   const handleGCCreated = (gc: { id: string; name: string }) => {
-    handleAddAssociation(gc.id, 'GC');
+    handleAddAssociation(gc.id, 'GC', gc.name);
   };
 
   return {
@@ -183,10 +191,15 @@ function buildVendorLinks(contact?: Contact): ContactVendorAssociation[] {
   const links = contact.vendorLinks.map((link) => ({
     vendorId: link.vendorId,
     isPrimary: link.isPrimary,
+    name: contact.vendor?.id === link.vendorId ? contact.vendor.name : undefined,
   }));
 
   if (contact.vendorId && !links.some((link) => link.vendorId === contact.vendorId)) {
-    links.push({ vendorId: contact.vendorId, isPrimary: contact.isPrimary });
+    links.push({
+      vendorId: contact.vendorId,
+      isPrimary: contact.isPrimary,
+      name: contact.vendor?.name,
+    });
   }
 
   return links;
@@ -198,13 +211,21 @@ function buildGCLinks(contact?: Contact): ContactGCAssociation[] {
   const links = contact.gcLinks.map((link) => ({
     generalContractorId: link.generalContractorId,
     isPrimary: link.isPrimary,
+    name:
+      contact.generalContractor?.id === link.generalContractorId
+        ? contact.generalContractor.name
+        : undefined,
   }));
 
   if (
     contact.generalContractorId &&
     !links.some((link) => link.generalContractorId === contact.generalContractorId)
   ) {
-    links.push({ generalContractorId: contact.generalContractorId, isPrimary: contact.isPrimary });
+    links.push({
+      generalContractorId: contact.generalContractorId,
+      isPrimary: contact.isPrimary,
+      name: contact.generalContractor?.name,
+    });
   }
 
   return links;

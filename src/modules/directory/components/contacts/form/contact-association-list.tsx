@@ -35,6 +35,7 @@ export function ContactAssociationList({
         <div className="space-y-2">
           {vendorLinks.map((link, index) => {
             const vendorName =
+              link.name ??
               vendorOptions.find((option) => option.value === link.vendorId)?.label ??
               link.vendorId;
 
@@ -61,6 +62,7 @@ export function ContactAssociationList({
         <div className="space-y-2">
           {gcLinks.map((link, index) => {
             const gcName =
+              link.name ??
               gcOptions.find((option) => option.value === link.generalContractorId)?.label ??
               link.generalContractorId;
 

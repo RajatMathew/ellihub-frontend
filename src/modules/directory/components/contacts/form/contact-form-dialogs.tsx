@@ -85,6 +85,7 @@ function getReplacementName(
   gcOptions: DirectorySelectOption[]
 ) {
   if (!pendingAssociation) return 'the selected association';
+  if (pendingAssociation.name) return pendingAssociation.name;
 
   const options = pendingAssociation.type === 'VENDOR' ? vendorOptions : gcOptions;
   return (

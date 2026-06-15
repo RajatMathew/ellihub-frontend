@@ -28,6 +28,12 @@ interface ContactFormContentProps {
   isEdit: boolean;
   roles: ProfessionalRole[];
   vendorOptions: DirectorySelectOption[];
+  vendorSearch: string;
+  onVendorSearchChange: (value: string) => void;
+  isVendorLoading?: boolean;
+  isVendorFetchingNextPage?: boolean;
+  hasMoreVendors?: boolean;
+  onFetchMoreVendors?: () => void;
 }
 
 export function ContactFormContent({
@@ -37,6 +43,12 @@ export function ContactFormContent({
   isEdit,
   roles,
   vendorOptions,
+  vendorSearch,
+  onVendorSearchChange,
+  isVendorLoading = false,
+  isVendorFetchingNextPage = false,
+  hasMoreVendors = false,
+  onFetchMoreVendors,
 }: ContactFormContentProps) {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('contact-info');
@@ -101,6 +113,12 @@ export function ContactFormContent({
           <ContactAssociationSection
             associations={associations}
             vendorOptions={vendorOptions}
+            vendorSearch={vendorSearch}
+            onVendorSearchChange={onVendorSearchChange}
+            isVendorLoading={isVendorLoading}
+            isVendorFetchingNextPage={isVendorFetchingNextPage}
+            hasMoreVendors={hasMoreVendors}
+            onFetchMoreVendors={onFetchMoreVendors}
             gcOptions={gcOptions}
           />
         </div>

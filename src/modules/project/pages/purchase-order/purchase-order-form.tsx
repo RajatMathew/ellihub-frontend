@@ -6,7 +6,7 @@ import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import { useVendorsQuery } from '@/modules/directory/hooks';
+import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   PurchaseOrderFormDetailsCard,
@@ -198,7 +198,6 @@ export function POFormPage() {
   );
   const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
 
-  const { data: vendorsData } = useVendorsQuery({ limit: 1000 });
   const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: rfqsData } = useRFQListQuery({ projectId, size: 100 });
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
@@ -208,14 +207,8 @@ export function POFormPage() {
   const createMutation = useCreatePOMutation();
   const updateMutation = useUpdatePOMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
+  const [vendorSearch, setVendorSearch] = useState('');
 
-  const vendorOptions = (vendorsData?.data ?? []).map((vendor) => ({
-    value: vendor.id,
-    label: vendor.name,
-    badge: vendor.status === 'INACTIVE' ? 'Inactive' : undefined,
-    disabled: vendor.status === 'INACTIVE',
-  }));
-  const activeVendorOptions = vendorOptions.filter((option) => !option.disabled);
   const costCodeOptions = costCodes.map((costCode) => ({
     value: costCode.id,
     label: `${costCode.code} - ${costCode.name}`,
@@ -250,6 +243,7 @@ export function POFormPage() {
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
+  const selectedVendorId = watch('vendorId');
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
   const populatedFromRfqId = useRef<string | null>(null);
 
@@ -266,18 +260,44 @@ export function POFormPage() {
   const isAwardedRfqSelected =
     !!selectedRfqId && (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
   const isVendorLocked = isAwardedRfqSelected;
-  const effectiveVendorOptions =
-    selectedRfqAwardedVendorName &&
-    selectedRfqAwardedVendorId &&
-    !vendorOptions.some((option) => option.value === selectedRfqAwardedVendorId)
-      ? [
-          ...vendorOptions,
-          {
-            value: selectedRfqAwardedVendorId,
-            label: selectedRfqAwardedVendorName,
-          },
-        ]
-      : vendorOptions;
+  const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
+    if (selectedRfqAwardedVendorId) {
+      return {
+        value: selectedRfqAwardedVendorId,
+        label: selectedRfqAwardedVendorName ?? selectedRfqAwardedVendorId,
+      };
+    }
+
+    if (existingPO?.vendorId || existingPO?.vendor?.id) {
+      const value = existingPO.vendorId ?? existingPO.vendor?.id ?? '';
+      return {
+        value,
+        label: existingPO.vendor?.name ?? value,
+      };
+    }
+
+    if (selectedVendorId) {
+      return {
+        value: selectedVendorId,
+        label: selectedVendorId,
+      };
+    }
+
+    return undefined;
+  }, [
+    existingPO?.vendor?.id,
+    existingPO?.vendor?.name,
+    existingPO?.vendorId,
+    selectedRfqAwardedVendorId,
+    selectedRfqAwardedVendorName,
+    selectedVendorId,
+  ]);
+  const vendorPicker = useVendorPickerOptions({
+    search: vendorSearch,
+    selectedOptions: selectedVendorOption ? [selectedVendorOption] : [],
+    queryScope: 'purchase-order-form-picker',
+  });
+  const activeVendorOptions = vendorPicker.options.filter((option) => !option.disabled);
 
   useEffect(() => {
     if (isEditMode && existingPO) {
@@ -524,7 +544,13 @@ export function POFormPage() {
         <FormContent>
           <PurchaseOrderFormDetailsCard
             control={control}
-            vendorOptions={effectiveVendorOptions}
+            vendorOptions={vendorPicker.options}
+            vendorSearch={vendorSearch}
+            onVendorSearchChange={setVendorSearch}
+            isVendorLoading={vendorPicker.isLoading}
+            isVendorFetchingNextPage={vendorPicker.isFetchingNextPage}
+            hasMoreVendors={vendorPicker.hasNextPage}
+            onFetchMoreVendors={vendorPicker.fetchNextPage}
             tradeCategoryOptions={tradeCategoryOptions}
             rfqOptions={rfqOptions}
             isVendorLocked={isVendorLocked}

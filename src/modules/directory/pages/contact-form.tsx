@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { QueryErrorState } from '@/app/components/query-error-state';
@@ -12,7 +12,10 @@ import {
   useProfessionalRolesQuery,
 } from '@/modules/directory/hooks/contacts.hooks';
 import { useGCsQuery } from '@/modules/directory/hooks/gc.hooks';
-import { useVendorsQuery } from '@/modules/directory/hooks/vendors.hooks';
+import {
+  useVendorPickerOptions,
+  type VendorPickerOption,
+} from '@/modules/directory/hooks/vendors/use-vendor-picker-options';
 import { useParams } from 'react-router-dom';
 
 export function ContactFormPage() {
@@ -21,8 +24,8 @@ export function ContactFormPage() {
 
   const contactQuery = useContactDetailQuery(id ?? '');
   const rolesQuery = useProfessionalRolesQuery();
-  const vendorsQuery = useVendorsQuery({ limit: 1000 });
   const gcsQuery = useGCsQuery({ limit: 1000 });
+  const [vendorSearch, setVendorSearch] = useState('');
 
   useBreadcrumbLabel(
     id ? `/app/directory/contacts/${id}` : undefined,
@@ -30,14 +33,22 @@ export function ContactFormPage() {
   );
 
   const roles = rolesQuery.data ?? [];
-  const vendorOptions = useMemo(
-    () =>
-      (vendorsQuery.data?.data ?? []).map((vendor) => ({
-        value: vendor.id,
-        label: vendor.name,
-      })),
-    [vendorsQuery.data]
-  );
+  const selectedVendorOptions = useMemo<VendorPickerOption[]>(() => {
+    const contact = contactQuery.data;
+    if (!contact?.vendor) return [];
+    return [
+      {
+        value: contact.vendor.id,
+        label: contact.vendor.name,
+      },
+    ];
+  }, [contactQuery.data]);
+  const vendorPicker = useVendorPickerOptions({
+    search: vendorSearch,
+    selectedOptions: selectedVendorOptions,
+    queryScope: 'contact-form-picker',
+  });
+  const vendorOptions = vendorPicker.options;
   const gcOptions = useMemo(
     () =>
       (gcsQuery.data?.data ?? []).map((gc) => ({
@@ -49,12 +60,10 @@ export function ContactFormPage() {
 
   const isLoadingForm =
     rolesQuery.isLoading ||
-    vendorsQuery.isLoading ||
     gcsQuery.isLoading ||
     (isEdit && contactQuery.isLoading);
   const isError =
     rolesQuery.isError ||
-    vendorsQuery.isError ||
     gcsQuery.isError ||
     (isEdit && contactQuery.isError);
 
@@ -70,7 +79,6 @@ export function ContactFormPage() {
           description="The contact form options could not be loaded."
           onRetry={() => {
             void rolesQuery.refetch();
-            void vendorsQuery.refetch();
             void gcsQuery.refetch();
             if (isEdit) void contactQuery.refetch();
           }}
@@ -100,6 +108,12 @@ export function ContactFormPage() {
       isEdit={isEdit}
       roles={roles}
       vendorOptions={vendorOptions}
+      vendorSearch={vendorSearch}
+      onVendorSearchChange={setVendorSearch}
+      isVendorLoading={vendorPicker.isLoading}
+      isVendorFetchingNextPage={vendorPicker.isFetchingNextPage}
+      hasMoreVendors={vendorPicker.hasNextPage}
+      onFetchMoreVendors={vendorPicker.fetchNextPage}
     />
   );
 }
