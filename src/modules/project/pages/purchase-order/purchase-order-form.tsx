@@ -6,7 +6,11 @@ import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
+import {
+  useVendorDetailQuery,
+  useVendorPickerOptions,
+  type VendorPickerOption,
+} from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   PurchaseOrderFormDetailsCard,
@@ -245,6 +249,7 @@ export function POFormPage() {
   const selectedRfqId = watch('rfqId');
   const selectedVendorId = watch('vendorId');
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
+  const { data: selectedVendorDetail } = useVendorDetailQuery(selectedVendorId ?? '');
   const populatedFromRfqId = useRef<string | null>(null);
 
   const selectedRfqAwardedQuote = selectedRfq?.quotes.find(
@@ -279,7 +284,7 @@ export function POFormPage() {
     if (selectedVendorId) {
       return {
         value: selectedVendorId,
-        label: selectedVendorId,
+        label: selectedVendorDetail?.name ?? selectedVendorId,
       };
     }
 
@@ -290,6 +295,7 @@ export function POFormPage() {
     existingPO?.vendorId,
     selectedRfqAwardedVendorId,
     selectedRfqAwardedVendorName,
+    selectedVendorDetail?.name,
     selectedVendorId,
   ]);
   const vendorPicker = useVendorPickerOptions({
