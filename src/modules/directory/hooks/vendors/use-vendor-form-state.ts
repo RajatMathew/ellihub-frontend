@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import {
   fakeTaxId,
   fakeVendorEmail,
@@ -13,7 +14,7 @@ import type {
 } from '@/modules/directory/components/shared';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.constants';
 import {
-  useContactsQuery,
+  useContactPickerOptions,
   useVendorDetailQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks';
@@ -31,7 +32,6 @@ import { useForm } from 'react-hook-form';
 export function useVendorFormState(id: string | undefined) {
   const isEdit = Boolean(id);
   const vendorQuery = useVendorDetailQuery(id ?? '');
-  const contactsQuery = useContactsQuery({ size: 1000 });
   const vendorTypesQuery = useVendorTypesQuery();
 
   const form = useForm<VendorFormValues>({
@@ -51,8 +51,32 @@ export function useVendorFormState(id: string | undefined) {
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [contactLinks, setContactLinks] = useState<LinkedContactItem[]>([]);
   const [createdContacts, setCreatedContacts] = useState<LinkedContactNameSource[]>([]);
+  const [pickedContacts, setPickedContacts] = useState<LinkedContactNameSource[]>([]);
   const [originalLinks, setOriginalLinks] = useState<VendorContactLink[]>([]);
+  const [contactSearch, setContactSearch] = useState('');
   const initializedVendorIdRef = useRef<string | null>(null);
+
+  const selectedContactOptions = useMemo<InfiniteSearchSelectOption[]>(() => {
+    const map = new Map<string, InfiniteSearchSelectOption>();
+    for (const link of originalLinks) {
+      if (link.contact?.fullName) {
+        map.set(link.contactId, { value: link.contactId, label: link.contact.fullName });
+      }
+    }
+    for (const contact of createdContacts) {
+      map.set(contact.id, { value: contact.id, label: contact.fullName });
+    }
+    for (const contact of pickedContacts) {
+      map.set(contact.id, { value: contact.id, label: contact.fullName });
+    }
+    return Array.from(map.values());
+  }, [createdContacts, originalLinks, pickedContacts]);
+
+  const contactPicker = useContactPickerOptions({
+    search: contactSearch,
+    selectedOptions: selectedContactOptions,
+    queryScope: 'vendor-form',
+  });
 
   useEffect(() => {
     if (!isEdit || !vendorQuery.data || initializedVendorIdRef.current === vendorQuery.data.id) {
@@ -92,14 +116,26 @@ export function useVendorFormState(id: string | undefined) {
 
   const contacts = useMemo(() => {
     const map = new Map<string, LinkedContactNameSource>();
-    for (const contact of contactsQuery.data?.data ?? []) {
+    for (const contact of contactPicker.items) {
       map.set(contact.id, contact);
+    }
+    for (const link of originalLinks) {
+      if (link.contact?.fullName) {
+        map.set(link.contactId, {
+          ...link.contact,
+          id: link.contactId,
+          fullName: link.contact.fullName,
+        });
+      }
     }
     for (const contact of createdContacts) {
       map.set(contact.id, contact);
     }
+    for (const contact of pickedContacts) {
+      map.set(contact.id, contact);
+    }
     return Array.from(map.values());
-  }, [contactsQuery.data?.data, createdContacts]);
+  }, [contactPicker.items, createdContacts, originalLinks, pickedContacts]);
 
   const contactOptions = useMemo(
     () =>
@@ -133,6 +169,12 @@ export function useVendorFormState(id: string | undefined) {
     setContactLinks((prev) => [...prev, { contactId: contact.id, isPrimary: prev.length === 0 }]);
   };
 
+  const handleContactSelected = (contact: LinkedContactNameSource) => {
+    setPickedContacts((prev) =>
+      prev.some((existing) => existing.id === contact.id) ? prev : [...prev, contact]
+    );
+  };
+
   return {
     isEdit,
     form,
@@ -147,8 +189,15 @@ export function useVendorFormState(id: string | undefined) {
     contactLinks,
     setContactLinks,
     originalLinks,
+    contactSearch,
+    setContactSearch,
+    isContactLoading: contactPicker.isLoading,
+    isContactFetchingNextPage: contactPicker.isFetchingNextPage,
+    hasMoreContacts: contactPicker.hasNextPage,
+    fetchMoreContacts: contactPicker.fetchNextPage,
     fillRandom,
     handleContactCreated,
+    handleContactSelected,
   };
 }
 

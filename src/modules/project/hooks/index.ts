@@ -9,5 +9,6 @@ export * from './rfq';
 export * from './invoice';
 export * from './shared';
 export * from './use-project-folder';
+export * from './use-project-picker-options';
 export * from './lookup.hooks';
 export * from '@/modules/directory/hooks/activity.hooks';

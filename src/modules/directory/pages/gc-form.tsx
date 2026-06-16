@@ -87,9 +87,16 @@ export function GCFormPage() {
           originalLinks={state.originalLinks}
           contacts={state.contacts}
           contactOptions={state.contactOptions}
+          contactSearch={state.contactSearch}
+          onContactSearchChange={state.setContactSearch}
+          isContactLoading={state.isContactLoading}
+          isContactFetchingNextPage={state.isContactFetchingNextPage}
+          hasMoreContacts={state.hasMoreContacts}
+          onFetchMoreContacts={state.fetchMoreContacts}
           targetEntityId={id}
           onContactLinksChange={state.setContactLinks}
           onCreateContact={() => state.setContactDialogOpen(true)}
+          onContactSelected={state.handleContactSelected}
         />
       </FormPageShell>
 

@@ -1,5 +1,5 @@
 import { Button } from '@/app/components/ui/button';
-import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { UserPlus, X } from 'lucide-react';
 
 interface EmployeeOption {
@@ -9,11 +9,27 @@ interface EmployeeOption {
 
 interface AddTeamMemberFormProps {
   employeeOptions: EmployeeOption[];
+  employeeSearch: string;
+  onEmployeeSearchChange: (value: string) => void;
+  isLoadingEmployees: boolean;
+  isEmployeeFetchingNextPage: boolean;
+  hasMoreEmployees: boolean;
+  onFetchMoreEmployees: () => void;
   onAdd: (employeeId: string) => Promise<void>;
   onCancel: () => void;
 }
 
-export function AddTeamMemberForm({ employeeOptions, onAdd, onCancel }: AddTeamMemberFormProps) {
+export function AddTeamMemberForm({
+  employeeOptions,
+  employeeSearch,
+  onEmployeeSearchChange,
+  isLoadingEmployees,
+  isEmployeeFetchingNextPage,
+  hasMoreEmployees,
+  onFetchMoreEmployees,
+  onAdd,
+  onCancel,
+}: AddTeamMemberFormProps) {
   const handleAdd = async (employeeId: string | null) => {
     if (employeeId) {
       await onAdd(employeeId);
@@ -40,13 +56,19 @@ export function AddTeamMemberForm({ employeeOptions, onAdd, onCancel }: AddTeamM
           <X className="size-4" />
         </Button>
       </div>
-      <SearchableSelect
+      <InfiniteSearchSelect
         options={employeeOptions}
         value={null}
         onValueChange={handleAdd}
+        search={employeeSearch}
+        onSearchChange={onEmployeeSearchChange}
+        isLoading={isLoadingEmployees}
+        isFetchingNextPage={isEmployeeFetchingNextPage}
+        hasNextPage={hasMoreEmployees}
+        onFetchNextPage={onFetchMoreEmployees}
         placeholder="Select employee..."
         searchPlaceholder="Search employees..."
-        emptyMessage="No employees found."
+        emptyMessage={isLoadingEmployees ? 'Loading employees...' : 'No employees found.'}
       />
     </div>
   );

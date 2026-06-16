@@ -8,6 +8,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
@@ -34,9 +35,12 @@ import {
   fakeZipCode,
   randInt,
 } from '@/lib/fake-data';
-import { useGCsQuery } from '@/modules/directory/hooks';
+import { useGCPickerOptions, type GCPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
-import { useEmployeesQuery } from '@/modules/hr/hooks/use-employees';
+import {
+  useEmployeePickerOptions,
+  type EmployeePickerOption,
+} from '@/modules/hr/hooks/use-employee-picker-options';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading, ProjectFormShell } from '@/modules/project/components/shared';
@@ -71,7 +75,7 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FileText, X } from 'lucide-react';
-import { Controller, useForm, type Resolver } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -126,11 +130,10 @@ export default function ProjectForm() {
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const contractTypesQuery = useProjectContractTypesQuery();
-  const gcsQuery = useGCsQuery({ limit: 1000 });
-  const employeesQuery = useEmployeesQuery(
-    { size: 1000 },
-    { enabled: !!access && !isAuthPMCreatingProject }
-  );
+  const [gcSearch, setGcSearch] = useState('');
+  const [leadPMSearch, setLeadPMSearch] = useState('');
+  const [pickedGcOption, setPickedGcOption] = useState<GCPickerOption | null>(null);
+  const [pickedLeadPMOption, setPickedLeadPMOption] = useState<EmployeePickerOption | null>(null);
 
   /* ---- Build dropdown options ---- */
 
@@ -150,21 +153,6 @@ export default function ProjectForm() {
       const label = type.label || type.name || type.id;
       return { value: label, label };
     }) ?? [];
-  const gcOptions =
-    gcsQuery.data?.data?.map((gc) => ({
-      value: gc.id,
-      label: gc.name,
-      badge: gc.status === 'INACTIVE' ? 'Inactive' : undefined,
-      disabled: gc.status === 'INACTIVE',
-    })) ?? [];
-  const activeGcOptions = gcOptions.filter((option) => !option.disabled);
-  const pmOptions = isAuthPMCreatingProject
-    ? access?.employeeId
-      ? [{ value: access.employeeId, label: 'Current PM' }]
-      : []
-    : (employeesQuery.data?.data
-        ?.filter((employee) => employee.authRole === 'pm')
-        .map((employee) => ({ value: employee.id, label: employee.name })) ?? []);
 
   /* ---- Form setup ---- */
 
@@ -200,6 +188,67 @@ export default function ProjectForm() {
       tcoDate: '',
     },
   });
+
+  const selectedGcId = useWatch({ control, name: 'gcId' });
+  const selectedLeadPMId = useWatch({ control, name: 'leadPMId' });
+  const selectedGcContextOption: GCPickerOption | null = (() => {
+    if (!selectedGcId) return null;
+    if (existingProject?.gc?.id === selectedGcId) {
+      return {
+        value: existingProject.gc.id,
+        label: existingProject.gc.name,
+        description: existingProject.gc.email ?? existingProject.gc.phone ?? undefined,
+      };
+    }
+    if (pickedGcOption?.value === selectedGcId) return pickedGcOption;
+    return null;
+  })();
+  const gcPicker = useGCPickerOptions({
+    search: gcSearch,
+    selectedOptions: selectedGcContextOption ? [selectedGcContextOption] : [],
+    queryScope: 'project-form-gc-picker',
+  });
+  const selectedGcOption =
+    selectedGcContextOption ??
+    (selectedGcId
+      ? (gcPicker.options.find((option) => option.value === selectedGcId) ?? null)
+      : null);
+
+  const selectedLeadPMContextOption: EmployeePickerOption | null = (() => {
+    if (!selectedLeadPMId) return null;
+    if (isAuthPMCreatingProject && access?.employeeId === selectedLeadPMId) {
+      return { value: selectedLeadPMId, label: 'Current PM' };
+    }
+    if (existingProject?.leadPM?.id === selectedLeadPMId) {
+      return {
+        value: existingProject.leadPM.id,
+        label: existingProject.leadPM.name,
+        description:
+          existingProject.leadPM.email ?? existingProject.leadPM.phoneNumber ?? undefined,
+      };
+    }
+    if (pickedLeadPMOption?.value === selectedLeadPMId) return pickedLeadPMOption;
+    return null;
+  })();
+  const leadPMPicker = useEmployeePickerOptions({
+    search: leadPMSearch,
+    authRole: 'pm',
+    selectedOptions: selectedLeadPMContextOption ? [selectedLeadPMContextOption] : [],
+    enabled: !!access && !isAuthPMCreatingProject && canTransferLeadPM,
+    queryScope: 'project-form-lead-pm-picker',
+  });
+  const selectedLeadPMOption =
+    selectedLeadPMContextOption ??
+    (selectedLeadPMId
+      ? (leadPMPicker.options.find((option) => option.value === selectedLeadPMId) ?? null)
+      : null);
+  const gcOptions = gcPicker.options;
+  const activeGcOptions = gcOptions.filter((option) => !option.disabled);
+  const pmOptions = isAuthPMCreatingProject
+    ? selectedLeadPMContextOption
+      ? [selectedLeadPMContextOption]
+      : []
+    : leadPMPicker.options;
 
   useEffect(() => {
     if (isAuthPMCreatingProject && access?.employeeId) {
@@ -776,14 +825,23 @@ export default function ProjectForm() {
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <ProjectFormFieldLabel required>General Contractor</ProjectFormFieldLabel>
-                        <SearchableSelect
+                        <InfiniteSearchSelect
                           options={gcOptions}
                           value={field.value || null}
                           onValueChange={(v) => field.onChange(v ?? '')}
+                          onOptionChange={setPickedGcOption}
+                          selectedOption={selectedGcOption}
+                          search={gcSearch}
+                          onSearchChange={setGcSearch}
+                          isLoading={gcPicker.isLoading}
+                          isFetchingNextPage={gcPicker.isFetchingNextPage}
+                          hasNextPage={gcPicker.hasNextPage}
+                          onFetchNextPage={gcPicker.fetchNextPage}
                           placeholder="Select GC..."
                           searchPlaceholder="Search contractors..."
                           emptyMessage="No contractors found."
-                          className={
+                          loadingMessage="Loading contractors..."
+                          triggerClassName={
                             fieldState.invalid ? projectInvalidControlClassName : undefined
                           }
                         />
@@ -798,15 +856,24 @@ export default function ProjectForm() {
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <ProjectFormFieldLabel required>Lead PM</ProjectFormFieldLabel>
-                        <SearchableSelect
+                        <InfiniteSearchSelect
                           options={pmOptions}
                           value={field.value || null}
                           onValueChange={(v) => field.onChange(v ?? '')}
+                          onOptionChange={setPickedLeadPMOption}
+                          selectedOption={selectedLeadPMOption}
+                          search={leadPMSearch}
+                          onSearchChange={setLeadPMSearch}
+                          isLoading={leadPMPicker.isLoading}
+                          isFetchingNextPage={leadPMPicker.isFetchingNextPage}
+                          hasNextPage={leadPMPicker.hasNextPage}
+                          onFetchNextPage={leadPMPicker.fetchNextPage}
                           placeholder="Select Lead PM..."
                           searchPlaceholder="Search people..."
                           emptyMessage="No PM users found."
+                          loadingMessage="Loading PMs..."
                           disabled={isAuthPMCreatingProject || !canTransferLeadPM}
-                          className={
+                          triggerClassName={
                             fieldState.invalid ? projectInvalidControlClassName : undefined
                           }
                         />

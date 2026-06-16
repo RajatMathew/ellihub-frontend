@@ -16,9 +16,16 @@ interface VendorFormContentProps {
   originalLinks: LinkedContactOriginalLink[];
   contacts: LinkedContactNameSource[];
   contactOptions: { value: string; label: string }[];
+  contactSearch: string;
+  onContactSearchChange: (value: string) => void;
+  isContactLoading: boolean;
+  isContactFetchingNextPage: boolean;
+  hasMoreContacts: boolean;
+  onFetchMoreContacts: () => void;
   targetEntityId?: string;
   onContactLinksChange: (links: LinkedContactItem[]) => void;
   onCreateContact: () => void;
+  onContactSelected: (contact: LinkedContactNameSource) => void;
 }
 
 export function VendorFormContent({
@@ -28,9 +35,16 @@ export function VendorFormContent({
   originalLinks,
   contacts,
   contactOptions,
+  contactSearch,
+  onContactSearchChange,
+  isContactLoading,
+  isContactFetchingNextPage,
+  hasMoreContacts,
+  onFetchMoreContacts,
   targetEntityId,
   onContactLinksChange,
   onCreateContact,
+  onContactSelected,
 }: VendorFormContentProps) {
   return (
     <div className="space-y-6 pt-4 pb-8 lg:pb-10">
@@ -44,10 +58,17 @@ export function VendorFormContent({
         originalLinks={originalLinks}
         contacts={contacts}
         contactOptions={contactOptions}
+        contactSearch={contactSearch}
+        onContactSearchChange={onContactSearchChange}
+        isContactLoading={isContactLoading}
+        isContactFetchingNextPage={isContactFetchingNextPage}
+        hasMoreContacts={hasMoreContacts}
+        onFetchMoreContacts={onFetchMoreContacts}
         targetEntityId={targetEntityId}
         targetType="VENDOR"
         onChange={onContactLinksChange}
         onCreateContact={onCreateContact}
+        onContactSelected={onContactSelected}
       />
     </div>
   );

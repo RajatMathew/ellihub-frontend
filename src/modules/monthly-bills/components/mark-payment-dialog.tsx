@@ -276,6 +276,7 @@ export function MarkPaymentDialog({
                 <MarkPaymentVendorField
                   control={form.control}
                   options={vendorOptions.options}
+                  selectedOption={selectedVendorOption}
                   vendorMatch={vendorMatch}
                   vendorName={vendorName}
                   mapping={currentMapping}

@@ -54,6 +54,15 @@ const scoLookupRefSchema = z
   })
   .passthrough();
 
+const scoCostCodeRefSchema = z
+  .object({
+    id: z.string(),
+    code: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 const scoListLineItemSchema = z
   .object({
     id: z.string(),
@@ -306,6 +315,7 @@ export const scoLineItemSchema = z
     categoryId: z.string().nullable().optional(),
     category: scoLookupRefSchema.nullable().optional(),
     costCodeId: z.string().nullable().optional(),
+    costCode: scoCostCodeRefSchema.nullable().optional(),
     poLineItemId: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
   })

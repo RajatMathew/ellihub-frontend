@@ -24,6 +24,11 @@ interface ScheduleTrackerEntryTableProps {
   newEntry: ScheduleTrackerDraft;
   parentFolderId?: string;
   primeChangeOrderOptions: ScheduleTrackerPrimeChangeOrderOption[];
+  primeChangeOrderSearch: string;
+  onPrimeChangeOrderSearchChange: (value: string) => void;
+  isPrimeChangeOrderFetchingNextPage: boolean;
+  hasMorePrimeChangeOrders: boolean;
+  onFetchMorePrimeChangeOrders: () => void;
   isCreating: boolean;
   isUpdating: boolean;
   isDeleting: boolean;
@@ -49,6 +54,11 @@ export function ScheduleTrackerEntryTable({
   newEntry,
   parentFolderId,
   primeChangeOrderOptions,
+  primeChangeOrderSearch,
+  onPrimeChangeOrderSearchChange,
+  isPrimeChangeOrderFetchingNextPage,
+  hasMorePrimeChangeOrders,
+  onFetchMorePrimeChangeOrders,
   isCreating,
   isUpdating,
   isDeleting,
@@ -87,6 +97,11 @@ export function ScheduleTrackerEntryTable({
                   isSaving={isUpdating}
                   parentFolderId={parentFolderId}
                   primeChangeOrderOptions={primeChangeOrderOptions}
+                  primeChangeOrderSearch={primeChangeOrderSearch}
+                  onPrimeChangeOrderSearchChange={onPrimeChangeOrderSearchChange}
+                  isPrimeChangeOrderFetchingNextPage={isPrimeChangeOrderFetchingNextPage}
+                  hasMorePrimeChangeOrders={hasMorePrimeChangeOrders}
+                  onFetchMorePrimeChangeOrders={onFetchMorePrimeChangeOrders}
                   isLoadingPrimeChangeOrders={isLoadingPrimeChangeOrders}
                   onAttach={() => onAttach('edit')}
                   onCancel={onCancelEdit}
@@ -112,6 +127,11 @@ export function ScheduleTrackerEntryTable({
                 isSaving={isCreating}
                 parentFolderId={parentFolderId}
                 primeChangeOrderOptions={primeChangeOrderOptions}
+                primeChangeOrderSearch={primeChangeOrderSearch}
+                onPrimeChangeOrderSearchChange={onPrimeChangeOrderSearchChange}
+                isPrimeChangeOrderFetchingNextPage={isPrimeChangeOrderFetchingNextPage}
+                hasMorePrimeChangeOrders={hasMorePrimeChangeOrders}
+                onFetchMorePrimeChangeOrders={onFetchMorePrimeChangeOrders}
                 isLoadingPrimeChangeOrders={isLoadingPrimeChangeOrders}
                 onAttach={() => onAttach('add')}
                 onCancel={onCancelAdd}

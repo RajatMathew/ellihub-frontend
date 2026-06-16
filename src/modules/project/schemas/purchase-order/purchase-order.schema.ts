@@ -84,6 +84,15 @@ const poTradeCategoryRefSchema = z
   })
   .passthrough();
 
+const poCostCodeRefSchema = z
+  .object({
+    id: z.string(),
+    code: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 const poProjectRefSchema = z
   .object({
     id: z.string(),
@@ -234,6 +243,7 @@ export const poLineItemSchema = z
     unitPrice: z.string(),
     amount: z.string(),
     costCodeId: z.string().nullable().optional(),
+    costCode: poCostCodeRefSchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),

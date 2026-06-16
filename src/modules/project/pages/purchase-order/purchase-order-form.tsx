@@ -6,11 +6,7 @@ import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import {
-  useVendorDetailQuery,
-  useVendorPickerOptions,
-  type VendorPickerOption,
-} from '@/modules/directory/hooks';
+import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   PurchaseOrderFormDetailsCard,
@@ -26,10 +22,11 @@ import {
 import { PO_FORM_SECTIONS } from '@/modules/project/constants/purchase-order';
 import poMockData from '@/modules/project/constants/purchase-order/purchase-order-create.mock.json';
 import {
-  useProjectCostCodesQuery,
+  useProjectCostCodePickerOptions,
   useProjectDetailQuery,
   useRFQDetailQuery,
-  useRFQListQuery,
+  useRFQPickerOptions,
+  type ProjectPickerOption,
 } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
@@ -84,6 +81,18 @@ function mapPOLineItemToInput(item: PODetail['lineItems'][number]): PurchaseOrde
     unitPrice: Number(item.unitPrice),
     costCodeId: item.costCodeId ?? '',
     notes: item.notes ?? undefined,
+  };
+}
+
+function mapPOLineItemCostCodeToOption(
+  item: PODetail['lineItems'][number]
+): ProjectPickerOption | null {
+  if (!item.costCodeId || !item.costCode?.code || !item.costCode?.name) return null;
+
+  return {
+    value: item.costCodeId,
+    label: `${item.costCode.code} - ${item.costCode.name}`,
+    description: item.costCode.description ?? undefined,
   };
 }
 
@@ -160,9 +169,7 @@ function getRFQDeliverableUnitId(deliverable: RFQDeliverable) {
 }
 
 function getAwardedRFQQuote(rfq: RFQDetail) {
-  return rfq.quotes.find(
-    (quote) => quote.isAwarded || quote.vendorId === rfq.awardedVendorId
-  );
+  return rfq.quotes.find((quote) => quote.isAwarded || quote.vendorId === rfq.awardedVendorId);
 }
 
 function getAwardedRFQVendorId(rfq: RFQDetail) {
@@ -202,8 +209,6 @@ export function POFormPage() {
   );
   const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
 
-  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
-  const { data: rfqsData } = useRFQListQuery({ projectId, size: 100 });
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: units } = useLookupsQuery('UNIT');
   const { data: poFolderId } = useProjectFolderQuery(projectId || undefined, 'purchase order');
@@ -212,11 +217,10 @@ export function POFormPage() {
   const updateMutation = useUpdatePOMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const [vendorSearch, setVendorSearch] = useState('');
-
-  const costCodeOptions = costCodes.map((costCode) => ({
-    value: costCode.id,
-    label: `${costCode.code} - ${costCode.name}`,
-  }));
+  const [rfqSearch, setRfqSearch] = useState('');
+  const [costCodeSearch, setCostCodeSearch] = useState('');
+  const [pickedVendorOption, setPickedVendorOption] = useState<VendorPickerOption | null>(null);
+  const [pickedRfqOption, setPickedRfqOption] = useState<ProjectPickerOption | null>(null);
   const tradeCategoryOptions = useMemo(
     () =>
       (tradeCategories ?? []).map((category) => ({
@@ -229,12 +233,6 @@ export function POFormPage() {
     value: unit.id,
     label: unit.label ?? unit.name ?? unit.id,
   }));
-  const rfqOptions = (rfqsData?.data ?? [])
-    .filter((rfq) => getRFQStatusName(rfq) === 'AWARDED')
-    .map((rfq) => ({
-      value: rfq.id,
-      label: rfq.rfqNumber ?? rfq.title,
-    }));
 
   const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
     resolver: zodResolver(createPOInputSchema),
@@ -249,7 +247,7 @@ export function POFormPage() {
   const selectedRfqId = watch('rfqId');
   const selectedVendorId = watch('vendorId');
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
-  const { data: selectedVendorDetail } = useVendorDetailQuery(selectedVendorId ?? '');
+
   const populatedFromRfqId = useRef<string | null>(null);
 
   const selectedRfqAwardedQuote = selectedRfq?.quotes.find(
@@ -265,43 +263,65 @@ export function POFormPage() {
   const isAwardedRfqSelected =
     !!selectedRfqId && (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
   const isVendorLocked = isAwardedRfqSelected;
-  const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
-    if (selectedVendorId) {
-      if (selectedVendorId === selectedRfqAwardedVendorId && selectedRfqAwardedVendorName) {
-        return {
-          value: selectedVendorId,
-          label: selectedRfqAwardedVendorName,
-        };
-      }
-      const existingVendorId = existingPO?.vendorId ?? existingPO?.vendor?.id;
-      if (selectedVendorId === existingVendorId && existingPO?.vendor?.name) {
-        return {
-          value: selectedVendorId,
-          label: existingPO.vendor.name,
-        };
-      }
+
+  const selectedRfqOption = useMemo<ProjectPickerOption | null>(() => {
+    if (!selectedRfqId) return null;
+
+    if (selectedRfq?.id === selectedRfqId) {
+      return {
+        value: selectedRfq.id,
+        label: selectedRfq.rfqNumber ?? selectedRfq.title,
+        description: selectedRfq.rfqNumber ? selectedRfq.title : undefined,
+        badge: getRFQStatusName(selectedRfq) || undefined,
+      };
+    }
+
+    if (existingPO?.rfqId === selectedRfqId && existingPO.rfq) {
+      return {
+        value: selectedRfqId,
+        label: existingPO.rfq.rfqNumber ?? existingPO.rfq.title ?? 'Linked RFQ',
+        description: existingPO.rfq.rfqNumber ? (existingPO.rfq.title ?? undefined) : undefined,
+      };
+    }
+
+    if (pickedRfqOption?.value === selectedRfqId) {
+      return pickedRfqOption;
+    }
+
+    return null;
+  }, [existingPO?.rfq, existingPO?.rfqId, pickedRfqOption, selectedRfq, selectedRfqId]);
+
+  const rfqPicker = useRFQPickerOptions({
+    projectId,
+    search: rfqSearch,
+    status: 'AWARDED',
+    selectedOptions: selectedRfqOption ? [selectedRfqOption] : [],
+    queryScope: 'purchase-order-form-rfq-picker',
+  });
+
+  const selectedVendorContextOption = useMemo<VendorPickerOption | null>(() => {
+    if (!selectedVendorId) return null;
+
+    if (selectedVendorId === selectedRfqAwardedVendorId && selectedRfqAwardedVendorName) {
       return {
         value: selectedVendorId,
-        label: selectedVendorDetail?.name ?? selectedVendorId,
+        label: selectedRfqAwardedVendorName,
       };
     }
 
-    if (selectedRfqAwardedVendorId) {
+    const existingVendorId = existingPO?.vendorId ?? existingPO?.vendor?.id;
+    if (selectedVendorId === existingVendorId && existingPO?.vendor?.name) {
       return {
-        value: selectedRfqAwardedVendorId,
-        label: selectedRfqAwardedVendorName ?? selectedRfqAwardedVendorId,
+        value: selectedVendorId,
+        label: existingPO.vendor.name,
       };
     }
 
-    if (existingPO?.vendorId || existingPO?.vendor?.id) {
-      const value = existingPO.vendorId ?? existingPO.vendor?.id ?? '';
-      return {
-        value,
-        label: existingPO.vendor?.name ?? value,
-      };
+    if (pickedVendorOption?.value === selectedVendorId) {
+      return pickedVendorOption;
     }
 
-    return undefined;
+    return null;
   }, [
     selectedVendorId,
     selectedRfqAwardedVendorId,
@@ -309,14 +329,40 @@ export function POFormPage() {
     existingPO?.vendorId,
     existingPO?.vendor?.id,
     existingPO?.vendor?.name,
-    selectedVendorDetail?.name,
+    pickedVendorOption,
   ]);
+
   const vendorPicker = useVendorPickerOptions({
     search: vendorSearch,
-    selectedOptions: selectedVendorOption ? [selectedVendorOption] : [],
+    selectedOptions: selectedVendorContextOption ? [selectedVendorContextOption] : [],
     queryScope: 'purchase-order-form-picker',
   });
-  const activeVendorOptions = vendorPicker.options.filter((option) => !option.disabled);
+
+  const selectedVendorOption = useMemo<VendorPickerOption | null>(() => {
+    if (!selectedVendorId) return null;
+    if (selectedVendorContextOption) return selectedVendorContextOption;
+
+    const foundInFetched = vendorPicker.options.find((opt) => opt.value === selectedVendorId);
+    if (foundInFetched && foundInFetched.label !== foundInFetched.value) {
+      return foundInFetched;
+    }
+
+    return null;
+  }, [selectedVendorId, selectedVendorContextOption, vendorPicker.options]);
+
+  const vendorOptions = vendorPicker.options;
+
+  const activeVendorOptions = vendorOptions.filter((option) => !option.disabled);
+
+  useEffect(() => {
+    setPickedVendorOption((current) =>
+      current && current.value !== selectedVendorId ? null : current
+    );
+  }, [selectedVendorId]);
+
+  useEffect(() => {
+    setPickedRfqOption((current) => (current && current.value !== selectedRfqId ? null : current));
+  }, [selectedRfqId]);
 
   useEffect(() => {
     if (isEditMode && existingPO) {
@@ -407,6 +453,27 @@ export function POFormPage() {
   }, [isEditMode, replace, selectedRfq, selectedRfqId, setValue]);
 
   const watchedLineItems = watch('lineItems');
+  const selectedLineItemCostCodeOptions = useMemo(() => {
+    const selectedIds = new Set(
+      watchedLineItems
+        .map((item) => item.costCodeId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    );
+    const fromExisting =
+      existingPO?.lineItems
+        .map(mapPOLineItemCostCodeToOption)
+        .filter((option): option is ProjectPickerOption => !!option)
+        .filter((option) => selectedIds.has(option.value)) ?? [];
+
+    return fromExisting;
+  }, [existingPO?.lineItems, watchedLineItems]);
+  const costCodePicker = useProjectCostCodePickerOptions({
+    projectId,
+    search: costCodeSearch,
+    selectedOptions: selectedLineItemCostCodeOptions,
+    queryScope: 'purchase-order-line-items',
+  });
+  const costCodeOptions = costCodePicker.options;
   const watchedNegotiatedDiscount = watch('negotiatedDiscount') ?? 0;
   const watchedShippingHandlingFee = watch('shippingHandlingFee') ?? 0;
   const taxPercent = watch('taxPercent') ?? 0;
@@ -563,7 +630,9 @@ export function POFormPage() {
         <FormContent>
           <PurchaseOrderFormDetailsCard
             control={control}
-            vendorOptions={vendorPicker.options}
+            vendorOptions={vendorOptions}
+            selectedVendorOption={selectedVendorOption}
+            onVendorOptionChange={setPickedVendorOption}
             vendorSearch={vendorSearch}
             onVendorSearchChange={setVendorSearch}
             isVendorLoading={vendorPicker.isLoading}
@@ -571,7 +640,15 @@ export function POFormPage() {
             hasMoreVendors={vendorPicker.hasNextPage}
             onFetchMoreVendors={vendorPicker.fetchNextPage}
             tradeCategoryOptions={tradeCategoryOptions}
-            rfqOptions={rfqOptions}
+            rfqOptions={rfqPicker.options}
+            selectedRfqOption={selectedRfqOption}
+            onRfqOptionChange={setPickedRfqOption}
+            rfqSearch={rfqSearch}
+            onRfqSearchChange={setRfqSearch}
+            isRfqLoading={rfqPicker.isLoading}
+            isRfqFetchingNextPage={rfqPicker.isFetchingNextPage}
+            hasMoreRfqs={rfqPicker.hasNextPage}
+            onFetchMoreRfqs={rfqPicker.fetchNextPage}
             isVendorLocked={isVendorLocked}
           />
           <PurchaseOrderFormLineItemsCard
@@ -580,6 +657,13 @@ export function POFormPage() {
             append={append}
             remove={remove}
             costCodeOptions={costCodeOptions}
+            selectedCostCodeOptions={selectedLineItemCostCodeOptions}
+            costCodeSearch={costCodeSearch}
+            onCostCodeSearchChange={setCostCodeSearch}
+            isCostCodeLoading={costCodePicker.isLoading}
+            isCostCodeFetchingNextPage={costCodePicker.isFetchingNextPage}
+            hasMoreCostCodes={costCodePicker.hasNextPage}
+            onFetchMoreCostCodes={costCodePicker.fetchNextPage}
             unitOptions={unitOptions}
             rootError={formState.errors.lineItems}
             subtotal={subtotal}

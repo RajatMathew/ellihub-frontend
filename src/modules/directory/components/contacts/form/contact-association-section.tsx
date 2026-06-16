@@ -4,7 +4,6 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field } from '@/app/components/ui/field';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
-import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
@@ -24,6 +23,12 @@ interface ContactAssociationSectionProps {
   hasMoreVendors?: boolean;
   onFetchMoreVendors?: () => void;
   gcOptions: DirectorySelectOption[];
+  gcSearch: string;
+  onGCSearchChange: (value: string) => void;
+  isGCLoading?: boolean;
+  isGCFetchingNextPage?: boolean;
+  hasMoreGCs?: boolean;
+  onFetchMoreGCs?: () => void;
 }
 
 export function ContactAssociationSection({
@@ -36,6 +41,12 @@ export function ContactAssociationSection({
   hasMoreVendors = false,
   onFetchMoreVendors,
   gcOptions,
+  gcSearch,
+  onGCSearchChange,
+  isGCLoading = false,
+  isGCFetchingNextPage = false,
+  hasMoreGCs = false,
+  onFetchMoreGCs,
 }: ContactAssociationSectionProps) {
   const [activeTab, setActiveTab] = useState<'VENDOR' | 'GC'>(
     associations.currentAssociation?.type ?? 'VENDOR'
@@ -128,7 +139,7 @@ export function ContactAssociationSection({
             <Field>
               <ContactFormFieldLabel>GC</ContactFormFieldLabel>
               <div className="min-w-0">
-                <SearchableSelect
+                <InfiniteSearchSelect
                   options={gcOptions.filter(
                     (option) =>
                       !associations.gcLinks.some(
@@ -138,12 +149,22 @@ export function ContactAssociationSection({
                   value={null}
                   onValueChange={(generalContractorId) => {
                     if (generalContractorId) {
-                      associations.handleAddAssociation(generalContractorId, 'GC');
+                      const selected = gcOptions.find(
+                        (option) => option.value === generalContractorId
+                      );
+                      associations.handleAddAssociation(generalContractorId, 'GC', selected?.label);
                     }
                   }}
+                  search={gcSearch}
+                  onSearchChange={onGCSearchChange}
+                  isLoading={isGCLoading}
+                  isFetchingNextPage={isGCFetchingNextPage}
+                  hasNextPage={hasMoreGCs}
+                  onFetchNextPage={onFetchMoreGCs}
                   placeholder="Search GCs..."
                   searchPlaceholder="Search GCs..."
                   emptyMessage="No GCs found."
+                  loadingMessage="Loading GCs..."
                 />
               </div>
               <Button

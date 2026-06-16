@@ -21,7 +21,7 @@ import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
-import { useVendorDetailQuery, useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
+import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
@@ -29,15 +29,19 @@ import {
   ProjectFormShell,
 } from '@/modules/project/components/shared';
 import { INVOICE_FORM_SECTIONS } from '@/modules/project/constants/invoice';
-import { useProjectDetailQuery } from '@/modules/project/hooks';
+import {
+  useProjectDetailQuery,
+  usePurchaseOrderPickerOptions,
+  useSCOPickerOptions,
+  type ProjectMultiPickerOption,
+  type ProjectPickerOption,
+} from '@/modules/project/hooks';
 import {
   useAddInvoiceAttachmentMutation,
   useCreateInvoiceMutation,
   useInvoiceDetailQuery,
   useUpdateInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
-import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
-import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
 import {
   resolveProjectEntityFolder,
   useProjectFolderQuery,
@@ -45,7 +49,9 @@ import {
 import {
   createInvoiceInputSchema,
   type CreateInvoiceInput,
+  type InvoiceRelatedSCO,
 } from '@/modules/project/schemas/invoice';
+import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -71,6 +77,15 @@ function getInvoiceGrandTotal(totalAmount: number, taxAmount: number) {
   return totalAmount + taxAmount;
 }
 
+function relatedSCOToOption(sco: InvoiceRelatedSCO): ProjectMultiPickerOption {
+  return {
+    value: sco.id,
+    label: sco.scoNumber ?? sco.title ?? 'Related SCO',
+    description: sco.title ?? sco.description ?? undefined,
+    badge: sco.status ?? undefined,
+  };
+}
+
 export function InvoiceFormPage() {
   const { projectId = '', invoiceId } = useParams<{ projectId: string; invoiceId: string }>();
   const navigate = useNavigate();
@@ -88,27 +103,14 @@ export function InvoiceFormPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<string>('invoice-details');
   const [isSaving, setIsSaving] = useState(false);
+  const [pickedPurchaseOrder, setPickedPurchaseOrder] = useState<POListItem | null>(null);
+  const [pickedPurchaseOrderOption, setPickedPurchaseOrderOption] =
+    useState<ProjectPickerOption | null>(null);
+  const [pickedSCOOptions, setPickedSCOOptions] = useState<ProjectMultiPickerOption[]>([]);
 
-  const { data: posData, isLoading: isLoadingPOs } = usePOsQuery({
-    projectId,
-    status: 'ISSUED',
-    search: poSearch || undefined,
-    page: 1,
-    size: 25,
-  });
   const createMutation = useCreateInvoiceMutation();
   const updateMutation = useUpdateInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
-
-  const poOptions = useMemo(
-    () =>
-      (posData?.data ?? []).map((po) => ({
-        value: po.id,
-        label: po.poNumber ?? po.id,
-        description: po.vendor?.name ?? po.description ?? undefined,
-      })),
-    [posData]
-  );
 
   const defaultValues: CreateInvoiceInput = {
     projectId,
@@ -151,60 +153,115 @@ export function InvoiceFormPage() {
 
   const selectedPurchaseOrderId = watch('purchaseOrderId');
   const selectedVendorId = watch('vendorId');
+  const watchedRelatedSCOIds = watch('relatedSCOIds');
+  const selectedRelatedSCOIds = useMemo(() => watchedRelatedSCOIds ?? [], [watchedRelatedSCOIds]);
+  const selectedRelatedSCOIdsKey = selectedRelatedSCOIds.join('|');
   const totalAmount = watch('totalAmount') ?? 0;
   const taxRate = watch('taxRate') ?? 0;
-  const { data: scosData, isLoading: isLoadingSCOs } = useSCOsQuery({
-    projectId: selectedPurchaseOrderId ? projectId : '',
-    purchaseOrderId: selectedPurchaseOrderId || undefined,
-    search: scoSearch || undefined,
-    page: 1,
-    size: 50,
+  const selectedPurchaseOrderOption = useMemo<ProjectPickerOption | null>(() => {
+    if (!selectedPurchaseOrderId) return null;
+
+    if (pickedPurchaseOrderOption?.value === selectedPurchaseOrderId) {
+      return pickedPurchaseOrderOption;
+    }
+
+    if (invoiceDetail?.purchaseOrderId === selectedPurchaseOrderId && invoiceDetail.purchaseOrder) {
+      return {
+        value: selectedPurchaseOrderId,
+        label: invoiceDetail.purchaseOrder.poNumber ?? 'Purchase Order',
+        description: invoiceDetail.vendor?.name ?? undefined,
+        badge: invoiceDetail.purchaseOrder.status ?? undefined,
+      };
+    }
+
+    return null;
+  }, [
+    invoiceDetail?.purchaseOrder,
+    invoiceDetail?.purchaseOrderId,
+    invoiceDetail?.vendor?.name,
+    pickedPurchaseOrderOption,
+    selectedPurchaseOrderId,
+  ]);
+  const poPicker = usePurchaseOrderPickerOptions({
+    projectId,
+    search: poSearch,
+    status: 'ISSUED',
+    selectedOptions: selectedPurchaseOrderOption ? [selectedPurchaseOrderOption] : [],
+    queryScope: 'invoice-form-po-picker',
   });
-  const scoOptions = useMemo(
-    () =>
-      (scosData?.data ?? []).map((sco) => ({
-        value: sco.id,
-        label: sco.scoNumber ?? sco.title ?? sco.id,
-        description: sco.title ?? sco.purchaseOrder?.poNumber ?? undefined,
-      })),
-    [scosData]
-  );
+  const selectedSCOOptions = useMemo<ProjectMultiPickerOption[]>(() => {
+    const selectedIds = new Set(selectedRelatedSCOIds);
+    const fromDetail =
+      invoiceDetail?.relatedSCOs
+        ?.map(relatedSCOToOption)
+        .filter((option) => selectedIds.has(option.value)) ?? [];
+    const fromPicked = pickedSCOOptions.filter((option) => selectedIds.has(option.value));
+
+    const seen = new Set<string>();
+    return [...fromDetail, ...fromPicked].filter((option) => {
+      if (seen.has(option.value)) return false;
+      seen.add(option.value);
+      return true;
+    });
+  }, [invoiceDetail?.relatedSCOs, pickedSCOOptions, selectedRelatedSCOIds]);
+  const scoPicker = useSCOPickerOptions({
+    projectId,
+    purchaseOrderId: selectedPurchaseOrderId || undefined,
+    search: scoSearch,
+    selectedOptions: selectedSCOOptions,
+    enabled: !!selectedPurchaseOrderId,
+    queryScope: 'invoice-form-sco-picker',
+  });
   const taxAmount = calculateTaxAmount(totalAmount, taxRate);
   const grandTotal = getInvoiceGrandTotal(totalAmount, taxAmount);
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
   const isImmutable = isEdit;
   const isVendorLocked = isImmutable || !!selectedPurchaseOrderId;
-  const selectedPurchaseOrder = useMemo(
-    () => (posData?.data ?? []).find((po) => po.id === selectedPurchaseOrderId),
-    [posData, selectedPurchaseOrderId]
-  );
-  const { data: selectedVendorDetail } = useVendorDetailQuery(selectedVendorId ?? '');
+  const selectedPurchaseOrder = useMemo(() => {
+    if (!selectedPurchaseOrderId) return undefined;
+    if (pickedPurchaseOrder?.id === selectedPurchaseOrderId) return pickedPurchaseOrder;
+    return poPicker.items.find((po) => po.id === selectedPurchaseOrderId);
+  }, [pickedPurchaseOrder, poPicker.items, selectedPurchaseOrderId]);
+  const selectedVendorContextOption = useMemo<VendorPickerOption | null>(() => {
+    if (!selectedVendorId) return null;
 
-  const selectedVendorLabel = useMemo(() => {
-    if (!selectedVendorId) return undefined;
     const poVendorId = selectedPurchaseOrder?.vendorId ?? selectedPurchaseOrder?.vendor?.id;
     if (selectedVendorId === poVendorId && selectedPurchaseOrder?.vendor?.name) {
-      return selectedPurchaseOrder.vendor.name;
+      return {
+        value: selectedVendorId,
+        label: selectedPurchaseOrder.vendor.name,
+      };
     }
+
     const invVendorId = invoiceDetail?.vendorId ?? invoiceDetail?.vendor?.id;
     if (selectedVendorId === invVendorId && invoiceDetail?.vendor?.name) {
-      return invoiceDetail.vendor.name;
+      return {
+        value: selectedVendorId,
+        label: invoiceDetail.vendor.name,
+      };
     }
-    return selectedVendorDetail?.name;
-  }, [selectedVendorId, selectedPurchaseOrder, invoiceDetail, selectedVendorDetail]);
 
-  const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
-    if (!selectedVendorId) return undefined;
-    return {
-      value: selectedVendorId,
-      label: selectedVendorLabel ?? selectedVendorId,
-    };
-  }, [selectedVendorId, selectedVendorLabel]);
+    return null;
+  }, [selectedVendorId, selectedPurchaseOrder, invoiceDetail]);
+
   const vendorPicker = useVendorPickerOptions({
     search: vendorSearch,
-    selectedOptions: selectedVendorOption ? [selectedVendorOption] : [],
+    selectedOptions: selectedVendorContextOption ? [selectedVendorContextOption] : [],
     queryScope: 'invoice-form-picker',
   });
+
+  const selectedVendorOption = useMemo<VendorPickerOption | null>(() => {
+    if (!selectedVendorId) return null;
+    if (selectedVendorContextOption) return selectedVendorContextOption;
+
+    const foundInFetched = vendorPicker.options.find((opt) => opt.value === selectedVendorId);
+    if (foundInFetched && foundInFetched.label !== foundInFetched.value) {
+      return foundInFetched;
+    }
+
+    return null;
+  }, [selectedVendorId, selectedVendorContextOption, vendorPicker.options]);
+
   const vendorOptions = vendorPicker.options;
 
   useEffect(() => {
@@ -214,9 +271,28 @@ export function InvoiceFormPage() {
     });
   }, [setValue, taxAmount]);
 
+  useEffect(() => {
+    setPickedPurchaseOrder((current) =>
+      current && current.id !== selectedPurchaseOrderId ? null : current
+    );
+    setPickedPurchaseOrderOption((current) =>
+      current && current.value !== selectedPurchaseOrderId ? null : current
+    );
+  }, [selectedPurchaseOrderId]);
+
+  useEffect(() => {
+    const selectedIds = new Set(
+      selectedRelatedSCOIdsKey ? selectedRelatedSCOIdsKey.split('|') : []
+    );
+    setPickedSCOOptions((current) => {
+      const next = current.filter((option) => selectedIds.has(option.value));
+      return next.length === current.length ? current : next;
+    });
+  }, [selectedRelatedSCOIdsKey]);
+
   const enterMockData = useCallback(() => {
-    const randomPo = poOptions[Math.floor(Math.random() * poOptions.length)];
-    const randomPoData = (posData?.data ?? []).find((po) => po.id === randomPo?.value);
+    const randomPo = poPicker.options[Math.floor(Math.random() * poPicker.options.length)];
+    const randomPoData = poPicker.items.find((po) => po.id === randomPo?.value);
     const subtotal = Math.floor(Math.random() * 15000) + 1500;
     const taxRate = 8.5;
     const tax = calculateTaxAmount(subtotal, taxRate);
@@ -226,9 +302,7 @@ export function InvoiceFormPage() {
     reset({
       projectId,
       vendorId:
-        randomPoData?.vendorId ??
-        vendorOptions.find((option) => !option.disabled)?.value ??
-        '',
+        randomPoData?.vendorId ?? vendorOptions.find((option) => !option.disabled)?.value ?? '',
       purchaseOrderId: randomPo?.value ?? '',
       invoiceNumber: fakeInvoiceNumber(),
       invoiceDate: new Date().toISOString().slice(0, 10),
@@ -237,10 +311,10 @@ export function InvoiceFormPage() {
       taxAmount: tax,
       taxRate,
       notes: 'Progress billing for approved work.',
-      relatedSCOIds: scoOptions.slice(0, 2).map((option) => option.value),
+      relatedSCOIds: scoPicker.options.slice(0, 2).map((option) => option.value),
       attachments: [],
     });
-  }, [poOptions, posData, projectId, reset, scoOptions, vendorOptions]);
+  }, [poPicker.items, poPicker.options, projectId, reset, scoPicker.options, vendorOptions]);
 
   async function uploadFiles(folderId: string, files: File[]) {
     const documentIds: string[] = [];
@@ -261,7 +335,9 @@ export function InvoiceFormPage() {
     return documentIds;
   }
 
-  async function resolveInvoiceUploadFolderId(targetInvoiceId: string): Promise<string | undefined> {
+  async function resolveInvoiceUploadFolderId(
+    targetInvoiceId: string
+  ): Promise<string | undefined> {
     try {
       return await resolveProjectEntityFolder(projectId, 'INVOICE', targetInvoiceId);
     } catch {
@@ -393,11 +469,12 @@ export function InvoiceFormPage() {
                     <Field data-invalid={fieldState.invalid}>
                       <InvoiceRequiredFieldLabel>Purchase Order</InvoiceRequiredFieldLabel>
                       <InfiniteSearchSelect
-                        options={poOptions}
+                        options={poPicker.options}
                         value={field.value || null}
                         onValueChange={(value) => {
                           field.onChange(value ?? '');
-                          const selectedPo = (posData?.data ?? []).find((po) => po.id === value);
+                          const selectedPo = poPicker.items.find((po) => po.id === value);
+                          setPickedPurchaseOrder(selectedPo ?? null);
                           setValue('vendorId', selectedPo?.vendorId ?? '', {
                             shouldDirty: true,
                             shouldValidate: true,
@@ -407,13 +484,19 @@ export function InvoiceFormPage() {
                             shouldValidate: true,
                           });
                         }}
+                        onOptionChange={setPickedPurchaseOrderOption}
+                        selectedOption={selectedPurchaseOrderOption}
                         search={poSearch}
                         onSearchChange={setPoSearch}
-                        isLoading={isLoadingPOs}
+                        isLoading={poPicker.isLoading}
+                        isFetchingNextPage={poPicker.isFetchingNextPage}
+                        hasNextPage={poPicker.hasNextPage}
+                        onFetchNextPage={poPicker.fetchNextPage}
                         disabled={isImmutable}
                         placeholder="Select purchase order..."
                         searchPlaceholder="Search purchase orders..."
                         emptyMessage="No issued purchase orders found."
+                        loadingMessage="Loading purchase orders..."
                         triggerClassName={
                           fieldState.invalid ? invoiceInvalidControlClassName : undefined
                         }
@@ -434,6 +517,7 @@ export function InvoiceFormPage() {
                         options={vendorOptions}
                         value={field.value || null}
                         onValueChange={(value) => field.onChange(value ?? '')}
+                        selectedOption={selectedVendorOption}
                         search={vendorSearch}
                         onSearchChange={setVendorSearch}
                         isLoading={vendorPicker.isLoading}
@@ -649,12 +733,17 @@ export function InvoiceFormPage() {
                       Sub Change Orders
                     </FieldLabel>
                     <InfiniteMultiSearchSelect
-                      options={scoOptions}
+                      options={scoPicker.options}
                       value={field.value ?? []}
                       onValueChange={field.onChange}
+                      selectedOptions={selectedSCOOptions}
+                      onOptionsChange={setPickedSCOOptions}
                       search={scoSearch}
                       onSearchChange={setScoSearch}
-                      isLoading={isLoadingSCOs}
+                      isLoading={scoPicker.isLoading}
+                      isFetchingNextPage={scoPicker.isFetchingNextPage}
+                      hasNextPage={scoPicker.hasNextPage}
+                      onFetchNextPage={scoPicker.fetchNextPage}
                       disabled={!selectedPurchaseOrderId}
                       placeholder={
                         selectedPurchaseOrderId

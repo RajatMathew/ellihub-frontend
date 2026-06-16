@@ -7,10 +7,9 @@ import {
 } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
+import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
-import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -30,6 +29,8 @@ import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 interface PurchaseOrderFormDetailsCardProps {
   control: Control<CreatePOInput>;
   vendorOptions: PurchaseOrderFormOption[];
+  selectedVendorOption?: PurchaseOrderFormOption | null;
+  onVendorOptionChange?: (option: PurchaseOrderFormOption | null) => void;
   vendorSearch: string;
   onVendorSearchChange: (value: string) => void;
   isVendorLoading?: boolean;
@@ -38,6 +39,14 @@ interface PurchaseOrderFormDetailsCardProps {
   onFetchMoreVendors?: () => void;
   tradeCategoryOptions: PurchaseOrderFormOption[];
   rfqOptions: PurchaseOrderFormOption[];
+  selectedRfqOption?: PurchaseOrderFormOption | null;
+  onRfqOptionChange?: (option: PurchaseOrderFormOption | null) => void;
+  rfqSearch: string;
+  onRfqSearchChange: (value: string) => void;
+  isRfqLoading?: boolean;
+  isRfqFetchingNextPage?: boolean;
+  hasMoreRfqs?: boolean;
+  onFetchMoreRfqs?: () => void;
   isVendorLocked?: boolean;
 }
 
@@ -48,6 +57,8 @@ const invalidControlClassName = formInvalidControlClassName;
 export function PurchaseOrderFormDetailsCard({
   control,
   vendorOptions,
+  selectedVendorOption,
+  onVendorOptionChange,
   vendorSearch,
   onVendorSearchChange,
   isVendorLoading = false,
@@ -56,6 +67,14 @@ export function PurchaseOrderFormDetailsCard({
   onFetchMoreVendors,
   tradeCategoryOptions,
   rfqOptions,
+  selectedRfqOption,
+  onRfqOptionChange,
+  rfqSearch,
+  onRfqSearchChange,
+  isRfqLoading = false,
+  isRfqFetchingNextPage = false,
+  hasMoreRfqs = false,
+  onFetchMoreRfqs,
   isVendorLocked = false,
 }: PurchaseOrderFormDetailsCardProps) {
   return (
@@ -81,6 +100,8 @@ export function PurchaseOrderFormDetailsCard({
                   options={vendorOptions}
                   value={field.value || null}
                   onValueChange={(value) => field.onChange(value ?? '')}
+                  onOptionChange={onVendorOptionChange}
+                  selectedOption={selectedVendorOption}
                   search={vendorSearch}
                   onSearchChange={onVendorSearchChange}
                   isLoading={isVendorLoading}
@@ -147,13 +168,22 @@ export function PurchaseOrderFormDetailsCard({
           render={({ field }) => (
             <Field>
               <FieldLabel className={fieldLabelClassName}>Linked RFQ (Optional)</FieldLabel>
-              <SearchableSelect
+              <InfiniteSearchSelect
                 options={rfqOptions}
                 value={field.value ?? null}
                 onValueChange={(value) => field.onChange(value ?? undefined)}
+                onOptionChange={onRfqOptionChange}
+                selectedOption={selectedRfqOption}
+                search={rfqSearch}
+                onSearchChange={onRfqSearchChange}
+                isLoading={isRfqLoading}
+                isFetchingNextPage={isRfqFetchingNextPage}
+                hasNextPage={hasMoreRfqs}
+                onFetchNextPage={onFetchMoreRfqs}
                 placeholder="Select RFQ..."
                 searchPlaceholder="Search RFQs..."
                 emptyMessage="No awarded RFQs found."
+                loadingMessage="Loading RFQs..."
                 testId="po-rfq-select"
               />
             </Field>

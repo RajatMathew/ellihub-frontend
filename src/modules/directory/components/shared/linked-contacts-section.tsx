@@ -4,7 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Field, FieldLabel } from '@/app/components/ui/field';
-import { SearchableSelect } from '@/app/components/ui/searchable-select';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Separator } from '@/app/components/ui/separator';
 import { Switch } from '@/app/components/ui/switch';
 import { CircleUserRound, Plus, X } from 'lucide-react';
@@ -39,10 +39,17 @@ interface LinkedContactsSectionProps {
   originalLinks: LinkedContactOriginalLink[];
   contacts: LinkedContactNameSource[];
   contactOptions: { value: string; label: string }[];
+  contactSearch: string;
+  onContactSearchChange: (value: string) => void;
+  isContactLoading: boolean;
+  isContactFetchingNextPage: boolean;
+  hasMoreContacts: boolean;
+  onFetchMoreContacts: () => void;
   targetEntityId?: string;
   targetType: LinkedContactTargetType;
   onChange: (links: LinkedContactItem[]) => void;
   onCreateContact: () => void;
+  onContactSelected?: (contact: LinkedContactNameSource) => void;
 }
 
 export function LinkedContactsSection({
@@ -53,10 +60,17 @@ export function LinkedContactsSection({
   originalLinks,
   contacts,
   contactOptions,
+  contactSearch,
+  onContactSearchChange,
+  isContactLoading,
+  isContactFetchingNextPage,
+  hasMoreContacts,
+  onFetchMoreContacts,
   targetEntityId,
   targetType,
   onChange,
   onCreateContact,
+  onContactSelected,
 }: LinkedContactsSectionProps) {
   const [pendingReplacement, setPendingReplacement] = useState<{
     associationLabel: string;
@@ -147,11 +161,16 @@ export function LinkedContactsSection({
             </FieldLabel>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
-                <SearchableSelect
+                <InfiniteSearchSelect
                   options={availableOptions}
                   value={null}
                   onValueChange={(contactId) => {
                     if (!contactId) return;
+
+                    const selectedContact = contacts.find((item) => item.id === contactId);
+                    if (selectedContact) {
+                      onContactSelected?.(selectedContact);
+                    }
 
                     const associationLabel = getExistingAssociationLabel(
                       contactId,
@@ -167,9 +186,15 @@ export function LinkedContactsSection({
 
                     addContact(contactId);
                   }}
+                  search={contactSearch}
+                  onSearchChange={onContactSearchChange}
+                  isLoading={isContactLoading}
+                  isFetchingNextPage={isContactFetchingNextPage}
+                  hasNextPage={hasMoreContacts}
+                  onFetchNextPage={onFetchMoreContacts}
                   placeholder="Search contacts..."
                   searchPlaceholder="Search contacts..."
-                  emptyMessage="No contacts found."
+                  emptyMessage={isContactLoading ? 'Loading contacts...' : 'No contacts found.'}
                 />
               </div>
               <Button type="button" variant="outline" size="sm" onClick={onCreateContact}>

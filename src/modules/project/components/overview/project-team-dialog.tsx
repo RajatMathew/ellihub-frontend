@@ -31,6 +31,12 @@ interface ProjectTeamDialogProps {
   onOpenChange: (open: boolean) => void;
   project: ProjectDetail;
   employeeOptions: EmployeeOption[];
+  employeeSearch: string;
+  onEmployeeSearchChange: (value: string) => void;
+  isLoadingEmployees: boolean;
+  isEmployeeFetchingNextPage: boolean;
+  hasMoreEmployees: boolean;
+  onFetchMoreEmployees: () => void;
   onAddMember?: (employeeId: string) => Promise<void>;
   onRemoveMember?: (employeeId: string) => Promise<void>;
   onUpdateRole?: (employeeId: string, role: ProjectTeamRole) => Promise<void>;
@@ -43,6 +49,12 @@ export function ProjectTeamDialog({
   onOpenChange,
   project,
   employeeOptions,
+  employeeSearch,
+  onEmployeeSearchChange,
+  isLoadingEmployees,
+  isEmployeeFetchingNextPage,
+  hasMoreEmployees,
+  onFetchMoreEmployees,
   onAddMember,
   onRemoveMember,
   onUpdateRole,
@@ -143,6 +155,12 @@ export function ProjectTeamDialog({
               <div className="rounded-md border bg-muted/20 p-3 sm:p-4">
                 <AddTeamMemberForm
                   employeeOptions={employeeOptions}
+                  employeeSearch={employeeSearch}
+                  onEmployeeSearchChange={onEmployeeSearchChange}
+                  isLoadingEmployees={isLoadingEmployees}
+                  isEmployeeFetchingNextPage={isEmployeeFetchingNextPage}
+                  hasMoreEmployees={hasMoreEmployees}
+                  onFetchMoreEmployees={onFetchMoreEmployees}
                   onAdd={handleAddMember}
                   onCancel={() => setShowAddMember(false)}
                 />

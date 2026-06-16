@@ -157,6 +157,7 @@ export const listEmployeesParamsSchema = z.object({
   sortBy: z.string().optional().default('name'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('asc'),
   search: z.string().optional(),
+  authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
 });
 
 export type ListEmployeesParams = z.infer<typeof listEmployeesParamsSchema>;

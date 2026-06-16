@@ -8,8 +8,8 @@ import type {
   UseFieldArrayRemove,
 } from 'react-hook-form';
 
-import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 import { PurchaseOrderFormTotalsFooter } from './purchase-order-form-totals-footer';
+import type { PurchaseOrderFormOption } from './purchase-order-form-types';
 
 interface PurchaseOrderFormLineItemsCardProps {
   control: Control<CreatePOInput>;
@@ -17,6 +17,13 @@ interface PurchaseOrderFormLineItemsCardProps {
   append: UseFieldArrayAppend<CreatePOInput, 'lineItems'>;
   remove: UseFieldArrayRemove;
   costCodeOptions: PurchaseOrderFormOption[];
+  selectedCostCodeOptions?: PurchaseOrderFormOption[];
+  costCodeSearch?: string;
+  onCostCodeSearchChange?: (value: string) => void;
+  isCostCodeLoading?: boolean;
+  isCostCodeFetchingNextPage?: boolean;
+  hasMoreCostCodes?: boolean;
+  onFetchMoreCostCodes?: () => void;
   unitOptions: PurchaseOrderFormOption[];
   rootError?: FieldErrors<CreatePOInput>['lineItems'];
   subtotal: number;
@@ -39,6 +46,13 @@ export function PurchaseOrderFormLineItemsCard({
   append,
   remove,
   costCodeOptions,
+  selectedCostCodeOptions,
+  costCodeSearch,
+  onCostCodeSearchChange,
+  isCostCodeLoading,
+  isCostCodeFetchingNextPage,
+  hasMoreCostCodes,
+  onFetchMoreCostCodes,
   unitOptions,
   rootError,
   subtotal,
@@ -54,6 +68,13 @@ export function PurchaseOrderFormLineItemsCard({
       append={append}
       remove={remove}
       costCodeOptions={costCodeOptions}
+      selectedCostCodeOptions={selectedCostCodeOptions}
+      costCodeSearch={costCodeSearch}
+      onCostCodeSearchChange={onCostCodeSearchChange}
+      isCostCodeLoading={isCostCodeLoading}
+      isCostCodeFetchingNextPage={isCostCodeFetchingNextPage}
+      hasMoreCostCodes={hasMoreCostCodes}
+      onFetchMoreCostCodes={onFetchMoreCostCodes}
       fieldNames={{ unit: 'unitId' }}
       unitOptions={unitOptions}
       allowCustomUnit={false}

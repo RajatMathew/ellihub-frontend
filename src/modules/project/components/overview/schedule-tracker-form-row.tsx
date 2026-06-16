@@ -1,6 +1,6 @@
 import { Button } from '@/app/components/ui/button';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
-import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import type {
   ScheduleTrackerDraft,
@@ -13,6 +13,11 @@ interface ScheduleTrackerFormRowProps {
   isSaving: boolean;
   parentFolderId?: string;
   primeChangeOrderOptions: ScheduleTrackerPrimeChangeOrderOption[];
+  primeChangeOrderSearch: string;
+  onPrimeChangeOrderSearchChange: (value: string) => void;
+  isPrimeChangeOrderFetchingNextPage: boolean;
+  hasMorePrimeChangeOrders: boolean;
+  onFetchMorePrimeChangeOrders: () => void;
   isLoadingPrimeChangeOrders: boolean;
   onAttach: () => void;
   onCancel: () => void;
@@ -25,6 +30,11 @@ export function ScheduleTrackerFormRow({
   isSaving,
   parentFolderId,
   primeChangeOrderOptions,
+  primeChangeOrderSearch,
+  onPrimeChangeOrderSearchChange,
+  isPrimeChangeOrderFetchingNextPage,
+  hasMorePrimeChangeOrders,
+  onFetchMorePrimeChangeOrders,
   isLoadingPrimeChangeOrders,
   onAttach,
   onCancel,
@@ -32,6 +42,13 @@ export function ScheduleTrackerFormRow({
   onSave,
 }: ScheduleTrackerFormRowProps) {
   const canSave = !!draft.date && !!draft.description && !isSaving;
+  const selectedPrimeChangeOrderOption =
+    draft.primeChangeOrderId && draft.primeChangeOrderLabel
+      ? {
+          value: draft.primeChangeOrderId,
+          label: draft.primeChangeOrderLabel,
+        }
+      : null;
 
   return (
     <TableRow>
@@ -61,9 +78,10 @@ export function ScheduleTrackerFormRow({
       </TableCell>
       <TableCell>
         <div className="flex min-w-64 items-center gap-1.5">
-          <SearchableSelect
+          <InfiniteSearchSelect
             options={primeChangeOrderOptions}
             value={draft.primeChangeOrderId || null}
+            selectedOption={selectedPrimeChangeOrderOption}
             onValueChange={(value) => {
               const selected = primeChangeOrderOptions.find((option) => option.value === value);
               onChange({
@@ -72,13 +90,27 @@ export function ScheduleTrackerFormRow({
                 primeChangeOrderLabel: selected?.label ?? '',
               });
             }}
+            onOptionChange={(option) => {
+              if (!option) return;
+              onChange({
+                ...draft,
+                primeChangeOrderId: option.value,
+                primeChangeOrderLabel: option.label,
+              });
+            }}
+            search={primeChangeOrderSearch}
+            onSearchChange={onPrimeChangeOrderSearchChange}
+            isLoading={isLoadingPrimeChangeOrders}
+            isFetchingNextPage={isPrimeChangeOrderFetchingNextPage}
+            hasNextPage={hasMorePrimeChangeOrders}
+            onFetchNextPage={onFetchMorePrimeChangeOrders}
             placeholder="Prime CO"
             searchPlaceholder="Search Prime CO..."
             emptyMessage={
               isLoadingPrimeChangeOrders ? 'Loading Prime COs...' : 'No Prime COs found.'
             }
             disabled={isSaving}
-            className="min-w-0"
+            triggerClassName="min-w-0"
           />
           {draft.primeChangeOrderId && (
             <Button

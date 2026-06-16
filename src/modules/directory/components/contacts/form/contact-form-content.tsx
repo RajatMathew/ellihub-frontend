@@ -25,6 +25,12 @@ interface ContactFormContentProps {
   contact: Contact | undefined;
   contactId: string | undefined;
   gcOptions: DirectorySelectOption[];
+  gcSearch: string;
+  onGCSearchChange: (value: string) => void;
+  isGCLoading?: boolean;
+  isGCFetchingNextPage?: boolean;
+  hasMoreGCs?: boolean;
+  onFetchMoreGCs?: () => void;
   isEdit: boolean;
   roles: ProfessionalRole[];
   vendorOptions: DirectorySelectOption[];
@@ -40,6 +46,12 @@ export function ContactFormContent({
   contact,
   contactId,
   gcOptions,
+  gcSearch,
+  onGCSearchChange,
+  isGCLoading = false,
+  isGCFetchingNextPage = false,
+  hasMoreGCs = false,
+  onFetchMoreGCs,
   isEdit,
   roles,
   vendorOptions,
@@ -120,6 +132,12 @@ export function ContactFormContent({
             hasMoreVendors={hasMoreVendors}
             onFetchMoreVendors={onFetchMoreVendors}
             gcOptions={gcOptions}
+            gcSearch={gcSearch}
+            onGCSearchChange={onGCSearchChange}
+            isGCLoading={isGCLoading}
+            isGCFetchingNextPage={isGCFetchingNextPage}
+            hasMoreGCs={hasMoreGCs}
+            onFetchMoreGCs={onFetchMoreGCs}
           />
         </div>
       </FormPageShell>

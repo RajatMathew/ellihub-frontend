@@ -12,6 +12,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
@@ -25,7 +26,11 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { useGCsQuery } from '@/modules/directory/hooks';
+import { useGCPickerOptions, type GCPickerOption } from '@/modules/directory/hooks';
+import {
+  useEmployeePickerOptions,
+  type EmployeePickerOption,
+} from '@/modules/hr/hooks/use-employee-picker-options';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
@@ -37,7 +42,6 @@ import {
   useDivisionsQuery,
   useProjectContractTypesQuery,
   useProjectDetailQuery,
-  useProjectEmployeeOptionsQuery,
   useProjectStagesQuery,
   useSetProjectActiveMutation,
   useSetProjectClosedMutation,
@@ -58,18 +62,9 @@ import {
 } from '@/modules/project/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check } from 'lucide-react';
-import { Controller, useForm, type Resolver } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { NavigateFunction } from 'react-router-dom';
-
-function uniqueOptions(options: Array<{ value: string; label: string }>) {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    if (seen.has(option.value)) return false;
-    seen.add(option.value);
-    return true;
-  });
-}
 
 export default function ProjectEditForm() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -108,9 +103,11 @@ function ProjectEditFormInner({
   const stagesQuery = useProjectStagesQuery();
   const divisionsQuery = useDivisionsQuery();
   const contractTypesQuery = useProjectContractTypesQuery();
-  const gcsQuery = useGCsQuery({ limit: 1000 });
   const canTransferLeadPM = project.capabilities?.actions?.projectTeam?.['transfer-lead'] === true;
-  const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canTransferLeadPM);
+  const [gcSearch, setGcSearch] = useState('');
+  const [leadPMSearch, setLeadPMSearch] = useState('');
+  const [pickedGcOption, setPickedGcOption] = useState<GCPickerOption | null>(null);
+  const [pickedLeadPMOption, setPickedLeadPMOption] = useState<EmployeePickerOption | null>(null);
 
   /* ---- Build dropdown options ---- */
 
@@ -130,22 +127,6 @@ function ProjectEditFormInner({
       const label = type.label || type.name || type.id;
       return { value: label, label };
     }) ?? [];
-  const gcOptions =
-    gcsQuery.data?.data?.map((gc) => ({
-      value: gc.id,
-      label: gc.name,
-      badge: gc.status === 'INACTIVE' ? 'Inactive' : undefined,
-      disabled: gc.status === 'INACTIVE',
-    })) ?? [];
-  const pmOptions = uniqueOptions([
-    ...(project.leadPM ? [{ value: project.leadPM.id, label: project.leadPM.name }] : []),
-    ...(project.leadPMId && !project.leadPM
-      ? [{ value: project.leadPMId, label: 'Current Lead PM' }]
-      : []),
-    ...(employeesQuery.data
-      ?.filter((employee) => employee.authRole === 'pm' && employee.id !== project.leadPMId)
-      .map((employee) => ({ value: employee.id, label: employee.name })) ?? []),
-  ]);
 
   /* ---- Form setup with existing values ---- */
 
@@ -187,6 +168,58 @@ function ProjectEditFormInner({
       tcoDate: toDateInputValue(project.tcoDate ?? project.estimatedEndDate),
     },
   });
+
+  const selectedGcId = useWatch({ control, name: 'gcId' });
+  const selectedLeadPMId = useWatch({ control, name: 'leadPMId' });
+  const selectedGcContextOption: GCPickerOption | null = (() => {
+    if (!selectedGcId) return null;
+    if (project.gc?.id === selectedGcId) {
+      return {
+        value: project.gc.id,
+        label: project.gc.name,
+        description: project.gc.email ?? project.gc.phone ?? undefined,
+      };
+    }
+    if (pickedGcOption?.value === selectedGcId) return pickedGcOption;
+    return null;
+  })();
+  const gcPicker = useGCPickerOptions({
+    search: gcSearch,
+    selectedOptions: selectedGcContextOption ? [selectedGcContextOption] : [],
+    queryScope: 'project-edit-gc-picker',
+  });
+  const selectedGcOption =
+    selectedGcContextOption ??
+    (selectedGcId
+      ? (gcPicker.options.find((option) => option.value === selectedGcId) ?? null)
+      : null);
+  const selectedLeadPMContextOption: EmployeePickerOption | null = (() => {
+    if (!selectedLeadPMId) return null;
+    if (project.leadPM?.id === selectedLeadPMId) {
+      return {
+        value: project.leadPM.id,
+        label: project.leadPM.name,
+        description: project.leadPM.email ?? project.leadPM.phoneNumber ?? undefined,
+      };
+    }
+    if (project.leadPMId === selectedLeadPMId && !project.leadPM) {
+      return { value: selectedLeadPMId, label: 'Current Lead PM' };
+    }
+    if (pickedLeadPMOption?.value === selectedLeadPMId) return pickedLeadPMOption;
+    return null;
+  })();
+  const leadPMPicker = useEmployeePickerOptions({
+    search: leadPMSearch,
+    authRole: 'pm',
+    selectedOptions: selectedLeadPMContextOption ? [selectedLeadPMContextOption] : [],
+    enabled: canTransferLeadPM,
+    queryScope: 'project-edit-lead-pm-picker',
+  });
+  const selectedLeadPMOption =
+    selectedLeadPMContextOption ??
+    (selectedLeadPMId
+      ? (leadPMPicker.options.find((option) => option.value === selectedLeadPMId) ?? null)
+      : null);
 
   /* ---- Status (not in projectFormSchema, managed separately) ---- */
 
@@ -542,13 +575,22 @@ function ProjectEditFormInner({
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         General Contractor
                       </FieldLabel>
-                      <SearchableSelect
-                        options={gcOptions}
+                      <InfiniteSearchSelect
+                        options={gcPicker.options}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
+                        onOptionChange={setPickedGcOption}
+                        selectedOption={selectedGcOption}
+                        search={gcSearch}
+                        onSearchChange={setGcSearch}
+                        isLoading={gcPicker.isLoading}
+                        isFetchingNextPage={gcPicker.isFetchingNextPage}
+                        hasNextPage={gcPicker.hasNextPage}
+                        onFetchNextPage={gcPicker.fetchNextPage}
                         placeholder="Select GC..."
                         searchPlaceholder="Search contractors..."
                         emptyMessage="No contractors found."
+                        loadingMessage="Loading contractors..."
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
@@ -558,20 +600,30 @@ function ProjectEditFormInner({
                 <Controller
                   name="leadPMId"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
                       <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
                         Lead PM
                       </FieldLabel>
-                      <SearchableSelect
-                        options={pmOptions}
+                      <InfiniteSearchSelect
+                        options={leadPMPicker.options}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
+                        onOptionChange={setPickedLeadPMOption}
+                        selectedOption={selectedLeadPMOption}
+                        search={leadPMSearch}
+                        onSearchChange={setLeadPMSearch}
+                        isLoading={leadPMPicker.isLoading}
+                        isFetchingNextPage={leadPMPicker.isFetchingNextPage}
+                        hasNextPage={leadPMPicker.hasNextPage}
+                        onFetchNextPage={leadPMPicker.fetchNextPage}
                         placeholder="Select Lead PM..."
                         searchPlaceholder="Search people..."
                         emptyMessage="No PM users found."
+                        loadingMessage="Loading PMs..."
                         disabled={!canTransferLeadPM}
                       />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />

@@ -21,6 +21,10 @@ import {
   CommandList,
 } from '@app/components/ui/command';
 import { FieldError as FieldErr } from '@app/components/ui/field';
+import {
+  InfiniteSearchSelect,
+  type InfiniteSearchSelectOption,
+} from '@app/components/ui/infinite-search-select';
 import { Input } from '@app/components/ui/input';
 import { NumberInput } from '@app/components/ui/number-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
@@ -74,8 +78,15 @@ export interface LineItemsProps {
   append: (value: any) => void;
   /** useFieldArray remove */
   remove: (index: number) => void;
-  /** Cost code options for the SearchableSelect */
-  costCodeOptions: { value: string; label: string }[];
+  /** Cost code options for local or async selects */
+  costCodeOptions: InfiniteSearchSelectOption[];
+  selectedCostCodeOptions?: InfiniteSearchSelectOption[];
+  costCodeSearch?: string;
+  onCostCodeSearchChange?: (value: string) => void;
+  isCostCodeLoading?: boolean;
+  isCostCodeFetchingNextPage?: boolean;
+  hasMoreCostCodes?: boolean;
+  onFetchMoreCostCodes?: () => void;
   /** Mapping of field names within each line item */
   fieldNames?: Partial<LineItemFieldNames>;
   /** Root-level array error (e.g. formState.errors.lineItems?.root) */
@@ -250,6 +261,13 @@ export function LineItems({
   append,
   remove,
   costCodeOptions,
+  selectedCostCodeOptions = [],
+  costCodeSearch = '',
+  onCostCodeSearchChange,
+  isCostCodeLoading = false,
+  isCostCodeFetchingNextPage = false,
+  hasMoreCostCodes = false,
+  onFetchMoreCostCodes,
   fieldNames: fieldNamesProp,
   rootError,
   title = 'Line Items',
@@ -267,6 +285,14 @@ export function LineItems({
 }: LineItemsProps) {
   const fn = { ...DEFAULT_FIELD_NAMES, ...fieldNamesProp };
   const newItem = defaultItem ?? DEFAULT_ITEM;
+  const costCodeOptionByValue = React.useMemo(() => {
+    const map = new Map<string, InfiniteSearchSelectOption>();
+    for (const option of [...selectedCostCodeOptions, ...costCodeOptions]) {
+      map.set(option.value, option);
+    }
+    return map;
+  }, [costCodeOptions, selectedCostCodeOptions]);
+  const isAsyncCostCodeSelect = Boolean(onCostCodeSearchChange);
 
   const thClass = 'pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground text-left';
 
@@ -333,18 +359,41 @@ export function LineItems({
                         control={control}
                         render={({ field: f, fieldState }) => (
                           <div>
-                            <SearchableSelect
-                              options={costCodeOptions}
-                              value={f.value ?? null}
-                              onValueChange={(v) => f.onChange(v ?? '')}
-                              placeholder="Select..."
-                              searchPlaceholder="Search..."
-                              emptyMessage="None found."
-                              onAdd={onAddCostCode}
-                              addLabel="Add Cost Code"
-                              className={fieldState.invalid ? 'border-destructive' : undefined}
-                              testId={`${fieldPrefix}-${index}-cost-code-select`}
-                            />
+                            {isAsyncCostCodeSelect && onCostCodeSearchChange ? (
+                              <InfiniteSearchSelect
+                                options={costCodeOptions}
+                                selectedOption={f.value ? costCodeOptionByValue.get(f.value) : null}
+                                value={f.value ?? null}
+                                onValueChange={(v) => f.onChange(v ?? '')}
+                                search={costCodeSearch}
+                                onSearchChange={onCostCodeSearchChange}
+                                isLoading={isCostCodeLoading}
+                                isFetchingNextPage={isCostCodeFetchingNextPage}
+                                hasNextPage={hasMoreCostCodes}
+                                onFetchNextPage={onFetchMoreCostCodes}
+                                placeholder="Select..."
+                                searchPlaceholder="Search cost codes..."
+                                emptyMessage="No cost codes found."
+                                loadingMessage="Loading cost codes..."
+                                triggerClassName={
+                                  fieldState.invalid ? 'border-destructive' : undefined
+                                }
+                                testId={`${fieldPrefix}-${index}-cost-code-select`}
+                              />
+                            ) : (
+                              <SearchableSelect
+                                options={costCodeOptions}
+                                value={f.value ?? null}
+                                onValueChange={(v) => f.onChange(v ?? '')}
+                                placeholder="Select..."
+                                searchPlaceholder="Search..."
+                                emptyMessage="None found."
+                                onAdd={onAddCostCode}
+                                addLabel="Add Cost Code"
+                                className={fieldState.invalid ? 'border-destructive' : undefined}
+                                testId={`${fieldPrefix}-${index}-cost-code-select`}
+                              />
+                            )}
                             {fieldState.invalid && <FieldErr errors={[fieldState.error]} />}
                           </div>
                         )}

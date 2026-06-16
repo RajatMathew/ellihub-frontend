@@ -1,5 +1,9 @@
 import api from '@/app/api';
-import { costCodeSchema, type CostCode } from '@/modules/catalog/schemas/costcode.schema';
+import {
+  costCodeSchema,
+  type CostCode,
+  type CostCodeFilters,
+} from '@/modules/catalog/schemas/costcode.schema';
 import { employeeSchema, type Employee } from '@/modules/hr/schemas/employee.schema';
 import { invoiceApi } from '@/modules/project/api/invoice';
 import {
@@ -17,6 +21,23 @@ import {
 } from '@/modules/project/schemas/project.schema';
 
 const BASE = '/project';
+
+type ProjectCostCodeOptionsParams = Pick<
+  CostCodeFilters,
+  'page' | 'size' | 'search' | 'sortBy' | 'sortOrder'
+>;
+
+type ProjectCostCodeOptionsResponse = {
+  data: CostCode[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+};
 
 const buildListQuery = (params?: ListProjectsParams) => {
   const query: Record<string, string | number> = {};
@@ -123,6 +144,33 @@ export const projectApi = {
   async listProjectCostCodes(projectId: string): Promise<CostCode[]> {
     const res = await api.get(`${BASE}/${projectId}/cost-codes`);
     return costCodeSchema.array().parse(res.data?.data ?? res.data ?? []);
+  },
+
+  async listProjectCostCodeOptions(
+    projectId: string,
+    params?: ProjectCostCodeOptionsParams
+  ): Promise<ProjectCostCodeOptionsResponse> {
+    const query: Record<string, string | number> = {};
+    if (params?.page != null) query.page = params.page;
+    if (params?.size != null) query.size = params.size;
+    if (params?.search) query.search = params.search;
+    if (params?.sortBy) query.sortBy = params.sortBy;
+    if (params?.sortOrder) query.sortOrder = params.sortOrder;
+
+    const res = await api.get(`${BASE}/${projectId}/cost-codes/options`, { params: query });
+    const data = costCodeSchema.array().parse(res.data?.data ?? res.data ?? []);
+
+    return {
+      data,
+      pagination: res.data?.pagination ?? {
+        currentPage: params?.page ?? 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+        totalItems: data.length,
+        itemsPerPage: params?.size ?? 25,
+      },
+    };
   },
 
   async listProjectEmployeeOptions(projectId: string): Promise<Employee[]> {

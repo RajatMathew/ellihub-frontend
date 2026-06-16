@@ -1,19 +1,15 @@
-import { useMemo } from 'react';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency } from '@/app/lib/helpers';
 import { ContactCard } from '@/modules/directory/components/contact-card';
 import type { DirectoryContactSnapshot } from '@/modules/directory/components/shared';
-import { getVendorCommitmentSummaries } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
 import {
   VENDOR_STATUS_COLORS,
   VENDOR_STATUS_LABELS,
 } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
-import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
 import { UserMinus } from 'lucide-react';
 
 import { getVendorTypeLabel } from './vendor-detail-utils';
@@ -24,18 +20,7 @@ interface VendorOverviewTabProps {
 }
 
 export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) {
-  const purchaseOrdersQuery = usePOsQuery({
-    vendorId: vendor.id,
-    page: 1,
-    size: 1000,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-  });
-  const commitment = useMemo(
-    () => getVendorCommitmentSummaries(purchaseOrdersQuery.data?.data ?? []).get(vendor.id),
-    [purchaseOrdersQuery.data?.data, vendor.id]
-  );
-  const totalCommitted = commitment?.totalCommitted ?? vendor.totalCommitted;
+  const totalCommitted = vendor.totalCommitted;
   const currentBalance = totalCommitted - vendor.totalPaid;
 
   return (

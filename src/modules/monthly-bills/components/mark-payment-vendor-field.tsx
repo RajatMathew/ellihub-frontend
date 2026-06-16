@@ -14,6 +14,7 @@ import type { Control } from 'react-hook-form';
 interface MarkPaymentVendorFieldProps {
   control: Control<MarkPaymentFormData>;
   options: InfiniteSearchSelectOption[];
+  selectedOption?: InfiniteSearchSelectOption | null;
   vendorMatch: VendorMatch | null;
   vendorName: string;
   mapping: QuickBooksVendorMapping | null;
@@ -31,6 +32,7 @@ interface MarkPaymentVendorFieldProps {
 export function MarkPaymentVendorField({
   control,
   options,
+  selectedOption,
   vendorMatch,
   vendorName,
   mapping,
@@ -115,6 +117,7 @@ export function MarkPaymentVendorField({
                 options={options}
                 value={field.value || null}
                 onValueChange={(value) => field.onChange(value ?? '')}
+                selectedOption={selectedOption}
                 search={search}
                 onSearchChange={onSearchChange}
                 isLoading={isLoading}

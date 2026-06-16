@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
 
-import {
-  FormFieldLabel,
-  formInvalidControlClassName,
-} from '@/app/components/form-field-label';
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import type { SearchableSelectOption } from '@/app/components/ui/searchable-select';
@@ -21,6 +19,11 @@ const ptoInvalidControlClassName = formInvalidControlClassName;
 interface PTOFormContentProps {
   control: Control<CreatePTOInput>;
   employeeOptions: SearchableSelectOption[];
+  employeeSearch: string;
+  onEmployeeSearchChange: (value: string) => void;
+  isEmployeeFetchingNextPage: boolean;
+  hasMoreEmployees: boolean;
+  onFetchMoreEmployees: () => void;
   typeOptions: SearchableSelectOption[];
   showEmployeeSelector: boolean;
   hasCurrentEmployee: boolean;
@@ -32,6 +35,11 @@ interface PTOFormContentProps {
 export function PTOFormContent({
   control,
   employeeOptions,
+  employeeSearch,
+  onEmployeeSearchChange,
+  isEmployeeFetchingNextPage,
+  hasMoreEmployees,
+  onFetchMoreEmployees,
   typeOptions,
   showEmployeeSelector,
   hasCurrentEmployee,
@@ -67,13 +75,22 @@ export function PTOFormContent({
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <RequiredFieldLabel>Employee Selection</RequiredFieldLabel>
-                    <SearchableSelect
+                    <InfiniteSearchSelect
                       options={employeeOptions}
                       value={field.value}
                       onValueChange={field.onChange}
+                      search={employeeSearch}
+                      onSearchChange={onEmployeeSearchChange}
+                      isLoading={isEmployeesLoading}
+                      isFetchingNextPage={isEmployeeFetchingNextPage}
+                      hasNextPage={hasMoreEmployees}
+                      onFetchNextPage={onFetchMoreEmployees}
                       placeholder="Search and select staff..."
+                      searchPlaceholder="Search staff..."
+                      emptyMessage="No employees found."
+                      loadingMessage="Loading employees..."
                       disabled={isEmployeesLoading}
-                      className={fieldState.invalid ? ptoInvalidControlClassName : undefined}
+                      triggerClassName={fieldState.invalid ? ptoInvalidControlClassName : undefined}
                       testId="pto-employee-select"
                     />
                     {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

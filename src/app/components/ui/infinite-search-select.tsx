@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ChevronDown, Loader2, X } from 'lucide-react';
 
@@ -28,6 +28,8 @@ type InfiniteSearchSelectProps = {
   options: InfiniteSearchSelectOption[];
   value: string | null;
   onValueChange: (value: string | null) => void;
+  onOptionChange?: (option: InfiniteSearchSelectOption | null) => void;
+  selectedOption?: InfiniteSearchSelectOption | null;
   search: string;
   onSearchChange: (value: string) => void;
   isLoading?: boolean;
@@ -39,16 +41,39 @@ type InfiniteSearchSelectProps = {
   searchPlaceholder?: string;
   emptyMessage?: string;
   loadingMessage?: string;
+  searchDebounceMs?: number;
   triggerClassName?: string;
   contentClassName?: string;
   placeholderClassName?: string;
   testId?: string;
 };
 
+function getOptionKey(option: InfiniteSearchSelectOption) {
+  return option.value;
+}
+
+function areOptionsEqual(
+  first: InfiniteSearchSelectOption | undefined,
+  second: InfiniteSearchSelectOption
+) {
+  return (
+    first?.value === second.value &&
+    first.label === second.label &&
+    first.description === second.description &&
+    first.badge === second.badge &&
+    first.disabled === second.disabled
+  );
+}
+
 function HighlightMatch({ text, search }: { text: string; search: string }) {
-  if (!search.trim()) return <>{text}</>;
-  const regex = new RegExp(`(${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
+  const query = search.trim();
+  if (!query) return <>{text}</>;
+
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'i');
+  const splitRegex = new RegExp(`(${escapedQuery})`, 'gi');
+  const parts = text.split(splitRegex);
+
   return (
     <>
       {parts.map((part, index) =>
@@ -68,6 +93,8 @@ export function InfiniteSearchSelect({
   options,
   value,
   onValueChange,
+  onOptionChange,
+  selectedOption,
   search,
   onSearchChange,
   isLoading = false,
@@ -79,6 +106,7 @@ export function InfiniteSearchSelect({
   searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
   loadingMessage = 'Loading...',
+  searchDebounceMs = 300,
   triggerClassName,
   contentClassName,
   placeholderClassName,
@@ -87,7 +115,53 @@ export function InfiniteSearchSelect({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
-  const selectedOption = options.find((option) => option.value === value);
+  const [cachedOptionByValue, setCachedOptionByValue] = useState(
+    () => new Map<string, InfiniteSearchSelectOption>()
+  );
+
+  const optionByValue = useMemo(() => {
+    const map = new Map<string, InfiniteSearchSelectOption>();
+    for (const option of options) {
+      map.set(getOptionKey(option), option);
+    }
+    return map;
+  }, [options]);
+
+  useEffect(() => {
+    setCachedOptionByValue((previous) => {
+      let next: Map<string, InfiniteSearchSelectOption> | undefined;
+      const addToCache = (option: InfiniteSearchSelectOption) => {
+        const key = getOptionKey(option);
+        const existing = (next ?? previous).get(key);
+        if (areOptionsEqual(existing, option)) return;
+        next ??= new Map(previous);
+        next.set(key, option);
+      };
+
+      for (const option of options) {
+        addToCache(option);
+      }
+
+      if (selectedOption) {
+        addToCache(selectedOption);
+      }
+
+      return next ?? previous;
+    });
+  }, [options, selectedOption]);
+
+  const resolvedSelectedOption = useMemo(() => {
+    if (value === null) return null;
+    if (selectedOption?.value === value) return selectedOption;
+    return optionByValue.get(value) ?? cachedOptionByValue.get(value) ?? null;
+  }, [cachedOptionByValue, optionByValue, selectedOption, value]);
+
+  const renderedOptions = useMemo(() => {
+    if (resolvedSelectedOption && !optionByValue.has(resolvedSelectedOption.value)) {
+      return [resolvedSelectedOption, ...options];
+    }
+    return options;
+  }, [optionByValue, options, resolvedSelectedOption]);
 
   const [localSearch, setLocalSearch] = useState(search);
 
@@ -95,12 +169,32 @@ export function InfiniteSearchSelect({
     setLocalSearch(search);
   }, [search]);
 
-  const debouncedOnSearchChange = useDebouncedCallback(onSearchChange, 300);
+  const debouncedOnSearchChange = useDebouncedCallback(onSearchChange, searchDebounceMs);
 
   const handleSearchChange = (val: string) => {
     setLocalSearch(val);
     debouncedOnSearchChange(val);
   };
+
+  const handleSelectOption = useCallback(
+    (option: InfiniteSearchSelectOption) => {
+      if (option.disabled) return;
+
+      setCachedOptionByValue((previous) => {
+        const key = getOptionKey(option);
+        if (areOptionsEqual(previous.get(key), option)) return previous;
+        const next = new Map(previous);
+        next.set(key, option);
+        return next;
+      });
+
+      const nextValue = option.value === value ? null : option.value;
+      onValueChange(nextValue);
+      onOptionChange?.(nextValue ? option : null);
+      setOpen(false);
+    },
+    [onOptionChange, onValueChange, value]
+  );
 
   useEffect(() => {
     if (open && triggerRef.current) {
@@ -120,23 +214,28 @@ export function InfiniteSearchSelect({
           data-testid={testId}
           className={cn(
             'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
-            triggerClassName,
+            triggerClassName
           )}
         >
           <span
             className={cn(
               'truncate',
-              selectedOption ? undefined : placeholderClassName ?? 'text-muted-foreground',
+              resolvedSelectedOption ? undefined : (placeholderClassName ?? 'text-muted-foreground')
             )}
           >
-            {selectedOption ? selectedOption.label : placeholder}
+            {resolvedSelectedOption ? resolvedSelectedOption.label : placeholder}
           </span>
-          {selectedOption?.badge && (
+          {resolvedSelectedOption?.badge && (
             <Badge variant="secondary" size="sm" className="shrink-0">
-              {selectedOption.badge}
+              {resolvedSelectedOption.badge}
             </Badge>
           )}
-          <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-60 -me-0.5 transition-transform duration-200", open && "rotate-180")} />
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 opacity-60 -me-0.5 transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -198,17 +297,13 @@ export function InfiniteSearchSelect({
                   </div>
                 </CommandEmpty>
                 <CommandGroup>
-                  {options.map((option) => (
+                  {renderedOptions.map((option) => (
                     <CommandItem
                       key={option.value}
                       value={option.value}
                       keywords={[option.label, option.description ?? '']}
                       disabled={option.disabled}
-                      onSelect={() => {
-                        if (option.disabled) return;
-                        onValueChange(option.value === value ? null : option.value);
-                        setOpen(false);
-                      }}
+                      onSelect={() => handleSelectOption(option)}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">

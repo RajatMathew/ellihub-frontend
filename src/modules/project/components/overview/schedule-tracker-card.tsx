@@ -22,7 +22,7 @@ import {
 import {
   useCreateScheduleEntryMutation,
   useDeleteScheduleEntryMutation,
-  usePrimeChangeOrdersQuery,
+  usePrimeChangeOrderPickerOptions,
   useUpdateScheduleEntryMutation,
 } from '@/modules/project/hooks';
 import type { PrimeContract } from '@/modules/project/schemas/project-contract.schema';
@@ -58,23 +58,14 @@ export function ScheduleTrackerCard({
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
   const [uploadTarget, setUploadTarget] = useState<ScheduleTrackerUploadTarget>(null);
   const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
+  const [primeChangeOrderSearch, setPrimeChangeOrderSearch] = useState('');
 
   const createMutation = useCreateScheduleEntryMutation();
   const updateMutation = useUpdateScheduleEntryMutation();
   const deleteMutation = useDeleteScheduleEntryMutation();
   const uploadMutation = useUploadFileMutation();
-  const primeChangeOrdersQuery = usePrimeChangeOrdersQuery({
-    projectId,
-    page: 1,
-    size: 100,
-  });
-
-  const primeChangeOrderOptions = useMemo<ScheduleTrackerPrimeChangeOrderOption[]>(() => {
+  const selectedPrimeChangeOrderOptions = useMemo<ScheduleTrackerPrimeChangeOrderOption[]>(() => {
     const options = new Map<string, string>();
-
-    for (const primeChangeOrder of primeChangeOrdersQuery.data?.data ?? []) {
-      options.set(primeChangeOrder.id, formatSchedulePrimeChangeOrderLabel(primeChangeOrder));
-    }
 
     for (const entry of entries) {
       if (entry.primeChangeOrderId && entry.primeChangeOrder) {
@@ -86,7 +77,14 @@ export function ScheduleTrackerCard({
     }
 
     return Array.from(options, ([value, label]) => ({ value, label }));
-  }, [entries, primeChangeOrdersQuery.data?.data]);
+  }, [entries]);
+  const primeChangeOrderPicker = usePrimeChangeOrderPickerOptions({
+    projectId,
+    search: primeChangeOrderSearch,
+    selectedOptions: selectedPrimeChangeOrderOptions,
+    queryScope: 'schedule-tracker-picker',
+  });
+  const primeChangeOrderOptions = primeChangeOrderPicker.options;
 
   const resetNewEntry = () => {
     setNewEntry(createEmptyScheduleTrackerDraft());
@@ -193,10 +191,15 @@ export function ScheduleTrackerCard({
         newEntry={newEntry}
         parentFolderId={parentFolderId}
         primeChangeOrderOptions={primeChangeOrderOptions}
+        primeChangeOrderSearch={primeChangeOrderSearch}
+        onPrimeChangeOrderSearchChange={setPrimeChangeOrderSearch}
+        isPrimeChangeOrderFetchingNextPage={primeChangeOrderPicker.isFetchingNextPage}
+        hasMorePrimeChangeOrders={primeChangeOrderPicker.hasNextPage}
+        onFetchMorePrimeChangeOrders={primeChangeOrderPicker.fetchNextPage}
         isCreating={createMutation.isPending}
         isUpdating={updateMutation.isPending}
         isDeleting={deleteMutation.isPending}
-        isLoadingPrimeChangeOrders={primeChangeOrdersQuery.isLoading}
+        isLoadingPrimeChangeOrders={primeChangeOrderPicker.isLoading}
         isReadOnly={!canManage}
         onAttach={setUploadTarget}
         onCancelAdd={resetNewEntry}

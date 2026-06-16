@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { useAccess } from '@/app/contexts/access-context';
 import { encodeFolderPath } from '@/modules/files/hooks/use-files-list-params';
+import { useEmployeePickerOptions } from '@/modules/hr/hooks/use-employee-picker-options';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -26,13 +27,11 @@ import {
   usePrimeContractComputations,
 } from '@/modules/project/components/overview';
 import { ProjectToolbarHeader } from '@/modules/project/components/project-toolbar-header';
-import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   useDeleteProjectMutation,
   usePrimeChangeOrderFinancialSummaryQuery,
   usePrimeChangeOrdersQuery,
   useProjectDetailQuery,
-  useProjectEmployeeOptionsQuery,
   useProjectFolderQuery,
   useProjectScheduleQuery,
 } from '@/modules/project/hooks';
@@ -43,10 +42,8 @@ import {
   useSetPrimeContractPrimaryMutation,
   useUnpinPrimeContractsMutation,
 } from '@/modules/project/hooks/contract-attachment.hooks';
-import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
-import { useSCOsQuery } from '@/modules/project/hooks/sub-change-order';
-import { useEmployeeOptions } from '@/modules/project/hooks/use-employee-options';
-import { usePOCalculations } from '@/modules/project/hooks/use-po-calculations';
+import { usePOStatsQuery } from '@/modules/project/hooks/purchase-order';
+import { useSCOStatsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
 import { EllipsisVertical, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -58,6 +55,7 @@ export default function ProjectContractOverview() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
   /* ---- Queries ---- */
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
@@ -68,8 +66,8 @@ export default function ProjectContractOverview() {
     sortBy: 'fieldwireUpdatedAt',
     sortOrder: 'desc',
   });
-  const { data: allPOs } = usePOsQuery({ projectId, size: 1000 });
-  const { data: allSCOs } = useSCOsQuery({ projectId, size: 1000 });
+  const { data: poStats } = usePOStatsQuery(projectId);
+  const { data: scoStats } = useSCOStatsQuery(projectId);
   const { data: attachments, isLoading: isLoadingAttachments } =
     useContractAttachmentsQuery(projectId);
   const { data: primeContractCandidates = [], isLoading: isLoadingPrimeContractCandidates } =
@@ -88,18 +86,12 @@ export default function ProjectContractOverview() {
   const setPrimeContractPrimaryMutation = useSetPrimeContractPrimaryMutation();
 
   /* ---- Custom Hooks ---- */
-  const { totalPOCommitted, activePOsCount } = usePOCalculations({
-    pos: allPOs?.data,
-  });
-  const approvedSCOs = useMemo(
-    () => (allSCOs?.data ?? []).filter((sco) => sco.status === 'APPROVED'),
-    [allSCOs?.data]
-  );
-  const approvedSCOTotal = useMemo(
-    () => approvedSCOs.reduce((sum, sco) => sum + getSubChangeOrderTotalAmount(sco), 0),
-    [approvedSCOs]
-  );
-  const totalCommitted = totalPOCommitted + approvedSCOTotal;
+  const totalCommitted = poStats?.totalCommitted ?? 0;
+  const approvedSCOTotal = scoStats?.approvedAmount ?? 0;
+  const totalPOCommitted = totalCommitted - approvedSCOTotal;
+  const activePOsCount =
+    (poStats?.issuedPurchaseOrders ?? 0) + (poStats?.deliveredPurchaseOrders ?? 0);
+  const approvedSCOsCount = scoStats?.approvedSubChangeOrders ?? 0;
   const totalSpent = totalCommitted;
 
   const computations = usePrimeContractComputations({
@@ -132,12 +124,25 @@ export default function ProjectContractOverview() {
   const canPinPrimeContracts = primeContractActions?.pin === true;
   const canUnpinPrimeContracts = primeContractActions?.unpin === true;
   const canSetPrimaryPrimeContracts = primeContractActions?.primary === true;
-  const employeesQuery = useProjectEmployeeOptionsQuery(projectId, canAddTeamMembers);
-
-  const employeeOptions = useEmployeeOptions({
-    employees: employeesQuery.data,
-    project,
+  const existingEmployeeIds = useMemo(
+    () =>
+      new Set(
+        [
+          ...(project?.teamMembers ?? []).map((member) => member.employeeId),
+          project?.leadPMId,
+        ].filter((value): value is string => Boolean(value))
+      ),
+    [project]
+  );
+  const employeePicker = useEmployeePickerOptions({
+    search: employeeSearch,
+    enabled: canAddTeamMembers && teamDialogOpen,
+    queryScope: `project-team-${projectId}`,
   });
+  const employeeOptions = useMemo(
+    () => employeePicker.options.filter((option) => !existingEmployeeIds.has(option.value)),
+    [employeePicker.options, existingEmployeeIds]
+  );
 
   /* ---- Event Handlers ---- */
   const handleDeleteProject = async () => {
@@ -233,7 +238,7 @@ export default function ProjectContractOverview() {
           primeChangeOrderSummary={primeChangeOrderSummary}
           totalCommitted={totalCommitted}
           activePOsCount={activePOsCount}
-          approvedSCOsCount={approvedSCOs.length}
+          approvedSCOsCount={approvedSCOsCount}
         />
 
         {/* ---- Contract Details + Financial Summary + Budget ---- */}
@@ -280,6 +285,12 @@ export default function ProjectContractOverview() {
           onOpenChange={setTeamDialogOpen}
           project={project}
           employeeOptions={employeeOptions}
+          employeeSearch={employeeSearch}
+          onEmployeeSearchChange={setEmployeeSearch}
+          isLoadingEmployees={employeePicker.isLoading}
+          isEmployeeFetchingNextPage={employeePicker.isFetchingNextPage}
+          hasMoreEmployees={employeePicker.hasNextPage}
+          onFetchMoreEmployees={employeePicker.fetchNextPage}
           onAddMember={canAddTeamMembers ? teamActions.addMember : undefined}
           onRemoveMember={canRemoveTeamMembers ? teamActions.removeMember : undefined}
           onUpdateRole={canUpdateTeamRoles ? teamActions.updateRole : undefined}

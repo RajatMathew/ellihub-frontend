@@ -16,6 +16,11 @@ export default function PTOFormPage() {
     form,
     ptoQuery,
     employeeOptions,
+    employeeSearch,
+    onEmployeeSearchChange,
+    isEmployeeFetchingNextPage,
+    hasMoreEmployees,
+    onFetchMoreEmployees,
     typeOptions,
     showEmployeeSelector,
     hasCurrentEmployee,
@@ -54,6 +59,11 @@ export default function PTOFormPage() {
       <PTOFormContent
         control={form.control}
         employeeOptions={employeeOptions}
+        employeeSearch={employeeSearch}
+        onEmployeeSearchChange={onEmployeeSearchChange}
+        isEmployeeFetchingNextPage={isEmployeeFetchingNextPage}
+        hasMoreEmployees={hasMoreEmployees}
+        onFetchMoreEmployees={onFetchMoreEmployees}
         typeOptions={typeOptions}
         showEmployeeSelector={showEmployeeSelector}
         hasCurrentEmployee={hasCurrentEmployee}

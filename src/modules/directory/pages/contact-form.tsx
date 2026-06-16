@@ -7,11 +7,11 @@ import {
   ContactFormContent,
   ContactFormLoading,
 } from '@/modules/directory/components/contacts/form';
+import { useGCPickerOptions, type GCPickerOption } from '@/modules/directory/hooks';
 import {
   useContactDetailQuery,
   useProfessionalRolesQuery,
 } from '@/modules/directory/hooks/contacts.hooks';
-import { useGCsQuery } from '@/modules/directory/hooks/gc.hooks';
 import {
   useVendorPickerOptions,
   type VendorPickerOption,
@@ -24,8 +24,8 @@ export function ContactFormPage() {
 
   const contactQuery = useContactDetailQuery(id ?? '');
   const rolesQuery = useProfessionalRolesQuery();
-  const gcsQuery = useGCsQuery({ limit: 1000 });
   const [vendorSearch, setVendorSearch] = useState('');
+  const [gcSearch, setGcSearch] = useState('');
 
   useBreadcrumbLabel(
     id ? `/app/directory/contacts/${id}` : undefined,
@@ -49,23 +49,26 @@ export function ContactFormPage() {
     queryScope: 'contact-form-picker',
   });
   const vendorOptions = vendorPicker.options;
-  const gcOptions = useMemo(
-    () =>
-      (gcsQuery.data?.data ?? []).map((gc) => ({
-        value: gc.id,
-        label: gc.name,
-      })),
-    [gcsQuery.data]
-  );
+  const selectedGcOptions = useMemo<GCPickerOption[]>(() => {
+    const contact = contactQuery.data;
+    if (!contact?.generalContractor) return [];
+    return [
+      {
+        value: contact.generalContractor.id,
+        label: contact.generalContractor.name,
+      },
+    ];
+  }, [contactQuery.data]);
+  const gcPicker = useGCPickerOptions({
+    search: gcSearch,
+    selectedOptions: selectedGcOptions,
+    queryScope: 'contact-form-gc-picker',
+  });
+  const gcOptions = gcPicker.options;
 
   const isLoadingForm =
-    rolesQuery.isLoading ||
-    gcsQuery.isLoading ||
-    (isEdit && contactQuery.isLoading);
-  const isError =
-    rolesQuery.isError ||
-    gcsQuery.isError ||
-    (isEdit && contactQuery.isError);
+    rolesQuery.isLoading || gcPicker.isLoading || (isEdit && contactQuery.isLoading);
+  const isError = rolesQuery.isError || (isEdit && contactQuery.isError);
 
   if (isLoadingForm) {
     return <ContactFormLoading />;
@@ -79,7 +82,6 @@ export function ContactFormPage() {
           description="The contact form options could not be loaded."
           onRetry={() => {
             void rolesQuery.refetch();
-            void gcsQuery.refetch();
             if (isEdit) void contactQuery.refetch();
           }}
         />
@@ -105,6 +107,12 @@ export function ContactFormPage() {
       contact={contactQuery.data}
       contactId={id}
       gcOptions={gcOptions}
+      gcSearch={gcSearch}
+      onGCSearchChange={setGcSearch}
+      isGCLoading={gcPicker.isLoading}
+      isGCFetchingNextPage={gcPicker.isFetchingNextPage}
+      hasMoreGCs={gcPicker.hasNextPage}
+      onFetchMoreGCs={gcPicker.fetchNextPage}
       isEdit={isEdit}
       roles={roles}
       vendorOptions={vendorOptions}

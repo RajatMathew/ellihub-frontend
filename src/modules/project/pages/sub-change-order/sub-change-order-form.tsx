@@ -25,16 +25,20 @@ import { formatCurrency } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { filesApi } from '@/modules/files/api/files.api';
 import { poApi } from '@/modules/project/api/purchase-order';
+import { PurchaseOrderFormTotalsFooter } from '@/modules/project/components/purchase-order/purchase-order-form-totals-footer';
+import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
   ProjectFormShell,
 } from '@/modules/project/components/shared';
-import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
-import { PurchaseOrderFormTotalsFooter } from '@/modules/project/components/purchase-order/purchase-order-form-totals-footer';
 import { SCO_FORM_SECTIONS } from '@/modules/project/constants/sub-change-order';
 import scoMockData from '@/modules/project/constants/sub-change-order/sub-change-order-create.mock.json';
-import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
+import {
+  useProjectCostCodePickerOptions,
+  useProjectDetailQuery,
+  type ProjectPickerOption,
+} from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -51,6 +55,7 @@ import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import {
   createSCOInputSchema,
   type CreateSCOInput,
+  type SCODetail,
   type SCOLineItemInput,
 } from '@/modules/project/schemas/sub-change-order';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,6 +86,18 @@ function toNonNegativeNumber(value: unknown) {
   return Math.max(0, toNumber(value));
 }
 
+function mapSCOLineItemCostCodeToOption(
+  item: SCODetail['lineItems'][number]
+): ProjectPickerOption | null {
+  if (!item.costCodeId || !item.costCode?.code || !item.costCode?.name) return null;
+
+  return {
+    value: item.costCodeId,
+    label: `${item.costCode.code} - ${item.costCode.name}`,
+    description: item.costCode.description ?? undefined,
+  };
+}
+
 export function SCOFormPage() {
   const { projectId = '', scoId } = useParams<{ projectId: string; scoId: string }>();
   const [searchParams] = useSearchParams();
@@ -96,7 +113,6 @@ export function SCOFormPage() {
     scoDetail?.scoNumber ?? undefined
   );
 
-  const { data: costCodes = [] } = useProjectCostCodesQuery(projectId);
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
   const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
@@ -138,11 +154,8 @@ export function SCOFormPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<string>('sco-details');
   const [isSaving, setIsSaving] = useState(false);
+  const [costCodeSearch, setCostCodeSearch] = useState('');
 
-  const costCodeOptions = costCodes.map((costCode) => ({
-    value: costCode.id,
-    label: `${costCode.code} - ${costCode.name}`,
-  }));
   const unitOptions = (units ?? []).map((unit) => ({
     value: unit.id,
     label: unit.label ?? unit.name ?? unit.id,
@@ -212,6 +225,27 @@ export function SCOFormPage() {
 
   const watchedLineItems = useWatch({ control, name: 'lineItems' });
   const lineItemsForTotals = useMemo(() => watchedLineItems ?? [], [watchedLineItems]);
+  const selectedLineItemCostCodeOptions = useMemo(() => {
+    const selectedIds = new Set(
+      (watchedLineItems ?? [])
+        .map((item) => item.costCodeId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    );
+
+    return (
+      scoDetail?.lineItems
+        .map(mapSCOLineItemCostCodeToOption)
+        .filter((option): option is ProjectPickerOption => !!option)
+        .filter((option) => selectedIds.has(option.value)) ?? []
+    );
+  }, [scoDetail?.lineItems, watchedLineItems]);
+  const costCodePicker = useProjectCostCodePickerOptions({
+    projectId,
+    search: costCodeSearch,
+    selectedOptions: selectedLineItemCostCodeOptions,
+    queryScope: 'sco-line-items',
+  });
+  const costCodeOptions = costCodePicker.options;
   const watchedNegotiatedDiscount = useWatch({ control, name: 'negotiatedDiscount' }) ?? 0;
   const watchedShippingHandlingFee = useWatch({ control, name: 'shippingHandlingFee' }) ?? 0;
   const watchedTaxPercent = useWatch({ control, name: 'taxPercent' }) ?? 0;
@@ -474,7 +508,6 @@ export function SCOFormPage() {
                   </Field>
                 )}
               />
-
             </CardContent>
           </Card>
 
@@ -485,6 +518,13 @@ export function SCOFormPage() {
             append={append}
             remove={remove}
             costCodeOptions={costCodeOptions}
+            selectedCostCodeOptions={selectedLineItemCostCodeOptions}
+            costCodeSearch={costCodeSearch}
+            onCostCodeSearchChange={setCostCodeSearch}
+            isCostCodeLoading={costCodePicker.isLoading}
+            isCostCodeFetchingNextPage={costCodePicker.isFetchingNextPage}
+            hasMoreCostCodes={costCodePicker.hasNextPage}
+            onFetchMoreCostCodes={costCodePicker.fetchNextPage}
             fieldNames={{ unit: 'unitId' }}
             unitOptions={unitOptions}
             allowCustomUnit={false}
