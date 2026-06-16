@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { Card } from '@/app/components/ui/card';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import {
   getPurchaseOrderRfqLabel,
   PurchaseOrderCancelDialog,
@@ -53,7 +52,6 @@ export default function ProjectPOs() {
   } = usePurchaseOrderListParams();
 
   const [vendorSearch, setVendorSearch] = useState('');
-  const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
 
   const filters: ListPOsParams = {
     projectId,
@@ -100,7 +98,7 @@ export default function ProjectPOs() {
     };
   }, [listData, vendorFilter]);
   const vendorPicker = usePurchaseOrderVendorFilterOptions({
-    search: debouncedVendorSearch,
+    search: vendorSearch,
     selectedOption: selectedVendorOption,
   });
 

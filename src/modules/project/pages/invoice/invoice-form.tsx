@@ -21,7 +21,7 @@ import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import { fakeInvoiceNumber } from '@/lib/fake-data';
-import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
+import { useVendorDetailQuery, useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
   ProjectFormDocumentsCard,
@@ -178,9 +178,21 @@ export function InvoiceFormPage() {
     () => (posData?.data ?? []).find((po) => po.id === selectedPurchaseOrderId),
     [posData, selectedPurchaseOrderId]
   );
-  const selectedVendorLabel =
-    selectedPurchaseOrder?.vendor?.name ??
-    (invoiceDetail?.vendorId === selectedVendorId ? invoiceDetail.vendor?.name : undefined);
+  const { data: selectedVendorDetail } = useVendorDetailQuery(selectedVendorId ?? '');
+
+  const selectedVendorLabel = useMemo(() => {
+    if (!selectedVendorId) return undefined;
+    const poVendorId = selectedPurchaseOrder?.vendorId ?? selectedPurchaseOrder?.vendor?.id;
+    if (selectedVendorId === poVendorId && selectedPurchaseOrder?.vendor?.name) {
+      return selectedPurchaseOrder.vendor.name;
+    }
+    const invVendorId = invoiceDetail?.vendorId ?? invoiceDetail?.vendor?.id;
+    if (selectedVendorId === invVendorId && invoiceDetail?.vendor?.name) {
+      return invoiceDetail.vendor.name;
+    }
+    return selectedVendorDetail?.name;
+  }, [selectedVendorId, selectedPurchaseOrder, invoiceDetail, selectedVendorDetail]);
+
   const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
     if (!selectedVendorId) return undefined;
     return {

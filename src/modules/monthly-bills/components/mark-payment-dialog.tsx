@@ -22,7 +22,6 @@ import {
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { formatCurrency } from '@/app/lib/helpers';
 import {
   useQuickBooksBankAccountsQuery,
@@ -122,7 +121,6 @@ export function MarkPaymentDialog({
   const vendorName = bill.purchaseOrder.vendor.name;
   const poNumber = bill.purchaseOrder.poNumber;
   const [vendorSearchInput, setVendorSearchInput] = useState('');
-  const vendorSearch = useDebouncedValue(vendorSearchInput.trim(), 250);
   const [createVendorOpen, setCreateVendorOpen] = useState(false);
   const [createdVendorOption, setCreatedVendorOption] = useState<
     InfiniteSearchSelectOption | undefined
@@ -143,7 +141,7 @@ export function MarkPaymentDialog({
   const bankAccountsQuery = useQuickBooksBankAccountsQuery(open);
   const categoriesQuery = useQuickBooksCategoriesQuery(open);
   const vendorOptions = useQuickBooksVendorOptions({
-    search: vendorSearch,
+    search: vendorSearchInput,
     selectedOption: selectedVendorOption,
     enabled: open,
   });

@@ -45,8 +45,6 @@ export function InvoiceListPage() {
     searchInput,
     vendorSearch,
     purchaseOrderSearch,
-    debouncedVendorSearch,
-    debouncedPurchaseOrderSearch,
     updateParams,
     handleSearchChange,
     setVendorSearch,
@@ -100,12 +98,12 @@ export function InvoiceListPage() {
   }, [listData, purchaseOrderFilter]);
 
   const vendorPicker = useVendorFilterOptions({
-    search: debouncedVendorSearch,
+    search: vendorSearch,
     selectedOption: selectedVendorOption,
   });
   const purchaseOrderPicker = usePurchaseOrderFilterOptions({
     projectId,
-    search: debouncedPurchaseOrderSearch,
+    search: purchaseOrderSearch,
     selectedOption: selectedPurchaseOrderOption,
   });
   const columns = useInvoiceListColumns(projectId);

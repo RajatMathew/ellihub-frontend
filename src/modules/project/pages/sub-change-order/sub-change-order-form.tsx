@@ -20,7 +20,6 @@ import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
@@ -553,15 +552,14 @@ function usePurchaseOrderOptions({
   selectedOption?: InfiniteSearchSelectOption;
 }) {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebouncedValue(search.trim(), 250);
 
   const query = useInfiniteQuery({
-    queryKey: ['purchase-orders', 'picker', projectId, debouncedSearch],
+    queryKey: ['purchase-orders', 'picker', projectId, search],
     queryFn: ({ pageParam }) =>
       poApi.list({
         projectId,
         status: 'ISSUED',
-        search: debouncedSearch || undefined,
+        search: search.trim() || undefined,
         page: pageParam,
         size: 25,
         sortBy: 'createdAt',

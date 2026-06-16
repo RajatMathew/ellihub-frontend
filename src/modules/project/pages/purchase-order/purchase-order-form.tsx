@@ -266,6 +266,26 @@ export function POFormPage() {
     !!selectedRfqId && (selectedRfq ? getRFQStatusName(selectedRfq) === 'AWARDED' : true);
   const isVendorLocked = isAwardedRfqSelected;
   const selectedVendorOption = useMemo<VendorPickerOption | undefined>(() => {
+    if (selectedVendorId) {
+      if (selectedVendorId === selectedRfqAwardedVendorId && selectedRfqAwardedVendorName) {
+        return {
+          value: selectedVendorId,
+          label: selectedRfqAwardedVendorName,
+        };
+      }
+      const existingVendorId = existingPO?.vendorId ?? existingPO?.vendor?.id;
+      if (selectedVendorId === existingVendorId && existingPO?.vendor?.name) {
+        return {
+          value: selectedVendorId,
+          label: existingPO.vendor.name,
+        };
+      }
+      return {
+        value: selectedVendorId,
+        label: selectedVendorDetail?.name ?? selectedVendorId,
+      };
+    }
+
     if (selectedRfqAwardedVendorId) {
       return {
         value: selectedRfqAwardedVendorId,
@@ -281,22 +301,15 @@ export function POFormPage() {
       };
     }
 
-    if (selectedVendorId) {
-      return {
-        value: selectedVendorId,
-        label: selectedVendorDetail?.name ?? selectedVendorId,
-      };
-    }
-
     return undefined;
   }, [
-    existingPO?.vendor?.id,
-    existingPO?.vendor?.name,
-    existingPO?.vendorId,
+    selectedVendorId,
     selectedRfqAwardedVendorId,
     selectedRfqAwardedVendorName,
+    existingPO?.vendorId,
+    existingPO?.vendor?.id,
+    existingPO?.vendor?.name,
     selectedVendorDetail?.name,
-    selectedVendorId,
   ]);
   const vendorPicker = useVendorPickerOptions({
     search: vendorSearch,

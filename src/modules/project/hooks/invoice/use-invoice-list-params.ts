@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
   INVOICE_DEFAULT_PAGE_SIZE,
@@ -26,8 +25,7 @@ export function useInvoiceListParams() {
 
   const [vendorSearch, setVendorSearch] = useState('');
   const [purchaseOrderSearch, setPurchaseOrderSearch] = useState('');
-  const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
-  const debouncedPurchaseOrderSearch = useDebouncedValue(purchaseOrderSearch.trim(), 250);
+
 
   const updateParams = useCallback(
     (patch: InvoiceListParamPatch) => {
@@ -67,8 +65,6 @@ export function useInvoiceListParams() {
     paidFilter,
     vendorSearch,
     purchaseOrderSearch,
-    debouncedVendorSearch,
-    debouncedPurchaseOrderSearch,
     setVendorSearch,
     setPurchaseOrderSearch,
     updateParams,
