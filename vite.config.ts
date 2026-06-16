@@ -68,10 +68,14 @@ export default defineConfig({
         enabled: false,
       },
       workbox: {
+        // =======DO NOT CHANGE THESE 4 ======= //
+        // =======DO NOT CHANGE THESE 4 ======= //
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false,
         navigateFallbackDenylist: [/^\/api($|\/)/],
+        // =======DO NOT CHANGE THE ABOVE 4 ======= //
+        // =======DO NOT CHANGE THE ABOVE 4 ======= //
       },
       manifest: {
         name: 'ElliHub',
