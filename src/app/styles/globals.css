@@ -1,0 +1,279 @@
+/* Tailwind Core */
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+/** Dark Mode Variant **/
+@custom-variant dark (&:is(.dark *));
+
+/** Colors - https://tailwindcss.com/docs/colors **/
+:root {
+  --background: #fff;
+  --main-background: #f5f5f5;
+  --form-background: var(--color-zinc-100);
+  --foreground: var(--color-zinc-950);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-950);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-zinc-950);
+  --primary: var(--color-emerald-600);
+  --primary-hover: var(--color-emerald-700);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-zinc-100);
+  --secondary-foreground: var(--color-zinc-900);
+  --muted: var(--color-zinc-100);
+  --muted-foreground: var(--color-zinc-500);
+  --project-tabs-background: #f8f9fa;
+  --sidebar-hover-foreground: var(--color-green-400);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-900);
+  --success: var(--color-emerald-600);
+  --success-foreground: var(--color-white);
+  --warning: var(--color-amber-500);
+  --warning-foreground: var(--color-amber-950);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --chart-1: var(--color-blue-500);
+  --chart-2: var(--color-green-500);
+  --chart-3: var(--color-yellow-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-purple-500);
+  --border: oklch(94% 0.004 286.32);
+  /* between --color-zinc-100 and --color-zinc-200 */
+  --input: var(--color-zinc-200);
+  --ring: var(--color-zinc-400);
+  --radius: 0.5rem;
+  --card-header: var(--color-slate-50);
+  --card-header-foreground: var(--color-zinc-950);
+  --card-header-border: var(--color-purple-950);
+  --teal-header-accent: var(--color-purple-800);
+  --teal-header-accent-foreground: var(--color-white);
+  --info: var(--color-green-600);
+  --fieldwire-status-draft: var(--color-amber-500);
+  --fieldwire-status-neutral: var(--color-slate-400);
+  --fieldwire-status-pending: var(--color-blue-500);
+  --fieldwire-status-approved: var(--color-emerald-500);
+  --fieldwire-status-rejected: var(--color-red-500);
+  --label-light: lab(47.8878 1.65477 -5.77283);
+  --label-lighter: lab(35.1166 1.78212 -6.1173);
+  --separator: lab(96.1634 0.0993311 -0.364041);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  --background: #0f0f0f;
+  --main-background: var(--background);
+  --form-background: var(--color-zinc-900);
+  /* zinc-950 but standard black */
+  --foreground: var(--color-zinc-50);
+  --card: #0d0d0d;
+  /* Slightly teal-tinted near-black for elevation */
+  --card-foreground: var(--color-zinc-50);
+  --popover: oklch(14.43% 0.005 200);
+  --popover-foreground: var(--color-zinc-50);
+  --primary: var(--color-emerald-600);
+  --primary-hover: var(--color-emerald-700);
+  --primary-foreground: var(--color-white);
+  --secondary: var(--color-zinc-800);
+  --secondary-foreground: var(--color-zinc-50);
+  --muted: var(--color-zinc-800);
+  --muted-foreground: var(--color-zinc-400);
+  --project-tabs-background: #131313;
+  --sidebar-hover-foreground: var(--color-green-400);
+  --accent: var(--color-zinc-800);
+  --accent-foreground: var(--color-zinc-50);
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-950);
+  --warning: var(--color-amber-400);
+  --warning-foreground: var(--color-amber-950);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --chart-1: var(--color-blue-500);
+  --chart-2: var(--color-green-500);
+  --chart-3: var(--color-yellow-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-purple-500);
+  --border: var(--color-zinc-800);
+  --input: var(--color-zinc-800);
+  --ring: var(--color-zinc-600);
+  --card-header: #131313;
+  --card-header-foreground: var(--color-white);
+  --card-header-border: var(--color-purple-950);
+  --teal-header-accent: var(--color-purple-800);
+  --teal-header-accent-foreground: var(--color-white);
+  --info: var(--color-green-500);
+  --fieldwire-status-draft: var(--color-amber-500);
+  --fieldwire-status-neutral: var(--color-slate-400);
+  --fieldwire-status-pending: var(--color-blue-500);
+  --fieldwire-status-approved: var(--color-emerald-500);
+  --fieldwire-status-rejected: var(--color-red-500);
+  --label-light: lab(70 2 -7);
+  --label-lighter: lab(60 2 -7);
+  --separator: var(--color-zinc-800);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.3), -1px 0 4px rgba(0, 0, 0, 0.2);
+}
+
+/** Theme Setup **/
+@theme inline {
+  /** Base Colors **/
+  --color-background: var(--background);
+  --color-main-background: var(--main-background);
+  --color-form-background: var(--form-background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-project-tabs-background: var(--project-tabs-background);
+  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-card-header: var(--card-header);
+  --color-card-header-foreground: var(--card-header-foreground);
+  --color-card-header-border: var(--card-header-border);
+  --color-teal-header-accent: var(--teal-header-accent);
+  --color-teal-header-accent-foreground: var(--teal-header-accent-foreground);
+  --color-info: var(--info);
+  --color-fieldwire-status-draft: var(--fieldwire-status-draft);
+  --color-fieldwire-status-neutral: var(--fieldwire-status-neutral);
+  --color-fieldwire-status-pending: var(--fieldwire-status-pending);
+  --color-fieldwire-status-approved: var(--fieldwire-status-approved);
+  --color-fieldwire-status-rejected: var(--fieldwire-status-rejected);
+  --color-label-light: var(--label-light);
+  --color-label-lighter: var(--label-lighter);
+  --color-separator: var(--separator);
+
+  /** Base Styles **/
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --shadow-left-panel: var(--left-panel-shadow);
+
+  /** Animations **/
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+}
+
+/** Global Styles **/
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* html {
+    overflow-x: hidden;
+  } */
+
+  body {
+    @apply bg-background text-foreground;
+    font-family:
+      'IBM Plex Sans',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'Roboto',
+      'Oxygen',
+      'Ubuntu',
+      'Cantarell',
+      'Fira Sans',
+      'Droid Sans',
+      'Helvetica Neue',
+      sans-serif;
+  }
+
+  *:focus-visible {
+    @apply outline-ring! rounded-xs! shadow-none! outline-2! outline-offset-3! transition-none!;
+  }
+
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+}
+
+/** Custom Scrollbar **/
+@layer base {
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--input);
+    border-radius: 5px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
+  }
+}
+
+/** Smooth scroll **/
+html {
+  scroll-behavior: smooth;
+}
+
+/** Custom Containers **/
+@utility container {
+  @apply mx-auto max-w-none px-4 lg:px-5;
+
+  @media (width >=--theme(--breakpoint-xl)) {
+    @apply max-w-(--breakpoint-xl);
+  }
+}
+
+@utility container-fluid {
+  @apply w-full mx-auto px-4 lg:px-5;
+}
+
+/* Metronic Configs */
+@import './config.metronic.css';

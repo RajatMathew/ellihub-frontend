@@ -1,0 +1,28 @@
+# Build & dependencies
+dist
+dev-dist
+dist-ssr
+node_modules
+bun.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Generated / vendored
+*.min.js
+*.min.css
+coverage
+.next
+.nuxt
+.cache
+
+# Config that may contain sensitive or generated content
+.env*
+!.env.example
+
+# Public assets (usually not source)
+public
+
+# Misc
+*.md
+*.mdx
