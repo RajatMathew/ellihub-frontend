@@ -1,4 +1,5 @@
 import { Search, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -34,6 +35,7 @@ interface RFQListFiltersProps {
   onSearchChange: (value: string) => void;
   onUpdateParams: (patch: RFQListParamPatch) => void;
   onClearFilters: () => void;
+  trailingSlot?: ReactNode;
 }
 
 export function RFQListFilters({
@@ -45,6 +47,7 @@ export function RFQListFilters({
   onSearchChange,
   onUpdateParams,
   onClearFilters,
+  trailingSlot,
 }: RFQListFiltersProps) {
   const trackOptions: ProjectFilterTabOption[] = [
     { label: 'All', value: undefined },
@@ -105,6 +108,8 @@ export function RFQListFilters({
               Clear
             </Button>
           )}
+
+          {trailingSlot}
         </div>
       </CardToolbar>
     </CardHeader>

@@ -85,9 +85,10 @@ export function SidebarGroupMenu({
     () => ({
       item:
         classNames.item ||
-        'h-8 px-2.5 text-sm font-normal text-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
+        'h-8 px-2.5 text-sm font-normal text-foreground hover:!bg-white/10 hover:!text-[#c75e40] data-[selected=true]:bg-white/10 data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
       subTrigger:
-        classNames.subTrigger || 'text-xs font-normal text-muted-foreground hover:bg-transparent',
+        classNames.subTrigger ||
+        'h-8 px-2.5 text-sm font-normal text-foreground hover:!bg-white/10 hover:!text-[#c75e40]',
       subContent: classNames.subContent || 'ps-0',
     }),
     [classNames]
@@ -95,11 +96,15 @@ export function SidebarGroupMenu({
 
   return (
     <AccordionMenu
-      selectedValue={`${name}-trigger`}
+      // `key={pathname}` forces the accordion to remount when the page changes,
+      // resetting any groups the user manually opened back to closed.
+      key={pathname}
+      // Selection driven only by route match (for active-item highlighting);
+      // no group auto-opens by name, so all groups start collapsed on every page.
+      selectedValue={undefined}
       matchPath={matchPath}
       type="single"
       collapsible
-      defaultValue={`${name}-trigger`}
       className={containerClassName}
       classNames={defaultClassNames}
     >

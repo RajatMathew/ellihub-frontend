@@ -29,17 +29,18 @@ export default function Sidebar({
     }
   }
   return (
-    <div className="bg-[#191919] overflow-hidden border border-border">
+    <div className="bg-[#15304E] overflow-hidden border border-[#15304E]">
       <SidebarHeader />
       <ScrollArea className="shrink-0 h-[calc(100vh-6rem)] lg:h-[calc(100vh-7rem)] mt-0 mb-2.5 min-w-60 ">
         <SidebarAnimatedContent menuConfig={menuConfig} mode={mode} />
       </ScrollArea>
       <footer
-        className="shrink-0 px-3 py-2 border-t border-border"
+        className="shrink-0 px-4 py-3 border-t border-white/10"
         title="Double click to check for updates"
       >
         <span
-          className="text-muted-foreground text-[7pt] font-mono text-center block"
+          className="block text-[10px] font-semibold tracking-wide"
+          style={{ color: '#E0A94D' }}
           title={`Current version: v${__APP_VERSION__}. Double click to check for updates.`}
           onDoubleClick={() => {
             try {
@@ -49,7 +50,7 @@ export default function Sidebar({
             }
           }}
         >
-          {__APP_VERSION__}
+          Powered by Claude Ecosystem
         </span>
       </footer>
     </div>

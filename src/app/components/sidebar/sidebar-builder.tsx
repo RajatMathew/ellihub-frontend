@@ -33,6 +33,8 @@ function filterMenuForAccess(
   const filtered = menuConfig
     .map((item) => {
       if (item.type === 'separator') return item;
+      // Custom-render groups manage their own access internally; let them through.
+      if (item.type === 'custom') return item;
       if (!item.children) return null;
 
       const children = item.children.filter((child) => {
@@ -96,7 +98,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
           return <SidebarCustomMenu key={key} menu={[group]} />;
 
         case 'separator':
-          return <Separator key={key} className="my-2.5" />;
+          return <Separator key={key} className="my-2.5 bg-white/15" />;
 
         default:
           return null;

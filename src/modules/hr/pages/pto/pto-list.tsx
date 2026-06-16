@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
+import { Card } from '@/app/components/ui/card';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
 import {
   PTOListStats,
   PTOListToolbar,
@@ -12,6 +15,11 @@ import {
   type PTODecisionTarget,
 } from '@/modules/hr/components/pto/shared';
 import {
+  formatPTODate,
+  getPTOEmployeeName,
+  getPTOTypeLabel,
+} from '@/modules/hr/components/pto/shared/pto-utils';
+import {
   isPTOSortByField,
   PTO_DEFAULT_PAGE_SIZE,
 } from '@/modules/hr/constants/pto/pto-list.constants';
@@ -23,13 +31,50 @@ import {
   useRejectPTOMutation,
 } from '@/modules/hr/hooks/pto.hooks';
 import { usePTOListParams } from '@/modules/hr/hooks/pto/use-pto-list-params';
-import type { ListPTOParams } from '@/modules/hr/schemas/pto.schema';
+import type { ListPTOParams, PTO } from '@/modules/hr/schemas/pto.schema';
 import {
   getCoreRowModel,
   getPaginationRowModel,
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
+
+type PTOPipelineKey = 'pending' | 'approved' | 'rejected';
+
+const PTO_PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<PTOPipelineKey>> = [
+  { key: 'pending', label: 'Pending', accent: '#b8860b' },
+  { key: 'approved', label: 'Approved', accent: '#2d6a4f' },
+  { key: 'rejected', label: 'Rejected', accent: '#dc2626' },
+];
+
+function classifyPTOStatus(request: PTO): PTOPipelineKey {
+  const key = (request.status ?? 'PENDING').toLowerCase();
+  if (key === 'approved') return 'approved';
+  if (key === 'rejected') return 'rejected';
+  return 'pending';
+}
+
+function PTOPipelineCard({ request }: { request: PTO }) {
+  const employeeName = getPTOEmployeeName(request);
+  const typeLabel = getPTOTypeLabel(request);
+  const dateRange = `${formatPTODate(request.startDate)} - ${formatPTODate(request.endDate)}`;
+
+  return (
+    <Link
+      to={request.id}
+      className="flex flex-col gap-1 rounded-sm border border-zinc-300/70 bg-card p-3 shadow-none transition-colors hover:border-zinc-400/60 dark:border-zinc-600/80 dark:bg-zinc-950/50"
+    >
+      <div className="truncate text-sm font-semibold leading-tight text-foreground">
+        {employeeName}
+      </div>
+      <div className="truncate text-xs text-foreground/60">{typeLabel}</div>
+      <div className="mt-1 truncate text-[0.625rem] font-medium uppercase tracking-wider text-muted-foreground">
+        {dateRange}
+      </div>
+    </Link>
+  );
+}
 
 export default function PTOListPage() {
   const {
@@ -138,24 +183,51 @@ export default function PTOListPage() {
     });
   }, [deleteMutation, deleteTarget]);
 
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('time-off', 'list');
+
   return (
     <div className="container-fluid py-7.5">
       <PTOListToolbar totalCount={totalCount} searchQuery={searchQuery} />
       <PTOListStats stats={stats} isLoading={isStatsLoading} />
 
-      <div className="pt-5">
-        <PTOTableCard
-          table={table}
-          totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          isRefetching={isRefetching}
-          searchInput={searchInput}
-          searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          onClearSearch={clearSearch}
-          onRetry={() => void refetch()}
+      <div className="mb-3 mt-5 flex justify-end">
+        <ViewSwitcher
+          views={[
+            { key: 'list', label: 'List' },
+            { key: 'pipeline', label: 'Pipeline' },
+          ]}
+          active={view}
+          onChange={setView}
         />
+      </div>
+
+      <div>
+        {view === 'list' ? (
+          <PTOTableCard
+            table={table}
+            totalCount={totalCount}
+            isLoading={isLoading}
+            isError={isError}
+            isRefetching={isRefetching}
+            searchInput={searchInput}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            onClearSearch={clearSearch}
+            onRetry={() => void refetch()}
+          />
+        ) : (
+          <Card className="overflow-hidden">
+            <div className="p-4 lg:p-6">
+              <PipelineBoard<PTO, PTOPipelineKey>
+                items={listData}
+                columns={PTO_PIPELINE_COLUMNS}
+                groupOf={classifyPTOStatus}
+                renderCard={(request) => <PTOPipelineCard request={request} />}
+                emptyLabel="No requests"
+              />
+            </div>
+          </Card>
+        )}
       </div>
 
       <PTODeleteDialog

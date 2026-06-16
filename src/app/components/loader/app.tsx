@@ -71,7 +71,7 @@ export function AppLoadingScreen({ complete = false }: { complete?: boolean }) {
         <div className="space-y-2">
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-linear-to-r from-accent via-primary to-secondary transition-all duration-200 ease-out relative"
+              className="h-full bg-primary transition-all duration-200 ease-out relative"
               style={{ width: `${progress}%` }}
             >
               {/* Shimmer Effect */}

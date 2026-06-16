@@ -8,52 +8,54 @@
 
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
-  --background: #fff;
-  --main-background: #f5f5f5;
-  --form-background: var(--color-zinc-100);
-  --foreground: var(--color-zinc-950);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-950);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-emerald-600);
-  --primary-hover: var(--color-emerald-700);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-100);
-  --secondary-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-500);
-  --project-tabs-background: #f8f9fa;
-  --sidebar-hover-foreground: var(--color-green-400);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --success: var(--color-emerald-600);
-  --success-foreground: var(--color-white);
-  --warning: var(--color-amber-500);
-  --warning-foreground: var(--color-amber-950);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: oklch(94% 0.004 286.32);
-  /* between --color-zinc-100 and --color-zinc-200 */
-  --input: var(--color-zinc-200);
-  --ring: var(--color-zinc-400);
-  --radius: 0.5rem;
-  --card-header: var(--color-slate-50);
-  --card-header-foreground: var(--color-zinc-950);
-  --card-header-border: var(--color-purple-950);
-  --teal-header-accent: var(--color-purple-800);
-  --teal-header-accent-foreground: var(--color-white);
-  --info: var(--color-green-600);
-  --fieldwire-status-draft: var(--color-amber-500);
-  --fieldwire-status-neutral: var(--color-slate-400);
-  --fieldwire-status-pending: var(--color-blue-500);
-  --fieldwire-status-approved: var(--color-emerald-500);
-  --fieldwire-status-rejected: var(--color-red-500);
+  /* ELLI Universe Platform V6.2 — editorial palette
+     (cream paper + single navy accent), aligned with Build Principles V1.0:
+     one selection color (navy), warm neutral background, sharp 2px corners. */
+  --background: #f8f4ed;            /* paper */
+  --main-background: #f1ece2;       /* paper-2 */
+  --form-background: #ffffff;       /* surface white per brief */
+  --foreground: #1a1410;            /* ink */
+  --card: #ffffff;
+  --card-foreground: #1a1410;
+  --popover: #ffffff;
+  --popover-foreground: #1a1410;
+  --primary: #1a3a5f;               /* navy — single accent */
+  --primary-hover: #112b47;         /* navy-deep */
+  --primary-foreground: #fdfbf6;
+  --secondary: #ebeef3;             /* navy-soft */
+  --secondary-foreground: #112b47;
+  --muted: #f1ece2;
+  --muted-foreground: #6b6359;      /* ink-3 */
+  --project-tabs-background: #ffffff;  /* white tab-strip row */
+  --sidebar-hover-foreground: #c75e40;   /* clay — Claude accent (used sparingly) */
+  --accent: #ebeef3;
+  --accent-foreground: #1a3a5f;
+  --success: #2d6a4f;               /* ok — completion green per brief */
+  --success-foreground: #ffffff;
+  --warning: #b8860b;
+  --warning-foreground: #f7efd9;
+  --destructive: #dc2626;           /* required red per brief */
+  --destructive-foreground: #ffffff;
+  --chart-1: #1a3a5f;
+  --chart-2: #2d6a4f;
+  --chart-3: #b8860b;
+  --chart-4: #c75e40;
+  --chart-5: #6b6359;
+  --border: #d5cfc0;                /* line — soft divider for cards / sections */
+  --input: #6b6359;                 /* ink-3 — crisp border for inputs/selects on cream */
+  --ring: #1a3a5f;                  /* focus = navy */
+  --radius: 0.5rem;                 /* 8px — slight editorial radius across the app */
+  --card-header: #1a3a5f;            /* navy banner */
+  --card-header-foreground: #E0A94D;  /* gold lettering on navy */
+  --card-header-border: #112b47;
+  --teal-header-accent: #1a3a5f;     /* navy — no purple per brief */
+  --teal-header-accent-foreground: #fdfbf6;
+  --info: #1a3a5f;
+  --fieldwire-status-draft: #b8860b;
+  --fieldwire-status-neutral: #9a9286;
+  --fieldwire-status-pending: #1a3a5f;
+  --fieldwire-status-approved: #2d6a4f;
+  --fieldwire-status-rejected: #dc2626;
   --label-light: lab(47.8878 1.65477 -5.77283);
   --label-lighter: lab(35.1166 1.78212 -6.1173);
   --separator: lab(96.1634 0.0993311 -0.364041);
@@ -71,15 +73,15 @@
   --card-foreground: var(--color-zinc-50);
   --popover: oklch(14.43% 0.005 200);
   --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-emerald-600);
-  --primary-hover: var(--color-emerald-700);
-  --primary-foreground: var(--color-white);
+  --primary: #4f7da8;                /* lighter navy for dark mode contrast */
+  --primary-hover: #6d97c0;
+  --primary-foreground: #0f0f0f;
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
   --muted: var(--color-zinc-800);
   --muted-foreground: var(--color-zinc-400);
   --project-tabs-background: #131313;
-  --sidebar-hover-foreground: var(--color-green-400);
+  --sidebar-hover-foreground: #c75e40;
   --accent: var(--color-zinc-800);
   --accent-foreground: var(--color-zinc-50);
   --success: var(--color-emerald-500);
@@ -203,20 +205,28 @@
 
   body {
     @apply bg-background text-foreground;
+    /* DM Sans per Build Principles V1.0 + General Sans (V6.2 editorial) */
     font-family:
+      'General Sans',
+      'DM Sans',
       'IBM Plex Sans',
       system-ui,
       -apple-system,
       BlinkMacSystemFont,
       'Segoe UI',
       'Roboto',
-      'Oxygen',
-      'Ubuntu',
-      'Cantarell',
-      'Fira Sans',
-      'Droid Sans',
       'Helvetica Neue',
       sans-serif;
+    /* Subtle paper-grain dot texture, V6.2 editorial */
+    background-image: radial-gradient(circle at 1px 1px, rgba(26, 20, 16, 0.022) 1px, transparent 0);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Fraunces', 'Georgia', serif;
+    font-feature-settings: 'ss01' on;
+    letter-spacing: -0.01em;
   }
 
   *:focus-visible {

@@ -82,7 +82,7 @@ export function PTODecisionDialog({
         <div className="py-4">
           <Field data-invalid={noteError}>
             <FieldLabel className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest">
-              Internal Note <span className="text-destructive">*</span>
+              Internal Note <span className="text-destructive">Required</span>
             </FieldLabel>
             <Textarea
               placeholder="Why are you making this decision?"

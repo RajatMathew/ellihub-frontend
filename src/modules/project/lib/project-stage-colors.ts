@@ -1,11 +1,14 @@
+// V6.2 editorial palette — stage swatches drawn only from navy / clay / ok /
+// warn / ink so the system stays single-accent at the page level.
+// (Build Principles V1.0 §11/04.)
 const PROJECT_STAGE_SWATCH_CLASSES: Array<[string, string]> = [
-  ['INSTALLATION', 'bg-blue-600'],
-  ['FABRICATION', 'bg-amber-600'],
-  ['SUBMITTAL', 'bg-violet-600'],
-  ['BUYOUT', 'bg-cyan-600'],
-  ['CLOSEOUT', 'bg-slate-500'],
-  ['PUNCH', 'bg-red-600'],
-  ['ONBOARDING', 'bg-indigo-500'],
+  ['INSTALLATION', 'bg-[#1a3a5f]'],     // navy
+  ['FABRICATION', 'bg-[#b8860b]'],      // warn-gold
+  ['SUBMITTAL', 'bg-[#c75e40]'],        // clay
+  ['BUYOUT', 'bg-[#2d6a4f]'],           // ok-green
+  ['CLOSEOUT', 'bg-[#6b6359]'],         // ink-3
+  ['PUNCH', 'bg-[#dc2626]'],            // required red
+  ['ONBOARDING', 'bg-[#9a9286]'],       // ink-4
 ];
 
 export function getProjectStageSwatchClassName(stageName?: string | null) {

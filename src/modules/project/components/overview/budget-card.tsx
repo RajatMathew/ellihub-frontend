@@ -28,7 +28,7 @@ export function BudgetCard({
   return (
     <Card className={cn('flex min-h-80 flex-col', className)}>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">Budget</CardTitle>
+        <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">Budget</CardTitle>
       </CardHeader>
       <CardContent className="flex grow flex-col p-0 sm:p-0">
         <div className="flex flex-col px-5 py-5">

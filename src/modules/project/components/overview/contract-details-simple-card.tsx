@@ -59,7 +59,7 @@ export function ContractDetailsSimpleCard({ project }: ContractDetailsSimpleCard
   return (
     <Card className="flex min-h-80 flex-col">
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+        <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
           Contract Details
         </CardTitle>
       </CardHeader>

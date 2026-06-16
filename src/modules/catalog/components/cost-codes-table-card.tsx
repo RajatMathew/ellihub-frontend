@@ -42,7 +42,7 @@ export function CostCodesTableCard({
   return (
     <Card>
       <CardHeader>
-        <div className="-mx-1 flex min-w-0 overflow-x-auto px-1">
+        <div className="-mx-1 flex min-w-0 overflow-x-auto border-b border-[#a09683] px-1">
           {isCategoriesLoading
             ? Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="shrink-0 px-3 py-1.5">
@@ -53,10 +53,10 @@ export function CostCodesTableCard({
                 <button
                   key={tab.label}
                   type="button"
-                  className={`shrink-0 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
+                  className={`-mb-px shrink-0 border-b-2 px-3 py-1.5 text-xs uppercase tracking-widest transition-colors ${
                     categoryFilter === tab.value
-                      ? 'text-foreground border-b-2 border-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'border-primary font-semibold text-primary'
+                      : 'border-transparent font-medium text-foreground/75 hover:text-primary'
                   }`}
                   onClick={() => onCategoryChange(tab.value)}
                 >

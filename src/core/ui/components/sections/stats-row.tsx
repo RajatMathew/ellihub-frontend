@@ -40,7 +40,7 @@ export function StatsRow({ items, className }: StatsRowProps) {
   return (
     <div
       className={cn(
-        'grid rounded-sm border border-gray-200 bg-background shadow-sm',
+        'grid rounded-sm border border-gray-200 bg-card shadow-sm',
         items.length === 4 && 'grid-cols-4',
         items.length === 3 && 'grid-cols-3',
         items.length === 2 && 'grid-cols-2',

@@ -1,8 +1,12 @@
 import { useCallback, useMemo } from 'react';
 
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { Card } from '@/app/components/ui/card';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
 import { useAccess } from '@/app/contexts/access-context';
 import { GCStatsCards, GCTableCard, useGCListColumns } from '@/modules/directory/components/gc';
+import { getGCPrimaryContact } from '@/modules/directory/components/gc/gc-list-utils';
 import {
   GCS_DEFAULT_PAGE_SIZE,
   isGCsSortByField,
@@ -14,7 +18,7 @@ import {
   useGCTypesQuery,
 } from '@/modules/directory/hooks/gc.hooks';
 import { useGCListParams } from '@/modules/directory/hooks/gc/use-gc-list-params';
-import type { ListGCsParams } from '@/modules/directory/schemas/gc.schema';
+import type { GeneralContractor, ListGCsParams } from '@/modules/directory/schemas/gc.schema';
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -22,6 +26,46 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+type GCPipelineKey = 'private' | 'public' | 'other';
+
+const GC_PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<GCPipelineKey>> = [
+  { key: 'private', label: 'Private', accent: '#1a3a5f' },
+  { key: 'public', label: 'Public', accent: '#c75e40' },
+  { key: 'other', label: 'Other', accent: '#9a9286' },
+];
+
+function classifyGC(gc: GeneralContractor): GCPipelineKey {
+  const code = (gc.gcType?.code ?? '').toLowerCase();
+  if (code === 'private') return 'private';
+  if (code === 'public') return 'public';
+  return 'other';
+}
+
+function GCPipelineCard({ gc }: { gc: GeneralContractor }) {
+  const primaryContact = getGCPrimaryContact(gc);
+  const activeProjects = gc.activeProjects ?? 0;
+
+  return (
+    <Link
+      to={`${gc.id}`}
+      className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
+      <div className="flex flex-col gap-1.5 rounded-sm border border-zinc-300/70 bg-card p-3 shadow-none transition-colors hover:border-zinc-400/60 dark:border-zinc-600/80 dark:bg-zinc-950/50">
+        <div className="truncate text-sm font-semibold leading-tight text-foreground">
+          {gc.name}
+        </div>
+        {primaryContact?.fullName && (
+          <div className="truncate text-xs text-foreground/60">{primaryContact.fullName}</div>
+        )}
+        <div className="mt-1 text-[0.625rem] font-medium uppercase tracking-wider text-muted-foreground">
+          {activeProjects} active project{activeProjects === 1 ? '' : 's'}
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export function GCListPage() {
   const { can } = useAccess();
@@ -77,6 +121,8 @@ export function GCListPage() {
     },
     [deleteMutation]
   );
+
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('general-contractors', 'list');
 
   const columns = useGCListColumns({
     typeLabels,
@@ -156,23 +202,48 @@ export function GCListPage() {
         totalCommitted={stats?.totalCommitted ?? visibleCommitted}
       />
 
-      <GCTableCard
-        table={table}
-        typeTabs={typeTabs}
-        gcTypeIdFilter={gcTypeIdFilter}
-        statusFilter={statusFilter}
-        searchInput={searchInput}
-        isLoading={isLoading}
-        isTypesLoading={isTypesLoading}
-        isError={isError}
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={handleSearchChange}
-        onTypeChange={(typeId) => updateParams({ gcTypeId: typeId, page: undefined })}
-        onStatusChange={(status) => updateParams({ status, page: undefined })}
-        onClearFilters={clearFilters}
-        onRetry={() => void refetch()}
-      />
+      <div className="mb-3 flex justify-end">
+        <ViewSwitcher
+          views={[
+            { key: 'list', label: 'List' },
+            { key: 'pipeline', label: 'Pipeline' },
+          ]}
+          active={view}
+          onChange={setView}
+        />
+      </div>
+
+      {view === 'list' ? (
+        <GCTableCard
+          table={table}
+          typeTabs={typeTabs}
+          gcTypeIdFilter={gcTypeIdFilter}
+          statusFilter={statusFilter}
+          searchInput={searchInput}
+          isLoading={isLoading}
+          isTypesLoading={isTypesLoading}
+          isError={isError}
+          totalCount={totalCount}
+          hasActiveFilters={hasActiveFilters}
+          onSearchChange={handleSearchChange}
+          onTypeChange={(typeId) => updateParams({ gcTypeId: typeId, page: undefined })}
+          onStatusChange={(status) => updateParams({ status, page: undefined })}
+          onClearFilters={clearFilters}
+          onRetry={() => void refetch()}
+        />
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="p-4 lg:p-6">
+            <PipelineBoard<GeneralContractor, GCPipelineKey>
+              items={listData}
+              columns={GC_PIPELINE_COLUMNS}
+              groupOf={classifyGC}
+              renderCard={(gc) => <GCPipelineCard gc={gc} />}
+              emptyLabel="No general contractors"
+            />
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

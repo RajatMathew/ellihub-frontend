@@ -5,7 +5,7 @@ import { toAbsoluteUrl } from '@app/lib/helpers';
 
 export function BrandedLayout() {
   return (
-    <div className="flex grow bg-linear-90 from-gray-200 to-white dark:from-gray-800 dark:to-gray-900">
+    <div className="flex grow bg-background">
       <style>
         {`
           .branded-bg {
