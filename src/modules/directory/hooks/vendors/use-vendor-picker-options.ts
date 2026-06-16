@@ -74,7 +74,7 @@ export function useVendorPickerOptions({
           .filter((option) => !excluded.has(option.value) || selectedIds.has(option.value)),
       ) ?? [];
 
-    return dedupeOptions([...selectedOptions, ...fetched]);
+    return dedupeOptions([...fetched, ...selectedOptions]);
   }, [excludedIds, query.data?.pages, selectedOptions]);
 
   return {
