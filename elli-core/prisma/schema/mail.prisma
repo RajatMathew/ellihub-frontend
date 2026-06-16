@@ -1,0 +1,48 @@
+model SentEmailLog {
+  id String @id
+
+  feature String?
+
+  entityType String?
+  entityId   String?
+
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  provider String @default("microsoftGraph")
+
+  from String
+  to   String[]
+  cc   String[] @default([])
+  bcc  String[] @default([])
+
+  subject  String
+  bodyHtml String @db.Text
+
+  status SentEmailStatus
+
+  providerStatus   Int?
+  providerResponse Json?
+  error            String? @db.Text
+
+  attachments Json
+  metadata    Json?
+
+  sentAt DateTime?
+
+  createdBy     String?
+  createdByUser User?   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entityType, entityId, sentAt(sort: Desc)])
+  @@index([relatedEntityType, relatedEntityId, sentAt(sort: Desc)])
+  @@index([feature, sentAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+}
+
+enum SentEmailStatus {
+  SENT
+  FAILED
+}
