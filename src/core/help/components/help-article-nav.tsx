@@ -1,17 +1,10 @@
 import { useMemo, useState } from 'react';
 
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@app/components/ui/button';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@app/components/ui/accordion';
 import { Input, InputGroup, InputWrapper } from '@app/components/ui/input';
-import { ScrollArea } from '@app/components/ui/scroll-area';
 import { cn } from '@app/lib/utils';
 import type { HelpArticle, HelpSection } from '@core/help/types';
 
@@ -50,23 +43,31 @@ export function HelpArticleNav({
     [query, sections]
   );
 
+  // All sections open by default
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (title: string) => {
+    setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
   return (
-    <aside className={cn('flex min-h-0 flex-col border-e bg-muted/70', className)}>
-      <div className="border-b p-4 flex flex-col gap-3">
+    <aside className={cn('flex min-h-0 flex-col border-e bg-zinc-50 dark:bg-zinc-900/60 overflow-hidden', className)}>
+      {/* Header */}
+      <div className="shrink-0 border-b border-border/50 px-4 pt-3 pb-4 flex flex-col gap-3">
         <Button
           asChild
           className="justify-start -ms-2 px-2 text-muted-foreground hover:text-foreground"
           size="sm"
           variant="ghost"
         >
-          <Link to="/">
+          <Link to="/app/projects">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to home
+            Back to app
           </Link>
         </Button>
         <InputGroup>
           <InputWrapper>
-            <Search />
+            <Search className="text-muted-foreground/50" />
             <Input
               aria-label="Search help articles"
               className="min-w-0"
@@ -78,54 +79,65 @@ export function HelpArticleNav({
         </InputGroup>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3 p-3">
+      {/* Nav */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <nav className="py-3">
           {filteredSections.length === 0 ? (
-            <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
-              No help articles found.
-            </div>
+            <p className="px-5 text-sm text-muted-foreground">No results.</p>
           ) : (
-            <Accordion
-              className="space-y-3"
-              defaultValue={filteredSections.map((section) => section.title)}
-              type="multiple"
-            >
-              {filteredSections.map((section) => (
-                <AccordionItem
-                  className="rounded-md border bg-background px-0"
-                  key={section.title}
-                  value={section.title}
-                >
-                  <AccordionTrigger className="px-3 py-3 text-sm">{section.title}</AccordionTrigger>
-                  <AccordionContent className="px-2 pb-2">
-                    <div className="space-y-1">
-                      {section.articles.map((article) => (
-                        <button
-                          className={cn(
-                            'flex w-full flex-col rounded-md px-3 py-2 text-start text-sm transition-colors hover:bg-accent',
-                            selectedSlug === article.slug &&
-                              'bg-accent font-medium text-accent-foreground'
-                          )}
-                          key={article.slug}
-                          onClick={() => onSelect(article)}
-                          type="button"
-                        >
-                          <span>{article.title}</span>
-                          {article.description && (
-                            <span className="line-clamp-2 text-xs font-normal text-muted-foreground">
-                              {article.description}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            filteredSections.map((section, i) => {
+              const isOpen = !collapsed[section.title];
+              return (
+                <div key={section.title} className={cn(i !== 0 && 'mt-1')}>
+                  {/* Collapsible section header */}
+                  <button
+                    className="group flex w-full items-center justify-between px-4 py-2 text-left transition-colors hover:bg-accent/30"
+                    onClick={() => toggleSection(section.title)}
+                    type="button"
+                  >
+                    <span className="text-[15px] font-semibold text-foreground/80 tracking-tight">
+                      {section.title}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0 text-foreground/70 transition-transform duration-200',
+                        !isOpen && '-rotate-90'
+                      )}
+                    />
+                  </button>
+
+                  {/* Items */}
+                  {isOpen && (
+                    <ul className="pb-1">
+                      {section.articles.map((article) => {
+                        const isActive = selectedSlug === article.slug;
+                        return (
+                          <li key={article.slug}>
+                            <button
+                              className={cn(
+                                'relative w-full text-left text-sm transition-colors duration-100',
+                                'flex items-center pl-5 pr-3 py-[7px] border-l-2',
+                                isActive
+                                  ? 'border-l-blue-600 dark:border-l-blue-400 bg-blue-50 dark:bg-blue-900/20 text-foreground font-medium'
+                                  : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                              )}
+                              onClick={() => onSelect(article)}
+                              type="button"
+                              title={article.title}
+                            >
+                              <span className="block min-w-0 truncate">{article.title}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })
           )}
-        </div>
-      </ScrollArea>
+        </nav>
+      </div>
     </aside>
   );
 }

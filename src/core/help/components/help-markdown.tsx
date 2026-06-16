@@ -1,8 +1,14 @@
+import { useEffect, useRef } from 'react';
 import type React from 'react';
 
+import lightGallery from 'lightgallery';
+import lgZoom from 'lightgallery/plugins/zoom';
 import ReactMarkdown from 'react-markdown';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+
+import 'lightgallery/css/lightgallery.css';
+import 'lightgallery/css/lg-zoom.css';
 
 import { cn } from '@app/lib/utils';
 
@@ -50,6 +56,44 @@ function MediaLink({
       />
       {label && (
         <span className="block border-t px-4 py-2 text-xs text-muted-foreground">{label}</span>
+      )}
+    </span>
+  );
+}
+
+/** Wraps an image in a lightgallery-enabled anchor so clicking opens the fullscreen viewer. */
+function LightGalleryImage({ src, alt }: { src: string; alt: string }) {
+  const containerRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const instance = lightGallery(el, {
+      plugins: [lgZoom],
+      licenseKey: '0000-0000-000-0000',
+      speed: 300,
+      download: false,
+      counter: false,
+    });
+
+    return () => {
+      instance.destroy();
+    };
+  }, [src]);
+
+  return (
+    <span className="my-5 block overflow-hidden rounded-md border bg-background">
+      <a ref={containerRef} href={src} className="block">
+        <img
+          alt={alt}
+          className="w-full cursor-zoom-in object-contain transition-opacity hover:opacity-90"
+          loading="lazy"
+          src={src}
+        />
+      </a>
+      {alt && (
+        <span className="block border-t px-4 py-2 text-xs text-muted-foreground">{alt}</span>
       )}
     </span>
   );
@@ -116,21 +160,7 @@ export function HelpMarkdown({
             );
           },
           img({ alt, src }) {
-            return (
-              <span className="my-5 block overflow-hidden rounded-md border bg-background">
-                <img
-                  alt={alt ?? ''}
-                  className="w-full object-contain"
-                  loading="lazy"
-                  src={src ?? ''}
-                />
-                {alt && (
-                  <span className="block border-t px-4 py-2 text-xs text-muted-foreground">
-                    {alt}
-                  </span>
-                )}
-              </span>
-            );
+            return <LightGalleryImage src={src ?? ''} alt={alt ?? ''} />;
           },
         }}
       >
