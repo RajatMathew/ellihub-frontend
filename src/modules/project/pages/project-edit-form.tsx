@@ -51,6 +51,12 @@ import {
 } from '@/modules/project/hooks';
 import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
 import {
+  buildProjectContractTypeOptions,
+  ensureCurrentStringOption,
+  ensureSelectedOption,
+  normalizeProjectSelectValue,
+} from '@/modules/project/lib/project-form-select-utils';
+import {
   formatProjectStageLabel,
   getProjectStageSwatchClassName,
 } from '@/modules/project/lib/project-stage-colors';
@@ -117,16 +123,35 @@ function ProjectEditFormInner({
       label: formatProjectStageLabel(s.name),
       swatchClassName: getProjectStageSwatchClassName(s.name),
     })) ?? [];
-  const divisionOptions =
+  const stageSelectOptions = ensureSelectedOption(
+    stageOptions,
+    project.stageId
+      ? {
+          value: project.stageId,
+          label: formatProjectStageLabel(
+            project.stage?.name ?? project.stage?.label ?? project.stageId
+          ),
+          swatchClassName: getProjectStageSwatchClassName(
+            project.stage?.name ?? project.stage?.label
+          ),
+        }
+      : null
+  );
+  const baseDivisionOptions =
     divisionsQuery.data?.map((d) => ({
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
-  const contractTypeOptions =
-    contractTypesQuery.data?.map((type) => {
-      const label = type.label || type.name || type.id;
-      return { value: label, label };
-    }) ?? [];
+  const divisionOptions = ensureSelectedOption(
+    baseDivisionOptions,
+    project.divisionId
+      ? {
+          value: project.divisionId,
+          label: project.division?.label ?? project.division?.name ?? project.divisionId,
+        }
+      : null
+  );
+  const contractTypeOptions = buildProjectContractTypeOptions(contractTypesQuery.data);
 
   /* ---- Form setup with existing values ---- */
 
@@ -149,7 +174,9 @@ function ProjectEditFormInner({
       state: project.state ?? '',
       zipCode: project.zipCode ?? '',
       contractValue: project.contractValue ?? primeContract?.contractValue ?? 0,
-      contractType: project.contractType ?? primeContract?.contractType ?? '',
+      contractType: normalizeProjectSelectValue(
+        project.contractType ?? primeContract?.contractType
+      ),
       retainagePercent: project.retainagePercent ?? primeContract?.retainagePercent ?? 0,
       targetBudgetPercent: project.targetBudgetPercent ?? primeContract?.targetBudgetPercent ?? 0,
       taxRate: project.taxRate ?? 0,
@@ -359,7 +386,7 @@ function ProjectEditFormInner({
                       Project Stage
                     </FieldLabel>
                     <SearchableSelect
-                      options={stageOptions}
+                      options={stageSelectOptions}
                       value={field.value || null}
                       onValueChange={(v) => field.onChange(v ?? '')}
                       placeholder="Select stage..."
@@ -664,25 +691,28 @@ function ProjectEditFormInner({
               <Controller
                 name="contractType"
                 control={control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Contract Type
-                    </FieldLabel>
-                    <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select contract type..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contractTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
+                render={({ field }) => {
+                  const visibleContractTypeOptions = ensureCurrentStringOption(
+                    contractTypeOptions,
+                    field.value
+                  );
+
+                  return (
+                    <Field>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Contract Type
+                      </FieldLabel>
+                      <SearchableSelect
+                        options={visibleContractTypeOptions}
+                        value={normalizeProjectSelectValue(field.value) || null}
+                        onValueChange={(value) => field.onChange(value ?? '')}
+                        placeholder="Select contract type..."
+                        searchPlaceholder="Search contract types..."
+                        emptyMessage="No contract types found."
+                      />
+                    </Field>
+                  );
+                }}
               />
             </div>
 

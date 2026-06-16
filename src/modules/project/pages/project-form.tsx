@@ -64,6 +64,12 @@ import {
 } from '@/modules/project/hooks';
 import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
 import {
+  buildProjectContractTypeOptions,
+  ensureCurrentStringOption,
+  ensureSelectedOption,
+  normalizeProjectSelectValue,
+} from '@/modules/project/lib/project-form-select-utils';
+import {
   formatProjectStageLabel,
   getProjectStageSwatchClassName,
 } from '@/modules/project/lib/project-stage-colors';
@@ -143,16 +149,38 @@ export default function ProjectForm() {
       label: formatProjectStageLabel(s.name),
       swatchClassName: getProjectStageSwatchClassName(s.name),
     })) ?? [];
-  const divisionOptions =
+  const stageSelectOptions = ensureSelectedOption(
+    stageOptions,
+    existingProject?.stageId
+      ? {
+          value: existingProject.stageId,
+          label: formatProjectStageLabel(
+            existingProject.stage?.name ?? existingProject.stage?.label ?? existingProject.stageId
+          ),
+          swatchClassName: getProjectStageSwatchClassName(
+            existingProject.stage?.name ?? existingProject.stage?.label
+          ),
+        }
+      : null
+  );
+  const baseDivisionOptions =
     divisionsQuery.data?.map((d) => ({
       value: d.id,
       label: d.label || d.name || 'Unknown',
     })) ?? [];
-  const contractTypeOptions =
-    contractTypesQuery.data?.map((type) => {
-      const label = type.label || type.name || type.id;
-      return { value: label, label };
-    }) ?? [];
+  const divisionOptions = ensureSelectedOption(
+    baseDivisionOptions,
+    existingProject?.divisionId
+      ? {
+          value: existingProject.divisionId,
+          label:
+            existingProject.division?.label ??
+            existingProject.division?.name ??
+            existingProject.divisionId,
+        }
+      : null
+  );
+  const contractTypeOptions = buildProjectContractTypeOptions(contractTypesQuery.data);
 
   /* ---- Form setup ---- */
 
@@ -286,7 +314,9 @@ export default function ProjectForm() {
         state: existingProject.state ?? '',
         zipCode: existingProject.zipCode ?? '',
         contractValue: Number(existingProject.contractValue ?? contract?.contractValue ?? 0),
-        contractType: existingProject.contractType ?? contract?.contractType ?? '',
+        contractType: normalizeProjectSelectValue(
+          existingProject.contractType ?? contract?.contractType
+        ),
         retainagePercent: existingProject.retainagePercent ?? contract?.retainagePercent ?? 0,
         targetBudgetPercent:
           existingProject.targetBudgetPercent ?? contract?.targetBudgetPercent ?? 0,
@@ -387,7 +417,8 @@ export default function ProjectForm() {
       contractNumber: fakeContractNumber(),
       fieldwireProjectId: '',
       fieldwireProjectName: '',
-      stageId: stageOptions[Math.floor(Math.random() * stageOptions.length)]?.value || '',
+      stageId:
+        stageSelectOptions[Math.floor(Math.random() * stageSelectOptions.length)]?.value || '',
       status:
         PROJECT_STATUS_OPTIONS[Math.floor(Math.random() * PROJECT_STATUS_OPTIONS.length)]?.value ||
         'ACTIVE',
@@ -649,7 +680,7 @@ export default function ProjectForm() {
                     <Field data-invalid={fieldState.invalid}>
                       <ProjectFormFieldLabel required>Project Stage</ProjectFormFieldLabel>
                       <SearchableSelect
-                        options={stageOptions}
+                        options={stageSelectOptions}
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? '')}
                         placeholder="Select stage..."
@@ -921,23 +952,27 @@ export default function ProjectForm() {
                 <Controller
                   name="contractType"
                   control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <ProjectFormFieldLabel>Contract Type</ProjectFormFieldLabel>
-                      <Select value={field.value || undefined} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="project-contract-type-select">
-                          <SelectValue placeholder="Select contract type..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {contractTypeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  )}
+                  render={({ field }) => {
+                    const visibleContractTypeOptions = ensureCurrentStringOption(
+                      contractTypeOptions,
+                      field.value
+                    );
+
+                    return (
+                      <Field>
+                        <ProjectFormFieldLabel>Contract Type</ProjectFormFieldLabel>
+                        <SearchableSelect
+                          options={visibleContractTypeOptions}
+                          value={normalizeProjectSelectValue(field.value) || null}
+                          onValueChange={(value) => field.onChange(value ?? '')}
+                          placeholder="Select contract type..."
+                          searchPlaceholder="Search contract types..."
+                          emptyMessage="No contract types found."
+                          testId="project-contract-type-select"
+                        />
+                      </Field>
+                    );
+                  }}
                 />
               </div>
 
