@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -10,6 +11,7 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ScheduleTrackerContractDates } from '@/modules/project/components/overview/schedule-tracker-contract-dates';
+import { ScheduleTrackerEntryDialog } from '@/modules/project/components/overview/schedule-tracker-entry-dialog';
 import { ScheduleTrackerEntryTable } from '@/modules/project/components/overview/schedule-tracker-entry-table';
 import {
   createEmptyScheduleTrackerDraft,
@@ -58,6 +60,10 @@ export function ScheduleTrackerCard({
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
   const [uploadTarget, setUploadTarget] = useState<ScheduleTrackerUploadTarget>(null);
   const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    description: string | null;
+  } | null>(null);
   const [primeChangeOrderSearch, setPrimeChangeOrderSearch] = useState('');
 
   const createMutation = useCreateScheduleEntryMutation();
@@ -85,10 +91,25 @@ export function ScheduleTrackerCard({
     queryScope: 'schedule-tracker-picker',
   });
   const primeChangeOrderOptions = primeChangeOrderPicker.options;
+  const entryDialogMode = editingEntry ? 'edit' : 'add';
+  const entryDialogOpen = isAdding || editingEntry !== null;
 
   const resetNewEntry = () => {
     setNewEntry(createEmptyScheduleTrackerDraft());
     setIsAdding(false);
+    setPrimeChangeOrderSearch('');
+  };
+
+  const resetEditingEntry = () => {
+    setEditingEntry(null);
+    setPrimeChangeOrderSearch('');
+  };
+
+  const openAddEntryDialog = () => {
+    setEditingEntry(null);
+    setNewEntry(createEmptyScheduleTrackerDraft());
+    setPrimeChangeOrderSearch('');
+    setIsAdding(true);
   };
 
   const handleAddEntry = async () => {
@@ -119,7 +140,14 @@ export function ScheduleTrackerCard({
       fileId: editingEntry.draft.fileId || undefined,
       primeChangeOrderId: editingEntry.draft.primeChangeOrderId || null,
     });
-    setEditingEntry(null);
+    resetEditingEntry();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    await deleteMutation.mutateAsync({ projectId, id: deleteTarget.id });
+    setDeleteTarget(null);
   };
 
   const handleUploadSubmit = async (payload: { file: File; data: FileUploadInput }) => {
@@ -161,82 +189,124 @@ export function ScheduleTrackerCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
-          Schedule Tracker
-        </CardTitle>
-        {canManage && (
-          <CardToolbar>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isAdding}
-              onClick={() => setIsAdding(true)}
-            >
-              <Plus className="size-4" />
-              Add Entry
-            </Button>
-          </CardToolbar>
-        )}
-      </CardHeader>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+            Schedule Tracker
+          </CardTitle>
+          {canManage && (
+            <CardToolbar>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={entryDialogOpen}
+                onClick={openAddEntryDialog}
+              >
+                <Plus className="size-4" />
+                Add Entry
+              </Button>
+            </CardToolbar>
+          )}
+        </CardHeader>
 
-      <ScheduleTrackerContractDates project={project} contract={contract} />
+        <ScheduleTrackerContractDates project={project} contract={contract} />
 
-      <ScheduleTrackerEntryTable
-        entries={entries}
-        isLoading={isLoading}
-        isAdding={isAdding}
-        editingEntry={editingEntry}
-        newEntry={newEntry}
-        parentFolderId={parentFolderId}
-        primeChangeOrderOptions={primeChangeOrderOptions}
-        primeChangeOrderSearch={primeChangeOrderSearch}
-        onPrimeChangeOrderSearchChange={setPrimeChangeOrderSearch}
-        isPrimeChangeOrderFetchingNextPage={primeChangeOrderPicker.isFetchingNextPage}
-        hasMorePrimeChangeOrders={primeChangeOrderPicker.hasNextPage}
-        onFetchMorePrimeChangeOrders={primeChangeOrderPicker.fetchNextPage}
-        isCreating={createMutation.isPending}
-        isUpdating={updateMutation.isPending}
-        isDeleting={deleteMutation.isPending}
-        isLoadingPrimeChangeOrders={primeChangeOrderPicker.isLoading}
-        isReadOnly={!canManage}
-        onAttach={setUploadTarget}
-        onCancelAdd={resetNewEntry}
-        onCancelEdit={() => setEditingEntry(null)}
-        onChangeAdd={setNewEntry}
-        onChangeEdit={(id, draft) => setEditingEntry({ id, draft })}
-        onDelete={(id) => void deleteMutation.mutateAsync({ projectId, id })}
-        onEdit={(entry) =>
-          setEditingEntry({
-            id: entry.id,
-            draft: createScheduleTrackerDraftFromEntry(entry),
-          })
-        }
-        onPreview={handlePreviewFile}
-        onSaveAdd={() => void handleAddEntry()}
-        onSaveEdit={() => void handleSaveEdit()}
-      />
-
-      {canManage && parentFolderId && (
-        <UploadFileDialog
-          open={uploadTarget !== null}
-          onOpenChange={(open) => {
-            if (!open) setUploadTarget(null);
+        <ScheduleTrackerEntryTable
+          entries={entries}
+          isLoading={isLoading}
+          isDeleting={deleteMutation.isPending}
+          isReadOnly={!canManage}
+          onDelete={(id) => {
+            const entry = entries.find((item) => item.id === id);
+            setDeleteTarget({ id, description: entry?.description ?? null });
           }}
-          parentId={parentFolderId}
-          onSubmit={(payload) => void handleUploadSubmit(payload)}
-          isSubmitting={uploadMutation.isPending}
+          onEdit={(entry) => {
+            setIsAdding(false);
+            setPrimeChangeOrderSearch('');
+            setEditingEntry({
+              id: entry.id,
+              draft: createScheduleTrackerDraftFromEntry(entry),
+            });
+          }}
+          onPreview={handlePreviewFile}
         />
-      )}
 
-      <FilePreviewDialog
-        open={!!previewFile}
+        {canManage && (
+          <ScheduleTrackerEntryDialog
+            open={entryDialogOpen}
+            mode={entryDialogMode}
+            draft={editingEntry?.draft ?? newEntry}
+            isSaving={
+              entryDialogMode === 'edit' ? updateMutation.isPending : createMutation.isPending
+            }
+            parentFolderId={parentFolderId}
+            primeChangeOrderOptions={primeChangeOrderOptions}
+            primeChangeOrderSearch={primeChangeOrderSearch}
+            onPrimeChangeOrderSearchChange={setPrimeChangeOrderSearch}
+            isPrimeChangeOrderFetchingNextPage={primeChangeOrderPicker.isFetchingNextPage}
+            hasMorePrimeChangeOrders={primeChangeOrderPicker.hasNextPage}
+            onFetchMorePrimeChangeOrders={primeChangeOrderPicker.fetchNextPage}
+            isLoadingPrimeChangeOrders={primeChangeOrderPicker.isLoading}
+            onAttach={() => setUploadTarget(entryDialogMode)}
+            onCancel={entryDialogMode === 'edit' ? resetEditingEntry : resetNewEntry}
+            onChange={(draft) => {
+              if (editingEntry) {
+                setEditingEntry((current) => (current ? { ...current, draft } : current));
+                return;
+              }
+
+              setNewEntry(draft);
+            }}
+            onSave={() => {
+              if (entryDialogMode === 'edit') {
+                void handleSaveEdit();
+                return;
+              }
+
+              void handleAddEntry();
+            }}
+          />
+        )}
+
+        {canManage && parentFolderId && (
+          <UploadFileDialog
+            open={uploadTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) setUploadTarget(null);
+            }}
+            parentId={parentFolderId}
+            onSubmit={(payload) => void handleUploadSubmit(payload)}
+            isSubmitting={uploadMutation.isPending}
+          />
+        )}
+
+        <FilePreviewDialog
+          open={!!previewFile}
+          onOpenChange={(open) => {
+            if (!open) setPreviewFile(null);
+          }}
+          file={previewFile}
+        />
+      </Card>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setPreviewFile(null);
+          if (!open) setDeleteTarget(null);
         }}
-        file={previewFile}
+        title="Delete Schedule Entry"
+        description={
+          <>
+            Delete <strong>{deleteTarget?.description || 'this schedule entry'}</strong> from the
+            tracker?
+          </>
+        }
+        confirmLabel="Delete"
+        onConfirm={() => void handleConfirmDelete()}
+        variant="destructive"
+        isPending={deleteMutation.isPending}
       />
-    </Card>
+    </>
   );
 }
