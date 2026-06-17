@@ -1,7 +1,11 @@
 import { useMemo } from 'react';
 
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
 import { Card } from '@/app/components/ui/card';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
+import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import {
   InvoiceListFilters,
   InvoiceListHeader,
@@ -21,7 +25,7 @@ import {
   useVendorFilterOptions,
   type InvoiceListParamPatch,
 } from '@/modules/project/hooks/invoice';
-import type { ListInvoiceParams } from '@/modules/project/schemas/invoice';
+import type { InvoiceListItem, ListInvoiceParams } from '@/modules/project/schemas/invoice';
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -29,6 +33,82 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { useParams } from 'react-router-dom';
+
+type InvoicePipelineKey = 'pending' | 'approved' | 'paid' | 'rejected';
+
+const INVOICE_PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<InvoicePipelineKey>> = [
+  { key: 'pending', label: 'Pending', accent: '#6b6359' },
+  { key: 'approved', label: 'Approved', accent: '#1a3a5f' },
+  { key: 'paid', label: 'Paid', accent: '#2d6a4f' },
+  { key: 'rejected', label: 'Rejected', accent: '#dc2626' },
+];
+
+function classifyInvoiceStatus(invoice: InvoiceListItem): InvoicePipelineKey {
+  if (invoice.isPaid === true) return 'paid';
+  const status = invoice.status as unknown;
+  const candidate =
+    status && typeof status === 'object'
+      ? ((status as { name?: string; id?: string }).name ??
+        (status as { name?: string; id?: string }).id ??
+        '')
+      : typeof status === 'string'
+        ? status
+        : '';
+  const key = String(candidate).trim().toLowerCase();
+  if (key === 'paid') return 'paid';
+  if (key === 'approved') return 'approved';
+  if (key === 'rejected') return 'rejected';
+  if (key === 'pending' || key === 'unpaid' || key === '') return 'pending';
+  return 'pending';
+}
+
+function formatInvoiceDueDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function InvoicePipelineCard({ invoice }: { invoice: InvoiceListItem }) {
+  const amount =
+    typeof invoice.totalAmount === 'number'
+      ? invoice.totalAmount
+      : typeof (invoice as unknown as { amount?: number }).amount === 'number'
+        ? (invoice as unknown as { amount: number }).amount
+        : 0;
+  const vendorName =
+    invoice.vendor?.name ??
+    (invoice as unknown as { vendorName?: string }).vendorName ??
+    'Unknown vendor';
+  const dueDateLabel = formatInvoiceDueDate(invoice.dueDate);
+  const invoiceNumber = invoice.invoiceNumber ?? invoice.id;
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-sm border border-zinc-300/70 bg-card p-3 shadow-none transition-colors hover:border-zinc-400/60 dark:border-zinc-600/80 dark:bg-zinc-950/50">
+      <div className="truncate text-sm font-semibold leading-tight text-foreground">
+        {invoiceNumber}
+      </div>
+      <div className="truncate text-xs text-foreground/60">{vendorName}</div>
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <span
+          className={cn(
+            'text-[0.625rem] font-medium text-muted-foreground',
+            !dueDateLabel && 'invisible',
+          )}
+        >
+          {dueDateLabel ? `Due ${dueDateLabel}` : 'placeholder'}
+        </span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">
+          {formatCurrency(amount)}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function InvoiceListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -65,6 +145,8 @@ export function InvoiceListPage() {
     purchaseOrderId: purchaseOrderFilter,
     isPaid: paidFilter,
   };
+
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('invoices', 'list');
 
   const { data, isLoading, isError, refetch } = useInvoiceListQuery(filters);
   const { data: stats, isLoading: isStatsLoading } = useInvoiceStatsQuery(projectId);
@@ -163,6 +245,17 @@ export function InvoiceListPage() {
       <InvoiceListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
       <InvoiceListStats stats={stats} isLoading={isStatsLoading} />
 
+      <div className="mb-3 flex justify-end">
+        <ViewSwitcher
+          views={[
+            { key: 'list', label: 'List' },
+            { key: 'pipeline', label: 'Pipeline' },
+          ]}
+          active={view}
+          onChange={setView}
+        />
+      </div>
+
       <Card className="overflow-hidden">
         <InvoiceListFilters
           paidFilter={paidFilter}
@@ -180,13 +273,25 @@ export function InvoiceListPage() {
           onUpdateParams={updateParams}
           onClearFilters={clearFilters}
         />
-        <InvoiceListTable
-          table={table}
-          totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={() => void refetch()}
-        />
+        {view === 'list' ? (
+          <InvoiceListTable
+            table={table}
+            totalCount={totalCount}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={() => void refetch()}
+          />
+        ) : (
+          <div className="p-4 lg:p-6">
+            <PipelineBoard<InvoiceListItem, InvoicePipelineKey>
+              items={listData}
+              columns={INVOICE_PIPELINE_COLUMNS}
+              groupOf={classifyInvoiceStatus}
+              renderCard={(invoice) => <InvoicePipelineCard invoice={invoice} />}
+              emptyLabel="No invoices"
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

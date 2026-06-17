@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 
-import { Card } from '@/app/components/ui/card';
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
+import { Card, CardContent } from '@/app/components/ui/card';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   getPurchaseOrderRfqLabel,
   PurchaseOrderCancelDialog,
@@ -32,7 +35,55 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+
+type PurchaseOrderPipelineKey = 'draft' | 'issued' | 'delivered' | 'void';
+
+const PURCHASE_ORDER_PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<PurchaseOrderPipelineKey>> = [
+  { key: 'draft', label: 'Draft', accent: '#6b6359' },
+  { key: 'issued', label: 'Issued', accent: '#1a3a5f' },
+  { key: 'delivered', label: 'Delivered', accent: '#2d6a4f' },
+  { key: 'void', label: 'Void', accent: '#9a9286' },
+];
+
+const classifyPurchaseOrder = (po: POListItem): PurchaseOrderPipelineKey => {
+  const status = po.status as unknown as
+    | string
+    | { id?: string | null; name?: string | null }
+    | null
+    | undefined;
+  const raw =
+    (typeof status === 'string'
+      ? status
+      : (status?.name ?? status?.id ?? '')) ?? '';
+  const value = raw.toLowerCase().trim();
+
+  if (value === 'open' || value === 'active' || value === 'issued') return 'issued';
+  if (value === 'closed' || value === 'completed' || value === 'delivered') return 'delivered';
+  if (value === 'voided' || value === 'cancelled' || value === 'void') return 'void';
+  return 'draft';
+};
+
+const formatPurchaseOrderIssuedAt = (value: string | null | undefined): string | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+};
+
+const getPurchaseOrderTotalAmount = (po: POListItem): number => {
+  const candidate =
+    (po as { totalAmount?: string | number | null }).totalAmount ??
+    (po as { committedAmount?: string | number | null }).committedAmount ??
+    po.total;
+  if (candidate === null || candidate === undefined || candidate === '') return 0;
+  const parsed = typeof candidate === 'number' ? candidate : Number(candidate);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default function ProjectPOs() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -52,6 +103,7 @@ export default function ProjectPOs() {
     clearFilters,
   } = usePurchaseOrderListParams();
 
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('purchase-orders', 'list');
   const [vendorSearch, setVendorSearch] = useState('');
   const debouncedVendorSearch = useDebouncedValue(vendorSearch.trim(), 250);
 
@@ -175,6 +227,17 @@ export default function ProjectPOs() {
         <PurchaseOrderListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
         <PurchaseOrderListStats stats={stats} isLoading={isStatsLoading} />
 
+        <div className="mb-3 flex justify-end">
+          <ViewSwitcher
+            views={[
+              { key: 'list', label: 'List' },
+              { key: 'pipeline', label: 'Pipeline' },
+            ]}
+            active={view}
+            onChange={setView}
+          />
+        </div>
+
         <Card className="overflow-hidden">
           <PurchaseOrderListFilters
             statusFilter={statusFilter}
@@ -190,13 +253,60 @@ export default function ProjectPOs() {
             onUpdateParams={updateParams}
             onClearFilters={handleClearFilters}
           />
-          <PurchaseOrderListTable
-            table={table}
-            totalCount={totalCount}
-            isLoading={isLoading}
-            isError={isError}
-            onRetry={() => void refetch()}
-          />
+          {view === 'list' && (
+            <PurchaseOrderListTable
+              table={table}
+              totalCount={totalCount}
+              isLoading={isLoading}
+              isError={isError}
+              onRetry={() => void refetch()}
+            />
+          )}
+          {view === 'pipeline' && (
+            <div className="px-5 py-5">
+              <PipelineBoard
+                items={listData}
+                columns={PURCHASE_ORDER_PIPELINE_COLUMNS}
+                groupOf={classifyPurchaseOrder}
+                emptyLabel="No purchase orders"
+                renderCard={(po) => {
+                  const vendorName =
+                    po.vendor?.name ??
+                    (po as { vendorName?: string | null }).vendorName ??
+                    'Unknown vendor';
+                  const issuedAtLabel = formatPurchaseOrderIssuedAt(po.issuedAt);
+                  const totalLabel = formatCurrency(getPurchaseOrderTotalAmount(po));
+                  return (
+                    <Link
+                      to={`/app/project/${projectId}/purchase-orders/${po.id}`}
+                      className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <Card className="rounded-sm border-zinc-300/70 bg-card shadow-none transition-colors hover:border-zinc-400/70">
+                        <CardContent className="flex flex-col gap-2 p-3">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="truncate text-sm font-semibold leading-tight text-foreground">
+                              {po.poNumber ?? 'Untitled PO'}
+                            </span>
+                            <span className="truncate text-xs text-foreground/60">
+                              {vendorName}
+                            </span>
+                          </div>
+                          <div className="flex items-end justify-between gap-3 pt-1">
+                            <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                              {issuedAtLabel ?? '—'}
+                            </span>
+                            <span className="text-sm font-semibold tabular-nums text-foreground">
+                              {totalLabel}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                }}
+              />
+            </div>
+          )}
         </Card>
       </div>
 

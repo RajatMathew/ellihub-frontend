@@ -33,7 +33,7 @@ export function PTODecisionCard({ isPending, onDecision }: PTODecisionCardProps)
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
             Decision Management
-            <span className="font-black text-destructive">*</span>
+            <span className="text-[10px] font-bold tracking-widest text-destructive">Required</span>
           </div>
           {noteError && (
             <span className="text-xs font-bold uppercase tracking-widest text-destructive">

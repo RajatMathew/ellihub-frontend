@@ -1,10 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
 import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { formatCurrency } from '@/app/lib/helpers';
 import { useLookupsQuery } from '@/modules/lookup/hooks';
 import { MonthlyBillsColumnToggle } from '@/modules/monthly-bills/components/monthly-bills-column-toggle';
 import { MonthlyBillsFilters } from '@/modules/monthly-bills/components/monthly-bills-filters';
@@ -21,8 +24,37 @@ import {
   getMonthlyBillMonthNumber,
   isCurrentMonthlyBillDate,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import type {
+  MonthlyBillItem,
+  MonthlyBillProjectGroup,
+} from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+type PipelineColumnKey = 'outstanding' | 'planned' | 'paid';
+
+interface FlatMonthlyBill {
+  bill: MonthlyBillItem;
+  project: MonthlyBillProjectGroup['project'];
+}
+
+const PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<PipelineColumnKey>> = [
+  { key: 'outstanding', label: 'Outstanding' },
+  { key: 'planned', label: 'Planned' },
+  { key: 'paid', label: 'Paid' },
+];
+
+function classifyBill({ bill }: FlatMonthlyBill): PipelineColumnKey {
+  const balance = bill.balance ?? 0;
+  const totalPaid = bill.totalPaid ?? 0;
+  const payments = bill.payments ?? [];
+  const plannedReady = bill.plannedPayment?.isReady === true;
+
+  if (balance === 0 || totalPaid > 0) return 'paid';
+  if (plannedReady) return 'planned';
+  if (balance > 0 && !plannedReady && payments.length === 0) return 'outstanding';
+  return 'outstanding';
+}
 
 interface MonthlyBillsSubcontractorPageProps {
   selectedDate: Date;
@@ -39,6 +71,7 @@ export function MonthlyBillsSubcontractorPage({
   const isCurrentPeriod = isCurrentMonthlyBillDate(selectedDate);
   const canUpdateCurrentBills = canUpdateBills && isCurrentPeriod;
   const canMarkCurrentPayment = canMarkPayment && isCurrentPeriod;
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('monthly-bills', 'list');
   const [visibleColumns, setVisibleColumns] = useState(getDefaultMonthlyBillColumns);
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -176,6 +209,17 @@ export function MonthlyBillsSubcontractorPage({
     }
   };
 
+  const flatBills = useMemo<FlatMonthlyBill[]>(() => {
+    const groups = monthlyBillsQuery.data ?? [];
+    const result: FlatMonthlyBill[] = [];
+    for (const group of groups) {
+      for (const bill of group.bills ?? []) {
+        result.push({ bill, project: group.project });
+      }
+    }
+    return result;
+  }, [monthlyBillsQuery.data]);
+
   const handleBulkCancel = () => {
     bulkSaveRef.current.active = false;
     setBulkCancelVersion((current) => current + 1);
@@ -191,6 +235,17 @@ export function MonthlyBillsSubcontractorPage({
         selectedDate={selectedDate}
         isLoading={monthlyBillsQuery.isLoading}
       />
+
+      <div className="mb-3 flex justify-end">
+        <ViewSwitcher
+          views={[
+            { key: 'list', label: 'List' },
+            { key: 'pipeline', label: 'Pipeline' },
+          ]}
+          active={view}
+          onChange={setView}
+        />
+      </div>
 
       <Card className="overflow-hidden">
         <CardHeader className="items-stretch gap-3 2xl:flex-row 2xl:items-center">
@@ -220,6 +275,7 @@ export function MonthlyBillsSubcontractorPage({
                 visibleColumns={visibleColumns}
                 onToggleColumn={toggleColumn}
               />
+
               {canUpdateCurrentBills &&
                 (effectiveBulkEditMode ? (
                   <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
@@ -265,20 +321,56 @@ export function MonthlyBillsSubcontractorPage({
           </CardToolbar>
         </CardHeader>
 
-        <MonthlyBillsTable
-          groups={monthlyBillsQuery.data ?? []}
-          selectedDate={selectedDate}
-          canUpdateBills={canUpdateCurrentBills}
-          canMarkPayment={canMarkCurrentPayment}
-          bulkEditMode={effectiveBulkEditMode}
-          bulkSaveVersion={effectiveBulkSaveVersion}
-          bulkCancelVersion={bulkCancelVersion}
-          visibleColumns={visibleColumns}
-          isLoading={monthlyBillsQuery.isLoading}
-          isError={monthlyBillsQuery.isError}
-          onRetry={() => void monthlyBillsQuery.refetch()}
-          onBulkSaveComplete={handleBulkSaveComplete}
-        />
+        {view === 'list' && (
+          <MonthlyBillsTable
+            groups={monthlyBillsQuery.data ?? []}
+            selectedDate={selectedDate}
+            canUpdateBills={canUpdateCurrentBills}
+            canMarkPayment={canMarkCurrentPayment}
+            bulkEditMode={effectiveBulkEditMode}
+            bulkSaveVersion={effectiveBulkSaveVersion}
+            bulkCancelVersion={bulkCancelVersion}
+            visibleColumns={visibleColumns}
+            isLoading={monthlyBillsQuery.isLoading}
+            isError={monthlyBillsQuery.isError}
+            onRetry={() => void monthlyBillsQuery.refetch()}
+            onBulkSaveComplete={handleBulkSaveComplete}
+          />
+        )}
+
+        {view === 'pipeline' && (
+          <div className="px-4 pb-5 pt-2 lg:px-7.5">
+            <PipelineBoard<FlatMonthlyBill, PipelineColumnKey>
+              items={flatBills}
+              columns={PIPELINE_COLUMNS}
+              groupOf={classifyBill}
+              emptyLabel="No bills"
+              renderCard={({ bill, project }) => {
+                const poNumber = bill.purchaseOrder?.poNumber ?? '—';
+                const vendorName = bill.purchaseOrder?.vendor?.name ?? 'Unknown vendor';
+                const projectName = project?.name ?? 'Unassigned project';
+                return (
+                  <div className="flex flex-col gap-2 rounded-sm border border-[#a09683]/40 bg-card px-3 py-2.5 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-foreground">
+                          {poNumber}
+                        </div>
+                        <div className="truncate text-xs text-foreground/60">{vendorName}</div>
+                      </div>
+                      <div className="shrink-0 text-right font-semibold tabular-nums text-foreground">
+                        {formatCurrency(bill.balance ?? 0)}
+                      </div>
+                    </div>
+                    <div className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {projectName}
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

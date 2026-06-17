@@ -79,7 +79,7 @@ function SearchableSelect({
           data-testid={testId}
           className={cn(
             // Match SelectTrigger variants (md size)
-            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
+            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-card px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
             'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className

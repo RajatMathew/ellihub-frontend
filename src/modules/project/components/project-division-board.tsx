@@ -89,15 +89,14 @@ export function ProjectDivisionBoard({
 
           return (
             <div key={divisionLabel} className="flex min-w-0 flex-col gap-2">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="min-w-0 truncate text-xs font-semibold uppercase text-foreground">
+              <div className="flex items-center justify-between gap-3 rounded-sm bg-[#1a3a5f] px-3 py-2">
+                <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#E0A94D]">
                   {divisionLabel}
                 </h2>
-                <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-[#E0A94D]/80">
                   {countLabel}
                 </span>
               </div>
-              <hr className="border-t-2 border-foreground" />
             </div>
           );
         })}

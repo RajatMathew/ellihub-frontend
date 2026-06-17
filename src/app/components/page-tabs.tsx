@@ -37,7 +37,7 @@ const tabClassName = (isActive: boolean) =>
     'relative shrink-0 px-4 pt-1 pb-2.5 text-sm uppercase tracking-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     isActive
       ? 'font-semibold text-foreground'
-      : 'font-medium text-muted-foreground hover:cursor-pointer hover:text-foreground'
+      : 'font-medium text-foreground/75 hover:cursor-pointer hover:text-foreground'
   );
 
 function ActiveIndicator() {
@@ -55,7 +55,7 @@ export function PageTabs<TValue extends PageTabValue = PageTabValue>({
     <nav
       aria-label={ariaLabel}
       className={cn(
-        '-mx-4 -mb-3 border-y border-border bg-project-tabs-background px-4 pt-1.5 lg:-mx-7.5 lg:px-7.5',
+        '-mx-4 -mb-3 border-y border-[#a09683] bg-project-tabs-background px-4 pt-1.5 lg:-mx-7.5 lg:px-7.5',
         className
       )}
     >

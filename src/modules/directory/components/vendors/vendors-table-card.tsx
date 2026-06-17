@@ -66,7 +66,7 @@ export function VendorsTableCard({
               <Skeleton className="h-8 w-28" />
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-0">
+            <div className="flex flex-wrap items-center gap-0 border-b border-[#a09683]">
               <TypeTab active={!typeFilter} label="All" onClick={() => onTypeChange(undefined)} />
               {typeTabs.map((tab) => (
                 <TypeTab
@@ -156,8 +156,8 @@ function TypeTab({
       onClick={onClick}
       className={
         active
-          ? 'border-b-2 border-foreground px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground transition-colors'
-          : 'border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground'
+          ? '-mb-px border-b-2 border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors'
+          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground/75 transition-colors hover:text-primary'
       }
     >
       {label}

@@ -62,7 +62,7 @@ export function ModuleLoader({ complete = false }: { complete?: boolean }) {
       <div className="w-85">
         <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-linear-to-r from-accent via-primary to-secondary transition-all duration-150 ease-out"
+            className="h-full bg-primary transition-all duration-150 ease-out"
             style={{ width: `${progress}%` }}
           />
           <div className="text-foreground">

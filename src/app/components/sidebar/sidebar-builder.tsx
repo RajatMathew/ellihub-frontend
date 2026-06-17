@@ -33,10 +33,14 @@ function filterMenuForAccess(
   const filtered = menuConfig
     .map((item) => {
       if (item.type === 'separator') return item;
+      // Custom-render groups manage their own access internally; let them through.
+      if (item.type === 'custom') return item;
       if (!item.children) return null;
 
       const children = item.children.filter((child) => {
         const path = child.path ?? '';
+        // Email mailboxes are visible to everyone — no per-mailbox gating yet.
+        if (path.includes('email/')) return true;
         if (path.includes('projects')) return access.access?.projectScope !== 'none';
         if (path.includes('monthly-bills')) {
           return (
@@ -96,7 +100,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
           return <SidebarCustomMenu key={key} menu={[group]} />;
 
         case 'separator':
-          return <Separator key={key} className="my-2.5" />;
+          return <Separator key={key} className="my-2.5 bg-white/15" />;
 
         default:
           return null;

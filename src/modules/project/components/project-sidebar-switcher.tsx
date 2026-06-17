@@ -48,29 +48,29 @@ export function ProjectSidebarSwitcher() {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-lg border border-emerald-800/70 bg-emerald-950/75 px-3 py-2 text-emerald-50 shadow-none hover:border-emerald-700/80 hover:bg-emerald-900/70 hover:text-white data-[state=open]:border-emerald-700/80 data-[state=open]:bg-emerald-900/70 data-[state=open]:text-white"
+            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-sm border border-white/15 bg-white/5 px-3 py-2 text-white shadow-none hover:border-white/25 hover:bg-white/10 hover:text-white data-[state=open]:border-white/25 data-[state=open]:bg-white/10 data-[state=open]:text-white"
           >
             <span
-              className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-400"
+              className="mt-1.5 size-2 shrink-0 rounded-full bg-[--color-success]"
               aria-hidden="true"
             />
             <div className="min-w-0 overflow-hidden text-left">
               <div
-                className="truncate text-sm font-semibold text-emerald-50"
+                className="truncate text-sm font-semibold text-white"
                 title={currentProject?.name}
               >
                 {currentProject?.name ?? 'Select Project'}
               </div>
               {currentProject && (
                 <div
-                  className="truncate text-xs text-emerald-200/75"
+                  className="truncate text-xs text-white/65"
                   title={getProjectSubtitle(currentProject)}
                 >
                   {getProjectSubtitle(currentProject)}
                 </div>
               )}
             </div>
-            <ChevronsUpDown className="mt-1 size-4 shrink-0 text-emerald-300/65 transition-colors group-hover:text-emerald-100" />
+            <ChevronsUpDown className="mt-1 size-4 shrink-0 text-white/55 transition-colors group-hover:text-white" />
           </Button>
         </PopoverTrigger>
         <PopoverContent

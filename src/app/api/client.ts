@@ -2,12 +2,17 @@ import { openPwaUpdateModal } from '@/core/pwa/pwaEvents';
 import { forceCheckForUpdate, forceUpdateApp } from '@/core/pwa/usePwaUpdater';
 import axios, { type AxiosError } from 'axios';
 
+import { DEV_AUTH_BYPASS } from '@app/lib/dev-auth-bypass';
+import { mockAdapter } from '@app/lib/mock/adapter';
+
 export const APP_VERSION = __APP_VERSION__;
 
 export const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_BASE_URL}/api/v1`,
   timeout: 30_000,
   withCredentials: true,
+  // Dev sandbox: serve all API calls from local seed data instead of the network.
+  ...(DEV_AUTH_BYPASS ? { adapter: mockAdapter } : {}),
 });
 
 let forceUpdating = false;

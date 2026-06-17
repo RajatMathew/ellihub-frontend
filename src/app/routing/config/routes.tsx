@@ -23,6 +23,9 @@ const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
 const ActivityLogRoutes = lazy(() => import('@/modules/activity-log/routes/activity-log.route'));
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
 const ProjectsRoutes = lazy(() => import('@/modules/project/routes/projects.route'));
+const EmailProcurement = lazy(() => import('@/modules/email/routes/procurement.route'));
+const EmailRequisitions = lazy(() => import('@/modules/email/routes/requisitions.route'));
+const EmailContracts = lazy(() => import('@/modules/email/routes/contracts.route'));
 const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.route'));
 
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
@@ -55,6 +58,10 @@ export const routeTree: RouteDef[] = [
           { path: 'integrations', title: 'Integrations' },
         ],
       },
+
+      { path: 'email/procurement', component: EmailProcurement, title: 'Procurement' },
+      { path: 'email/requisitions', component: EmailRequisitions, title: 'Requisitions' },
+      { path: 'email/contracts', component: EmailContracts, title: 'Contracts' },
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
       { path: 'monthly-bills/*', component: MonthlyBillsRoute, title: 'Monthly Bills' },

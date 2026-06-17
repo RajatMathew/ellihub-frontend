@@ -7,7 +7,10 @@ import {
   AlertIcon,
   AlertTitle,
 } from '@/app/components/ui/alert';
-import { Card } from '@/app/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
+import { PipelineBoard, type PipelineColumn } from '@/app/components/pipeline-board';
+import { ViewSwitcher, useViewMode } from '@/app/components/view-switcher';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   PrimeChangeOrderListFilters,
   PrimeChangeOrderListHeader,
@@ -16,6 +19,7 @@ import {
   PrimeChangeOrderStatusSummary,
   usePrimeChangeOrderListColumns,
 } from '@/modules/project/components/prime-change-order';
+import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 import {
   isPrimeChangeOrderSortByField,
   PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
@@ -39,8 +43,82 @@ import {
 import { AlertCircle } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 
+type PcoPipelineKey = 'draft' | 'requested' | 'pending' | 'approved' | 'rejected';
+
+const PCO_PIPELINE_COLUMNS: ReadonlyArray<PipelineColumn<PcoPipelineKey>> = [
+  { key: 'draft', label: 'Draft', accent: '#6b6359' },
+  { key: 'requested', label: 'Requested', accent: '#1a3a5f' },
+  { key: 'pending', label: 'Pending', accent: '#b8860b' },
+  { key: 'approved', label: 'Approved', accent: '#2d6a4f' },
+  { key: 'rejected', label: 'Rejected / Void', accent: '#dc2626' },
+];
+
+function classifyPco(pco: PrimeChangeOrder): PcoPipelineKey {
+  const raw = (
+    (pco as unknown as { status?: { name?: string; id?: string } }).status?.name ??
+    (pco as unknown as { status?: { name?: string; id?: string } }).status?.id ??
+    pco.statusName ??
+    ''
+  )
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+
+  if (raw === 'pending_revision' || raw === 'pending_approval') return 'pending';
+  if (raw === 'rejected' || raw === 'void') return 'rejected';
+  if (raw === 'draft') return 'draft';
+  if (raw === 'requested') return 'requested';
+  if (raw === 'approved') return 'approved';
+  return 'draft';
+}
+
+function formatPcoDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function PcoPipelineCard({ pco }: { pco: PrimeChangeOrder }) {
+  const identifier =
+    pco.referenceNumber ??
+    (pco as unknown as { number?: string }).number ??
+    pco.id;
+  const dueLabel = formatPcoDate(pco.dueDate);
+  const totalCost = typeof pco.totalCost === 'number' ? pco.totalCost : 0;
+
+  return (
+    <Card className="rounded-sm border-zinc-300/70 bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-zinc-400/60 hover:shadow-md hover:shadow-zinc-950/10 dark:border-zinc-600/80 dark:bg-zinc-950/50">
+      <CardContent className="flex flex-col gap-1.5 p-3">
+        <span className="block truncate text-sm font-semibold leading-tight text-foreground">
+          {identifier}
+        </span>
+        {pco.name && (
+          <span className="line-clamp-2 text-xs leading-snug text-foreground/70">
+            {pco.name}
+          </span>
+        )}
+        <div className="mt-1 flex items-end justify-between gap-2">
+          <span className="truncate text-[0.625rem] font-medium text-muted-foreground">
+            {dueLabel ? `Due ${dueLabel}` : ''}
+          </span>
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+            {formatCurrency(totalCost)}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PrimeChangeOrderListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const [view, setView] = useViewMode<'list' | 'pipeline'>('prime-change-orders', 'list');
   const {
     page,
     size,
@@ -177,6 +255,17 @@ export function PrimeChangeOrderListPage() {
           }
         />
 
+        <div className="mb-3 flex items-center justify-end">
+          <ViewSwitcher
+            views={[
+              { key: 'list', label: 'List' },
+              { key: 'pipeline', label: 'Pipeline' },
+            ]}
+            active={view}
+            onChange={setView}
+          />
+        </div>
+
         <Card className="overflow-hidden">
           <PrimeChangeOrderListFilters
             searchInput={searchInput}
@@ -191,6 +280,16 @@ export function PrimeChangeOrderListPage() {
 
           {!isMapped && !isLoadingSyncStatus ? (
             <PrimeChangeOrderNotConnected projectId={projectId} />
+          ) : view === 'pipeline' ? (
+            <div className="p-4 lg:p-6">
+              <PipelineBoard<PrimeChangeOrder, PcoPipelineKey>
+                items={listData}
+                columns={PCO_PIPELINE_COLUMNS}
+                groupOf={classifyPco}
+                renderCard={(pco) => <PcoPipelineCard pco={pco} />}
+                emptyLabel="No change orders"
+              />
+            </div>
           ) : (
             <PrimeChangeOrderListTable
               table={table}
