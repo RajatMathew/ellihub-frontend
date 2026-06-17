@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -65,6 +65,7 @@ export function ScheduleTrackerCard({
     description: string | null;
   } | null>(null);
   const [primeChangeOrderSearch, setPrimeChangeOrderSearch] = useState('');
+  const isEntrySaveInFlightRef = useRef(false);
 
   const createMutation = useCreateScheduleEntryMutation();
   const updateMutation = useUpdateScheduleEntryMutation();
@@ -113,34 +114,53 @@ export function ScheduleTrackerCard({
   };
 
   const handleAddEntry = async () => {
-    if (!newEntry.date || !newEntry.description) return;
+    if (isEntrySaveInFlightRef.current || !newEntry.date || !newEntry.description.trim()) return;
 
-    await createMutation.mutateAsync({
-      projectId,
-      date: newEntry.date,
-      description: newEntry.description,
-      adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
-      notes: newEntry.notes || undefined,
-      fileId: newEntry.fileId || undefined,
-      primeChangeOrderId: newEntry.primeChangeOrderId || undefined,
-    });
-    resetNewEntry();
+    isEntrySaveInFlightRef.current = true;
+
+    try {
+      await createMutation.mutateAsync({
+        projectId,
+        date: newEntry.date,
+        description: newEntry.description.trim(),
+        adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
+        notes: newEntry.notes || undefined,
+        fileId: newEntry.fileId || undefined,
+        primeChangeOrderId: newEntry.primeChangeOrderId || undefined,
+      });
+      resetNewEntry();
+    } finally {
+      isEntrySaveInFlightRef.current = false;
+    }
   };
 
   const handleSaveEdit = async () => {
-    if (!editingEntry) return;
+    if (
+      isEntrySaveInFlightRef.current ||
+      !editingEntry ||
+      !editingEntry.draft.date ||
+      !editingEntry.draft.description.trim()
+    ) {
+      return;
+    }
 
-    await updateMutation.mutateAsync({
-      id: editingEntry.id,
-      projectId,
-      date: editingEntry.draft.date || undefined,
-      description: editingEntry.draft.description || undefined,
-      adjustedFinishDate: editingEntry.draft.adjustedFinishDate || undefined,
-      notes: editingEntry.draft.notes || undefined,
-      fileId: editingEntry.draft.fileId || undefined,
-      primeChangeOrderId: editingEntry.draft.primeChangeOrderId || null,
-    });
-    resetEditingEntry();
+    isEntrySaveInFlightRef.current = true;
+
+    try {
+      await updateMutation.mutateAsync({
+        id: editingEntry.id,
+        projectId,
+        date: editingEntry.draft.date,
+        description: editingEntry.draft.description.trim(),
+        adjustedFinishDate: editingEntry.draft.adjustedFinishDate || undefined,
+        notes: editingEntry.draft.notes || undefined,
+        fileId: editingEntry.draft.fileId || undefined,
+        primeChangeOrderId: editingEntry.draft.primeChangeOrderId || null,
+      });
+      resetEditingEntry();
+    } finally {
+      isEntrySaveInFlightRef.current = false;
+    }
   };
 
   const handleConfirmDelete = async () => {

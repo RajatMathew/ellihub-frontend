@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
@@ -124,6 +124,7 @@ export default function ProjectForm() {
   const isEditMode = !!projectId;
   const navigate = useNavigate();
   const { access } = useAccess();
+  const isSubmitInFlightRef = useRef(false);
   const isAuthPMCreatingProject = !isEditMode && access?.role === 'pm';
 
   /* ---- Queries ---- */
@@ -393,7 +394,8 @@ export default function ProjectForm() {
     setActiveMutation.isPending ||
     setInactiveMutation.isPending ||
     setClosedMutation.isPending ||
-    setCompletedMutation.isPending;
+    setCompletedMutation.isPending ||
+    createScheduleMutation.isPending;
 
   /* ---- Submit ---- */
 
@@ -447,6 +449,10 @@ export default function ProjectForm() {
   };
 
   const onSubmit = async (data: ProjectFormValues) => {
+    if (isSubmitInFlightRef.current) return;
+
+    isSubmitInFlightRef.current = true;
+
     try {
       let resultProjectId: string;
 
@@ -535,8 +541,8 @@ export default function ProjectForm() {
         toast.success('Project created.');
       }
 
-      // Create schedule entry if start date provided (optional)
-      if (data.estimatedStartDate) {
+      // Seed the initial schedule only when creating a project.
+      if (!isEditMode && data.estimatedStartDate) {
         try {
           await createScheduleMutation.mutateAsync({
             projectId: resultProjectId,
@@ -595,6 +601,8 @@ export default function ProjectForm() {
       navigate('..', { relative: 'path' });
     } catch {
       /* error toast from mutation */
+    } finally {
+      isSubmitInFlightRef.current = false;
     }
   };
 
