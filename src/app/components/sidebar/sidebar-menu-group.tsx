@@ -85,9 +85,9 @@ export function SidebarGroupMenu({
     () => ({
       item:
         classNames.item ||
-        'h-8 px-2.5 text-sm font-normal text-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
+        'h-8 px-2.5 text-sm font-normal text-sidebar-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-sidebar-foreground [&[data-selected=true]_svg]:opacity-100',
       subTrigger:
-        classNames.subTrigger || 'text-xs font-normal text-muted-foreground hover:bg-transparent',
+        classNames.subTrigger || 'text-xs font-normal text-sidebar-muted hover:bg-transparent',
       subContent: classNames.subContent || 'ps-0',
     }),
     [classNames]

@@ -154,7 +154,7 @@ export function ProjectToolbarHeader({
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
-    <Toolbar className="bg-white dark:bg-background">
+    <Toolbar className="bg-background">
       <ToolbarWrapper>
         <ToolbarHeading>
           <div className="flex min-w-0 flex-wrap items-center gap-3">

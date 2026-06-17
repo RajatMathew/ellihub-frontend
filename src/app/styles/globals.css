@@ -39,7 +39,6 @@
   --chart-4: var(--color-red-500);
   --chart-5: var(--color-purple-500);
   --border: oklch(94% 0.004 286.32);
-  /* between --color-zinc-100 and --color-zinc-200 */
   --input: var(--color-zinc-200);
   --ring: var(--color-zinc-400);
   --radius: 0.5rem;
@@ -58,6 +57,12 @@
   --label-lighter: lab(35.1166 1.78212 -6.1173);
   --separator: lab(96.1634 0.0993311 -0.364041);
   --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+  --sidebar-bg: #191919;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #27272a;
+  --card-border: #e4e4e7;
+  --card-border-hover: #d4d4d8;
 }
 
 .dark {
@@ -66,20 +71,20 @@
   --form-background: var(--color-zinc-900);
   /* zinc-950 but standard black */
   --foreground: var(--color-zinc-50);
-  --card: #0d0d0d;
-  /* Slightly teal-tinted near-black for elevation */
+  --card: #141414;
+  /* Slightly elevated from background */
   --card-foreground: var(--color-zinc-50);
   --popover: oklch(14.43% 0.005 200);
   --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-emerald-600);
-  --primary-hover: var(--color-emerald-700);
-  --primary-foreground: var(--color-white);
+  --primary: #4f7da8;                /* lighter navy for dark mode contrast */
+  --primary-hover: #6d97c0;
+  --primary-foreground: #0f0f0f;
   --secondary: var(--color-zinc-800);
   --secondary-foreground: var(--color-zinc-50);
   --muted: var(--color-zinc-800);
   --muted-foreground: var(--color-zinc-400);
   --project-tabs-background: #131313;
-  --sidebar-hover-foreground: var(--color-green-400);
+  --sidebar-hover-foreground: #c75e40;
   --accent: var(--color-zinc-800);
   --accent-foreground: var(--color-zinc-50);
   --success: var(--color-emerald-500);
@@ -111,6 +116,368 @@
   --label-lighter: lab(60 2 -7);
   --separator: var(--color-zinc-800);
   --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.3), -1px 0 4px rgba(0, 0, 0, 0.2);
+  --sidebar-bg: #191919;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #27272a;
+  --card-border: #2a2a2a;
+  --card-border-hover: #3f3f46;
+}
+
+/* Dark Blue Theme — navy-tinted dark mode */
+.dark-blue {
+  --background: #0a0f1a;
+  --main-background: #0a0f1a;
+  --form-background: #131b2e;
+  --foreground: #f1f5f9;
+  --card: #0f1624;
+  --card-foreground: #f1f5f9;
+  --popover: #0f1624;
+  --popover-foreground: #f1f5f9;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-foreground: #0a0f1a;
+  --secondary: #162033;
+  --secondary-foreground: #e2e8f0;
+  --muted: #162033;
+  --muted-foreground: #94a3b8;
+  --project-tabs-background: #0a0f1a;
+  --sidebar-hover-foreground: #f97316;
+  --accent: #162033;
+  --accent-foreground: #e2e8f0;
+  --success: #4ade80;
+  --success-foreground: #0a0f1a;
+  --warning: #fbbf24;
+  --warning-foreground: #0a0f1a;
+  --destructive: #f87171;
+  --destructive-foreground: #0a0f1a;
+  --chart-1: #60a5fa;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #c084fc;
+  --border: #1e293b;
+  --input: #334155;
+  --ring: #60a5fa;
+  --radius: 0.5rem;
+  --card-header: #162033;
+  --card-header-foreground: #f1f5f9;
+  --card-header-border: #1e293b;
+  --teal-header-accent: #1e293b;
+  --teal-header-accent-foreground: #f1f5f9;
+  --info: #22d3ee;
+  --fieldwire-status-draft: #fbbf24;
+  --fieldwire-status-neutral: #64748b;
+  --fieldwire-status-pending: #60a5fa;
+  --fieldwire-status-approved: #4ade80;
+  --fieldwire-status-rejected: #f87171;
+  --label-light: #60a5fa;
+  --label-lighter: #c084fc;
+  --separator: #1e293b;
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.5), -1px 0 4px rgba(0, 0, 0, 0.4);
+  --sidebar-bg: #070c14;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+  --sidebar-border: #162033;
+  --card-border: #1e293b;
+  --card-border-hover: #334155;
+}
+
+/* Editorial Theme - Navy accent + cream paper (matches client's V6.2 palette) */
+.editorial {
+  --background: #f8f4ed;
+  --main-background: #f1ece2;
+  --form-background: #ffffff;
+  --foreground: #1a1410;
+  --card: #ffffff;
+  --card-foreground: #1a1410;
+  --popover: #ffffff;
+  --popover-foreground: #1a1410;
+  --primary: #1a3a5f;
+  --primary-hover: #112b47;
+  --primary-foreground: #fdfbf6;
+  --secondary: #ebeef3;
+  --secondary-foreground: #112b47;
+  --muted: #f1ece2;
+  --muted-foreground: #6b6359;
+  --project-tabs-background: #ffffff;
+  --sidebar-hover-foreground: #c75e40;
+  --accent: #ebeef3;
+  --accent-foreground: #1a3a5f;
+  --success: #2d6a4f;
+  --success-foreground: #ffffff;
+  --warning: #b8860b;
+  --warning-foreground: #f7efd9;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --chart-1: #1a3a5f;
+  --chart-2: #2d6a4f;
+  --chart-3: #b8860b;
+  --chart-4: #c75e40;
+  --chart-5: #6b6359;
+  --border: #d5cfc0;
+  --input: #6b6359;
+  --ring: #1a3a5f;
+  --radius: 0.5rem;
+  --card-header: #1a3a5f;
+  --card-header-foreground: #E0A94D;
+  --card-header-border: #112b47;
+  --teal-header-accent: #1a3a5f;
+  --teal-header-accent-foreground: #fdfbf6;
+  --info: #1a3a5f;
+  --fieldwire-status-draft: #b8860b;
+  --fieldwire-status-neutral: #9a9286;
+  --fieldwire-status-pending: #1a3a5f;
+  --fieldwire-status-approved: #2d6a4f;
+  --fieldwire-status-rejected: #dc2626;
+  --label-light: lab(47.8878 1.65477 -5.77283);
+  --label-lighter: lab(35.1166 1.78212 -6.1173);
+  --separator: lab(96.1634 0.0993311 -0.364041);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+  --sidebar-bg: #1a3a5f;
+  --sidebar-foreground: #fdfbf6;
+  --sidebar-muted: #b4befe;
+  --sidebar-border: #2a4a6f;
+  --card-border: #d5cfc0;
+  --card-border-hover: #c5bfb0;
+}
+
+.editorial body,
+.editorial {
+  font-family:
+    'General Sans',
+    'DM Sans',
+    'IBM Plex Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Helvetica Neue',
+    sans-serif;
+}
+
+.editorial body {
+  background-image: radial-gradient(circle at 1px 1px, rgba(26, 20, 16, 0.022) 1px, transparent 0);
+  background-size: 24px 24px;
+  background-attachment: fixed;
+}
+
+.editorial h1, .editorial h2, .editorial h3, .editorial h4, .editorial .font-serif {
+  font-family: 'Fraunces', 'Georgia', serif;
+  font-feature-settings: 'ss01' on;
+  letter-spacing: -0.01em;
+}
+
+/* Catppuccin Theme — soft pastel dark (Mocha flavor) */
+.genz {
+  /* Base layers: Crust > Mantle > Base > Surface0 > Surface1 > Surface2 */
+  --background: #1e1e2e;
+  --main-background: #181825;
+  --form-background: #313244;
+  --foreground: #cdd6f4;
+  --card: #313244;
+  --card-foreground: #cdd6f4;
+  --popover: #313244;
+  --popover-foreground: #cdd6f4;
+
+  /* Accent colors */
+  --primary: #89b4fa;
+  --primary-hover: #74c7ec;
+  --primary-foreground: #1e1e2e;
+  --secondary: #cba6f7;
+  --secondary-foreground: #1e1e2e;
+
+  /* Muted / overlay */
+  --muted: #45475a;
+  --muted-foreground: #bac2de;
+  --project-tabs-background: #181825;
+  --sidebar-hover-foreground: #f5c2e7;
+  --accent: #cba6f7;
+  --accent-foreground: #1e1e2e;
+
+  /* Semantic */
+  --success: #a6e3a1;
+  --success-foreground: #1e1e2e;
+  --warning: #f9e2af;
+  --warning-foreground: #1e1e2e;
+  --destructive: #f38ba8;
+  --destructive-foreground: #1e1e2e;
+
+  /* Charts */
+  --chart-1: #89b4fa;
+  --chart-2: #a6e3a1;
+  --chart-3: #f9e2af;
+  --chart-4: #f38ba8;
+  --chart-5: #cba6f7;
+
+  /* Borders & inputs */
+  --border: #585b70;
+  --input: #7f849c;
+  --ring: #89b4fa;
+  --radius: 0.5rem;
+
+  /* Card headers — use Mauve for vibrant headers */
+  --card-header: #cba6f7;
+  --card-header-foreground: #1e1e2e;
+  --card-header-border: #b4befe;
+  --teal-header-accent: #89b4fa;
+  --teal-header-accent-foreground: #1e1e2e;
+  --info: #89dceb;
+
+  /* Status colors */
+  --fieldwire-status-draft: #f9e2af;
+  --fieldwire-status-neutral: #9399b2;
+  --fieldwire-status-pending: #89b4fa;
+  --fieldwire-status-approved: #a6e3a1;
+  --fieldwire-status-rejected: #f38ba8;
+
+  /* Labels & separators */
+  --label-light: #89b4fa;
+  --label-lighter: #cba6f7;
+  --separator: #45475a;
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.4), -1px 0 4px rgba(0, 0, 0, 0.3);
+  --sidebar-bg: #181825;
+  --sidebar-foreground: #cdd6f4;
+  --sidebar-muted: #a6adc8;
+  --sidebar-border: #313244;
+  --card-border: #45475a;
+  --card-border-hover: #585b70;
+}
+
+.genz body,
+.genz {
+  font-family: 'Comic Neue', system-ui, -apple-system, sans-serif;
+}
+
+.genz h1, .genz h2, .genz h3, .genz h4 {
+  font-family: 'Comic Neue', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* Catppuccin overrides for opacity-based backgrounds */
+.genz .bg-primary\/10 {
+  background-color: rgba(137, 180, 250, 0.15) !important;
+}
+
+.genz .bg-primary\/5 {
+  background-color: rgba(137, 180, 250, 0.1) !important;
+}
+
+.genz .bg-primary\/20 {
+  background-color: rgba(137, 180, 250, 0.25) !important;
+}
+
+.genz .border-primary\/15 {
+  border-color: rgba(137, 180, 250, 0.2) !important;
+}
+
+.genz .border-primary\/20 {
+  border-color: rgba(137, 180, 250, 0.3) !important;
+}
+
+/* Fix outline buttons to be more visible on dark backgrounds */
+.genz [class*="variant-outline"],
+.genz .bg-background {
+  background-color: #313244 !important;
+}
+
+/* Fix muted backgrounds */
+.genz .bg-muted\/45 {
+  background-color: rgba(69, 71, 90, 0.6) !important;
+}
+
+.genz .bg-muted\/60 {
+  background-color: rgba(69, 71, 90, 0.7) !important;
+}
+
+/* Fix hover states for dark backgrounds */
+.genz .hover\:bg-white\/\[0\.06\]:hover {
+  background-color: rgba(205, 214, 244, 0.08) !important;
+}
+
+.genz .hover\:bg-white\/\[0\.10\]:hover {
+  background-color: rgba(205, 214, 244, 0.12) !important;
+}
+
+/* Fix hardcoded gray-100 backgrounds */
+.genz .bg-gray-100 {
+  background-color: #45475a !important;
+}
+
+/* Fix hardcoded zinc-900 backgrounds */
+.genz .dark\:bg-zinc-900 {
+  background-color: #313244 !important;
+}
+
+.genz .group-hover\:bg-zinc-900:hover {
+  background-color: #313244 !important;
+}
+
+/* Dark Blue theme overrides */
+.dark-blue .bg-primary\/10 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark-blue .bg-primary\/5 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.dark-blue .bg-primary\/20 {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark-blue .border-primary\/15 {
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.dark-blue .border-primary\/20 {
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark-blue .bg-gray-100 {
+  background-color: #2d3548 !important;
+}
+
+.dark-blue .dark\:bg-zinc-900 {
+  background-color: #232a3c !important;
+}
+
+.dark-blue .group-hover\:bg-zinc-900:hover {
+  background-color: #232a3c !important;
+}
+
+.dark-blue .hover\:bg-white\/\[0\.06\]:hover {
+  background-color: rgba(226, 232, 240, 0.08) !important;
+}
+
+.dark-blue .hover\:bg-white\/\[0\.10\]:hover {
+  background-color: rgba(226, 232, 240, 0.12) !important;
+}
+
+/* Sidebar border overrides - ensure sidebar always uses dark borders */
+aside .border-border {
+  border-color: var(--sidebar-border) !important;
+}
+
+aside [class*="border-t"],
+aside [class*="border-b"],
+aside [class*="border-l"],
+aside [class*="border-r"] {
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Override Separator component inside sidebar */
+aside [data-slot="separator"],
+aside [data-slot="accordion-menu-separator"],
+aside .bg-border {
+  background-color: var(--sidebar-border) !important;
+}
+
+/* Override any horizontal/vertical separator lines in sidebar */
+aside .h-px,
+aside .w-px {
+  background-color: var(--sidebar-border) !important;
 }
 
 /** Theme Setup **/
@@ -128,6 +495,10 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-project-tabs-background: var(--project-tabs-background);
   --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);

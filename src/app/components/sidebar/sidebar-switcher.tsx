@@ -74,7 +74,7 @@ export const SidebarSwitcher = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="inline-flex text-muted-foreground hover:text-foreground px-1.5 -ms-1.5 w-full"
+            className="inline-flex text-sidebar-muted hover:text-sidebar-foreground px-1.5 -ms-1.5 w-full"
           >
             <div
               className={cn(
@@ -85,7 +85,7 @@ export const SidebarSwitcher = ({
               <selectedProject.icon className="size-4" />
             </div>
 
-            <span className="text-foreground text-sm font-medium flex-1 text-left">
+            <span className="text-sidebar-foreground text-sm font-medium flex-1 text-left">
               {selectedProject.name}
             </span>
             <ChevronsUpDown className="opacity-100" />
@@ -109,7 +109,7 @@ export const SidebarSwitcher = ({
               >
                 <project.icon className="size-4" />
               </div>
-              <span className="text-foreground text-sm font-medium">{project.name}</span>
+              <span className="text-sidebar-foreground text-sm font-medium">{project.name}</span>
               {selectedProject.name === project.name && (
                 <Check className="ms-auto size-4 text-primary" />
               )}

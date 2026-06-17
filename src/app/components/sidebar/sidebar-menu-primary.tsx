@@ -52,8 +52,8 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
       type="multiple"
       className="space-y-1 px-2.5 my-0"
       classNames={{
-        label: 'text-xs font-normal text-muted-foreground mb-1',
-        item: 'h-8 px-2.5 text-sm font-normal text-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
+        label: 'text-xs font-normal text-sidebar-muted mb-1',
+        item: 'h-8 px-2.5 text-sm font-normal text-sidebar-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-sidebar-foreground [&[data-selected=true]_svg]:opacity-100',
         group: '',
       }}
     >

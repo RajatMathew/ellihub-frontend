@@ -29,6 +29,7 @@ function FrameWork() {
       enableSystem
       disableTransitionOnChange
       enableColorScheme
+      themes={['light', 'dark', 'dark-blue', 'editorial', 'genz']}
     >
       <PwaUpdateModal />
       <HelmetProvider>

@@ -33,25 +33,25 @@ const STATUS_FILTER_TONE_CLASSES: Record<
 > = {
   ACTIVE: {
     active:
-      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-foreground/55 dark:bg-foreground/10 dark:ring-foreground/25',
+      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-[color:var(--card-border-hover)] dark:bg-muted/30 dark:ring-foreground/25',
     dot: 'bg-success',
     hover: 'hover:border-foreground/20',
   },
   INACTIVE: {
     active:
-      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-foreground/55 dark:bg-foreground/10 dark:ring-foreground/25',
+      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-[color:var(--card-border-hover)] dark:bg-muted/30 dark:ring-foreground/25',
     dot: 'bg-warning',
     hover: 'hover:border-foreground/20',
   },
   CLOSED: {
     active:
-      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-foreground/55 dark:bg-foreground/10 dark:ring-foreground/25',
+      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-[color:var(--card-border-hover)] dark:bg-muted/30 dark:ring-foreground/25',
     dot: 'bg-muted-foreground',
     hover: 'hover:border-foreground/20',
   },
   COMPLETED: {
     active:
-      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-foreground/55 dark:bg-foreground/10 dark:ring-foreground/25',
+      'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-[color:var(--card-border-hover)] dark:bg-muted/30 dark:ring-foreground/25',
     dot: 'bg-primary',
     hover: 'hover:border-foreground/20',
   },
@@ -72,7 +72,7 @@ const getStatusTone = (value: string) => {
   return (
     STATUS_FILTER_TONE_CLASSES[value.toUpperCase()] ?? {
       active:
-        'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-foreground/55 dark:bg-foreground/10 dark:ring-foreground/25',
+        'border-foreground/35 bg-muted/45 ring-foreground/10 dark:border-[color:var(--card-border-hover)] dark:bg-muted/30 dark:ring-foreground/25',
       dot: getStatusDotClassName(value),
       hover: 'hover:border-foreground/20',
     }
@@ -102,7 +102,7 @@ export function ProjectStatusSummary({
           : 'xl:grid-cols-1';
 
   return (
-    <div className="mb-5 w-fit max-w-full rounded-2xl border border-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
+    <div className="mb-5 w-fit max-w-full rounded-2xl border border-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 dark:border-[color:var(--card-border)] dark:bg-muted/20 dark:shadow-none">
       <div className={cn('grid grid-cols-1 gap-1.5 sm:grid-cols-2', columnClassName)}>
         {groups.map((group) => {
           const isActive = activeStatusId === group.id;
@@ -118,7 +118,7 @@ export function ProjectStatusSummary({
               className={cn(
                 'group min-h-[92px] rounded-xl border border-border bg-card p-3 text-left shadow-xs shadow-black/5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-w-[280px]',
                 'hover:-translate-y-px hover:bg-card hover:shadow-md',
-                'dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:shadow-none dark:hover:border-zinc-600/80 dark:hover:bg-zinc-950/70 dark:hover:shadow-none',
+                'dark:border-[color:var(--card-border)] dark:bg-card dark:shadow-none dark:hover:border-[color:var(--card-border-hover)] dark:hover:bg-card dark:hover:shadow-none',
                 tone.hover,
                 isActive && 'ring-2',
                 isActive && tone.active
