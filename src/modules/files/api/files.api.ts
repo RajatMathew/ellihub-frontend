@@ -1,4 +1,4 @@
-﻿import api from '@/app/api';
+import api from '@/app/api';
 import {
   fileExportJobSchema,
   fileSearchResponseSchema,
@@ -279,7 +279,7 @@ export const filesApi = {
     formData.append('size', String(data.size));
     formData.append('data', JSON.stringify(data));
 
-    const res = await api.post(`${BASE}/upload`, formData);
+    const res = await api.post(`${BASE}/upload`, formData, { timeout: 0 });
     const raw = res.data?.data ?? res.data;
     const result = fileSchema.safeParse(raw);
 
