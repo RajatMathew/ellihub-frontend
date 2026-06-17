@@ -60,6 +60,12 @@ function AccordionMenu({
   );
   React.useEffect(() => {
     setInternalSelectedValue(selectedValue);
+    // Re-sync expanded-group state to the new route so dropdowns auto-close
+    // when the user navigates away. Without this, groups opened on one page
+    // stay open after navigation. Keyed only on selectedValue so children
+    // reference changes don't cause spurious resets.
+    setNestedStates(initialNestedStates);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValue]);
 
   const initialNestedStates = React.useMemo(() => {

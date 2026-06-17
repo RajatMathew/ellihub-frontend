@@ -7,14 +7,24 @@ const isDev = import.meta.env.DEV;
 
 // Order: Projects · Monthly Bills · Directory · HR · Files · Catalog ·
 //        Activity Logger · Lookups · (UI Kit when dev)
+// Per-item separators removed to match the Estimating sidebar — only real
+// section boundaries (Projects switcher, Dev tools) get dividers.
 export const mainSidebarMenu: MenuConfig = [
+  {
+    type: 'group-collapsed',
+    title: 'Email',
+    children: [
+      { title: 'procurement@ellicorp.com', path: '../email/procurement' },
+      { title: 'requisitions@ellicorp.com', path: '../email/requisitions' },
+      { title: 'contracts@ellicorp.com', path: '../email/contracts' },
+    ],
+  },
   { type: 'custom', render: () => <ProjectsNavGroup /> },
   { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Monthly Bills', path: '../monthly-bills' }],
   },
-  { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'Directory',
@@ -39,7 +49,6 @@ export const mainSidebarMenu: MenuConfig = [
       },
     ],
   },
-  { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'HR',
@@ -59,23 +68,19 @@ export const mainSidebarMenu: MenuConfig = [
       { title: 'Time Off', path: '../hr/pto', createPath: true, createTitle: 'Create Time Off' },
     ],
   },
-  { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Files', path: '../files' }],
   },
-  { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'Catalog',
     children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
   },
-  { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Activity Logger', path: '../activity-log' }],
   },
-  { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Lookups', path: '../lookup' }],

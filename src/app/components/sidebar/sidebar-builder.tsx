@@ -39,6 +39,8 @@ function filterMenuForAccess(
 
       const children = item.children.filter((child) => {
         const path = child.path ?? '';
+        // Email mailboxes are visible to everyone — no per-mailbox gating yet.
+        if (path.includes('email/')) return true;
         if (path.includes('projects')) return access.access?.projectScope !== 'none';
         if (path.includes('monthly-bills')) {
           return (
