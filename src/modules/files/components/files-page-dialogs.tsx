@@ -29,6 +29,9 @@ interface FilesPageDialogsProps {
   onRenameItemChange: (item: FileItem | null) => void;
   onDeleteItemChange: (item: FileItem | null) => void;
   readOnly?: boolean;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 export function FilesPageDialogs({
@@ -44,6 +47,9 @@ export function FilesPageDialogs({
   onRenameItemChange,
   onDeleteItemChange,
   readOnly = false,
+  canCreate = !readOnly,
+  canUpdate = !readOnly,
+  canDelete = !readOnly,
 }: FilesPageDialogsProps) {
   const createFolderMutation = useCreateFolderMutation();
   const uploadFilesMutation = useUploadFilesMutation();
@@ -60,7 +66,7 @@ export function FilesPageDialogs({
 
   return (
     <>
-      {!readOnly && (
+      {canCreate && (
         <>
           <CreateFolderDialog
             open={createFolderOpen}
@@ -98,23 +104,25 @@ export function FilesPageDialogs({
               );
             }}
           />
-          <RenameDialog
-            open={!!renameItem}
-            onOpenChange={(open) => {
-              if (!open) onRenameItemChange(null);
-            }}
-            item={renameItem}
-            isSubmitting={renameMutation.isPending}
-            onSubmit={(data) => {
-              renameMutation.mutate(data, {
-                onSuccess: () => {
-                  toast.success('Renamed successfully.');
-                  onRenameItemChange(null);
-                },
-              });
-            }}
-          />
         </>
+      )}
+      {canUpdate && (
+        <RenameDialog
+          open={!!renameItem}
+          onOpenChange={(open) => {
+            if (!open) onRenameItemChange(null);
+          }}
+          item={renameItem}
+          isSubmitting={renameMutation.isPending}
+          onSubmit={(data) => {
+            renameMutation.mutate(data, {
+              onSuccess: () => {
+                toast.success('Renamed successfully.');
+                onRenameItemChange(null);
+              },
+            });
+          }}
+        />
       )}
       <FilePreviewDialog
         open={!!previewItem}
@@ -123,7 +131,7 @@ export function FilesPageDialogs({
         }}
         file={previewItem}
       />
-      {!readOnly && (
+      {canDelete && (
         <FilesDeleteDialog
           item={deleteItem}
           onOpenChange={(open) => {

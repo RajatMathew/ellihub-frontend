@@ -33,6 +33,12 @@ interface FilesExplorerProps {
   rootFolderId?: string;
   rootLabel?: string;
   readOnly?: boolean;
+  permissions?: {
+    create?: boolean;
+    update?: boolean;
+    delete?: boolean;
+    export?: boolean;
+  };
   primeContractPinning?: {
     folderId?: string;
     pinnedFileIds: string[];
@@ -68,6 +74,7 @@ export function FilesExplorer({
   rootFolderId,
   rootLabel = 'Files',
   readOnly = false,
+  permissions,
   primeContractPinning,
 }: FilesExplorerProps) {
   const listParams = useFilesListParams();
@@ -143,7 +150,10 @@ export function FilesExplorer({
   const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
   const navigationRootId = rootFolderId ?? rootFolder?.id;
   const showResultLocation = isSearchActive && searchMode === 'global';
-  const canMutate = !readOnly;
+  const canCreate = permissions?.create ?? !readOnly;
+  const canUpdate = permissions?.update ?? !readOnly;
+  const canDelete = permissions?.delete ?? !readOnly;
+  const canExport = permissions?.export ?? true;
   const pinnedPrimeContractFileIds = useMemo(
     () => new Set(primeContractPinning?.pinnedFileIds ?? []),
     [primeContractPinning?.pinnedFileIds]
@@ -248,7 +258,9 @@ export function FilesExplorer({
     canPinPrimeContract,
     onSetPrimeContractPrimary: primeContractPinning?.onSetPrimary,
     canSetPrimeContractPrimary,
-    canMutate,
+    canRename: canUpdate,
+    canDelete,
+    canExport,
   });
 
   return (
@@ -257,9 +269,9 @@ export function FilesExplorer({
         title={title}
         searchInput={searchInput}
         searchMode={searchMode}
-        canMutateFolder={canMutate && !!currentFolderId}
-        canExport={!!folderDetail && !folderZipExport.isExporting}
-        showMutationActions={canMutate}
+        canMutateFolder={canCreate && !!currentFolderId}
+        canExport={canExport && !!folderDetail && !folderZipExport.isExporting}
+        showMutationActions={canCreate}
         onSearchChange={handleSearchChange}
         onSearchModeChange={handleSearchModeChange}
         onExport={handleExport}
@@ -328,6 +340,7 @@ export function FilesExplorer({
                 onFolderClick={handleFolderClick}
                 onFilePreview={setPreviewItem}
                 onFolderExport={(item) => void folderZipExport.startExport(item)}
+                canExport={canExport}
                 onPinPrimeContract={primeContractPinning?.onPin}
                 canPinPrimeContract={canPinPrimeContract}
                 onSetPrimeContractPrimary={primeContractPinning?.onSetPrimary}
@@ -365,6 +378,9 @@ export function FilesExplorer({
         onRenameItemChange={setRenameItem}
         onDeleteItemChange={setDeleteItem}
         readOnly={readOnly}
+        canCreate={canCreate}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
     </div>
   );

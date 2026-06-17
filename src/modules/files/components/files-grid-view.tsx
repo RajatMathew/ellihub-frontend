@@ -1,5 +1,5 @@
-﻿import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
+﻿import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { formatDateTime } from '@/app/lib/helpers';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
@@ -17,6 +17,7 @@ interface FilesGridViewProps {
   onFolderClick?: (folder: FileItem) => void;
   onFilePreview?: (file: FileItem) => void;
   onFolderExport?: (folder: FileItem) => void;
+  canExport?: boolean;
   onPinPrimeContract?: (file: FileItem) => void;
   canPinPrimeContract?: (file: FileItem) => boolean;
   onSetPrimeContractPrimary?: (file: FileItem, isPrimary: boolean) => void;
@@ -31,6 +32,7 @@ export function FilesGridView({
   onFolderClick,
   onFilePreview,
   onFolderExport,
+  canExport = true,
   onPinPrimeContract,
   canPinPrimeContract,
   onSetPrimeContractPrimary,
@@ -53,6 +55,8 @@ export function FilesGridView({
         const canPin = canPinPrimeContract?.(item) ?? false;
         const canSetPrimary = canSetPrimeContractPrimary?.(item) ?? false;
         const isPrimary = item.primeContract?.isPrimary === true;
+        const canExportFolder = isFolder && canExport;
+        const showActions = canPin || canSetPrimary || !isFolder || canExportFolder;
 
         return (
           <Card
@@ -101,56 +105,56 @@ export function FilesGridView({
               <span className="text-xs text-muted-foreground">
                 {formatDateTime(item.updatedAt || '')}
               </span>
-              <div className="flex items-center gap-1">
-                {canPin && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-7 p-0"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onPinPrimeContract?.(item);
-                    }}
-                    aria-label="Pin to overview"
-                  >
-                    <Pin className="size-3.5" />
-                  </Button>
-                )}
-                {canSetPrimary && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="size-7 p-0"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onSetPrimeContractPrimary?.(item, !isPrimary);
-                    }}
-                    aria-label={isPrimary ? 'Remove primary mark' : 'Mark primary'}
-                  >
-                    {isPrimary ? (
-                      <StarOff className="size-3.5" />
-                    ) : (
-                      <Star className="size-3.5" />
-                    )}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="size-7 p-0"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (isFolder) {
-                      onFolderExport?.(item);
-                      return;
-                    }
-                    downloadFile.mutate(item);
-                  }}
-                  aria-label={isFolder ? 'Export folder as ZIP' : 'Download file'}
-                >
-                  <Download className="size-3.5" />
-                </Button>
-              </div>
+              {showActions && (
+                <div className="flex items-center gap-1">
+                  {canPin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onPinPrimeContract?.(item);
+                      }}
+                      aria-label="Pin to overview"
+                    >
+                      <Pin className="size-3.5" />
+                    </Button>
+                  )}
+                  {canSetPrimary && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSetPrimeContractPrimary?.(item, !isPrimary);
+                      }}
+                      aria-label={isPrimary ? 'Remove primary mark' : 'Mark primary'}
+                    >
+                      {isPrimary ? <StarOff className="size-3.5" /> : <Star className="size-3.5" />}
+                    </Button>
+                  )}
+                  {(!isFolder || canExportFolder) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-7 p-0"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (isFolder) {
+                          onFolderExport?.(item);
+                          return;
+                        }
+                        downloadFile.mutate(item);
+                      }}
+                      aria-label={isFolder ? 'Export folder as ZIP' : 'Download file'}
+                    >
+                      <Download className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         );

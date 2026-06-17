@@ -43,7 +43,9 @@ interface UseFilesColumnsOptions {
   canPinPrimeContract?: (item: FileItem) => boolean;
   onSetPrimeContractPrimary?: (item: FileItem, isPrimary: boolean) => void;
   canSetPrimeContractPrimary?: (item: FileItem) => boolean;
-  canMutate?: boolean;
+  canRename?: boolean;
+  canDelete?: boolean;
+  canExport?: boolean;
 }
 
 export function useFilesColumns({
@@ -58,7 +60,9 @@ export function useFilesColumns({
   canPinPrimeContract,
   onSetPrimeContractPrimary,
   canSetPrimeContractPrimary,
-  canMutate = true,
+  canRename = true,
+  canDelete = true,
+  canExport = true,
 }: UseFilesColumnsOptions) {
   const downloadFile = useDownloadFile();
 
@@ -166,11 +170,14 @@ export function useFilesColumns({
         cell: ({ row }) => {
           const isFile = row.original.type === 'FILE';
           const isFolder = row.original.type === 'FOLDER';
-          const canRenameOrDelete = canMutate && row.original.isDeletable;
+          const canRenameItem = canRename && row.original.isDeletable;
+          const canDeleteItem = canDelete && row.original.isDeletable;
           const canPin = canPinPrimeContract?.(row.original) ?? false;
           const canSetPrimary = canSetPrimeContractPrimary?.(row.original) ?? false;
           const isPrimary = row.original.primeContract?.isPrimary === true;
-          const showMenu = isFile || isFolder || canRenameOrDelete || canPin || canSetPrimary;
+          const canExportFolder = isFolder && canExport;
+          const showMenu =
+            isFile || canExportFolder || canRenameItem || canDeleteItem || canPin || canSetPrimary;
 
           return (
             <div
@@ -199,7 +206,7 @@ export function useFilesColumns({
                   </Button>
                 </>
               )}
-              {isFolder && (
+              {canExportFolder && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -230,13 +237,13 @@ export function useFilesColumns({
                         Download
                       </DropdownMenuItem>
                     )}
-                    {isFolder && (
+                    {canExportFolder && (
                       <DropdownMenuItem onClick={() => onExportFolder(row.original)}>
                         <Download className="size-3.5" />
                         Export ZIP
                       </DropdownMenuItem>
                     )}
-                    {canRenameOrDelete && (
+                    {canRenameItem && (
                       <DropdownMenuItem onClick={() => onRename(row.original)}>
                         <Pencil className="size-3.5" />
                         Rename
@@ -260,10 +267,10 @@ export function useFilesColumns({
                         {isPrimary ? 'Remove Primary' : 'Mark Primary'}
                       </DropdownMenuItem>
                     )}
-                    {(canRenameOrDelete || canPin || canSetPrimary) && canRenameOrDelete && (
+                    {canDeleteItem && (canRenameItem || canPin || canSetPrimary) && (
                       <DropdownMenuSeparator />
                     )}
-                    {canRenameOrDelete && (
+                    {canDeleteItem && (
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => onDelete(row.original)}
@@ -297,7 +304,9 @@ export function useFilesColumns({
       onRename,
       canPinPrimeContract,
       canSetPrimeContractPrimary,
-      canMutate,
+      canRename,
+      canDelete,
+      canExport,
       showLocation,
     ]
   );

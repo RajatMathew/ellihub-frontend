@@ -13,6 +13,10 @@ export interface MenuItem {
   path?: string;
   createPath?: string | true;
   createTitle?: string;
+  access?: MenuAccessRule;
+  createAccess?: MenuAccessRule;
+  projectAction?: MenuProjectActionRule;
+  createProjectAction?: MenuProjectActionRule;
   rootPath?: string;
   childrenIndex?: number;
   heading?: string;
@@ -31,3 +35,19 @@ export interface MenuItem {
 }
 
 export type MenuConfig = MenuItem[];
+
+export interface MenuAccessRule {
+  resource: string;
+  action: string;
+}
+
+export interface MenuProjectActionRule {
+  resource:
+    | 'projectTeam'
+    | 'primeContract'
+    | 'rfq'
+    | 'purchaseOrder'
+    | 'subChangeOrder'
+    | 'invoice';
+  action: string;
+}

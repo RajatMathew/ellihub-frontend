@@ -15,6 +15,7 @@ interface FilesGridContentProps {
   onFolderClick: (folder: FileItem) => void;
   onFilePreview: (file: FileItem) => void;
   onFolderExport: (folder: FileItem) => void;
+  canExport?: boolean;
   onPinPrimeContract?: (file: FileItem) => void;
   canPinPrimeContract?: (file: FileItem) => boolean;
   onSetPrimeContractPrimary?: (file: FileItem, isPrimary: boolean) => void;
@@ -30,6 +31,7 @@ export function FilesGridContent({
   onFolderClick,
   onFilePreview,
   onFolderExport,
+  canExport = true,
   onPinPrimeContract,
   canPinPrimeContract,
   onSetPrimeContractPrimary,
@@ -54,6 +56,7 @@ export function FilesGridContent({
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
             onFolderExport={onFolderExport}
+            canExport={canExport}
             onPinPrimeContract={onPinPrimeContract}
             canPinPrimeContract={canPinPrimeContract}
             onSetPrimeContractPrimary={onSetPrimeContractPrimary}
@@ -74,6 +77,7 @@ export function FilesGridContent({
             onFolderClick={onFolderClick}
             onFilePreview={onFilePreview}
             onFolderExport={onFolderExport}
+            canExport={canExport}
             onPinPrimeContract={onPinPrimeContract}
             canPinPrimeContract={canPinPrimeContract}
             onSetPrimeContractPrimary={onSetPrimeContractPrimary}

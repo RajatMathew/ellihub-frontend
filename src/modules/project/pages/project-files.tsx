@@ -1,16 +1,18 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useAccess } from '@/app/contexts/access-context';
 import { FilesExplorer } from '@/modules/files/components/files-explorer';
 import { ProjectOverviewLoading } from '@/modules/project/components/overview';
+import { useProjectDetailQuery, useProjectFolderQuery } from '@/modules/project/hooks';
 import {
   useContractAttachmentsQuery,
   usePinPrimeContractsMutation,
   useSetPrimeContractPrimaryMutation,
 } from '@/modules/project/hooks/contract-attachment.hooks';
-import { useProjectDetailQuery, useProjectFolderQuery } from '@/modules/project/hooks';
 import { useParams } from 'react-router-dom';
 
 export default function ProjectFilesPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const { can } = useAccess();
   const projectQuery = useProjectDetailQuery(projectId);
   const folderQuery = useProjectFolderQuery(projectId || undefined);
   const primeContractFolderQuery = useProjectFolderQuery(projectId || undefined, 'prime contract');
@@ -41,7 +43,12 @@ export default function ProjectFilesPage() {
       title="Project Files"
       rootFolderId={folderQuery.data}
       rootLabel={projectQuery.data?.name ?? 'Project'}
-      readOnly={!(projectQuery.data?.capabilities?.canManage ?? false)}
+      permissions={{
+        create: can('file', 'create'),
+        update: can('file', 'update'),
+        delete: can('file', 'delete'),
+        export: can('file', 'export'),
+      }}
       primeContractPinning={{
         folderId: primeContractFolderQuery.data,
         pinnedFileIds: pinnedPrimeContracts

@@ -1,8 +1,10 @@
 import { memo, useMemo } from 'react';
 
+import { useProjectDetailQuery } from '@/modules/project/hooks';
+import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
 import { useLocation } from 'react-router-dom';
 
-import type { MenuConfig } from '@app/config/types';
+import type { MenuConfig, MenuItem, MenuProjectActionRule } from '@app/config/types';
 import { useAccess } from '@app/contexts/access-context';
 
 import { Separator } from '../ui/separator';
@@ -23,45 +25,101 @@ function compactSeparators(menu: MenuConfig): MenuConfig {
   });
 }
 
+function getProjectIdFromPath(pathname: string): string {
+  return pathname.match(/^\/app\/project\/([^/]+)/)?.[1] ?? '';
+}
+
+function canUseProjectAction(
+  project: ProjectDetail | undefined,
+  rule: MenuProjectActionRule | undefined
+) {
+  if (!rule) return true;
+  return project?.capabilities?.actions?.[rule.resource]?.[rule.action] === true;
+}
+
+function applyMenuActionAccess(
+  child: MenuItem,
+  access: ReturnType<typeof useAccess>,
+  project: ProjectDetail | undefined
+): MenuItem | null {
+  if (child.access && !access.can(child.access.resource, child.access.action)) return null;
+  if (!canUseProjectAction(project, child.projectAction)) return null;
+
+  const canCreate =
+    (!child.createAccess || access.can(child.createAccess.resource, child.createAccess.action)) &&
+    canUseProjectAction(project, child.createProjectAction);
+
+  if (canCreate || !child.createPath) return child;
+
+  const { createPath: _createPath, createTitle: _createTitle, ...rest } = child;
+  return rest;
+}
+
+function filterProjectMenuForAccess(
+  menuConfig: MenuConfig,
+  access: ReturnType<typeof useAccess>,
+  project: ProjectDetail | undefined
+): MenuConfig {
+  const filtered = menuConfig
+    .map((item) => {
+      if (item.type === 'separator' || item.type === 'custom') return item;
+      if (!item.children) return applyMenuActionAccess(item, access, project);
+
+      const children = item.children
+        .map((child) => applyMenuActionAccess(child, access, project))
+        .filter(Boolean) as MenuConfig;
+
+      if (children.length === 0) return null;
+      return { ...item, children };
+    })
+    .filter(Boolean) as MenuConfig;
+
+  return compactSeparators(filtered);
+}
+
 function filterMenuForAccess(
   menuConfig: MenuConfig,
   isProjectSidebar: boolean,
-  access: ReturnType<typeof useAccess>
+  access: ReturnType<typeof useAccess>,
+  project: ProjectDetail | undefined
 ): MenuConfig {
-  if (isProjectSidebar) return menuConfig;
+  if (isProjectSidebar) return filterProjectMenuForAccess(menuConfig, access, project);
 
   const filtered = menuConfig
     .map((item) => {
       if (item.type === 'separator') return item;
       if (!item.children) return null;
 
-      const children = item.children.filter((child) => {
-        const path = child.path ?? '';
-        if (path.includes('projects')) return access.access?.projectScope !== 'none';
-        if (path.includes('monthly-bills')) {
-          return (
-            access.isAdmin || access.access?.role === 'pm' || access.access?.role === 'accountant'
-          );
-        }
-        if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
-        if (path.includes('directory/contacts')) return access.can('contact', 'read');
-        if (path.includes('directory/general-contractors')) {
-          return access.can('generalContractor', 'read');
-        }
-        if (path.includes('directory/vendors')) return access.can('vendor', 'read');
-        if (path.includes('hr/employees')) return access.can('employee', 'read');
-        if (path.includes('hr/departments')) return access.can('department', 'read');
-        if (path.includes('hr/pto'))
-          return access.can('leave', 'view') || access.can('leave', 'create');
-        if (path.includes('files')) return access.isAdmin;
-        if (path.includes('activity-log')) return access.can('activityLog', 'read');
-        if (path.includes('settings')) {
-          return access.can('user', 'manage-permissions') || access.can('template', 'read');
-        }
-        if (path.includes('lookup')) return access.isDev;
-        if (path.includes('ui')) return access.isDev;
-        return false;
-      });
+      const children = item.children
+        .filter((child) => {
+          const path = child.path ?? '';
+          if (path.includes('projects')) return access.access?.projectScope !== 'none';
+          if (path.includes('monthly-bills')) {
+            return (
+              access.isAdmin || access.access?.role === 'pm' || access.access?.role === 'accountant'
+            );
+          }
+          if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
+          if (path.includes('directory/contacts')) return access.can('contact', 'read');
+          if (path.includes('directory/general-contractors')) {
+            return access.can('generalContractor', 'read');
+          }
+          if (path.includes('directory/vendors')) return access.can('vendor', 'read');
+          if (path.includes('hr/employees')) return access.can('employee', 'read');
+          if (path.includes('hr/departments')) return access.can('department', 'read');
+          if (path.includes('hr/pto'))
+            return access.can('leave', 'view') || access.can('leave', 'create');
+          if (path.includes('files')) return access.isAdmin;
+          if (path.includes('activity-log')) return access.can('activityLog', 'read');
+          if (path.includes('settings')) {
+            return access.can('user', 'manage-permissions') || access.can('template', 'read');
+          }
+          if (path.includes('lookup')) return access.isDev;
+          if (path.includes('ui')) return access.isDev;
+          return false;
+        })
+        .map((child) => applyMenuActionAccess(child, access, project))
+        .filter(Boolean) as MenuConfig;
 
       if (children.length === 0) return null;
       return { ...item, children };
@@ -75,9 +133,11 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
   const access = useAccess();
   const location = useLocation();
   const isProjectSidebar = location.pathname.includes('/app/project/');
+  const projectId = isProjectSidebar ? getProjectIdFromPath(location.pathname) : '';
+  const { data: project } = useProjectDetailQuery(projectId);
   const accessibleMenuConfig = useMemo(
-    () => filterMenuForAccess(menuConfig, isProjectSidebar, access),
-    [access, isProjectSidebar, menuConfig]
+    () => filterMenuForAccess(menuConfig, isProjectSidebar, access, project),
+    [access, isProjectSidebar, menuConfig, project]
   );
 
   const renderedMenu = useMemo(() => {
