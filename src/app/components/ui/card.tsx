@@ -45,7 +45,8 @@ const cardHeaderVariants = cva(
       variant: {
         default: 'border-b border-border',
         accent: '',
-        themed: 'bg-card-header text-card-header-foreground rounded-t-xl [&_h3]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/60 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_svg]:text-card-header-foreground',
+        themed:
+          'bg-card-header text-card-header-foreground rounded-t-xl [&_h3]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/60 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_svg]:text-card-header-foreground',
       },
     },
     defaultVariants: {
@@ -67,7 +68,7 @@ const cardContentVariants = cva('min-w-0 grow p-4 sm:p-5', {
   },
 });
 
-const cardTableVariants = cva('grid grow', {
+const cardTableVariants = cva('grid min-w-0 max-w-full grow', {
   variants: {
     variant: {
       default: '',
@@ -80,7 +81,7 @@ const cardTableVariants = cva('grid grow', {
   },
 });
 
-const cardFooterVariants = cva('flex items-center px-5 min-h-14', {
+const cardFooterVariants = cva('flex min-w-0 max-w-full items-center px-5 min-h-14', {
   variants: {
     variant: {
       default: 'border-t border-border',
@@ -156,14 +157,14 @@ function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement
 
 // Other Components
 function CardHeading({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-heading" className={cn('space-y-1', className)} {...props} />;
+  return <div data-slot="card-heading" className={cn('min-w-0 space-y-1', className)} {...props} />;
 }
 
 function CardToolbar({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       data-slot="card-toolbar"
-      className={cn('flex items-center gap-2.5', className)}
+      className={cn('flex min-w-0 items-center gap-2.5', className)}
       {...props}
     />
   );
@@ -173,7 +174,7 @@ function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElem
   return (
     <h3
       data-slot="card-title"
-      className={cn('text-base font-semibold leading-none tracking-tight', className)}
+      className={cn('min-w-0 text-base font-semibold leading-none tracking-tight', className)}
       {...props}
     />
   );
@@ -183,7 +184,7 @@ function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return (
     <div
       data-slot="card-description"
-      className={cn('text-sm text-muted-foreground', className)}
+      className={cn('min-w-0 text-sm text-muted-foreground', className)}
       {...props}
     />
   );

@@ -148,6 +148,7 @@ export function SubChangeOrderListPage() {
           isLoading={isLoading}
           isError={isError}
           onRetry={() => void refetch()}
+          changeTypeLabelById={changeTypeLabelById}
         />
       </Card>
     </div>

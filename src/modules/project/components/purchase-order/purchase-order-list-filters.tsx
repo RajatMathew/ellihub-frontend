@@ -1,5 +1,3 @@
-import { Search, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import {
@@ -18,6 +16,7 @@ import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import { PO_STATUS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import type { PurchaseOrderListParamPatch } from '@/modules/project/hooks/purchase-order';
 import type { POStatusName } from '@/modules/project/schemas/purchase-order';
+import { Search, X } from 'lucide-react';
 
 interface PurchaseOrderLookupOption {
   id: string;
@@ -48,10 +47,7 @@ interface PurchaseOrderListFiltersProps {
   onClearFilters: () => void;
 }
 
-const STATUS_TABS = [
-  { label: 'All', value: undefined },
-  ...PO_STATUS_OPTIONS,
-] as const;
+const STATUS_TABS = [{ label: 'All', value: undefined }, ...PO_STATUS_OPTIONS] as const;
 
 export function PurchaseOrderListFilters({
   statusFilter,
@@ -69,7 +65,7 @@ export function PurchaseOrderListFilters({
 }: PurchaseOrderListFiltersProps) {
   return (
     <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full overflow-x-auto sm:w-auto">
+      <CardTitle className="w-full sm:w-auto">
         <ProjectFilterTabs
           value={statusFilter}
           options={STATUS_TABS}

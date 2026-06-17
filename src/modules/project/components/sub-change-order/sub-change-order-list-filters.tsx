@@ -1,5 +1,3 @@
-import { Search, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -13,10 +11,8 @@ import {
 import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import { SCO_STATUS_OPTIONS } from '@/modules/project/constants/sub-change-order';
 import type { SubChangeOrderListParamPatch } from '@/modules/project/hooks/sub-change-order';
-import type {
-  SCOChangeType,
-  SCOStatusName,
-} from '@/modules/project/schemas/sub-change-order';
+import type { SCOChangeType, SCOStatusName } from '@/modules/project/schemas/sub-change-order';
+import { Search, X } from 'lucide-react';
 
 interface SubChangeOrderListFiltersProps {
   statusFilter?: SCOStatusName;
@@ -29,10 +25,7 @@ interface SubChangeOrderListFiltersProps {
   onClearFilters: () => void;
 }
 
-const STATUS_TABS = [
-  { label: 'All', value: undefined },
-  ...SCO_STATUS_OPTIONS,
-] as const;
+const STATUS_TABS = [{ label: 'All', value: undefined }, ...SCO_STATUS_OPTIONS] as const;
 
 export function SubChangeOrderListFilters({
   statusFilter,
@@ -46,7 +39,7 @@ export function SubChangeOrderListFilters({
 }: SubChangeOrderListFiltersProps) {
   return (
     <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full overflow-x-auto sm:w-auto">
+      <CardTitle className="w-full sm:w-auto">
         <ProjectFilterTabs
           value={statusFilter}
           options={STATUS_TABS}

@@ -19,7 +19,12 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
   className,
 }: ProjectFilterTabsProps<TValue>) {
   return (
-    <div className={cn('inline-flex min-w-max items-center gap-0', className)}>
+    <div
+      className={cn(
+        'flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 sm:inline-flex sm:flex-nowrap sm:gap-0',
+        className
+      )}
+    >
       {options.map((option) => {
         const isActive = option.value === value;
 
@@ -29,10 +34,10 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
             type="button"
             onClick={() => onValueChange(option.value)}
             className={cn(
-              'border-b-2 px-4 py-2 text-xs font-medium uppercase tracking-normal transition-colors',
+              'shrink-0 border-b-2 px-3 py-2 text-xs font-medium uppercase tracking-normal transition-colors sm:px-4',
               isActive
                 ? 'border-foreground text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             {option.label}

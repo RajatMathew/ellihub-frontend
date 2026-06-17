@@ -1,5 +1,3 @@
-import { Search, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -17,6 +15,7 @@ import {
 import type { RFQListParamPatch } from '@/modules/project/hooks/rfq';
 import type { Lookup } from '@/modules/project/schemas/lookup.schema';
 import type { RFQStatus } from '@/modules/project/schemas/rfq';
+import { Search, X } from 'lucide-react';
 
 const RFQ_STATUS_FILTER_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
@@ -59,7 +58,7 @@ export function RFQListFilters({
   ];
   return (
     <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full overflow-x-auto sm:w-auto">
+      <CardTitle className="w-full sm:w-auto">
         <ProjectFilterTabs
           value={trackFilter}
           options={trackOptions}

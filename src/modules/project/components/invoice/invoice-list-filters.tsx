@@ -1,11 +1,13 @@
-import { Search, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import type { InvoiceFilterOptionsResult, InvoiceListParamPatch } from '@/modules/project/hooks/invoice';
 import { ProjectFilterTabs } from '@/modules/project/components/shared';
+import type {
+  InvoiceFilterOptionsResult,
+  InvoiceListParamPatch,
+} from '@/modules/project/hooks/invoice';
+import { Search, X } from 'lucide-react';
 
 interface InvoiceListFiltersProps {
   paidFilter: boolean | undefined;
@@ -46,12 +48,11 @@ export function InvoiceListFilters({
   onUpdateParams,
   onClearFilters,
 }: InvoiceListFiltersProps) {
-  const paymentValue =
-    paidFilter === undefined ? undefined : paidFilter ? 'true' : 'false';
+  const paymentValue = paidFilter === undefined ? undefined : paidFilter ? 'true' : 'false';
 
   return (
     <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full overflow-x-auto sm:w-auto">
+      <CardTitle className="w-full sm:w-auto">
         <ProjectFilterTabs
           value={paymentValue}
           options={PAYMENT_TABS}

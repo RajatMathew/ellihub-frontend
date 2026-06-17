@@ -194,6 +194,10 @@ export default function ProjectPOs() {
             isLoading={isLoading}
             isError={isError}
             onRetry={() => void refetch()}
+            onCancel={(po) => {
+              setCancelTarget(po);
+              setCancelReason('');
+            }}
           />
         </Card>
       </div>
