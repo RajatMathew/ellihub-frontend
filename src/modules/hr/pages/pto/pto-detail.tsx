@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   PTODecisionCard,
@@ -26,6 +27,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 export default function PTODetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { can } = useAccess();
   const ptoQuery = usePTODetailQuery(id ?? '');
   const approveMutation = useApprovePTOMutation();
   const rejectMutation = useRejectPTOMutation();
@@ -35,19 +37,17 @@ export default function PTODetailPage() {
     ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
     : undefined;
 
-  useBreadcrumbLabel(
-    id ? `/app/hr/pto/${id}` : undefined,
-    ptoBreadcrumbLabel ?? 'PTO Request'
-  );
+  useBreadcrumbLabel(id ? `/app/hr/pto/${id}` : undefined, ptoBreadcrumbLabel ?? 'PTO Request');
 
   const handleDecision = useCallback(
     (type: 'approve' | 'reject', note: string) => {
+      if (!can('leave', 'approve')) return;
       if (!ptoQuery.data) return;
 
       const mutation = type === 'approve' ? approveMutation : rejectMutation;
       mutation.mutate({ id: ptoQuery.data.id, note });
     },
-    [approveMutation, ptoQuery.data, rejectMutation]
+    [approveMutation, can, ptoQuery.data, rejectMutation]
   );
 
   const handleDelete = useCallback(() => {
@@ -82,6 +82,7 @@ export default function PTODetailPage() {
 
   const pto = ptoQuery.data;
   const isPending = pto.status === 'PENDING';
+  const canReviewPTO = can('leave', 'approve');
   const isDecisionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
@@ -91,7 +92,7 @@ export default function PTODetailPage() {
       <div className="grid min-w-0 grid-cols-1 gap-6 pt-6 lg:grid-cols-4">
         <div className="min-w-0 space-y-6 lg:col-span-3">
           <PTORequestInfoCard pto={pto} />
-          {isPending && (
+          {canReviewPTO && isPending && (
             <PTODecisionCard isPending={isDecisionPending} onDecision={handleDecision} />
           )}
         </div>

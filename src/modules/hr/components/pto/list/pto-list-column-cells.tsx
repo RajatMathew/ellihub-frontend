@@ -35,6 +35,7 @@ interface PTOCellProps {
 
 interface PTOActionsCellProps extends PTOCellProps {
   isDecisionPending: boolean;
+  canReview: boolean;
   onDelete: (request: { id: string; name: string }) => void;
   onDecision: (target: PTODecisionTarget) => void;
 }
@@ -97,6 +98,7 @@ export function PTOUpdatedCell({ pto }: PTOCellProps) {
 export function PTOActionsCell({
   pto,
   isDecisionPending,
+  canReview,
   onDelete,
   onDecision,
 }: PTOActionsCellProps) {
@@ -104,7 +106,7 @@ export function PTOActionsCell({
 
   return (
     <div className="flex items-center justify-end gap-2 px-2">
-      {pto.status === 'PENDING' && (
+      {canReview && pto.status === 'PENDING' && (
         <>
           <DecisionIconButton
             label="Approve Request"

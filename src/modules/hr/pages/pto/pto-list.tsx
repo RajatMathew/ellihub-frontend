@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { useAccess } from '@/app/contexts/access-context';
 import {
   PTOListStats,
   PTOListToolbar,
@@ -32,6 +33,7 @@ import {
 } from '@tanstack/react-table';
 
 export default function PTOListPage() {
+  const { can } = useAccess();
   const {
     page,
     size,
@@ -64,6 +66,7 @@ export default function PTOListPage() {
   const deleteMutation = useDeletePTOMutation();
   const listData = data?.data ?? [];
   const totalCount = data?.pagination.totalItems ?? 0;
+  const canReviewPTO = can('leave', 'approve');
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
     [sortBy, sortOrder]
@@ -71,8 +74,15 @@ export default function PTOListPage() {
 
   const columns = usePTOListColumns({
     isDecisionPending: approveMutation.isPending || rejectMutation.isPending,
+    canReview: canReviewPTO,
     onDelete: useCallback((request) => setDeleteTarget(request), []),
-    onDecision: useCallback((target) => setDecisionTarget(target), []),
+    onDecision: useCallback(
+      (target) => {
+        if (!canReviewPTO) return;
+        setDecisionTarget(target);
+      },
+      [canReviewPTO]
+    ),
   });
 
   const table = useReactTable({
@@ -124,10 +134,11 @@ export default function PTOListPage() {
 
   const handleDecision = useCallback(
     async (target: PTODecisionTarget, note: string) => {
+      if (!canReviewPTO) return;
       const mutation = target.type === 'approve' ? approveMutation : rejectMutation;
       await mutation.mutateAsync({ id: target.id, note });
     },
-    [approveMutation, rejectMutation]
+    [approveMutation, canReviewPTO, rejectMutation]
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -168,12 +179,14 @@ export default function PTOListPage() {
         onConfirm={handleConfirmDelete}
       />
 
-      <PTODecisionDialog
-        target={decisionTarget}
-        isPending={approveMutation.isPending || rejectMutation.isPending}
-        onClose={() => setDecisionTarget(null)}
-        onConfirm={handleDecision}
-      />
+      {canReviewPTO && (
+        <PTODecisionDialog
+          target={decisionTarget}
+          isPending={approveMutation.isPending || rejectMutation.isPending}
+          onClose={() => setDecisionTarget(null)}
+          onConfirm={handleDecision}
+        />
+      )}
     </div>
   );
 }
