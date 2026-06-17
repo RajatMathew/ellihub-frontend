@@ -279,21 +279,16 @@ export const filesApi = {
     formData.append('size', String(data.size));
     formData.append('data', JSON.stringify(data));
 
-    await api.post(`${BASE}/upload`, formData);
+    const res = await api.post(`${BASE}/upload`, formData);
+    const raw = res.data?.data ?? res.data;
+    const result = fileSchema.safeParse(raw);
 
-    // Backend returns an empty body, so query the parent folder to find the upload.
-    const folder = await this.getFolderDetails(data.parentId);
-    const match = folder.children
-      .filter((child) => child.name === data.name && child.type === 'FILE')
-      .sort(
-        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-      )[0];
-
-    if (!match) {
-      throw new Error('Upload succeeded but file not found in folder');
+    if (!result.success) {
+      console.error('[filesApi.uploadFile] Zod parse error:', result.error.issues);
+      throw result.error;
     }
 
-    return match;
+    return result.data;
   },
 
   async uploadFiles(
