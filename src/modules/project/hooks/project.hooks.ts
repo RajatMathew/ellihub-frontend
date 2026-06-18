@@ -39,13 +39,37 @@ export const useProjectsQuery = (params?: ListProjectsParams) =>
     queryFn: () => projectApi.list(params),
   });
 
-export const useInfiniteProjectsQuery = (params?: ListProjectsParams) =>
+type InfiniteProjectsQueryOptions = {
+  enabled?: boolean;
+  staleTime?: number;
+  gcTime?: number;
+  refetchOnWindowFocus?: boolean;
+};
+
+export const useInfiniteProjectsQuery = (
+  params?: ListProjectsParams,
+  options?: InfiniteProjectsQueryOptions
+) =>
   useInfiniteQuery({
     queryKey: [...projectKeys.list(), 'infinite', params],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => projectApi.list({ ...params, page: Number(pageParam) }),
     getNextPageParam: (lastPage) =>
       lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+    ...options,
+  });
+
+export const useInfiniteProjectOptionsQuery = (
+  params?: ListProjectsParams,
+  options?: InfiniteProjectsQueryOptions
+) =>
+  useInfiniteQuery({
+    queryKey: [...projectKeys.options(), 'infinite', params],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => projectApi.listOptions({ ...params, page: Number(pageParam) }),
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+    ...options,
   });
 
 export const useProjectStatsQuery = (params?: ListProjectsParams) =>
