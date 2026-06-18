@@ -3,11 +3,15 @@ import { MonthlyBillsProjectCard } from '@/modules/monthly-bills/components/mont
 import { MonthlyBillsTableSkeleton } from '@/modules/monthly-bills/components/monthly-bills-table-skeleton';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getProjectCardKey } from '@/modules/monthly-bills/lib/monthly-bills-bill';
-import type { MonthlyBillProjectGroup } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
+import type {
+  MonthlyBillProjectGroup,
+  MonthlyBillsPeriodMeta,
+} from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ClipboardList } from 'lucide-react';
 
 interface MonthlyBillsTableProps {
   groups: MonthlyBillProjectGroup[];
+  period?: MonthlyBillsPeriodMeta;
   selectedDate: Date;
   canUpdateBills: boolean;
   canMarkPayment: boolean;
@@ -23,6 +27,7 @@ interface MonthlyBillsTableProps {
 
 export function MonthlyBillsTable({
   groups,
+  period,
   selectedDate,
   canUpdateBills,
   canMarkPayment,
@@ -64,6 +69,7 @@ export function MonthlyBillsTable({
         <MonthlyBillsProjectCard
           key={getProjectCardKey(group, selectedDate)}
           group={group}
+          period={period}
           selectedDate={selectedDate}
           canUpdateBills={canUpdateBills}
           canMarkPayment={canMarkPayment}

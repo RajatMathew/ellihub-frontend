@@ -141,7 +141,7 @@ export function PaymentsCell({ payments, poNumber }: PaymentsCellProps) {
           {payments.length} payment{payments.length === 1 ? '' : 's'}
         </button>
       )}
-      {payments.length > 0 && (
+      {open && payments.length > 0 && (
         <PaymentsDialog
           open={open}
           onOpenChange={setOpen}
@@ -180,13 +180,15 @@ export function SubChangeOrdersCell({
       >
         {subChangeOrders.length} change order{subChangeOrders.length === 1 ? '' : 's'}
       </button>
-      <SubChangeOrdersDialog
-        open={open}
-        onOpenChange={setOpen}
-        subChangeOrders={subChangeOrders}
-        poNumber={poNumber}
-        projectId={projectId}
-      />
+      {open && (
+        <SubChangeOrdersDialog
+          open={open}
+          onOpenChange={setOpen}
+          subChangeOrders={subChangeOrders}
+          poNumber={poNumber}
+          projectId={projectId}
+        />
+      )}
     </>
   );
 }

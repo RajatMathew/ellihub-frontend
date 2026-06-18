@@ -13,6 +13,7 @@ interface DepartmentsTableCardProps {
   table: Table<Department>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   isRefetching: boolean;
   searchInput: string;
@@ -26,6 +27,7 @@ export function DepartmentsTableCard({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   isRefetching,
   searchInput,
@@ -66,6 +68,7 @@ export function DepartmentsTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load departments."
         emptyIcon={<Building2 className="size-10 text-muted-foreground/40" />}

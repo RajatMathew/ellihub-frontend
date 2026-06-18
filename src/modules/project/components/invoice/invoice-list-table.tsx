@@ -1,13 +1,13 @@
-import type { Table } from '@tanstack/react-table';
-import { FileText } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
+import type { Table } from '@tanstack/react-table';
+import { FileText } from 'lucide-react';
 
 interface InvoiceListTableProps {
   table: Table<InvoiceListItem>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   onRetry: () => void;
 }
@@ -16,6 +16,7 @@ export function InvoiceListTable({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   onRetry,
 }: InvoiceListTableProps) {
@@ -24,6 +25,7 @@ export function InvoiceListTable({
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}
+      isRefreshing={isRefreshing}
       isError={isError}
       errorTitle="Failed to load invoices"
       emptyIcon={<FileText className="size-10 text-muted-foreground/50" />}

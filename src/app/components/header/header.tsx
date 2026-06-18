@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { CircleHelp } from 'lucide-react';
+import { CircleHelp, ExternalLink } from 'lucide-react';
 
 import { useSession } from '@app/api/auth-client';
 import { Button } from '@app/components/ui/button';
@@ -38,6 +38,18 @@ export function Header({
           <HeaderHamburger>{!isMobile && breadcrumbs && <HeaderBreadcrumbs />}</HeaderHamburger>
           <div className="flex items-center gap-2.5">
             {toolbar && toolbar}
+
+            <a
+              aria-label="Open Feedback"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              href="https://app.notion.com/p/3821073375a78019a93fef44bafe6453?v=3821073375a78065a58a000cd1116f7c&source=copy_link"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <ExternalLink className="size-4" />
+              Feedback
+            </a>
+
             <Button
               aria-label={isHelpOpen ? 'Close Help Center' : 'Open Help Center'}
               aria-pressed={isHelpOpen}

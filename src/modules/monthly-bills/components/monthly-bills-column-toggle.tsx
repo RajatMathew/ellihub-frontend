@@ -1,19 +1,14 @@
+import { useState } from 'react';
+
 import { Button } from '@/app/components/ui/button';
-import {
-  Command,
-  CommandCheck,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
+import { ScrollArea } from '@/app/components/ui/scroll-area';
+import { cn } from '@/app/lib/utils';
 import {
   MONTHLY_BILL_COLUMNS,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { Columns3 } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 
 interface MonthlyBillsColumnToggleProps {
   visibleColumns: Set<MonthlyBillColumnKey>;
@@ -24,46 +19,76 @@ export function MonthlyBillsColumnToggle({
   visibleColumns,
   onToggleColumn,
 }: MonthlyBillsColumnToggleProps) {
-  const hiddenCount = MONTHLY_BILL_COLUMNS.length - visibleColumns.size;
+  const [open, setOpen] = useState(false);
+  const selectedCount = visibleColumns.size;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="w-full shrink-0 sm:w-auto">
-          <Columns3 className="size-3.5" />
-          Columns
-          {hiddenCount > 0 && (
-            <span className="ml-1 rounded-sm bg-muted px-1.5 text-xs text-muted-foreground">
-              {hiddenCount} hidden
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full shrink-0 justify-between gap-2 rounded-md border-border bg-background px-3 font-medium shadow-sm transition-all hover:border-success/40 data-[state=open]:border-success/50 data-[state=open]:ring-2 data-[state=open]:ring-success/15 sm:w-auto"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate">Columns</span>
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-white">
+              {selectedCount}
             </span>
-          )}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-0">
-        <Command>
-          <CommandInput placeholder="Search columns..." />
-          <CommandList>
-            <CommandEmpty>No columns found.</CommandEmpty>
-            <CommandGroup>
-              {MONTHLY_BILL_COLUMNS.map((column) => {
-                const checked = visibleColumns.has(column.key);
-                // Keep at least one column visible.
-                const isLastVisible = checked && visibleColumns.size === 1;
-                return (
-                  <CommandItem
-                    key={column.key}
-                    value={column.label}
-                    disabled={isLastVisible}
-                    onSelect={() => onToggleColumn(column.key)}
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-[min(calc(100vw-1.5rem),18rem)] overflow-hidden rounded-lg border-border p-0 shadow-xl shadow-black/10"
+      >
+        <div className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground">
+          Select columns
+        </div>
+        <ScrollArea className="h-[min(20rem,calc(var(--radix-popover-content-available-height)-4rem))] px-3 pb-3">
+          <div className="space-y-1 pr-1">
+            {MONTHLY_BILL_COLUMNS.map((column) => {
+              const checked = visibleColumns.has(column.key);
+              const isLastVisible = checked && visibleColumns.size === 1;
+              return (
+                <button
+                  key={column.key}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  disabled={isLastVisible}
+                  className={cn(
+                    'flex min-h-10 w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm text-foreground outline-hidden transition-colors duration-150',
+                    'hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring/20',
+                    isLastVisible && 'cursor-not-allowed opacity-60'
+                  )}
+                  onClick={() => onToggleColumn(column.key)}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
+                      checked
+                        ? 'border-success bg-success text-white'
+                        : 'border-muted-foreground/40 bg-background text-transparent'
+                    )}
                   >
-                    <span className="flex-1">{column.label}</span>
-                    {checked && <CommandCheck />}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+                    <Check className="size-3.5 stroke-[3]" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{column.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

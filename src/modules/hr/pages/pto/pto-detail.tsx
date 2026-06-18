@@ -86,7 +86,7 @@ export default function PTODetailPage() {
   const isDecisionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden pb-5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <PTODetailToolbar pto={pto} onDelete={() => setDeleteOpen(true)} />
 
       <div className="grid min-w-0 grid-cols-1 gap-6 pt-6 lg:grid-cols-4">

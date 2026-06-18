@@ -23,6 +23,7 @@ interface GCTableCardProps {
   statusFilter: GCStatus | undefined;
   searchInput: string;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isTypesLoading: boolean;
   isError: boolean;
   totalCount: number;
@@ -41,6 +42,7 @@ export function GCTableCard({
   statusFilter,
   searchInput,
   isLoading,
+  isRefreshing,
   isTypesLoading,
   isError,
   totalCount,
@@ -124,6 +126,7 @@ export function GCTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load general contractors"
         emptyIcon={<Building2 className="size-10 text-muted-foreground/50" />}

@@ -5,10 +5,11 @@ import { useParams } from 'react-router-dom';
 
 interface RFQListHeaderProps {
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   totalCount: number;
 }
 
-export function RFQListHeader({ hasActiveFilters, totalCount }: RFQListHeaderProps) {
+export function RFQListHeader({ hasActiveFilters, isLoading, totalCount }: RFQListHeaderProps) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const canCreate = project?.capabilities?.actions?.rfq?.create === true;
@@ -19,6 +20,7 @@ export function RFQListHeader({ hasActiveFilters, totalCount }: RFQListHeaderPro
       resultLabel="RFQs"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
+      isLoading={isLoading}
       addLabel={canCreate ? 'Add RFQ' : undefined}
       addTo={canCreate ? 'create' : undefined}
       addIcon={canCreate ? <Plus className="size-4" /> : undefined}

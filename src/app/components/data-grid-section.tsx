@@ -8,12 +8,13 @@ import { DataGridTable } from '@/app/components/ui/data-grid-table';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import type { Table } from '@tanstack/react-table';
-import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCcw } from 'lucide-react';
 
 interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   errorTitle: string;
   errorDescription?: string;
@@ -28,12 +29,29 @@ interface DataGridSectionProps<TData extends object> {
   mobileSkeleton?: ReactNode;
   mobileSkeletonCount?: number;
   mobileListClassName?: string;
+  mobileBreakpoint?: 'lg' | 'xl' | '2xl';
 }
+
+const responsiveListClasses = {
+  lg: {
+    mobile: 'lg:hidden',
+    table: 'hidden lg:grid',
+  },
+  xl: {
+    mobile: 'xl:hidden',
+    table: 'hidden xl:grid',
+  },
+  '2xl': {
+    mobile: '2xl:hidden',
+    table: 'hidden 2xl:grid',
+  },
+} as const;
 
 export function DataGridSection<TData extends object>({
   table,
   totalCount,
   isLoading,
+  isRefreshing = false,
   isError,
   errorTitle,
   errorDescription = 'Something went wrong. Please try again.',
@@ -48,7 +66,9 @@ export function DataGridSection<TData extends object>({
   mobileSkeleton,
   mobileSkeletonCount,
   mobileListClassName,
+  mobileBreakpoint = 'lg',
 }: DataGridSectionProps<TData>) {
+  const responsiveClasses = responsiveListClasses[mobileBreakpoint];
   const emptyState = (
     <div className="flex flex-col items-center gap-2 py-8">
       {emptyIcon}
@@ -93,8 +113,19 @@ export function DataGridSection<TData extends object>({
       }}
       tableClassNames={tableClassNames}
     >
+      {isRefreshing && !isLoading && (
+        <div
+          className="flex min-h-9 items-center justify-end border-t bg-muted/20 px-4 py-2"
+          aria-live="polite"
+        >
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            Refreshing
+          </span>
+        </div>
+      )}
       {mobileItem && (
-        <CardContent className={cn('min-w-0 p-3 lg:hidden', mobileListClassName)}>
+        <CardContent className={cn('min-w-0 p-3', responsiveClasses.mobile, mobileListClassName)}>
           {isLoading ? (
             <div className="grid min-w-0 gap-2.5">
               {Array.from({ length: resolvedMobileSkeletonCount }).map((_, index) => (
@@ -119,7 +150,7 @@ export function DataGridSection<TData extends object>({
       <CardTable
         className={cn(
           'min-w-0 max-w-full overflow-x-auto overscroll-x-contain',
-          mobileItem && 'hidden lg:grid'
+          mobileItem && responsiveClasses.table
         )}
       >
         <DataGridTable />

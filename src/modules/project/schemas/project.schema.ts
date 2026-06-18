@@ -261,6 +261,16 @@ export const fieldwireProjectOptionSchema = z
   .passthrough();
 
 export type FieldwireProjectOption = z.infer<typeof fieldwireProjectOptionSchema>;
+export const projectOptionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    jobNumber: z.string().nullable().optional(),
+    division: lookupRefSchema.nullable().optional(),
+  })
+  .passthrough();
+
+export type ProjectOption = z.infer<typeof projectOptionSchema>;
 export const projectPaginatedResponseSchema = z.object({
   data: z.array(projectListItemSchema),
   pagination: z.object({
@@ -274,6 +284,20 @@ export const projectPaginatedResponseSchema = z.object({
 });
 
 export type ProjectPaginatedResponse = z.infer<typeof projectPaginatedResponseSchema>;
+
+export const projectOptionPaginatedResponseSchema = z.object({
+  data: z.array(projectOptionSchema),
+  pagination: z.object({
+    currentPage: z.number(),
+    totalPages: z.number(),
+    hasNextPage: z.boolean(),
+    hasPreviousPage: z.boolean(),
+    totalItems: z.number(),
+    itemsPerPage: z.number(),
+  }),
+});
+
+export type ProjectOptionPaginatedResponse = z.infer<typeof projectOptionPaginatedResponseSchema>;
 
 export const projectStatusStatsItemSchema = z.object({
   id: ProjectStatusSchema,

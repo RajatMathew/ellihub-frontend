@@ -58,14 +58,20 @@ export function ContactsListPage() {
     [page, roleFilter, searchQuery, size, sortBy, sortOrder]
   );
 
-  const { data, isLoading, isError, refetch } = useContactsQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = useDirectoryKpisQuery();
+  const contactsQuery = useContactsQuery(filters);
+  const statsQuery = useDirectoryKpisQuery();
   const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
   const deleteMutation = useDeleteContactMutation();
   const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
+  const hasListData = contactsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    contactsQuery.isLoading || (contactsQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && contactsQuery.isFetching && !showListInitialLoader;
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const listData = contactsQuery.data?.data ?? [];
+  const totalCount = contactsQuery.data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = !!searchQuery || !!roleFilter;
 
   const vendorNames = emptyVendorNames;
@@ -155,23 +161,25 @@ export function ContactsListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         canCreate={can('contact', 'create')}
+        isLoading={showListInitialLoader}
       />
-      <ContactListStats stats={stats} isLoading={isStatsLoading} />
+      <ContactListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <ContactsTableCard
         table={table}
         professionalRoles={professionalRoles}
         roleFilter={roleFilter}
         searchInput={searchInput}
-        isLoading={isLoading}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
         isRolesLoading={isRolesLoading}
-        isError={isError}
+        isError={contactsQuery.isError}
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={handleSearchChange}
         onRoleChange={(roleId) => updateParams({ professionalRoleId: roleId, page: undefined })}
         onClearFilters={clearFilters}
-        onRetry={() => void refetch()}
+        onRetry={() => void contactsQuery.refetch()}
       />
 
       <ConfirmDialog

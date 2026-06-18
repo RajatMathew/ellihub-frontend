@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { ChevronDown, Loader2, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, X } from 'lucide-react';
 
 import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
   Command,
-  CommandCheck,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -345,8 +344,21 @@ export function InfiniteMultiSearchSelect({
                         value={option.value}
                         keywords={[option.label, option.description ?? '']}
                         disabled={option.disabled}
+                        className="min-h-10 gap-3 rounded-md px-2 py-2"
                         onSelect={() => toggle(option)}
                       >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
+                            selected
+                              ? 'border-success bg-success text-white'
+                              : 'border-muted-foreground/40 bg-background text-transparent',
+                            option.disabled && 'opacity-60'
+                          )}
+                        >
+                          <Check className="size-3.5 stroke-[3]" />
+                        </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 items-center gap-2">
                             <span className="truncate">
@@ -364,7 +376,6 @@ export function InfiniteMultiSearchSelect({
                             </span>
                           )}
                         </div>
-                        {selected && <CommandCheck />}
                       </CommandItem>
                     );
                   })}

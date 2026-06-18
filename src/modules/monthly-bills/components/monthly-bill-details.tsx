@@ -1,12 +1,11 @@
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 
 interface MonthlyBillDetailsProps {
   bill: MonthlyBillItem;
-  selectedDate: Date;
   toPay?: number;
   ready?: boolean;
   className?: string;
@@ -14,12 +13,11 @@ interface MonthlyBillDetailsProps {
 
 export function MonthlyBillDetails({
   bill,
-  selectedDate,
   toPay,
   ready,
   className,
 }: MonthlyBillDetailsProps) {
-  const monthPayments = getMonthPayments(bill, selectedDate);
+  const monthPayments = bill.payments;
   const paidThisMonth = sumPayments(monthPayments);
   const changeOrderTotal = sumMonthlyBillMoney(
     bill.purchaseOrder.subChangeOrders.map((sco) => sco.amount)
@@ -31,15 +29,7 @@ export function MonthlyBillDetails({
     <dl className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4', className)}>
       <DetailItem
         label="Issue Date"
-        value={
-          bill.purchaseOrder.issuedAt
-            ? formatDate(bill.purchaseOrder.issuedAt, {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric',
-              })
-            : '-'
-        }
+        value={bill.purchaseOrder.issuedAt || '-'}
       />
       <DetailItem label="Vendor" value={bill.purchaseOrder.vendor.name} />
       <DetailItem label="Original" value={formatCurrency(bill.original)} />

@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency } from '@/app/lib/helpers';
 import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ExternalLink } from 'lucide-react';
@@ -43,13 +43,7 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
                     {payment.amount !== undefined ? formatCurrency(payment.amount) : '—'}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {payment.txnDate
-                      ? formatDate(payment.txnDate, {
-                          month: '2-digit',
-                          day: '2-digit',
-                          year: 'numeric',
-                        })
-                      : 'No date'}
+                    {payment.txnDate || 'No date'}
                   </span>
                 </div>
                 {payment.transactionUrl ? (

@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Switch } from '@/app/components/ui/switch';
 import { TableCell, TableRow } from '@/app/components/ui/table';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { MonthlyBillDetails } from '@/modules/monthly-bills/components/monthly-bill-details';
+import { MonthlyBillExpandedDetails } from '@/modules/monthly-bills/components/monthly-bill-expanded-details';
 import {
   PaymentsCell,
   SubChangeOrdersCell,
@@ -15,7 +15,7 @@ import {
   getMonthlyBillRenderedColumns,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ChevronRight, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,7 +23,6 @@ import { Link } from 'react-router-dom';
 interface MonthlyBillRowProps {
   bill: MonthlyBillItem;
   projectId: string;
-  selectedDate: Date;
   toPay: number;
   ready: boolean;
   canUpdateBills: boolean;
@@ -45,7 +44,6 @@ interface MonthlyBillRowProps {
 export function MonthlyBillRow({
   bill,
   projectId,
-  selectedDate,
   toPay,
   ready,
   canUpdateBills,
@@ -64,7 +62,7 @@ export function MonthlyBillRow({
   onMarkPayment,
 }: MonthlyBillRowProps) {
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
-  const monthPayments = getMonthPayments(bill, selectedDate);
+  const monthPayments = bill.payments;
   const paidThisMonth = sumPayments(monthPayments);
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
   const showVendorInfo = show('vendor') || show('issueDate');
@@ -118,9 +116,7 @@ export function MonthlyBillRow({
               )}
               {show('issueDate') && (
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {issuedAt
-                    ? formatDate(issuedAt, { month: '2-digit', day: '2-digit', year: 'numeric' })
-                    : 'No issue date'}
+                  {issuedAt || 'No issue date'}
                 </p>
               )}
             </div>
@@ -206,9 +202,9 @@ export function MonthlyBillRow({
           <TableCell colSpan={colSpan} className="border-l-2 border-primary bg-muted/30 px-6 py-4">
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground">Details for {poNumber}</p>
-              <MonthlyBillDetails
+              <MonthlyBillExpandedDetails
                 bill={bill}
-                selectedDate={selectedDate}
+                projectId={projectId}
                 toPay={toPay}
                 ready={ready}
               />

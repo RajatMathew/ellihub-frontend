@@ -55,11 +55,20 @@ export function SubChangeOrderListPage() {
     changeTypeId: changeTypeFilter,
   };
 
-  const { data, isLoading, isError, refetch } = useSCOsQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = useSCOStatsQuery(projectId);
+  const subChangeOrdersQuery = useSCOsQuery(filters);
+  const statsQuery = useSCOStatsQuery(projectId);
   const { data: changeTypes } = useSCOChangeTypesQuery();
-  const listData = useMemo(() => data?.data ?? [], [data?.data]);
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const hasListData = subChangeOrdersQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    subChangeOrdersQuery.isLoading || (subChangeOrdersQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && subChangeOrdersQuery.isFetching && !showListInitialLoader;
+  const listData = useMemo(
+    () => subChangeOrdersQuery.data?.data ?? [],
+    [subChangeOrdersQuery.data?.data]
+  );
+  const totalCount = subChangeOrdersQuery.data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!changeTypeFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -128,8 +137,12 @@ export function SubChangeOrderListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <SubChangeOrderListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
-      <SubChangeOrderListStats stats={stats} isLoading={isStatsLoading} />
+      <SubChangeOrderListHeader
+        hasActiveFilters={hasActiveFilters}
+        totalCount={totalCount}
+        isLoading={showListInitialLoader}
+      />
+      <SubChangeOrderListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <Card className="overflow-hidden">
         <SubChangeOrderListFilters
@@ -145,9 +158,10 @@ export function SubChangeOrderListPage() {
         <SubChangeOrderListTable
           table={table}
           totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={() => void refetch()}
+          isLoading={showListInitialLoader}
+          isRefreshing={isRefreshingList}
+          isError={subChangeOrdersQuery.isError}
+          onRetry={() => void subChangeOrdersQuery.refetch()}
           changeTypeLabelById={changeTypeLabelById}
         />
       </Card>

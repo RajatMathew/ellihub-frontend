@@ -2,16 +2,16 @@ import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Switch } from '@/app/components/ui/switch';
-import { formatCurrency, formatDate } from '@/app/lib/helpers';
+import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { MonthlyBillDetails } from '@/modules/monthly-bills/components/monthly-bill-details';
+import { MonthlyBillExpandedDetails } from '@/modules/monthly-bills/components/monthly-bill-expanded-details';
 import {
   PaymentsCell,
   SubChangeOrdersCell,
   ToPayCell,
 } from '@/modules/monthly-bills/components/monthly-bills-cells';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { getMonthPayments, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { ChevronDown, CreditCard, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -19,7 +19,6 @@ import { Link } from 'react-router-dom';
 interface MonthlyBillMobileCardProps {
   bill: MonthlyBillItem;
   projectId: string;
-  selectedDate: Date;
   toPay: number;
   ready: boolean;
   canUpdateBills: boolean;
@@ -41,7 +40,6 @@ interface MonthlyBillMobileCardProps {
 export function MonthlyBillMobileCard({
   bill,
   projectId,
-  selectedDate,
   toPay,
   ready,
   canUpdateBills,
@@ -61,7 +59,7 @@ export function MonthlyBillMobileCard({
 }: MonthlyBillMobileCardProps) {
   const [expanded, setExpanded] = useState(false);
   const { id, poNumber, vendor, issuedAt } = bill.purchaseOrder;
-  const monthPayments = getMonthPayments(bill, selectedDate);
+  const monthPayments = bill.payments;
   const paidThisMonth = sumPayments(monthPayments);
   const show = (key: MonthlyBillColumnKey) => visibleColumns.has(key);
 
@@ -92,11 +90,7 @@ export function MonthlyBillMobileCard({
         {show('issueDate') && (
           <MobileMetric
             label="Issue Date"
-            value={
-              issuedAt
-                ? formatDate(issuedAt, { month: '2-digit', day: '2-digit', year: 'numeric' })
-                : '-'
-            }
+            value={issuedAt || '-'}
           />
         )}
         {show('payments') && (
@@ -185,7 +179,12 @@ export function MonthlyBillMobileCard({
 
       {expanded && (
         <div className="mt-3 rounded-md border bg-muted/20 p-3">
-          <MonthlyBillDetails bill={bill} selectedDate={selectedDate} toPay={toPay} ready={ready} />
+          <MonthlyBillExpandedDetails
+            bill={bill}
+            projectId={projectId}
+            toPay={toPay}
+            ready={ready}
+          />
         </div>
       )}
     </div>

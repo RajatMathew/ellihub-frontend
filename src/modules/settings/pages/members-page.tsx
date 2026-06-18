@@ -12,10 +12,10 @@ import { MembersTableCard } from '@/modules/settings/components/members-table-ca
 import { useMemberListColumns } from '@/modules/settings/components/use-member-list-columns';
 import {
   isMembersSortByField,
+  MEMBER_ROLE_LABELS,
   MEMBERS_DEFAULT_PAGE_SIZE,
   MEMBERS_DEFAULT_SORT_BY,
   MEMBERS_DEFAULT_SORT_ORDER,
-  MEMBER_ROLE_LABELS,
 } from '@/modules/settings/constants/members-list.constants';
 import {
   useCreateMemberMutation,
@@ -63,6 +63,11 @@ export default function MembersPage() {
 
   const members = membersQuery.data?.data ?? [];
   const totalCount = membersQuery.data?.pagination.totalItems ?? 0;
+  const hasMembersData = membersQuery.data !== undefined;
+  const showMembersInitialLoader =
+    membersQuery.isLoading || (membersQuery.isFetching && !hasMembersData);
+  const isRefreshingMembers =
+    hasMembersData && membersQuery.isFetching && !showMembersInitialLoader;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const hasActiveFilters = Boolean(
     listParams.searchQuery ||
@@ -165,6 +170,7 @@ export default function MembersPage() {
         totalCount={totalCount}
         resultLabel="members"
         hasActiveFilters={hasActiveFilters}
+        isLoading={showMembersInitialLoader}
         addLabel="Add Member"
         addIcon={<Plus className="size-4" />}
         onAdd={openCreateDialog}
@@ -177,7 +183,8 @@ export default function MembersPage() {
         roleFilter={listParams.roleFilter}
         statusFilter={listParams.statusFilter}
         emailStatusFilter={listParams.emailStatusFilter}
-        isLoading={membersQuery.isLoading}
+        isLoading={showMembersInitialLoader}
+        isRefreshing={isRefreshingMembers}
         isError={membersQuery.isError}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={listParams.handleSearchChange}

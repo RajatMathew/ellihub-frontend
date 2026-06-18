@@ -19,6 +19,7 @@ import {
   formatMonthlyBillMonthNumber,
   getMonthlyBillDateFromSearch,
   getMonthlyBillMonthSearch,
+  getMonthlyBillYear,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { MonthlyBillsSubcontractorPage, MonthlyBillsTabPage } from '@/modules/monthly-bills/pages';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
@@ -36,7 +37,7 @@ export default function MonthlyBillsRoute() {
       (current) => {
         const next = new URLSearchParams(current);
         next.set('month', formatMonthlyBillMonthNumber(date));
-        next.set('year', String(date.getFullYear()));
+        next.set('year', String(getMonthlyBillYear(date)));
         return next;
       },
       { replace: true }

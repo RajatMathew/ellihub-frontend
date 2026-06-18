@@ -377,8 +377,7 @@ function defaultForm(kind: TemplateSettingKind, initialKey?: string): TemplateFo
     name: defaultNameForKey(kind, key),
     isDefault: false,
     html: '',
-    noticeTitle:
-      kind === 'PDF_NOTICE' ? 'DO NOT START FABRICATION BEFORE READING THIS' : '',
+    noticeTitle: kind === 'PDF_NOTICE' ? 'DO NOT START FABRICATION BEFORE READING THIS' : '',
     subject: '',
     body: '',
     senderGroup: DEFAULT_SENDER_GROUP_BY_FEATURE[key] ?? '',
@@ -621,10 +620,9 @@ export default function TemplateSettingsPage() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const templates =
-      showPdfSectionControls
-        ? (templatesQuery.data ?? []).filter((template) => template.key === activePdfSection)
-        : (templatesQuery.data ?? []);
+    const templates = showPdfSectionControls
+      ? (templatesQuery.data ?? []).filter((template) => template.key === activePdfSection)
+      : (templatesQuery.data ?? []);
     if (!query) return templates;
 
     return templates.filter(
@@ -681,6 +679,7 @@ export default function TemplateSettingsPage() {
         title="Template Settings"
         totalCount={filtered.length}
         hasActiveFilters={!!search}
+        isLoading={templatesQuery.isLoading}
         description="Manage the default wording and sender details used by PDFs and emails."
         addLabel={activeTab.addLabel}
         addIcon={<Plus className="size-4" />}
@@ -912,9 +911,7 @@ function TemplatePreview({ form }: { form: TemplateFormState }) {
             <div className="text-xs font-medium uppercase tracking-widest text-slate-500">
               Subject
             </div>
-            <div className="mt-1 text-sm font-semibold">
-              {subjectPreview || 'Subject preview'}
-            </div>
+            <div className="mt-1 text-sm font-semibold">{subjectPreview || 'Subject preview'}</div>
           </div>
           <div className="space-y-4 p-4">
             <div className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -1238,7 +1235,9 @@ function TemplateValueFields({
         <div className="h-[360px]">
           <TermsEditor value={form.html} onChange={(html) => patch({ html })} />
         </div>
-        <FieldDescription>Use the toolbar for formatting. The preview updates on the right.</FieldDescription>
+        <FieldDescription>
+          Use the toolbar for formatting. The preview updates on the right.
+        </FieldDescription>
       </Field>
     );
   }
@@ -1369,7 +1368,9 @@ function TemplateValueFields({
             placeholder="One email per line"
             onChange={(event) => patch({ allowedEmails: event.target.value })}
           />
-          <FieldDescription>The default sender is added automatically if it is missing.</FieldDescription>
+          <FieldDescription>
+            The default sender is added automatically if it is missing.
+          </FieldDescription>
         </Field>
       </div>
     );

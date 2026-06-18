@@ -39,14 +39,15 @@ import { MarkPaymentSummary } from '@/modules/monthly-bills/components/mark-paym
 import { MarkPaymentVendorField } from '@/modules/monthly-bills/components/mark-payment-vendor-field';
 import { useMarkPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import { findVendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
+import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import {
   markPaymentFormSchema,
   type MarkPaymentFormData,
   type MarkPaymentResult,
   type MonthlyBillItem,
+  type MonthlyBillsPeriodMeta,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
 import { CreditCard } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
@@ -57,8 +58,7 @@ interface MarkPaymentDialogProps {
   bill: MonthlyBillItem;
   amount: number;
   isReady?: boolean;
-  month: number;
-  year: number;
+  period: MonthlyBillsPeriodMeta;
 }
 
 function quickBooksPayeeToOption(vendor: QuickBooksPayee): InfiniteSearchSelectOption {
@@ -89,21 +89,6 @@ function quickBooksMappingToOption(
   };
 }
 
-function padTwo(value: number) {
-  return String(value).padStart(2, '0');
-}
-
-function getPeriodDateRange(month: number, year: number) {
-  const monthValue = padTwo(month);
-  const lastDay = new Date(year, month, 0).getDate();
-  const min = `${year}-${monthValue}-01`;
-  const max = `${year}-${monthValue}-${padTwo(lastDay)}`;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const defaultDate = today >= min && today <= max ? today : min;
-
-  return { min, max, defaultDate };
-}
-
 function buildDefaultLineDescription(bill: MonthlyBillItem) {
   return `PO#${bill.purchaseOrder.poNumber} - Partial Payment ${bill.payments.length + 1}`;
 }
@@ -114,8 +99,7 @@ export function MarkPaymentDialog({
   bill,
   amount,
   isReady: isReadyOverride,
-  month,
-  year,
+  period,
   onPaymentMarked,
 }: MarkPaymentDialogProps) {
   const vendorName = bill.purchaseOrder.vendor.name;
@@ -135,7 +119,14 @@ export function MarkPaymentDialog({
     [currentMapping]
   );
   const selectedVendorOption = selectedMappingOption ?? createdVendorOption;
-  const dateRange = useMemo(() => getPeriodDateRange(month, year), [month, year]);
+  const dateRange = useMemo(
+    () => ({
+      min: period.minTxnDate,
+      max: period.maxTxnDate,
+      defaultDate: period.defaultTxnDate,
+    }),
+    [period.defaultTxnDate, period.maxTxnDate, period.minTxnDate]
+  );
   const defaultLineDescription = useMemo(() => buildDefaultLineDescription(bill), [bill]);
 
   const bankAccountsQuery = useQuickBooksBankAccountsQuery(open);
@@ -178,9 +169,6 @@ export function MarkPaymentDialog({
       memo: '',
       saveVendorMapping: false,
     });
-    setVendorSearchInput('');
-    setCreatedVendorOption(undefined);
-    setMappingOverride(undefined);
   }, [
     bill.purchaseOrder.id,
     dateRange.defaultDate,
@@ -213,8 +201,8 @@ export function MarkPaymentDialog({
     markPayment.mutate(
       {
         purchaseOrderId: bill.purchaseOrder.id,
-        month,
-        year,
+        month: period.month,
+        year: period.year,
         ...values,
         saveVendorMapping: currentMapping ? false : values.saveVendorMapping,
       },
@@ -316,8 +304,12 @@ export function MarkPaymentDialog({
                           />
                         </FormControl>
                         <FormDescription>
-                          Must be between {format(new Date(`${dateRange.min}T00:00:00`), 'MMM d')}{' '}
-                          and {format(new Date(`${dateRange.max}T00:00:00`), 'MMM d, yyyy')}.
+                          Must be between{' '}
+                          {formatDateOnlyLabel(dateRange.min, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}{' '}
+                          and {formatDateOnlyLabel(dateRange.max)}.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

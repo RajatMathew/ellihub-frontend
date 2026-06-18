@@ -59,13 +59,18 @@ export default function PTOListPage() {
     [page, searchQuery, size, sortBy, sortOrder]
   );
 
-  const { data, isLoading, isError, isRefetching, refetch } = usePTOListQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = usePTOStatsQuery();
+  const ptoQuery = usePTOListQuery(filters);
+  const statsQuery = usePTOStatsQuery();
   const approveMutation = useApprovePTOMutation();
   const rejectMutation = useRejectPTOMutation();
   const deleteMutation = useDeletePTOMutation();
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination.totalItems ?? 0;
+  const hasListData = ptoQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader = ptoQuery.isLoading || (ptoQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && ptoQuery.isFetching && !showListInitialLoader;
+  const listData = ptoQuery.data?.data ?? [];
+  const totalCount = ptoQuery.data?.pagination.totalItems ?? 0;
   const canReviewPTO = can('leave', 'approve');
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -151,21 +156,26 @@ export default function PTOListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <PTOListToolbar totalCount={totalCount} searchQuery={searchQuery} />
-      <PTOListStats stats={stats} isLoading={isStatsLoading} />
+      <PTOListToolbar
+        totalCount={totalCount}
+        searchQuery={searchQuery}
+        isLoading={showListInitialLoader}
+      />
+      <PTOListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <div className="pt-5">
         <PTOTableCard
           table={table}
           totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          isRefetching={isRefetching}
+          isLoading={showListInitialLoader}
+          isRefreshing={isRefreshingList}
+          isError={ptoQuery.isError}
+          isRefetching={isRefreshingList}
           searchInput={searchInput}
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
           onClearSearch={clearSearch}
-          onRetry={() => void refetch()}
+          onRetry={() => void ptoQuery.refetch()}
         />
       </div>
 

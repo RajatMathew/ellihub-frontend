@@ -2,8 +2,8 @@ import type {
   MonthlyBillItem,
   MonthlyBillProjectGroup,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { getMonth, getYear } from 'date-fns';
 
+import { getMonthlyBillPeriod } from './monthly-bills-date';
 import { sumMonthlyBillMoney } from './monthly-bills-money';
 
 export function getProjectTitle(group: MonthlyBillProjectGroup) {
@@ -18,7 +18,8 @@ export function getProjectTitle(group: MonthlyBillProjectGroup) {
  * or switching months), while leaving them untouched while the user is editing.
  */
 export function getProjectCardKey(group: MonthlyBillProjectGroup, selectedDate: Date) {
-  const period = `${getYear(selectedDate)}-${getMonth(selectedDate)}`;
+  const { month, year } = getMonthlyBillPeriod(selectedDate);
+  const period = `${year}-${month}`;
   const bills = group.bills
     .map(
       (bill) =>
@@ -28,17 +29,6 @@ export function getProjectCardKey(group: MonthlyBillProjectGroup, selectedDate: 
     )
     .join('|');
   return `${group.project.id}:${period}:${bills}`;
-}
-
-/** Payments whose transaction date falls within the selected billing month. */
-export function getMonthPayments(bill: MonthlyBillItem, selectedDate: Date) {
-  const month = getMonth(selectedDate);
-  const year = getYear(selectedDate);
-  return bill.payments.filter((payment) => {
-    if (!payment.txnDate) return false;
-    const date = new Date(payment.txnDate);
-    return getMonth(date) === month && getYear(date) === year;
-  });
 }
 
 export function sumPayments(payments: MonthlyBillItem['payments']) {

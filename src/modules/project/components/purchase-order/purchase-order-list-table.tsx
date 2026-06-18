@@ -27,6 +27,7 @@ interface PurchaseOrderListTableProps {
   table: Table<POListItem>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   onRetry: () => void;
   onCancel: (po: POListItem) => void;
@@ -36,6 +37,7 @@ export function PurchaseOrderListTable({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   onRetry,
   onCancel,
@@ -45,6 +47,7 @@ export function PurchaseOrderListTable({
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}
+      isRefreshing={isRefreshing}
       isError={isError}
       errorTitle="Failed to load purchase orders"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}

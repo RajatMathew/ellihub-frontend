@@ -1,6 +1,7 @@
 export const projectKeys = {
   all: ['projects'] as const,
   list: () => [...projectKeys.all, 'list'] as const,
+  options: () => [...projectKeys.all, 'options'] as const,
   stats: () => [...projectKeys.all, 'stats'] as const,
   detail: (id: string) => [...projectKeys.all, id] as const,
   fieldwireProjects: () => [...projectKeys.all, 'fieldwire', 'projects'] as const,

@@ -1,3 +1,4 @@
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import type { ProjectStatusStatsItem } from '@/modules/project/schemas/project.schema';
@@ -12,6 +13,7 @@ interface StatusGroup {
 
 interface ProjectStatusSummaryProps {
   items: ProjectStatusStatsItem[];
+  isLoading?: boolean;
   activeStatusId?: string;
   onStatusClick: (id: string | undefined) => void;
 }
@@ -81,9 +83,12 @@ const getStatusTone = (value: string) => {
 
 export function ProjectStatusSummary({
   items,
+  isLoading = false,
   activeStatusId,
   onStatusClick,
 }: ProjectStatusSummaryProps) {
+  if (isLoading) return <ProjectStatusSummarySkeleton />;
+
   const groups: StatusGroup[] = items.map((item) => ({
     id: item.id,
     label: item.label || STATUS_LABELS[item.id] || item.id,
@@ -156,6 +161,35 @@ export function ProjectStatusSummary({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function ProjectStatusSummarySkeleton() {
+  return (
+    <div className="mb-5 w-fit max-w-full rounded-2xl border border-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={`project-status-loader-${index}`}
+            className="min-h-[92px] rounded-xl border border-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:shadow-none"
+          >
+            <div className="flex h-full flex-col justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Skeleton className="size-2.5 shrink-0 rounded-full" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-4 w-12 rounded-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

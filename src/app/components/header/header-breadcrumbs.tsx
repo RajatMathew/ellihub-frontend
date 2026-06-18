@@ -1,7 +1,5 @@
 import { Fragment } from 'react';
 
-import { Link, useLocation, useParams } from 'react-router-dom';
-
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,6 +10,7 @@ import {
 } from '@/app/components/ui/breadcrumb';
 import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
+import { Link, useLocation, useParams } from 'react-router-dom';
 
 const ROUTE_LABELS: Record<string, string> = {
   rfqs: 'RFQs',
