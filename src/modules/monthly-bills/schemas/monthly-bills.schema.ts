@@ -64,6 +64,57 @@ export type MonthlyBillProjectGroup = z.infer<typeof monthlyBillProjectGroupSche
 
 export const monthlyBillProjectGroupsSchema = z.array(monthlyBillProjectGroupSchema);
 
+export const monthlyBillsPeriodMetaSchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int(),
+  label: z.string(),
+  isCurrent: z.boolean(),
+  minTxnDate: z.string(),
+  maxTxnDate: z.string(),
+  defaultTxnDate: z.string(),
+});
+
+export type MonthlyBillsPeriodMeta = z.infer<typeof monthlyBillsPeriodMetaSchema>;
+
+export const monthlyBillsCapabilitiesSchema = z.object({
+  canUpdateBills: z.boolean(),
+  canMarkPayment: z.boolean(),
+});
+
+export const monthlyBillsSummarySchema = z.object({
+  projectCount: z.coerce.number(),
+  billCount: z.coerce.number(),
+  balance: z.coerce.number(),
+  planned: z.coerce.number(),
+  paidThisMonth: z.coerce.number(),
+  readyCount: z.coerce.number(),
+});
+
+export type MonthlyBillsSummary = z.infer<typeof monthlyBillsSummarySchema>;
+
+export const monthlyBillsPaginationSchema = z.object({
+  currentPage: z.coerce.number(),
+  totalPages: z.coerce.number(),
+  hasNextPage: z.boolean(),
+  hasPreviousPage: z.boolean(),
+  totalItems: z.coerce.number(),
+  itemsPerPage: z.coerce.number(),
+});
+
+export type MonthlyBillsPagination = z.infer<typeof monthlyBillsPaginationSchema>;
+
+export const monthlyBillsResponseSchema = z.object({
+  groups: monthlyBillProjectGroupsSchema,
+  meta: z.object({
+    period: monthlyBillsPeriodMetaSchema,
+    capabilities: monthlyBillsCapabilitiesSchema,
+    summary: monthlyBillsSummarySchema,
+    pagination: monthlyBillsPaginationSchema,
+  }),
+});
+
+export type MonthlyBillsResponse = z.infer<typeof monthlyBillsResponseSchema>;
+
 export const upsertPlannedPaymentSchema = z
   .object({
     purchaseOrderId: z.string(),
@@ -78,6 +129,12 @@ export const upsertPlannedPaymentSchema = z
   });
 
 export type UpsertPlannedPaymentPayload = z.infer<typeof upsertPlannedPaymentSchema>;
+
+export const bulkUpsertPlannedPaymentsSchema = z.object({
+  items: z.array(upsertPlannedPaymentSchema).min(1).max(500),
+});
+
+export type BulkUpsertPlannedPaymentsPayload = z.infer<typeof bulkUpsertPlannedPaymentsSchema>;
 
 export const plannedPaymentRecordSchema = z.object({
   id: z.string(),

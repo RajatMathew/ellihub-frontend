@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -5,43 +7,25 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { cn } from '@/app/lib/utils';
+import {
+  createMonthlyBillDate,
+  formatMonthlyBillMonthName,
+  getCurrentMonthlyBillPeriod,
+  getMonthlyBillPeriod,
+  type MonthlyBillPeriod,
+} from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const today = startOfMonth(new Date());
-const MONTHS = Array.from({ length: 12 }, (_, index) => index);
-const YEARS = Array.from(
-  { length: today.getFullYear() - 1969 },
-  (_, index) => today.getFullYear() - index
-);
+const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
-const monthShortFormatter = new Intl.DateTimeFormat('en-US', { month: 'short' });
-const monthLongFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
-
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function setMonth(date: Date, month: number) {
-  return new Date(date.getFullYear(), month, 1);
-}
-
-function setYear(date: Date, year: number) {
-  return new Date(year, date.getMonth(), 1);
-}
-
-function isAfterMonth(left: Date, right: Date) {
+function isAfterMonth(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
   return (
-    left.getFullYear() > right.getFullYear() ||
-    (left.getFullYear() === right.getFullYear() && left.getMonth() > right.getMonth())
+    left.year > right.year || (left.year === right.year && left.month > right.month)
   );
 }
 
-function isSameMonth(left: Date, right: Date) {
-  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
-}
-
-function formatMonth(date: Date, variant: 'short' | 'long') {
-  return (variant === 'short' ? monthShortFormatter : monthLongFormatter).format(date);
+function isSameMonth(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
+  return left.year === right.year && left.month === right.month;
 }
 
 interface MonthYearPickerProps {
@@ -50,28 +34,35 @@ interface MonthYearPickerProps {
 }
 
 export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
-  const selectedDate = startOfMonth(date);
-  const availableMonths =
-    selectedDate.getFullYear() === today.getFullYear()
-      ? MONTHS.filter((month) => month <= today.getMonth())
-      : MONTHS;
-  const isAtCurrent = isSameMonth(selectedDate, today);
+  const today = useMemo(() => getCurrentMonthlyBillPeriod(), []);
 
-  const update = (next: Date) => {
-    onChange(isAfterMonth(next, today) ? today : startOfMonth(next));
+  const years = useMemo(() => {
+    return Array.from({ length: today.year - 1969 }, (_, index) => today.year - index);
+  }, [today]);
+
+  const selectedPeriod = getMonthlyBillPeriod(date);
+  const availableMonths =
+    selectedPeriod.year === today.year
+      ? MONTHS.filter((month) => month <= today.month)
+      : MONTHS;
+  const isAtCurrent = isSameMonth(selectedPeriod, today);
+
+  const update = (next: MonthlyBillPeriod) => {
+    const period = isAfterMonth(next, today) ? today : next;
+    onChange(createMonthlyBillDate(period.year, period.month));
   };
 
   const go = (direction: 1 | -1) => {
-    const nextMonth = selectedDate.getMonth() + direction;
-    if (nextMonth < 0) {
-      update(new Date(selectedDate.getFullYear() - 1, 11, 1));
+    const nextMonth = selectedPeriod.month + direction;
+    if (nextMonth < 1) {
+      update({ year: selectedPeriod.year - 1, month: 12 });
       return;
     }
-    if (nextMonth > 11) {
-      update(new Date(selectedDate.getFullYear() + 1, 0, 1));
+    if (nextMonth > 12) {
+      update({ year: selectedPeriod.year + 1, month: 1 });
       return;
     }
-    update(setMonth(selectedDate, nextMonth));
+    update({ year: selectedPeriod.year, month: nextMonth });
   };
 
   return (
@@ -90,7 +81,7 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
             type="button"
             className="group flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
           >
-            {formatMonth(selectedDate, 'short')}
+            {formatMonthlyBillMonthName(date, 'short')}
             <ChevronDown
               className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
               strokeWidth={2.5}
@@ -101,10 +92,10 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
           {availableMonths.map((month) => (
             <DropdownMenuItem
               key={month}
-              onClick={() => update(setMonth(selectedDate, month))}
-              className={cn(month === selectedDate.getMonth() && 'bg-muted font-semibold')}
+              onClick={() => update({ year: selectedPeriod.year, month })}
+              className={cn(month === selectedPeriod.month && 'bg-muted font-semibold')}
             >
-              {formatMonth(setMonth(today, month), 'long')}
+              {formatMonthlyBillMonthName(createMonthlyBillDate(selectedPeriod.year, month))}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -116,7 +107,7 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
             type="button"
             className="group flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
           >
-            {selectedDate.getFullYear()}
+            {selectedPeriod.year}
             <ChevronDown
               className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
               strokeWidth={2.5}
@@ -124,11 +115,11 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-48 overflow-y-auto">
-          {YEARS.map((year) => (
+          {years.map((year) => (
             <DropdownMenuItem
               key={year}
-              onClick={() => update(setYear(selectedDate, year))}
-              className={cn(year === selectedDate.getFullYear() && 'bg-muted font-semibold')}
+              onClick={() => update({ year, month: selectedPeriod.month })}
+              className={cn(year === selectedPeriod.year && 'bg-muted font-semibold')}
             >
               {year}
             </DropdownMenuItem>

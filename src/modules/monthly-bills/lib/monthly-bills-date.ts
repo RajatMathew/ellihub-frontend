@@ -1,11 +1,60 @@
-import { endOfMonth, format, getMonth, getYear, startOfMonth } from 'date-fns';
+export const MONTHLY_BILL_TIME_ZONE = 'America/New_York';
 
-export function getInitialMonthlyBillDate() {
-  return startOfMonth(new Date());
+export interface MonthlyBillPeriod {
+  month: number;
+  year: number;
 }
 
-export function isCurrentMonthlyBillDate(date: Date, now = new Date()) {
-  return getMonth(date) === getMonth(now) && getYear(date) === getYear(now);
+const zonedDatePartsFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: MONTHLY_BILL_TIME_ZONE,
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+});
+
+const monthNameFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  month: 'long',
+});
+
+const monthShortFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  month: 'short',
+});
+
+function padTwo(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function getZonedDateParts(date = new Date()) {
+  const parts = zonedDatePartsFormatter.formatToParts(date);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+
+  return { year, month, day };
+}
+
+function isMonthlyBillPeriodAfter(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
+  return left.year > right.year || (left.year === right.year && left.month > right.month);
+}
+
+export function createMonthlyBillDate(year: number, month: number) {
+  return new Date(Date.UTC(year, month - 1, 1, 12));
+}
+
+export function getCurrentMonthlyBillPeriod(now = new Date()): MonthlyBillPeriod {
+  const { year, month } = getZonedDateParts(now);
+  return { year, month };
+}
+
+export function getInitialMonthlyBillDate(now = new Date()) {
+  const { year, month } = getCurrentMonthlyBillPeriod(now);
+  return createMonthlyBillDate(year, month);
+}
+
+export function getMonthlyBillPeriod(date: Date): MonthlyBillPeriod {
+  return { month: date.getUTCMonth() + 1, year: date.getUTCFullYear() };
 }
 
 export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
@@ -20,31 +69,48 @@ export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
     Number.isInteger(year) &&
     year >= 1970
   ) {
-    return new Date(year, month - 1, 1);
+    const parsed = { month, year };
+    const current = getCurrentMonthlyBillPeriod();
+    if (isMonthlyBillPeriodAfter(parsed, current)) return initialDate;
+
+    return createMonthlyBillDate(year, month);
   }
 
   return initialDate;
 }
 
 export function getMonthlyBillMonthNumber(date: Date) {
-  return getMonth(date) + 1;
+  return getMonthlyBillPeriod(date).month;
+}
+
+export function getMonthlyBillYear(date: Date) {
+  return getMonthlyBillPeriod(date).year;
 }
 
 export function formatMonthlyBillMonthNumber(date: Date) {
-  return format(date, 'MM');
+  return padTwo(getMonthlyBillMonthNumber(date));
 }
 
-/** Inclusive ISO start/end dates spanning the calendar month of `date`. */
-export function getMonthlyBillDateRange(date: Date) {
-  return {
-    startDate: format(startOfMonth(date), 'yyyy-MM-dd'),
-    endDate: format(endOfMonth(date), 'yyyy-MM-dd'),
-  };
+export function formatMonthlyBillMonthName(date: Date, variant: 'short' | 'long' = 'long') {
+  const { month, year } = getMonthlyBillPeriod(date);
+  const formatter = variant === 'short' ? monthShortFormatter : monthNameFormatter;
+  return formatter.format(createMonthlyBillDate(year, month));
 }
 
 export function getMonthlyBillMonthSearch(date: Date) {
+  const { month, year } = getMonthlyBillPeriod(date);
   const params = new URLSearchParams();
-  params.set('month', formatMonthlyBillMonthNumber(date));
-  params.set('year', String(getYear(date)));
+  params.set('month', padTwo(month));
+  params.set('year', String(year));
   return `?${params.toString()}`;
+}
+
+export function formatDateOnlyLabel(
+  dateOnly: string,
+  options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+) {
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  const date = createMonthlyBillDate(year, month);
+  date.setUTCDate(day);
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(date);
 }

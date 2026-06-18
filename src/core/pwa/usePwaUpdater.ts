@@ -7,7 +7,56 @@ import { openPwaUpdateModal, PWA_UPDATE_AVAILABLE_EVENT } from './pwaEvents';
 let globalRegistration: ServiceWorkerRegistration | null = null;
 let globalUpdateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
 
+const PWA_UPDATE_INTERVAL_MS = 15 * 60 * 1000;
+const DEV_SW_CLEANUP_RELOAD_KEY = 'elli-dev-sw-cleanup-reloaded';
+
+function canUseServiceWorker() {
+  return typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+}
+
+function isCurrentOriginRegistration(registration: ServiceWorkerRegistration) {
+  try {
+    return new URL(registration.scope).origin === window.location.origin;
+  } catch {
+    return true;
+  }
+}
+
+async function unregisterDevelopmentServiceWorkers() {
+  if (!canUseServiceWorker()) return;
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  const currentOriginRegistrations = registrations.filter(isCurrentOriginRegistration);
+
+  await Promise.all(currentOriginRegistrations.map((registration) => registration.unregister()));
+
+  if ('caches' in window) {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+  }
+
+  globalRegistration = null;
+  globalUpdateSW = null;
+
+  if (
+    currentOriginRegistrations.length > 0 &&
+    navigator.serviceWorker.controller &&
+    sessionStorage.getItem(DEV_SW_CLEANUP_RELOAD_KEY) !== '1'
+  ) {
+    sessionStorage.setItem(DEV_SW_CLEANUP_RELOAD_KEY, '1');
+    window.location.reload();
+    return;
+  }
+
+  sessionStorage.removeItem(DEV_SW_CLEANUP_RELOAD_KEY);
+}
+
+function logPwaUpdateError(error: unknown) {
+  console.error('PWA update check failed:', error);
+}
+
 export async function forceCheckForUpdate() {
+  if (import.meta.env.DEV) return false;
   if (!globalRegistration) return false;
 
   await globalRegistration.update();
@@ -22,6 +71,7 @@ export async function forceCheckForUpdate() {
 }
 
 export async function forceUpdateApp() {
+  if (import.meta.env.DEV) return;
   if (!globalUpdateSW) return;
 
   await globalUpdateSW(false);
@@ -50,6 +100,15 @@ export function usePwaUpdater() {
   }, []);
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      void unregisterDevelopmentServiceWorkers().catch((error) => {
+        console.error('Failed to clean up development service workers:', error);
+      });
+      return;
+    }
+
+    let updateInterval: number | undefined;
+
     const updateSW = registerSW({
       immediate: true,
 
@@ -62,18 +121,24 @@ export function usePwaUpdater() {
 
         globalRegistration = registration;
 
-        registration.update();
+        void registration.update().catch(logPwaUpdateError);
 
-        setInterval(
+        updateInterval = window.setInterval(
           () => {
-            registration.update();
+            void registration.update().catch(logPwaUpdateError);
           },
-          15 * 60 * 1000
+          PWA_UPDATE_INTERVAL_MS
         );
       },
     });
 
     globalUpdateSW = updateSW;
+
+    return () => {
+      if (updateInterval) {
+        window.clearInterval(updateInterval);
+      }
+    };
   }, []);
 
   const checkForUpdates = async () => {
@@ -91,12 +156,16 @@ export function usePwaUpdater() {
       }
 
       return hasUpdate;
+    } catch (error) {
+      logPwaUpdateError(error);
+      return false;
     } finally {
       setChecking(false);
     }
   };
 
   const updateApp = async () => {
+    if (!canUseServiceWorker()) return;
     if (!globalUpdateSW) return;
 
     setUpdating(true);
