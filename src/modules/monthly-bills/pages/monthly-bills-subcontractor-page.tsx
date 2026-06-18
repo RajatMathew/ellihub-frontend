@@ -103,6 +103,15 @@ export function MonthlyBillsSubcontractorPage({
 
   const monthlyBillsQuery = useInfiniteMonthlyBillsQuery(monthlyBillsParams, enabled);
   const monthlyBillsPages = monthlyBillsQuery.data?.pages;
+  const hasMonthlyBillsData = monthlyBillsPages !== undefined;
+  const showMonthlyBillsInitialLoader =
+    enabled &&
+    (monthlyBillsQuery.isLoading ||
+      (monthlyBillsQuery.isFetching && !hasMonthlyBillsData));
+  const isRefreshingMonthlyBills =
+    hasMonthlyBillsData &&
+    monthlyBillsQuery.isFetching &&
+    !monthlyBillsQuery.isFetchingNextPage;
   const monthlyBillsResponse = monthlyBillsPages?.[0];
   const groups = useMemo(
     () => monthlyBillsPages?.flatMap((page) => page.groups) ?? [],
@@ -220,7 +229,7 @@ export function MonthlyBillsSubcontractorPage({
     <div>
       <MonthlyBillsStats
         summary={monthlyBillsResponse?.meta.summary}
-        isLoading={monthlyBillsQuery.isLoading}
+        isLoading={showMonthlyBillsInitialLoader}
       />
 
       <Card className="overflow-hidden">
@@ -247,6 +256,12 @@ export function MonthlyBillsSubcontractorPage({
             />
 
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end 2xl:w-auto">
+              {isRefreshingMonthlyBills && (
+                <span className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium text-muted-foreground sm:w-auto">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Refreshing
+                </span>
+              )}
               <MonthlyBillsColumnToggle
                 visibleColumns={visibleColumns}
                 onToggleColumn={toggleColumn}
@@ -306,7 +321,7 @@ export function MonthlyBillsSubcontractorPage({
           bulkSaveVersion={effectiveBulkSaveVersion}
           bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
-          isLoading={monthlyBillsQuery.isLoading}
+          isLoading={showMonthlyBillsInitialLoader}
           isError={monthlyBillsQuery.isError}
           onRetry={() => void monthlyBillsQuery.refetch()}
           onBulkSaveComplete={handleBulkSaveComplete}
@@ -337,7 +352,7 @@ function MonthlyBillsLoadMore({
   hasNextPage,
   isFetchingNextPage,
 }: MonthlyBillsLoadMoreProps & { ref: Ref<HTMLDivElement> }) {
-  if (totalCount === 0) return null;
+  if (totalCount === 0 && !isFetchingNextPage) return null;
 
   return (
     <div ref={ref} className="flex min-h-14 items-center justify-center border-t px-4 py-4 text-xs">

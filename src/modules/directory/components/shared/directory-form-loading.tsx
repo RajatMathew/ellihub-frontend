@@ -1,17 +1,24 @@
-import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import {
+  formPageContainerClassName,
+  unifiedFormHeaderClassName,
+  unifiedSingleSectionFormToolbarClassName,
+} from '@/app/components/form-page-layout';
+import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function DirectoryFormLoading() {
   return (
     <div className={formPageContainerClassName}>
-      <div className="mb-6 space-y-3">
-        <Skeleton className="h-3 w-40" />
-        <Skeleton className="h-8 w-full max-w-sm" />
-        <Skeleton className="h-4 w-72" />
+      <div className={unifiedFormHeaderClassName}>
+        <ToolbarSkeleton
+          sticky={false}
+          className={unifiedSingleSectionFormToolbarClassName}
+          actionCount={2}
+        />
       </div>
 
-      <div className="space-y-6 pt-6">
+      <div className="space-y-6 pt-4 pb-8 lg:pb-10">
         {Array.from({ length: 3 }, (_, index) => (
           <Card key={`directory-form-loader-${index}`}>
             <CardContent className="space-y-6">

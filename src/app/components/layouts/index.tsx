@@ -21,7 +21,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <LayoutProvider
-      bodyClassName="bg-main-background lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
+      bodyClassName="bg-main-background overflow-x-hidden lg:[&_.container-fluid]:px-7.5 lg:overflow-hidden"
       style={
         {
           '--page-margin': '0px',

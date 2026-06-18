@@ -22,6 +22,7 @@ interface SubChangeOrderListTableProps {
   table: Table<SCOListItem>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   onRetry: () => void;
   changeTypeLabelById: Map<string, string>;
@@ -31,6 +32,7 @@ export function SubChangeOrderListTable({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   onRetry,
   changeTypeLabelById,
@@ -40,6 +42,7 @@ export function SubChangeOrderListTable({
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}
+      isRefreshing={isRefreshing}
       isError={isError}
       errorTitle="Failed to load sub change orders"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}

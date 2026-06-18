@@ -69,17 +69,29 @@ export function PrimeChangeOrderListPage() {
   };
 
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!totalCostMin || !!totalCostMax;
-  const { data, isLoading, isError, refetch } = usePrimeChangeOrdersQuery(filters);
+  const primeChangeOrdersQuery = usePrimeChangeOrdersQuery(filters);
   const { data: projectDetail } = useProjectDetailQuery(projectId);
-  const { data: statusSummary, isLoading: isLoadingStatusSummary } =
-    usePrimeChangeOrderStatusSummaryQuery(projectId);
-  const { data: syncStatus, isLoading: isLoadingSyncStatus } =
-    usePrimeChangeOrderSyncStatusQuery(projectId);
+  const statusSummaryQuery = usePrimeChangeOrderStatusSummaryQuery(projectId);
+  const syncStatusQuery = usePrimeChangeOrderSyncStatusQuery(projectId);
   const syncMutation = useSyncPrimeChangeOrdersMutation();
-  const listData = useMemo(() => data?.data ?? [], [data?.data]);
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const hasListData = primeChangeOrdersQuery.data !== undefined;
+  const hasStatusSummaryData = statusSummaryQuery.data !== undefined;
+  const showListInitialLoader =
+    syncStatusQuery.isLoading ||
+    primeChangeOrdersQuery.isLoading ||
+    (primeChangeOrdersQuery.isFetching && !hasListData);
+  const showStatusSummaryInitialLoader =
+    statusSummaryQuery.isLoading || (statusSummaryQuery.isFetching && !hasStatusSummaryData);
+  const isRefreshingList =
+    hasListData && primeChangeOrdersQuery.isFetching && !showListInitialLoader;
+  const listData = useMemo(
+    () => primeChangeOrdersQuery.data?.data ?? [],
+    [primeChangeOrdersQuery.data?.data]
+  );
+  const totalCount = primeChangeOrdersQuery.data?.pagination?.totalItems ?? 0;
+  const syncStatus = syncStatusQuery.data;
   const isMapped = !!syncStatus?.fieldwireProjectId;
-  const syncDisabled = !isMapped || syncMutation.isPending || isLoadingSyncStatus;
+  const syncDisabled = !isMapped || syncMutation.isPending || syncStatusQuery.isLoading;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
     [sortBy, sortOrder]
@@ -145,6 +157,7 @@ export function PrimeChangeOrderListPage() {
           projectId={projectId}
           totalCount={totalCount}
           hasActiveFilters={hasActiveFilters}
+          isLoading={showListInitialLoader}
           isMapped={isMapped}
           fieldwireProjectName={projectDetail?.fieldwireProjectName}
           syncStatus={syncStatus}
@@ -167,8 +180,8 @@ export function PrimeChangeOrderListPage() {
 
         <PrimeChangeOrderStatusSummary
           statusFilter={statusFilter}
-          statusSummary={statusSummary}
-          isLoading={isLoadingStatusSummary}
+          statusSummary={statusSummaryQuery.data}
+          isLoading={showStatusSummaryInitialLoader}
           onStatusChange={(statusName) =>
             updateParams({
               statusName,
@@ -189,15 +202,16 @@ export function PrimeChangeOrderListPage() {
             onClearFilters={clearFilters}
           />
 
-          {!isMapped && !isLoadingSyncStatus ? (
+          {!isMapped && !syncStatusQuery.isLoading ? (
             <PrimeChangeOrderNotConnected projectId={projectId} />
           ) : (
             <PrimeChangeOrderListTable
               table={table}
               totalCount={totalCount}
-              isLoading={isLoading}
-              isError={isError}
-              onRetry={() => void refetch()}
+              isLoading={showListInitialLoader}
+              isRefreshing={isRefreshingList}
+              isError={primeChangeOrdersQuery.isError}
+              onRetry={() => void primeChangeOrdersQuery.refetch()}
             />
           )}
         </Card>

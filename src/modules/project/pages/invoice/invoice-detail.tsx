@@ -276,7 +276,7 @@ export function InvoiceDetailPage() {
   const hasPaymentMethods = (paymentMethods?.length ?? 0) > 0;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>

@@ -33,6 +33,7 @@ interface LookupTableCardProps {
   allTypes: string[];
   typeFilter: string | undefined;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError?: boolean;
   refetch?: () => void;
   search: string;
@@ -47,6 +48,7 @@ export function LookupTableCard({
   allTypes,
   typeFilter,
   isLoading,
+  isRefreshing,
   isError,
   refetch,
   search,
@@ -162,6 +164,7 @@ export function LookupTableCard({
         table={table}
         totalCount={lookups.length}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={Boolean(isError)}
         errorTitle="Failed to load lookups"
         errorDescription="There was an error fetching the data. Please try again."

@@ -1,14 +1,13 @@
+import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function PTODetailLoading() {
   return (
-    <div className="container-fluid max-w-full space-y-6 overflow-x-hidden pb-5">
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-8 w-72 max-w-full" />
-      </div>
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-4">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
+      <ToolbarSkeleton sticky={false} showSubtitle={false} actionCount={2} />
+
+      <div className="grid min-w-0 grid-cols-1 gap-6 pt-6 lg:grid-cols-4">
         <Card className="min-w-0 lg:col-span-3">
           <CardContent className="space-y-6 pt-6">
             <Skeleton className="h-6 w-44" />

@@ -1,14 +1,11 @@
+import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function ContactDetailLoading() {
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden pb-5">
-      <div className="mb-6 space-y-3">
-        <Skeleton className="h-3 w-40" />
-        <Skeleton className="h-8 w-full max-w-sm" />
-        <Skeleton className="h-4 w-64" />
-      </div>
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
+      <ToolbarSkeleton />
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-5">

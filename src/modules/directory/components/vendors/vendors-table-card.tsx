@@ -27,6 +27,7 @@ interface VendorsTableCardProps {
   statusFilter: VendorStatus | undefined;
   searchInput: string;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isTypesLoading: boolean;
   isError: boolean;
   totalCount: number;
@@ -45,6 +46,7 @@ export function VendorsTableCard({
   statusFilter,
   searchInput,
   isLoading,
+  isRefreshing,
   isTypesLoading,
   isError,
   totalCount,
@@ -124,6 +126,7 @@ export function VendorsTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load vendors"
         emptyIcon={<Package className="size-10 text-muted-foreground/50" />}

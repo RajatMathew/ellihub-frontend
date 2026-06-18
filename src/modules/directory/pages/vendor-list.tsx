@@ -56,17 +56,22 @@ export function VendorListPage() {
     [page, searchQuery, size, sortBy, sortOrder, statusFilter, typeFilter]
   );
 
-  const { data: stats, isLoading: isStatsLoading } = useVendorStatsQuery();
+  const statsQuery = useVendorStatsQuery();
   const { data: typeTabs = [], isLoading: isTypesLoading } = useVendorTypesQuery();
-  const { data, isLoading, isError, refetch } = useVendorsQuery(filters);
+  const vendorsQuery = useVendorsQuery(filters);
   const deleteMutation = useDeleteVendorMutation();
+  const hasListData = vendorsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader = vendorsQuery.isLoading || (vendorsQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && vendorsQuery.isFetching && !showListInitialLoader;
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const listData = vendorsQuery.data?.data ?? [];
+  const totalCount = vendorsQuery.data?.pagination?.totalItems ?? 0;
   const hasActiveFilters = Boolean(searchQuery || typeFilter || statusFilter);
-  const totalCommitted = stats?.totalCommitted ?? 0;
+  const totalCommitted = statsQuery.data?.totalCommitted ?? 0;
 
-  const totalVendors = stats?.totalVendors ?? totalCount;
+  const totalVendors = statsQuery.data?.totalVendors ?? totalCount;
   const typeLabels = useMemo(() => {
     const labels = new Map<string, string>();
     for (const type of typeTabs) {
@@ -150,6 +155,7 @@ export function VendorListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="Vendors"
+        isLoading={showListInitialLoader}
         addLabel={can('vendor', 'create') ? 'Add Vendor' : undefined}
         addTo={can('vendor', 'create') ? 'create' : undefined}
         addIcon={can('vendor', 'create') ? <Plus className="size-4" /> : undefined}
@@ -158,9 +164,9 @@ export function VendorListPage() {
       <VendorStatsCards
         totalVendors={totalVendors}
         totalCommitted={totalCommitted}
-        totalPaid={stats?.totalPaid ?? 0}
-        outstandingBalance={stats?.outstandingBalance ?? 0}
-        isLoading={isStatsLoading}
+        totalPaid={statsQuery.data?.totalPaid ?? 0}
+        outstandingBalance={statsQuery.data?.outstandingBalance ?? 0}
+        isLoading={showStatsInitialLoader}
       />
 
       <VendorsTableCard
@@ -169,16 +175,17 @@ export function VendorListPage() {
         typeFilter={typeFilter}
         statusFilter={statusFilter}
         searchInput={searchInput}
-        isLoading={isLoading}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
         isTypesLoading={isTypesLoading}
-        isError={isError}
+        isError={vendorsQuery.isError}
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={handleSearchChange}
         onTypeChange={(typeId) => updateParams({ type: typeId, page: undefined })}
         onStatusChange={(status) => updateParams({ status, page: undefined })}
         onClearFilters={clearFilters}
-        onRetry={() => void refetch()}
+        onRetry={() => void vendorsQuery.refetch()}
       />
     </div>
   );

@@ -64,10 +64,16 @@ export function InvoiceListPage() {
     isPaid: paidFilter,
   };
 
-  const { data, isLoading, isError, refetch } = useInvoiceListQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = useInvoiceStatsQuery(projectId);
-  const listData = useMemo(() => data?.data ?? [], [data?.data]);
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const invoicesQuery = useInvoiceListQuery(filters);
+  const statsQuery = useInvoiceStatsQuery(projectId);
+  const hasListData = invoicesQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    invoicesQuery.isLoading || (invoicesQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && invoicesQuery.isFetching && !showListInitialLoader;
+  const listData = useMemo(() => invoicesQuery.data?.data ?? [], [invoicesQuery.data?.data]);
+  const totalCount = invoicesQuery.data?.pagination?.totalItems ?? 0;
   const hasActiveFilters =
     !!searchQuery || !!vendorFilter || !!purchaseOrderFilter || paidFilter !== undefined;
   const sorting = useMemo<SortingState>(
@@ -158,8 +164,12 @@ export function InvoiceListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <InvoiceListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
-      <InvoiceListStats stats={stats} isLoading={isStatsLoading} />
+      <InvoiceListHeader
+        hasActiveFilters={hasActiveFilters}
+        totalCount={totalCount}
+        isLoading={showListInitialLoader}
+      />
+      <InvoiceListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <Card className="overflow-hidden">
         <InvoiceListFilters
@@ -181,9 +191,10 @@ export function InvoiceListPage() {
         <InvoiceListTable
           table={table}
           totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={() => void refetch()}
+          isLoading={showListInitialLoader}
+          isRefreshing={isRefreshingList}
+          isError={invoicesQuery.isError}
+          onRetry={() => void invoicesQuery.refetch()}
         />
       </Card>
     </div>

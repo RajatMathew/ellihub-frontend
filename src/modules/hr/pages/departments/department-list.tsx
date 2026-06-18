@@ -54,11 +54,17 @@ export default function DepartmentListPage() {
     [page, searchQuery, size, sortBy, sortOrder]
   );
 
-  const { data, isLoading, isError, isRefetching, refetch } = useDepartmentsQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = useDepartmentStatsQuery();
+  const departmentsQuery = useDepartmentsQuery(filters);
+  const statsQuery = useDepartmentStatsQuery();
   const deleteMutation = useDeleteDepartmentMutation();
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination.totalItems ?? 0;
+  const hasListData = departmentsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    departmentsQuery.isLoading || (departmentsQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && departmentsQuery.isFetching && !showListInitialLoader;
+  const listData = departmentsQuery.data?.data ?? [];
+  const totalCount = departmentsQuery.data?.pagination.totalItems ?? 0;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
     [sortBy, sortOrder]
@@ -127,20 +133,25 @@ export default function DepartmentListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <DepartmentListToolbar totalCount={totalCount} searchQuery={searchQuery} />
-      <DepartmentListStats stats={stats} isLoading={isStatsLoading} />
+      <DepartmentListToolbar
+        totalCount={totalCount}
+        searchQuery={searchQuery}
+        isLoading={showListInitialLoader}
+      />
+      <DepartmentListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <DepartmentsTableCard
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isError={isError}
-        isRefetching={isRefetching}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
+        isError={departmentsQuery.isError}
+        isRefetching={isRefreshingList}
         searchInput={searchInput}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onClearSearch={clearSearch}
-        onRetry={() => void refetch()}
+        onRetry={() => void departmentsQuery.refetch()}
       />
 
       <DepartmentDeleteDialog

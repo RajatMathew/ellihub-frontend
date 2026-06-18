@@ -24,12 +24,18 @@ export default function EmployeeListPage() {
   const listParams = useEmployeeListParams();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const { data, isLoading, isError, refetch, isRefetching } = useEmployeesQuery(listParams.params);
-  const { data: stats, isLoading: isStatsLoading } = useEmployeeStatsQuery();
+  const employeesQuery = useEmployeesQuery(listParams.params);
+  const statsQuery = useEmployeeStatsQuery();
   const deleteMutation = useDeleteEmployeeMutation();
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const hasListData = employeesQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    employeesQuery.isLoading || (employeesQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && employeesQuery.isFetching && !showListInitialLoader;
+  const listData = employeesQuery.data?.data ?? [];
+  const totalCount = employeesQuery.data?.pagination?.totalItems ?? 0;
   const sorting: SortingState = [{ id: listParams.sortBy, desc: listParams.sortOrder === 'desc' }];
   const columns = useEmployeeListColumns(setDeleteTarget);
   const pageCount = Math.max(1, Math.ceil(totalCount / listParams.size));
@@ -77,26 +83,32 @@ export default function EmployeeListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <EmployeeListToolbar totalCount={totalCount} searchQuery={listParams.searchQuery} />
-      <EmployeeListStats stats={stats} isLoading={isStatsLoading} />
+      <EmployeeListToolbar
+        totalCount={totalCount}
+        searchQuery={listParams.searchQuery}
+        isLoading={showListInitialLoader}
+      />
+      <EmployeeListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <EmployeesTableCard
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isError={isError}
-        isRefetching={isRefetching}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
+        isError={employeesQuery.isError}
+        isRefetching={isRefreshingList}
         searchInput={listParams.searchInput}
         searchQuery={listParams.searchQuery}
+        onDelete={setDeleteTarget}
         onSearchChange={listParams.handleSearchChange}
         onClearSearch={() => {
           if (listParams.searchQuery) {
             listParams.clearSearch();
             return;
           }
-          void refetch();
+          void employeesQuery.refetch();
         }}
-        onRetry={() => void refetch()}
+        onRetry={() => void employeesQuery.refetch()}
       />
 
       <EmployeeDeleteDialog

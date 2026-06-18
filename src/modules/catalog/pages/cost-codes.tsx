@@ -41,7 +41,7 @@ export function CostCodesListPage() {
     });
   const categoryFilter = searchParams.get('categoryId') ?? undefined;
 
-  const { data, isLoading, isFetching, isError, refetch } = useCostCodesQuery({
+  const costCodesQuery = useCostCodesQuery({
     page,
     size,
     sortBy: 'name',
@@ -49,7 +49,7 @@ export function CostCodesListPage() {
     search: searchQuery || undefined,
     costCodeCategoryId: categoryFilter,
   });
-  const { data: stats, isLoading: isStatsLoading } = useCostCodeStatsQuery();
+  const statsQuery = useCostCodeStatsQuery();
   const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
   const deleteMutation = useDeleteCostCodeMutation();
   const createMutation = useCreateCostCodeMutation();
@@ -59,8 +59,14 @@ export function CostCodesListPage() {
   const [editingCostCode, setEditingCostCode] = useState<CostCode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCode | null>(null);
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.count ?? 0;
+  const hasListData = costCodesQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    costCodesQuery.isLoading || (costCodesQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && costCodesQuery.isFetching && !showListInitialLoader;
+  const listData = costCodesQuery.data?.data ?? [];
+  const totalCount = costCodesQuery.data?.count ?? 0;
   const hasActiveFilters = !!searchQuery || !!categoryFilter;
 
   const columns = useCostCodeColumns({
@@ -100,24 +106,29 @@ export function CostCodesListPage() {
       <CostCodesPageHeader
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
-        isLoading={isFetching && !data}
+        isLoading={showListInitialLoader}
         onCreate={() => setCreateModalOpen(true)}
       />
 
-      <CostCodesStatsBar isLoading={isStatsLoading} stats={stats} className="mb-5 lg:mb-7.5" />
+      <CostCodesStatsBar
+        isLoading={showStatsInitialLoader}
+        stats={statsQuery.data}
+        className="mb-5 lg:mb-7.5"
+      />
 
       <CostCodesTableCard
         table={table}
         categories={categories}
         categoryFilter={categoryFilter}
         searchInput={searchInput}
-        isLoading={isLoading}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
         isCategoriesLoading={isCategoriesLoading}
-        isError={isError}
+        isError={costCodesQuery.isError}
         totalCount={totalCount}
         onSearchChange={handleSearchChange}
         onCategoryChange={(id) => updateParams({ categoryId: id, page: undefined })}
-        onRetry={() => void refetch()}
+        onRetry={() => void costCodesQuery.refetch()}
       />
 
       <CostCodeFormDialog

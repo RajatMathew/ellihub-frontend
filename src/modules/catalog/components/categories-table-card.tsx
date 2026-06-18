@@ -24,6 +24,7 @@ import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
 interface CategoriesTableCardProps {
   categories: CostCodeCategory[];
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError?: boolean;
   refetch?: () => void;
   search: string;
@@ -35,6 +36,7 @@ interface CategoriesTableCardProps {
 export function CategoriesTableCard({
   categories,
   isLoading,
+  isRefreshing,
   isError,
   refetch,
   search,
@@ -133,6 +135,7 @@ export function CategoriesTableCard({
         table={table}
         totalCount={categories.length}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={Boolean(isError)}
         errorTitle="Failed to load categories"
         errorDescription="There was an error fetching the data. Please try again."

@@ -1,12 +1,8 @@
 import { useMemo, useState } from 'react';
 
-import { Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { CategoriesTableCard } from '@/modules/catalog/components/categories-table-card';
 import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
 import {
@@ -16,6 +12,8 @@ import {
   useUpdateCostCodeCategoryMutation,
 } from '@/modules/catalog/hooks';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
+import { Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function CostCodeCategoriesListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -24,22 +22,29 @@ export function CostCodeCategoriesListPage() {
   const [search, setSearch] = useState('');
 
   /* ---- Queries & Mutations ---- */
-  const { data: categories = [], isLoading, isError, refetch } = useCostCodeCategoriesQuery();
+  const categoriesQuery = useCostCodeCategoriesQuery();
   const createMutation = useCreateCostCodeCategoryMutation();
   const updateMutation = useUpdateCostCodeCategoryMutation();
   const deleteMutation = useDeleteCostCodeCategoryMutation();
+  const categories = categoriesQuery.data ?? [];
+  const hasCategoriesData = categoriesQuery.data !== undefined;
+  const showCategoriesInitialLoader =
+    categoriesQuery.isLoading || (categoriesQuery.isFetching && !hasCategoriesData);
+  const isRefreshingCategories =
+    hasCategoriesData && categoriesQuery.isFetching && !showCategoriesInitialLoader;
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   /* ---- Handlers ---- */
-  const filteredCategories = useMemo(() => 
-    search
-      ? categories.filter(
-          (c) =>
-            c.name.toLowerCase().includes(search.toLowerCase()) ||
-            (c.description ?? '').toLowerCase().includes(search.toLowerCase())
-        )
-      : categories,
+  const filteredCategories = useMemo(
+    () =>
+      search
+        ? categories.filter(
+            (c) =>
+              c.name.toLowerCase().includes(search.toLowerCase()) ||
+              (c.description ?? '').toLowerCase().includes(search.toLowerCase())
+          )
+        : categories,
     [categories, search]
   );
 
@@ -85,13 +90,11 @@ export function CostCodeCategoriesListPage() {
         title="Cost Code Categories"
         totalCount={categories.length}
         hasActiveFilters={!!search}
-        description={isLoading ? <Skeleton className="h-4 w-28" /> : undefined}
+        isLoading={showCategoriesInitialLoader}
         actions={
           <>
             <Button size="sm" variant="outline" asChild>
-              <Link to="/app/catalog/cost-codes">
-                Back to Cost Codes
-              </Link>
+              <Link to="/app/catalog/cost-codes">Back to Cost Codes</Link>
             </Button>
           </>
         }
@@ -102,9 +105,10 @@ export function CostCodeCategoriesListPage() {
 
       <CategoriesTableCard
         categories={filteredCategories}
-        isLoading={isLoading}
-        isError={isError}
-        refetch={refetch}
+        isLoading={showCategoriesInitialLoader}
+        isRefreshing={isRefreshingCategories}
+        isError={categoriesQuery.isError}
+        refetch={categoriesQuery.refetch}
         search={search}
         onSearchChange={setSearch}
         onEdit={handleEdit}

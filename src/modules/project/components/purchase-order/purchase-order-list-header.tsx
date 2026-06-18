@@ -5,11 +5,13 @@ import { useParams } from 'react-router-dom';
 
 interface PurchaseOrderListHeaderProps {
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   totalCount: number;
 }
 
 export function PurchaseOrderListHeader({
   hasActiveFilters,
+  isLoading,
   totalCount,
 }: PurchaseOrderListHeaderProps) {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -22,6 +24,7 @@ export function PurchaseOrderListHeader({
       resultLabel="POs"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
+      isLoading={isLoading}
       addLabel={canCreate ? 'Add PO' : undefined}
       addTo={canCreate ? 'create' : undefined}
       addIcon={canCreate ? <Plus className="size-4" /> : undefined}

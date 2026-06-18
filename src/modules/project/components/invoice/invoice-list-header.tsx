@@ -5,10 +5,15 @@ import { useParams } from 'react-router-dom';
 
 interface InvoiceListHeaderProps {
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   totalCount: number;
 }
 
-export function InvoiceListHeader({ hasActiveFilters, totalCount }: InvoiceListHeaderProps) {
+export function InvoiceListHeader({
+  hasActiveFilters,
+  isLoading,
+  totalCount,
+}: InvoiceListHeaderProps) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const canCreate = project?.capabilities?.actions?.invoice?.create === true;
@@ -19,6 +24,7 @@ export function InvoiceListHeader({ hasActiveFilters, totalCount }: InvoiceListH
       resultLabel="Invoices"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
+      isLoading={isLoading}
       addLabel={canCreate ? 'Add Invoice' : undefined}
       addTo={canCreate ? 'create' : undefined}
       addIcon={canCreate ? <Plus className="size-4" /> : undefined}

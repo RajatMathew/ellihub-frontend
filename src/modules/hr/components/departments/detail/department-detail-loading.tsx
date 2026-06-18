@@ -1,15 +1,13 @@
+import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function DepartmentDetailLoading() {
   return (
-    <div className="container-fluid max-w-full space-y-6 overflow-x-hidden pb-5">
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-80 max-w-full" />
-      </div>
-      <div className="flex min-w-0 flex-col gap-6 lg:flex-row">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
+      <ToolbarSkeleton />
+
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <Card className="min-w-0 flex-1">
           <CardHeader>
             <Skeleton className="h-5 w-40" />

@@ -67,7 +67,7 @@ export function GCDetailPage() {
   const canDeleteGc = can('generalContractor', 'delete');
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden pb-5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <GCDetailToolbar
         gc={gc}
         sidebarOpen={sidebarOpen}

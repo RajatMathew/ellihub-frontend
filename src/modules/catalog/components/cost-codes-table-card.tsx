@@ -13,6 +13,7 @@ interface CostCodesTableCardProps {
   categoryFilter: string | undefined;
   searchInput: string;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isCategoriesLoading?: boolean;
   isError: boolean;
   totalCount: number;
@@ -27,6 +28,7 @@ export function CostCodesTableCard({
   categoryFilter,
   searchInput,
   isLoading,
+  isRefreshing,
   isCategoriesLoading,
   isError,
   totalCount,
@@ -82,6 +84,7 @@ export function CostCodesTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load cost codes"
         emptyIcon={<Tag className="size-10 text-muted-foreground/50" />}

@@ -1,9 +1,7 @@
-import { Edit, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
-import { Skeleton } from '@/app/components/ui/skeleton';
+import { Edit, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface CostCodesPageHeaderProps {
   totalCount: number;
@@ -23,7 +21,7 @@ export function CostCodesPageHeader({
       title="Cost Codes"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
-      description={isLoading ? <Skeleton className="h-4 w-28" /> : undefined}
+      isLoading={isLoading}
       actions={
         <>
           <Button size="sm" variant="outline" asChild>

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import type { ActivityLogItem } from '@/app/api/activity-log.api';
+import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
-import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import { useActivityLogQuery } from '@/app/hooks/use-activity-log';
+import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
   ActivityActionBadge,
   ActivityEntityBadge,
@@ -50,6 +50,11 @@ export default function ActivityLogListPage() {
 
   const rows = activityQuery.data?.data ?? [];
   const totalCount = activityQuery.data?.pagination.totalItems ?? 0;
+  const hasActivityData = activityQuery.data !== undefined;
+  const showActivityInitialLoader =
+    activityQuery.isLoading || (activityQuery.isFetching && !hasActivityData);
+  const isRefreshingActivity =
+    hasActivityData && activityQuery.isFetching && !showActivityInitialLoader;
   const hasActiveFilters = Boolean(searchQuery || entityType || action || from || to);
 
   const columns = useMemo<ColumnDef<ActivityLogItem>[]>(
@@ -139,8 +144,7 @@ export default function ActivityLogListPage() {
         patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
       }
       if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
+        patches.size = next.pageSize === DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
         patches.page = undefined;
       }
       updateParams(patches);
@@ -171,7 +175,8 @@ export default function ActivityLogListPage() {
         action={action}
         from={from}
         to={to}
-        isLoading={activityQuery.isLoading}
+        isLoading={showActivityInitialLoader}
+        isRefreshing={isRefreshingActivity}
         isError={activityQuery.isError}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={handleSearchChange}
