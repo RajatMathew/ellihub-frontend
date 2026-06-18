@@ -9,12 +9,14 @@ import { invoiceApi } from '@/modules/project/api/invoice';
 import {
   fieldwireProjectOptionSchema,
   projectDetailSchema,
+  projectOptionPaginatedResponseSchema,
   projectPaginatedResponseSchema,
   projectStatsSchema,
   type CreateProjectInput,
   type FieldwireProjectOption,
   type ListProjectsParams,
   type ProjectDetail,
+  type ProjectOptionPaginatedResponse,
   type ProjectPaginatedResponse,
   type ProjectStats,
   type UpdateProjectInput,
@@ -77,6 +79,29 @@ export const projectApi = {
     if (!result.success) {
       console.error('[projectApi.list] Zod parse error:', result.error.issues);
       console.error('[projectApi.list] Raw response:', JSON.stringify(raw, null, 2));
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async listOptions(params?: ListProjectsParams): Promise<ProjectOptionPaginatedResponse> {
+    const query = buildListQuery(params);
+    const res = await api.get(`${BASE}/options`, { params: query });
+    const raw = {
+      data: res.data?.data ?? res.data ?? [],
+      pagination: res.data?.pagination ?? {
+        currentPage: params?.page ?? 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+        totalItems: Array.isArray(res.data?.data) ? res.data.data.length : 0,
+        itemsPerPage: params?.size ?? 50,
+      },
+    };
+    const result = projectOptionPaginatedResponseSchema.safeParse(raw);
+    if (!result.success) {
+      console.error('[projectApi.listOptions] Zod parse error:', result.error.issues);
+      console.error('[projectApi.listOptions] Raw response:', JSON.stringify(raw, null, 2));
       throw result.error;
     }
     return result.data;
