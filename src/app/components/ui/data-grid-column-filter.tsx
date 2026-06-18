@@ -1,9 +1,8 @@
-import type { ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 
 import { type Column } from '@tanstack/react-table';
-import { Check, CirclePlus } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 
-import { Badge } from '@app/components/ui/badge';
 import { Button } from '@app/components/ui/button';
 import {
   Command,
@@ -15,7 +14,6 @@ import {
   CommandSeparator,
 } from '@app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
-import { Separator } from '@app/components/ui/separator';
 import { cn } from '@app/lib/utils';
 
 interface DataGridColumnFilterProps<TData, TValue> {
@@ -33,55 +31,51 @@ function DataGridColumnFilter<TData, TValue>({
   title,
   options,
 }: DataGridColumnFilterProps<TData, TValue>) {
+  const [open, setOpen] = useState(false);
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
+  const selectedCount = selectedValues.size;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          <CirclePlus className="size-4" />
-          {title}
-          {selectedValues?.size > 0 && (
-            <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
-                {selectedValues.size}
-              </Badge>
-              <div className="hidden space-x-1 lg:flex">
-                {selectedValues.size > 2 ? (
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    {selectedValues.size} selected
-                  </Badge>
-                ) : (
-                  options
-                    .filter((option) => selectedValues.has(option.value))
-                    .map((option) => (
-                      <Badge
-                        variant="secondary"
-                        key={option.value}
-                        className="rounded-sm px-1 font-normal"
-                      >
-                        {option.label}
-                      </Badge>
-                    ))
-                )}
-              </div>
-            </>
-          )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="justify-between gap-2 rounded-md border-border bg-background px-3 font-medium shadow-sm transition-all hover:border-success/40 data-[state=open]:border-success/50 data-[state=open]:ring-2 data-[state=open]:ring-success/15"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{title}</span>
+            {selectedCount > 0 && (
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-white">
+                {selectedCount}
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent
+        className="w-[min(calc(100vw-1.5rem),16rem)] overflow-hidden rounded-lg border-border p-0 shadow-xl shadow-black/10"
+        align="start"
+        sideOffset={8}
+      >
         <Command>
           <CommandInput placeholder={title} />
-          <CommandList>
+          <CommandList className="max-h-[min(20rem,var(--radix-popover-content-available-height))]">
             <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup>
+            <CommandGroup className="p-2">
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
                 return (
                   <CommandItem
                     key={option.value}
+                    className="min-h-10 gap-3 rounded-md px-2 py-2"
                     onSelect={() => {
                       if (isSelected) {
                         selectedValues.delete(option.value);
@@ -92,18 +86,19 @@ function DataGridColumnFilter<TData, TValue>({
                       column?.setFilterValue(filterValues.length ? filterValues : undefined);
                     }}
                   >
-                    <div
+                    <span
+                      aria-hidden="true"
                       className={cn(
-                        'me-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
                         isSelected
-                          ? 'bg-primary text-primary-foreground'
-                          : 'opacity-50 [&_svg]:invisible'
+                          ? 'border-success bg-success text-white'
+                          : 'border-muted-foreground/40 bg-background text-transparent'
                       )}
                     >
-                      <Check className={cn('h-4 w-4')} />
-                    </div>
+                      <Check className="size-3.5 stroke-[3]" />
+                    </span>
                     {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
-                    <span>{option.label}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
                     {facets?.get(option.value) && (
                       <span className="ms-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
                         {facets.get(option.value)}
@@ -116,7 +111,7 @@ function DataGridColumnFilter<TData, TValue>({
             {selectedValues.size > 0 && (
               <>
                 <CommandSeparator />
-                <CommandGroup>
+                <CommandGroup className="p-2">
                   <CommandItem
                     onSelect={() => column?.setFilterValue(undefined)}
                     className="justify-center text-center"
