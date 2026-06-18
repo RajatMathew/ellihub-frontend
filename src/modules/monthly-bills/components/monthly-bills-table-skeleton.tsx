@@ -5,7 +5,7 @@ import {
   getMonthlyBillRenderedColumns,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { format } from 'date-fns';
+import { formatMonthlyBillMonthName } from '@/modules/monthly-bills/lib/monthly-bills-date';
 
 const SKELETON_GROUP_COUNT = 2;
 const SKELETON_ROW_COUNT = 3;
@@ -36,7 +36,7 @@ export function MonthlyBillsTableSkeleton({
   canMarkPayment,
   visibleColumns,
 }: MonthlyBillsTableSkeletonProps) {
-  const monthName = format(selectedDate, 'MMMM');
+  const monthName = formatMonthlyBillMonthName(selectedDate);
   const columns = getMonthlyBillRenderedColumns(visibleColumns);
   const hasActions = canMarkPayment;
 

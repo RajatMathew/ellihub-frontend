@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
-import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { useLookupsQuery } from '@/modules/lookup/hooks';
 import { MonthlyBillsColumnToggle } from '@/modules/monthly-bills/components/monthly-bills-column-toggle';
@@ -14,12 +13,11 @@ import {
   getDefaultMonthlyBillColumns,
   type MonthlyBillColumnKey,
 } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { useMonthlyBillsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
+import { useInfiniteMonthlyBillsQuery } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
 import { useMonthlyBillsVendorFilterOptions } from '@/modules/monthly-bills/hooks/use-monthly-bills-vendor-filter-options';
 import {
-  getMonthlyBillDateRange,
   getMonthlyBillMonthNumber,
-  isCurrentMonthlyBillDate,
+  getMonthlyBillYear,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,20 +31,12 @@ export function MonthlyBillsSubcontractorPage({
   selectedDate,
   enabled,
 }: MonthlyBillsSubcontractorPageProps) {
-  const { can } = useAccess();
-  const canUpdateBills = can('monthlyBills', 'update');
-  const canMarkPayment = can('monthlyBills', 'mark-payment');
-  const isCurrentPeriod = isCurrentMonthlyBillDate(selectedDate);
-  const canUpdateCurrentBills = canUpdateBills && isCurrentPeriod;
-  const canMarkCurrentPayment = canMarkPayment && isCurrentPeriod;
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [visibleColumns, setVisibleColumns] = useState(getDefaultMonthlyBillColumns);
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkSaveVersion, setBulkSaveVersion] = useState(0);
   const [bulkCancelVersion, setBulkCancelVersion] = useState(0);
-  const effectiveBulkEditMode = isCurrentPeriod && bulkEditMode;
-  const effectiveBulkSaving = isCurrentPeriod && bulkSaving;
-  const effectiveBulkSaveVersion = isCurrentPeriod ? bulkSaveVersion : 0;
   const bulkSaveRef = useRef({
     active: false,
     version: 0,
@@ -93,22 +83,65 @@ export function MonthlyBillsSubcontractorPage({
       .filter((option) => !query || option.label.toLowerCase().includes(query));
   }, [tradeCategories, tradeCategorySearch]);
 
-  const vendorIds = selectedVendors.map((vendor) => vendor.value);
+  const vendorIds = useMemo(
+    () => selectedVendors.map((vendor) => vendor.value),
+    [selectedVendors]
+  );
   const hasActiveFilters = Boolean(search || vendorIds.length || tradeCategoryIds.length);
 
-  const { startDate, endDate } = getMonthlyBillDateRange(selectedDate);
-  const monthlyBillsQuery = useMonthlyBillsQuery(
-    {
-      startDate,
-      endDate,
+  const monthlyBillsParams = useMemo(
+    () => ({
       month: getMonthlyBillMonthNumber(selectedDate),
-      year: selectedDate.getFullYear(),
+      year: getMonthlyBillYear(selectedDate),
+      size: 8,
       search: search || undefined,
       vendorId: vendorIds,
       tradeCategoryId: tradeCategoryIds,
-    },
-    enabled
+    }),
+    [search, selectedDate, tradeCategoryIds, vendorIds]
   );
+
+  const monthlyBillsQuery = useInfiniteMonthlyBillsQuery(monthlyBillsParams, enabled);
+  const monthlyBillsPages = monthlyBillsQuery.data?.pages;
+  const monthlyBillsResponse = monthlyBillsPages?.[0];
+  const groups = useMemo(
+    () => monthlyBillsPages?.flatMap((page) => page.groups) ?? [],
+    [monthlyBillsPages]
+  );
+  const lastPage = monthlyBillsPages?.at(-1);
+  const pagination = lastPage?.meta.pagination ?? monthlyBillsResponse?.meta.pagination;
+  const periodMeta = monthlyBillsResponse?.meta.period;
+  const capabilities = monthlyBillsResponse?.meta.capabilities;
+  const isCurrentPeriod = Boolean(periodMeta?.isCurrent);
+  const canUpdateCurrentBills = Boolean(capabilities?.canUpdateBills);
+  const canMarkCurrentPayment = Boolean(capabilities?.canMarkPayment);
+  const effectiveBulkEditMode = isCurrentPeriod && bulkEditMode;
+  const effectiveBulkSaving = isCurrentPeriod && bulkSaving;
+  const effectiveBulkSaveVersion = isCurrentPeriod ? bulkSaveVersion : 0;
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !monthlyBillsQuery.hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries.some((entry) => entry.isIntersecting) &&
+          !monthlyBillsQuery.isFetchingNextPage
+        ) {
+          void monthlyBillsQuery.fetchNextPage();
+        }
+      },
+      { rootMargin: '360px 0px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [
+    monthlyBillsQuery.fetchNextPage,
+    monthlyBillsQuery.hasNextPage,
+    monthlyBillsQuery.isFetchingNextPage,
+  ]);
 
   const handleVendorChange = (ids: string[]) => {
     setSelectedVendors(
@@ -129,9 +162,8 @@ export function MonthlyBillsSubcontractorPage({
   };
 
   const handleBulkSave = () => {
-    if (!isCurrentPeriod) return;
+    if (!canUpdateCurrentBills) return;
 
-    const groups = monthlyBillsQuery.data ?? [];
     if (groups.length === 0) return;
 
     setBulkSaveVersion((current) => {
@@ -187,8 +219,7 @@ export function MonthlyBillsSubcontractorPage({
   return (
     <div>
       <MonthlyBillsStats
-        groups={monthlyBillsQuery.data ?? []}
-        selectedDate={selectedDate}
+        summary={monthlyBillsResponse?.meta.summary}
         isLoading={monthlyBillsQuery.isLoading}
       />
 
@@ -266,7 +297,8 @@ export function MonthlyBillsSubcontractorPage({
         </CardHeader>
 
         <MonthlyBillsTable
-          groups={monthlyBillsQuery.data ?? []}
+          groups={groups}
+          period={periodMeta}
           selectedDate={selectedDate}
           canUpdateBills={canUpdateCurrentBills}
           canMarkPayment={canMarkCurrentPayment}
@@ -279,7 +311,48 @@ export function MonthlyBillsSubcontractorPage({
           onRetry={() => void monthlyBillsQuery.refetch()}
           onBulkSaveComplete={handleBulkSaveComplete}
         />
+        <MonthlyBillsLoadMore
+          ref={loadMoreRef}
+          loadedCount={groups.length}
+          totalCount={pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0}
+          hasNextPage={Boolean(monthlyBillsQuery.hasNextPage)}
+          isFetchingNextPage={monthlyBillsQuery.isFetchingNextPage}
+        />
       </Card>
+    </div>
+  );
+}
+
+interface MonthlyBillsLoadMoreProps {
+  loadedCount: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+}
+
+function MonthlyBillsLoadMore({
+  ref,
+  loadedCount,
+  totalCount,
+  hasNextPage,
+  isFetchingNextPage,
+}: MonthlyBillsLoadMoreProps & { ref: Ref<HTMLDivElement> }) {
+  if (totalCount === 0) return null;
+
+  return (
+    <div ref={ref} className="flex min-h-14 items-center justify-center border-t px-4 py-4 text-xs">
+      {isFetchingNextPage ? (
+        <span className="inline-flex items-center gap-2 font-medium text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Loading more bills
+        </span>
+      ) : (
+        <span className="font-medium text-muted-foreground">
+          {hasNextPage
+            ? `Loaded ${loadedCount} of ${totalCount} projects`
+            : `Showing ${loadedCount} of ${totalCount} projects`}
+        </span>
+      )}
     </div>
   );
 }
