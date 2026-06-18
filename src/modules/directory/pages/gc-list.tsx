@@ -53,12 +53,19 @@ export function GCListPage() {
   );
 
   const { data: typeTabs = [], isLoading: isTypesLoading } = useGCTypesQuery();
-  const { data, isLoading, isError, refetch } = useGCsQuery(filters);
-  const { data: stats } = useGCStatsQuery();
+  const generalContractorsQuery = useGCsQuery(filters);
+  const statsQuery = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
+  const hasListData = generalContractorsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    generalContractorsQuery.isLoading || (generalContractorsQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList =
+    hasListData && generalContractorsQuery.isFetching && !showListInitialLoader;
 
-  const listData = data?.data ?? [];
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const listData = generalContractorsQuery.data?.data ?? [];
+  const totalCount = generalContractorsQuery.data?.pagination?.totalItems ?? 0;
   const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
   const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
   const hasActiveFilters = Boolean(searchQuery || gcTypeIdFilter || statusFilter);
@@ -145,15 +152,17 @@ export function GCListPage() {
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="GCs"
+        isLoading={showListInitialLoader}
         addLabel={can('generalContractor', 'create') ? 'Add GC' : undefined}
         addTo={can('generalContractor', 'create') ? 'create' : undefined}
         addIcon={can('generalContractor', 'create') ? <Plus className="size-4" /> : undefined}
       />
 
       <GCStatsCards
-        totalGCs={stats?.totalGCs ?? totalCount}
-        activeProjects={stats?.activeProjects ?? visibleActiveProjects}
-        totalCommitted={stats?.totalCommitted ?? visibleCommitted}
+        totalGCs={statsQuery.data?.totalGCs ?? totalCount}
+        activeProjects={statsQuery.data?.activeProjects ?? visibleActiveProjects}
+        totalCommitted={statsQuery.data?.totalCommitted ?? visibleCommitted}
+        isLoading={showStatsInitialLoader}
       />
 
       <GCTableCard
@@ -162,16 +171,17 @@ export function GCListPage() {
         gcTypeIdFilter={gcTypeIdFilter}
         statusFilter={statusFilter}
         searchInput={searchInput}
-        isLoading={isLoading}
+        isLoading={showListInitialLoader}
+        isRefreshing={isRefreshingList}
         isTypesLoading={isTypesLoading}
-        isError={isError}
+        isError={generalContractorsQuery.isError}
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         onSearchChange={handleSearchChange}
         onTypeChange={(typeId) => updateParams({ gcTypeId: typeId, page: undefined })}
         onStatusChange={(status) => updateParams({ status, page: undefined })}
         onClearFilters={clearFilters}
-        onRetry={() => void refetch()}
+        onRetry={() => void generalContractorsQuery.refetch()}
       />
     </div>
   );

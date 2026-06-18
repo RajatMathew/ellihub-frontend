@@ -1,13 +1,19 @@
-import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
+import { ListStatsCards } from '@/app/components/ui/list-stats-cards';
 import { formatCurrency } from '@/app/lib/helpers';
 
 interface GCStatsCardsProps {
   activeProjects: number;
+  isLoading?: boolean;
   totalCommitted: number;
   totalGCs: number;
 }
 
-export function GCStatsCards({ activeProjects, totalCommitted, totalGCs }: GCStatsCardsProps) {
+export function GCStatsCards({
+  activeProjects,
+  isLoading,
+  totalCommitted,
+  totalGCs,
+}: GCStatsCardsProps) {
   const statsItems = [
     {
       label: 'Total GCs',
@@ -36,19 +42,11 @@ export function GCStatsCards({ activeProjects, totalCommitted, totalGCs }: GCSta
   ];
 
   return (
-    <StatsBar variant="cards" width="full" columns={{ sm: 2, lg: 4 }} className="mb-5 lg:mb-7.5">
-      {statsItems.map((item) => (
-        <StatsBarItem
-          key={item.label}
-          variant="card"
-          label={item.label}
-          value={item.value}
-          description={item.description}
-          dotColor={item.dotColor}
-          valueColor="text-foreground"
-          valueSize="medium"
-        />
-      ))}
-    </StatsBar>
+    <ListStatsCards
+      isLoading={isLoading}
+      skeletonCount={4}
+      columns={{ sm: 2, lg: 4 }}
+      items={statsItems}
+    />
   );
 }

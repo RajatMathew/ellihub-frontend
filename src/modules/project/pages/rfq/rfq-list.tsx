@@ -57,8 +57,8 @@ export default function RFQListPage() {
     statusId: statusFilter,
   };
 
-  const { data, isLoading, isError, refetch } = useRFQListQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = useRFQStatsQuery(projectId);
+  const rfqsQuery = useRFQListQuery(filters);
+  const statsQuery = useRFQStatsQuery(projectId);
   const { data: statuses } = useRFQStatusesQuery();
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
@@ -66,8 +66,13 @@ export default function RFQListPage() {
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
   const [voidReason, setVoidReason] = useState('');
+  const hasListData = rfqsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader = rfqsQuery.isLoading || (rfqsQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && rfqsQuery.isFetching && !showListInitialLoader;
 
-  const rawListData = useMemo(() => data?.data ?? [], [data?.data]);
+  const rawListData = useMemo(() => rfqsQuery.data?.data ?? [], [rfqsQuery.data?.data]);
   const listData = useMemo(
     () =>
       trackFilter
@@ -75,7 +80,7 @@ export default function RFQListPage() {
         : rawListData,
     [rawListData, trackFilter]
   );
-  const totalCount = trackFilter ? listData.length : (data?.pagination?.totalItems ?? 0);
+  const totalCount = trackFilter ? listData.length : (rfqsQuery.data?.pagination?.totalItems ?? 0);
   const hasActiveFilters = !!searchQuery || !!statusFilter || !!trackFilter;
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -174,8 +179,12 @@ export default function RFQListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <RFQListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
-      <RFQListStats stats={stats} isLoading={isStatsLoading} />
+      <RFQListHeader
+        hasActiveFilters={hasActiveFilters}
+        totalCount={totalCount}
+        isLoading={showListInitialLoader}
+      />
+      <RFQListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
       <Card className="overflow-hidden">
         <RFQListFilters
@@ -192,9 +201,10 @@ export default function RFQListPage() {
         <RFQListTable
           table={table}
           totalCount={totalCount}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={() => void refetch()}
+          isLoading={showListInitialLoader}
+          isRefreshing={isRefreshingList}
+          isError={rfqsQuery.isError}
+          onRetry={() => void rfqsQuery.refetch()}
         />
       </Card>
 

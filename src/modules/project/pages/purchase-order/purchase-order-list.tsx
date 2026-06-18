@@ -69,15 +69,24 @@ export default function ProjectPOs() {
   const hasActiveFilters =
     !!searchQuery || !!statusFilter || !!tradeCategoryFilter || !!vendorFilter || !!rfqFilter;
 
-  const { data, isLoading, isError, refetch } = usePOsQuery(filters);
-  const { data: stats, isLoading: isStatsLoading } = usePOStatsQuery(projectId);
+  const purchaseOrdersQuery = usePOsQuery(filters);
+  const statsQuery = usePOStatsQuery(projectId);
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const cancelMutation = useCancelPOMutation();
   const [cancelTarget, setCancelTarget] = useState<POListItem | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const hasListData = purchaseOrdersQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showListInitialLoader =
+    purchaseOrdersQuery.isLoading || (purchaseOrdersQuery.isFetching && !hasListData);
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingList = hasListData && purchaseOrdersQuery.isFetching && !showListInitialLoader;
 
-  const listData = useMemo(() => data?.data ?? [], [data?.data]);
-  const totalCount = data?.pagination?.totalItems ?? 0;
+  const listData = useMemo(
+    () => purchaseOrdersQuery.data?.data ?? [],
+    [purchaseOrdersQuery.data?.data]
+  );
+  const totalCount = purchaseOrdersQuery.data?.pagination?.totalItems ?? 0;
   const hasReadableRfq = listData.some((po) => !!getPurchaseOrderRfqLabel(po));
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === 'desc' }],
@@ -170,8 +179,12 @@ export default function ProjectPOs() {
   return (
     <>
       <div className="container-fluid py-7.5">
-        <PurchaseOrderListHeader hasActiveFilters={hasActiveFilters} totalCount={totalCount} />
-        <PurchaseOrderListStats stats={stats} isLoading={isStatsLoading} />
+        <PurchaseOrderListHeader
+          hasActiveFilters={hasActiveFilters}
+          totalCount={totalCount}
+          isLoading={showListInitialLoader}
+        />
+        <PurchaseOrderListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
 
         <Card className="overflow-hidden">
           <PurchaseOrderListFilters
@@ -191,9 +204,10 @@ export default function ProjectPOs() {
           <PurchaseOrderListTable
             table={table}
             totalCount={totalCount}
-            isLoading={isLoading}
-            isError={isError}
-            onRetry={() => void refetch()}
+            isLoading={showListInitialLoader}
+            isRefreshing={isRefreshingList}
+            isError={purchaseOrdersQuery.isError}
+            onRetry={() => void purchaseOrdersQuery.refetch()}
             onCancel={(po) => {
               setCancelTarget(po);
               setCancelReason('');

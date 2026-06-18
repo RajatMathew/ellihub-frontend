@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react';
 
-import { Plus } from 'lucide-react';
-
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { LookupFormDialog } from '@/modules/lookup/components/lookup-form-dialog';
 import { LookupTableCard } from '@/modules/lookup/components/lookup-table-card';
 import {
@@ -14,6 +11,7 @@ import {
   useUpdateLookupMutation,
 } from '@/modules/lookup/hooks';
 import type { Lookup, LookupCreate, LookupUpdate } from '@/modules/lookup/schemas/lookup.schema';
+import { Plus } from 'lucide-react';
 
 export function LookupListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -23,10 +21,16 @@ export function LookupListPage() {
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
   /* ---- Queries & Mutations ---- */
-  const { data: lookups = [], isLoading, isError, refetch } = useLookupsQuery();
+  const lookupsQuery = useLookupsQuery();
   const createMutation = useCreateLookupMutation();
   const updateMutation = useUpdateLookupMutation();
   const deleteMutation = useDeleteLookupMutation();
+  const lookups = lookupsQuery.data ?? [];
+  const hasLookupsData = lookupsQuery.data !== undefined;
+  const showLookupsInitialLoader =
+    lookupsQuery.isLoading || (lookupsQuery.isFetching && !hasLookupsData);
+  const isRefreshingLookups =
+    hasLookupsData && lookupsQuery.isFetching && !showLookupsInitialLoader;
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
@@ -45,9 +49,7 @@ export function LookupListPage() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
-        (l) =>
-          l.type.toLowerCase().includes(q) ||
-          (l.label ?? '').toLowerCase().includes(q)
+        (l) => l.type.toLowerCase().includes(q) || (l.label ?? '').toLowerCase().includes(q)
       );
     }
     return result;
@@ -88,7 +90,7 @@ export function LookupListPage() {
         title="Lookups"
         totalCount={filteredLookups.length}
         hasActiveFilters={!!search || !!typeFilter}
-        description={isLoading ? <Skeleton className="h-4 w-28" /> : undefined}
+        isLoading={showLookupsInitialLoader}
         addLabel="Add Lookup"
         addIcon={<Plus className="size-4" />}
         onAdd={openCreate}
@@ -98,9 +100,10 @@ export function LookupListPage() {
         lookups={filteredLookups}
         allTypes={allTypes}
         typeFilter={typeFilter}
-        isLoading={isLoading}
-        isError={isError}
-        refetch={refetch}
+        isLoading={showLookupsInitialLoader}
+        isRefreshing={isRefreshingLookups}
+        isError={lookupsQuery.isError}
+        refetch={lookupsQuery.refetch}
         search={search}
         onSearchChange={setSearch}
         onTypeChange={setTypeFilter}
@@ -122,8 +125,9 @@ export function LookupListPage() {
         title="Delete Lookup"
         description={
           <>
-            This will permanently delete <strong>{deleteTarget?.label ?? deleteTarget?.type}</strong>
-            . Any references to this lookup value may need to be updated.
+            This will permanently delete{' '}
+            <strong>{deleteTarget?.label ?? deleteTarget?.type}</strong>. Any references to this
+            lookup value may need to be updated.
           </>
         }
         confirmLabel="Delete"

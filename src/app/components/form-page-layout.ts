@@ -1,7 +1,7 @@
 import { cn } from '@app/lib/utils';
 
 export const formPageContainerClassName =
-  'container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5';
+  'container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5';
 
 export const formPageContainerWithSpacingClassName = cn(formPageContainerClassName, 'space-y-6');
 

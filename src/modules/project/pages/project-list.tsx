@@ -1,4 +1,4 @@
-import { type Ref, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type Ref } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import {
@@ -59,6 +59,16 @@ export function ProjectList() {
 
   const projectsQuery = useInfiniteProjectsQuery(listParams);
   const statsQuery = useProjectStatsQuery(statsParams);
+  const hasProjectsData = projectsQuery.data !== undefined;
+  const hasStatsData = statsQuery.data !== undefined;
+  const showProjectsInitialLoader =
+    projectsQuery.isLoading || (projectsQuery.isFetching && !hasProjectsData);
+  const showStatusSummaryLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const isRefreshingProjects =
+    hasProjectsData && projectsQuery.isFetching && !projectsQuery.isFetchingNextPage;
+  const isRefreshingStats = hasStatsData && statsQuery.isFetching;
+  const isRefreshingPortfolio =
+    !showProjectsInitialLoader && (isRefreshingProjects || isRefreshingStats);
 
   const projects = useMemo(
     () => projectsQuery.data?.pages.flatMap((page) => page.data) ?? [],
@@ -125,7 +135,7 @@ export function ProjectList() {
         <ProjectYearTabs activeYear={year} onYearChange={handleYearChange} />
       </Toolbar>
 
-      {projectsQuery.isLoading ? (
+      {showProjectsInitialLoader ? (
         <ProjectListLoading />
       ) : projectsQuery.isError ? (
         <QueryErrorState
@@ -137,13 +147,16 @@ export function ProjectList() {
         />
       ) : (
         <>
-          {(statsQuery.data?.statusSummary.length ?? 0) > 0 && (
+          {(showStatusSummaryLoader || (statsQuery.data?.statusSummary.length ?? 0) > 0) && (
             <ProjectStatusSummary
               items={statsQuery.data?.statusSummary ?? []}
+              isLoading={showStatusSummaryLoader}
               activeStatusId={status}
               onStatusClick={handleStatusClick}
             />
           )}
+
+          {isRefreshingPortfolio && <ProjectListRefreshIndicator />}
 
           {hasProjects ? (
             <>
@@ -198,6 +211,17 @@ function ProjectListLoadMore({
             : `Showing ${loadedCount} of ${totalCount} projects`}
         </span>
       )}
+    </div>
+  );
+}
+
+function ProjectListRefreshIndicator() {
+  return (
+    <div className="mb-4 flex justify-end" aria-live="polite">
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium text-muted-foreground">
+        <Loader2 className="size-3.5 animate-spin" />
+        Refreshing
+      </span>
     </div>
   );
 }

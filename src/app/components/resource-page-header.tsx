@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 
 import {
   Toolbar,
@@ -9,6 +8,8 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 
 interface ResourcePageHeaderProps {
   title: string;
@@ -20,6 +21,7 @@ interface ResourcePageHeaderProps {
   addLabel?: string;
   addTo?: string;
   addIcon?: ReactNode;
+  isLoading?: boolean;
   onAdd?: () => void;
 }
 
@@ -33,6 +35,7 @@ export function ResourcePageHeader({
   addLabel,
   addTo,
   addIcon,
+  isLoading,
   onAdd,
 }: ResourcePageHeaderProps) {
   const summary = hasActiveFilters
@@ -41,13 +44,18 @@ export function ResourcePageHeader({
       ? `All ${resultLabel}: ${totalCount}`
       : `Total: ${totalCount}`;
   const hasAddAction = addLabel && (addTo || onAdd);
+  const descriptionContent = isLoading ? (
+    <Skeleton className="h-4 w-28" />
+  ) : (
+    (description ?? <span className="text-sm text-muted-foreground">{summary}</span>)
+  );
 
   return (
     <Toolbar>
       <ToolbarWrapper>
         <ToolbarHeading>
           <ToolbarPageTitle>{title}</ToolbarPageTitle>
-          {description ?? <span className="text-sm text-muted-foreground">{summary}</span>}
+          {descriptionContent}
         </ToolbarHeading>
         {(actions || hasAddAction) && (
           <ToolbarActions>

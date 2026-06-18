@@ -1,6 +1,3 @@
-import type { Table } from '@tanstack/react-table';
-import { Filter, Search, UserRound, X } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -23,6 +20,8 @@ import type {
   MemberStatus,
   MemberUser,
 } from '@/modules/settings/schemas/members.schema';
+import type { Table } from '@tanstack/react-table';
+import { Filter, Search, UserRound, X } from 'lucide-react';
 
 interface MembersTableCardProps {
   table: Table<MemberUser>;
@@ -32,6 +31,7 @@ interface MembersTableCardProps {
   statusFilter?: MemberStatus;
   emailStatusFilter?: MemberEmailStatus;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   hasActiveFilters: boolean;
   onSearchChange: (search: string) => void;
@@ -50,6 +50,7 @@ export function MembersTableCard({
   statusFilter,
   emailStatusFilter,
   isLoading,
+  isRefreshing,
   isError,
   hasActiveFilters,
   onSearchChange,
@@ -148,6 +149,7 @@ export function MembersTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load members"
         emptyIcon={<UserRound className="size-10 text-muted-foreground/50" />}

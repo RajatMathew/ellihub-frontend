@@ -1,6 +1,3 @@
-import { type Table } from '@tanstack/react-table';
-import { Filter, Search, Users, X } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -14,6 +11,8 @@ import {
 } from '@/app/components/ui/select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { Contact, ProfessionalRole } from '@/modules/directory/schemas/contact.schema';
+import { type Table } from '@tanstack/react-table';
+import { Filter, Search, Users, X } from 'lucide-react';
 
 interface ContactsTableCardProps {
   table: Table<Contact>;
@@ -21,6 +20,7 @@ interface ContactsTableCardProps {
   roleFilter: string | undefined;
   searchInput: string;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isRolesLoading: boolean;
   isError: boolean;
   totalCount: number;
@@ -37,6 +37,7 @@ export function ContactsTableCard({
   roleFilter,
   searchInput,
   isLoading,
+  isRefreshing,
   isRolesLoading,
   isError,
   totalCount,
@@ -97,6 +98,7 @@ export function ContactsTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load contacts"
         emptyIcon={<Users className="size-10 text-muted-foreground/50" />}

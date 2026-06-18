@@ -1,3 +1,4 @@
+import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 interface ProjectDetailPageLoadingProps {
@@ -14,19 +15,10 @@ export function ProjectDetailPageLoading({
   sidebarCards = 2,
 }: ProjectDetailPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-2">
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-8 w-full max-w-80" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Skeleton className="h-9 w-24 rounded-md" />
-            <Skeleton className="h-9 w-24 rounded-md" />
-          </div>
-        </div>
+    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+      <ToolbarSkeleton />
 
+      <div className="space-y-5 pt-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: statsCount }).map((_, index) => (
             <Skeleton key={index} className="h-24 rounded-lg" />
@@ -51,19 +43,10 @@ export function ProjectDetailPageLoading({
 
 export function ProjectFormPageLoading({ sections = 3 }: ProjectFormPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-2">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-8 w-full max-w-72" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Skeleton className="h-9 w-24 rounded-md" />
-            <Skeleton className="h-9 w-28 rounded-md" />
-          </div>
-        </div>
+    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+      <ToolbarSkeleton />
 
+      <div className="space-y-5 pt-5">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
           <aside className="hidden space-y-2 lg:block">
             {Array.from({ length: sections }).map((_, index) => (

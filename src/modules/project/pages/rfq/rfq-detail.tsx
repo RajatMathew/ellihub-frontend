@@ -601,7 +601,9 @@ export default function RFQDetailPage() {
   function handleAwardFromTable(quoteId: string) {
     const quote = quotes.find((item) => item.id === quoteId);
     setAwardQuoteId(quoteId);
-    setAwardNegotiationAmount(quote?.negotiationAmount ?? quote?.grandTotal ?? quote?.totalAmount ?? '');
+    setAwardNegotiationAmount(
+      quote?.negotiationAmount ?? quote?.grandTotal ?? quote?.totalAmount ?? ''
+    );
     setAwardOpen(true);
   }
 
@@ -919,7 +921,7 @@ export default function RFQDetailPage() {
   }
 
   return (
-    <div className="container-fluid max-w-full overflow-x-hidden px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
       {vendorPdfOptionsOpen && vendorPdfTarget && (
         <PdfGenerateDialog
           open={vendorPdfOptionsOpen}
@@ -2068,7 +2070,9 @@ export default function RFQDetailPage() {
               placeholder="Select vendors..."
               searchPlaceholder="Search vendors..."
               emptyMessage={
-                inviteVendorSearch ? 'No matching vendors found.' : 'No vendors available to invite.'
+                inviteVendorSearch
+                  ? 'No matching vendors found.'
+                  : 'No vendors available to invite.'
               }
               loadingMessage="Loading vendors..."
               testId="rfq-invite-vendors-select"
@@ -2275,9 +2279,7 @@ export default function RFQDetailPage() {
             <DialogTitle>Award RFQ</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Select one vendor to award this RFQ.
-            </p>
+            <p className="text-sm text-muted-foreground">Select one vendor to award this RFQ.</p>
             <RadioGroup
               value={awardQuoteId}
               onValueChange={(quoteId) => {

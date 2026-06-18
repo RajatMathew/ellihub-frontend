@@ -29,6 +29,7 @@ interface ActivityLogTableProps {
   from: string | undefined;
   to: string | undefined;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   hasActiveFilters: boolean;
   onSearchChange: (value: string) => void;
@@ -49,6 +50,7 @@ export function ActivityLogTable({
   from,
   to,
   isLoading,
+  isRefreshing,
   isError,
   hasActiveFilters,
   onSearchChange,
@@ -140,6 +142,7 @@ export function ActivityLogTable({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load activity logs"
         emptyIcon={<ActivityEmptyIcon />}

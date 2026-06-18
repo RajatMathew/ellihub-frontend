@@ -5,11 +5,13 @@ import { useParams } from 'react-router-dom';
 
 interface SubChangeOrderListHeaderProps {
   hasActiveFilters: boolean;
+  isLoading?: boolean;
   totalCount: number;
 }
 
 export function SubChangeOrderListHeader({
   hasActiveFilters,
+  isLoading,
   totalCount,
 }: SubChangeOrderListHeaderProps) {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -22,6 +24,7 @@ export function SubChangeOrderListHeader({
       resultLabel="SCOs"
       totalCount={totalCount}
       hasActiveFilters={hasActiveFilters}
+      isLoading={isLoading}
       addLabel={canCreate ? 'Add Sub Change Order' : undefined}
       addTo={canCreate ? 'create' : undefined}
       addIcon={canCreate ? <Plus className="size-4" /> : undefined}

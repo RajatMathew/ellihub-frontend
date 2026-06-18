@@ -6,15 +6,17 @@ import {
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PTOListToolbarProps {
+  isLoading?: boolean;
   totalCount: number;
   searchQuery: string;
 }
 
-export function PTOListToolbar({ totalCount, searchQuery }: PTOListToolbarProps) {
+export function PTOListToolbar({ isLoading, totalCount, searchQuery }: PTOListToolbarProps) {
   return (
     <Toolbar>
       <ToolbarWrapper>
@@ -23,11 +25,15 @@ export function PTOListToolbar({ totalCount, searchQuery }: PTOListToolbarProps)
             Employee Directory
           </div>
           <ToolbarPageTitle>Time Off Requests</ToolbarPageTitle>
-          <span className="text-sm text-muted-foreground">
-            {searchQuery
-              ? `Showing ${totalCount} result${totalCount === 1 ? '' : 's'}`
-              : `Total Requests: ${totalCount}`}
-          </span>
+          {isLoading ? (
+            <Skeleton className="h-4 w-32" />
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {searchQuery
+                ? `Showing ${totalCount} result${totalCount === 1 ? '' : 's'}`
+                : `Total Requests: ${totalCount}`}
+            </span>
+          )}
         </ToolbarHeading>
         <ToolbarActions>
           <Button variant="primary" size="sm" asChild>

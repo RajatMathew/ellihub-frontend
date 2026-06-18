@@ -1,13 +1,13 @@
-import type { Table } from '@tanstack/react-table';
-import { ClipboardList } from 'lucide-react';
-
 import { DataGridSection } from '@/app/components/data-grid-section';
 import type { RFQListItem } from '@/modules/project/schemas/rfq';
+import type { Table } from '@tanstack/react-table';
+import { ClipboardList } from 'lucide-react';
 
 interface RFQListTableProps {
   table: Table<RFQListItem>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   onRetry: () => void;
 }
@@ -16,6 +16,7 @@ export function RFQListTable({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   onRetry,
 }: RFQListTableProps) {
@@ -24,6 +25,7 @@ export function RFQListTable({
       table={table}
       totalCount={totalCount}
       isLoading={isLoading}
+      isRefreshing={isRefreshing}
       isError={isError}
       errorTitle="Failed to load RFQs"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}

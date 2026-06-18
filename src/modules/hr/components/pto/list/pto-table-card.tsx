@@ -10,6 +10,7 @@ interface PTOTableCardProps {
   table: Table<PTO>;
   totalCount: number;
   isLoading: boolean;
+  isRefreshing?: boolean;
   isError: boolean;
   isRefetching: boolean;
   searchInput: string;
@@ -23,6 +24,7 @@ export function PTOTableCard({
   table,
   totalCount,
   isLoading,
+  isRefreshing,
   isError,
   isRefetching,
   searchInput,
@@ -63,6 +65,7 @@ export function PTOTableCard({
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
+        isRefreshing={isRefreshing}
         isError={isError}
         errorTitle="Failed to load time off requests."
         emptyIcon={<Calendar className="size-10 text-muted-foreground/40" />}
