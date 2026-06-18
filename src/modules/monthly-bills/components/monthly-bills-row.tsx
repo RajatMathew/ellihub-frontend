@@ -5,7 +5,7 @@ import { Switch } from '@/app/components/ui/switch';
 import { TableCell, TableRow } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { MonthlyBillDetails } from '@/modules/monthly-bills/components/monthly-bill-details';
+import { MonthlyBillExpandedDetails } from '@/modules/monthly-bills/components/monthly-bill-expanded-details';
 import {
   PaymentsCell,
   SubChangeOrdersCell,
@@ -202,7 +202,12 @@ export function MonthlyBillRow({
           <TableCell colSpan={colSpan} className="border-l-2 border-primary bg-muted/30 px-6 py-4">
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground">Details for {poNumber}</p>
-              <MonthlyBillDetails bill={bill} toPay={toPay} ready={ready} />
+              <MonthlyBillExpandedDetails
+                bill={bill}
+                projectId={projectId}
+                toPay={toPay}
+                ready={ready}
+              />
             </div>
           </TableCell>
         </TableRow>

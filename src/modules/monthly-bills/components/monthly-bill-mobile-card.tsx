@@ -4,7 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import { Switch } from '@/app/components/ui/switch';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { MonthlyBillDetails } from '@/modules/monthly-bills/components/monthly-bill-details';
+import { MonthlyBillExpandedDetails } from '@/modules/monthly-bills/components/monthly-bill-expanded-details';
 import {
   PaymentsCell,
   SubChangeOrdersCell,
@@ -179,7 +179,12 @@ export function MonthlyBillMobileCard({
 
       {expanded && (
         <div className="mt-3 rounded-md border bg-muted/20 p-3">
-          <MonthlyBillDetails bill={bill} toPay={toPay} ready={ready} />
+          <MonthlyBillExpandedDetails
+            bill={bill}
+            projectId={projectId}
+            toPay={toPay}
+            ready={ready}
+          />
         </div>
       )}
     </div>
