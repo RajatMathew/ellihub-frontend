@@ -8,7 +8,7 @@ export function ProjectListLoading() {
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`project-status-loader-${index}`}
-              className="min-h-[92px] rounded-xl border border-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:shadow-none"
+              className="min-h-[92px] rounded-xl border border-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:shadow-none"
             >
               <div className="flex h-full flex-col justify-between gap-3">
                 <div className="flex items-center justify-between gap-3">
@@ -38,11 +38,10 @@ export function ProjectListLoading() {
               key={`project-division-header-loader-${index}`}
               className="flex min-w-0 flex-col gap-2"
             >
-              <div className="flex items-center justify-between gap-3">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-3 w-8" />
+              <div className="flex items-center justify-between gap-3 rounded-sm bg-card-header px-3 py-2">
+                <Skeleton className="h-3 w-24 bg-card-header-foreground/30" />
+                <Skeleton className="h-3 w-8 bg-card-header-foreground/30" />
               </div>
-              <Skeleton className="h-0.5 w-full rounded-none bg-foreground/70" />
             </div>
           ))}
 
@@ -57,7 +56,7 @@ export function ProjectListLoading() {
 
 function ProjectCardSkeleton() {
   return (
-    <div className="rounded-lg border border-zinc-300/70 bg-card p-3.5 shadow-none dark:border-zinc-600/80 dark:bg-zinc-950/50">
+    <div className="rounded-lg border border-card-border bg-card p-3.5 shadow-none">
       <div className="flex items-center justify-between gap-3">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-6 w-20 rounded-md" />

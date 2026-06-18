@@ -46,7 +46,7 @@ const cardHeaderVariants = cva(
         default: 'border-b border-border',
         accent: '',
         themed:
-          'bg-card-header text-card-header-foreground rounded-t-xl [&_h3]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/60 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_svg]:text-card-header-foreground',
+          'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button:hover]:text-card-header-foreground [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/80 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline [&_svg]:text-card-header-foreground',
       },
     },
     defaultVariants: {

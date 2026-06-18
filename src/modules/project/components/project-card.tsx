@@ -128,7 +128,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-[color:var(--card-border)] bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-[color:var(--card-border-hover)] hover:shadow-md hover:shadow-zinc-950/10 dark:hover:shadow-black/30">
+      <Card className="h-full rounded-lg border-[color:var(--card-border)] bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-[color:var(--card-border-hover)] hover:shadow-md hover:shadow-black/10 dark:hover:shadow-black/30">
         <CardContent className="flex flex-col gap-2 p-3.5 sm:p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -138,7 +138,10 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
             </div>
             {badgeLabel && (
               <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-[color:var(--card-border)] bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75">
-                <span className={cn('size-1.5 rounded-[2px]', badgeDotClassName)} aria-hidden="true" />
+                <span
+                  className={cn('size-1.5 rounded-[2px]', badgeDotClassName)}
+                  aria-hidden="true"
+                />
                 {badgeLabel}
               </span>
             )}
@@ -147,7 +150,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
             <ProjectName name={project.name} />
           </div>
 
-          <div className="flex items-center justify-between gap-4 pt-0.5 text-xs font-medium text-cyan-700 dark:text-cyan-300">
+          <div className="flex items-center justify-between gap-4 pt-0.5 text-xs font-medium text-info">
             <ProjectPartyName name={project.gc?.name} fallback="No GC assigned" />
             <ProjectPartyName
               name={project.leadPM?.name}
@@ -188,9 +191,9 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
 
           {tcoDateLabel && (
             <div className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
+              <span className="h-px w-14 bg-border" aria-hidden="true" />
               <span className="shrink-0">TCO: {tcoDateLabel}</span>
-              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
+              <span className="h-px w-14 bg-border" aria-hidden="true" />
             </div>
           )}
         </CardContent>

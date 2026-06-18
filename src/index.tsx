@@ -5,6 +5,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { NotFound } from '@app/components/error/not-found';
 import ProtectedLayout from '@app/components/layouts/protected';
+import {
+  DEFAULT_THEME,
+  THEME_DEFAULT_MIGRATION_KEY,
+  THEME_STORAGE_KEY,
+  THEME_VALUES,
+} from '@app/theme/theme-registry';
 import { BrandedLayout } from '@core/auth/layouts/branded';
 import { ForgotPasswordPage } from '@core/auth/pages/forgot-password-page';
 import { ResetPasswordPage } from '@core/auth/pages/reset-password-page';
@@ -20,16 +26,36 @@ import {
 } from './modules/integrations/pages/quickbooks-public-pages';
 import { EndUserLicenseAgreementPage, PrivacyPolicyPage } from './modules/public/pages/legal-pages';
 
+function migrateEditorialDefaultTheme() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const hasMigrated = window.localStorage.getItem(THEME_DEFAULT_MIGRATION_KEY);
+    if (hasMigrated) return;
+
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (!storedTheme || storedTheme === 'light') {
+      window.localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME);
+    }
+
+    window.localStorage.setItem(THEME_DEFAULT_MIGRATION_KEY, 'true');
+  } catch {
+    // Storage can be unavailable in restricted browser contexts; ThemeProvider still has a default.
+  }
+}
+
+migrateEditorialDefaultTheme();
+
 function FrameWork() {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="light"
-      storageKey="vite-theme"
+      defaultTheme={DEFAULT_THEME}
+      storageKey={THEME_STORAGE_KEY}
       enableSystem
       disableTransitionOnChange
       enableColorScheme
-      themes={['light', 'dark', 'dark-blue', 'editorial', 'genz']}
+      themes={[...THEME_VALUES]}
     >
       <PwaUpdateModal />
       <HelmetProvider>

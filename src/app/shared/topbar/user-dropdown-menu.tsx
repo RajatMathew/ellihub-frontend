@@ -12,7 +12,6 @@ import {
   Coffee,
   FileText,
   HistoryIcon,
-  Moon,
   Palette,
   RefreshCcw,
   Settings,
@@ -38,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { useAccess } from '@app/contexts/access-context';
+import { THEME_GROUPS, THEME_OPTIONS, type AppTheme } from '@app/theme/theme-registry';
 
 // const I18N_LANGUAGES = [
 //   {
@@ -88,15 +88,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const [quickBooksSyncOpen, setQuickBooksSyncOpen] = useState(false);
   const [originalTheme, setOriginalTheme] = useState<string | null>(null);
 
-  const THEMES = [
-    { value: 'light', label: 'Light Theme' },
-    { value: 'editorial', label: 'Editorial' },
-    { value: 'dark', label: 'Dark Theme (Black)' },
-    { value: 'dark-blue', label: 'Dark Theme (Blue)' },
-    { value: 'genz', label: 'Catppuccin' },
-  ];
-
-  const handleThemeHover = (value: string) => {
+  const handleThemeHover = (value: AppTheme) => {
     if (originalTheme === null) {
       setOriginalTheme(theme ?? 'light');
     }
@@ -399,63 +391,30 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
               </span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56">
-              {/* Light group */}
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Light</div>
-              <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                <DropdownMenuRadioItem
-                  value="light"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => setOriginalTheme(null)}
-                  onMouseEnter={() => handleThemeHover('light')}
-                  onMouseLeave={handleThemeLeave}
-                >
-                  <span>Light Theme</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="editorial"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => setOriginalTheme(null)}
-                  onMouseEnter={() => handleThemeHover('editorial')}
-                  onMouseLeave={handleThemeLeave}
-                >
-                  <span>Editorial</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-
-              {/* Separator */}
-              <div className="my-1 border-b" />
-
-              {/* Dark group */}
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Dark</div>
-              <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-                <DropdownMenuRadioItem
-                  value="dark"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => setOriginalTheme(null)}
-                  onMouseEnter={() => handleThemeHover('dark')}
-                  onMouseLeave={handleThemeLeave}
-                >
-                  <span>Dark Theme (Black)</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="dark-blue"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => setOriginalTheme(null)}
-                  onMouseEnter={() => handleThemeHover('dark-blue')}
-                  onMouseLeave={handleThemeLeave}
-                >
-                  <span>Dark Theme (Blue)</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="genz"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={() => setOriginalTheme(null)}
-                  onMouseEnter={() => handleThemeHover('genz')}
-                  onMouseLeave={handleThemeLeave}
-                >
-                  <span>Catppuccin</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
+              {THEME_GROUPS.map((group, groupIndex) => (
+                <div key={group.value}>
+                  {groupIndex > 0 && <div className="my-1 border-b" />}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    {group.label}
+                  </div>
+                  <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+                    {THEME_OPTIONS.filter((option) => option.group === group.value).map(
+                      (option) => (
+                        <DropdownMenuRadioItem
+                          key={option.value}
+                          value={option.value}
+                          className="flex cursor-pointer items-center gap-2"
+                          onClick={() => setOriginalTheme(null)}
+                          onMouseEnter={() => handleThemeHover(option.value)}
+                          onMouseLeave={handleThemeLeave}
+                        >
+                          <span>{option.label}</span>
+                        </DropdownMenuRadioItem>
+                      )
+                    )}
+                  </DropdownMenuRadioGroup>
+                </div>
+              ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <div className="p-2 mt-1">

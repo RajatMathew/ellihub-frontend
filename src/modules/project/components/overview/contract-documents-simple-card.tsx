@@ -76,13 +76,13 @@ export function ContractDocumentsSimpleCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         {documentsUrl ? (
-          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+          <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
             <Link to={documentsUrl} className="hover:underline">
               Contract Documents ({documents.length})
             </Link>
           </CardTitle>
         ) : (
-          <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+          <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
             Contract Documents ({documents.length})
           </CardTitle>
         )}

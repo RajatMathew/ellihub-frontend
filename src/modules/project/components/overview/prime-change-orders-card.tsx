@@ -33,7 +33,7 @@ export function PrimeChangeOrdersCard({
   return (
     <Card className={cn(className)}>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-xs font-semibold tracking-widest uppercase">
+        <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
           Prime Change Orders
         </CardTitle>
         <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" asChild>

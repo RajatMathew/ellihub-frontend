@@ -154,7 +154,7 @@ export function ProjectToolbarHeader({
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
-    <Toolbar className="bg-background">
+    <Toolbar className="bg-card dark:bg-background">
       <ToolbarWrapper>
         <ToolbarHeading>
           <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -265,7 +265,7 @@ export function ProjectToolbarHeader({
                   {displayedMembers.map((member) => (
                     <Tooltip key={member.id}>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-secondary text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
                           {getInitials(member.name)}
                         </span>
                       </TooltipTrigger>
@@ -275,7 +275,7 @@ export function ProjectToolbarHeader({
                   {remainingCount > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-gray-100 text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-secondary text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
                           +{remainingCount}
                         </span>
                       </TooltipTrigger>

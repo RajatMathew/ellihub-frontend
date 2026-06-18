@@ -173,7 +173,7 @@ function ProjectStatusSummarySkeleton() {
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`project-status-loader-${index}`}
-            className="min-h-[92px] rounded-xl border border-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:border-zinc-700/70 dark:bg-zinc-950/50 dark:shadow-none"
+            className="min-h-[92px] rounded-xl border border-card-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:shadow-none"
           >
             <div className="flex h-full flex-col justify-between gap-3">
               <div className="flex items-center justify-between gap-3">
