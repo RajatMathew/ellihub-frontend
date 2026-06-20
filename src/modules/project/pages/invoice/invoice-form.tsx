@@ -21,7 +21,6 @@ import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
-import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import {
@@ -117,7 +116,7 @@ export function InvoiceFormPage() {
     projectId,
     vendorId: '',
     purchaseOrderId: '',
-    invoiceNumber: '',
+    externalInvoiceNumber: '',
     invoiceDate: new Date().toISOString().slice(0, 10),
     dueDate: '',
     totalAmount: 0,
@@ -135,7 +134,7 @@ export function InvoiceFormPage() {
           projectId: invoiceDetail.projectId ?? invoiceDetail.project?.id ?? projectId,
           vendorId: invoiceDetail.vendorId ?? invoiceDetail.vendor?.id ?? '',
           purchaseOrderId: invoiceDetail.purchaseOrderId ?? invoiceDetail.purchaseOrder?.id ?? '',
-          invoiceNumber: invoiceDetail.invoiceNumber ?? '',
+          externalInvoiceNumber: invoiceDetail.externalInvoiceNumber ?? '',
           invoiceDate: toDateInput(invoiceDetail.invoiceDate),
           dueDate: toDateInput(invoiceDetail.dueDate),
           totalAmount: invoiceDetail.totalAmount ?? 0,
@@ -307,7 +306,8 @@ export function InvoiceFormPage() {
       vendorId:
         randomPoData?.vendorId ?? vendorOptions.find((option) => !option.disabled)?.value ?? '',
       purchaseOrderId: randomPo?.value ?? '',
-      invoiceNumber: fakeInvoiceNumber(),
+      externalInvoiceNumber: 'VENDOR-' + (Math.floor(Math.random() * 9000) + 1000),
+      vendorCoupon: false,
       invoiceDate: new Date().toISOString().slice(0, 10),
       dueDate: dueDate.toISOString().slice(0, 10),
       totalAmount: subtotal,
@@ -391,7 +391,7 @@ export function InvoiceFormPage() {
             projectId: formData.projectId,
             vendorId: formData.vendorId,
             purchaseOrderId: formData.purchaseOrderId,
-            invoiceNumber: formData.invoiceNumber,
+            externalInvoiceNumber: formData.externalInvoiceNumber || null,
             invoiceDate: formData.invoiceDate,
             dueDate: formData.dueDate,
             totalAmount: formData.totalAmount,
@@ -424,6 +424,7 @@ export function InvoiceFormPage() {
 
       const created = await createMutation.mutateAsync({
         ...formData,
+        externalInvoiceNumber: formData.externalInvoiceNumber || null,
         taxAmount: calculateTaxAmount(formData.totalAmount, formData.taxRate),
         attachments: attachmentIds,
       });
@@ -443,6 +444,8 @@ export function InvoiceFormPage() {
     ? project?.capabilities?.actions?.invoice?.update === true
     : project?.capabilities?.actions?.invoice?.create === true;
   if (!canSubmitInvoice) return <Forbidden />;
+
+  const invoiceNumberDisplay = invoiceDetail?.invoiceNumber ?? 'Invoice';
 
   return (
     <ProjectFormShell
@@ -547,29 +550,52 @@ export function InvoiceFormPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <div
+                className={cn(
+                  'grid grid-cols-1 gap-5',
+                  isEdit ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                )}
+              >
+                {isEdit && (
+                  <Field>
+                    <FormFieldLabel>Invoice Number</FormFieldLabel>
+                    <InputWrapper>
+                      <Input
+                        value={invoiceNumberDisplay}
+                        readOnly
+                        disabled
+                        aria-readonly="true"
+                        data-testid="invoice-number-display"
+                      />
+                    </InputWrapper>
+                  </Field>
+                )}
+
                 <Controller
-                  name="invoiceNumber"
+                  name="externalInvoiceNumber"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <InvoiceRequiredFieldLabel>Invoice Number</InvoiceRequiredFieldLabel>
+                      <FormFieldLabel>External Invoice Number</FormFieldLabel>
                       <InputWrapper
                         className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
                       >
                         <Input
-                          {...field}
-                          placeholder="INV-001"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="Vendor invoice #"
                           autoComplete="off"
                           aria-invalid={fieldState.invalid}
-                          data-testid="invoice-number-input"
+                          data-testid="invoice-external-invoice-number-input"
                         />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
-
                 <Controller
                   name="invoiceDate"
                   control={control}

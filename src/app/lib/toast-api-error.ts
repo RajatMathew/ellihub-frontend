@@ -35,6 +35,7 @@ const FIELD_LABELS: Record<string, string> = {
   fullName: 'Full name',
   invoiceDate: 'Invoice date',
   invoiceNumber: 'Invoice number',
+  externalInvoiceNumber: 'External invoice number',
   leadTime: 'Lead time',
   lineItems: 'Line items',
   name: 'Name',

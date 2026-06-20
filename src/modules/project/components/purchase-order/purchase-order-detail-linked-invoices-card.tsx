@@ -62,6 +62,11 @@ export function PurchaseOrderDetailLinkedInvoicesCard({
                         {invoice.isPaid ? 'Paid' : 'Unpaid'}
                       </Badge>
                     </div>
+                    {invoice.externalInvoiceNumber && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        External: {invoice.externalInvoiceNumber}
+                      </div>
+                    )}
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>
                         Invoice: {invoice.invoiceDate ? formatDate(invoice.invoiceDate) : '-'}

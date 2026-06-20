@@ -9,7 +9,7 @@ tags: projects, invoices, invoice, purchase order, po, vendor, documents, paymen
 
 # Create an Invoice From a Purchase Order
 
-Use this guide when a vendor invoice needs to be recorded against an existing purchase order. The screenshots show sample invoice numbers, purchase orders, amounts, tax, notes, files, and coupon state only; use the actual vendor invoice details and backup documents for the project.
+Use this guide when a vendor invoice needs to be recorded against an existing purchase order. The screenshots show sample generated invoice numbers, external invoice references, purchase orders, amounts, tax, notes, files, and coupon state only; use the actual vendor invoice details and backup documents for the project.
 
 ## Start a New Invoice
 
@@ -33,7 +33,7 @@ Choose the purchase order that the invoice should be applied against. The vendor
 
 ## Enter Invoice Details
 
-Enter the invoice number from the vendor invoice.
+Enter the vendor invoice number in External Invoice Number when one is available. The system invoice number is generated automatically from the selected purchase order.
 
 ![Invoice number field](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-05.jpeg)
 

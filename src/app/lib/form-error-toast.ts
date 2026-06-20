@@ -32,6 +32,7 @@ const FIELD_LABELS: Record<string, string> = {
   gcTypeId: 'GC type',
   invoiceDate: 'Invoice date',
   invoiceNumber: 'Invoice number',
+  externalInvoiceNumber: 'External invoice number',
   lineItems: 'Line items',
   name: 'Name',
   paymentMethodId: 'Payment method',

@@ -466,6 +466,9 @@ export function InvoiceDetailPage() {
                     <ProjectDetailField label="Invoice #">
                       {invoice.invoiceNumber}
                     </ProjectDetailField>
+                    <ProjectDetailField label="External Invoice #">
+                      {invoice.externalInvoiceNumber || '-'}
+                    </ProjectDetailField>
                     <ProjectDetailField label="Invoice Date">
                       {dateOrDash(invoice.invoiceDate)}
                     </ProjectDetailField>

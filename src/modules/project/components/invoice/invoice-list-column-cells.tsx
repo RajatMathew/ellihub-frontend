@@ -37,9 +37,13 @@ export function InvoiceNumberCell({ invoice }: { invoice: InvoiceListItem }) {
       >
         {invoice.invoiceNumber ?? '-'}
       </Link>
-      {invoice.notes && (
+      {invoice.externalInvoiceNumber ? (
+        <span className="line-clamp-1 text-2sm text-muted-foreground">
+          External: {invoice.externalInvoiceNumber}
+        </span>
+      ) : invoice.notes ? (
         <span className="line-clamp-1 text-2sm text-muted-foreground">{invoice.notes}</span>
-      )}
+      ) : null}
     </div>
   );
 }
