@@ -3,12 +3,12 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 export function ProjectListLoading() {
   return (
     <div className="space-y-5">
-      <div className="w-fit max-w-full rounded-2xl border border-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
+      <div className="w-fit max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5">
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={`project-status-loader-${index}`}
-              className="min-h-[92px] rounded-xl border border-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px] dark:shadow-none"
+              className="min-h-[92px] rounded-xl border border-card-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px]"
             >
               <div className="flex h-full flex-col justify-between gap-3">
                 <div className="flex items-center justify-between gap-3">

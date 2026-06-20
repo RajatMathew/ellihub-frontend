@@ -18,6 +18,17 @@ export const DEFAULT_THEME: AppTheme = 'editorial';
 export const THEME_STORAGE_KEY = 'vite-theme';
 export const THEME_DEFAULT_MIGRATION_KEY = 'vite-theme-editorial-default-migrated';
 export const THEME_VALUES = THEME_OPTIONS.map((theme) => theme.value);
+export const DARK_THEME_VALUES: AppTheme[] = ['dark', 'dark-blue', 'genz'];
+const THEME_VALUE_SET = new Set<string>(THEME_VALUES);
+const DARK_THEME_VALUE_SET = new Set<string>(DARK_THEME_VALUES);
+
+export function isAppTheme(value: string | null | undefined): value is AppTheme {
+  return Boolean(value && THEME_VALUE_SET.has(value));
+}
+
+export function isDarkAppTheme(value: AppTheme): boolean {
+  return DARK_THEME_VALUE_SET.has(value);
+}
 
 export const CHART_THEME_SELECTORS: Record<AppTheme, string> = {
   light: '',

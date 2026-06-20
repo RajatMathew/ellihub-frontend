@@ -4,10 +4,11 @@
 @import 'tw-animate-css';
 
 /** Dark Mode Variant **/
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .dark-blue *, .genz *));
 
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
+  color-scheme: light;
   --background: #fff;
   --main-background: #f5f5f5;
   --form-background: var(--color-zinc-100);
@@ -95,6 +96,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #0f0f0f;
   --main-background: var(--background);
   --form-background: var(--color-zinc-900);
@@ -184,6 +186,7 @@
 
 /* Dark Blue Theme — navy-tinted dark mode */
 .dark-blue {
+  color-scheme: dark;
   --background: #0a0f1a;
   --main-background: #0a0f1a;
   --form-background: #131b2e;
@@ -272,6 +275,7 @@
 
 /* Editorial Theme - Navy accent + cream paper (matches client's V6.2 palette) */
 .editorial {
+  color-scheme: light;
   --background: #f8f4ed;
   --main-background: #f1ece2;
   --form-background: #ffffff;
@@ -395,6 +399,7 @@
 
 /* Catppuccin Theme — soft pastel dark (Mocha flavor) */
 .genz {
+  color-scheme: dark;
   /* Base layers: Crust > Mantle > Base > Surface0 > Surface1 > Surface2 */
   --background: #1e1e2e;
   --main-background: #181825;
@@ -513,106 +518,6 @@
 .genz h4 {
   font-family: 'Comic Neue', system-ui, sans-serif;
   font-weight: 700;
-}
-
-/* Catppuccin overrides for opacity-based backgrounds */
-.genz .bg-primary\/10 {
-  background-color: rgba(137, 180, 250, 0.15) !important;
-}
-
-.genz .bg-primary\/5 {
-  background-color: rgba(137, 180, 250, 0.1) !important;
-}
-
-.genz .bg-primary\/20 {
-  background-color: rgba(137, 180, 250, 0.25) !important;
-}
-
-.genz .border-primary\/15 {
-  border-color: rgba(137, 180, 250, 0.2) !important;
-}
-
-.genz .border-primary\/20 {
-  border-color: rgba(137, 180, 250, 0.3) !important;
-}
-
-/* Fix outline buttons to be more visible on dark backgrounds */
-.genz [class*='variant-outline'],
-.genz .bg-background {
-  background-color: #313244 !important;
-}
-
-/* Fix muted backgrounds */
-.genz .bg-muted\/45 {
-  background-color: rgba(69, 71, 90, 0.6) !important;
-}
-
-.genz .bg-muted\/60 {
-  background-color: rgba(69, 71, 90, 0.7) !important;
-}
-
-/* Fix hover states for dark backgrounds */
-.genz .hover\:bg-white\/\[0\.06\]:hover {
-  background-color: rgba(205, 214, 244, 0.08) !important;
-}
-
-.genz .hover\:bg-white\/\[0\.10\]:hover {
-  background-color: rgba(205, 214, 244, 0.12) !important;
-}
-
-/* Fix hardcoded gray-100 backgrounds */
-.genz .bg-gray-100 {
-  background-color: #45475a !important;
-}
-
-/* Fix hardcoded zinc-900 backgrounds */
-.genz .dark\:bg-zinc-900 {
-  background-color: #313244 !important;
-}
-
-.genz .group-hover\:bg-zinc-900:hover {
-  background-color: #313244 !important;
-}
-
-/* Dark Blue theme overrides */
-.dark-blue .bg-primary\/10 {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-}
-
-.dark-blue .bg-primary\/5 {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-}
-
-.dark-blue .bg-primary\/20 {
-  background-color: rgba(59, 130, 246, 0.25) !important;
-}
-
-.dark-blue .border-primary\/15 {
-  border-color: rgba(59, 130, 246, 0.2) !important;
-}
-
-.dark-blue .border-primary\/20 {
-  border-color: rgba(59, 130, 246, 0.3) !important;
-}
-
-.dark-blue .bg-gray-100 {
-  background-color: #2d3548 !important;
-}
-
-.dark-blue .dark\:bg-zinc-900 {
-  background-color: #232a3c !important;
-}
-
-.dark-blue .group-hover\:bg-zinc-900:hover {
-  background-color: #232a3c !important;
-}
-
-.dark-blue .hover\:bg-white\/\[0\.06\]:hover {
-  background-color: rgba(226, 232, 240, 0.08) !important;
-}
-
-.dark-blue .hover\:bg-white\/\[0\.10\]:hover {
-  background-color: rgba(226, 232, 240, 0.12) !important;
 }
 
 /* Sidebar border overrides - ensure sidebar always uses dark borders */

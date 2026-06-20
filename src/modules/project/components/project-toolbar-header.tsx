@@ -154,7 +154,7 @@ export function ProjectToolbarHeader({
   const remainingCount = allTeamMembers.length - displayedMembers.length;
 
   return (
-    <Toolbar className="bg-card dark:bg-background">
+    <Toolbar className="bg-card">
       <ToolbarWrapper>
         <ToolbarHeading>
           <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -257,7 +257,7 @@ export function ProjectToolbarHeader({
               variant="ghost"
               size="sm"
               onClick={onTeamClick}
-              className="group h-auto gap-1.5 rounded-lg border border-transparent bg-transparent p-1 hover:border-border hover:bg-muted/45 dark:hover:bg-white/[0.06]"
+              className="group h-auto gap-1.5 rounded-lg border border-transparent bg-transparent p-1 hover:border-card-border hover:bg-surface-hover"
             >
               {displayedMembers.length > 0 ? (
                 <span className="flex items-center pl-2">
@@ -265,7 +265,7 @@ export function ProjectToolbarHeader({
                   {displayedMembers.map((member) => (
                     <Tooltip key={member.id}>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-secondary text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-surface-raised">
                           {getInitials(member.name)}
                         </span>
                       </TooltipTrigger>
@@ -275,7 +275,7 @@ export function ProjectToolbarHeader({
                   {remainingCount > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-secondary text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-background dark:border-background dark:bg-muted/60 dark:group-hover:bg-zinc-900">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-surface-raised">
                           +{remainingCount}
                         </span>
                       </TooltipTrigger>

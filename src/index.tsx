@@ -10,6 +10,7 @@ import {
   THEME_DEFAULT_MIGRATION_KEY,
   THEME_STORAGE_KEY,
   THEME_VALUES,
+  isAppTheme,
 } from '@app/theme/theme-registry';
 import { BrandedLayout } from '@core/auth/layouts/branded';
 import { ForgotPasswordPage } from '@core/auth/pages/forgot-password-page';
@@ -34,7 +35,7 @@ function migrateEditorialDefaultTheme() {
     if (hasMigrated) return;
 
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (!storedTheme || storedTheme === 'light') {
+    if (!isAppTheme(storedTheme) || storedTheme === 'light') {
       window.localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME);
     }
 
@@ -52,7 +53,7 @@ function FrameWork() {
       attribute="class"
       defaultTheme={DEFAULT_THEME}
       storageKey={THEME_STORAGE_KEY}
-      enableSystem
+      enableSystem={false}
       disableTransitionOnChange
       enableColorScheme
       themes={[...THEME_VALUES]}
