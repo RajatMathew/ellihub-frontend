@@ -9,8 +9,6 @@ import {
   DEFAULT_THEME,
   THEME_DEFAULT_MIGRATION_KEY,
   THEME_STORAGE_KEY,
-  THEME_VALUES,
-  isAppTheme,
 } from '@app/theme/theme-registry';
 import { BrandedLayout } from '@core/auth/layouts/branded';
 import { ForgotPasswordPage } from '@core/auth/pages/forgot-password-page';
@@ -31,11 +29,8 @@ function migrateEditorialDefaultTheme() {
   if (typeof window === 'undefined') return;
 
   try {
-    const hasMigrated = window.localStorage.getItem(THEME_DEFAULT_MIGRATION_KEY);
-    if (hasMigrated) return;
-
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (!isAppTheme(storedTheme) || storedTheme === 'light') {
+    if (storedTheme !== DEFAULT_THEME) {
       window.localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME);
     }
 
@@ -52,11 +47,12 @@ function FrameWork() {
     <ThemeProvider
       attribute="class"
       defaultTheme={DEFAULT_THEME}
+      forcedTheme={DEFAULT_THEME}
       storageKey={THEME_STORAGE_KEY}
       enableSystem={false}
       disableTransitionOnChange
       enableColorScheme
-      themes={[...THEME_VALUES]}
+      themes={[DEFAULT_THEME]}
     >
       <PwaUpdateModal />
       <HelmetProvider>

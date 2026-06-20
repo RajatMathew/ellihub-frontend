@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { forceCheckForUpdate } from '@/core/pwa/usePwaUpdater';
 import { QuickBooksReferenceSyncDialog } from '@/modules/integrations/components/quickbooks-reference-sync-dialog';
@@ -12,13 +12,11 @@ import {
   Coffee,
   FileText,
   HistoryIcon,
-  Palette,
   RefreshCcw,
   Settings,
   UserCircle,
   Users,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -28,8 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -37,16 +33,6 @@ import {
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
 import { useAccess } from '@app/contexts/access-context';
-import {
-  DEFAULT_THEME,
-  THEME_GROUPS,
-  THEME_OPTIONS,
-  THEME_VALUES,
-  isAppTheme,
-  isDarkAppTheme,
-  type AppTheme,
-} from '@app/theme/theme-registry';
-
 // const I18N_LANGUAGES = [
 //   {
 //     label: 'English',
@@ -71,14 +57,6 @@ function formatSyncLabel(value: string | null | undefined, isLoading: boolean) {
   }).format(date)}`;
 }
 
-function applyThemeClass(value: AppTheme) {
-  if (typeof document === 'undefined') return;
-
-  document.documentElement.classList.remove(...THEME_VALUES);
-  document.documentElement.classList.add(value);
-  document.documentElement.style.colorScheme = isDarkAppTheme(value) ? 'dark' : 'light';
-}
-
 function formatQuickBooksSyncLabel({
   connected,
   isError,
@@ -99,40 +77,8 @@ function formatQuickBooksSyncLabel({
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
-  const activeTheme = isAppTheme(theme) ? theme : DEFAULT_THEME;
-  const previewThemeRef = useRef<AppTheme | null>(null);
   const [fieldwireSyncOpen, setFieldwireSyncOpen] = useState(false);
   const [quickBooksSyncOpen, setQuickBooksSyncOpen] = useState(false);
-
-  const restoreThemePreview = useCallback(() => {
-    if (previewThemeRef.current === null) return;
-
-    applyThemeClass(activeTheme);
-    previewThemeRef.current = null;
-  }, [activeTheme]);
-
-  const handleThemePreview = useCallback(
-    (value: AppTheme) => {
-      if (value === activeTheme && previewThemeRef.current === null) return;
-
-      previewThemeRef.current = value;
-      applyThemeClass(value);
-    },
-    [activeTheme]
-  );
-
-  const handleThemeChange = useCallback(
-    (value: string) => {
-      if (!isAppTheme(value)) return;
-
-      previewThemeRef.current = null;
-      setTheme(value);
-    },
-    [setTheme]
-  );
-
-  useEffect(() => () => restoreThemePreview(), [restoreThemePreview]);
 
   const { data } = useSession();
   const { isAdmin, can } = useAccess();
@@ -166,11 +112,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
 
   return (
     <>
-      <DropdownMenu
-        onOpenChange={(open) => {
-          if (!open) restoreThemePreview();
-        }}
-      >
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent className="w-64 shadow-2xl" side="bottom" align="end">
           {/* Header */}
@@ -417,41 +359,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
 
           <DropdownMenuSeparator />
 
-          {/* Footer */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2">
-              <Palette />
-              <span className="flex items-center justify-between gap-2 grow">
-                Theme
-                <span className="text-xs text-muted-foreground capitalize">{activeTheme}</span>
-              </span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
-              {THEME_GROUPS.map((group, groupIndex) => (
-                <div key={group.value}>
-                  {groupIndex > 0 && <div className="my-1 border-b" />}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    {group.label}
-                  </div>
-                  <DropdownMenuRadioGroup value={activeTheme} onValueChange={handleThemeChange}>
-                    {THEME_OPTIONS.filter((option) => option.group === group.value).map(
-                      (option) => (
-                        <DropdownMenuRadioItem
-                          key={option.value}
-                          value={option.value}
-                          className="flex cursor-pointer items-center gap-2"
-                          onMouseEnter={() => handleThemePreview(option.value)}
-                          onMouseLeave={restoreThemePreview}
-                        >
-                          <span>{option.label}</span>
-                        </DropdownMenuRadioItem>
-                      )
-                    )}
-                  </DropdownMenuRadioGroup>
-                </div>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
           <div className="p-2 mt-1">
             <Button
               variant="outline"
