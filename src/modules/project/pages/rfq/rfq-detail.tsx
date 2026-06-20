@@ -12,7 +12,6 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
   Dialog,
@@ -306,7 +305,6 @@ export default function RFQDetailPage() {
   const [quoteInviteId, setQuoteInviteId] = useState<string>('');
   const [quoteAmount, setQuoteAmount] = useState<number | ''>('');
   const [quoteNegotiationAmount, setQuoteNegotiationAmount] = useState<number | ''>('');
-  const [quoteVendorCoupon, setQuoteVendorCoupon] = useState(false);
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
   const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
@@ -499,8 +497,7 @@ export default function RFQDetailPage() {
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
   const canSaveVendorPdf = projectActions?.rfq?.update === true;
-  const hasQuoteAttachment =
-    quoteVendorCoupon || existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
+  const hasQuoteAttachment = existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
 
   const isActionPending =
     publishMutation.isPending ||
@@ -569,7 +566,6 @@ export default function RFQDetailPage() {
       const eq = quotes.find((q) => q.id === existingQuoteId);
       setQuoteAmount(eq?.grandTotal ?? eq?.totalAmount ?? '');
       setQuoteNegotiationAmount(eq?.negotiationAmount ?? '');
-      setQuoteVendorCoupon(eq?.vendorCoupon ?? false);
       // Use leadTimeDays if available (numeric), fallback to notes but strip non-numeric
       const lt = eq?.leadTimeDays?.toString() || eq?.notes?.replace(/[^0-9]/g, '') || '';
       setQuoteLeadTime(lt);
@@ -577,7 +573,6 @@ export default function RFQDetailPage() {
     } else {
       setQuoteAmount('');
       setQuoteNegotiationAmount('');
-      setQuoteVendorCoupon(false);
       setQuoteLeadTime('');
       setExistingAttachments([]);
     }
@@ -590,7 +585,6 @@ export default function RFQDetailPage() {
     setQuoteInviteId('');
     setQuoteAmount('');
     setQuoteNegotiationAmount('');
-    setQuoteVendorCoupon(false);
     setQuoteLeadTime('');
     setEditingQuoteId(null);
     setIsQuoteViewOnly(false);
@@ -1841,16 +1835,6 @@ export default function RFQDetailPage() {
                 />
               </InputWrapper>
             </Field>
-
-            <label className="flex items-start gap-3 rounded-md border bg-muted/20 p-3 text-sm">
-              <Checkbox
-                checked={quoteVendorCoupon}
-                disabled={isQuoteViewOnly}
-                onCheckedChange={(checked) => setQuoteVendorCoupon(checked === true)}
-              />
-              <span className="min-w-0 font-medium text-foreground">Vendor Coupon</span>
-            </label>
-
             <Field>
               <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                 Quote Document
@@ -1990,7 +1974,6 @@ export default function RFQDetailPage() {
                               quoteNegotiationAmount > 0
                                 ? quoteNegotiationAmount
                                 : null,
-                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },
@@ -2006,7 +1989,6 @@ export default function RFQDetailPage() {
                               quoteNegotiationAmount > 0
                                 ? quoteNegotiationAmount
                                 : null,
-                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },

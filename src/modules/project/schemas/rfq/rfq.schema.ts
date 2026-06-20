@@ -202,7 +202,6 @@ export const rfqQuoteSchema = z
     totalAmount: z.coerce.number().nullable().optional(),
     grandTotal: z.coerce.number().nullable().optional(),
     negotiationAmount: z.coerce.number().nullable().optional(),
-    vendorCoupon: z.boolean().optional().default(false),
     isAwarded: z.boolean().optional(),
     notes: z.string().nullable().optional(),
     leadTime: z.string().nullable().optional(),

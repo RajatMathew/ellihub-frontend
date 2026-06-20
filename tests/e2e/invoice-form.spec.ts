@@ -95,6 +95,7 @@ function makeInvoice(overrides: Record<string, unknown> = {}) {
     taxRate: 8.875,
     notes: 'Existing invoice notes',
     relatedSCOIds: [],
+    vendorCoupon: false,
     vendor,
     purchaseOrder: { id: PO_ID, poNumber: 'PO-INV-001', vendorId: VENDOR_ID, status: 'ISSUED' },
     project: { id: PROJECT_ID, name: projectDetail.name, jobNumber: projectDetail.jobNumber },
@@ -283,10 +284,35 @@ test.describe('invoice create and edit form', () => {
       taxRate: 8.875,
       notes: 'Created invoice notes',
       relatedSCOIds: [],
+      vendorCoupon: false,
       attachments: ['document-uploaded'],
     });
   });
 
+  test('creates a vendor coupon invoice without an attachment', async ({ page }) => {
+    let createPayload: Record<string, unknown> | undefined;
+    await mockInvoiceApi(page, { onCreate: (payload) => (createPayload = payload) });
+
+    await page.goto(`/app/project/${PROJECT_ID}/invoices/create`);
+    await expect(page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible();
+
+    await chooseOption(page, 'invoice-purchase-order-select', 'PO-INV-001');
+    await page.getByTestId('invoice-number-input').fill('INV-COUPON-001');
+    await page.getByTestId('invoice-date-input').fill('2026-06-15');
+    await page.getByTestId('invoice-due-date-input').fill('2026-07-15');
+    await page.getByTestId('invoice-total-amount-input').fill('1000');
+    await page.getByTestId('invoice-tax-rate-input').fill('8.875');
+    await page.getByTestId('invoice-vendor-coupon-checkbox').click();
+
+    await page.getByRole('button', { name: 'Create Invoice' }).click();
+
+    await expect.poll(() => createPayload?.invoiceNumber).toBe('INV-COUPON-001');
+    expect(createPayload).toMatchObject({
+      invoiceNumber: 'INV-COUPON-001',
+      vendorCoupon: true,
+      attachments: [],
+    });
+  });
   test('prefills and preserves invoice fields on edit submit', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined;
     await mockInvoiceApi(page, { onUpdate: (payload) => (updatePayload = payload) });

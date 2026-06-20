@@ -481,6 +481,9 @@ export function InvoiceDetailPage() {
                     <ProjectDetailField label="Related SCOs">
                       {relatedSCOCount > 0 ? `${relatedSCOCount} linked` : '-'}
                     </ProjectDetailField>
+                    <ProjectDetailField label="Vendor Coupon">
+                      {invoice.vendorCoupon ? 'Yes' : 'No'}
+                    </ProjectDetailField>
                   </div>
                 </CardContent>
               </Card>
@@ -513,7 +516,7 @@ export function InvoiceDetailPage() {
                 getDescription={(attachment) =>
                   fileSizeLabel(attachment.document?.size) ?? undefined
                 }
-                isRemoveDisabled={() => attachments.length <= 1}
+                isRemoveDisabled={() => !invoice.vendorCoupon && attachments.length <= 1}
                 getRemoveDisabledReason={() => 'At least one attachment is required.'}
               />
             </div>

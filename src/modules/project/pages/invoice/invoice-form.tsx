@@ -9,6 +9,7 @@ import {
 } from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { Card, CardContent } from '@/app/components/ui/card';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
@@ -123,6 +124,7 @@ export function InvoiceFormPage() {
     taxAmount: 0,
     taxRate: 0,
     notes: '',
+    vendorCoupon: false,
     relatedSCOIds: [],
     attachments: [],
   };
@@ -140,6 +142,7 @@ export function InvoiceFormPage() {
           taxAmount: invoiceDetail.taxAmount ?? 0,
           taxRate: invoiceDetail.taxRate ?? 0,
           notes: invoiceDetail.notes ?? '',
+          vendorCoupon: invoiceDetail.vendorCoupon ?? false,
           relatedSCOIds: invoiceDetail.relatedSCOIds ?? [],
           attachments: [],
         }
@@ -348,12 +351,16 @@ export function InvoiceFormPage() {
   async function onSubmit(formData: CreateInvoiceInput) {
     const existingAttachmentCount = invoiceDetail?.attachments?.length ?? 0;
 
-    if (!isEdit && selectedFiles.length === 0) {
+    if (!isEdit && !formData.vendorCoupon && selectedFiles.length === 0) {
       toast.error('At least one attachment is required.');
       return;
     }
 
-    if (isEdit && existingAttachmentCount + selectedFiles.length === 0) {
+    if (
+      isEdit &&
+      !invoiceDetail?.vendorCoupon &&
+      existingAttachmentCount + selectedFiles.length === 0
+    ) {
       toast.error('At least one attachment is required.');
       return;
     }
@@ -370,7 +377,7 @@ export function InvoiceFormPage() {
           ? await uploadFiles(invoiceFolderId, selectedFiles)
           : [];
 
-      if (!isEdit && attachmentIds.length === 0) {
+      if (!isEdit && !formData.vendorCoupon && attachmentIds.length === 0) {
         toast.error('At least one attachment is required.');
         return;
       }
@@ -772,7 +779,24 @@ export function InvoiceFormPage() {
             onRemoveFile={(index) =>
               setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
             }
-          />
+          >
+            {!isEdit && (
+              <Controller
+                name="vendorCoupon"
+                control={control}
+                render={({ field }) => (
+                  <label className="flex items-start gap-3 rounded-md border bg-muted/20 p-3 text-sm">
+                    <Checkbox
+                      checked={field.value === true}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      data-testid="invoice-vendor-coupon-checkbox"
+                    />
+                    <span className="min-w-0 font-medium text-foreground">Vendor Coupon</span>
+                  </label>
+                )}
+              />
+            )}
+          </ProjectFormDocumentsCard>
         </FormContent>
       </FormLayout>
     </ProjectFormShell>

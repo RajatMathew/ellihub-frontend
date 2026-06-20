@@ -107,6 +107,7 @@ export const invoiceListItemSchema = z
     disputedAt: z.string().nullable().optional(),
     resolvedAt: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    vendorCoupon: z.boolean().optional().default(false),
     relatedSCOIds: z.array(z.string()).optional().default([]),
     vendor: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     purchaseOrder: z
@@ -148,6 +149,7 @@ export const invoiceDetailSchema = z
     taxAmount: z.coerce.number().nullable().optional(),
     taxRate: z.coerce.number().nullable().optional(),
     relatedSCOIds: z.array(z.string()).optional().default([]),
+    vendorCoupon: z.boolean().optional().default(false),
     relatedSCOs: z.array(invoiceRelatedSCOSchema).optional().default([]),
     paidAmount: z.coerce.number().nullable().optional(),
     paidDate: z.string().nullable().optional(),
@@ -316,6 +318,7 @@ export const createInvoiceInputSchema = z.object({
   taxAmount: z.number().min(0, 'Tax amount must be >= 0'),
   taxRate: z.number().min(0, 'Tax rate must be >= 0'),
   notes: z.string(),
+  vendorCoupon: z.boolean(),
   relatedSCOIds: z.array(z.string()),
   attachments: z.array(z.string()),
 });
@@ -323,7 +326,7 @@ export const createInvoiceInputSchema = z.object({
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
 
 export const updateInvoiceInputSchema = createInvoiceInputSchema
-  .omit({ attachments: true })
+  .omit({ attachments: true, vendorCoupon: true })
   .extend({ id: z.string().optional() });
 
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;

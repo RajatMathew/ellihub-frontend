@@ -31,7 +31,6 @@ export type BidComparisonQuote = {
   status: { id: string; name: string; label: string } | null;
   totalAmount: number | null;
   negotiationAmount?: number | null;
-  vendorCoupon?: boolean;
   taxAmount: number | null;
   grandTotal: number | null;
   leadTimeDays: number | null;
@@ -99,7 +98,6 @@ type RFQApiVendorQuote = RFQApiObject & {
   hasSubmittedQuote?: boolean | null;
   quotedAmount?: unknown;
   negotiationAmount?: unknown;
-  vendorCoupon?: boolean | null;
   leadTime?: string | number | null;
   notes?: string | null;
 };
@@ -167,7 +165,6 @@ function normalizeRFQ(item: unknown) {
         totalAmount: q.quotedAmount,
         grandTotal: q.quotedAmount,
         negotiationAmount: q.negotiationAmount,
-        vendorCoupon: q.vendorCoupon ?? false,
         leadTimeDays: leadTime ? parseInt(leadTime, 10) : undefined,
         notes: leadTime ? `${leadTime} days` : q.notes,
         vendor: q.vendor ?? (q.vendorId ? { id: q.vendorId } : undefined),
@@ -394,8 +391,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-    vendorCoupon?: boolean;
-    leadTime?: string;
+      leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
@@ -406,8 +402,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-    vendorCoupon?: boolean;
-    leadTime?: string;
+      leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/edit-quote`, data);

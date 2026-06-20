@@ -1,6 +1,6 @@
 ---
 title: Create an Invoice From a Purchase Order
-description: Create a project invoice linked to an issued purchase order, enter invoice amounts and tax, attach documents, and verify the invoice record.
+description: Create a project invoice linked to an issued purchase order, enter invoice amounts and tax, attach documents or mark vendor coupon, and verify the invoice record.
 section: Projects Page
 sectionOrder: 1
 order: 11
@@ -9,7 +9,7 @@ tags: projects, invoices, invoice, purchase order, po, vendor, documents, paymen
 
 # Create an Invoice From a Purchase Order
 
-Use this guide when a vendor invoice needs to be recorded against an existing purchase order. The screenshots show sample invoice numbers, purchase orders, amounts, tax, notes, and files only; use the actual vendor invoice details and backup documents for the project.
+Use this guide when a vendor invoice needs to be recorded against an existing purchase order. The screenshots show sample invoice numbers, purchase orders, amounts, tax, notes, files, and coupon state only; use the actual vendor invoice details and backup documents for the project.
 
 ## Start a New Invoice
 
@@ -61,17 +61,17 @@ Review the calculated total before creating the invoice.
 
 ## Attach Invoice Documents
 
-Use the document upload area to attach the vendor invoice, backup, receipt, or supporting file.
+Use the document upload area to attach the vendor invoice, backup, receipt, or supporting file. When Vendor Coupon is enabled, the document can be left empty.
 
 ![Invoice document upload area](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-16.jpeg)
 
-Confirm the selected file appears before creating the invoice.
+Confirm the selected file appears before creating the invoice, unless Vendor Coupon is enabled.
 
 ![Invoice document selected](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-17.jpeg)
 
 ## Create and Verify the Invoice
 
-Select **Create Invoice** after the purchase order, invoice details, amount, tax, and documents have been reviewed.
+Select **Create Invoice** after the purchase order, invoice details, amount, tax, and document or Vendor Coupon state have been reviewed.
 
 ![Create Invoice action](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-18.jpeg)
 
@@ -83,7 +83,7 @@ Verify the payment status.
 
 ![Invoice payment status](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-20.jpeg)
 
-Confirm the invoice keeps the uploaded document and links back to the correct purchase order.
+Confirm the invoice keeps any uploaded document, shows the correct Vendor Coupon state, and links back to the correct purchase order.
 
 ![Linked purchase order on invoice](/help/scribe/create-invoice-from-purchase-order/scribe-assets/step-21.jpeg)
 
@@ -95,6 +95,6 @@ Confirm the invoice keeps the uploaded document and links back to the correct pu
 - Invoice number, invoice date, and due date are correct.
 - Notes explain any needed billing context.
 - Invoice amount, tax, and total are reviewed before creation.
-- Vendor invoice or backup documents are attached.
+- Vendor invoice or backup documents are attached, unless Vendor Coupon is enabled.
 - Created invoice opens with the expected invoice number and unpaid status.
 - Linked purchase order card points back to the correct PO.
