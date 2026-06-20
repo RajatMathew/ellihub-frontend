@@ -9,7 +9,7 @@ tags: projects, rfq, request for quotation, vendors, deliverables, documents, sc
 
 # Create a New RFQ
 
-Use this guide when a project needs a new request for quotation. The screenshots show sample RFQ text only; enter the actual bid deadline, track, title, scope, deliverables, quantities, and documents for the RFQ being created.
+Use this guide when a project needs a new request for quotation. The screenshots show sample RFQ text only; enter the actual RFQ date, track, title, scope, deliverables, quantities, and documents for the RFQ being created.
 
 ## Start a New RFQ
 
@@ -23,7 +23,7 @@ Select **Add RFQ**.
 
 ## Enter RFQ Details
 
-Select the bid deadline.
+Select the RFQ date.
 
 ![Bid deadline field](/help/scribe/create-project-rfq/scribe-assets/step-03.jpeg)
 

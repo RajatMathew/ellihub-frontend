@@ -58,7 +58,7 @@ export type BidComparison = {
     rfqNumber: string;
     title: string;
     estimatedBudget: number | null;
-    bidDeadline: string;
+    rfqDate: string;
     status: { id: string; name: string; label: string } | null;
   };
   deliverables: {
@@ -107,6 +107,8 @@ type RFQApiResponse = RFQApiObject & {
   track?: string | null;
   type?: RFQApiType | null;
   typeId?: string | null;
+  rfqDate?: string | null;
+  bidDeadline?: string | null;
   deliverables?: unknown;
   rfqdeliverables?: unknown;
   vendorQuotes?: unknown;
@@ -180,6 +182,7 @@ function normalizeRFQ(item: unknown) {
         : record.status,
     track,
     typeId,
+    rfqDate: record.rfqDate ?? record.bidDeadline,
     deliverables,
     voidReason: record.voidReason ?? record.cancellationReason,
     attachments: record.attachments ?? record.rfqattachments,

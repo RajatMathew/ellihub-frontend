@@ -4,7 +4,7 @@ import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-heade
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   RFQActionsCell,
-  RFQBidDeadlineCell,
+  RFQDateCell,
   RFQNumberCell,
   RFQQuotesCell,
   RFQStatusCell,
@@ -64,9 +64,9 @@ export function useRFQListColumns({ onDelete, onVoid, onCreatePO }: UseRFQListCo
         enableSorting: false,
       },
       {
-        accessorKey: 'bidDeadline',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Due Date" />,
-        cell: ({ row }) => <RFQBidDeadlineCell rfq={row.original} />,
+        accessorKey: 'rfqDate',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="RFQ Date" />,
+        cell: ({ row }) => <RFQDateCell rfq={row.original} />,
         meta: {
           headerClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-24" />,

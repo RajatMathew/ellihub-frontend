@@ -17,7 +17,8 @@ const DEFAULT_DESCRIPTION = 'Review the highlighted fields and try again.';
 const FIELD_LABELS: Record<string, string> = {
   adjustedFinishDate: 'Adjusted finish date',
   awardQuoteIds: 'Awarded quote',
-  bidDeadline: 'Bid deadline',
+  bidDeadline: 'RFQ Date',
+  rfqDate: 'RFQ Date',
   changeTypeId: 'Change type',
   costCodeId: 'Cost code',
   deliverables: 'Deliverables',

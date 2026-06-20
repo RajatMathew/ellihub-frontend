@@ -56,10 +56,10 @@ export function RFQStatusCell({ rfq }: { rfq: RFQListItem }) {
   );
 }
 
-export function RFQBidDeadlineCell({ rfq }: { rfq: RFQListItem }) {
+export function RFQDateCell({ rfq }: { rfq: RFQListItem }) {
   return (
     <span className="text-sm text-muted-foreground">
-      {rfq.bidDeadline ? formatDate(rfq.bidDeadline) : '-'}
+      {rfq.rfqDate ? formatDate(rfq.rfqDate) : '-'}
     </span>
   );
 }

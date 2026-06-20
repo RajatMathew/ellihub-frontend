@@ -4,7 +4,7 @@ export const RFQ_SEARCH_DEBOUNCE_MS = 300;
 export const RFQ_SORT_BY_OPTIONS = [
   'rfqNumber',
   'title',
-  'bidDeadline',
+  'rfqDate',
   'estimatedBudget',
   'createdAt',
 ] as const;

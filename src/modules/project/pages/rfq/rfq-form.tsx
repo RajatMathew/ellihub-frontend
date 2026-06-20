@@ -54,14 +54,14 @@ const rfqInvalidControlClassName = formInvalidControlClassName;
 /* ---- Random data for dev ---- */
 
 function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]) {
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + randInt(7, 30));
+  const rfqDate = new Date();
+  rfqDate.setDate(rfqDate.getDate() + randInt(7, 30));
 
   return {
     title: fakeRFQTitle(),
     description: fakeProjectDescription(),
     typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
-    bidDeadline: deadline.toISOString().slice(0, 10),
+    rfqDate: rfqDate.toISOString().slice(0, 10),
     deliverables: fakeRFQDeliverables(units),
   };
 }
@@ -146,7 +146,7 @@ export default function RFQFormPage() {
     title: '',
     description: '',
     typeId: '',
-    bidDeadline: '',
+    rfqDate: '',
     deliverables: [{ description: '', quantity: 0, unitId: '' }],
   };
 
@@ -167,8 +167,8 @@ export default function RFQFormPage() {
         title: rfqDetail.title,
         description: rfqDetail.description || '',
         typeId: selectedRFQTypeId,
-        bidDeadline: rfqDetail.bidDeadline
-          ? new Date(rfqDetail.bidDeadline).toISOString().split('T')[0]
+        rfqDate: rfqDetail.rfqDate
+          ? new Date(rfqDetail.rfqDate).toISOString().split('T')[0]
           : '',
         deliverables:
           rfqDetail.deliverables && rfqDetail.deliverables.length > 0
@@ -306,14 +306,14 @@ export default function RFQFormPage() {
 
               <Separator />
 
-              {/* Bid Deadline + Track */}
+              {/* RFQ Date + Track */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="bidDeadline"
+                  name="rfqDate"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <RFQRequiredFieldLabel>Bid Deadline</RFQRequiredFieldLabel>
+                      <RFQRequiredFieldLabel>RFQ Date</RFQRequiredFieldLabel>
                       <InputWrapper
                         className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
                       >
@@ -321,7 +321,7 @@ export default function RFQFormPage() {
                           type="date"
                           {...field}
                           aria-invalid={fieldState.invalid}
-                          data-testid="rfq-bid-deadline-input"
+                          data-testid="rfq-date-input"
                         />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

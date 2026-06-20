@@ -1301,7 +1301,7 @@ export default function RFQDetailPage() {
                   <InfoRow label="Track">
                     {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '—'}
                   </InfoRow>
-                  <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
+                  <InfoRow label="RFQ Date">{formatDate(rfq.rfqDate || '')}</InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
                   )}
@@ -1675,9 +1675,9 @@ export default function RFQDetailPage() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground">Due</div>
+                        <div className="text-xs text-muted-foreground">RFQ Date</div>
                         <div className="mt-0.5 font-medium">
-                          {formatDate(rfq.bidDeadline || '')}
+                          {formatDate(rfq.rfqDate || '')}
                         </div>
                       </div>
                       <div>
