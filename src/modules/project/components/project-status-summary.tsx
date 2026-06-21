@@ -1,6 +1,10 @@
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
+import {
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_ORDER,
+} from '@/modules/project/constants/project-form.constants';
 import type { ProjectStatusStatsItem } from '@/modules/project/schemas/project.schema';
 
 interface StatusGroup {
@@ -59,13 +63,6 @@ const STATUS_FILTER_TONE_CLASSES: Record<
   },
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Active',
-  INACTIVE: 'Inactive',
-  CLOSED: 'Closed',
-  COMPLETED: 'Completed',
-};
-
 const getStatusDotClassName = (value: string): string => {
   return STATUS_DOT_CLASSES[value.toUpperCase()] ?? 'bg-primary';
 };
@@ -89,26 +86,22 @@ export function ProjectStatusSummary({
 }: ProjectStatusSummaryProps) {
   if (isLoading) return <ProjectStatusSummarySkeleton />;
 
-  const groups: StatusGroup[] = items.map((item) => ({
-    id: item.id,
-    label: item.label || STATUS_LABELS[item.id] || item.id,
-    dotClassName: getStatusDotClassName(item.id),
-    totalContractValue: item.totalContractValue,
-    count: item.count,
-  }));
+  const itemByStatus = new Map(items.map((item) => [item.id, item]));
+  const groups: StatusGroup[] = PROJECT_STATUS_ORDER.map((status) => {
+    const item = itemByStatus.get(status);
 
-  const columnClassName =
-    groups.length >= 4
-      ? 'xl:grid-cols-4'
-      : groups.length === 3
-        ? 'xl:grid-cols-3'
-        : groups.length === 2
-          ? 'xl:grid-cols-2'
-          : 'xl:grid-cols-1';
+    return {
+      id: status,
+      label: item?.label || PROJECT_STATUS_LABELS[status],
+      dotClassName: getStatusDotClassName(status),
+      totalContractValue: item?.totalContractValue ?? 0,
+      count: item?.count ?? 0,
+    };
+  });
 
   return (
     <div className="mb-5 w-fit max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5">
-      <div className={cn('grid grid-cols-1 gap-1.5 sm:grid-cols-2', columnClassName)}>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
         {groups.map((group) => {
           const isActive = activeStatusId === group.id;
           const tone = getStatusTone(group.id);

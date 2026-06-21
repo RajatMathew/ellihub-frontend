@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Progress } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
@@ -7,17 +9,19 @@ import { getProjectStageSwatchClassName } from '@/modules/project/lib/project-st
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Link } from 'react-router-dom';
 
+const PROJECT_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
 const formatProjectDate = (value: string | null | undefined): string | undefined => {
   if (!value) return undefined;
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
 
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  return PROJECT_DATE_FORMATTER.format(date);
 };
 
 const formatBalanceCurrency = (value: number): string => {
@@ -100,7 +104,7 @@ function ProjectName({ name }: { name: string }) {
   );
 }
 
-export function ProjectCard({ project }: { project: ProjectListItem }) {
+export const ProjectCard = memo(function ProjectCard({ project }: { project: ProjectListItem }) {
   const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
   const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
   const revisedContractValue =
@@ -200,4 +204,4 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       </Card>
     </Link>
   );
-}
+});

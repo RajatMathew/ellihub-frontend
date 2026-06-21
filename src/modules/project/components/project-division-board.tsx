@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import type {
   ProjectDivisionStatsItem,
@@ -13,6 +13,8 @@ const STANDARD_DIVISIONS: Array<{ label: string; keys: string[] }> = [
   { label: 'Public', keys: ['PUBLIC', 'DDC'] },
   { label: 'Public / State', keys: ['PUBLIC / STATE', 'PUBLIC STATE', 'CIVIL'] },
 ];
+
+const STANDARD_DIVISION_LABELS = new Set(STANDARD_DIVISIONS.map((division) => division.label));
 
 const normalizeDivisionLabel = (value: string): string =>
   value.trim().replace(/\s+/g, ' ').toUpperCase();
@@ -34,20 +36,27 @@ const getDivisionColumnLabel = (label: string): string => {
   return standardDivision?.label ?? label;
 };
 
-export function ProjectDivisionBoard({
-  projects,
-  divisionSummary,
-}: {
+interface ProjectDivisionBoardProps {
   projects: ProjectListItem[];
   divisionSummary?: ProjectDivisionStatsItem[];
-}) {
+}
+
+export const ProjectDivisionBoard = memo(function ProjectDivisionBoard({
+  projects,
+  divisionSummary,
+}: ProjectDivisionBoardProps) {
   const divisionMap = useMemo(() => {
     const map = new Map<string, ProjectListItem[]>();
 
     for (const project of projects) {
       const label = getDivisionColumnLabel(getDivisionLabel(project));
-      const existing = map.get(label) ?? [];
-      map.set(label, [...existing, project]);
+      const existing = map.get(label);
+
+      if (existing) {
+        existing.push(project);
+      } else {
+        map.set(label, [project]);
+      }
     }
 
     return map;
@@ -64,15 +73,30 @@ export function ProjectDivisionBoard({
     return map;
   }, [divisionSummary]);
 
-  const columns = [
-    ...STANDARD_DIVISIONS.map((division) => division.label),
-    ...Array.from(new Set([...divisionMap.keys(), ...divisionTotalMap.keys()]))
-      .filter((label) => !STANDARD_DIVISIONS.some((division) => division.label === label))
-      .sort((a, b) => a.localeCompare(b)),
-  ];
-  const maxRows = Math.max(
-    ...columns.map((divisionLabel) => divisionMap.get(divisionLabel)?.length ?? 0),
-    0
+  const columns = useMemo(
+    () => [
+      ...STANDARD_DIVISIONS.map((division) => division.label),
+      ...Array.from(new Set([...divisionMap.keys(), ...divisionTotalMap.keys()]))
+        .filter((label) => !STANDARD_DIVISION_LABELS.has(label))
+        .sort((a, b) => a.localeCompare(b)),
+    ],
+    [divisionMap, divisionTotalMap]
+  );
+
+  const maxRows = useMemo(
+    () => Math.max(...columns.map((label) => divisionMap.get(label)?.length ?? 0), 0),
+    [columns, divisionMap]
+  );
+
+  const cells = useMemo(
+    () =>
+      Array.from({ length: maxRows }).flatMap((_, rowIndex) =>
+        columns.map((divisionLabel) => ({
+          key: `${divisionLabel}-${rowIndex}`,
+          project: divisionMap.get(divisionLabel)?.[rowIndex],
+        }))
+      ),
+    [columns, divisionMap, maxRows]
   );
 
   return (
@@ -101,18 +125,12 @@ export function ProjectDivisionBoard({
           );
         })}
 
-        {Array.from({ length: maxRows }).flatMap((_, rowIndex) =>
-          columns.map((divisionLabel) => {
-            const project = divisionMap.get(divisionLabel)?.[rowIndex];
-
-            return (
-              <div key={`${divisionLabel}-${rowIndex}`} className="min-w-0">
-                {project && <ProjectCard project={project} />}
-              </div>
-            );
-          })
-        )}
+        {cells.map(({ key, project }) => (
+          <div key={key} className="min-w-0">
+            {project && <ProjectCard project={project} />}
+          </div>
+        ))}
       </div>
     </div>
   );
-}
+});

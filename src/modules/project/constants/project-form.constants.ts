@@ -1,11 +1,21 @@
 import type { ProjectStatusEnum } from '@/modules/project/schemas/project.schema';
 
-export const PROJECT_STATUS_OPTIONS: { value: ProjectStatusEnum; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'INACTIVE', label: 'Inactive' },
-  { value: 'CLOSED', label: 'Closed' },
-  { value: 'COMPLETED', label: 'Completed' },
-];
+export const PROJECT_STATUS_ORDER = [
+  'ACTIVE',
+  'INACTIVE',
+  'CLOSED',
+  'COMPLETED',
+] as const satisfies readonly ProjectStatusEnum[];
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatusEnum, string> = {
+  ACTIVE: 'Active',
+  INACTIVE: 'Inactive',
+  CLOSED: 'Closed',
+  COMPLETED: 'Completed',
+};
+
+export const PROJECT_STATUS_OPTIONS: { value: ProjectStatusEnum; label: string }[] =
+  PROJECT_STATUS_ORDER.map((value) => ({ value, label: PROJECT_STATUS_LABELS[value] }));
 
 export const PROJECT_FORM_SECTIONS = [
   { id: 'project-info', label: 'Project Info' },

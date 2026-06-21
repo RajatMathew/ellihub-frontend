@@ -9,7 +9,13 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const hasProjectCapabilities = (project: ProjectDetail) =>
@@ -44,6 +50,7 @@ type InfiniteProjectsQueryOptions = {
   staleTime?: number;
   gcTime?: number;
   refetchOnWindowFocus?: boolean;
+  placeholderData?: typeof keepPreviousData;
 };
 
 export const useInfiniteProjectsQuery = (
@@ -54,6 +61,10 @@ export const useInfiniteProjectsQuery = (
     queryKey: [...projectKeys.list(), 'infinite', params],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => projectApi.list({ ...params, page: Number(pageParam) }),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) =>
       lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
     ...options,
@@ -76,6 +87,10 @@ export const useProjectStatsQuery = (params?: ListProjectsParams) =>
   useQuery({
     queryKey: [...projectKeys.stats(), params],
     queryFn: () => projectApi.stats(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
 export const useProjectDetailQuery = (id: string) =>
