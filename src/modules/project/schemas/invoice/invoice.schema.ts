@@ -340,10 +340,7 @@ export const invoiceRejectInputSchema = z.object({
 export type InvoiceRejectInput = z.infer<typeof invoiceRejectInputSchema>;
 
 export const invoiceMarkPaidInputSchema = z.object({
-  paidDate: z.string().min(1, 'Payment date is required'),
-  paymentMethodId: z.string().min(1, 'Payment method is required'),
-  paymentReference: z.string().optional(),
-  paymentNotes: z.string().optional(),
+  paidDate: z.string().min(1, 'Paid date is required'),
 });
 
 export type InvoiceMarkPaidInput = z.infer<typeof invoiceMarkPaidInputSchema>;
