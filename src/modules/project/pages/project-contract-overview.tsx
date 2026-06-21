@@ -11,7 +11,6 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { useAccess } from '@/app/contexts/access-context';
 import { encodeFolderPath } from '@/modules/files/hooks/use-files-list-params';
-import { useEmployeePickerOptions } from '@/modules/hr/hooks/use-employee-picker-options';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -44,6 +43,7 @@ import {
 } from '@/modules/project/hooks/contract-attachment.hooks';
 import { usePOStatsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOStatsQuery } from '@/modules/project/hooks/sub-change-order';
+import { useProjectTeamEmployeePickerOptions } from '@/modules/project/hooks/use-project-team-employee-picker-options';
 import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
 import { EllipsisVertical, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -134,10 +134,10 @@ export default function ProjectContractOverview() {
       ),
     [project]
   );
-  const employeePicker = useEmployeePickerOptions({
+  const employeePicker = useProjectTeamEmployeePickerOptions({
+    projectId,
     search: employeeSearch,
     enabled: canAddTeamMembers && teamDialogOpen,
-    queryScope: `project-team-${projectId}`,
   });
   const employeeOptions = useMemo(
     () => employeePicker.options.filter((option) => !existingEmployeeIds.has(option.value)),

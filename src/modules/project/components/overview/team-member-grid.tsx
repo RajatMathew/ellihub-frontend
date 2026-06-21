@@ -70,6 +70,13 @@ function canRemoveRole(
   return canRemoveMember;
 }
 
+function getAuthRoleLabel(authRole: string) {
+  if (authRole === 'pm') return 'PM';
+  if (authRole === 'user') return 'Member';
+  if (authRole === 'unlinked') return 'Unlinked';
+  return authRole.toUpperCase();
+}
+
 export function TeamMemberGrid({
   teamMembers,
   canAssignRole = false,
@@ -117,7 +124,7 @@ export function TeamMemberGrid({
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
                   <Badge variant={authRole === 'pm' ? 'primary' : 'secondary'} appearance="light">
-                    {authRole === 'unlinked' ? 'Unlinked' : authRole.toUpperCase()}
+                    {getAuthRoleLabel(authRole)}
                   </Badge>
                 </div>
                 {email && (

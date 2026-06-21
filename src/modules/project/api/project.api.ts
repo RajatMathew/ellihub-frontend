@@ -4,7 +4,11 @@ import {
   type CostCode,
   type CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
-import { employeeSchema, type Employee } from '@/modules/hr/schemas/employee.schema';
+import {
+  employeePaginatedResponseSchema,
+  type EmployeePaginatedResponse,
+  type ListEmployeesParams,
+} from '@/modules/hr/schemas/employee.schema';
 import { invoiceApi } from '@/modules/project/api/invoice';
 import {
   fieldwireProjectOptionSchema,
@@ -26,6 +30,11 @@ const BASE = '/project';
 
 type ProjectCostCodeOptionsParams = Pick<
   CostCodeFilters,
+  'page' | 'size' | 'search' | 'sortBy' | 'sortOrder'
+>;
+
+type ProjectEmployeeOptionsParams = Pick<
+  ListEmployeesParams,
   'page' | 'size' | 'search' | 'sortBy' | 'sortOrder'
 >;
 
@@ -198,9 +207,23 @@ export const projectApi = {
     };
   },
 
-  async listProjectEmployeeOptions(projectId: string): Promise<Employee[]> {
-    const res = await api.get(`${BASE}/${projectId}/employee-options`);
-    return employeeSchema.array().parse(res.data?.data ?? res.data ?? []);
+  async listProjectEmployeeOptions(
+    projectId: string,
+    params?: ProjectEmployeeOptionsParams
+  ): Promise<EmployeePaginatedResponse> {
+    const res = await api.get(`${BASE}/${projectId}/employee-options`, { params });
+    const rows = res.data?.data ?? res.data ?? [];
+    const pagination = res.data?.pagination ?? {};
+
+    return employeePaginatedResponseSchema.parse({
+      data: rows,
+      pagination: {
+        totalItems: pagination.totalItems ?? rows.length,
+        totalPages: pagination.totalPages ?? 1,
+        currentPage: pagination.currentPage ?? params?.page ?? 1,
+        pageSize: pagination.pageSize ?? pagination.itemsPerPage ?? params?.size ?? 25,
+      },
+    });
   },
 
   async create(data: CreateProjectInput): Promise<ProjectDetail> {

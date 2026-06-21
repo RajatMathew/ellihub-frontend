@@ -120,7 +120,7 @@ export const useProjectCostCodesQuery = (id: string) =>
 export const useProjectEmployeeOptionsQuery = (id: string, enabled = true) =>
   useQuery({
     queryKey: projectKeys.employeeOptions(id),
-    queryFn: () => projectApi.listProjectEmployeeOptions(id),
+    queryFn: async () => (await projectApi.listProjectEmployeeOptions(id)).data,
     enabled: !!id && enabled,
   });
 
