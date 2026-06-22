@@ -1,6 +1,5 @@
-﻿import { z } from 'zod';
-
 import { MAX_UPLOAD_BYTES } from '@/modules/files/lib/file-upload-policy';
+import { z } from 'zod';
 
 // --- Enums ---
 
@@ -18,6 +17,7 @@ export const fileExportStatusSchema = z.enum([
   'COMPLETED',
   'FAILED',
   'EXPIRED',
+  'CANCELLED',
 ]);
 
 // --- Main model ---
@@ -100,9 +100,18 @@ export const fileExportJobSchema = z
     processedBytes: z.string(),
     error: z.string().nullable().optional(),
     downloadUrl: z.string().nullable().optional(),
+    folder: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        displayName: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
     expiresAt: z.string(),
     startedAt: z.string().nullable().optional(),
     completedAt: z.string().nullable().optional(),
+    cancelledAt: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

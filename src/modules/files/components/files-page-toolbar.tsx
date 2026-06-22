@@ -11,7 +11,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
 import type { FilesSearchMode } from '@/modules/files/hooks/use-files-list-params';
-import { Download, FolderPlus, FolderSearch, Globe2, Search, Upload } from 'lucide-react';
+import { Download, FolderPlus, FolderSearch, Globe2, Loader2, Search, Upload } from 'lucide-react';
 
 interface FilesPageToolbarProps {
   title?: string;
@@ -19,6 +19,7 @@ interface FilesPageToolbarProps {
   searchMode: FilesSearchMode;
   canMutateFolder: boolean;
   canExport: boolean;
+  isExporting?: boolean;
   showMutationActions?: boolean;
   onSearchChange: (value: string) => void;
   onSearchModeChange: (value: FilesSearchMode) => void;
@@ -33,6 +34,7 @@ export function FilesPageToolbar({
   searchMode,
   canMutateFolder,
   canExport,
+  isExporting = false,
   showMutationActions = true,
   onSearchChange,
   onSearchModeChange,
@@ -110,8 +112,12 @@ export function FilesPageToolbar({
             )}
           </div>
           <Button variant="outline" size="sm" onClick={onExport} disabled={!canExport}>
-            <Download className="size-4" />
-            Export ZIP
+            {isExporting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            {isExporting ? 'View Export' : 'Export ZIP'}
           </Button>
           {showMutationActions && (
             <>

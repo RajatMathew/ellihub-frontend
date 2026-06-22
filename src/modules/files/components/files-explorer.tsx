@@ -12,6 +12,7 @@ import { FilesListTable } from '@/modules/files/components/files-list-table';
 import { FilesPageDialogs } from '@/modules/files/components/files-page-dialogs';
 import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar';
 import { FolderExportProgressDialog } from '@/modules/files/components/folder-export-progress-dialog';
+import { FolderExportStatusCard } from '@/modules/files/components/folder-export-status-card';
 import { useFilesSearchQuery } from '@/modules/files/hooks/files.hooks';
 import {
   sectionFileItems,
@@ -181,9 +182,14 @@ export function FilesExplorer({
   const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
   const [renameItem, setRenameItem] = useState<FileItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<FileItem | null>(null);
-  const folderZipExport = useFolderZipExport();
+  const folderZipExport = useFolderZipExport({ enabled: canExport });
 
   const handleExport = useCallback(() => {
+    if (folderZipExport.isExporting) {
+      folderZipExport.reopen();
+      return;
+    }
+
     if (!folderDetail) return;
     void folderZipExport.startExport(folderDetail);
   }, [folderDetail, folderZipExport]);
@@ -270,7 +276,8 @@ export function FilesExplorer({
         searchInput={searchInput}
         searchMode={searchMode}
         canMutateFolder={canCreate && !!currentFolderId}
-        canExport={canExport && !!folderDetail && !folderZipExport.isExporting}
+        canExport={canExport && (!!folderDetail || folderZipExport.isExporting)}
+        isExporting={folderZipExport.isExporting}
         showMutationActions={canCreate}
         onSearchChange={handleSearchChange}
         onSearchModeChange={handleSearchModeChange}
@@ -360,9 +367,21 @@ export function FilesExplorer({
         folder={folderZipExport.folder}
         job={folderZipExport.job}
         error={folderZipExport.error}
+        isCancelling={folderZipExport.isCancelling}
         hasAutoDownloaded={folderZipExport.hasAutoDownloaded}
+        onCancel={folderZipExport.cancelExport}
         onRetry={folderZipExport.retry}
         onDownloadAgain={folderZipExport.downloadAgain}
+      />
+
+      <FolderExportStatusCard
+        visible={folderZipExport.isExporting && !folderZipExport.open}
+        folder={folderZipExport.folder}
+        job={folderZipExport.job}
+        error={folderZipExport.error}
+        isCancelling={folderZipExport.isCancelling}
+        onView={folderZipExport.reopen}
+        onCancel={folderZipExport.cancelExport}
       />
 
       <FilesPageDialogs
