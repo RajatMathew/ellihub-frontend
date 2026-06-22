@@ -1,6 +1,6 @@
 import { memo, Suspense, type ReactNode } from 'react';
 
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import { AdminRoute } from '@app/components/access/admin-route';
 import { Forbidden } from '@app/components/error/forbidden';
@@ -64,9 +64,8 @@ const topLevelRoutes = getTopLevelRoutes(routeTree);
 const mainRouteElements = routeTreeToRoutes(topLevelRoutes);
 
 function AppRoutingSetupInner() {
-  const location = useLocation();
   return (
-    <Suspense fallback={<ModuleLoader />} key={location.pathname}>
+    <Suspense fallback={<ModuleLoader />}>
       <Routes>
         <Route index element={<Navigate to="projects" replace />} />
         {mainRouteElements}

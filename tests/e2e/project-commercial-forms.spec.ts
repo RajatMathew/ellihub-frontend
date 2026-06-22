@@ -191,7 +191,7 @@ function makeRFQDetail(overrides: Record<string, unknown> = {}) {
     status: { id: 'DRAFT', name: 'DRAFT', label: 'Draft' },
     typeId: tradeCategory.id,
     type: tradeCategory,
-    bidDeadline: '2026-07-20T00:00:00.000Z',
+    rfqDate: '2026-07-20T00:00:00.000Z',
     project: { id: PROJECT_ID, name: projectDetail.name, jobNumber: projectDetail.jobNumber },
     deliverables: [
       {
@@ -550,7 +550,7 @@ test.describe('project commercial create and update forms', () => {
     await mockCommercialFormsApi(page, { onCreateRFQ: (payload) => (createPayload = payload) });
     await openRFQCreate(page);
 
-    await page.getByTestId('rfq-bid-deadline-input').fill('2026-07-30');
+    await page.getByTestId('rfq-date-input').fill('2026-07-30');
     await chooseOption(page, 'rfq-type-select', tradeCategory.label);
     await page.getByTestId('rfq-title-input').fill('New structural RFQ');
     await page.getByTestId('rfq-description-input').fill('Quote the structural steel scope.');
@@ -566,7 +566,7 @@ test.describe('project commercial create and update forms', () => {
       title: 'New structural RFQ',
       description: 'Quote the structural steel scope.',
       typeId: tradeCategory.id,
-      bidDeadline: '2026-07-30',
+      rfqDate: '2026-07-30',
       deliverables: [
         {
           description: 'Beam takeoff',
@@ -583,7 +583,7 @@ test.describe('project commercial create and update forms', () => {
     await mockCommercialFormsApi(page, { onUpdateRFQ: (payload) => (updatePayload = payload) });
     await openRFQEdit(page);
 
-    await expect(page.getByTestId('rfq-bid-deadline-input')).toHaveValue('2026-07-20');
+    await expect(page.getByTestId('rfq-date-input')).toHaveValue('2026-07-20');
     await expect(page.getByTestId('rfq-type-select')).toContainText(tradeCategory.label);
     await expect(page.getByTestId('rfq-title-input')).toHaveValue('Existing steel RFQ');
     await expect(page.getByTestId('rfq-description-input')).toHaveValue(
@@ -602,7 +602,7 @@ test.describe('project commercial create and update forms', () => {
       title: 'Existing steel RFQ',
       description: 'Existing request for structural steel pricing',
       typeId: tradeCategory.id,
-      bidDeadline: '2026-07-20',
+      rfqDate: '2026-07-20',
       deliverables: [
         {
           description: 'Existing beam takeoff',

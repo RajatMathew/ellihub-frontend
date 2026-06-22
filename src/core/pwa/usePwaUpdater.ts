@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { registerSW } from 'virtual:pwa-register';
 
 import { openPwaUpdateModal, PWA_UPDATE_AVAILABLE_EVENT } from './pwaEvents';
 
 let globalRegistration: ServiceWorkerRegistration | null = null;
+let globalSwUrl: string | null = null;
 let globalUpdateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
+let updateCheckPromise: Promise<boolean> | null = null;
 
-const PWA_UPDATE_INTERVAL_MS = 15 * 60 * 1000;
+const PWA_UPDATE_INTERVAL_MS = 60 * 60 * 1000;
+const PWA_CONTROLLER_CHANGE_TIMEOUT_MS = 3000;
 const DEV_SW_CLEANUP_RELOAD_KEY = 'elli-dev-sw-cleanup-reloaded';
 
 function canUseServiceWorker() {
@@ -36,6 +39,7 @@ async function unregisterDevelopmentServiceWorkers() {
   }
 
   globalRegistration = null;
+  globalSwUrl = null;
   globalUpdateSW = null;
 
   if (
@@ -55,30 +59,106 @@ function logPwaUpdateError(error: unknown) {
   console.error('PWA update check failed:', error);
 }
 
-export async function forceCheckForUpdate() {
+async function fetchServiceWorkerWithoutCache(swUrl: string) {
+  const response = await fetch(swUrl, {
+    cache: 'no-store',
+    headers: {
+      cache: 'no-store',
+      'cache-control': 'no-cache',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Service worker update check failed with status ${response.status}.`);
+  }
+}
+
+async function checkRegistrationForUpdate({ notify = true } = {}) {
   if (import.meta.env.DEV) return false;
   if (!globalRegistration) return false;
-
-  await globalRegistration.update();
-
-  const hasUpdate = !!globalRegistration.waiting;
-
-  if (hasUpdate) {
-    openPwaUpdateModal();
+  if (globalRegistration.waiting) {
+    if (notify) openPwaUpdateModal();
+    return true;
   }
+
+  if (!navigator.onLine || globalRegistration.installing) return false;
+
+  if (!updateCheckPromise) {
+    updateCheckPromise = (async () => {
+      if (globalSwUrl) {
+        await fetchServiceWorkerWithoutCache(globalSwUrl);
+      }
+
+      await globalRegistration?.update();
+
+      return !!globalRegistration?.waiting;
+    })().finally(() => {
+      updateCheckPromise = null;
+    });
+  }
+
+  const hasUpdate = await updateCheckPromise;
+  if (hasUpdate && notify) openPwaUpdateModal();
 
   return hasUpdate;
 }
 
+function createControllerChangeWaiter(timeoutMs: number) {
+  let cleanup = () => {};
+
+  const promise = new Promise<void>((resolve) => {
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    const timeoutId = window.setTimeout(finish, timeoutMs);
+    const onControllerChange = () => finish();
+
+    cleanup = () => {
+      window.clearTimeout(timeoutId);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange, {
+      once: true,
+    });
+  });
+
+  return { promise, cleanup };
+}
+
+export async function forceCheckForUpdate() {
+  return checkRegistrationForUpdate({ notify: true });
+}
+
 export async function forceUpdateApp() {
   if (import.meta.env.DEV) return;
-  if (!globalUpdateSW) return;
-
-  await globalUpdateSW(false);
-
-  window.setTimeout(() => {
+  if (!globalUpdateSW) {
     window.location.reload();
-  }, 500);
+    return;
+  }
+
+  if (!globalRegistration?.waiting) {
+    window.location.reload();
+    return;
+  }
+
+  const controllerChange = canUseServiceWorker()
+    ? createControllerChangeWaiter(PWA_CONTROLLER_CHANGE_TIMEOUT_MS)
+    : null;
+
+  try {
+    await globalUpdateSW(false);
+    if (controllerChange) await controllerChange.promise;
+  } finally {
+    controllerChange?.cleanup();
+    window.location.reload();
+  }
 }
 
 export function usePwaUpdater() {
@@ -116,19 +196,17 @@ export function usePwaUpdater() {
         setNeedRefresh(true);
       },
 
-      onRegisteredSW(_swUrl, registration) {
+      onRegisteredSW(swUrl, registration) {
         if (!registration) return;
 
         globalRegistration = registration;
+        globalSwUrl = swUrl;
 
-        void registration.update().catch(logPwaUpdateError);
+        void checkRegistrationForUpdate().catch(logPwaUpdateError);
 
-        updateInterval = window.setInterval(
-          () => {
-            void registration.update().catch(logPwaUpdateError);
-          },
-          PWA_UPDATE_INTERVAL_MS
-        );
+        updateInterval = window.setInterval(() => {
+          void checkRegistrationForUpdate().catch(logPwaUpdateError);
+        }, PWA_UPDATE_INTERVAL_MS);
       },
     });
 
@@ -141,15 +219,11 @@ export function usePwaUpdater() {
     };
   }, []);
 
-  const checkForUpdates = async () => {
-    if (!globalRegistration) return false;
-
+  const checkForUpdates = useCallback(async () => {
     setChecking(true);
 
     try {
-      await globalRegistration.update();
-
-      const hasUpdate = !!globalRegistration.waiting;
+      const hasUpdate = await checkRegistrationForUpdate({ notify: false });
 
       if (hasUpdate) {
         setNeedRefresh(true);
@@ -162,60 +236,36 @@ export function usePwaUpdater() {
     } finally {
       setChecking(false);
     }
-  };
+  }, []);
 
-  const updateApp = async () => {
+  const updateApp = useCallback(async () => {
     if (!canUseServiceWorker()) return;
     if (!globalUpdateSW) return;
 
     setUpdating(true);
-    setProgress(8);
+    setProgress(35);
 
-    const progressTimer = window.setInterval(() => {
-      setProgress((value) => Math.min(value + 5, 90));
-    }, 250);
-
-    const reloadApp = () => {
+    if (!globalRegistration?.waiting) {
       setProgress(100);
+      window.location.reload();
+      return;
+    }
 
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 700);
-    };
-
-    const reloadFallback = window.setTimeout(() => {
-      reloadApp();
-    }, 5000);
-
-    const onControllerChange = () => {
-      window.clearTimeout(reloadFallback);
-      reloadApp();
-    };
-
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange, {
-      once: true,
-    });
+    const controllerChange = createControllerChangeWaiter(PWA_CONTROLLER_CHANGE_TIMEOUT_MS);
 
     try {
-      // Fake delay for better UX
-      await new Promise((resolve) => setTimeout(resolve, 900));
-
-      // Activate new service worker, but do NOT auto reload here
       await globalUpdateSW(false);
-
-      setProgress(95);
+      setProgress(80);
+      await controllerChange.promise;
+      setProgress(100);
+      window.location.reload();
     } catch (error) {
       console.error('PWA update failed:', error);
-
-      window.clearInterval(progressTimer);
-      window.clearTimeout(reloadFallback);
-
+      controllerChange.cleanup();
       setUpdating(false);
       setProgress(0);
-
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     }
-  };
+  }, []);
 
   return {
     needRefresh,

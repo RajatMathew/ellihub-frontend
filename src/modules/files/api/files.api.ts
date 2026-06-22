@@ -1,8 +1,9 @@
 import api from '@/app/api';
+import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
 import {
   fileExportJobSchema,
-  fileSearchResponseSchema,
   fileSchema,
+  fileSearchResponseSchema,
   folderDetailSchema,
   type FileExportJob,
   type FileFolderRenameInput,
@@ -12,7 +13,6 @@ import {
   type FolderCreateInput,
   type FolderDetail,
 } from '@/modules/files/schemas/file.schema';
-import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
 import { isAxiosError } from 'axios';
 
 const BASE = '/file';
@@ -150,6 +150,11 @@ function parseExportJob(raw: unknown, context: string): FileExportJob {
   return result.data;
 }
 
+function parseNullableExportJob(raw: unknown, context: string): FileExportJob | null {
+  if (raw == null) return null;
+
+  return parseExportJob(raw, context);
+}
 function downloadFromUrl(url: string, fileName: string): void {
   const anchor = document.createElement('a');
 
@@ -348,6 +353,21 @@ export const filesApi = {
     return parseExportJob(raw, 'filesApi.getFolderExportJob');
   },
 
+  async getActiveFolderExportJob(folderId?: string): Promise<FileExportJob | null> {
+    const res = await api.get(`${BASE}/export/active`, {
+      params: folderId ? { folderId } : undefined,
+    });
+    const raw = res.data?.data ?? res.data;
+
+    return parseNullableExportJob(raw, 'filesApi.getActiveFolderExportJob');
+  },
+
+  async cancelFolderExportJob(jobId: string): Promise<FileExportJob> {
+    const res = await api.post(`${BASE}/export/${jobId}/cancel`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseExportJob(raw, 'filesApi.cancelFolderExportJob');
+  },
   downloadExportJob(job: FileExportJob): void {
     if (!job.downloadUrl) throw new Error('Export is not ready yet.');
 

@@ -69,11 +69,10 @@ export function ProjectTeamDialog({
   const [pendingLeadTransfer, setPendingLeadTransfer] = useState<ProjectTeamAssignment | null>(
     null
   );
-  const { totalMembers, hasMembers } = useFilteredTeamMembers({ project });
-  const allTeamMembers =
-    project.teamMembers?.length || !project.leadPM
-      ? (project.teamMembers ?? [])
-      : [
+  const { teamMembers, totalMembers, hasMembers } = useFilteredTeamMembers({ project });
+  const allTeamMembers = [
+    ...(project.leadPM
+      ? [
           {
             projectId: project.id,
             employeeId: project.leadPM.id,
@@ -81,7 +80,10 @@ export function ProjectTeamDialog({
             isLead: true,
             employee: project.leadPM,
           },
-        ];
+        ]
+      : []),
+    ...teamMembers,
+  ];
   const teamActions = project.capabilities?.actions?.projectTeam;
   const canAssignRole = teamActions?.['assign-role'] === true;
   const canTransferLead = teamActions?.['transfer-lead'] === true;

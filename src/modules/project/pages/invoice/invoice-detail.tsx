@@ -27,13 +27,6 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -61,7 +54,6 @@ import {
   useRemoveInvoiceAttachmentMutation,
   useResolveDisputeInvoiceMutation,
 } from '@/modules/project/hooks/invoice';
-import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useProjectEntityFolderQuery,
   useProjectFolderQuery,
@@ -108,6 +100,13 @@ function dateOrDash(value: string | null | undefined) {
   return value ? formatDate(value) : '-';
 }
 
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 function fileSizeLabel(value: number | null | undefined) {
   if (!value) return null;
   if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
@@ -159,8 +158,6 @@ export function InvoiceDetailPage() {
     project?.capabilities?.actions?.invoice?.update === true
   );
   const invoiceUploadFolderId = invoiceEntityFolderId ?? invoiceFolderId;
-  const { data: paymentMethods, isLoading: isLoadingPaymentMethods } =
-    useLookupsQuery('PAYMENT_METHOD');
   const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
     entityType: 'invoice',
     entityId: invoiceId,
@@ -187,10 +184,7 @@ export function InvoiceDetailPage() {
   const markPaidForm = useForm<InvoiceMarkPaidInput>({
     resolver: zodResolver(invoiceMarkPaidInputSchema),
     defaultValues: {
-      paidDate: new Date().toISOString().slice(0, 10),
-      paymentMethodId: '',
-      paymentReference: '',
-      paymentNotes: '',
+      paidDate: getTodayDateInputValue(),
     },
   });
 
@@ -262,18 +256,11 @@ export function InvoiceDetailPage() {
   const taxAmount = Number(invoice.taxAmount ?? 0);
   const totalAmount = invoiceAmount + taxAmount;
   const isPastDue = !isPaid && !!invoice.dueDate && new Date(invoice.dueDate) < new Date();
-  const paymentMethodLabel =
-    invoice.paymentMethod?.label ??
-    invoice.paymentMethod?.name ??
-    paymentMethods?.find((method) => method.id === invoice.paymentMethodId)?.label ??
-    paymentMethods?.find((method) => method.id === invoice.paymentMethodId)?.name ??
-    '-';
   const isActionPending =
     markPaidMutation.isPending ||
     markUnpaidMutation.isPending ||
     disputeMutation.isPending ||
     resolveDisputeMutation.isPending;
-  const hasPaymentMethods = (paymentMethods?.length ?? 0) > 0;
 
   return (
     <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
@@ -309,10 +296,7 @@ export function InvoiceDetailPage() {
                 disabled={isActionPending}
                 onClick={() => {
                   markPaidForm.reset({
-                    paidDate: new Date().toISOString().slice(0, 10),
-                    paymentMethodId: '',
-                    paymentReference: '',
-                    paymentNotes: '',
+                    paidDate: getTodayDateInputValue(),
                   });
                   setMarkPaidOpen(true);
                 }}
@@ -427,9 +411,11 @@ export function InvoiceDetailPage() {
             />
             <StatsBarItem
               variant="card"
-              label="Payment"
+              label="Paid Status"
               value={isPaid ? 'Paid' : 'Unpaid'}
-              description={invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No payment recorded'}
+              description={
+                invoice.paidDate ? dateOrDash(invoice.paidDate) : 'No paid date recorded'
+              }
               dotColor={isPaid ? 'bg-success' : 'bg-warning'}
               valueColor="text-foreground"
             />
@@ -466,6 +452,9 @@ export function InvoiceDetailPage() {
                     <ProjectDetailField label="Invoice #">
                       {invoice.invoiceNumber}
                     </ProjectDetailField>
+                    <ProjectDetailField label="External Invoice #">
+                      {invoice.externalInvoiceNumber || '-'}
+                    </ProjectDetailField>
                     <ProjectDetailField label="Invoice Date">
                       {dateOrDash(invoice.invoiceDate)}
                     </ProjectDetailField>
@@ -480,6 +469,9 @@ export function InvoiceDetailPage() {
                     </ProjectDetailField>
                     <ProjectDetailField label="Related SCOs">
                       {relatedSCOCount > 0 ? `${relatedSCOCount} linked` : '-'}
+                    </ProjectDetailField>
+                    <ProjectDetailField label="Vendor Coupon">
+                      {invoice.vendorCoupon ? 'Yes' : 'No'}
                     </ProjectDetailField>
                   </div>
                 </CardContent>
@@ -513,7 +505,7 @@ export function InvoiceDetailPage() {
                 getDescription={(attachment) =>
                   fileSizeLabel(attachment.document?.size) ?? undefined
                 }
-                isRemoveDisabled={() => attachments.length <= 1}
+                isRemoveDisabled={() => !invoice.vendorCoupon && attachments.length <= 1}
                 getRemoveDisabledReason={() => 'At least one attachment is required.'}
               />
             </div>
@@ -629,14 +621,11 @@ export function InvoiceDetailPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                      Payment Information
+                      Paid Information
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1">
                     <InfoRow label="Paid Date">{dateOrDash(invoice.paidDate)}</InfoRow>
-                    <InfoRow label="Payment Method">{paymentMethodLabel}</InfoRow>
-                    <InfoRow label="Reference">{invoice.paymentReference ?? '-'}</InfoRow>
-                    <InfoRow label="Notes">{invoice.paymentNotes ?? '-'}</InfoRow>
                   </CardContent>
                 </Card>
               )}
@@ -766,67 +755,11 @@ export function InvoiceDetailPage() {
                 </Field>
               )}
             />
-            <Controller
-              name="paymentMethodId"
-              control={markPaidForm.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Payment Method</FieldLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isLoadingPaymentMethods || markPaidMutation.isPending}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hasPaymentMethods ? (
-                        paymentMethods?.map((method) => (
-                          <SelectItem key={method.id} value={method.id}>
-                            {method.label ?? method.name ?? method.id}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="__payment_methods_empty" disabled>
-                          {isLoadingPaymentMethods
-                            ? 'Loading payment methods...'
-                            : 'No payment methods available'}
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-            <Controller
-              name="paymentReference"
-              control={markPaidForm.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Payment Reference</FieldLabel>
-                  <InputWrapper>
-                    <Input {...field} placeholder="Check, ACH, or wire reference" />
-                  </InputWrapper>
-                </Field>
-              )}
-            />
-            <Controller
-              name="paymentNotes"
-              control={markPaidForm.control}
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Payment Notes</FieldLabel>
-                  <Textarea {...field} rows={3} placeholder="Optional payment notes..." />
-                </Field>
-              )}
-            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setMarkPaidOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={markPaidMutation.isPending || !hasPaymentMethods}>
+              <Button type="submit" disabled={markPaidMutation.isPending}>
                 Mark Paid
               </Button>
             </DialogFooter>
@@ -838,7 +771,7 @@ export function InvoiceDetailPage() {
         open={markUnpaidOpen}
         onOpenChange={setMarkUnpaidOpen}
         title="Mark Invoice Unpaid"
-        description="This will clear payment date, method, reference, and notes."
+        description="This will clear the paid date and mark the invoice as unpaid."
         confirmLabel="Mark Unpaid"
         onConfirm={() =>
           markUnpaidMutation.mutate(invoiceId, {

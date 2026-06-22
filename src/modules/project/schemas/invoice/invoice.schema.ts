@@ -91,6 +91,7 @@ export const invoiceListItemSchema = z
     vendorId: z.string().nullable().optional(),
     purchaseOrderId: z.string().nullable().optional(),
     invoiceNumber: z.string().nullable().optional(),
+    externalInvoiceNumber: z.string().nullable().optional(),
     invoiceDate: z.string().nullable().optional(),
     dueDate: z.string().nullable().optional(),
     totalAmount: z.coerce.number(),
@@ -107,6 +108,7 @@ export const invoiceListItemSchema = z
     disputedAt: z.string().nullable().optional(),
     resolvedAt: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    vendorCoupon: z.boolean().optional().default(false),
     relatedSCOIds: z.array(z.string()).optional().default([]),
     vendor: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
     purchaseOrder: z
@@ -132,6 +134,7 @@ export const invoiceDetailSchema = z
     vendorId: z.string().nullable().optional(),
     purchaseOrderId: z.string().nullable().optional(),
     invoiceNumber: z.string().nullable().optional(),
+    externalInvoiceNumber: z.string().nullable().optional(),
     invoiceDate: z.string().nullable().optional(),
     dueDate: z.string().nullable().optional(),
     totalAmount: z.coerce.number(),
@@ -148,6 +151,7 @@ export const invoiceDetailSchema = z
     taxAmount: z.coerce.number().nullable().optional(),
     taxRate: z.coerce.number().nullable().optional(),
     relatedSCOIds: z.array(z.string()).optional().default([]),
+    vendorCoupon: z.boolean().optional().default(false),
     relatedSCOs: z.array(invoiceRelatedSCOSchema).optional().default([]),
     paidAmount: z.coerce.number().nullable().optional(),
     paidDate: z.string().nullable().optional(),
@@ -309,13 +313,14 @@ export const createInvoiceInputSchema = z.object({
   projectId: z.string().min(1, 'Project is required'),
   vendorId: z.string().min(1, 'Vendor is required'),
   purchaseOrderId: z.string().min(1, 'Purchase order is required'),
-  invoiceNumber: z.string().min(1, 'Invoice number is required'),
+  externalInvoiceNumber: z.string().nullable().optional(),
   invoiceDate: z.string().min(1, 'Invoice date is required'),
   dueDate: z.string().min(1, 'Due date is required'),
   totalAmount: z.number().gt(0, 'Invoice amount must be greater than 0'),
   taxAmount: z.number().min(0, 'Tax amount must be >= 0'),
   taxRate: z.number().min(0, 'Tax rate must be >= 0'),
   notes: z.string(),
+  vendorCoupon: z.boolean(),
   relatedSCOIds: z.array(z.string()),
   attachments: z.array(z.string()),
 });
@@ -323,7 +328,7 @@ export const createInvoiceInputSchema = z.object({
 export type CreateInvoiceInput = z.infer<typeof createInvoiceInputSchema>;
 
 export const updateInvoiceInputSchema = createInvoiceInputSchema
-  .omit({ attachments: true })
+  .omit({ attachments: true, vendorCoupon: true })
   .extend({ id: z.string().optional() });
 
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceInputSchema>;
@@ -335,10 +340,7 @@ export const invoiceRejectInputSchema = z.object({
 export type InvoiceRejectInput = z.infer<typeof invoiceRejectInputSchema>;
 
 export const invoiceMarkPaidInputSchema = z.object({
-  paidDate: z.string().min(1, 'Payment date is required'),
-  paymentMethodId: z.string().min(1, 'Payment method is required'),
-  paymentReference: z.string().optional(),
-  paymentNotes: z.string().optional(),
+  paidDate: z.string().min(1, 'Paid date is required'),
 });
 
 export type InvoiceMarkPaidInput = z.infer<typeof invoiceMarkPaidInputSchema>;

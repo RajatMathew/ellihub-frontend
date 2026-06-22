@@ -164,8 +164,7 @@ export const useSubmitQuoteMutation = () => {
         id: string;
         quotedAmount: number;
         negotiationAmount?: number | null;
-        vendorCoupon?: boolean;
-        leadTime?: string;
+              leadTime?: string;
         attachments: string[];
       };
     }) => rfqApi.submitQuote(data),
@@ -188,8 +187,7 @@ export const useEditQuoteMutation = () => {
         id: string;
         quotedAmount: number;
         negotiationAmount?: number | null;
-        vendorCoupon?: boolean;
-        leadTime?: string;
+              leadTime?: string;
         attachments: string[];
       };
     }) => rfqApi.editQuote(data),

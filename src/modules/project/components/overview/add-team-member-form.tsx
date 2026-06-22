@@ -66,9 +66,11 @@ export function AddTeamMemberForm({
         isFetchingNextPage={isEmployeeFetchingNextPage}
         hasNextPage={hasMoreEmployees}
         onFetchNextPage={onFetchMoreEmployees}
-        placeholder="Select employee..."
-        searchPlaceholder="Search employees..."
-        emptyMessage={isLoadingEmployees ? 'Loading employees...' : 'No employees found.'}
+        placeholder="Select PM or member..."
+        searchPlaceholder="Search PMs or members..."
+        emptyMessage={
+          isLoadingEmployees ? 'Loading employees...' : 'No eligible PMs or members found.'
+        }
       />
     </div>
   );

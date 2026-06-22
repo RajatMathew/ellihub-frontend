@@ -37,7 +37,7 @@ export const rfqListItemSchema = z
       .passthrough()
       .nullable()
       .optional(),
-    bidDeadline: z.string().nullable().optional(),
+    rfqDate: z.string().nullable().optional(),
     estimatedBudget: z.coerce.number().nullable().optional(),
     project: z
       .object({ id: z.string(), name: z.string(), jobNumber: z.string().nullable().optional() })
@@ -202,7 +202,6 @@ export const rfqQuoteSchema = z
     totalAmount: z.coerce.number().nullable().optional(),
     grandTotal: z.coerce.number().nullable().optional(),
     negotiationAmount: z.coerce.number().nullable().optional(),
-    vendorCoupon: z.boolean().optional().default(false),
     isAwarded: z.boolean().optional(),
     notes: z.string().nullable().optional(),
     leadTime: z.string().nullable().optional(),
@@ -271,7 +270,7 @@ export const rfqDetailSchema = z
       .nullable()
       .optional(),
 
-    bidDeadline: z.string().nullable().optional(),
+    rfqDate: z.string().nullable().optional(),
     minimumVendors: z.number().optional(),
     deliverables: z.array(rfqDeliverableSchema).optional().default([]),
     invites: z.array(rfqInviteSchema).optional().default([]),
@@ -336,7 +335,7 @@ export const createRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: requiredTextSchema('Description is required'),
   typeId: z.string().min(1, 'Track is required'),
-  bidDeadline: z.string().min(1, 'Bid deadline is required'),
+  rfqDate: z.string().min(1, 'RFQ Date is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });
 
@@ -346,7 +345,7 @@ export const updateRFQInputSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: requiredTextSchema('Description is required'),
   typeId: z.string().min(1, 'Track is required'),
-  bidDeadline: z.string().min(1, 'Bid deadline is required'),
+  rfqDate: z.string().min(1, 'RFQ Date is required'),
   deliverables: z.array(rfqDeliverableInputSchema).min(1, 'At least one deliverable is required'),
 });
 

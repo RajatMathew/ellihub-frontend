@@ -1,4 +1,4 @@
-﻿import { Button } from '@/app/components/ui/button';
+import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogBody,
@@ -8,7 +8,15 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Progress, ProgressCircle } from '@/app/components/ui/progress';
-import type { FileExportJob, FileItem } from '@/modules/files/schemas/file.schema';
+import {
+  getFolderExportProgress,
+  getFolderExportStatusLabel,
+  isFolderExportCancelled,
+  isFolderExportFailed,
+  isFolderExportRunning,
+  type ExportableFolder,
+} from '@/modules/files/lib/folder-export';
+import type { FileExportJob } from '@/modules/files/schemas/file.schema';
 import {
   AlertCircle,
   CheckCircle2,
@@ -16,9 +24,8 @@ import {
   FileArchive,
   Loader2,
   RefreshCcw,
+  XCircle,
 } from 'lucide-react';
-
-type ExportableFolder = Pick<FileItem, 'id' | 'name' | 'displayName'>;
 
 interface FolderExportProgressDialogProps {
   open: boolean;
@@ -26,7 +33,9 @@ interface FolderExportProgressDialogProps {
   folder: ExportableFolder | null;
   job: FileExportJob | null;
   error: string | null;
+  isCancelling: boolean;
   hasAutoDownloaded: boolean;
+  onCancel: () => void;
   onRetry: () => void;
   onDownloadAgain: () => void;
 }
@@ -60,34 +69,19 @@ function formatBytes(value: string | number | null | undefined): string {
   return `${whole.toString()}.${decimal} ${units[unitIndex]}`;
 }
 
-function getProgress(job: FileExportJob | null): number {
-  if (!job) return 0;
-  if (job.status === 'COMPLETED') return 100;
-  if (job.status === 'FAILED' || job.status === 'EXPIRED') return 100;
-  if (job.totalFiles > 0) {
-    return Math.min(99, Math.round((job.processedFiles / job.totalFiles) * 100));
-  }
+function getStatusIcon(job: FileExportJob | null, error: string | null, isCancelling: boolean) {
+  if (isCancelling) return <Loader2 className="size-4 animate-spin text-primary" />;
 
-  return job.status === 'PROCESSING' ? 12 : 4;
-}
-
-function getStatusLabel(job: FileExportJob | null, error: string | null): string {
-  if (error) return 'Failed';
-  if (!job) return 'Starting';
-  if (job.status === 'PENDING') return 'Queued';
-  if (job.status === 'PROCESSING') return 'Exporting';
-  if (job.status === 'COMPLETED') return 'Ready';
-  if (job.status === 'EXPIRED') return 'Expired';
-  return 'Failed';
-}
-
-function getStatusIcon(job: FileExportJob | null, error: string | null) {
-  if (error || job?.status === 'FAILED' || job?.status === 'EXPIRED') {
+  if (isFolderExportFailed(job, error)) {
     return <AlertCircle className="size-4 text-destructive" />;
   }
 
   if (job?.status === 'COMPLETED') {
     return <CheckCircle2 className="size-4 text-success" />;
+  }
+
+  if (isFolderExportCancelled(job)) {
+    return <XCircle className="size-4 text-muted-foreground" />;
   }
 
   return <Loader2 className="size-4 animate-spin text-primary" />;
@@ -99,15 +93,23 @@ export function FolderExportProgressDialog({
   folder,
   job,
   error,
+  isCancelling,
   hasAutoDownloaded,
+  onCancel,
   onRetry,
   onDownloadAgain,
 }: FolderExportProgressDialogProps) {
-  const progress = getProgress(job);
+  const progress = getFolderExportProgress(job);
   const isComplete = job?.status === 'COMPLETED' && !!job.downloadUrl;
-  const isRunning = job?.status === 'PENDING' || job?.status === 'PROCESSING' || (!job && !error);
-  const canRetry = !!folder && (!!error || job?.status === 'FAILED' || job?.status === 'EXPIRED');
-  const statusLabel = getStatusLabel(job, error);
+  const isStarting = !job && !error;
+  const isRunning = isStarting || isFolderExportRunning(job);
+  const canRetry =
+    !!folder &&
+    (!!error ||
+      job?.status === 'FAILED' ||
+      job?.status === 'EXPIRED' ||
+      job?.status === 'CANCELLED');
+  const statusLabel = getFolderExportStatusLabel(job, error, isCancelling);
   const folderName = folder?.displayName || folder?.name || 'Folder';
   const processedFiles = job ? Math.min(job.processedFiles, job.totalFiles) : 0;
   const totalFiles = job?.totalFiles ?? 0;
@@ -137,7 +139,7 @@ export function FolderExportProgressDialog({
                   </p>
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {getStatusIcon(job, error)}
+                  {getStatusIcon(job, error, isCancelling)}
                   {statusLabel}
                 </span>
               </div>
@@ -184,13 +186,29 @@ export function FolderExportProgressDialog({
               {hasAutoDownloaded ? 'Download started.' : 'Archive is ready.'}
             </div>
           )}
+
+          {job?.status === 'CANCELLED' && (
+            <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+              Export was cancelled. You can start it again when needed.
+            </div>
+          )}
         </DialogBody>
 
         <DialogFooter>
           {isRunning && (
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Hide
-            </Button>
+            <>
+              <Button variant="outline" onClick={onCancel} disabled={isCancelling || !job}>
+                {isCancelling ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <XCircle className="size-4" />
+                )}
+                {isCancelling ? 'Cancelling' : 'Cancel'}
+              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Hide
+              </Button>
+            </>
           )}
           {!isRunning && (
             <Button variant="outline" onClick={() => onOpenChange(false)}>

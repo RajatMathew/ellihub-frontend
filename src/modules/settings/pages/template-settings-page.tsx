@@ -169,7 +169,7 @@ const EMAIL_VARIABLES: Record<string, string[]> = {
     'projectNumber',
     'rfqNumber',
     'rfqTitle',
-    'bidDeadline',
+    'rfqDate',
   ],
   'rfq.vendorRequestAll': [
     'vendorName',
@@ -178,7 +178,7 @@ const EMAIL_VARIABLES: Record<string, string[]> = {
     'projectNumber',
     'rfqNumber',
     'rfqTitle',
-    'bidDeadline',
+    'rfqDate',
   ],
   'purchaseOrder.vendorIssue': [
     'vendorName',
@@ -214,7 +214,7 @@ const EMAIL_PREVIEW_VALUES: Record<string, string> = {
   projectNumber: 'ELLI-2408',
   rfqNumber: 'RFQ-014',
   rfqTitle: 'Classroom Casework',
-  bidDeadline: 'Jun 18, 2026',
+  rfqDate: 'Jun 18, 2026',
   poNumber: 'PO-135',
   poDescription: 'Classroom millwork materials',
   expectedDate: 'Jul 15, 2026',

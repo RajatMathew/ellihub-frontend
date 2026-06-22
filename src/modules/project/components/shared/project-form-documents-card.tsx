@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
@@ -17,6 +19,7 @@ interface ProjectFormDocumentsCardProps {
   title?: string;
   existingTitle?: string;
   fileInputTestId?: string;
+  children?: ReactNode;
 }
 
 function fileSizeLabel(size: number) {
@@ -38,6 +41,7 @@ export function ProjectFormDocumentsCard({
   title = 'Documents',
   existingTitle = 'Existing Documents',
   fileInputTestId,
+  children,
 }: ProjectFormDocumentsCardProps) {
   return (
     <Card id="documents">
@@ -47,6 +51,8 @@ export function ProjectFormDocumentsCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {children && <div className="mb-4">{children}</div>}
+
         <FileDropZone
           value={null}
           onChange={(file) => {
