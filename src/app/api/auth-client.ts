@@ -12,6 +12,11 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
+  sessionOptions: {
+    refetchInterval: 0,
+    refetchOnWindowFocus: false,
+    refetchWhenOffline: false,
+  },
 });
 
 export const {
