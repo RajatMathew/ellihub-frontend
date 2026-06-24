@@ -24,7 +24,6 @@ function formatOptionalCurrency(value: string | number | null | undefined) {
 
 function getPaymentLabel(invoice: InvoiceListItem) {
   if (invoice.isPaid) return 'Paid';
-  if (invoice.isDisputed) return 'Disputed';
   return 'Unpaid';
 }
 
@@ -101,9 +100,7 @@ export function TotalAmountCell({ invoice }: { invoice: InvoiceListItem }) {
 
   return (
     <div className="flex flex-col gap-0.5 text-right">
-      <span className="text-sm font-medium tabular-nums">
-        {formatOptionalCurrency(grandTotal)}
-      </span>
+      <span className="text-sm font-medium tabular-nums">{formatOptionalCurrency(grandTotal)}</span>
       <span className="text-2sm text-muted-foreground">
         Amount {formatOptionalCurrency(invoiceAmount)}
       </span>
