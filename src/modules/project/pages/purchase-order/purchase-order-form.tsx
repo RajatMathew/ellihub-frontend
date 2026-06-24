@@ -5,9 +5,8 @@ import { Forbidden } from '@/app/components/error/forbidden';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   PurchaseOrderFormDetailsCard,
   PurchaseOrderFormLineItemsCard,
@@ -216,6 +215,7 @@ export function POFormPage() {
   const createMutation = useCreatePOMutation();
   const updateMutation = useUpdatePOMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
   const [vendorSearch, setVendorSearch] = useState('');
   const [rfqSearch, setRfqSearch] = useState('');
   const [costCodeSearch, setCostCodeSearch] = useState('');
@@ -489,23 +489,18 @@ export function POFormPage() {
   const [activeSection, setActiveSection] = useState<string>('po-details');
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  async function uploadFilesAndAttach(targetPoId: string, folderId: string, files: File[]) {
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
-        });
+  function queuePoFiles(targetPoId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'Purchase order attachment',
+      onUploaded: async (uploaded) => {
         await addAttachmentMutation.mutateAsync({
           poId: targetPoId,
           data: { documentId: uploaded.id },
         });
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
-      }
-    }
+      },
+    });
   }
 
   async function resolvePoUploadFolderId(targetPoId: string): Promise<string | undefined> {
@@ -546,7 +541,7 @@ export function POFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolvePoUploadFolderId(poId);
           if (folderId) {
-            await uploadFilesAndAttach(poId, folderId, selectedFiles);
+            queuePoFiles(poId, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }
@@ -566,7 +561,7 @@ export function POFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolvePoUploadFolderId(created.id);
           if (folderId) {
-            await uploadFilesAndAttach(created.id, folderId, selectedFiles);
+            queuePoFiles(created.id, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }

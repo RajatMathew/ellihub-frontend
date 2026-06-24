@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/componen
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
   fakeProjectDescription,
   fakeRFQDeliverables,
@@ -20,7 +19,7 @@ import {
   pickRandom,
   randInt,
 } from '@/lib/fake-data';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -127,6 +126,7 @@ export default function RFQFormPage() {
   const createMutation = useCreateRFQMutation();
   const updateMutation = useUpdateRFQMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const rfqTypeOptions = useMemo<RFQTypeOption[]>(() => {
@@ -224,9 +224,9 @@ export default function RFQFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolveRfqUploadFolderId(rfqId);
           if (folderId) {
-            await uploadFilesAndAttach(rfqId, folderId, selectedFiles);
+            queueRfqFiles(rfqId, folderId, selectedFiles);
           } else {
-            toast.error('RFQ folder not found — files were not uploaded.');
+            toast.error('RFQ folder not found \u2014 files were not uploaded.');
           }
         }
 
@@ -242,9 +242,9 @@ export default function RFQFormPage() {
           if (selectedFiles.length > 0) {
             const folderId = await resolveRfqUploadFolderId(created.id);
             if (folderId) {
-              await uploadFilesAndAttach(created.id, folderId, selectedFiles);
+              queueRfqFiles(created.id, folderId, selectedFiles);
             } else {
-              toast.error('RFQ folder not found — files were not uploaded.');
+              toast.error('RFQ folder not found \u2014 files were not uploaded.');
             }
           }
           navigate(`../${created.id}`, { relative: 'path' });
@@ -253,23 +253,18 @@ export default function RFQFormPage() {
     }
   };
 
-  async function uploadFilesAndAttach(targetRfqId: string, folderId: string, files: File[]) {
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
-        });
+  function queueRfqFiles(targetRfqId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'RFQ attachment',
+      onUploaded: async (uploaded) => {
         await addAttachmentMutation.mutateAsync({
           rfqId: targetRfqId,
           documentId: uploaded.id,
         });
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
-      }
-    }
+      },
+    });
   }
 
   if ((isEdit && isLoadingDetail) || isLoadingProject) {

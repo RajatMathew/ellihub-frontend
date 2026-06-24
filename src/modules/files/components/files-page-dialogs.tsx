@@ -1,6 +1,3 @@
-import { useState } from 'react';
-
-import type { FileUploadProgress } from '@/modules/files/api/files.api';
 import { CreateFolderDialog } from '@/modules/files/components/create-folder-dialog';
 import { FilePreviewDialog } from '@/modules/files/components/file-preview-dialog';
 import { FilesDeleteDialog } from '@/modules/files/components/files-delete-dialog';
@@ -11,9 +8,9 @@ import {
   useDeleteFileMutation,
   useDeleteFolderMutation,
   useRenameMutation,
-  useUploadFilesMutation,
 } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { toast } from 'sonner';
 
 interface FilesPageDialogsProps {
@@ -52,17 +49,11 @@ export function FilesPageDialogs({
   canDelete = !readOnly,
 }: FilesPageDialogsProps) {
   const createFolderMutation = useCreateFolderMutation();
-  const uploadFilesMutation = useUploadFilesMutation();
+  const uploadManager = useUploadManager();
   const renameMutation = useRenameMutation();
   const deleteFolderMutation = useDeleteFolderMutation();
   const deleteFileMutation = useDeleteFileMutation();
   const isDeleting = deleteFolderMutation.isPending || deleteFileMutation.isPending;
-  const [uploadProgress, setUploadProgress] = useState<FileUploadProgress | null>(null);
-
-  const handleUploadOpenChange = (open: boolean) => {
-    if (!open) setUploadProgress(null);
-    onUploadFileOpenChange(open);
-  };
 
   return (
     <>
@@ -81,27 +72,13 @@ export function FilesPageDialogs({
           />
           <UploadFileDialog
             open={uploadFileOpen}
-            onOpenChange={handleUploadOpenChange}
+            onOpenChange={onUploadFileOpenChange}
             parentId={currentFolderId}
             multiple
-            isSubmitting={uploadFilesMutation.isPending}
-            uploadProgress={uploadProgress}
+            isSubmitting={false}
             onSubmit={(payloads) => {
-              setUploadProgress({
-                completed: 0,
-                total: payloads.length,
-                currentFileName: payloads[0]?.file.name,
-              });
-              uploadFilesMutation.mutate(
-                {
-                  payloads,
-                  onProgress: setUploadProgress,
-                },
-                {
-                  onSuccess: () => onUploadFileOpenChange(false),
-                  onSettled: () => setUploadProgress(null),
-                }
-              );
+              uploadManager.enqueueUploads(payloads, { label: 'Files' });
+              onUploadFileOpenChange(false);
             }}
           />
         </>

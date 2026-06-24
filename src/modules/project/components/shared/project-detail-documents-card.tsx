@@ -1,19 +1,15 @@
 import { useState } from 'react';
 
-import { Download, FileText, Trash2, Upload } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
+import { formatFileSize } from '@/modules/files/constants/files.constants';
+import { Download, FileText, Trash2, Upload } from 'lucide-react';
 
-export interface ProjectDetailDocumentRef {
-  id: string;
-  name?: string | null;
-  displayName?: string | null;
-}
+export interface ProjectDetailDocumentRef extends FilePreviewItem {}
 
 export interface ProjectDetailDocumentItem {
   id: string;
@@ -73,6 +69,8 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
               const document = item.document;
               const documentName = getDocumentName(document);
               const description = getDescription?.(item);
+              const sizeLabel = document?.size != null ? formatFileSize(document.size) : undefined;
+              const metadata = [description, sizeLabel].filter(Boolean).join(' - ');
               const removeDisabled = isRemoveDisabled?.(item) ?? false;
               const removeDisabledReason = getRemoveDisabledReason?.(item);
 
@@ -88,21 +86,15 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
                         <button
                           type="button"
                           className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
-                          onClick={() =>
-                            setPreviewFile({
-                              id: document.id,
-                              name: document.name,
-                              displayName: document.displayName,
-                            })
-                          }
+                          onClick={() => setPreviewFile(document)}
                         >
                           {documentName}
                         </button>
                       ) : (
                         <span className="block truncate text-sm font-medium">{documentName}</span>
                       )}
-                      {description && (
-                        <span className="text-xs text-muted-foreground">{description}</span>
+                      {metadata && (
+                        <span className="text-xs text-muted-foreground">{metadata}</span>
                       )}
                     </div>
                   </div>

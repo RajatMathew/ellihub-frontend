@@ -12,7 +12,8 @@ import {
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input } from '@/app/components/ui/input';
-import { useRootFolderQuery, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useRootFolderQuery } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { useAddEmployeeDocumentMutation } from '@/modules/hr/hooks/employees.hooks';
 
 interface DocumentAddDialogProps {
@@ -26,37 +27,42 @@ export function DocumentAddDialog({ open, onOpenChange, employeeId }: DocumentAd
   const [expiresOn, setExpiresOn] = useState<string>('');
 
   const { data: rootFolder } = useRootFolderQuery();
-  const uploadMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const linkMutation = useAddEmployeeDocumentMutation();
 
-  const isPending = uploadMutation.isPending || linkMutation.isPending;
+  const isPending = linkMutation.isPending;
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!file || !rootFolder) return;
 
-    try {
-      const uploadedFile = await uploadMutation.mutateAsync({
-        file,
+    const selectedFile = file;
+    const selectedExpiresOn = expiresOn || undefined;
+
+    uploadManager.enqueueUpload(
+      {
+        file: selectedFile,
         data: {
-          name: file.name,
+          name: selectedFile.name,
           parentId: rootFolder.id,
-          size: file.size,
-          mimeType: file.type,
+          size: selectedFile.size,
+          mimeType: selectedFile.type,
         },
-      });
+      },
+      {
+        label: 'Employee document',
+        onUploaded: async (uploadedFile) => {
+          await linkMutation.mutateAsync({
+            employeeId,
+            fileId: uploadedFile.id,
+            expiresOn: selectedExpiresOn,
+          });
+        },
+      }
+    );
 
-      await linkMutation.mutateAsync({
-        employeeId,
-        fileId: uploadedFile.id,
-        expiresOn: expiresOn || undefined,
-      });
-
-      onOpenChange(false);
-      setFile(null);
-      setExpiresOn('');
-    } catch (error) {
-      console.error('Failed to attach employee document:', error);
-    }
+    onOpenChange(false);
+    setFile(null);
+    setExpiresOn('');
   };
 
   return (

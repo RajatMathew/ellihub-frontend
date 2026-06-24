@@ -33,7 +33,8 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -221,7 +222,7 @@ export function SCODetailPage() {
   const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
@@ -1463,20 +1464,19 @@ export function SCODetailPage() {
           open={uploadOpen}
           onOpenChange={setUploadOpen}
           parentId={scoUploadFolderId}
-          onSubmit={({ file, data }) => {
-            uploadFileMutation.mutate(
-              { file, data },
-              {
-                onSuccess: (uploaded) => {
-                  addAttachmentMutation.mutate(
-                    { scoId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) }
-                  );
-                },
-              }
-            );
+          onSubmit={(payload) => {
+            uploadManager.enqueueUpload(payload, {
+              label: 'SCO attachment',
+              onUploaded: async (uploaded) => {
+                await addAttachmentMutation.mutateAsync({
+                  scoId,
+                  data: { documentId: uploaded.id },
+                });
+              },
+            });
+            setUploadOpen(false);
           }}
-          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+          isSubmitting={false}
         />
       )}
 

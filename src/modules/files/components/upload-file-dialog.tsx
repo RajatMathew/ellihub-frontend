@@ -19,8 +19,8 @@ import { Progress } from '@/app/components/ui/progress';
 import type { FileUploadProgress } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import {
+  DEFAULT_UPLOAD_MAX_BYTES,
   FILE_UPLOAD_ACCEPT,
-  MAX_UPLOAD_BYTES,
   getUploadDisplayNameValidationError,
 } from '@/modules/files/lib/file-upload-policy';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
@@ -119,7 +119,7 @@ export function UploadFileDialog({
   const [drafts, setDrafts] = useState<UploadDraft[]>([]);
   const isMultiple = props.multiple === true;
   const accept = props.accept ?? FILE_UPLOAD_ACCEPT;
-  const maxSize = props.maxSize ?? MAX_UPLOAD_BYTES;
+  const maxSize = props.maxSize ?? DEFAULT_UPLOAD_MAX_BYTES;
   const selectedFiles = useMemo(() => drafts.map((draft) => draft.file), [drafts]);
   const canUpload =
     drafts.length > 0 &&

@@ -1,4 +1,4 @@
-﻿import { toastApiError } from '@/app/lib/toast-api-error';
+import { toastApiError } from '@/app/lib/toast-api-error';
 import {
   filesApi,
   type FileSearchParams,
@@ -49,19 +49,15 @@ export const useFilePreviewQuery = (fileId: string | undefined, enabled: boolean
     staleTime: PREVIEW_STALE_TIME,
   });
 
-export const useTextContentQuery = (url: string | undefined, enabled: boolean) =>
+export const useTextContentQuery = (fileId: string | undefined, enabled: boolean) =>
   useQuery({
-    queryKey: ['textContent', url],
-    queryFn: async () => {
-      if (!url) throw new Error('Missing preview URL');
+    queryKey: ['textContent', fileId],
+    queryFn: () => {
+      if (!fileId) throw new Error('Missing file id');
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to load text preview');
-
-      const text = await res.text();
-      return text.slice(0, 100000);
+      return filesApi.getTextPreview(fileId);
     },
-    enabled: enabled && !!url,
+    enabled: enabled && !!fileId,
     staleTime: PREVIEW_STALE_TIME,
   });
 
