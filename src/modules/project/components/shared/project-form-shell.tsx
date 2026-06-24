@@ -36,7 +36,7 @@ export function ProjectFormShell({
       sections={sections}
       activeSection={activeSection}
       onSectionChange={onSectionChange}
-      className="min-h-[calc(100dvh-5rem)]"
+      className="min-h-0 lg:min-h-[calc(100dvh-5rem)]"
       renderToolbar={(className) => (
         <ProjectFormToolbar
           title={title}

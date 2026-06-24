@@ -668,17 +668,17 @@ export function InvoiceFormPage() {
               <Separator />
 
               <div className="flex justify-end">
-                <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
+                <div className="w-full max-w-full space-y-3 rounded-lg border bg-muted/20 p-4 sm:max-w-sm">
                   <Controller
                     name="totalAmount"
                     control={control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid} className="gap-1">
-                        <div className="flex items-center justify-between gap-3 text-sm">
+                        <div className="grid gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center">
                           <InvoiceRequiredFieldLabel>Invoice Amount</InvoiceRequiredFieldLabel>
                           <InputWrapper
                             className={cn(
-                              'w-32',
+                              'w-full sm:w-32',
                               fieldState.invalid && invoiceInvalidControlClassName
                             )}
                           >
@@ -701,7 +701,7 @@ export function InvoiceFormPage() {
                       </Field>
                     )}
                   />
-                  <div className="flex items-center justify-between gap-3 text-sm">
+                  <div className="grid gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center">
                     <span className="text-muted-foreground">Tax Rate (%)</span>
                     <Controller
                       name="taxRate"
@@ -709,7 +709,7 @@ export function InvoiceFormPage() {
                       render={({ field, fieldState }) => (
                         <InputWrapper
                           className={cn(
-                            'w-32',
+                            'w-full sm:w-32',
                             fieldState.invalid && invoiceInvalidControlClassName
                           )}
                         >
@@ -731,14 +731,18 @@ export function InvoiceFormPage() {
                       )}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <span className="text-muted-foreground">Tax ({formatPercent(taxRate)})</span>
-                    <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
+                    <span className="font-medium tabular-nums sm:text-right">
+                      {formatCurrency(taxAmount)}
+                    </span>
                   </div>
                   <Separator className="my-3" />
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <span className="font-medium text-foreground">Grand Total</span>
-                    <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
+                    <span className="font-semibold tabular-nums sm:text-right">
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
                 </div>
               </div>

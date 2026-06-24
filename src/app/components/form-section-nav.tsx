@@ -9,7 +9,7 @@ function getScrollParent(el: HTMLElement): HTMLElement {
   let parent = el.parentElement;
   while (parent) {
     const style = getComputedStyle(parent);
-    if (/(auto|scroll)/.test(style.overflow + style.overflowY)) {
+    if (/(auto|scroll|overlay)/.test(style.overflowY)) {
       return parent;
     }
     parent = parent.parentElement;
@@ -148,7 +148,7 @@ export const FormSectionNav = forwardRef<
             type="button"
             onClick={() => handleClick(section.id)}
             className={cn(
-              'group relative flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
+              'group relative flex min-w-fit flex-none items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 sm:flex-1',
               density === 'compact' && 'px-3 py-1.5',
               isActive
                 ? 'border border-primary bg-primary/5 text-primary'
@@ -170,7 +170,7 @@ export const FormSectionNav = forwardRef<
             >
               {i + 1}
             </span>
-            {section.label}
+            <span className="min-w-0 truncate">{section.label}</span>
           </button>
         );
       });
@@ -180,12 +180,15 @@ export const FormSectionNav = forwardRef<
         const isActive = activeSection === section.id;
 
         return (
-          <div key={section.id} className="flex min-w-0 flex-1 items-center gap-6">
+          <div
+            key={section.id}
+            className="flex min-w-fit shrink-0 items-center gap-3 lg:min-w-0 lg:flex-1 lg:gap-6"
+          >
             <button
               type="button"
               onClick={() => handleClick(section.id)}
               className={cn(
-                'group relative flex shrink-0 items-center justify-start gap-2 py-2 text-xs font-medium transition-all duration-200',
+                'group relative flex min-w-0 max-w-[min(12rem,72vw)] shrink-0 items-center justify-start gap-2 py-2 text-xs font-medium transition-all duration-200 lg:max-w-none',
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -199,9 +202,11 @@ export const FormSectionNav = forwardRef<
               >
                 {i + 1}
               </span>
-              {section.label}
+              <span className="min-w-0 truncate">{section.label}</span>
             </button>
-            {i < sections.length - 1 && <span className="h-px min-w-10 flex-1 bg-border" />}
+            {i < sections.length - 1 && (
+              <span className="hidden h-px min-w-10 flex-1 bg-border lg:block" />
+            )}
           </div>
         );
       });
@@ -210,14 +215,19 @@ export const FormSectionNav = forwardRef<
       <nav
         ref={navRef}
         className={cn(
-          'sticky top-0 z-10 -mx-4 px-4 lg:-mx-7.5 lg:px-7.5 py-3 bg-background/95 backdrop-blur-md',
+          'sticky top-0 z-10 -mx-4 max-w-[calc(100%+2rem)] overflow-x-clip bg-background/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:max-w-[calc(100%+3rem)] sm:px-6 lg:-mx-7.5 lg:max-w-[calc(100%+3.75rem)] lg:px-7.5',
           density === 'compact' && 'py-2',
           className
         )}
         style={top !== undefined ? { top } : undefined}
       >
         <div
-          className={cn('flex w-full items-center', appearance === 'stepper' ? 'gap-6' : 'gap-2')}
+          className={cn(
+            'flex min-w-0 max-w-full items-center',
+            appearance === 'stepper'
+              ? 'flex-wrap gap-3 px-1 py-0.5 lg:flex-nowrap lg:gap-6 lg:px-0'
+              : 'flex-wrap gap-2 px-1 py-0.5 sm:px-0'
+          )}
         >
           {appearance === 'stepper' ? renderStepperSections() : renderPillSections()}
         </div>
