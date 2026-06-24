@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
@@ -45,7 +45,10 @@ import { contractAttachmentApi } from '@/modules/project/api/contract-attachment
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading, ProjectFormShell } from '@/modules/project/components/shared';
 import {
+  getProjectStatusOrDefault,
+  normalizeProjectStatus,
   PROJECT_FORM_SECTIONS,
+  PROJECT_STATUS_LABELS,
   PROJECT_STATUS_OPTIONS,
 } from '@/modules/project/constants/project-form.constants';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
@@ -195,7 +198,7 @@ export default function ProjectForm() {
       fieldwireProjectId: '',
       fieldwireProjectName: '',
       stageId: '',
-      status: 'ACTIVE',
+      status: isEditMode ? undefined : 'ACTIVE',
       divisionId: '',
       gcId: '',
       leadPMId: '',
@@ -289,7 +292,7 @@ export default function ProjectForm() {
   }, [access?.employeeId, isAuthPMCreatingProject, setValue]);
 
   // Pre-fill form when editing
-  useEffect(() => {
+  useLayoutEffect(() => {
     let paymentTermsSyncTimeout: number | undefined;
 
     if (isEditMode && existingProject) {
@@ -306,7 +309,7 @@ export default function ProjectForm() {
         fieldwireProjectId: existingProject.fieldwireProjectId ?? '',
         fieldwireProjectName: nextFieldwireProjectName,
         stageId: existingProject.stageId,
-        status: existingProject.status ?? 'ACTIVE',
+        status: getProjectStatusOrDefault(existingProject.status),
         divisionId: existingProject.divisionId ?? '',
         gcId: existingProject.gcId,
         leadPMId: existingProject.leadPMId ?? '',
@@ -656,29 +659,41 @@ export default function ProjectForm() {
                 <Controller
                   name="status"
                   control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <ProjectFormFieldLabel>Project Status</ProjectFormFieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger
-                          aria-invalid={fieldState.invalid}
-                          className={
-                            fieldState.invalid ? projectInvalidControlClassName : undefined
-                          }
+                  render={({ field, fieldState }) => {
+                    const statusValue = normalizeProjectStatus(field.value);
+
+                    return (
+                      <Field data-invalid={fieldState.invalid}>
+                        <ProjectFormFieldLabel>Project Status</ProjectFormFieldLabel>
+                        <Select
+                          value={statusValue}
+                          onValueChange={(value) => {
+                            const nextStatus = normalizeProjectStatus(value);
+                            if (nextStatus) field.onChange(nextStatus);
+                          }}
                         >
-                          <SelectValue placeholder="Select status..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PROJECT_STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
+                          <SelectTrigger
+                            aria-invalid={fieldState.invalid}
+                            className={
+                              fieldState.invalid ? projectInvalidControlClassName : undefined
+                            }
+                          >
+                            <SelectValue placeholder="Select status...">
+                              {statusValue ? PROJECT_STATUS_LABELS[statusValue] : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PROJECT_STATUS_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    );
+                  }}
                 />
 
                 <Controller
