@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import {
   ContactDetailDialogs,
   ContactDetailLoading,
@@ -27,7 +28,7 @@ export function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
 
   const { data: contact, isLoading, isError, refetch } = useContactDetailQuery(id ?? '');
   const deleteMutation = useDeleteContactMutation();

@@ -9,7 +9,7 @@ import {
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { Download, FileText, Trash2, Upload } from 'lucide-react';
 
-export interface ProjectDetailDocumentRef extends FilePreviewItem {}
+export type ProjectDetailDocumentRef = FilePreviewItem;
 
 export interface ProjectDetailDocumentItem {
   id: string;
@@ -77,24 +77,28 @@ export function ProjectDetailDocumentsCard<TDocument extends ProjectDetailDocume
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 max-w-full flex-1 items-center gap-3">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       {document?.id ? (
                         <button
                           type="button"
-                          className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                          className="block w-full max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
                           onClick={() => setPreviewFile(document)}
                         >
                           {documentName}
                         </button>
                       ) : (
-                        <span className="block truncate text-sm font-medium">{documentName}</span>
+                        <span className="block max-w-full truncate text-sm font-medium">
+                          {documentName}
+                        </span>
                       )}
                       {metadata && (
-                        <span className="text-xs text-muted-foreground">{metadata}</span>
+                        <span className="block min-w-0 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                          {metadata}
+                        </span>
                       )}
                     </div>
                   </div>

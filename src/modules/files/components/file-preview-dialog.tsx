@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -279,7 +279,9 @@ function FallbackPreview({
       </div>
       <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:text-left">
         <span>Type</span>
-        <span className="font-medium text-foreground">{file?.mimeType || type}</span>
+        <span className="min-w-0 break-all font-medium text-foreground">
+          {file?.mimeType || type}
+        </span>
         <span>Size</span>
         <span className="font-medium text-foreground">{formatFileSize(file?.size)}</span>
       </div>
@@ -367,8 +369,9 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
   const previewTypeLabel = getPreviewTypeLabel(previewType);
   const canPreviewDelimited = isDelimitedSpreadsheet(file);
   const [loadedFilePreviewKey, setLoadedFilePreviewKey] = useState<string | null>(null);
-  const [previewLargeFile, setPreviewLargeFile] = useState(false);
+  const [previewLargeFileId, setPreviewLargeFileId] = useState<string | null>(null);
   const url = isFile && file ? filesApi.getFileReadUrl(file.id) : undefined;
+  const previewLargeFile = open && previewLargeFileId === file?.id;
   const shouldGateLargePreview = isLargeEmbeddedPreview(file, previewType) && !previewLargeFile;
   const {
     data: textContent,
@@ -397,12 +400,6 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
     textContent && textContent.length >= FILE_TEXT_PREVIEW_BYTES
       ? `Showing the first ${formatFileSize(FILE_TEXT_PREVIEW_BYTES)}.`
       : null;
-
-  useEffect(() => {
-    setLoadedFilePreviewKey(null);
-    setPreviewLargeFile(false);
-  }, [file?.id, open]);
-
   const handleDownload = () => {
     if (file) downloadFile.mutate(file);
   };
@@ -415,7 +412,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent variant="fullscreen">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2.5">
+          <DialogTitle className="flex min-w-0 max-w-full items-center gap-2.5 pr-6">
             {file && (
               <FileTypeIcon
                 fileType={file.type ?? 'FILE'}
@@ -424,7 +421,12 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
                 className="size-5 shrink-0"
               />
             )}
-            <span className="truncate">{file?.displayName || file?.name}</span>
+            <span
+              className="min-w-0 flex-1 truncate"
+              title={file?.displayName || file?.name || undefined}
+            >
+              {file?.displayName || file?.name}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -434,7 +436,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               file={file}
               url={url}
               type={previewTypeLabel}
-              onPreview={() => setPreviewLargeFile(true)}
+              onPreview={() => setPreviewLargeFileId(file?.id ?? null)}
             />
           )}
 

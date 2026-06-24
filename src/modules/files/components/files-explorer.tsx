@@ -4,7 +4,10 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card';
 import { DataGrid } from '@/app/components/ui/data-grid';
 import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
-import { FilesBreadcrumbs } from '@/modules/files/components/files-breadcrumbs';
+import {
+  FilesBreadcrumbs,
+  type FilesBreadcrumbEntry,
+} from '@/modules/files/components/files-breadcrumbs';
 import { FilesEmptyState } from '@/modules/files/components/files-empty-state';
 import { FilesGridContent } from '@/modules/files/components/files-grid-content';
 import { FilesListFilters } from '@/modules/files/components/files-list-filters';
@@ -20,10 +23,8 @@ import {
 } from '@/modules/files/hooks/use-files-display-data';
 import { useFilesFolderData } from '@/modules/files/hooks/use-files-folder-data';
 import {
-  encodeFolderPath,
   useFilesListParams,
   type FilesSearchMode,
-  type FolderPathEntry,
 } from '@/modules/files/hooks/use-files-list-params';
 import { useFilesTable } from '@/modules/files/hooks/use-files-table';
 import { useFolderZipExport } from '@/modules/files/hooks/use-folder-zip-export';
@@ -50,24 +51,19 @@ interface FilesExplorerProps {
   };
 }
 
-function getFileName(file: FileItem) {
-  return file.displayName || file.name || '';
-}
+function getScopedBreadcrumbs(
+  breadcrumbs: FilesBreadcrumbEntry[] | undefined,
+  rootId: string | undefined
+): FilesBreadcrumbEntry[] {
+  if (!breadcrumbs?.length) return [];
 
-function getFolderPathFromBreadcrumbs(
-  folder: FileItem,
-  rootId: string | undefined,
-  fallbackPath: FolderPathEntry[]
-): FolderPathEntry[] {
-  if (!folder.breadcrumbs?.length) {
-    return [...fallbackPath, { id: folder.id, name: getFileName(folder) }];
+  const rootIndex = rootId ? breadcrumbs.findIndex((entry) => entry.id === rootId) : -1;
+
+  if (rootIndex >= 0) {
+    return breadcrumbs.slice(rootIndex + 1);
   }
 
-  const rootIndex = rootId ? folder.breadcrumbs.findIndex((entry) => entry.id === rootId) : -1;
-  const relativePath =
-    rootIndex >= 0 ? folder.breadcrumbs.slice(rootIndex + 1) : folder.breadcrumbs.slice(1);
-
-  return relativePath.map((entry) => ({ id: entry.id, name: entry.name }));
+  return breadcrumbs.slice(1);
 }
 
 export function FilesExplorer({
@@ -91,7 +87,6 @@ export function FilesExplorer({
     updateParams,
     handleSearchChange,
     folderId,
-    folderPath,
     viewMode,
     dateFrom,
     dateTo,
@@ -150,6 +145,10 @@ export function FilesExplorer({
   const isDataLoading = isLoading || (isSearchActive && fileSearchQuery.isLoading);
   const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
   const navigationRootId = rootFolderId ?? rootFolder?.id;
+  const breadcrumbs = useMemo(
+    () => getScopedBreadcrumbs(folderDetail?.breadcrumbs, navigationRootId),
+    [folderDetail?.breadcrumbs, navigationRootId]
+  );
   const showResultLocation = isSearchActive && searchMode === 'global';
   const canCreate = permissions?.create ?? !readOnly;
   const canUpdate = permissions?.update ?? !readOnly;
@@ -196,17 +195,15 @@ export function FilesExplorer({
 
   const handleFolderClick = useCallback(
     (folder: FileItem) => {
-      const nextPath = getFolderPathFromBreadcrumbs(folder, navigationRootId, folderPath);
-
       setSearchInput('');
       updateParams({
         folderId: folder.id,
-        folderPath: encodeFolderPath(nextPath),
+        folderPath: undefined,
         page: undefined,
         search: undefined,
       });
     },
-    [folderPath, navigationRootId, setSearchInput, updateParams]
+    [setSearchInput, updateParams]
   );
 
   const handleSearchModeChange = useCallback(
@@ -217,20 +214,14 @@ export function FilesExplorer({
   );
 
   const handleBreadcrumbClick = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        updateParams({ folderId: undefined, folderPath: undefined, page: undefined });
-        return;
-      }
-
-      const nextPath = folderPath.slice(0, index + 1);
+    (folderId?: string) => {
       updateParams({
-        folderId: nextPath[nextPath.length - 1]?.id,
-        folderPath: encodeFolderPath(nextPath),
+        folderId,
+        folderPath: undefined,
         page: undefined,
       });
     },
-    [folderPath, updateParams]
+    [updateParams]
   );
 
   const handleRowClick = useCallback(
@@ -270,7 +261,7 @@ export function FilesExplorer({
   });
 
   return (
-    <div className="container-fluid py-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip py-5 sm:py-7.5">
       <FilesPageToolbar
         title={title}
         searchInput={searchInput}
@@ -287,12 +278,12 @@ export function FilesExplorer({
       />
 
       <FilesBreadcrumbs
-        folderPath={folderPath}
+        breadcrumbs={breadcrumbs}
         rootLabel={rootLabel}
         onBreadcrumbClick={handleBreadcrumbClick}
       />
 
-      <Card>
+      <Card className="min-w-0 max-w-full overflow-hidden">
         <FilesListFilters
           sortBy={sortBy}
           viewMode={viewMode}
@@ -328,7 +319,15 @@ export function FilesExplorer({
             isLoading={isDataLoading}
             onRowClick={handleRowClick}
             emptyMessage={<FilesEmptyState />}
-            tableLayout={{ cellBorder: false, rowBorder: true, headerBackground: true }}
+            tableLayout={{
+              cellBorder: false,
+              rowBorder: true,
+              headerBackground: true,
+              width: 'auto',
+            }}
+            tableClassNames={{
+              base: 'min-w-[48rem]',
+            }}
           >
             {viewMode === 'list' ? (
               <FilesListTable
@@ -354,7 +353,7 @@ export function FilesExplorer({
                 canSetPrimeContractPrimary={canSetPrimeContractPrimary}
               />
             )}
-            <CardFooter>
+            <CardFooter className="min-w-0 max-w-full overflow-x-auto">
               <DataGridPagination />
             </CardFooter>
           </DataGrid>

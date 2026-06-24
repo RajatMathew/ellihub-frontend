@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { useAccess } from '@/app/contexts/access-context';
-import { encodeFolderPath } from '@/modules/files/hooks/use-files-list-params';
 import {
   BudgetCard,
   ContractDetailsSimpleCard,
@@ -111,7 +110,6 @@ export default function ProjectContractOverview() {
   const primeContractFolderUrl = primeContractFolderId
     ? `/app/project/${projectId}/files?${new URLSearchParams({
         folderId: primeContractFolderId,
-        folderPath: encodeFolderPath([{ id: primeContractFolderId, name: 'Prime Contract' }]) ?? '',
       }).toString()}`
     : undefined;
   const canManageProject = project?.capabilities?.canManage ?? false;

@@ -24,6 +24,7 @@ import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -163,7 +164,9 @@ function DetailField({
       <div className="mb-1 text-xs font-medium uppercase tracking-normal text-muted-foreground">
         {label}
       </div>
-      <div className="break-words text-sm font-semibold text-foreground">{children ?? '-'}</div>
+      <div className="min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
+        {children ?? '-'}
+      </div>
     </div>
   );
 }
@@ -232,7 +235,7 @@ export function SCODetailPage() {
     document?: FilePreviewItem;
   }[];
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
@@ -591,7 +594,7 @@ export function SCODetailPage() {
   const hasReasonBanner = (isRejected && sco.rejectionReason) || (isVoid && sco.voidReason);
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>
@@ -829,44 +832,84 @@ export function SCODetailPage() {
                 </div>
               )}
               {purchaseOrderDetail?.lineItems?.length ? (
-                <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-max w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          PO Item
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Qty
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Unit
-                        </th>
-                        <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Amount
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {purchaseOrderDetail.lineItems.map((item) => (
-                        <tr key={item.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4">
-                            <div className="font-medium">{item.description}</div>
+                <div className="mt-5 min-w-0">
+                  <div className="space-y-3 lg:hidden">
+                    {purchaseOrderDetail.lineItems.map((item) => (
+                      <div key={item.id} className="min-w-0 rounded-lg border p-3">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
+                              {item.description}
+                            </div>
                             {item.notes && (
-                              <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
+                              <div className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                                {item.notes}
+                              </div>
                             )}
-                          </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
-                            {formatDecimal(item.quantity)}
-                          </td>
-                          <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
-                          <td className="py-2.5 text-right font-medium tabular-nums">
+                          </div>
+                          <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                             {money(item.amount)}
-                          </td>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <div className="text-muted-foreground">Qty</div>
+                            <div className="font-medium tabular-nums">
+                              {formatDecimal(item.quantity)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Unit</div>
+                            <div className="break-words font-medium [overflow-wrap:anywhere]">
+                              {lookupLabel(item.unit ?? item.unitId)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="min-w-max w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left">
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            PO Item
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Qty
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            Unit
+                          </th>
+                          <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Amount
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {purchaseOrderDetail.lineItems.map((item) => (
+                          <tr key={item.id} className="border-b last:border-0">
+                            <td className="py-2.5 pr-4">
+                              <div className="font-medium">{item.description}</div>
+                              {item.notes && (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {item.notes}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                              {formatDecimal(item.quantity)}
+                            </td>
+                            <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
+                            <td className="py-2.5 text-right font-medium tabular-nums">
+                              {money(item.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : null}
             </CardContent>
@@ -900,7 +943,7 @@ export function SCODetailPage() {
             <CardContent>
               {sco.lineItems.length > 0 ? (
                 <>
-                  <div className="space-y-3 md:hidden">
+                  <div className="space-y-3 lg:hidden">
                     {sco.lineItems.map((li, idx) => (
                       <div key={li.id} className="rounded-lg border p-3">
                         <div className="flex min-w-0 items-start justify-between gap-3">
@@ -969,7 +1012,7 @@ export function SCODetailPage() {
                     </div>
                   </div>
 
-                  <div className="hidden overflow-x-auto md:block">
+                  <div className="hidden overflow-x-auto lg:block">
                     <table className="min-w-max w-full text-sm">
                       <thead>
                         <tr className="border-b text-left">
@@ -1113,20 +1156,20 @@ export function SCODetailPage() {
                   {attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex min-w-0 max-w-full flex-1 items-center gap-3">
                         <FileText className="size-4 text-muted-foreground shrink-0" />
                         {att.document?.id ? (
                           <button
                             type="button"
-                            className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                            className="block w-full max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
                             onClick={() => setAttachmentPreviewFile(att.document!)}
                           >
                             {att.document?.displayName ?? att.document?.name ?? 'Document'}
                           </button>
                         ) : (
-                          <span className="text-sm font-medium truncate">
+                          <span className="max-w-full truncate text-sm font-medium">
                             {att.document?.name ?? 'Document'}
                           </span>
                         )}

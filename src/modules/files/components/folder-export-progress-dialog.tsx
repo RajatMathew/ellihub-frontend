@@ -116,23 +116,23 @@ export function FolderExportProgressDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2.5">
+          <DialogTitle className="flex min-w-0 items-center gap-2.5 pr-6">
             <FileArchive className="size-5 text-primary" />
             <span className="truncate">Export ZIP</span>
           </DialogTitle>
         </DialogHeader>
 
         <DialogBody className="space-y-5">
-          <div className="flex items-start gap-4">
+          <div className="flex min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-start">
             <ProgressCircle value={progress} size={76} strokeWidth={6}>
               <span className="text-sm font-semibold tabular-nums">{progress}%</span>
             </ProgressCircle>
 
             <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-foreground">{folderName}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {job?.fileName || `${folderName}.zip`}

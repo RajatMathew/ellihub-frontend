@@ -104,7 +104,7 @@ export function StatsBar({
   return (
     <div
       className={cn(
-        'text-foreground grid grid-cols-1',
+        'grid min-w-0 max-w-full grid-cols-1 text-foreground',
         resolvedWidth === 'full' && 'w-full',
         resolvedWidth === 'fit' && 'w-fit max-w-full',
         variant === 'default' &&
@@ -148,7 +148,7 @@ export function StatsBarItem({
   const valueSizeClassName =
     valueSize === 'big' ? 'text-[28px] leading-none' : 'text-[18px] leading-[1.55556]';
   const classNameValue = cn(
-    'flex flex-col gap-y-1',
+    'flex min-w-0 max-w-full flex-col gap-y-1',
     variant === 'default' && 'bg-transparent px-4 py-2.5 border-r border-separator last:border-r-0',
     variant === 'card' &&
       'min-h-[104px] justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-xs shadow-black/5',
@@ -160,17 +160,25 @@ export function StatsBarItem({
 
   const content = (
     <>
-      <div className="flex items-center gap-x-1.5">
-        <div className={cn('size-1.5 rounded-full', dotColor)} />
-        <span className="text-label-light font-semibold text-[12px] tracking-[0.3px] uppercase">
+      <div className="flex min-w-0 items-center gap-x-1.5">
+        <div className={cn('size-1.5 shrink-0 rounded-full', dotColor)} />
+        <span className="min-w-0 break-words text-[12px] font-semibold uppercase tracking-[0.3px] text-label-light [overflow-wrap:anywhere]">
           {label}
         </span>
       </div>
-      <div className={cn('font-semibold', valueSizeClassName, valueColor)}>{value}</div>
+      <div
+        className={cn(
+          'min-w-0 break-words font-semibold [overflow-wrap:anywhere]',
+          valueSizeClassName,
+          valueColor
+        )}
+      >
+        {value}
+      </div>
       {(description || shouldReserveDescription) && (
         <span
           className={cn(
-            'text-label-lighter font-medium text-[13px]',
+            'min-w-0 break-words text-[13px] font-medium text-label-lighter [overflow-wrap:anywhere]',
             !description && shouldReserveDescription && 'invisible'
           )}
         >

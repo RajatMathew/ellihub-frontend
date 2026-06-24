@@ -31,6 +31,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -174,7 +175,7 @@ export function InvoiceDetailPage() {
   const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [markPaidOpen, setMarkPaidOpen] = useState(false);
   const [markUnpaidOpen, setMarkUnpaidOpen] = useState(false);
@@ -264,7 +265,7 @@ export function InvoiceDetailPage() {
     resolveDisputeMutation.isPending;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <Toolbar>
         <ToolbarWrapper>
           <ToolbarHeading>

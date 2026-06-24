@@ -1,19 +1,18 @@
-import { Plus, Link2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import {
-  getSubChangeOrderShippingHandlingFee,
   getSubChangeOrderNegotiatedDiscount,
+  getSubChangeOrderShippingHandlingFee,
   getSubChangeOrderSubtotal,
   getSubChangeOrderTaxAmount,
   getSubChangeOrderTotalAmount,
 } from '@/modules/project/components/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
+import { Link2, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PurchaseOrderDetailLinkedSCOsCardProps {
   projectId: string;
@@ -68,12 +67,12 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                 <Link
                   key={sco.id}
                   to={`/app/project/${projectId}/sub-change-order/${sco.id}`}
-                  className="block rounded-lg border p-3 transition-colors hover:bg-muted/40"
+                  className="block min-w-0 rounded-lg border p-3 transition-colors hover:bg-muted/40"
                 >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium">
+                        <span className="break-words text-sm font-medium [overflow-wrap:anywhere]">
                           {sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
                         </span>
                         <Badge
@@ -85,11 +84,11 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                         </Badge>
                       </div>
                       {sco.title && (
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
                           {sco.title}
                         </div>
                       )}
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>{sco.date ? formatDate(sco.date) : '-'}</span>
                         {sco.changeType && (
                           <span>
@@ -104,8 +103,10 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                       <div className="font-semibold tabular-nums">
                         {formatCurrency(getSubChangeOrderTotalAmount(sco))}
                       </div>
-                      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0 || taxAmount !== 0) && (
-                        <div className="mt-1 text-xs text-muted-foreground">
+                      {(negotiatedDiscount !== 0 ||
+                        shippingHandlingFee !== 0 ||
+                        taxAmount !== 0) && (
+                        <div className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
                           Subtotal {formatCurrency(getSubChangeOrderSubtotal(sco))}
                           {negotiatedDiscount !== 0 &&
                             ` - Discount ${formatCurrency(negotiatedDiscount)}`}

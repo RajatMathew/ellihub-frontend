@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import { Card, CardContent } from '@/app/components/ui/card';
+import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import { Progress } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { formatCurrency } from '@/app/lib/helpers';
@@ -136,9 +137,10 @@ export const ProjectCard = memo(function ProjectCard({ project }: { project: Pro
         <CardContent className="flex flex-col gap-2 p-3.5 sm:p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold leading-tight text-foreground">
-                {projectIdentifier}
-              </span>
+              <ListingIdentifierText
+                value={projectIdentifier}
+                className="block truncate text-sm leading-tight"
+              />
             </div>
             {badgeLabel && (
               <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-[color:var(--card-border)] bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75">

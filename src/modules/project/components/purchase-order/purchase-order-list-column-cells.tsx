@@ -6,17 +6,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
+import {
+  calculateEffectivePurchaseOrderTotals,
+  formatPurchaseOrderTaxLabel,
+} from '@/modules/project/components/purchase-order/purchase-order-totals';
+import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
   PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
-import {
-  calculateEffectivePurchaseOrderTotals,
-  formatPurchaseOrderTaxLabel,
-} from '@/modules/project/components/purchase-order/purchase-order-totals';
-import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import { MoreHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
@@ -32,9 +33,7 @@ import {
 export function PurchaseOrderNumberCell({ po }: { po: POListItem }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <Link to={`${po.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
-        {po.poNumber ?? '-'}
-      </Link>
+      <ListingIdentifierLink to={`${po.id}`} value={po.poNumber} className="text-sm" />
       <span className="line-clamp-1 text-2sm text-muted-foreground">{po.description ?? '-'}</span>
     </div>
   );
@@ -63,13 +62,11 @@ export function PurchaseOrderRfqCell({ po, projectId }: { po: POListItem; projec
   }
 
   return (
-    <Link
+    <ListingIdentifierLink
       to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
-      className="font-mono text-xs text-foreground hover:text-primary"
-      title={rfqLabel ?? po.rfqId}
-    >
-      {rfqLabel ?? po.rfqId}
-    </Link>
+      value={rfqLabel ?? po.rfqId}
+      className="font-mono text-xs"
+    />
   );
 }
 

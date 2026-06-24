@@ -74,14 +74,14 @@ export function FilesListFilters({
           : 'Date range';
 
   return (
-    <CardHeader>
-      <CardTitle>
+    <CardHeader className="items-start">
+      <CardTitle className="min-w-0">
         <span className="text-sm text-muted-foreground">
           {totalCount} {totalCount === 1 ? 'item' : 'items'}
         </span>
       </CardTitle>
-      <CardToolbar className="w-full flex-wrap justify-start sm:w-auto">
-        <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+      <CardToolbar className="w-full min-w-0 flex-wrap justify-start lg:w-auto">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-[minmax(0,1fr)_10rem_auto] lg:flex lg:w-auto lg:flex-wrap lg:items-center">
           <Popover
             open={popoverOpen}
             onOpenChange={(open) => {
@@ -97,17 +97,21 @@ export function FilesListFilters({
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-8 gap-1.5 text-xs ${
+                className={`h-8 min-w-0 justify-start gap-1.5 text-xs lg:max-w-64 ${
                   hasDateRange ? 'border-primary text-primary' : ''
                 }`}
               >
                 <CalendarDays className="size-3.5" />
-                <span className="max-w-52 truncate">{dateLabel}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{dateLabel}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <div className="flex flex-col">
-                <div className="flex flex-wrap gap-1.5 border-b p-3">
+            <PopoverContent
+              className="w-[min(calc(100vw-1rem),22rem)] p-0"
+              align="start"
+              sideOffset={6}
+            >
+              <div className="flex min-w-0 flex-col">
+                <div className="flex min-w-0 flex-wrap gap-1.5 border-b p-3">
                   {DATE_PRESETS.map((preset) => (
                     <Button
                       key={preset.label}
@@ -160,7 +164,7 @@ export function FilesListFilters({
             </PopoverContent>
           </Popover>
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectTrigger className="h-8 w-full text-xs sm:w-40">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -175,19 +179,25 @@ export function FilesListFilters({
             variant="outline"
             size="sm"
             value={viewMode}
+            className="w-full justify-start sm:w-auto"
             onValueChange={(value) => {
               if (value === 'list' || value === 'grid') onViewChange(value);
             }}
           >
-            <ToggleGroupItem value="list" aria-label="List view">
+            <ToggleGroupItem value="list" aria-label="List view" className="flex-1 sm:flex-none">
               <List className="size-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
+            <ToggleGroupItem value="grid" aria-label="Grid view" className="flex-1 sm:flex-none">
               <LayoutGrid className="size-4" />
             </ToggleGroupItem>
           </ToggleGroup>
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-full text-xs sm:w-auto"
+              onClick={onClearFilters}
+            >
               <X className="size-3.5" />
               Clear
             </Button>

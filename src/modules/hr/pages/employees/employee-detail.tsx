@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useEmployeeActivityPanelItems } from '@/app/hooks/use-activity-log';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import {
   EmployeeDetailDialogs,
@@ -32,7 +33,7 @@ export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [addDocumentOpen, setAddDocumentOpen] = useState(false);
   const [linkUserOpen, setLinkUserOpen] = useState(false);
   const [unlinkUserOpen, setUnlinkUserOpen] = useState(false);
