@@ -54,7 +54,6 @@ import {
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
   useCreateProjectMutation,
-  useCreateScheduleEntryMutation,
   useDivisionsQuery,
   useProjectContractTypesQuery,
   useProjectDetailQuery,
@@ -388,7 +387,6 @@ export default function ProjectForm() {
   const setInactiveMutation = useSetProjectInactiveMutation();
   const setClosedMutation = useSetProjectClosedMutation();
   const setCompletedMutation = useSetProjectCompletedMutation();
-  const createScheduleMutation = useCreateScheduleEntryMutation();
 
   const [activeSection, setActiveSection] = useState<string>('project-info');
   const isSubmitting =
@@ -397,8 +395,7 @@ export default function ProjectForm() {
     setActiveMutation.isPending ||
     setInactiveMutation.isPending ||
     setClosedMutation.isPending ||
-    setCompletedMutation.isPending ||
-    createScheduleMutation.isPending;
+    setCompletedMutation.isPending;
 
   /* ---- Submit ---- */
 
@@ -542,20 +539,6 @@ export default function ProjectForm() {
         const project = await createMutation.mutateAsync(createPayload);
         resultProjectId = project.id;
         toast.success('Project created.');
-      }
-
-      // Seed the initial schedule only when creating a project.
-      if (!isEditMode && data.estimatedStartDate) {
-        try {
-          await createScheduleMutation.mutateAsync({
-            projectId: resultProjectId,
-            date: data.estimatedStartDate,
-            description: 'Project scheduled start',
-            adjustedFinishDate: data.estimatedEndDate || undefined,
-          });
-        } catch {
-          console.warn('Schedule entry creation failed');
-        }
       }
 
       // Upload contract documents if any were selected
