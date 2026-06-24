@@ -6,6 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import {
+  ListingIdentifierLink,
+  ListingIdentifierText,
+} from '@/app/components/ui/listing-identifier';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
@@ -30,12 +34,11 @@ function getPaymentLabel(invoice: InvoiceListItem) {
 export function InvoiceNumberCell({ invoice }: { invoice: InvoiceListItem }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <Link
+      <ListingIdentifierLink
         to={`${invoice.id}`}
-        className="text-sm font-semibold text-foreground hover:text-primary"
-      >
-        {invoice.invoiceNumber ?? '-'}
-      </Link>
+        value={invoice.invoiceNumber}
+        className="text-sm"
+      />
       {invoice.externalInvoiceNumber ? (
         <span className="line-clamp-1 text-2sm text-muted-foreground">
           External: {invoice.externalInvoiceNumber}
@@ -60,16 +63,15 @@ export function PurchaseOrderCell({
 }) {
   if (invoice.purchaseOrder?.id) {
     return (
-      <Link
+      <ListingIdentifierLink
         to={`/app/project/${projectId}/purchase-orders/${invoice.purchaseOrder.id}`}
-        className="text-sm font-medium text-foreground hover:text-primary"
-      >
-        {invoice.purchaseOrder.poNumber}
-      </Link>
+        value={invoice.purchaseOrder.poNumber}
+        className="text-sm"
+      />
     );
   }
 
-  return <span className="text-sm text-muted-foreground">{invoice.purchaseOrderId ?? '-'}</span>;
+  return <ListingIdentifierText value={invoice.purchaseOrderId} className="text-sm" />;
 }
 
 export function InvoiceDateCell({ invoice }: { invoice: InvoiceListItem }) {

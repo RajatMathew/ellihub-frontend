@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import { formatDate } from '@/app/lib/helpers';
 import {
   getRFQStatusLabel,
@@ -20,11 +21,7 @@ import { FilePlus2, MoreHorizontal } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 export function RFQNumberCell({ rfq }: { rfq: RFQListItem }) {
-  return (
-    <Link to={`${rfq.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
-      {rfq.rfqNumber ?? '-'}
-    </Link>
-  );
+  return <ListingIdentifierLink to={`${rfq.id}`} value={rfq.rfqNumber} className="text-sm" />;
 }
 
 export function RFQTitleCell({ rfq }: { rfq: RFQListItem }) {

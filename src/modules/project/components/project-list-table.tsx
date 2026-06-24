@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import { Badge } from '@/app/components/ui/badge';
+import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import { Progress } from '@/app/components/ui/progress';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
@@ -185,9 +186,7 @@ const ProjectDesktopListRow = memo(function ProjectDesktopListRow({
       )}
     >
       <div className="min-w-0 pr-4">
-        <div className="truncate font-semibold text-foreground" title={projectIdentifier}>
-          {projectIdentifier}
-        </div>
+        <ListingIdentifierText value={projectIdentifier} className="block truncate" />
         <div className="mt-1 line-clamp-1 text-xs text-muted-foreground" title={project.name}>
           {project.name}
         </div>
@@ -280,9 +279,7 @@ const ProjectMobileListCard = memo(function ProjectMobileListCard({
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-foreground" title={projectIdentifier}>
-            {projectIdentifier}
-          </div>
+          <ListingIdentifierText value={projectIdentifier} className="block truncate text-sm" />
           <div
             className="mt-1 line-clamp-2 text-sm font-medium text-foreground"
             title={project.name}

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
@@ -82,8 +83,8 @@ function PurchaseOrderSummaryCard({ purchaseOrder }: { purchaseOrder: POListItem
     <Card className="overflow-hidden">
       <CardHeader className="flex-row items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <CardTitle className="text-sm font-semibold text-foreground">
-            {purchaseOrder.poNumber ?? 'Draft PO'}
+          <CardTitle className="text-sm">
+            <ListingIdentifierText value={purchaseOrder.poNumber} fallback="Draft PO" />
           </CardTitle>
           <Badge
             variant={PO_STATUS_BADGE_VARIANTS[purchaseOrder.status] ?? 'primary'}

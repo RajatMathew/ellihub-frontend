@@ -6,6 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import {
+  ListingIdentifierLink,
+  ListingIdentifierText,
+} from '@/app/components/ui/listing-identifier';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
@@ -16,21 +20,19 @@ import {
   formatOptionalSubChangeOrderCurrency,
   formatOptionalSubChangeOrderDate,
   getSubChangeOrderNegotiatedDiscount,
+  getSubChangeOrderPurchaseOrderLabel,
   getSubChangeOrderShippingHandlingFee,
   getSubChangeOrderSubtotal,
   getSubChangeOrderTaxAmount,
   getSubChangeOrderTaxLabel,
   getSubChangeOrderTotalAmount,
-  getSubChangeOrderPurchaseOrderLabel,
   getSubChangeOrderTypeLabel,
 } from './sub-change-order-list-utils';
 
 export function SubChangeOrderNumberCell({ sco }: { sco: SCOListItem }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <Link to={`${sco.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
-        {sco.scoNumber ?? '-'}
-      </Link>
+      <ListingIdentifierLink to={`${sco.id}`} value={sco.scoNumber} className="text-sm" />
       <span className="line-clamp-1 text-2sm text-muted-foreground">
         {sco.title ?? sco.description ?? '-'}
       </span>
@@ -50,14 +52,13 @@ export function SubChangeOrderPurchaseOrderCell({
   return (
     <div className="flex flex-col gap-0.5">
       {sco.purchaseOrder?.id ? (
-        <Link
+        <ListingIdentifierLink
           to={`/app/project/${projectId}/purchase-orders/${sco.purchaseOrder.id}`}
-          className="text-sm font-medium text-foreground hover:text-primary"
-        >
-          {purchaseOrderLabel}
-        </Link>
+          value={purchaseOrderLabel}
+          className="text-sm"
+        />
       ) : (
-        <span className="text-sm text-foreground">{purchaseOrderLabel}</span>
+        <ListingIdentifierText value={purchaseOrderLabel} className="text-sm" />
       )}
       {sco.purchaseOrder?.status && (
         <span className="text-2sm text-muted-foreground">PO {sco.purchaseOrder.status}</span>
