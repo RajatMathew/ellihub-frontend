@@ -60,31 +60,33 @@ export function FilesPageToolbar({
   return (
     <Toolbar>
       <ToolbarWrapper>
-        <ToolbarHeading>
+        <ToolbarHeading className="min-w-0 flex-1">
           <ToolbarPageTitle>{title}</ToolbarPageTitle>
         </ToolbarHeading>
-        <ToolbarActions className="w-full sm:w-auto">
+        <ToolbarActions className="w-full min-w-0 items-stretch sm:w-auto sm:items-center sm:justify-end">
           <div
-            className="relative w-full sm:w-80"
+            className="relative w-full min-w-0 sm:w-72 lg:w-80"
             onFocus={() => setIsSearchFocused(true)}
             onBlur={handleSearchBlur}
           >
-            <InputWrapper className="w-full" variant="sm">
+            <InputWrapper className="w-full min-w-0" variant="sm">
               <Search className="size-4" />
               <Input
+                className="min-w-0"
                 placeholder={searchPlaceholder}
                 value={searchInput}
                 onChange={(event) => onSearchChange(event.target.value)}
               />
             </InputWrapper>
             {showSearchMode && (
-              <div className="absolute left-0 top-full z-20 mt-1 rounded-md border bg-background p-1 shadow-sm">
+              <div className="absolute left-0 top-full z-20 mt-1 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border bg-background p-1 shadow-sm">
                 <ToggleGroup
                   type="single"
                   variant="outline"
                   size="sm"
                   value={searchMode}
                   aria-label="Search scope"
+                  className="max-w-full"
                   onValueChange={(value) => {
                     if (value === 'global' || value === 'folder') {
                       onSearchModeChange(value);
@@ -111,7 +113,13 @@ export function FilesPageToolbar({
               </div>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={onExport} disabled={!canExport}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+            onClick={onExport}
+            disabled={!canExport}
+          >
             {isExporting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -124,13 +132,19 @@ export function FilesPageToolbar({
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={onCreateFolder}
                 disabled={!canMutateFolder}
               >
                 <FolderPlus className="size-4" />
                 New Folder
               </Button>
-              <Button size="sm" onClick={onUploadFile} disabled={!canMutateFolder}>
+              <Button
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={onUploadFile}
+                disabled={!canMutateFolder}
+              >
                 <Upload className="size-4" />
                 Upload
               </Button>

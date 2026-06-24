@@ -37,22 +37,22 @@ export function FolderExportStatusCard({
 
   return (
     <div
-      className="fixed inset-x-4 bottom-4 z-50 rounded-md border bg-background p-4 shadow-lg sm:left-auto sm:right-6 sm:bottom-6 sm:w-96"
+      className="fixed inset-x-4 bottom-4 z-50 max-w-[calc(100vw-2rem)] rounded-md border bg-background p-4 shadow-lg sm:left-auto sm:right-6 sm:bottom-6 sm:w-96"
       aria-live="polite"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <FileArchive className="size-4" />
         </div>
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">Exporting ZIP</p>
               <p className="truncate text-xs text-muted-foreground">
                 {job?.fileName || `${folderName}.zip`}
               </p>
             </div>
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            <span className="max-w-28 shrink-0 truncate text-xs font-medium text-muted-foreground">
               {statusLabel}
             </span>
           </div>

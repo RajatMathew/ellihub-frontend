@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
@@ -11,34 +11,6 @@ import {
 export type FilesViewMode = 'list' | 'grid';
 export type FilesSearchMode = 'global' | 'folder';
 
-export interface FolderPathEntry {
-  id: string;
-  name: string;
-}
-
-export function encodeFolderPath(path: FolderPathEntry[]): string | undefined {
-  if (path.length === 0) return undefined;
-
-  return path.map((entry) => `${entry.id}:${entry.name}`).join('|');
-}
-
-function decodeFolderPath(raw: string | null): FolderPathEntry[] {
-  if (!raw) return [];
-
-  return raw.split('|').map((segment) => {
-    const colonIndex = segment.indexOf(':');
-
-    if (colonIndex === -1) {
-      return { id: segment, name: segment };
-    }
-
-    return {
-      id: segment.slice(0, colonIndex),
-      name: segment.slice(colonIndex + 1),
-    };
-  });
-}
-
 export function useFilesListParams() {
   const listParams = useResourceListParams({
     defaultPageSize: DEFAULT_PAGE_SIZE,
@@ -48,31 +20,34 @@ export function useFilesListParams() {
     isSortBy: (value): value is SortField => Boolean(value && isSortField(value)),
   });
 
-  const viewMode: FilesViewMode = listParams.searchParams.get('view') === 'grid' ? 'grid' : 'list';
+  const { searchParams, setSearchInput, updateParams } = listParams;
+
+  const viewMode: FilesViewMode = searchParams.get('view') === 'grid' ? 'grid' : 'list';
   const searchMode: FilesSearchMode =
-    listParams.searchParams.get('searchMode') === 'folder' ? 'folder' : 'global';
-  const folderId = listParams.searchParams.get('folderId') ?? undefined;
-  const dateFrom = listParams.searchParams.get('dateFrom') ?? undefined;
-  const dateTo = listParams.searchParams.get('dateTo') ?? undefined;
-  const folderPath = useMemo(
-    () => decodeFolderPath(listParams.searchParams.get('folderPath')),
-    [listParams.searchParams]
-  );
+    searchParams.get('searchMode') === 'folder' ? 'folder' : 'global';
+  const folderId = searchParams.get('folderId') ?? undefined;
+  const dateFrom = searchParams.get('dateFrom') ?? undefined;
+  const dateTo = searchParams.get('dateTo') ?? undefined;
+
+  useEffect(() => {
+    if (!searchParams.has('folderPath')) return;
+
+    updateParams({ folderPath: undefined });
+  }, [searchParams, updateParams]);
 
   const clearFilters = useCallback(() => {
-    listParams.setSearchInput('');
-    listParams.updateParams({
+    setSearchInput('');
+    updateParams({
       search: undefined,
       dateFrom: undefined,
       dateTo: undefined,
       page: undefined,
     });
-  }, [listParams]);
+  }, [setSearchInput, updateParams]);
 
   return {
     ...listParams,
     folderId,
-    folderPath,
     searchMode,
     viewMode,
     dateFrom,
