@@ -39,6 +39,7 @@ import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -284,7 +285,7 @@ export default function RFQDetailPage() {
     [rfqPdfNoticeConfig?.defaultOptionId, rfqPdfNoticeOptions]
   );
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Publish dialog
@@ -920,7 +921,7 @@ export default function RFQDetailPage() {
   }
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {vendorPdfOptionsOpen && vendorPdfTarget && (
         <PdfGenerateDialog
           open={vendorPdfOptionsOpen}
@@ -1014,7 +1015,7 @@ export default function RFQDetailPage() {
                 Back to RFQs
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
               {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
                 <Select
@@ -1125,7 +1126,7 @@ export default function RFQDetailPage() {
       {/* ---- Two-column layout ---- */}
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         {/* Left column */}
-        <div className="min-w-0 flex-1 space-y-5">
+        <div className="min-w-0 max-w-full flex-1 space-y-5">
           {/* Key Metrics */}
           <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 3 }}>
             <StatsBarItem
@@ -1156,22 +1157,28 @@ export default function RFQDetailPage() {
 
           {/* Quick Actions */}
           {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 max-w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               {quotes.length >= 2 && (
-                <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full min-w-0 justify-center sm:w-auto"
+                  onClick={() => setComparisonOpen(true)}
+                >
                   <FileText className="size-4" />
-                  Compare {quotes.length} Quotes
+                  <span className="min-w-0 truncate">Compare {quotes.length} Quotes</span>
                 </Button>
               )}
               {canEmailVendors && invites.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
+                  className="w-full min-w-0 justify-center sm:w-auto"
                   disabled={sendVendorEmailMutation.isPending}
                   onClick={handleEmailAllVendors}
                 >
                   <Mail className="size-4" />
-                  Email All Vendors
+                  <span className="min-w-0 truncate">Email All Vendors</span>
                 </Button>
               )}
             </div>
@@ -1676,9 +1683,7 @@ export default function RFQDetailPage() {
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">RFQ Date</div>
-                        <div className="mt-0.5 font-medium">
-                          {formatDate(rfq.rfqDate || '')}
-                        </div>
+                        <div className="mt-0.5 font-medium">{formatDate(rfq.rfqDate || '')}</div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Lowest</div>

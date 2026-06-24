@@ -31,6 +31,7 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
@@ -191,7 +192,7 @@ export function PODetailPage() {
   const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = po?.attachments ?? [];
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [issueOpen, setIssueOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
@@ -459,7 +460,7 @@ export function PODetailPage() {
 
   if (!po) {
     return (
-      <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+      <div className="container-fluid max-w-full overflow-x-clip pb-5">
         <p className="text-sm text-muted-foreground">Purchase order not found.</p>
       </div>
     );
@@ -495,7 +496,7 @@ export function PODetailPage() {
   const vendorEmail = typeof po.vendor?.email === 'string' ? po.vendor.email : undefined;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>

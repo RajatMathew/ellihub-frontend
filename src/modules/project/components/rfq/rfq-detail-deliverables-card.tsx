@@ -19,28 +19,28 @@ function getDeliverableName(deliverable: RFQDeliverable) {
 
 export function RFQDetailDeliverablesCard({ deliverables }: RFQDetailDeliverablesCardProps) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <CardTitle className="min-w-0 max-w-full break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground [overflow-wrap:anywhere]">
           Required Deliverables ({deliverables.length})
         </CardTitle>
       </CardHeader>
       <CardContent>
         {deliverables.length > 0 ? (
           <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 lg:hidden">
               {deliverables.map((deliverable, index) => (
-                <div key={deliverable.id} className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-3">
+                <div key={deliverable.id} className="min-w-0 max-w-full rounded-lg border p-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-medium text-muted-foreground">
                         #{deliverable.sequenceNumber ?? index + 1}
                       </div>
-                      <div className="mt-1 break-words text-sm font-semibold">
+                      <div className="mt-1 min-w-0 break-words text-sm font-semibold [overflow-wrap:anywhere]">
                         {getDeliverableName(deliverable)}
                       </div>
                       {deliverable.specifications && (
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <div className="mt-1 line-clamp-2 min-w-0 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
                           {deliverable.specifications}
                         </div>
                       )}
@@ -55,14 +55,16 @@ export function RFQDetailDeliverablesCard({ deliverables }: RFQDetailDeliverable
                     </div>
                     <div>
                       <div className="text-muted-foreground">Unit</div>
-                      <div className="font-medium">{getUnitLabel(deliverable.unit)}</div>
+                      <div className="min-w-0 break-words font-medium [overflow-wrap:anywhere]">
+                        {getUnitLabel(deliverable.unit)}
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto lg:block">
               <table className="min-w-max w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">

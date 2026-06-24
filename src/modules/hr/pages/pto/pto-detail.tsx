@@ -4,6 +4,7 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import {
   PTODecisionCard,
   PTODetailLoading,
@@ -34,7 +35,7 @@ export default function PTODetailPage() {
   const rejectMutation = useRejectPTOMutation();
   const deleteMutation = useDeletePTOMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const ptoBreadcrumbLabel = ptoQuery.data
     ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
     : undefined;

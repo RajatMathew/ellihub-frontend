@@ -25,21 +25,24 @@ const useCardContext = () => {
 };
 
 // Variants
-const cardVariants = cva('flex min-w-0 flex-col items-stretch text-card-foreground rounded-xl', {
-  variants: {
-    variant: {
-      default: 'bg-card border border-card-border shadow-xs black/5',
-      accent: 'bg-muted shadow-xs p-1',
-      themed: 'bg-card border border-card-border shadow-xs',
+const cardVariants = cva(
+  'flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
+  {
+    variants: {
+      variant: {
+        default: 'bg-card border border-card-border shadow-xs black/5',
+        accent: 'bg-muted shadow-xs p-1',
+        themed: 'bg-card border border-card-border shadow-xs',
+      },
     },
-  },
-  defaultVariants: {
-    variant: 'themed',
-  },
-});
+    defaultVariants: {
+      variant: 'themed',
+    },
+  }
+);
 
 const cardHeaderVariants = cva(
-  'flex min-w-0 items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
+  'flex min-w-0 max-w-full items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
   {
     variants: {
       variant: {
@@ -55,7 +58,7 @@ const cardHeaderVariants = cva(
   }
 );
 
-const cardContentVariants = cva('min-w-0 grow p-4 sm:p-5', {
+const cardContentVariants = cva('min-w-0 max-w-full grow p-4 sm:p-5', {
   variants: {
     variant: {
       default: '',
@@ -164,7 +167,7 @@ function CardToolbar({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       data-slot="card-toolbar"
-      className={cn('flex min-w-0 items-center gap-2.5', className)}
+      className={cn('flex min-w-0 max-w-full flex-wrap items-center gap-2.5', className)}
       {...props}
     />
   );
@@ -174,7 +177,10 @@ function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElem
   return (
     <h3
       data-slot="card-title"
-      className={cn('min-w-0 text-base font-semibold leading-none tracking-tight', className)}
+      className={cn(
+        'min-w-0 max-w-full break-words text-base font-semibold leading-none tracking-tight [overflow-wrap:anywhere]',
+        className
+      )}
       {...props}
     />
   );
@@ -184,7 +190,10 @@ function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return (
     <div
       data-slot="card-description"
-      className={cn('min-w-0 text-sm text-muted-foreground', className)}
+      className={cn(
+        'min-w-0 max-w-full break-words text-sm text-muted-foreground [overflow-wrap:anywhere]',
+        className
+      )}
       {...props}
     />
   );

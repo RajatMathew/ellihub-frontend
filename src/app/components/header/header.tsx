@@ -32,16 +32,16 @@ export function Header({
 
   return (
     <>
-      <header className="flex items-stretch fixed z-10 lg:border-t transition-[left,right] duration-300 start-0  lg:in-data-[sidebar-open=false]:border-s lg:border-e border-border top-0 lg:top-(--page-margin) end-0 lg:end-(--page-margin) lg:in-data-[help-open=true]:end-(--help-panel-width) lg:start-(--sidebar-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width) shrink-0 bg-background border-b backdrop-blur-sm h-(--header-height-mobile) lg:h-(--header-height) pe-(--removed-body-scroll-bar-size,0px)">
-        <div className="container-fluid grow flex items-stretch justify-between gap-2.5">
+      <header className="fixed start-0 end-0 top-0 z-10 flex h-(--header-height-mobile) min-w-0 shrink-0 items-stretch overflow-hidden border-b border-border bg-background pe-(--removed-body-scroll-bar-size,0px) backdrop-blur-sm transition-[left,right] duration-300 lg:top-(--page-margin) lg:start-(--sidebar-width) lg:end-(--page-margin) lg:h-(--header-height) lg:border-t lg:border-e lg:in-data-[help-open=true]:end-(--help-panel-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width) lg:in-data-[sidebar-open=false]:border-s">
+        <div className="container-fluid flex min-w-0 max-w-full grow items-stretch justify-between gap-2.5">
           {isMobile && <HeaderMenu menuConfig={menuConfig} />}
           <HeaderHamburger>{!isMobile && breadcrumbs && <HeaderBreadcrumbs />}</HeaderHamburger>
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-2.5">
             {toolbar && toolbar}
 
             <a
               aria-label="Open Feedback"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
               href="https://app.notion.com/p/3821073375a78019a93fef44bafe6453?v=3821073375a78065a58a000cd1116f7c&source=copy_link"
               rel="noopener noreferrer"
               target="_blank"

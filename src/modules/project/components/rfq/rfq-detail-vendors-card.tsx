@@ -92,22 +92,27 @@ export function RFQDetailVendorsCard({
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="min-w-0 max-w-full break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground [overflow-wrap:anywhere]">
           Vendors
         </CardTitle>
         {!isTerminal && canManageVendors && (
-          <Button variant="outline" size="sm" onClick={onInviteVendor}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full min-w-0 justify-center sm:w-auto"
+            onClick={onInviteVendor}
+          >
             <Plus className="size-4" />
-            Invite Vendor
+            <span className="min-w-0 truncate">Invite Vendor</span>
           </Button>
         )}
       </CardHeader>
       <CardContent>
         {rows.length > 0 ? (
           <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 lg:hidden">
               {rows.map((row) => (
                 <RFQVendorMobileCard
                   key={row.invite.id}

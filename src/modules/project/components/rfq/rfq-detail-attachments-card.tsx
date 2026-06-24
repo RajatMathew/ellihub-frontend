@@ -29,15 +29,20 @@ export function RFQDetailAttachmentsCard({
   const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle className="min-w-0 max-w-full break-words text-xs font-semibold uppercase tracking-normal text-muted-foreground [overflow-wrap:anywhere]">
           Attachments ({attachments.length})
         </CardTitle>
         {canUpload && (
-          <Button variant="outline" size="sm" onClick={onUpload}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full min-w-0 justify-center sm:w-auto"
+            onClick={onUpload}
+          >
             <Upload className="size-4" />
-            Add Attachment
+            <span className="min-w-0 truncate">Add Attachment</span>
           </Button>
         )}
       </CardHeader>
@@ -51,21 +56,23 @@ export function RFQDetailAttachmentsCard({
               return (
                 <div
                   key={attachment.id}
-                  className="flex min-w-0 flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 max-w-full flex-1 items-center gap-3">
                     <Paperclip className="size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       {document?.id ? (
                         <button
                           type="button"
-                          className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                          className="block w-full max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
                           onClick={() => setPreviewFile({ ...document, name: documentName })}
                         >
                           {documentName}
                         </button>
                       ) : (
-                        <div className="truncate text-sm font-medium">{documentName}</div>
+                        <div className="max-w-full truncate text-sm font-medium">
+                          {documentName}
+                        </div>
                       )}
                       <div className="text-xs text-muted-foreground">Document</div>
                     </div>

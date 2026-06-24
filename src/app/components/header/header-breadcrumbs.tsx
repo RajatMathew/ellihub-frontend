@@ -9,6 +9,7 @@ import {
   BreadcrumbSeparator,
 } from '@/app/components/ui/breadcrumb';
 import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
+import { cn } from '@/app/lib/utils';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { Link, useLocation, useParams } from 'react-router-dom';
 
@@ -78,36 +79,51 @@ export function HeaderBreadcrumbs() {
   }
 
   const breadcrumbItemClassName =
-    'cursor-pointer rounded-md px-2 py-1 font-medium transition-colors hover:bg-accent hover:text-foreground';
+    'block min-w-0 truncate rounded-md px-2 py-1 font-medium transition-colors hover:bg-accent hover:text-foreground';
 
   return (
-    <Breadcrumb className="lg:-translate-x-2">
-      <BreadcrumbList className="gap-0.5 text-sm font-medium">
-        {breadcrumbs.map((crumb, index) => (
-          <Fragment key={`${crumb.path}-${index}`}>
-            {index > 0 && (
-              <BreadcrumbSeparator className="mx-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
-            )}
-            <BreadcrumbItem className="gap-0.5">
-              {crumb.isLast || index === 0 ? (
-                <BreadcrumbPage
-                  className={`${breadcrumbItemClassName} ${
-                    crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  {crumb.label}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink
-                  asChild
-                  className={`${breadcrumbItemClassName} text-muted-foreground`}
-                >
-                  <Link to={crumb.path}>{crumb.label}</Link>
-                </BreadcrumbLink>
+    <Breadcrumb className="min-w-0 max-w-full overflow-hidden lg:-translate-x-2">
+      <BreadcrumbList className="min-w-0 flex-nowrap gap-0.5 overflow-hidden text-sm font-medium">
+        {breadcrumbs.map((crumb, index) => {
+          const itemWidthClassName = crumb.isLast
+            ? 'max-w-[min(28rem,42vw)]'
+            : 'max-w-[min(16rem,24vw)]';
+
+          return (
+            <Fragment key={`${crumb.path}-${index}`}>
+              {index > 0 && (
+                <BreadcrumbSeparator className="mx-0 shrink-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
               )}
-            </BreadcrumbItem>
-          </Fragment>
-        ))}
+              <BreadcrumbItem className="min-w-0 gap-0.5">
+                {crumb.isLast || index === 0 ? (
+                  <BreadcrumbPage
+                    className={cn(
+                      breadcrumbItemClassName,
+                      itemWidthClassName,
+                      crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
+                    )}
+                    title={crumb.label}
+                  >
+                    {crumb.label}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink
+                    asChild
+                    className={cn(
+                      breadcrumbItemClassName,
+                      itemWidthClassName,
+                      'text-muted-foreground'
+                    )}
+                  >
+                    <Link to={crumb.path} title={crumb.label}>
+                      {crumb.label}
+                    </Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          );
+        })}
       </BreadcrumbList>
     </Breadcrumb>
   );
