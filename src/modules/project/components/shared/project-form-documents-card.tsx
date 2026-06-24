@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
-import { FileText, X } from 'lucide-react';
+import { FileText, Loader2, X } from 'lucide-react';
 
 interface ExistingProjectDocument {
   id: string;
@@ -15,6 +15,9 @@ interface ProjectFormDocumentsCardProps {
   existingDocuments?: ExistingProjectDocument[];
   onAddFile: (file: File) => void;
   onRemoveFile: (index: number) => void;
+  onRemoveExistingDocument?: (document: ExistingProjectDocument) => void;
+  isRemovingExistingDocument?: (document: ExistingProjectDocument) => boolean;
+  getExistingDocumentRemoveDisabled?: (document: ExistingProjectDocument) => boolean;
   disabled?: boolean;
   title?: string;
   existingTitle?: string;
@@ -37,6 +40,9 @@ export function ProjectFormDocumentsCard({
   existingDocuments = [],
   onAddFile,
   onRemoveFile,
+  onRemoveExistingDocument,
+  isRemovingExistingDocument,
+  getExistingDocumentRemoveDisabled,
   disabled = false,
   title = 'Documents',
   existingTitle = 'Existing Documents',
@@ -99,17 +105,43 @@ export function ProjectFormDocumentsCard({
             <div className="mb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
               {existingTitle}
             </div>
-            {existingDocuments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex min-w-0 items-center gap-3 rounded-lg border p-2.5"
-              >
-                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate text-sm font-medium">
-                  {getDocumentName(attachment.document)}
-                </span>
-              </div>
-            ))}
+            {existingDocuments.map((attachment) => {
+              const documentName = getDocumentName(attachment.document);
+              const isRemoving = isRemovingExistingDocument?.(attachment) ?? false;
+              const canRemove = !!onRemoveExistingDocument && !disabled;
+              const removeDisabled =
+                isRemoving || getExistingDocumentRemoveDisabled?.(attachment) === true;
+
+              return (
+                <div
+                  key={attachment.id}
+                  className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-sm font-medium">{documentName}</span>
+                  </div>
+                  {canRemove && (
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="sm"
+                      type="button"
+                      aria-label={`Remove ${documentName}`}
+                      className="self-end sm:self-auto"
+                      disabled={removeDisabled}
+                      onClick={() => onRemoveExistingDocument(attachment)}
+                    >
+                      {isRemoving ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <X className="size-3.5" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

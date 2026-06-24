@@ -31,6 +31,7 @@ import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddRFQAttachmentMutation,
   useCreateRFQMutation,
+  useRemoveRFQAttachmentMutation,
   useRFQDetailQuery,
   useUpdateRFQMutation,
 } from '@/modules/project/hooks/rfq';
@@ -126,9 +127,11 @@ export default function RFQFormPage() {
   const createMutation = useCreateRFQMutation();
   const updateMutation = useUpdateRFQMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
+  const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
   const { queueFiles } = useManagedFileUploads();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [removingAttachmentId, setRemovingAttachmentId] = useState<string | null>(null);
   const rfqTypeOptions = useMemo<RFQTypeOption[]>(() => {
     const options = rfqTypes ?? [];
     if (!isEdit || !rfqDetail) return options;
@@ -167,9 +170,7 @@ export default function RFQFormPage() {
         title: rfqDetail.title,
         description: rfqDetail.description || '',
         typeId: selectedRFQTypeId,
-        rfqDate: rfqDetail.rfqDate
-          ? new Date(rfqDetail.rfqDate).toISOString().split('T')[0]
-          : '',
+        rfqDate: rfqDetail.rfqDate ? new Date(rfqDetail.rfqDate).toISOString().split('T')[0] : '',
         deliverables:
           rfqDetail.deliverables && rfqDetail.deliverables.length > 0
             ? rfqDetail.deliverables.map((d) => ({
@@ -267,6 +268,19 @@ export default function RFQFormPage() {
     });
   }
 
+  const handleRemoveExistingAttachment = useCallback(
+    async (attachment: { id: string }) => {
+      if (!rfqId) return;
+
+      setRemovingAttachmentId(attachment.id);
+      try {
+        await removeAttachmentMutation.mutateAsync({ rfqId, attachmentId: attachment.id });
+      } finally {
+        setRemovingAttachmentId(null);
+      }
+    },
+    [removeAttachmentMutation, rfqId]
+  );
   if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={RFQ_FORM_SECTIONS.length} />;
   }
@@ -437,6 +451,10 @@ export default function RFQFormPage() {
           <ProjectFormDocumentsCard
             selectedFiles={selectedFiles}
             existingDocuments={isEdit && rfqDetail ? rfqDetail.attachments : undefined}
+            existingTitle="Existing Attachments"
+            onRemoveExistingDocument={isEdit ? handleRemoveExistingAttachment : undefined}
+            isRemovingExistingDocument={(attachment) => removingAttachmentId === attachment.id}
+            getExistingDocumentRemoveDisabled={() => removeAttachmentMutation.isPending}
             onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
             onRemoveFile={(index) =>
               setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
