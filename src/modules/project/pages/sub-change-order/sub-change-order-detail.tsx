@@ -747,14 +747,25 @@ export function SCODetailPage() {
           </StatsBar>
 
           {hasReasonBanner && (
-            <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                <AlertTriangle className="size-4" />
-                {isRejected ? 'Rejection Reason' : 'Void Reason'}
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-muted-foreground/30 bg-muted/20 p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground shadow-xs border border-border">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Change Order Alert
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {isRejected ? 'Rejection Reason' : 'Void Reason'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                    {isRejected ? sco.rejectionReason : sco.voidReason}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-foreground">
-                {isRejected ? sco.rejectionReason : sco.voidReason}
-              </p>
             </div>
           )}
 

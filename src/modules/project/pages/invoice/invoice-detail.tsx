@@ -432,12 +432,25 @@ export function InvoiceDetailPage() {
           </StatsBar>
 
           {isDisputed && invoice.disputeReason && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-destructive">
-                <AlertTriangle className="size-4" />
-                Dispute Reason
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-destructive bg-[var(--color-destructive-soft,var(--color-red-50))] dark:bg-[var(--color-destructive-soft,var(--color-red-950))] p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-destructive shadow-xs border border-border">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                      Invoice Alert
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    Dispute Reason
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                    {invoice.disputeReason}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-foreground">{invoice.disputeReason}</p>
             </div>
           )}
 

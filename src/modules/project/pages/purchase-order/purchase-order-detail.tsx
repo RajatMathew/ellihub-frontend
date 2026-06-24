@@ -631,25 +631,38 @@ export function PODetailPage() {
         <div className="min-w-0 flex-1 space-y-5">
           {/* ---- Overdue alert ---- */}
           {isOverdue && (
-            <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <ShieldAlert className="size-4 text-destructive" />
-                  <span className="text-xs font-semibold tracking-normal text-destructive uppercase">
-                    Purchase Alert
-                  </span>
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-destructive bg-[var(--color-destructive-soft,var(--color-red-50))] dark:bg-[var(--color-destructive-soft,var(--color-red-950))] p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-destructive shadow-xs border border-border">
+                  <ShieldAlert className="size-5" />
                 </div>
-                <p className="text-sm font-semibold text-destructive">Purchase Order is Overdue</p>
-                <p className="text-xs text-destructive/70 mt-0.5">
-                  Expected delivery was {po.expectedDate ? formatDate(po.expectedDate) : '-'}.
-                  Delivery has not been recorded.
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                      Purchase Alert
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    Purchase Order is Overdue
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Expected delivery was{' '}
+                    <span className="font-semibold text-foreground">
+                      {po.expectedDate ? formatDate(po.expectedDate) : '-'}
+                    </span>
+                    . Delivery has not been recorded.
+                  </p>
+                </div>
               </div>
-              <div className="shrink-0 text-left sm:pl-8 sm:text-right">
-                <div className="text-4xl font-bold text-destructive tabular-nums leading-none">
-                  {overdueDays}
+              <div className="flex items-center gap-4 shrink-0 sm:pl-8 sm:border-s sm:border-border/60">
+                <div className="text-left sm:text-right">
+                  <h2 className="text-5xl font-black text-destructive tracking-tight leading-none tabular-nums">
+                    {overdueDays}
+                  </h2>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">
+                    days overdue
+                  </div>
                 </div>
-                <div className="text-xs text-destructive/70 mt-1">days overdue</div>
               </div>
             </div>
           )}
