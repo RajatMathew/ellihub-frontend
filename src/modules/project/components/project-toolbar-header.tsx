@@ -81,10 +81,17 @@ export function ProjectToolbarHeader({
 }: ProjectToolbarHeaderProps) {
   const { data: stages } = useProjectStagesQuery();
   const updateMutation = useUpdateProjectMutation();
-  const canManageProject = project?.capabilities?.canManage ?? false;
+  const canUpdateStage =
+    project?.capabilities?.canEdit === true || project?.capabilities?.canManage === true;
+  const currentStage = project ? stages?.find((stage) => stage.id === project.stageId) : undefined;
+  const currentStageName =
+    currentStage?.name || project?.stage?.name || project?.stage?.label || '';
+  const currentStageLabel = formatProjectStageLabel(currentStageName);
+  const currentStageDotClassName = getProjectStageSwatchClassName(currentStageName);
+  const showStage = Boolean(project && currentStageLabel);
 
   const handleStageChange = (stageId: string) => {
-    if (!project || stageId === project.stageId) return;
+    if (!project || !canUpdateStage || stageId === project.stageId) return;
 
     // Helper to format ISO date string to YYYY-MM-DD for backend
     const formatDate = (dateStr?: string | null) => {
@@ -171,52 +178,61 @@ export function ProjectToolbarHeader({
                   </Badge>
                 );
               })()}
-            {project?.stage && stages && stages.length > 0 && canManageProject ? (
-              (() => {
-                const name = project.stage.name || project.stage.label || '';
-                const displayName = formatProjectStageLabel(name);
-                const dotClassName = getProjectStageSwatchClassName(name);
-
-                return (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                      >
-                        <span className={cn('size-2 rounded-sm shrink-0', dotClassName)} />
-                        {displayName}
-                        <ChevronDown className="size-3 text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
-                      {stages.map((stage) => (
-                        <DropdownMenuItem
-                          key={stage.id}
-                          onClick={() => handleStageChange(stage.id)}
-                        >
-                          <span
-                            className={cn(
-                              'size-2.5 rounded-sm shrink-0',
-                              getProjectStageSwatchClassName(stage.name)
-                            )}
-                          />
-                          <span className="flex-1 font-normal">
-                            {formatProjectStageLabel(stage.name)}
-                          </span>
-                          {stage.id === project.stageId && (
-                            <Check className="size-3.5 text-foreground" />
+            {showStage ? (
+              canUpdateStage && stages && stages.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
+                      disabled={updateMutation.isPending}
+                    >
+                      <span
+                        className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)}
+                      />
+                      {currentStageLabel}
+                      <ChevronDown className="size-3 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {stages.map((stage) => (
+                      <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
+                        <span
+                          className={cn(
+                            'size-2.5 shrink-0 rounded-sm',
+                            getProjectStageSwatchClassName(stage.name)
                           )}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                );
-              })()
-            ) : project?.stage ? (
-              <Badge variant="secondary" appearance="outline" size="sm">
-                {project.stage.name}
-              </Badge>
+                        />
+                        <span className="flex-1 font-normal">
+                          {formatProjectStageLabel(stage.name)}
+                        </span>
+                        {stage.id === project.stageId && (
+                          <Check className="size-3.5 text-foreground" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                      aria-disabled="true"
+                    >
+                      <span
+                        className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)}
+                      />
+                      {currentStageLabel}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {canUpdateStage
+                      ? 'Stage options are loading.'
+                      : 'You do not have permission to update the project stage.'}
+                  </TooltipContent>
+                </Tooltip>
+              )
             ) : null}
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
