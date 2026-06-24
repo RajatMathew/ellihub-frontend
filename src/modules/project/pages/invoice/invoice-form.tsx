@@ -19,10 +19,9 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -111,6 +110,7 @@ export function InvoiceFormPage() {
   const createMutation = useCreateInvoiceMutation();
   const updateMutation = useUpdateInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
+  const { queueFiles, uploadFilesAndWait } = useManagedFileUploads();
 
   const defaultValues: CreateInvoiceInput = {
     projectId,
@@ -319,23 +319,28 @@ export function InvoiceFormPage() {
     });
   }, [poPicker.items, poPicker.options, projectId, reset, scoPicker.options, vendorOptions]);
 
-  async function uploadFiles(folderId: string, files: File[]) {
-    const documentIds: string[] = [];
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
+  async function uploadInvoiceFilesAndWait(folderId: string, files: File[]) {
+    const uploadedFiles = await uploadFilesAndWait({
+      files,
+      parentId: folderId,
+      label: 'Invoice attachment',
+    });
+
+    return uploadedFiles.map((file) => file.id);
+  }
+
+  function queueInvoiceFiles(targetInvoiceId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'Invoice attachment',
+      onUploaded: async (uploaded) => {
+        await addAttachmentMutation.mutateAsync({
+          invoiceId: targetInvoiceId,
+          data: { documentId: uploaded.id },
         });
-        documentIds.push(uploaded.id);
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
-        throw error;
-      }
-    }
-    return documentIds;
+      },
+    });
   }
 
   async function resolveInvoiceUploadFolderId(
@@ -374,7 +379,7 @@ export function InvoiceFormPage() {
     try {
       const attachmentIds =
         !isEdit && selectedFiles.length > 0 && invoiceFolderId
-          ? await uploadFiles(invoiceFolderId, selectedFiles)
+          ? await uploadInvoiceFilesAndWait(invoiceFolderId, selectedFiles)
           : [];
 
       if (!isEdit && !formData.vendorCoupon && attachmentIds.length === 0) {
@@ -409,13 +414,7 @@ export function InvoiceFormPage() {
             return;
           }
 
-          const uploadedIds = await uploadFiles(folderId, selectedFiles);
-          for (const documentId of uploadedIds) {
-            await addAttachmentMutation.mutateAsync({
-              invoiceId,
-              data: { documentId },
-            });
-          }
+          queueInvoiceFiles(invoiceId, folderId, selectedFiles);
         }
 
         navigate(getInvoiceDetailPath(projectId, updated.id));

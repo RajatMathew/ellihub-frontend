@@ -1,4 +1,4 @@
-export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const DEFAULT_UPLOAD_MAX_BYTES: number | undefined = undefined;
 export const MAX_UPLOAD_NAME_LENGTH = 180;
 
 export const ALLOWED_UPLOAD_EXTENSIONS = [
@@ -149,12 +149,12 @@ export function getUploadFileValidationError(
   file: File,
   options: { accept?: string; maxSize?: number } = {}
 ): string | null {
-  const maxSize = options.maxSize ?? MAX_UPLOAD_BYTES;
+  const maxSize = options.maxSize;
   const fileNameError = getUploadNameError(file.name, 'Uploaded file name');
 
   if (fileNameError) return fileNameError;
   if (file.size <= 0) return 'File is empty.';
-  if (file.size > maxSize) {
+  if (typeof maxSize === 'number' && Number.isFinite(maxSize) && maxSize > 0 && file.size > maxSize) {
     return `File is too large. Maximum size is ${formatUploadFileSize(maxSize)}.`;
   }
 

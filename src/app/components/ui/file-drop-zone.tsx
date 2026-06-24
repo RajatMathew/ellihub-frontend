@@ -24,8 +24,8 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
 import {
+  DEFAULT_UPLOAD_MAX_BYTES,
   FILE_UPLOAD_ACCEPT,
-  MAX_UPLOAD_BYTES,
   formatUploadFileSize,
   getUploadFileExtension,
   getUploadFileValidationError,
@@ -164,7 +164,7 @@ export function FileDropZone(props: FileDropZoneProps): ReactElement {
     accept = FILE_UPLOAD_ACCEPT,
     className,
     disabled = false,
-    maxSize = MAX_UPLOAD_BYTES,
+    maxSize = DEFAULT_UPLOAD_MAX_BYTES,
     showSelectedPreview = true,
   } = props;
   const [isDragOver, setIsDragOver] = useState(false);

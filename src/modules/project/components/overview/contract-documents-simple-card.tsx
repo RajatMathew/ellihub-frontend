@@ -10,8 +10,7 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
-import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 import { FileText, Pin, PinOff, Star, StarOff, Upload } from 'lucide-react';
@@ -47,7 +46,7 @@ export function ContractDocumentsSimpleCard({
 }: ContractDocumentsSimpleCardProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
-  const uploadMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const sortedDocuments = useMemo(
     () =>
       [...documents].sort((a, b) => {
@@ -57,9 +56,13 @@ export function ContractDocumentsSimpleCard({
     [documents]
   );
 
-  const handleUploadSubmit = async (payload: { file: File; data: FileUploadInput }) => {
-    const fileItem = await uploadMutation.mutateAsync(payload);
-    await onUploadAndPin?.(fileItem.id);
+  const handleUploadSubmit = (payload: Parameters<typeof uploadManager.enqueueUpload>[0]) => {
+    uploadManager.enqueueUpload(payload, {
+      label: 'Contract document',
+      onUploaded: async (uploaded) => {
+        await onUploadAndPin?.(uploaded.id);
+      },
+    });
     setUploadOpen(false);
   };
 
@@ -93,7 +96,7 @@ export function ContractDocumentsSimpleCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!parentFolderId || isAdding || uploadMutation.isPending}
+                  disabled={!parentFolderId || isAdding}
                   onClick={() => setUploadOpen(true)}
                 >
                   <Upload className="size-4" />
@@ -210,7 +213,7 @@ export function ContractDocumentsSimpleCard({
           onOpenChange={setUploadOpen}
           parentId={parentFolderId}
           onSubmit={(payload) => void handleUploadSubmit(payload)}
-          isSubmitting={uploadMutation.isPending || isAdding}
+          isSubmitting={isAdding}
         />
       )}
 

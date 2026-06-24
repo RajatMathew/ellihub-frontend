@@ -1,4 +1,3 @@
-import { MAX_UPLOAD_BYTES } from '@/modules/files/lib/file-upload-policy';
 import { z } from 'zod';
 
 // --- Enums ---
@@ -132,7 +131,7 @@ export const fileUploadInputSchema = z.object({
   name: z.string().min(1, 'File name is required'),
   parentId: z.string(),
   mimeType: z.string().optional(),
-  size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  size: z.number().int().positive(),
 });
 
 export type FileUploadInput = z.infer<typeof fileUploadInputSchema>;

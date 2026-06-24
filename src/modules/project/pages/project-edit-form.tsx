@@ -34,7 +34,10 @@ import {
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading } from '@/modules/project/components/shared';
 import {
+  getProjectStatusOrDefault,
+  normalizeProjectStatus,
   PROJECT_FORM_SECTIONS,
+  PROJECT_STATUS_LABELS,
   PROJECT_STATUS_OPTIONS,
 } from '@/modules/project/constants/project-form.constants';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
@@ -165,7 +168,7 @@ function ProjectEditFormInner({
       fieldwireProjectId: project.fieldwireProjectId ?? '',
       fieldwireProjectName: project.fieldwireProjectName ?? '',
       stageId: project.stageId,
-      status: project.status ?? 'ACTIVE',
+      status: getProjectStatusOrDefault(project.status),
       divisionId: project.divisionId ?? '',
       gcId: project.gcId,
       leadPMId: project.leadPMId ?? '',
@@ -401,26 +404,38 @@ function ProjectEditFormInner({
               <Controller
                 name="status"
                 control={control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
-                      Project Status
-                    </FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger aria-invalid={fieldState.invalid}>
-                        <SelectValue placeholder="Select status..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PROJECT_STATUS_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
+                render={({ field, fieldState }) => {
+                  const statusValue = normalizeProjectStatus(field.value);
+
+                  return (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel className="text-xs font-semibold tracking-widest uppercase">
+                        Project Status
+                      </FieldLabel>
+                      <Select
+                        value={statusValue}
+                        onValueChange={(value) => {
+                          const nextStatus = normalizeProjectStatus(value);
+                          if (nextStatus) field.onChange(nextStatus);
+                        }}
+                      >
+                        <SelectTrigger aria-invalid={fieldState.invalid}>
+                          <SelectValue placeholder="Select status...">
+                            {statusValue ? PROJECT_STATUS_LABELS[statusValue] : undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PROJECT_STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  );
+                }}
               />
             </div>
 

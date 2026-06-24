@@ -36,7 +36,8 @@ import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import {
   InfoRow,
   ProjectDetailDocumentsCard,
@@ -170,7 +171,7 @@ export function InvoiceDetailPage() {
   const resolveDisputeMutation = useResolveDisputeInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
   const removeAttachmentMutation = useRemoveInvoiceAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -837,20 +838,19 @@ export function InvoiceDetailPage() {
           open={uploadOpen}
           onOpenChange={setUploadOpen}
           parentId={invoiceUploadFolderId}
-          onSubmit={({ file, data }) => {
-            uploadFileMutation.mutate(
-              { file, data },
-              {
-                onSuccess: (uploaded) => {
-                  addAttachmentMutation.mutate(
-                    { invoiceId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) }
-                  );
-                },
-              }
-            );
+          onSubmit={(payload) => {
+            uploadManager.enqueueUpload(payload, {
+              label: 'Invoice attachment',
+              onUploaded: async (uploaded) => {
+                await addAttachmentMutation.mutateAsync({
+                  invoiceId,
+                  data: { documentId: uploaded.id },
+                });
+              },
+            });
+            setUploadOpen(false);
           }}
-          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+          isSubmitting={false}
         />
       )}
     </div>

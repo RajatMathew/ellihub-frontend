@@ -36,7 +36,8 @@ import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
 import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -184,7 +185,7 @@ export function PODetailPage() {
   const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
@@ -1222,20 +1223,19 @@ export function PODetailPage() {
           open={uploadOpen}
           onOpenChange={setUploadOpen}
           parentId={poUploadFolderId}
-          onSubmit={({ file, data }) => {
-            uploadFileMutation.mutate(
-              { file, data },
-              {
-                onSuccess: (uploaded) => {
-                  addAttachmentMutation.mutate(
-                    { poId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) }
-                  );
-                },
-              }
-            );
+          onSubmit={(payload) => {
+            uploadManager.enqueueUpload(payload, {
+              label: 'Purchase order attachment',
+              onUploaded: async (uploaded) => {
+                await addAttachmentMutation.mutateAsync({
+                  poId,
+                  data: { documentId: uploaded.id },
+                });
+              },
+            });
+            setUploadOpen(false);
           }}
-          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+          isSubmitting={false}
         />
       )}
     </div>

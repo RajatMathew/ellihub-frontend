@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
@@ -37,21 +37,24 @@ import {
 } from '@/lib/fake-data';
 import { useGCPickerOptions, type GCPickerOption } from '@/modules/directory/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   useEmployeePickerOptions,
   type EmployeePickerOption,
 } from '@/modules/hr/hooks/use-employee-picker-options';
-import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
 import { ProjectFormPageLoading, ProjectFormShell } from '@/modules/project/components/shared';
 import {
+  getProjectStatusOrDefault,
+  normalizeProjectStatus,
   PROJECT_FORM_SECTIONS,
+  PROJECT_STATUS_LABELS,
   PROJECT_STATUS_OPTIONS,
 } from '@/modules/project/constants/project-form.constants';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/project.constants';
 import {
+  useAddContractAttachmentMutation,
   useCreateProjectMutation,
-  useCreateScheduleEntryMutation,
   useDivisionsQuery,
   useProjectContractTypesQuery,
   useProjectDetailQuery,
@@ -118,7 +121,11 @@ function ProjectFormFieldLabel({
 }) {
   return <FormFieldLabel required={required}>{children}</FormFieldLabel>;
 }
+function getContractDocumentUploadName(file: File) {
+  const dotIndex = file.name.lastIndexOf('.');
 
+  return dotIndex > 0 ? file.name.slice(0, dotIndex) : file.name;
+}
 export default function ProjectForm() {
   const { projectId } = useParams<{ projectId: string }>();
   const isEditMode = !!projectId;
@@ -195,7 +202,7 @@ export default function ProjectForm() {
       fieldwireProjectId: '',
       fieldwireProjectName: '',
       stageId: '',
-      status: 'ACTIVE',
+      status: isEditMode ? undefined : 'ACTIVE',
       divisionId: '',
       gcId: '',
       leadPMId: '',
@@ -289,7 +296,7 @@ export default function ProjectForm() {
   }, [access?.employeeId, isAuthPMCreatingProject, setValue]);
 
   // Pre-fill form when editing
-  useEffect(() => {
+  useLayoutEffect(() => {
     let paymentTermsSyncTimeout: number | undefined;
 
     if (isEditMode && existingProject) {
@@ -306,7 +313,7 @@ export default function ProjectForm() {
         fieldwireProjectId: existingProject.fieldwireProjectId ?? '',
         fieldwireProjectName: nextFieldwireProjectName,
         stageId: existingProject.stageId,
-        status: existingProject.status ?? 'ACTIVE',
+        status: getProjectStatusOrDefault(existingProject.status),
         divisionId: existingProject.divisionId ?? '',
         gcId: existingProject.gcId,
         leadPMId: existingProject.leadPMId ?? '',
@@ -385,7 +392,8 @@ export default function ProjectForm() {
   const setInactiveMutation = useSetProjectInactiveMutation();
   const setClosedMutation = useSetProjectClosedMutation();
   const setCompletedMutation = useSetProjectCompletedMutation();
-  const createScheduleMutation = useCreateScheduleEntryMutation();
+  const addContractAttachmentMutation = useAddContractAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
 
   const [activeSection, setActiveSection] = useState<string>('project-info');
   const isSubmitting =
@@ -394,8 +402,7 @@ export default function ProjectForm() {
     setActiveMutation.isPending ||
     setInactiveMutation.isPending ||
     setClosedMutation.isPending ||
-    setCompletedMutation.isPending ||
-    createScheduleMutation.isPending;
+    setCompletedMutation.isPending;
 
   /* ---- Submit ---- */
 
@@ -541,60 +548,28 @@ export default function ProjectForm() {
         toast.success('Project created.');
       }
 
-      // Seed the initial schedule only when creating a project.
-      if (!isEditMode && data.estimatedStartDate) {
-        try {
-          await createScheduleMutation.mutateAsync({
-            projectId: resultProjectId,
-            date: data.estimatedStartDate,
-            description: 'Project scheduled start',
-            adjustedFinishDate: data.estimatedEndDate || undefined,
-          });
-        } catch {
-          console.warn('Schedule entry creation failed');
-        }
-      }
-
-      // Upload contract documents if any were selected
+      // Queue contract documents if any were selected.
       if (selectedFiles.length > 0) {
         try {
-          // Discover the project's "prime contract" folder
-          const root = await filesApi.getRootFolder();
-          const rootDetail = await filesApi.getFolderDetails(root.id);
-          const projectsFolder = rootDetail.children.find(
-            (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'projects'
+          const primeContractFolderId = await filesApi.getProjectSubFolderId(
+            resultProjectId,
+            'PRIME_CONTRACT'
           );
-          if (projectsFolder) {
-            const projectsFolderDetail = await filesApi.getFolderDetails(projectsFolder.id);
-            const projectFolder = projectsFolderDetail.children.find(
-              (c) => c.type === 'FOLDER' && c.name === resultProjectId
-            );
-            if (projectFolder) {
-              const projectFolderDetail = await filesApi.getFolderDetails(projectFolder.id);
-              const primeContractFolder = projectFolderDetail.children.find(
-                (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === 'prime contract'
-              );
-              if (primeContractFolder) {
-                for (const file of selectedFiles) {
-                  try {
-                    const dotIdx = file.name.lastIndexOf('.');
-                    const name = dotIdx > 0 ? file.name.slice(0, dotIdx) : file.name;
-                    const uploaded = await filesApi.uploadFile(file, {
-                      name,
-                      parentId: primeContractFolder.id,
-                      mimeType: file.type || undefined,
-                      size: file.size,
-                    });
-                    await contractAttachmentApi.add(resultProjectId, { fileId: uploaded.id });
-                  } catch {
-                    console.warn(`Failed to upload contract document: ${file.name}`);
-                  }
-                }
-              }
-            }
-          }
+
+          queueFiles({
+            files: selectedFiles,
+            parentId: primeContractFolderId,
+            label: 'Prime contract document',
+            getName: getContractDocumentUploadName,
+            onUploaded: async (uploaded) => {
+              await addContractAttachmentMutation.mutateAsync({
+                projectId: resultProjectId,
+                data: { fileId: uploaded.id },
+              });
+            },
+          });
         } catch {
-          console.warn('Contract document upload failed');
+          toast.error('Prime contract folder not found - files were not uploaded.');
         }
       }
 
@@ -638,9 +613,7 @@ export default function ProjectForm() {
     >
       <FormLayout className="pt-4 pb-8 lg:pb-10">
         <FormContent>
-          {/* ════════════════════════════════════════════
-              Section 1: Project Info
-             ════════════════════════════════════════════ */}
+          {/* Section 1: Project Info */}
           <Card id="project-info">
             <CardContent className="space-y-6">
               <div>
@@ -656,29 +629,41 @@ export default function ProjectForm() {
                 <Controller
                   name="status"
                   control={control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <ProjectFormFieldLabel>Project Status</ProjectFormFieldLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger
-                          aria-invalid={fieldState.invalid}
-                          className={
-                            fieldState.invalid ? projectInvalidControlClassName : undefined
-                          }
+                  render={({ field, fieldState }) => {
+                    const statusValue = normalizeProjectStatus(field.value);
+
+                    return (
+                      <Field data-invalid={fieldState.invalid}>
+                        <ProjectFormFieldLabel>Project Status</ProjectFormFieldLabel>
+                        <Select
+                          value={statusValue}
+                          onValueChange={(value) => {
+                            const nextStatus = normalizeProjectStatus(value);
+                            if (nextStatus) field.onChange(nextStatus);
+                          }}
                         >
-                          <SelectValue placeholder="Select status..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PROJECT_STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                    </Field>
-                  )}
+                          <SelectTrigger
+                            aria-invalid={fieldState.invalid}
+                            className={
+                              fieldState.invalid ? projectInvalidControlClassName : undefined
+                            }
+                          >
+                            <SelectValue placeholder="Select status...">
+                              {statusValue ? PROJECT_STATUS_LABELS[statusValue] : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PROJECT_STATUS_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                      </Field>
+                    );
+                  }}
                 />
 
                 <Controller
@@ -790,7 +775,7 @@ export default function ProjectForm() {
                 )}
               />
 
-              {/* ── Location sub-section ── */}
+              {/* Location sub-section */}
               <div className="pt-2">
                 <h3 className="text-base font-semibold text-foreground mb-4">Location</h3>
 
@@ -853,7 +838,7 @@ export default function ProjectForm() {
 
               <Separator />
 
-              {/* ── Key Stakeholders sub-section ── */}
+              {/* Key Stakeholders sub-section */}
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-4">Key Stakeholders</h3>
 
@@ -925,9 +910,7 @@ export default function ProjectForm() {
             </CardContent>
           </Card>
 
-          {/* ════════════════════════════════════════════
-              Section 2: Contract
-             ════════════════════════════════════════════ */}
+          {/* Section 2: Contract */}
           <Card id="contract">
             <CardContent className="space-y-6">
               <div>
@@ -1154,7 +1137,7 @@ export default function ProjectForm() {
 
               <Separator />
 
-              {/* ── Dates sub-section ── */}
+              {/* Dates sub-section */}
               <div>
                 <h3 className="mb-4 text-base font-semibold text-foreground">Dates</h3>
 
@@ -1276,7 +1259,7 @@ export default function ProjectForm() {
                 <>
                   <Separator />
 
-                  {/* ── Contract Documents sub-section ── */}
+                  {/* Contract Documents sub-section */}
                   <div>
                     <h3 className="mb-4 text-base font-semibold text-foreground">
                       Contract Documents

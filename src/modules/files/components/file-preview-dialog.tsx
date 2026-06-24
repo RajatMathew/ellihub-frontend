@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -10,12 +10,9 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import { FILE_TEXT_PREVIEW_BYTES, filesApi } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
-import {
-  useDownloadFile,
-  useFilePreviewQuery,
-  useTextContentQuery,
-} from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile, useTextContentQuery } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { Download, ExternalLink, Eye, Loader2 } from 'lucide-react';
 
@@ -57,6 +54,7 @@ const TEXT_EXTENSIONS = [
   'log',
   'sql',
 ];
+const LARGE_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 function getExtension(item: FilePreviewItem | null): string {
   return (item?.displayName || item?.name || '').split('.').pop()?.toLowerCase() ?? '';
@@ -99,6 +97,29 @@ function getPreviewType(item: FilePreviewItem): PreviewType {
   return 'generic';
 }
 
+function getPreviewTypeLabel(previewType: PreviewType): string {
+  switch (previewType) {
+    case 'image':
+      return 'Image';
+    case 'pdf':
+      return 'PDF';
+    case 'video':
+      return 'Video';
+    case 'audio':
+      return 'Audio';
+    case 'spreadsheet':
+      return 'Spreadsheet';
+    case 'text':
+      return 'Text';
+    case 'document':
+      return 'Document';
+    case 'archive':
+      return 'Archive';
+    case 'generic':
+      return 'File';
+  }
+}
+
 function isDelimitedSpreadsheet(item: FilePreviewItem | null): boolean {
   const mime = item?.mimeType ?? '';
   const extension = getExtension(item);
@@ -115,11 +136,28 @@ function hasEmbeddedLoadState(previewType: PreviewType): boolean {
   );
 }
 
+function isLargeEmbeddedPreview(item: FilePreviewItem | null, previewType: PreviewType): boolean {
+  return hasEmbeddedLoadState(previewType) && (item?.size ?? 0) > LARGE_PREVIEW_BYTES;
+}
+
+function openUrl(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function FileLoadingOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-md border bg-background">
       <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">Loading file...</p>
+      <p className="text-sm text-muted-foreground">Loading preview...</p>
+    </div>
+  );
+}
+
+function PreviewMessage({ message }: { message: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+      <Eye className="size-10 text-muted-foreground/40" />
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -181,6 +219,41 @@ interface FilePreviewDialogProps {
   file: FilePreviewItem | null;
 }
 
+function PreviewActions({
+  file,
+  url,
+  onPreview,
+  showPreviewAction,
+}: {
+  file: FilePreviewItem | null;
+  url?: string;
+  onPreview?: () => void;
+  showPreviewAction?: boolean;
+}) {
+  const downloadFile = useDownloadFile();
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {url && (
+        <Button variant="outline" size="sm" onClick={() => openUrl(url)}>
+          <ExternalLink className="size-3.5" />
+          Open
+        </Button>
+      )}
+      {showPreviewAction && onPreview && (
+        <Button variant="outline" size="sm" onClick={onPreview}>
+          <Eye className="size-3.5" />
+          Preview anyway
+        </Button>
+      )}
+      <Button size="sm" onClick={() => file && downloadFile.mutate(file)} disabled={!file}>
+        <Download className="size-3.5" />
+        Download
+      </Button>
+    </div>
+  );
+}
+
 function FallbackPreview({
   file,
   url,
@@ -190,8 +263,6 @@ function FallbackPreview({
   url?: string;
   type: string;
 }) {
-  const downloadFile = useDownloadFile();
-
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
       <FileTypeIcon
@@ -203,7 +274,7 @@ function FallbackPreview({
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">Preview not available</p>
         <p className="max-w-md text-sm text-muted-foreground">
-          {type} files can still be downloaded from this window.
+          {type} files can still be opened or downloaded from this window.
         </p>
       </div>
       <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:text-left">
@@ -212,18 +283,38 @@ function FallbackPreview({
         <span>Size</span>
         <span className="font-medium text-foreground">{formatFileSize(file?.size)}</span>
       </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        {url && (
-          <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
-            <ExternalLink className="size-3.5" />
-            Open
-          </Button>
-        )}
-        <Button size="sm" onClick={() => file && downloadFile.mutate(file)} disabled={!file}>
-          <Download className="size-3.5" />
-          Download
-        </Button>
+      <PreviewActions file={file} url={url} />
+    </div>
+  );
+}
+
+function LargeFilePreview({
+  file,
+  url,
+  type,
+  onPreview,
+}: {
+  file: FilePreviewItem | null;
+  url?: string;
+  type: string;
+  onPreview: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+      <FileTypeIcon
+        fileType="FILE"
+        mimeType={file?.mimeType}
+        fileName={file?.displayName || file?.name || ''}
+        className="size-16 text-muted-foreground/50"
+      />
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">Large preview paused</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {type} is {formatFileSize(file?.size)}. Open it in a new tab, download it, or preview it
+          here when needed.
+        </p>
       </div>
+      <PreviewActions file={file} url={url} onPreview={onPreview} showPreviewAction />
     </div>
   );
 }
@@ -273,21 +364,24 @@ function SpreadsheetPreview({ rows }: { rows: string[][] }) {
 export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialogProps) {
   const isFile = open && !!file && file.type !== 'FOLDER';
   const previewType = file ? getPreviewType(file) : 'generic';
+  const previewTypeLabel = getPreviewTypeLabel(previewType);
   const canPreviewDelimited = isDelimitedSpreadsheet(file);
   const [loadedFilePreviewKey, setLoadedFilePreviewKey] = useState<string | null>(null);
+  const [previewLargeFile, setPreviewLargeFile] = useState(false);
+  const url = isFile && file ? filesApi.getFileReadUrl(file.id) : undefined;
+  const shouldGateLargePreview = isLargeEmbeddedPreview(file, previewType) && !previewLargeFile;
   const {
-    data: url,
-    error: previewError,
-    isLoading,
-    isError,
-  } = useFilePreviewQuery(isFile ? file?.id : undefined, isFile);
-  const previewErrorMessage = isError
-    ? getApiErrorMessage(previewError, 'Failed to load preview.')
-    : undefined;
-  const { data: textContent, isLoading: isTextContentLoading } = useTextContentQuery(
-    url,
-    isFile && !!url && (previewType === 'text' || canPreviewDelimited)
+    data: textContent,
+    error: textContentError,
+    isError: isTextContentError,
+    isLoading: isTextContentLoading,
+  } = useTextContentQuery(
+    isFile ? file?.id : undefined,
+    isFile && (previewType === 'text' || canPreviewDelimited)
   );
+  const textPreviewErrorMessage = isTextContentError
+    ? getApiErrorMessage(textContentError, 'Failed to load text preview.')
+    : undefined;
   const spreadsheetRows = useMemo(
     () =>
       textContent && canPreviewDelimited ? parseDelimitedRows(textContent, getDelimiter(file)) : [],
@@ -295,13 +389,26 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
   );
   const downloadFile = useDownloadFile();
   const embeddedPreviewKey =
-    open && hasEmbeddedLoadState(previewType) && url && !isLoading && !isError
+    open && hasEmbeddedLoadState(previewType) && url && !shouldGateLargePreview
       ? `${file?.id}:${previewType}:${url}`
       : null;
   const isEmbeddedFileLoading = !!embeddedPreviewKey && loadedFilePreviewKey !== embeddedPreviewKey;
+  const textPreviewNotice =
+    textContent && textContent.length >= FILE_TEXT_PREVIEW_BYTES
+      ? `Showing the first ${formatFileSize(FILE_TEXT_PREVIEW_BYTES)}.`
+      : null;
+
+  useEffect(() => {
+    setLoadedFilePreviewKey(null);
+    setPreviewLargeFile(false);
+  }, [file?.id, open]);
 
   const handleDownload = () => {
     if (file) downloadFile.mutate(file);
+  };
+
+  const markEmbeddedPreviewLoaded = () => {
+    setLoadedFilePreviewKey(embeddedPreviewKey);
   };
 
   return (
@@ -322,59 +429,56 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
         </DialogHeader>
 
         <DialogBody className="min-h-0 flex-1 overflow-auto">
-          {isLoading && (
-            <div className="flex h-full flex-col items-center justify-center gap-3">
-              <Loader2 className="size-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Loading file...</p>
-            </div>
+          {shouldGateLargePreview && (
+            <LargeFilePreview
+              file={file}
+              url={url}
+              type={previewTypeLabel}
+              onPreview={() => setPreviewLargeFile(true)}
+            />
           )}
 
-          {isError && (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <Eye className="size-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">{previewErrorMessage}</p>
-            </div>
-          )}
-
-          {!isLoading && !isError && url && previewType === 'image' && (
+          {!shouldGateLargePreview && url && previewType === 'image' && (
             <div className="relative flex h-full items-center justify-center p-4">
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <img
                 src={url}
                 alt={file?.displayName || file?.name || undefined}
                 className="max-h-full max-w-full rounded-md object-contain"
-                onLoad={() => setLoadedFilePreviewKey(embeddedPreviewKey)}
+                onLoad={markEmbeddedPreviewLoaded}
+                onError={markEmbeddedPreviewLoaded}
               />
             </div>
           )}
 
-          {!isLoading && !isError && url && previewType === 'pdf' && (
+          {!shouldGateLargePreview && url && previewType === 'pdf' && (
             <div className="relative h-full w-full">
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <iframe
                 src={url}
                 title={file?.displayName || file?.name || undefined}
                 className="h-full w-full rounded-md border"
-                onLoad={() => setLoadedFilePreviewKey(embeddedPreviewKey)}
+                onLoad={markEmbeddedPreviewLoaded}
               />
             </div>
           )}
 
-          {!isLoading && !isError && url && previewType === 'video' && (
+          {!shouldGateLargePreview && url && previewType === 'video' && (
             <div className="relative flex h-full items-center justify-center p-4">
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <video
                 src={url}
                 controls
                 className="max-h-full max-w-full rounded-md"
-                onLoadedData={() => setLoadedFilePreviewKey(embeddedPreviewKey)}
+                onLoadedData={markEmbeddedPreviewLoaded}
+                onError={markEmbeddedPreviewLoaded}
               >
                 Your browser does not support video playback.
               </video>
             </div>
           )}
 
-          {!isLoading && !isError && url && previewType === 'audio' && (
+          {!shouldGateLargePreview && url && previewType === 'audio' && (
             <div className="relative flex h-full flex-col items-center justify-center gap-6">
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <FileTypeIcon
@@ -387,54 +491,68 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
                 src={url}
                 controls
                 className="w-full max-w-md"
-                onLoadedMetadata={() => setLoadedFilePreviewKey(embeddedPreviewKey)}
+                onLoadedMetadata={markEmbeddedPreviewLoaded}
+                onError={markEmbeddedPreviewLoaded}
               >
                 Your browser does not support audio playback.
               </audio>
             </div>
           )}
 
-          {!isLoading &&
-            !isError &&
-            isTextContentLoading &&
+          {isTextContentLoading &&
             (previewType === 'text' || (previewType === 'spreadsheet' && canPreviewDelimited)) && (
               <div className="flex h-full flex-col items-center justify-center gap-3">
                 <Loader2 className="size-8 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading file...</p>
+                <p className="text-sm text-muted-foreground">Loading preview...</p>
               </div>
             )}
 
-          {!isLoading &&
-            !isError &&
-            !isTextContentLoading &&
-            previewType === 'spreadsheet' &&
-            canPreviewDelimited && <SpreadsheetPreview rows={spreadsheetRows} />}
-
-          {!isLoading &&
-            !isError &&
-            !isTextContentLoading &&
-            previewType === 'text' &&
-            textContent != null && (
-              <pre className="h-full w-full overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-4 font-mono text-xs">
-                {textContent}
-              </pre>
+          {isTextContentError &&
+            (previewType === 'text' || (previewType === 'spreadsheet' && canPreviewDelimited)) && (
+              <PreviewMessage message={textPreviewErrorMessage ?? 'Failed to load preview.'} />
             )}
 
-          {!isLoading &&
-            !isError &&
-            !isTextContentLoading &&
+          {!isTextContentLoading &&
+            !isTextContentError &&
             previewType === 'spreadsheet' &&
-            !canPreviewDelimited && <FallbackPreview file={file} url={url} type="Spreadsheet" />}
+            canPreviewDelimited && (
+              <div className="flex h-full min-h-0 flex-col gap-2">
+                {textPreviewNotice && (
+                  <p className="shrink-0 text-xs text-muted-foreground">{textPreviewNotice}</p>
+                )}
+                <div className="min-h-0 flex-1">
+                  <SpreadsheetPreview rows={spreadsheetRows} />
+                </div>
+              </div>
+            )}
 
-          {!isLoading && !isError && !isTextContentLoading && previewType === 'document' && (
+          {!isTextContentLoading &&
+            !isTextContentError &&
+            previewType === 'text' &&
+            textContent != null && (
+              <div className="flex h-full min-h-0 flex-col gap-2">
+                {textPreviewNotice && (
+                  <p className="shrink-0 text-xs text-muted-foreground">{textPreviewNotice}</p>
+                )}
+                <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-4 font-mono text-xs">
+                  {textContent}
+                </pre>
+              </div>
+            )}
+
+          {!shouldGateLargePreview && previewType === 'spreadsheet' && !canPreviewDelimited && (
+            <FallbackPreview file={file} url={url} type="Spreadsheet" />
+          )}
+
+          {!shouldGateLargePreview && previewType === 'document' && (
             <FallbackPreview file={file} url={url} type="Document" />
           )}
 
-          {!isLoading && !isError && !isTextContentLoading && previewType === 'archive' && (
+          {!shouldGateLargePreview && previewType === 'archive' && (
             <FallbackPreview file={file} url={url} type="Archive" />
           )}
 
-          {!isLoading && !isError && !isTextContentLoading && previewType === 'generic' && (
+          {!shouldGateLargePreview && previewType === 'generic' && (
             <FallbackPreview file={file} url={url} type="File" />
           )}
         </DialogBody>
@@ -443,7 +561,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button onClick={handleDownload} disabled={!file || downloadFile.isPending}>
+          <Button onClick={handleDownload} disabled={!file}>
             <Download className="size-4" />
             Download
           </Button>

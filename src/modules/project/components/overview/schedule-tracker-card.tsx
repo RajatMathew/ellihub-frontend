@@ -8,7 +8,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
 import { ScheduleTrackerContractDates } from '@/modules/project/components/overview/schedule-tracker-contract-dates';
 import { ScheduleTrackerEntryDialog } from '@/modules/project/components/overview/schedule-tracker-entry-dialog';
@@ -59,6 +59,7 @@ export function ScheduleTrackerCard({
   const [newEntry, setNewEntry] = useState(createEmptyScheduleTrackerDraft);
   const [editingEntry, setEditingEntry] = useState<ScheduleTrackerEditingEntry | null>(null);
   const [uploadTarget, setUploadTarget] = useState<ScheduleTrackerUploadTarget>(null);
+  const [isScheduleUploadPending, setIsScheduleUploadPending] = useState(false);
   const [previewFile, setPreviewFile] = useState<FilePreviewItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -70,7 +71,7 @@ export function ScheduleTrackerCard({
   const createMutation = useCreateScheduleEntryMutation();
   const updateMutation = useUpdateScheduleEntryMutation();
   const deleteMutation = useDeleteScheduleEntryMutation();
-  const uploadMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const selectedPrimeChangeOrderOptions = useMemo<ScheduleTrackerPrimeChangeOrderOption[]>(() => {
     const options = new Map<string, string>();
 
@@ -171,32 +172,44 @@ export function ScheduleTrackerCard({
   };
 
   const handleUploadSubmit = async (payload: { file: File; data: FileUploadInput }) => {
-    const fileItem = await uploadMutation.mutateAsync(payload);
+    setIsScheduleUploadPending(true);
 
-    if (uploadTarget === 'add') {
-      setNewEntry((prev) => ({
-        ...prev,
-        fileId: fileItem.id,
-        fileName: fileItem.name ?? '',
-      }));
+    try {
+      const [fileItem] = await uploadManager.enqueueUploadsAndWait([payload], {
+        label: 'Schedule attachment',
+      });
+
+      if (!fileItem) return;
+
+      if (uploadTarget === 'add') {
+        setNewEntry((prev) => ({
+          ...prev,
+          fileId: fileItem.id,
+          fileName: fileItem.name ?? '',
+        }));
+      }
+
+      if (uploadTarget === 'edit') {
+        setEditingEntry((prev) =>
+          prev
+            ? {
+                ...prev,
+                draft: {
+                  ...prev.draft,
+                  fileId: fileItem.id,
+                  fileName: fileItem.name ?? '',
+                },
+              }
+            : prev
+        );
+      }
+
+      setUploadTarget(null);
+    } catch {
+      // Upload manager shows upload and cancellation errors in the tray.
+    } finally {
+      setIsScheduleUploadPending(false);
     }
-
-    if (uploadTarget === 'edit') {
-      setEditingEntry((prev) =>
-        prev
-          ? {
-              ...prev,
-              draft: {
-                ...prev.draft,
-                fileId: fileItem.id,
-                fileName: fileItem.name ?? '',
-              },
-            }
-          : prev
-      );
-    }
-
-    setUploadTarget(null);
   };
 
   const handlePreviewFile = (file: ScheduleFile) => {
@@ -297,7 +310,7 @@ export function ScheduleTrackerCard({
             }}
             parentId={parentFolderId}
             onSubmit={(payload) => void handleUploadSubmit(payload)}
-            isSubmitting={uploadMutation.isPending}
+            isSubmitting={isScheduleUploadPending}
           />
         )}
 
