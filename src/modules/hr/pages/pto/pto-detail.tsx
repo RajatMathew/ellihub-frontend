@@ -1,13 +1,14 @@
 import { useCallback, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import {
   PTODecisionCard,
   PTODetailLoading,
+  PTODetailSidebar,
   PTODetailToolbar,
-  PTOEmployeeCard,
   PTOHistoryCard,
   PTORequestInfoCard,
 } from '@/modules/hr/components/pto/detail';
@@ -33,6 +34,7 @@ export default function PTODetailPage() {
   const rejectMutation = useRejectPTOMutation();
   const deleteMutation = useDeletePTOMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const ptoBreadcrumbLabel = ptoQuery.data
     ? `${getPTOEmployeeName(ptoQuery.data)} - ${getPTOTypeLabel(ptoQuery.data)}`
     : undefined;
@@ -87,20 +89,35 @@ export default function PTODetailPage() {
 
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
-      <PTODetailToolbar pto={pto} onDelete={() => setDeleteOpen(true)} />
+      <PTODetailToolbar
+        pto={pto}
+        sidebarOpen={sidebarOpen}
+        onDelete={() => setDeleteOpen(true)}
+        onOpenSidebar={() => setSidebarOpen(true)}
+      />
 
-      <div className="grid min-w-0 grid-cols-1 gap-6 pt-6 lg:grid-cols-4">
-        <div className="min-w-0 space-y-6 lg:col-span-3">
-          <PTORequestInfoCard pto={pto} />
-          {canReviewPTO && isPending && (
-            <PTODecisionCard isPending={isDecisionPending} onDecision={handleDecision} />
-          )}
+      <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
+        <div className="min-w-0 flex-1 space-y-5">
+          <Tabs defaultValue="overview" className="min-w-0">
+            <TabsList variant="line" className="max-w-full overflow-x-auto">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-5">
+              <PTORequestInfoCard pto={pto} />
+              {canReviewPTO && isPending && (
+                <PTODecisionCard isPending={isDecisionPending} onDecision={handleDecision} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="timeline">
+              <PTOHistoryCard pto={pto} />
+            </TabsContent>
+          </Tabs>
         </div>
 
-        <div className="min-w-0 space-y-6 lg:col-span-1">
-          <PTOEmployeeCard pto={pto} />
-          <PTOHistoryCard pto={pto} />
-        </div>
+        <PTODetailSidebar pto={pto} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
 
       <PTODeleteDialog

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Check, X } from 'lucide-react';
@@ -28,56 +29,55 @@ export function PTODecisionCard({ isPending, onDecision }: PTODecisionCardProps)
   };
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
-      <div className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-            Decision Management
-            <span className="font-black text-destructive">*</span>
-          </div>
-          {noteError && (
-            <span className="text-xs font-bold uppercase tracking-widest text-destructive">
-              Internal note is required
-            </span>
-          )}
+    <Card>
+      <CardHeader>
+        <div className="min-w-0">
+          <CardTitle className="text-sm font-semibold">Review Decision</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add an internal note before approving or rejecting this request.
+          </p>
         </div>
-
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
         <Field data-invalid={noteError}>
-          <FieldLabel className="sr-only">Decision note</FieldLabel>
+          <div className="flex items-center justify-between gap-3">
+            <FieldLabel>Internal note</FieldLabel>
+            {noteError && <span className="text-xs font-medium text-destructive">Required</span>}
+          </div>
           <Textarea
-            placeholder="Add an internal note for this decision..."
+            placeholder="Write a short decision note..."
             value={note}
             onChange={(event) => {
               setNote(event.target.value);
               if (event.target.value.trim()) setNoteError(false);
             }}
-            className="min-h-24 resize-none bg-background text-sm leading-relaxed"
+            className="min-h-24 resize-none text-sm leading-6"
             aria-invalid={noteError}
           />
           {noteError && <FieldError errors={[{ message: 'Internal note is required' }]} />}
         </Field>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Button
-            className="h-11 flex-1 font-bold uppercase tracking-widest"
+            className="h-10"
             variant="primary"
             onClick={() => handleDecision('approve')}
             disabled={isPending}
           >
             <Check className="size-4" />
-            Approve Request
+            Approve
           </Button>
           <Button
-            className="h-11 flex-1 font-bold uppercase tracking-widest"
+            className="h-10"
             variant="destructive"
             onClick={() => handleDecision('reject')}
             disabled={isPending}
           >
             <X className="size-4" />
-            Reject Request
+            Reject
           </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
