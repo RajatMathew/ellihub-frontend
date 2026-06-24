@@ -49,6 +49,7 @@
   --teal-header-accent: var(--color-purple-800);
   --teal-header-accent-foreground: var(--color-white);
   --info: var(--color-green-600);
+  --info-foreground: var(--color-white);
   --fieldwire-status-draft: var(--color-amber-500);
   --fieldwire-status-neutral: var(--color-slate-400);
   --fieldwire-status-pending: var(--color-blue-500);
@@ -81,18 +82,23 @@
   --primary-soft: var(--color-emerald-50);
   --primary-alpha: var(--color-emerald-100);
   --primary-accent: var(--color-emerald-700);
+  --primary-soft-foreground: var(--primary-accent);
   --success-soft: var(--color-emerald-50);
   --success-alpha: var(--color-emerald-200);
   --success-accent: var(--color-emerald-700);
+  --success-soft-foreground: var(--success-accent);
   --warning-soft: var(--color-amber-50);
   --warning-alpha: var(--color-amber-200);
   --warning-accent: var(--color-amber-700);
+  --warning-soft-foreground: var(--warning-accent);
   --info-soft: var(--color-sky-50);
   --info-alpha: var(--color-sky-200);
   --info-accent: var(--color-sky-700);
+  --info-soft-foreground: var(--info-accent);
   --destructive-soft: var(--color-red-50);
   --destructive-alpha: var(--color-red-100);
   --destructive-accent: var(--color-red-700);
+  --destructive-soft-foreground: var(--destructive-accent);
 }
 
 .dark {
@@ -138,6 +144,7 @@
   --teal-header-accent: var(--color-purple-800);
   --teal-header-accent-foreground: var(--color-white);
   --info: var(--color-green-500);
+  --info-foreground: #0f0f0f;
   --fieldwire-status-draft: var(--color-amber-500);
   --fieldwire-status-neutral: var(--color-slate-400);
   --fieldwire-status-pending: var(--color-blue-500);
@@ -170,18 +177,23 @@
   --primary-soft: var(--color-zinc-900);
   --primary-alpha: var(--color-zinc-800);
   --primary-accent: #6d97c0;
+  --primary-soft-foreground: var(--primary-accent);
   --success-soft: var(--color-emerald-950);
   --success-alpha: var(--color-emerald-900);
   --success-accent: var(--color-emerald-400);
+  --success-soft-foreground: var(--success-accent);
   --warning-soft: var(--color-amber-950);
   --warning-alpha: var(--color-amber-900);
   --warning-accent: var(--color-amber-300);
+  --warning-soft-foreground: var(--warning-accent);
   --info-soft: var(--color-blue-950);
   --info-alpha: var(--color-blue-900);
   --info-accent: var(--color-blue-400);
+  --info-soft-foreground: var(--info-accent);
   --destructive-soft: var(--color-red-950);
   --destructive-alpha: var(--color-red-900);
   --destructive-accent: var(--color-red-400);
+  --destructive-soft-foreground: var(--destructive-accent);
 }
 
 /* Dark Blue Theme — navy-tinted dark mode */
@@ -227,6 +239,7 @@
   --teal-header-accent: #1e293b;
   --teal-header-accent-foreground: #f1f5f9;
   --info: #22d3ee;
+  --info-foreground: #0a0f1a;
   --fieldwire-status-draft: #fbbf24;
   --fieldwire-status-neutral: #64748b;
   --fieldwire-status-pending: #60a5fa;
@@ -259,18 +272,23 @@
   --primary-soft: rgba(96, 165, 250, 0.12);
   --primary-alpha: rgba(96, 165, 250, 0.25);
   --primary-accent: #93c5fd;
+  --primary-soft-foreground: var(--primary-accent);
   --success-soft: rgba(74, 222, 128, 0.14);
   --success-alpha: rgba(74, 222, 128, 0.28);
   --success-accent: #86efac;
+  --success-soft-foreground: var(--success-accent);
   --warning-soft: rgba(251, 191, 36, 0.14);
   --warning-alpha: rgba(251, 191, 36, 0.3);
   --warning-accent: #fcd34d;
+  --warning-soft-foreground: var(--warning-accent);
   --info-soft: rgba(34, 211, 238, 0.14);
   --info-alpha: rgba(34, 211, 238, 0.28);
   --info-accent: #67e8f9;
+  --info-soft-foreground: var(--info-accent);
   --destructive-soft: rgba(248, 113, 113, 0.14);
   --destructive-alpha: rgba(248, 113, 113, 0.28);
   --destructive-accent: #fca5a5;
+  --destructive-soft-foreground: var(--destructive-accent);
 }
 
 /* Editorial Theme - Navy accent + cream paper (matches client's V6.2 palette) */
@@ -316,6 +334,7 @@
   --teal-header-accent: #1a3a5f;
   --teal-header-accent-foreground: #fdfbf6;
   --info: #1a3a5f;
+  --info-foreground: #fdfbf6;
   --fieldwire-status-draft: #b8860b;
   --fieldwire-status-neutral: #9a9286;
   --fieldwire-status-pending: #1a3a5f;
@@ -348,18 +367,23 @@
   --primary-soft: #ebeef3;
   --primary-alpha: #d5cfc0;
   --primary-accent: #1a3a5f;
+  --primary-soft-foreground: var(--primary-accent);
   --success-soft: #e5efe8;
   --success-alpha: #c6decf;
   --success-accent: #2d6a4f;
+  --success-soft-foreground: var(--success-accent);
   --warning-soft: #f7efd9;
   --warning-alpha: #ead7a5;
   --warning-accent: #b8860b;
+  --warning-soft-foreground: var(--warning-accent);
   --info-soft: #ebeef3;
   --info-alpha: #d5cfc0;
   --info-accent: #1a3a5f;
+  --info-soft-foreground: var(--info-accent);
   --destructive-soft: #fbe8e8;
   --destructive-alpha: #f3c2c2;
   --destructive-accent: #dc2626;
+  --destructive-soft-foreground: var(--destructive-accent);
 }
 
 .editorial body,
@@ -453,6 +477,7 @@
   --teal-header-accent: #89b4fa;
   --teal-header-accent-foreground: #1e1e2e;
   --info: #89dceb;
+  --info-foreground: #1e1e2e;
 
   /* Status colors */
   --fieldwire-status-draft: #f9e2af;
@@ -489,18 +514,23 @@
   --primary-soft: rgba(137, 180, 250, 0.14);
   --primary-alpha: rgba(137, 180, 250, 0.28);
   --primary-accent: #89b4fa;
+  --primary-soft-foreground: var(--primary-accent);
   --success-soft: rgba(166, 227, 161, 0.14);
   --success-alpha: rgba(166, 227, 161, 0.28);
   --success-accent: #a6e3a1;
+  --success-soft-foreground: var(--success-accent);
   --warning-soft: rgba(249, 226, 175, 0.14);
   --warning-alpha: rgba(249, 226, 175, 0.28);
   --warning-accent: #f9e2af;
+  --warning-soft-foreground: var(--warning-accent);
   --info-soft: rgba(137, 220, 235, 0.14);
   --info-alpha: rgba(137, 220, 235, 0.28);
   --info-accent: #89dceb;
+  --info-soft-foreground: var(--info-accent);
   --destructive-soft: rgba(243, 139, 168, 0.14);
   --destructive-alpha: rgba(243, 139, 168, 0.28);
   --destructive-accent: #f38ba8;
+  --destructive-soft-foreground: var(--destructive-accent);
 }
 
 .genz body,
@@ -588,6 +618,7 @@ aside .w-px {
   --color-primary-soft: var(--primary-soft);
   --color-primary-alpha: var(--primary-alpha);
   --color-primary-accent: var(--primary-accent);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-success: var(--success);
@@ -595,25 +626,30 @@ aside .w-px {
   --color-success-soft: var(--success-soft);
   --color-success-alpha: var(--success-alpha);
   --color-success-accent: var(--success-accent);
+  --color-success-soft-foreground: var(--success-soft-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);
   --color-warning-alpha: var(--warning-alpha);
   --color-warning-accent: var(--warning-accent);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-alpha: var(--destructive-alpha);
   --color-destructive-accent: var(--destructive-accent);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
   --color-card-header: var(--card-header);
   --color-card-header-foreground: var(--card-header-foreground);
   --color-card-header-border: var(--card-header-border);
   --color-teal-header-accent: var(--teal-header-accent);
   --color-teal-header-accent-foreground: var(--teal-header-accent-foreground);
   --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-info-soft: var(--info-soft);
   --color-info-alpha: var(--info-alpha);
   --color-info-accent: var(--info-accent);
+  --color-info-soft-foreground: var(--info-soft-foreground);
   --color-fieldwire-status-draft: var(--fieldwire-status-draft);
   --color-fieldwire-status-neutral: var(--fieldwire-status-neutral);
   --color-fieldwire-status-pending: var(--fieldwire-status-pending);

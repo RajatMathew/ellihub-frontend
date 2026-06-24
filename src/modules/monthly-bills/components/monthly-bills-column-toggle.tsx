@@ -33,7 +33,7 @@ export function MonthlyBillsColumnToggle({
         >
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate">Columns</span>
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-white">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-success-foreground">
               {selectedCount}
             </span>
           </span>
@@ -77,7 +77,7 @@ export function MonthlyBillsColumnToggle({
                     className={cn(
                       'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
                       checked
-                        ? 'border-success bg-success text-white'
+                        ? 'border-success bg-success text-success-foreground'
                         : 'border-muted-foreground/40 bg-background text-transparent'
                     )}
                   >

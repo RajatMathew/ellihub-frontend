@@ -25,6 +25,13 @@ import {
 } from './modules/integrations/pages/quickbooks-public-pages';
 import { EndUserLicenseAgreementPage, PrivacyPolicyPage } from './modules/public/pages/legal-pages';
 
+// Theme switching is parked for now while Editorial is forced.
+// To restore the switcher later:
+// - Re-add THEME_VALUES and isAppTheme to the theme-registry import.
+// - Restore the one-time migration guard so existing non-light theme choices remain valid.
+// - Remove forcedTheme={DEFAULT_THEME} from ThemeProvider.
+// - Change themes={[DEFAULT_THEME]} back to themes={[...THEME_VALUES]}.
+
 function migrateEditorialDefaultTheme() {
   if (typeof window === 'undefined') return;
 
@@ -43,6 +50,7 @@ function migrateEditorialDefaultTheme() {
 migrateEditorialDefaultTheme();
 
 function FrameWork() {
+  // Theme switcher restore: remove forcedTheme and use all THEME_VALUES in themes.
   return (
     <ThemeProvider
       attribute="class"

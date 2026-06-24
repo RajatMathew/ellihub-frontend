@@ -352,7 +352,7 @@ export function InfiniteMultiSearchSelect({
                           className={cn(
                             'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
                             selected
-                              ? 'border-success bg-success text-white'
+                              ? 'border-success bg-success text-success-foreground'
                               : 'border-muted-foreground/40 bg-background text-transparent',
                             option.disabled && 'opacity-60'
                           )}
