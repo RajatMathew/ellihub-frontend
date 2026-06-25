@@ -41,6 +41,33 @@ export const paymentTermsSchema = z.enum([
 ]);
 export type PaymentTerms = z.infer<typeof paymentTermsSchema>;
 
+export const poNumberModeSchema = z.enum(['AUTO', 'MANUAL']);
+export type PONumberMode = z.infer<typeof poNumberModeSchema>;
+
+const PO_NUMBER_PREFIX = 'PO-';
+const MIN_PO_NUMBER_SUFFIX_WIDTH = 3;
+const PO_NUMBER_SUFFIX_INPUT_PATTERN = /^(?:PO-)?\d+$/i;
+
+export function getPoNumberSuffix(poNumber: string | null | undefined): string {
+  const trimmed = String(poNumber ?? '').trim();
+  return trimmed.replace(/^PO-/i, '');
+}
+
+export function normalizePoNumberSuffixInput(value: string | null | undefined): string | null {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed || !PO_NUMBER_SUFFIX_INPUT_PATTERN.test(trimmed)) return null;
+
+  const suffix = getPoNumberSuffix(trimmed).replace(/^0+/, '');
+  if (!suffix) return null;
+
+  return suffix.padStart(MIN_PO_NUMBER_SUFFIX_WIDTH, '0');
+}
+
+export function formatPoNumberFromSuffix(value: string | null | undefined): string | null {
+  const suffix = normalizePoNumberSuffixInput(value);
+  return suffix ? `${PO_NUMBER_PREFIX}${suffix}` : null;
+}
+
 // --- Status object (nested in list + detail) ---
 
 export const poStatusSchema = z
@@ -203,6 +230,20 @@ export const poStatsSchema = z.object({
 
 export type POStats = z.infer<typeof poStatsSchema>;
 
+export const poNumberPreviewSchema = z.object({
+  poNumber: z.string(),
+  poNumberSuffix: z.string(),
+});
+
+export type PONumberPreview = z.infer<typeof poNumberPreviewSchema>;
+
+export const poNumberAvailabilitySchema = poNumberPreviewSchema.extend({
+  available: z.boolean(),
+  conflictingPurchaseOrderId: z.string().nullable().optional(),
+});
+
+export type PONumberAvailability = z.infer<typeof poNumberAvailabilitySchema>;
+
 // --- List params ---
 
 export const listPOsParamsSchema = z.object({
@@ -352,6 +393,8 @@ export const createPOInputSchema = z
     projectId: z.string().min(1, 'Project is required'),
     vendorId: z.string().min(1, 'Vendor is required'),
     rfqId: z.string().optional(),
+    poNumberMode: poNumberModeSchema.optional(),
+    poNumberSuffix: z.string().optional(),
     tradeCategoryId: z.string().min(1, 'Trade category is required'),
     description: z.string().optional(),
     leadTime: z.string().optional(),
@@ -367,6 +410,14 @@ export const createPOInputSchema = z
     lineItems: z.array(poLineItemInputSchema).min(1, 'At least one line item is required'),
   })
   .superRefine((value, ctx) => {
+    if (value.poNumberMode === 'MANUAL' && !normalizePoNumberSuffixInput(value.poNumberSuffix)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['poNumberSuffix'],
+        message: 'Enter a unique numeric PO number',
+      });
+    }
+
     const subtotal = sumRoundedLineAmountsDecimal(value.lineItems);
     if (toCommercialDecimal(value.negotiatedDiscount).greaterThan(subtotal)) {
       ctx.addIssue({

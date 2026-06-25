@@ -36,6 +36,30 @@ export const usePOStatsQuery = (projectId: string) =>
     enabled: !!projectId,
   });
 
+export const useNextPONumberQuery = (enabled = true) =>
+  useQuery({
+    queryKey: poKeys.nextNumber(),
+    queryFn: () => poApi.getNextNumber(),
+    enabled,
+    staleTime: 0,
+  });
+
+export const usePONumberAvailabilityQuery = ({
+  poNumberSuffix,
+  excludeId,
+  enabled = true,
+}: {
+  poNumberSuffix: string;
+  excludeId?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: poKeys.numberAvailability(poNumberSuffix, excludeId),
+    queryFn: () => poApi.checkNumberAvailability({ poNumberSuffix, excludeId }),
+    enabled: enabled && poNumberSuffix.trim().length > 0,
+    staleTime: 0,
+  });
+
 export const usePODetailQuery = (id: string) =>
   useQuery({
     queryKey: poKeys.detail(id),

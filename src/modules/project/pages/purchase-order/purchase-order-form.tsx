@@ -31,7 +31,9 @@ import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddPOAttachmentMutation,
   useCreatePOMutation,
+  useNextPONumberQuery,
   usePODetailQuery,
+  usePONumberAvailabilityQuery,
   useUpdatePOMutation,
 } from '@/modules/project/hooks/purchase-order';
 import {
@@ -40,6 +42,8 @@ import {
 } from '@/modules/project/hooks/use-project-folder';
 import {
   createPOInputSchema,
+  getPoNumberSuffix,
+  normalizePoNumberSuffixInput,
   type CreatePOInput,
   type PODetail,
 } from '@/modules/project/schemas/purchase-order';
@@ -56,6 +60,8 @@ function createDefaultPOValues(projectId: string, rfqId?: string | null): Create
     projectId,
     vendorId: '',
     rfqId: rfqId || undefined,
+    poNumberMode: 'AUTO',
+    poNumberSuffix: '',
     tradeCategoryId: '',
     description: '',
     leadTime: '',
@@ -121,6 +127,8 @@ function getPOFormValues(
     projectId: po.projectId,
     vendorId: po.vendorId,
     rfqId: po.rfqId ?? undefined,
+    poNumberMode: 'AUTO',
+    poNumberSuffix: getPoNumberSuffix(po.poNumber),
     tradeCategoryId: resolvePOTradeCategoryId(po, tradeCategoryOptions),
     description: po.description ?? '',
     leadTime: po.leadTime ?? '',
@@ -234,18 +242,29 @@ export function POFormPage() {
     label: unit.label ?? unit.name ?? unit.id,
   }));
 
-  const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
-    resolver: zodResolver(createPOInputSchema),
-    defaultValues: getPOFormValues(
-      projectId,
-      isEditMode ? existingPO : undefined,
-      initialRfqId,
-      tradeCategoryOptions
-    ),
-  });
+  const { control, handleSubmit, formState, reset, setError, setValue, watch } =
+    useForm<CreatePOInput>({
+      resolver: zodResolver(createPOInputSchema),
+      defaultValues: getPOFormValues(
+        projectId,
+        isEditMode ? existingPO : undefined,
+        initialRfqId,
+        tradeCategoryOptions
+      ),
+    });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
   const selectedVendorId = watch('vendorId');
+  const poNumberMode = watch('poNumberMode') ?? 'AUTO';
+  const poNumberSuffix = watch('poNumberSuffix') ?? '';
+  const normalizedPoNumberSuffix = normalizePoNumberSuffixInput(poNumberSuffix);
+  const shouldCheckPoNumberAvailability = poNumberMode === 'MANUAL' && !!normalizedPoNumberSuffix;
+  const nextPoNumberQuery = useNextPONumberQuery(!isEditMode);
+  const poNumberAvailabilityQuery = usePONumberAvailabilityQuery({
+    poNumberSuffix,
+    excludeId: poId,
+    enabled: shouldCheckPoNumberAvailability,
+  });
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
 
   const populatedFromRfqId = useRef<string | null>(null);
@@ -369,6 +388,27 @@ export function POFormPage() {
       reset(getPOFormValues(projectId, existingPO, undefined, tradeCategoryOptions));
     }
   }, [existingPO, isEditMode, projectId, reset, tradeCategoryOptions]);
+
+  useEffect(() => {
+    if (isEditMode || poNumberMode !== 'MANUAL' || poNumberSuffix.trim()) return;
+
+    const nextSuffix =
+      nextPoNumberQuery.data?.poNumberSuffix ?? getPoNumberSuffix(nextPoNumberQuery.data?.poNumber);
+    if (!nextSuffix) return;
+
+    setValue('poNumberSuffix', nextSuffix, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: true,
+    });
+  }, [
+    isEditMode,
+    nextPoNumberQuery.data?.poNumber,
+    nextPoNumberQuery.data?.poNumberSuffix,
+    poNumberMode,
+    poNumberSuffix,
+    setValue,
+  ]);
 
   useEffect(() => {
     if (!isEditMode || !existingPO) return;
@@ -512,10 +552,34 @@ export function POFormPage() {
   }
 
   const onSubmit = async (formData: CreatePOInput) => {
+    if (formData.poNumberMode === 'MANUAL') {
+      const normalizedSuffix = normalizePoNumberSuffixInput(formData.poNumberSuffix);
+      if (!normalizedSuffix) {
+        setError('poNumberSuffix', {
+          type: 'validate',
+          message: 'Enter a unique numeric PO number',
+        });
+        return;
+      }
+
+      if (poNumberAvailabilityQuery.data?.available === false) {
+        setError('poNumberSuffix', {
+          type: 'validate',
+          message: `${poNumberAvailabilityQuery.data.poNumber} is already in use`,
+        });
+        return;
+      }
+    }
+
     const { lineItems, ...rest } = formData;
     const cleaned: CreatePOInput = {
       ...rest,
       rfqId: rest.rfqId || undefined,
+      poNumberMode: rest.poNumberMode ?? 'AUTO',
+      poNumberSuffix:
+        rest.poNumberMode === 'MANUAL'
+          ? (normalizePoNumberSuffixInput(rest.poNumberSuffix) ?? rest.poNumberSuffix)
+          : undefined,
       description: rest.description || undefined,
       leadTime: rest.leadTime || undefined,
       expectedDate: rest.expectedDate || undefined,
@@ -645,6 +709,13 @@ export function POFormPage() {
             hasMoreRfqs={rfqPicker.hasNextPage}
             onFetchMoreRfqs={rfqPicker.fetchNextPage}
             isVendorLocked={isVendorLocked}
+            autoPoNumber={isEditMode ? existingPO?.poNumber : nextPoNumberQuery.data?.poNumber}
+            isAutoPoNumberLoading={nextPoNumberQuery.isLoading}
+            poNumberAvailability={{
+              isChecking: poNumberAvailabilityQuery.isFetching,
+              isAvailable: poNumberAvailabilityQuery.data?.available,
+              poNumber: poNumberAvailabilityQuery.data?.poNumber,
+            }}
           />
           <PurchaseOrderFormLineItemsCard
             control={control}
