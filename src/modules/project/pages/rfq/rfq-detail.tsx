@@ -56,6 +56,7 @@ import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog'
 import { useDownloadFile, useFilePreviewQuery } from '@/modules/files/hooks/files.hooks';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { createFileUploadPayload } from '@/modules/files/uploads/use-managed-file-uploads';
+import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -357,9 +358,12 @@ export default function RFQDetailPage() {
   // Vendor email dialog
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTarget, setEmailTarget] = useState<FeatureMailTarget | null>(null);
+  const [awardEmailOpen, setAwardEmailOpen] = useState(false);
+  const [awardEmailTarget, setAwardEmailTarget] = useState<FeatureMailTarget | null>(null);
   const vendorPdfRequestIdRef = useRef(0);
 
   const vendorEmailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
+  const awardEmailDraftQuery = useFeatureMailDraftQuery(awardEmailTarget, awardEmailOpen);
 
   const {
     data: bidComparison,
@@ -842,6 +846,17 @@ export default function RFQDetailPage() {
     return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
   }
 
+  function getQuoteRecipientEmails(quote: (typeof quotes)[number]): string[] {
+    const vendorEmail = normalizeEmail(quote.vendor?.email);
+    const contactEmails =
+      quote.vendor?.contacts?.flatMap((contact) => {
+        const email = normalizeEmail(contact.email);
+        return email ? [email] : [];
+      }) ?? [];
+
+    return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
+  }
+
   function openRfqEmailFlow(
     target: FeatureMailTarget,
     pdfTarget: { quoteId: string; vendorName: string }
@@ -907,6 +922,31 @@ export default function RFQDetailPage() {
     );
   }
 
+  function handleEmailAwardVendor(quoteId: string) {
+    const quote = quotes.find((item) => item.id === quoteId);
+    if (!quote) return;
+
+    const vendorId = quote.vendor?.id ?? quote.vendorId;
+    const vendorName = quote.vendor?.name ?? 'Awarded vendor';
+    if (!quote.isAwarded && vendorId !== rfq?.awardedVendorId) {
+      toast.error('Award email can only be sent to the awarded vendor.');
+      return;
+    }
+
+    if (getQuoteRecipientEmails(quote).length === 0) {
+      toast.error(`${vendorName} does not have a vendor or linked contact email.`);
+      return;
+    }
+
+    if (!normalizeEmail(quote.vendor?.email)) {
+      toast.info(`${vendorName} does not have a vendor email. Select a contact recipient.`);
+    }
+
+    setAwardEmailTarget({ feature: 'rfq.awardNotice', entityId: quoteId });
+    sendVendorEmailMutation.reset();
+    setAwardEmailOpen(true);
+  }
+
   function handleCreatePurchaseOrder() {
     navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfqId}`);
   }
@@ -917,6 +957,14 @@ export default function RFQDetailPage() {
       setEmailTarget(null);
       sendVendorEmailMutation.reset();
       resetVendorPdfState();
+    }
+  }
+
+  function handleAwardEmailOpenChange(open: boolean) {
+    setAwardEmailOpen(open);
+    if (!open) {
+      setAwardEmailTarget(null);
+      sendVendorEmailMutation.reset();
     }
   }
 
@@ -1003,6 +1051,24 @@ export default function RFQDetailPage() {
           });
           await refetchRfqDetail();
           handleEmailOpenChange(false);
+        }}
+      />
+      <EmailComposePreviewDialog
+        open={awardEmailOpen}
+        onOpenChange={handleAwardEmailOpenChange}
+        title="Email Award Notice"
+        draft={awardEmailDraftQuery.data ?? null}
+        isLoading={awardEmailDraftQuery.isLoading}
+        isSending={sendVendorEmailMutation.isPending}
+        onSend={async (payload) => {
+          if (!awardEmailTarget) return;
+          await sendVendorEmailMutation.mutateAsync({
+            feature: awardEmailTarget.feature,
+            entityId: awardEmailTarget.entityId,
+            draft: payload,
+          });
+          await refetchRfqDetail();
+          handleAwardEmailOpenChange(false);
         }}
       />
 
@@ -1206,6 +1272,7 @@ export default function RFQDetailPage() {
             onOpenQuote={openQuoteDialog}
             onGenerateVendorPdf={handleGenerateVendorPdf}
             onEmailVendor={handleEmailVendor}
+            onEmailAwardVendor={handleEmailAwardVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
             onGeneratePO={handleCreatePurchaseOrder}

@@ -1,6 +1,5 @@
-import { z } from 'zod';
-
 import { generatePdfTermsInputSchema } from '@/modules/pdf/schemas';
+import { z } from 'zod';
 
 export const mailSignatureSchema = z.object({
   name: z.string().min(1),
@@ -80,6 +79,7 @@ export type FeatureMailDraft = z.infer<typeof featureMailDraftSchema>;
 export const featureMailKeySchema = z.enum([
   'rfq.vendorRequest',
   'rfq.vendorRequestAll',
+  'rfq.awardNotice',
   'purchaseOrder.vendorIssue',
   'subChangeOrder.vendorApproval',
 ]);
