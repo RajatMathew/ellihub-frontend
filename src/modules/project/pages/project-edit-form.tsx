@@ -800,6 +800,7 @@ function ProjectEditFormInner({
                         min={0}
                         decimalPlaces={2}
                         placeholder="0.00"
+                        useGrouping
                         aria-invalid={fieldState.invalid}
                       />
                     </InputWrapper>

@@ -6,6 +6,8 @@ import {
 } from '@/app/lib/generated-pdf';
 import {
   poDetailSchema,
+  poNumberAvailabilitySchema,
+  poNumberPreviewSchema,
   poPaginatedResponseSchema,
   poPdfDefaultTermsSchema,
   poPdfTermsOptionsSchema,
@@ -14,6 +16,8 @@ import {
   type GeneratePOPdfInput,
   type ListPOsParams,
   type PODetail,
+  type PONumberAvailability,
+  type PONumberPreview,
   type POPaginatedResponse,
   type POPdfDefaultTerms,
   type POPdfTermsOption,
@@ -191,6 +195,29 @@ export const poApi = {
     const res = await api.get(`${LIST_BASE}/project/${projectId}/stats`);
     const raw = res.data?.data ?? res.data;
     const result = poStatsSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async getNextNumber(): Promise<PONumberPreview> {
+    const res = await api.get(`${LIST_BASE}/next-number`);
+    const raw = res.data?.data ?? res.data;
+    const result = poNumberPreviewSchema.safeParse(raw);
+    if (!result.success) {
+      throw result.error;
+    }
+    return result.data;
+  },
+
+  async checkNumberAvailability(params: {
+    poNumberSuffix: string;
+    excludeId?: string;
+  }): Promise<PONumberAvailability> {
+    const res = await api.get(`${LIST_BASE}/po-number/availability`, { params });
+    const raw = res.data?.data ?? res.data;
+    const result = poNumberAvailabilitySchema.safeParse(raw);
     if (!result.success) {
       throw result.error;
     }

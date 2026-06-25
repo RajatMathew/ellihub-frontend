@@ -8,7 +8,7 @@ import {
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Input, InputAddon, InputGroup, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import {
   Select,
@@ -18,9 +18,10 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Textarea } from '@/app/components/ui/textarea';
 import { PAYMENT_TERMS_OPTIONS } from '@/modules/project/constants/purchase-order';
-import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
+import { getPoNumberSuffix, type CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type { Control } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 
@@ -48,6 +49,13 @@ interface PurchaseOrderFormDetailsCardProps {
   hasMoreRfqs?: boolean;
   onFetchMoreRfqs?: () => void;
   isVendorLocked?: boolean;
+  autoPoNumber?: string | null;
+  isAutoPoNumberLoading?: boolean;
+  poNumberAvailability?: {
+    isChecking?: boolean;
+    isAvailable?: boolean;
+    poNumber?: string | null;
+  };
 }
 
 const fieldLabelClassName = formFieldLabelClassName;
@@ -76,6 +84,9 @@ export function PurchaseOrderFormDetailsCard({
   hasMoreRfqs = false,
   onFetchMoreRfqs,
   isVendorLocked = false,
+  autoPoNumber,
+  isAutoPoNumberLoading = false,
+  poNumberAvailability,
 }: PurchaseOrderFormDetailsCardProps) {
   return (
     <Card id="po-details">
@@ -88,6 +99,13 @@ export function PurchaseOrderFormDetailsCard({
         </div>
 
         <Separator />
+
+        <PurchaseOrderNumberField
+          control={control}
+          autoPoNumber={autoPoNumber}
+          isAutoPoNumberLoading={isAutoPoNumberLoading}
+          availability={poNumberAvailability}
+        />
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
@@ -377,4 +395,126 @@ export function PurchaseOrderFormDetailsCard({
 
 function RequiredFieldLabel({ children }: { children: ReactNode }) {
   return <FormFieldLabel required>{children}</FormFieldLabel>;
+}
+function PurchaseOrderNumberField({
+  control,
+  autoPoNumber,
+  isAutoPoNumberLoading,
+  availability,
+}: {
+  control: Control<CreatePOInput>;
+  autoPoNumber?: string | null;
+  isAutoPoNumberLoading?: boolean;
+  availability?: {
+    isChecking?: boolean;
+    isAvailable?: boolean;
+    poNumber?: string | null;
+  };
+}) {
+  const autoSuffix = autoPoNumber ? getPoNumberSuffix(autoPoNumber) : '';
+
+  return (
+    <Controller
+      name="poNumberMode"
+      control={control}
+      render={({ field }) => {
+        const mode = field.value ?? 'AUTO';
+
+        return (
+          <Field>
+            <RequiredFieldLabel>PO Number</RequiredFieldLabel>
+            <Tabs value={mode} onValueChange={field.onChange} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2 sm:w-[360px]" size="lg">
+                <TabsTrigger value="AUTO">Auto Generated</TabsTrigger>
+                <TabsTrigger value="MANUAL">Manual</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="AUTO" className="mt-0 space-y-2">
+                <InputGroup>
+                  <InputAddon variant="lg" className="font-medium text-muted-foreground">
+                    PO-
+                  </InputAddon>
+                  <Input
+                    variant="lg"
+                    readOnly
+                    value={isAutoPoNumberLoading ? 'Loading...' : autoSuffix || 'Next available'}
+                    aria-label="Auto generated PO number"
+                    className="font-mono"
+                  />
+                  <InputAddon variant="lg" className="font-semibold text-primary">
+                    AUTO
+                  </InputAddon>
+                </InputGroup>
+                <p className="text-xs text-muted-foreground">
+                  System assigns the next available number automatically.
+                </p>
+              </TabsContent>
+
+              <TabsContent value="MANUAL" className="mt-0 space-y-2">
+                <Controller
+                  name="poNumberSuffix"
+                  control={control}
+                  render={({ field: suffixField, fieldState }) => {
+                    const showAvailability =
+                      !fieldState.invalid && (suffixField.value ?? '').trim().length > 0;
+                    const availabilityMessage = availability?.isChecking
+                      ? 'Checking availability...'
+                      : availability?.isAvailable === false
+                        ? `${availability.poNumber ?? 'This PO number'} is already in use.`
+                        : availability?.isAvailable === true
+                          ? `${availability.poNumber ?? 'This PO number'} is available.`
+                          : 'Enter a unique numeric PO number.';
+
+                    return (
+                      <Field
+                        data-invalid={fieldState.invalid || availability?.isAvailable === false}
+                      >
+                        <InputGroup>
+                          <InputAddon variant="lg" className="font-medium text-muted-foreground">
+                            PO-
+                          </InputAddon>
+                          <Input
+                            {...suffixField}
+                            variant="lg"
+                            value={suffixField.value ?? ''}
+                            onChange={(event) => {
+                              const nextValue = event.target.value
+                                .replace(/^PO-/i, '')
+                                .replace(/\D/g, '');
+                              suffixField.onChange(nextValue);
+                            }}
+                            placeholder="1001"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            aria-invalid={fieldState.invalid || availability?.isAvailable === false}
+                            className="font-mono"
+                            data-testid="po-number-suffix-input"
+                          />
+                        </InputGroup>
+                        {fieldState.invalid ? (
+                          <FieldError errors={[fieldState.error]} />
+                        ) : (
+                          <p
+                            className={
+                              availability?.isAvailable === false
+                                ? 'text-xs text-destructive'
+                                : showAvailability && availability?.isAvailable === true
+                                  ? 'text-xs text-success'
+                                  : 'text-xs text-muted-foreground'
+                            }
+                          >
+                            {availabilityMessage}
+                          </p>
+                        )}
+                      </Field>
+                    );
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
+          </Field>
+        );
+      }}
+    />
+  );
 }
