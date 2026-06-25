@@ -37,3 +37,12 @@ export const CHART_THEME_SELECTORS: Record<AppTheme, string> = {
   'dark-blue': '.dark-blue',
   genz: '.genz',
 };
+function isEnabledEnvValue(value: unknown): boolean {
+  return ['true', '1', 'yes', 'on', 'enabled'].includes(
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+  );
+}
+
+export const THEME_SWITCHER_ENABLED = isEnabledEnvValue(import.meta.env.VITE_ENABLE_THEME_SWITCHER);

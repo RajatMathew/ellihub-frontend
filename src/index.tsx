@@ -7,8 +7,9 @@ import { NotFound } from '@app/components/error/not-found';
 import ProtectedLayout from '@app/components/layouts/protected';
 import {
   DEFAULT_THEME,
-  THEME_DEFAULT_MIGRATION_KEY,
   THEME_STORAGE_KEY,
+  THEME_SWITCHER_ENABLED,
+  THEME_VALUES,
 } from '@app/theme/theme-registry';
 import { BrandedLayout } from '@core/auth/layouts/branded';
 import { ForgotPasswordPage } from '@core/auth/pages/forgot-password-page';
@@ -25,42 +26,17 @@ import {
 } from './modules/integrations/pages/quickbooks-public-pages';
 import { EndUserLicenseAgreementPage, PrivacyPolicyPage } from './modules/public/pages/legal-pages';
 
-// Theme switching is parked for now while Editorial is forced.
-// To restore the switcher later:
-// - Re-add THEME_VALUES and isAppTheme to the theme-registry import.
-// - Restore the one-time migration guard so existing non-light theme choices remain valid.
-// - Remove forcedTheme={DEFAULT_THEME} from ThemeProvider.
-// - Change themes={[DEFAULT_THEME]} back to themes={[...THEME_VALUES]}.
-
-function migrateEditorialDefaultTheme() {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (storedTheme !== DEFAULT_THEME) {
-      window.localStorage.setItem(THEME_STORAGE_KEY, DEFAULT_THEME);
-    }
-
-    window.localStorage.setItem(THEME_DEFAULT_MIGRATION_KEY, 'true');
-  } catch {
-    // Storage can be unavailable in restricted browser contexts; ThemeProvider still has a default.
-  }
-}
-
-migrateEditorialDefaultTheme();
-
 function FrameWork() {
-  // Theme switcher restore: remove forcedTheme and use all THEME_VALUES in themes.
   return (
     <ThemeProvider
       attribute="class"
       defaultTheme={DEFAULT_THEME}
-      forcedTheme={DEFAULT_THEME}
+      forcedTheme={THEME_SWITCHER_ENABLED ? undefined : DEFAULT_THEME}
       storageKey={THEME_STORAGE_KEY}
       enableSystem={false}
       disableTransitionOnChange
       enableColorScheme
-      themes={[DEFAULT_THEME]}
+      themes={THEME_SWITCHER_ENABLED ? [...THEME_VALUES] : [DEFAULT_THEME]}
     >
       <PwaUpdateModal />
       <HelmetProvider>
