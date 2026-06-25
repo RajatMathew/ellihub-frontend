@@ -494,6 +494,7 @@ export function LineItems({
                                 min={0}
                                 decimalPlaces={3}
                                 placeholder="0.00"
+                                useGrouping
                                 aria-invalid={fieldState.invalid}
                                 className="text-right"
                                 data-testid={`${fieldPrefix}-${index}-unit-price-input`}
@@ -673,6 +674,7 @@ export function LineItems({
                                 min={0}
                                 decimalPlaces={3}
                                 placeholder="0.00"
+                                useGrouping
                                 aria-invalid={fieldState.invalid}
                                 className="text-right"
                                 data-testid={`${fieldPrefix}-${index}-unit-price-input`}

@@ -1871,6 +1871,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                   disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
@@ -1888,6 +1889,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                   disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
@@ -2390,6 +2392,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                 />
               </InputWrapper>
             </Field>

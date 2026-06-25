@@ -57,6 +57,7 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
                     min={0}
                     decimalPlaces={2}
                     placeholder="0.00"
+                    useGrouping
                     className="text-right"
                   />
                 </InputWrapper>
@@ -79,6 +80,7 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
                     min={0}
                     decimalPlaces={2}
                     placeholder="0.00"
+                    useGrouping
                     className="text-right"
                   />
                 </InputWrapper>

@@ -691,6 +691,7 @@ export function InvoiceFormPage() {
                               min={0.01}
                               decimalPlaces={2}
                               placeholder="0.00"
+                              useGrouping
                               aria-invalid={fieldState.invalid}
                               className="text-right"
                               data-testid="invoice-total-amount-input"
