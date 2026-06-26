@@ -15,7 +15,7 @@ import { Switch } from '@/app/components/ui/switch';
 import { generateEmployeePassword } from '@/modules/hr/lib/employee-auth.utils';
 import type { CreateEmployeeInput, EmployeeAuthRole } from '@/modules/hr/schemas/employee.schema';
 import { Calendar, KeyRound, ShieldCheck } from 'lucide-react';
-import { Controller, useWatch, type Control } from 'react-hook-form';
+import { Controller, useController, useWatch, type Control } from 'react-hook-form';
 
 import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
@@ -31,6 +31,10 @@ export function EmployeeEmploymentSection({
   roleOptions,
 }: EmployeeEmploymentSectionProps) {
   const createAccount = useWatch({ control, name: 'createAccount' });
+  const { field: roleLabelField, fieldState: roleLabelFieldState } = useController({
+    control,
+    name: 'roleLabel',
+  });
 
   return (
     <Card id="employment">
@@ -91,22 +95,40 @@ export function EmployeeEmploymentSection({
           <Controller
             name="roleId"
             control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <EmployeeFormFieldLabel required>Professional Role</EmployeeFormFieldLabel>
-                <SearchableSelect
-                  options={roleOptions}
-                  value={field.value ?? ''}
-                  onValueChange={(value) => field.onChange(value || '')}
-                  placeholder="Select role..."
-                  className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
-                  testId="employee-role-select"
-                />
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
-          />
+            render={({ field, fieldState }) => {
+              const isInvalid = fieldState.invalid || roleLabelFieldState.invalid;
 
+              return (
+                <Field data-invalid={isInvalid}>
+                  <EmployeeFormFieldLabel required>Job Title</EmployeeFormFieldLabel>
+                  <SearchableSelect
+                    options={roleOptions}
+                    value={field.value ?? ''}
+                    onValueChange={(value) => {
+                      field.onChange(value || '');
+                      if (value) roleLabelField.onChange('');
+                    }}
+                    allowCustomValue
+                    customValue={roleLabelField.value ?? ''}
+                    onCustomValueChange={(value) => {
+                      roleLabelField.onChange(value || '');
+                      if (value) field.onChange('');
+                    }}
+                    customValueLabel={(value) => `Use "${value}" as job title`}
+                    placeholder="Select or type job title..."
+                    searchPlaceholder="Search or type job title..."
+                    emptyMessage="No job titles found."
+                    className={isInvalid ? employeeInvalidControlClassName : undefined}
+                    testId="employee-role-select"
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  {!fieldState.invalid && roleLabelFieldState.invalid && (
+                    <FieldError errors={[roleLabelFieldState.error]} />
+                  )}
+                </Field>
+              );
+            }}
+          />
           {!isEdit && createAccount && (
             <>
               <Controller
