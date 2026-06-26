@@ -1,6 +1,7 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
-import { CircleHelp, ExternalLink } from 'lucide-react';
+import { MarkFeedbackDialog } from '@/modules/feedback/components/mark-feedback-dialog';
+import { CircleHelp, Flag } from 'lucide-react';
 
 import { useSession } from '@app/api/auth-client';
 import { Button } from '@app/components/ui/button';
@@ -29,6 +30,7 @@ export function Header({
 }: HeaderProps) {
   const { helpToggle, isHelpOpen, isMobile } = useLayout();
   const { data } = useSession();
+  const [markFeedbackOpen, setMarkFeedbackOpen] = useState(false);
 
   return (
     <>
@@ -39,16 +41,16 @@ export function Header({
           <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-2.5">
             {toolbar && toolbar}
 
-            <a
-              aria-label="Open Feedback"
-              className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-              href="https://app.notion.com/p/3821073375a78019a93fef44bafe6453?v=3821073375a78065a58a000cd1116f7c&source=copy_link"
-              rel="noopener noreferrer"
-              target="_blank"
+            <Button
+              aria-label="Mark feedback"
+              onClick={() => setMarkFeedbackOpen(true)}
+              size={isMobile ? 'icon' : 'sm'}
+              type="button"
+              variant="ghost"
             >
-              <ExternalLink className="size-4" />
-              Feedback
-            </a>
+              <Flag className="size-4" />
+              {!isMobile && <span>Mark feedback</span>}
+            </Button>
 
             <Button
               aria-label={isHelpOpen ? 'Close Help Center' : 'Open Help Center'}
@@ -78,6 +80,7 @@ export function Header({
           </div>
         </div>
       </header>
+      <MarkFeedbackDialog open={markFeedbackOpen} onOpenChange={setMarkFeedbackOpen} />
       {!isMobile && (
         <aside className="fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)">
           <Suspense fallback={null}>
