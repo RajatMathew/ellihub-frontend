@@ -5,10 +5,26 @@ import {
   type ActivityLogItem,
   type ListActivityLogParams,
 } from '@/app/api/activity-log.api';
-import type { ActivityPanelItem } from '@/app/components/activity-panel';
+import type {
+  ActivityPanelCommentControls,
+  ActivityPanelItem,
+} from '@/app/components/activity-panel';
+import { useAccess } from '@/app/contexts/access-context';
 import { activityLogKeys } from '@/app/hooks/activity-log.keys';
-import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Clock, Pencil, PlusCircle, Trash2 } from 'lucide-react';
+import { toastApiError } from '@/app/lib/toast-api-error';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  MessageSquare,
+  Pencil,
+  PlusCircle,
+  Trash2,
+  Trophy,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 export { activityLogKeys };
 
@@ -28,49 +44,150 @@ export function useActivityPanelItems(
   entityId: string | undefined,
   options?: { entityName?: string }
 ) {
-  const query = useActivityLogQuery({
-    entityType,
-    entityId,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    size: 50,
-  }, { enabled: Boolean(entityId) });
+  const { access, can } = useAccess();
+  const queryClient = useQueryClient();
+  const query = useActivityLogQuery(
+    {
+      entityType,
+      entityId,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+      size: 50,
+    },
+    { enabled: Boolean(entityId) }
+  );
+
+  const invalidateActivity = () => queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
+
+  const createCommentMutation = useMutation({
+    mutationFn: (note: string) =>
+      activityLogApi.createComment({ entityType, entityId: entityId!, note }),
+    onSuccess: () => {
+      toast.success('Comment added.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to add comment.'),
+  });
+
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, note }: { commentId: string; note: string }) =>
+      activityLogApi.updateComment({ commentId, note }),
+    onSuccess: () => {
+      toast.success('Comment updated.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to update comment.'),
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => activityLogApi.deleteComment(commentId),
+    onSuccess: () => {
+      toast.success('Comment deleted.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to delete comment.'),
+  });
 
   const items = useMemo<ActivityPanelItem[]>(() => {
     return dedupeMirroredActivity(query.data?.data ?? []).map((log) =>
-      activityLogToPanelItem(log, {
-        entityType,
-        entityName: options?.entityName,
-      })
+      activityLogToPanelItem(
+        log,
+        {
+          entityType,
+          entityName: options?.entityName,
+        },
+        access?.userId
+      )
     );
-  }, [entityType, options?.entityName, query.data]);
+  }, [access?.userId, entityType, options?.entityName, query.data]);
+
+  const commentControls = useMemo<ActivityPanelCommentControls>(
+    () => ({
+      canComment: Boolean(entityId) && can('activityLog', 'create'),
+      isCreatingComment: createCommentMutation.isPending,
+      isUpdatingComment: updateCommentMutation.isPending,
+      isDeletingComment: deleteCommentMutation.isPending,
+      onCreateComment: (note) => createCommentMutation.mutateAsync(note),
+      onUpdateComment: (commentId, note) => updateCommentMutation.mutateAsync({ commentId, note }),
+      onDeleteComment: (commentId) => deleteCommentMutation.mutateAsync(commentId),
+    }),
+    [can, createCommentMutation, deleteCommentMutation, entityId, updateCommentMutation]
+  );
 
   return {
     items,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
+    commentControls,
   };
 }
 
 export function useEmployeeActivityPanelItems(employeeId: string | undefined) {
+  const { access, can } = useAccess();
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: [...activityLogKeys.all, 'employee', employeeId, { size: 100 }],
     queryFn: () => activityLogApi.listForEmployee(employeeId!, { size: 100 }),
     enabled: !!employeeId,
   });
 
+  const invalidateActivity = () => queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
+
+  const createCommentMutation = useMutation({
+    mutationFn: (note: string) =>
+      activityLogApi.createComment({ entityType: 'employee', entityId: employeeId!, note }),
+    onSuccess: () => {
+      toast.success('Comment added.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to add comment.'),
+  });
+
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, note }: { commentId: string; note: string }) =>
+      activityLogApi.updateComment({ commentId, note }),
+    onSuccess: () => {
+      toast.success('Comment updated.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to update comment.'),
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => activityLogApi.deleteComment(commentId),
+    onSuccess: () => {
+      toast.success('Comment deleted.');
+      void invalidateActivity();
+    },
+    onError: (error) => toastApiError(error, 'Unable to delete comment.'),
+  });
+
   const items = useMemo<ActivityPanelItem[]>(() => {
     return dedupeMirroredActivity(query.data?.data ?? []).map((log) =>
-      activityLogToPanelItem(log)
+      activityLogToPanelItem(log, undefined, access?.userId)
     );
-  }, [query.data]);
+  }, [access?.userId, query.data]);
+
+  const commentControls = useMemo<ActivityPanelCommentControls>(
+    () => ({
+      canComment: Boolean(employeeId) && can('activityLog', 'create'),
+      isCreatingComment: createCommentMutation.isPending,
+      isUpdatingComment: updateCommentMutation.isPending,
+      isDeletingComment: deleteCommentMutation.isPending,
+      onCreateComment: (note) => createCommentMutation.mutateAsync(note),
+      onUpdateComment: (commentId, note) => updateCommentMutation.mutateAsync({ commentId, note }),
+      onDeleteComment: (commentId) => deleteCommentMutation.mutateAsync(commentId),
+    }),
+    [can, createCommentMutation, deleteCommentMutation, employeeId, updateCommentMutation]
+  );
 
   return {
     items,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
+    commentControls,
   };
 }
 
@@ -78,6 +195,8 @@ function dedupeMirroredActivity(logs: ActivityLogItem[]) {
   const seen = new Set<string>();
 
   return logs.filter((log) => {
+    if (log.action === 'comment') return true;
+
     const key = getMirroredActivityKey(log);
     if (!key) return true;
     if (seen.has(key)) return false;
@@ -120,20 +239,30 @@ interface ActivityPanelContext {
   entityName?: string;
 }
 
-function activityLogToPanelItem(log: {
-  id: string;
-  action: string;
-  description: string;
-  createdAt?: string;
-  user?: { name?: string | null } | null;
-}, context?: ActivityPanelContext): ActivityPanelItem {
+function activityLogToPanelItem(
+  log: ActivityLogItem,
+  context?: ActivityPanelContext,
+  currentUserId?: string
+): ActivityPanelItem {
   const action = log.action.toLowerCase();
   const base = {
     id: log.id,
     user: log.user?.name ?? 'System',
     action: formatPanelActivityDescription(log.description, context),
     timestamp: formatActivityTimestamp(log.createdAt),
+    actionType: action,
+    note: log.note,
+    editedAt: log.editedAt,
+    canManage: action === 'comment' && Boolean(currentUserId && log.user?.id === currentUserId),
   };
+
+  if (action === 'comment') {
+    return {
+      ...base,
+      icon: <MessageSquare className="size-4 text-primary" />,
+      toneClassName: 'border-primary/20 bg-primary/5',
+    };
+  }
 
   if (action.includes('create')) {
     return {
@@ -151,15 +280,55 @@ function activityLogToPanelItem(log: {
     };
   }
 
-  if (action.includes('delete') || action.includes('archive') || action.includes('deactivate')) {
+  if (action.includes('award')) {
     return {
       ...base,
-      icon: <Trash2 className="size-4 text-destructive" />,
+      icon: <Trophy className="size-4 text-warning" />,
+      toneClassName: 'border-warning/20 bg-warning/5',
+    };
+  }
+
+  if (action.includes('dispute')) {
+    return {
+      ...base,
+      icon: <AlertTriangle className="size-4 text-warning" />,
+      toneClassName: 'border-warning/20 bg-warning/5',
+    };
+  }
+
+  if (
+    action.includes('delete') ||
+    action.includes('archive') ||
+    action.includes('deactivate') ||
+    action.includes('cancel') ||
+    action.includes('reject') ||
+    action.includes('void') ||
+    action.includes('remove')
+  ) {
+    return {
+      ...base,
+      icon: action.includes('delete') || action.includes('remove') ? (
+        <Trash2 className="size-4 text-destructive" />
+      ) : (
+        <XCircle className="size-4 text-destructive" />
+      ),
       toneClassName: 'border-destructive/20 bg-destructive/5',
     };
   }
 
-  if (action.includes('assign') || action.includes('link') || action.includes('unlink')) {
+  if (
+    action.includes('assign') ||
+    action.includes('link') ||
+    action.includes('unlink') ||
+    action.includes('issue') ||
+    action.includes('deliver') ||
+    action.includes('approve') ||
+    action.includes('execute') ||
+    action.includes('paid') ||
+    action.includes('resolve') ||
+    action.includes('invite') ||
+    action.includes('quote')
+  ) {
     return {
       ...base,
       icon: <CheckCircle2 className="size-4 text-success" />,
@@ -185,7 +354,7 @@ function formatPanelActivityDescription(description: string, context?: ActivityP
     return description;
   }
 
-  return `Unassigned ${employeeName} from this department.`;
+  return 'Unassigned ' + employeeName + ' from this department.';
 }
 
 function normalizeActivityName(value: string) {

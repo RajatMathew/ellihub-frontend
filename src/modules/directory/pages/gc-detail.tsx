@@ -107,6 +107,7 @@ export function GCDetailPage() {
           activityItems={activity.items}
           isActivityLoading={activity.isLoading}
           isActivityError={activity.isError}
+          activityCommentControls={activity.commentControls}
           onClose={() => setSidebarOpen(false)}
           onRetryActivity={() => void activity.refetch()}
         />
