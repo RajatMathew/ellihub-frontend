@@ -1,3 +1,4 @@
+import type { ActivityPanelCommentControls } from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -17,6 +18,7 @@ interface ContactDetailSidebarProps {
   activityItems: ContactActivityItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
+  activityCommentControls?: ActivityPanelCommentControls;
   onClose: () => void;
   onRetryActivity: () => void;
 }
@@ -27,6 +29,7 @@ export function ContactDetailSidebar({
   activityItems,
   isActivityLoading,
   isActivityError,
+  activityCommentControls,
   onClose,
   onRetryActivity,
 }: ContactDetailSidebarProps) {
@@ -40,6 +43,7 @@ export function ContactDetailSidebar({
           isLoading={isActivityLoading}
           isError={isActivityError}
           onRetry={onRetryActivity}
+          {...activityCommentControls}
         />
       }
     >

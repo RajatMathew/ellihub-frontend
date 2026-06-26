@@ -1,3 +1,4 @@
+import type { ActivityPanelCommentControls } from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
@@ -16,6 +17,7 @@ interface VendorDetailSidebarProps {
   activityItems: DirectoryActivityItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
+  activityCommentControls?: ActivityPanelCommentControls;
   onClose: () => void;
   onRetryActivity: () => void;
 }
@@ -26,6 +28,7 @@ export function VendorDetailSidebar({
   activityItems,
   isActivityLoading,
   isActivityError,
+  activityCommentControls,
   onClose,
   onRetryActivity,
 }: VendorDetailSidebarProps) {
@@ -39,6 +42,7 @@ export function VendorDetailSidebar({
           isLoading={isActivityLoading}
           isError={isActivityError}
           onRetry={onRetryActivity}
+          {...activityCommentControls}
         />
       }
     >

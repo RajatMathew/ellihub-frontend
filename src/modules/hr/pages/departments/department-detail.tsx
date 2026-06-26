@@ -110,6 +110,7 @@ export default function DepartmentDetailPage() {
           activityItems={activityQuery.items}
           isActivityLoading={activityQuery.isLoading}
           isActivityError={activityQuery.isError}
+          activityCommentControls={activityQuery.commentControls}
           onActivityRetry={() => void activityQuery.refetch()}
           onClose={() => setSidebarOpen(false)}
         />

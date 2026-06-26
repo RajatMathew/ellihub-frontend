@@ -114,6 +114,7 @@ export function ContactDetailPage() {
           activityItems={contactActivity.items}
           isActivityLoading={contactActivity.isLoading}
           isActivityError={contactActivity.isError}
+          activityCommentControls={contactActivity.commentControls}
           onClose={() => setSidebarOpen(false)}
           onRetryActivity={() => void contactActivity.refetch()}
         />

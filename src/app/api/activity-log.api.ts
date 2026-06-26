@@ -20,6 +20,9 @@ export const activityLogItemSchema = z.object({
   note: z.string().optional().nullable(),
   affectedEntityIds: z.array(z.string()).optional(),
   createdAt: z.string(),
+  editedAt: z.string().optional().nullable(),
+  deletedAt: z.string().optional().nullable(),
+  deletedBy: z.string().optional().nullable(),
   user: activityUserSchema,
 });
 
@@ -52,7 +55,22 @@ export interface ListActivityLogParams {
   search?: string;
 }
 
+export interface CreateActivityCommentInput {
+  entityType: string;
+  entityId: string;
+  note: string;
+}
+
+export interface UpdateActivityCommentInput {
+  commentId: string;
+  note: string;
+}
+
 const BASE = '/activity-log';
+
+function parseActivityLogItem(payload: unknown): ActivityLogItem {
+  return activityLogItemSchema.parse(payload);
+}
 
 export const activityLogApi = {
   async list(params?: ListActivityLogParams): Promise<ActivityLogPaginatedResponse> {
@@ -62,7 +80,7 @@ export const activityLogApi = {
 
     const endpoint =
       params?.entityType && params?.entityId
-        ? `${BASE}/entity/${params.entityType}/${params.entityId}`
+        ? BASE + '/entity/' + params.entityType + '/' + params.entityId
         : BASE;
 
     if (!params?.entityType || !params?.entityId) {
@@ -102,7 +120,7 @@ export const activityLogApi = {
     if (params?.page != null) query.page = params.page;
     if (params?.size != null) query.size = params.size;
 
-    const res = await api.get(`${BASE}/employee/${employeeId}`, { params: query });
+    const res = await api.get(BASE + '/employee/' + employeeId, { params: query });
     const rows = res.data?.data ?? res.data ?? [];
     const pagination = res.data?.pagination ?? {};
 
@@ -117,5 +135,25 @@ export const activityLogApi = {
         itemsPerPage: pagination.itemsPerPage ?? params?.size ?? 100,
       },
     });
+  },
+
+  async createComment(input: CreateActivityCommentInput): Promise<ActivityLogItem> {
+    const res = await api.post(
+      BASE + '/entity/' + input.entityType + '/' + input.entityId + '/comments',
+      {
+        note: input.note,
+      }
+    );
+    return parseActivityLogItem(res.data?.data ?? res.data);
+  },
+
+  async updateComment(input: UpdateActivityCommentInput): Promise<ActivityLogItem> {
+    const res = await api.patch(BASE + '/comments/' + input.commentId, { note: input.note });
+    return parseActivityLogItem(res.data?.data ?? res.data);
+  },
+
+  async deleteComment(commentId: string): Promise<ActivityLogItem> {
+    const res = await api.delete(BASE + '/comments/' + commentId);
+    return parseActivityLogItem(res.data?.data ?? res.data);
   },
 };

@@ -1,3 +1,4 @@
+import type { ActivityPanelCommentControls } from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { ContactCard } from '@/modules/directory/components/contact-card';
@@ -14,6 +15,7 @@ interface GCDetailSidebarProps {
   activityItems: DirectoryActivityItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
+  activityCommentControls?: ActivityPanelCommentControls;
   onClose: () => void;
   onRetryActivity: () => void;
 }
@@ -24,6 +26,7 @@ export function GCDetailSidebar({
   activityItems,
   isActivityLoading,
   isActivityError,
+  activityCommentControls,
   onClose,
   onRetryActivity,
 }: GCDetailSidebarProps) {
@@ -37,6 +40,7 @@ export function GCDetailSidebar({
           isLoading={isActivityLoading}
           isError={isActivityError}
           onRetry={onRetryActivity}
+          {...activityCommentControls}
         />
       }
     >

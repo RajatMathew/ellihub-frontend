@@ -42,8 +42,6 @@ import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
-import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import {
   useVendorPickerOptions,
   type VendorPickerOption,
@@ -69,6 +67,7 @@ import {
 } from '@/modules/project/components/rfq';
 import {
   InfoRow,
+  ProjectActivityPanel,
   PdfGenerateDialog,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
@@ -107,12 +106,10 @@ import {
   ChevronDown,
   Clock,
   FileText,
-  History,
   Mail,
   PanelRightOpen,
   Paperclip,
   Pencil,
-  PlusCircle,
   Send,
   ShieldAlert,
   Trash2,
@@ -402,60 +399,7 @@ export default function RFQDetailPage() {
     selectedComparisonAttachments.find((attachment) => attachment.id === activePreviewDocId) ??
     selectedComparisonAttachments[0];
 
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
-    entityType: 'rfq',
-    entityId: rfqId,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    size: 50,
-  });
 
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    if (!activityData?.data) return [];
-    return activityData.data.map((log) => {
-      const action = log.action.toLowerCase();
-      let icon = <Clock className="size-4" />;
-      let color = 'border-muted-foreground/20 bg-muted/30';
-
-      if (action.includes('create') || action.includes('publish')) {
-        icon = <PlusCircle className="size-4 text-primary" />;
-        color = 'border-primary/20 bg-primary/5';
-      } else if (action.includes('update')) {
-        icon = <Pencil className="size-4 text-info" />;
-        color = 'border-info/20 bg-info/5';
-      } else if (action.includes('award')) {
-        icon = <Trophy className="size-4 text-warning" />;
-        color = 'border-warning/20 bg-warning/5';
-      } else if (
-        action.includes('delete') ||
-        action.includes('cancel') ||
-        action.includes('void')
-      ) {
-        icon = <Trash2 className="size-4 text-destructive" />;
-        color = 'border-destructive/20 bg-destructive/5';
-      } else if (action.includes('invite') || action.includes('quote')) {
-        icon = <CheckCircle2 className="size-4 text-success" />;
-        color = 'border-success/20 bg-success/5';
-      }
-
-      return {
-        id: log.id,
-        user: log.user?.name || 'System',
-        action: log.description,
-        timestamp: log.createdAt
-          ? new Date(log.createdAt).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '\u2014',
-        avatar: log.user?.image || undefined,
-        icon,
-        color,
-      };
-    });
-  }, [activityData]);
 
   const alreadyInvitedVendorIds = useMemo(
     () =>
@@ -1340,22 +1284,11 @@ export default function RFQDetailPage() {
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activityChildren={
-            <div className="p-4">
-              {isActivityLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground uppercase tracking-normal">
-                  Loading activity...
-                </div>
-              ) : activityItems.length > 0 ? (
-                <ActivityFeed items={activityItems} />
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-normal font-bold">
-                    No activity recorded yet.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ProjectActivityPanel
+              entityType="rfq"
+              entityId={rfqId}
+              emptyMessage="No activity recorded yet."
+            />
           }
         >
           <div className="space-y-6 pt-2">

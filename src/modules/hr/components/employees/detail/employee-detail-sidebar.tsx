@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 
-import { ActivityPanel, type ActivityPanelItem } from '@/app/components/activity-panel';
+import {
+  ActivityPanel,
+  type ActivityPanelCommentControls,
+  type ActivityPanelItem,
+} from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -14,6 +18,7 @@ interface EmployeeDetailSidebarProps {
   activityItems: ActivityPanelItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
+  activityCommentControls?: ActivityPanelCommentControls;
   onClose: () => void;
   onRetryActivity: () => void;
   onLinkUser: () => void;
@@ -26,6 +31,7 @@ export function EmployeeDetailSidebar({
   activityItems,
   isActivityLoading,
   isActivityError,
+  activityCommentControls,
   onClose,
   onRetryActivity,
   onLinkUser,
@@ -43,6 +49,7 @@ export function EmployeeDetailSidebar({
           isLoading={isActivityLoading}
           isError={isActivityError}
           onRetry={onRetryActivity}
+          {...activityCommentControls}
         />
       }
     >
@@ -73,11 +80,7 @@ export function EmployeeDetailSidebar({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <Badge variant={hasUserAccount ? 'success' : 'secondary'} appearance="light">
-                {hasUserAccount ? (
-                  <UserCheck className="size-3" />
-                ) : (
-                  <UserX className="size-3" />
-                )}
+                {hasUserAccount ? <UserCheck className="size-3" /> : <UserX className="size-3" />}
                 {hasUserAccount ? 'Linked User' : 'No Auth User'}
               </Badge>
             </div>
