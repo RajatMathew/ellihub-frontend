@@ -65,3 +65,43 @@ export const feedbackBoardSchema = z.object({
 });
 
 export type FeedbackBoard = z.infer<typeof feedbackBoardSchema>;
+
+export const feedbackDetailAttachmentSchema = z.object({
+  name: z.string(),
+  url: z.string().url(),
+  type: z.string(),
+  caption: z.string().optional(),
+});
+
+export type FeedbackDetailAttachment = z.infer<typeof feedbackDetailAttachmentSchema>;
+
+export interface FeedbackDetailContentBlock {
+  id: string;
+  type: string;
+  text: string;
+  checked?: boolean;
+  children?: FeedbackDetailContentBlock[];
+}
+
+export const feedbackDetailContentBlockSchema: z.ZodType<FeedbackDetailContentBlock> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    type: z.string(),
+    text: z.string(),
+    checked: z.boolean().optional(),
+    children: z.array(feedbackDetailContentBlockSchema).optional(),
+  })
+);
+
+export const feedbackDetailSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.string(),
+  url: z.string().url().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  content: z.array(feedbackDetailContentBlockSchema),
+  attachments: z.array(feedbackDetailAttachmentSchema),
+});
+
+export type FeedbackDetail = z.infer<typeof feedbackDetailSchema>;

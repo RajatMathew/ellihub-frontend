@@ -1,8 +1,10 @@
 import api from '@/app/api';
 import {
   feedbackBoardSchema,
+  feedbackDetailSchema,
   feedbackSubmitResultSchema,
   type FeedbackBoard,
+  type FeedbackDetail,
   type FeedbackFormData,
   type FeedbackSubmitResult,
 } from '@/modules/feedback/schemas/feedback.schema';
@@ -22,6 +24,19 @@ export const feedbackApi = {
 
     if (!result.success) {
       console.error('[feedbackApi.getBoard] Zod parse error:', result.error.issues);
+      throw result.error;
+    }
+
+    return result.data;
+  },
+
+  async getDetail(id: string): Promise<FeedbackDetail> {
+    const response = await api.get(`${BASE}/${id}`);
+    const raw = response.data?.data ?? response.data;
+    const result = feedbackDetailSchema.safeParse(raw);
+
+    if (!result.success) {
+      console.error('[feedbackApi.getDetail] Zod parse error:', result.error.issues);
       throw result.error;
     }
 

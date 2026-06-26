@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
-
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { useFeedbackBoardQuery } from '@/modules/feedback/hooks/use-submit-feedback';
-import type { FeedbackBoardColumn } from '@/modules/feedback/schemas/feedback.schema';
+import type {
+  FeedbackBoardColumn,
+  FeedbackBoardItem,
+} from '@/modules/feedback/schemas/feedback.schema';
 import {
   CheckCircle2,
   CircleDashed,
-  ExternalLink,
   HelpCircle,
   MessageSquarePlus,
   Plus,
@@ -20,7 +20,7 @@ import {
 interface FeedbackBoardViewProps {
   open: boolean;
   onAddFeedback: () => void;
-  onRefreshReady: (refresh: (() => void) | null) => void;
+  onSelectFeedback: (item: FeedbackBoardItem) => void;
 }
 
 interface ColumnTone {
@@ -29,6 +29,10 @@ interface ColumnTone {
   iconClassName: string;
   badgeVariant: 'info' | 'warning' | 'success' | 'outline';
   emptyIconClassName: string;
+}
+
+function isOptimisticFeedbackItem(item: FeedbackBoardItem): boolean {
+  return item.id.startsWith('temp-');
 }
 
 function getColumnTone(column: FeedbackBoardColumn): ColumnTone {
@@ -63,29 +67,21 @@ function getColumnTone(column: FeedbackBoardColumn): ColumnTone {
   };
 }
 
-function FeedbackCard({ title, url }: { title: string; url?: string }) {
-  const content = (
-    <div className="group rounded-md border border-border bg-card p-3 text-sm shadow-xs shadow-black/5 transition-[border-color,box-shadow] hover:border-primary/30 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <p className="line-clamp-2 font-medium leading-5 text-foreground">{title}</p>
-        {url && (
-          <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-        )}
-      </div>
-    </div>
-  );
-
-  if (!url) return content;
+function FeedbackCard({ item, onSelect }: { item: FeedbackBoardItem; onSelect: () => void }) {
+  const isPending = isOptimisticFeedbackItem(item);
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={isPending}
+      className="group w-full rounded-md border border-border bg-card p-3 text-left text-sm shadow-xs shadow-black/5 transition-[border-color,box-shadow] hover:border-primary/30 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-default disabled:opacity-80 disabled:hover:border-border disabled:hover:shadow-xs"
     >
-      {content}
-    </a>
+      <p className="line-clamp-2 font-medium leading-5 text-foreground">{item.title}</p>
+      {isPending ? (
+        <p className="mt-1 text-xs text-muted-foreground">Sending to Notion...</p>
+      ) : null}
+    </button>
   );
 }
 
@@ -93,10 +89,12 @@ function FeedbackColumn({
   column,
   canAdd,
   onAddFeedback,
+  onSelectFeedback,
 }: {
   column: FeedbackBoardColumn;
   canAdd: boolean;
   onAddFeedback: () => void;
+  onSelectFeedback: (item: FeedbackBoardItem) => void;
 }) {
   const tone = getColumnTone(column);
   const Icon = tone.icon;
@@ -141,7 +139,7 @@ function FeedbackColumn({
 
         {column.items.length > 0 ? (
           column.items.map((item) => (
-            <FeedbackCard key={item.id} title={item.title} url={item.url} />
+            <FeedbackCard key={item.id} item={item} onSelect={() => onSelectFeedback(item)} />
           ))
         ) : (
           <div className="flex min-h-52 flex-1 flex-col items-center justify-center rounded-md border border-dashed bg-card p-5 text-center text-xs text-muted-foreground md:min-h-80">
@@ -170,14 +168,12 @@ function BoardSkeleton() {
   );
 }
 
-export function FeedbackBoardView({ open, onAddFeedback, onRefreshReady }: FeedbackBoardViewProps) {
+export function FeedbackBoardView({
+  open,
+  onAddFeedback,
+  onSelectFeedback,
+}: FeedbackBoardViewProps) {
   const boardQuery = useFeedbackBoardQuery(open);
-
-  useEffect(() => {
-    onRefreshReady(open ? () => void boardQuery.refetch() : null);
-
-    return () => onRefreshReady(null);
-  }, [boardQuery, onRefreshReady, open]);
 
   if (boardQuery.isLoading) {
     return <BoardSkeleton />;
@@ -204,6 +200,7 @@ export function FeedbackBoardView({ open, onAddFeedback, onRefreshReady }: Feedb
             column={column}
             canAdd={index === 0}
             onAddFeedback={onAddFeedback}
+            onSelectFeedback={onSelectFeedback}
           />
         ))}
       </div>

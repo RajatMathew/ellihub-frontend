@@ -1,7 +1,7 @@
 import { Suspense, useState } from 'react';
 
 import { MarkFeedbackDialog } from '@/modules/feedback/components/mark-feedback-dialog';
-import { CircleHelp, Flag } from 'lucide-react';
+import { CircleHelp, MessageCircleMore } from 'lucide-react';
 
 import { useSession } from '@app/api/auth-client';
 import { Button } from '@app/components/ui/button';
@@ -47,8 +47,9 @@ export function Header({
               size={isMobile ? 'icon' : 'sm'}
               type="button"
               variant="ghost"
+              className="gap-1.5 px-0 text-sm font-semibold text-primary hover:bg-transparent hover:text-primary/85 focus-visible:bg-transparent"
             >
-              <Flag className="size-4" />
+              <MessageCircleMore className="size-4 text-current" />
               {!isMobile && <span>Mark feedback</span>}
             </Button>
 
