@@ -72,6 +72,7 @@ export function MonthlyBillsFilters({
           placeholder="All Vendors"
           searchPlaceholder="Search vendors..."
           emptyMessage="No vendors found."
+          selectionDisplay="summary"
         />
       </div>
 
@@ -85,6 +86,7 @@ export function MonthlyBillsFilters({
           placeholder="All Trades"
           searchPlaceholder="Search trades..."
           emptyMessage="No trades found."
+          selectionDisplay="summary"
         />
       </div>
 

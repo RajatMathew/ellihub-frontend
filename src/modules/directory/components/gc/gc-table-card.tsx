@@ -64,7 +64,7 @@ export function GCTableCard({
               <Skeleton className="h-8 w-28" />
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-0 border-b border-rule-strong">
+            <div className="flex flex-wrap items-center gap-0 border-b border-current/40">
               <TypeTab
                 active={!gcTypeIdFilter}
                 label="All"
@@ -159,8 +159,8 @@ function TypeTab({
       onClick={onClick}
       className={
         active
-          ? '-mb-px border-b-2 border-primary px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors'
-          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground/75 transition-colors hover:text-primary'
+          ? '-mb-px border-b-2 border-current px-4 py-2 text-xs font-semibold uppercase tracking-wider text-current transition-colors'
+          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider text-current/75 transition-colors hover:text-current'
       }
     >
       {label}

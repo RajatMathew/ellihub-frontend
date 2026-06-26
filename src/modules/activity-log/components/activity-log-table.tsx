@@ -68,7 +68,7 @@ export function ActivityLogTable({
           <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
             Event Stream
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-table-card-header-foreground">
             {totalCount} log entr{totalCount === 1 ? 'y' : 'ies'}
           </p>
         </div>
@@ -87,7 +87,7 @@ export function ActivityLogTable({
             onValueChange={(value) => onEntityTypeChange(value === 'all' ? undefined : value)}
           >
             <SelectTrigger className="h-8 w-full text-xs sm:w-48">
-              <SelectValue placeholder="Entity" />
+              <SelectValue placeholder="All Entities" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Entities</SelectItem>
@@ -104,7 +104,7 @@ export function ActivityLogTable({
             onValueChange={(value) => onActionChange(value === 'all' ? undefined : value)}
           >
             <SelectTrigger className="h-8 w-full text-xs sm:w-40">
-              <SelectValue placeholder="Action" />
+              <SelectValue placeholder="All Actions" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Actions</SelectItem>

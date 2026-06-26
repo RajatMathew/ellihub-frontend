@@ -76,7 +76,7 @@ export function FilesListFilters({
   return (
     <CardHeader className="items-start">
       <CardTitle className="min-w-0">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-table-card-header-foreground">
           {totalCount} {totalCount === 1 ? 'item' : 'items'}
         </span>
       </CardTitle>

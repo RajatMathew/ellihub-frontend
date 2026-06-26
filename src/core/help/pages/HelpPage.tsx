@@ -19,8 +19,8 @@ export default function HelpPage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-background">
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-background px-5">
+    <div className="min-h-screen w-full bg-card">
+      <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b bg-card px-5">
         <div>
           <p className="text-xs font-medium uppercase text-muted-foreground">ElliHub</p>
           <h1 className="text-base font-semibold">Help Center</h1>

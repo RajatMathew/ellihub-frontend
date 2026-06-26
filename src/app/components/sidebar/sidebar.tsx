@@ -29,13 +29,13 @@ export default function Sidebar({
     }
   }
   return (
-    <div className="bg-sidebar-bg overflow-hidden border-r border-sidebar-border">
+    <div className="flex h-full min-h-0 min-w-60 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg">
       <SidebarHeader />
-      <ScrollArea className="shrink-0 h-[calc(100vh-6rem)] lg:h-[calc(100vh-7rem)] mt-0 mb-2.5 min-w-60 ">
+      <ScrollArea className="mt-0 min-h-0 min-w-60 flex-1">
         <SidebarAnimatedContent menuConfig={menuConfig} mode={mode} />
       </ScrollArea>
       <footer
-        className="shrink-0 px-3 py-2 border-t border-sidebar-border"
+        className="shrink-0 border-t border-sidebar-border px-3 py-2"
         title="Double click to check for updates"
       >
         <span

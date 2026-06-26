@@ -44,6 +44,8 @@ type InfiniteMultiSearchSelectProps = {
   searchDebounceMs?: number;
   maxVisibleSelectedOptions?: number;
   overflowLabel?: (count: number) => string;
+  selectionDisplay?: 'chips' | 'summary';
+  triggerLabel?: string;
   triggerClassName?: string;
   contentClassName?: string;
   testId?: string;
@@ -110,6 +112,8 @@ export function InfiniteMultiSearchSelect({
   searchDebounceMs = 300,
   maxVisibleSelectedOptions = 1,
   overflowLabel = (count) => `+${count} more`,
+  selectionDisplay = 'chips',
+  triggerLabel,
   triggerClassName,
   contentClassName,
   testId,
@@ -203,6 +207,10 @@ export function InfiniteMultiSearchSelect({
     () => selectedOptions.map((option) => option.label).join(', '),
     [selectedOptions]
   );
+  const selectedSummaryText = useMemo(() => {
+    if (selectedOptions.length === 0) return placeholder;
+    return selectedOptions[0]?.label ?? placeholder;
+  }, [placeholder, selectedOptions]);
 
   useEffect(() => {
     setLocalSearch(search);
@@ -261,7 +269,7 @@ export function InfiniteMultiSearchSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            'flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal text-foreground shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
             triggerClassName
           )}
         >
@@ -269,7 +277,34 @@ export function InfiniteMultiSearchSelect({
             className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
             title={selectedSummary || undefined}
           >
-            {selectedOptions.length > 0 ? (
+            {selectionDisplay === 'summary' ? (
+              <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                {triggerLabel && selectedOptions.length > 0 ? (
+                  <span className="shrink-0 text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
+                    {triggerLabel}
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    'truncate',
+                    selectedOptions.length === 0 ? 'text-muted-foreground' : 'text-foreground'
+                  )}
+                >
+                  {selectedSummaryText}
+                </span>
+                {hiddenSelectedOptions.length > 0 ? (
+                  <Badge
+                    variant="secondary"
+                    appearance="outline"
+                    size="sm"
+                    className="shrink-0 border-dashed"
+                    aria-label={selectedSummary}
+                  >
+                    +{hiddenSelectedOptions.length}
+                  </Badge>
+                ) : null}
+              </span>
+            ) : selectedOptions.length > 0 ? (
               <>
                 {visibleSelectedOptions.map((option) => (
                   <Badge key={option.value} variant="secondary" appearance="outline" size="sm">

@@ -45,6 +45,7 @@
   --radius: 0.5rem;
   --card-header: var(--color-slate-50);
   --card-header-foreground: var(--color-zinc-950);
+  --table-card-header-foreground: var(--card-header-foreground);
   --card-header-border: var(--color-purple-950);
   --teal-header-accent: var(--color-purple-800);
   --teal-header-accent-foreground: var(--color-white);
@@ -66,6 +67,9 @@
   --card-border: #e4e4e7;
   --card-border-hover: #d4d4d8;
   --rule-strong: #a1a1aa;
+  --activity-timeline-rail: color-mix(in srgb, var(--foreground) 35%, transparent);
+  --tabs-line: color-mix(in srgb, var(--foreground) 18%, transparent);
+  --tabs-line-active: var(--primary);
   --brand-gold: var(--color-amber-500);
   --brand-clay: var(--color-orange-600);
   --surface-raised: var(--color-white);
@@ -140,6 +144,7 @@
   --ring: var(--color-zinc-600);
   --card-header: #131313;
   --card-header-foreground: var(--color-white);
+  --table-card-header-foreground: var(--card-header-foreground);
   --card-header-border: var(--color-purple-950);
   --teal-header-accent: var(--color-purple-800);
   --teal-header-accent-foreground: var(--color-white);
@@ -235,6 +240,7 @@
   --radius: 0.5rem;
   --card-header: #162033;
   --card-header-foreground: #f1f5f9;
+  --table-card-header-foreground: var(--card-header-foreground);
   --card-header-border: #1e293b;
   --teal-header-accent: #1e293b;
   --teal-header-accent-foreground: #f1f5f9;
@@ -330,6 +336,7 @@
   --radius: 0.5rem;
   --card-header: #1a3a5f;
   --card-header-foreground: #e0a94d;
+  --table-card-header-foreground: #fdfbf6;
   --card-header-border: #112b47;
   --teal-header-accent: #1a3a5f;
   --teal-header-accent-foreground: #fdfbf6;
@@ -351,6 +358,9 @@
   --card-border: #d5cfc0;
   --card-border-hover: #c5bfb0;
   --rule-strong: #a09683;
+  --activity-timeline-rail: #6b6359;
+  --tabs-line: #6b6359;
+  --tabs-line-active: #4f6f8f;
   --brand-gold: #e0a94d;
   --brand-clay: #c75e40;
   --surface-raised: #ffffff;
@@ -473,6 +483,7 @@
   /* Card headers — use Mauve for vibrant headers */
   --card-header: #cba6f7;
   --card-header-foreground: #1e1e2e;
+  --table-card-header-foreground: var(--card-header-foreground);
   --card-header-border: #b4befe;
   --teal-header-accent: #89b4fa;
   --teal-header-accent-foreground: #1e1e2e;
@@ -550,28 +561,28 @@
   font-weight: 700;
 }
 
-/* Sidebar border overrides - ensure sidebar always uses dark borders */
-aside .border-border {
+/* Sidebar border overrides - ensure app navigation sidebar always uses dark borders */
+[data-slot='app-sidebar'] .border-border {
   border-color: var(--sidebar-border) !important;
 }
 
-aside [class*='border-t'],
-aside [class*='border-b'],
-aside [class*='border-l'],
-aside [class*='border-r'] {
+[data-slot='app-sidebar'] [class*='border-t'],
+[data-slot='app-sidebar'] [class*='border-b'],
+[data-slot='app-sidebar'] [class*='border-l'],
+[data-slot='app-sidebar'] [class*='border-r'] {
   border-color: var(--sidebar-border) !important;
 }
 
 /* Override Separator component inside sidebar */
-aside [data-slot='separator'],
-aside [data-slot='accordion-menu-separator'],
-aside .bg-border {
+[data-slot='app-sidebar'] [data-slot='separator'],
+[data-slot='app-sidebar'] [data-slot='accordion-menu-separator'],
+[data-slot='app-sidebar'] .bg-border {
   background-color: var(--sidebar-border) !important;
 }
 
 /* Override any horizontal/vertical separator lines in sidebar */
-aside .h-px,
-aside .w-px {
+[data-slot='app-sidebar'] .h-px,
+[data-slot='app-sidebar'] .w-px {
   background-color: var(--sidebar-border) !important;
 }
 
@@ -606,6 +617,9 @@ aside .w-px {
   --color-card-border: var(--card-border);
   --color-card-border-hover: var(--card-border-hover);
   --color-rule-strong: var(--rule-strong);
+  --color-activity-timeline-rail: var(--activity-timeline-rail);
+  --color-tabs-line: var(--tabs-line);
+  --color-tabs-line-active: var(--tabs-line-active);
   --color-brand-gold: var(--brand-gold);
   --color-brand-clay: var(--brand-clay);
   --color-surface-raised: var(--surface-raised);
@@ -641,6 +655,7 @@ aside .w-px {
   --color-destructive-soft-foreground: var(--destructive-soft-foreground);
   --color-card-header: var(--card-header);
   --color-card-header-foreground: var(--card-header-foreground);
+  --color-table-card-header-foreground: var(--table-card-header-foreground);
   --color-card-header-border: var(--card-header-border);
   --color-teal-header-accent: var(--teal-header-accent);
   --color-teal-header-accent-foreground: var(--teal-header-accent-foreground);

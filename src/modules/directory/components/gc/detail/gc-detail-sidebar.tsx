@@ -34,6 +34,7 @@ export function GCDetailSidebar({
     <DetailSidebar
       open={open}
       onClose={onClose}
+      desktopClassName="lg:h-[calc(100dvh-var(--header-height)-14rem)]"
       activityChildren={
         <DirectoryActivityPanel
           items={activityItems}

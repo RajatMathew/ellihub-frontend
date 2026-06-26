@@ -46,12 +46,12 @@ export function HelpCenterRail({ className }: { className?: string }) {
     <aside
       aria-label="Help"
       className={cn(
-        'fixed inset-y-0 end-0 z-30 flex w-full flex-col border-s bg-background shadow-xl transition-transform sm:w-(--help-panel-width) lg:shadow-left-panel',
+        'fixed inset-y-0 end-0 z-30 flex w-full flex-col border-s bg-card shadow-xl transition-transform sm:w-(--help-panel-width) lg:shadow-left-panel',
         className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex h-(--header-height) shrink-0 items-center justify-between gap-3 border-b px-5">
+        <header className="flex h-(--header-height) shrink-0 items-center justify-between gap-3 border-b bg-card px-5">
           <h2 className="text-base font-semibold">Help</h2>
           <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
@@ -73,13 +73,13 @@ export function HelpCenterRail({ className }: { className?: string }) {
           </div>
         </header>
 
-        <div className="border-b p-4">
-          <InputGroup>
-            <InputWrapper>
-              <Search />
+        <div className="border-b bg-card p-4">
+          <InputGroup className="w-full">
+            <InputWrapper className="h-11 rounded-lg border-card-border bg-card px-3 shadow-sm shadow-black/5 transition-colors hover:border-card-border-hover">
+              <Search className="size-4.5 text-muted-foreground/70" />
               <Input
                 aria-label="Search help articles"
-                className="min-w-0"
+                className="min-w-0 text-sm placeholder:text-muted-foreground/70"
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setSelectedSlug(null);
@@ -87,11 +87,24 @@ export function HelpCenterRail({ className }: { className?: string }) {
                 placeholder="Search help"
                 value={query}
               />
+              {query && (
+                <button
+                  aria-label="Clear help search"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => {
+                    setQuery('');
+                    setSelectedSlug(null);
+                  }}
+                  type="button"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </InputWrapper>
           </InputGroup>
         </div>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0 flex-1 bg-card">
           {selectedArticle ? (
             <div className="px-5 py-4">
               <Button
@@ -135,10 +148,10 @@ export function HelpCenterRail({ className }: { className?: string }) {
                     <h3 className="text-xs font-medium uppercase text-muted-foreground">
                       {section.title}
                     </h3>
-                    <div className="divide-y rounded-md border bg-background">
+                    <div className="divide-y rounded-md border bg-card">
                       {section.articles.map((article) => (
                         <button
-                          className="block w-full px-4 py-3 text-start transition-colors hover:bg-accent"
+                          className="block w-full px-4 py-3 text-start transition-colors hover:bg-surface-hover"
                           key={article.slug}
                           onClick={() => setSelectedSlug(article.slug)}
                           type="button"

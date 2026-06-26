@@ -114,10 +114,10 @@ export const ProjectDivisionBoard = memo(function ProjectDivisionBoard({
           return (
             <div key={divisionLabel} className="flex min-w-0 flex-col gap-2">
               <div className="flex items-center justify-between gap-3 rounded-sm bg-card-header px-3 py-2">
-                <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.18em] text-card-header-foreground">
+                <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-[0.18em] text-white">
                   {divisionLabel}
                 </h2>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-card-header-foreground/80">
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-white/80">
                   {countLabel}
                 </span>
               </div>

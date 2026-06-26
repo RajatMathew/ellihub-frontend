@@ -213,14 +213,16 @@ export function InfiniteSearchSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-[var(--text-sm--line-height)] text-foreground shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
             triggerClassName
           )}
         >
           <span
             className={cn(
               'truncate',
-              resolvedSelectedOption ? undefined : (placeholderClassName ?? 'text-muted-foreground')
+              resolvedSelectedOption
+                ? 'text-foreground'
+                : (placeholderClassName ?? 'text-muted-foreground')
             )}
           >
             {resolvedSelectedOption ? resolvedSelectedOption.label : placeholder}

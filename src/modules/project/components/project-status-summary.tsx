@@ -100,8 +100,8 @@ export function ProjectStatusSummary({
   });
 
   return (
-    <div className="mb-5 w-fit max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5">
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-5 w-full max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 sm:w-fit">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
         {groups.map((group) => {
           const isActive = activeStatusId === group.id;
           const tone = getStatusTone(group.id);
@@ -114,7 +114,7 @@ export function ProjectStatusSummary({
               aria-label={`${isActive ? 'Clear' : 'Filter by'} ${group.label} projects`}
               onClick={() => onStatusClick(isActive ? undefined : group.id)}
               className={cn(
-                'group min-h-[92px] rounded-xl border border-card-border bg-card p-3 text-left shadow-xs shadow-black/5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-w-[280px]',
+                'group min-h-[88px] min-w-0 rounded-xl border border-card-border bg-card p-2.5 text-left shadow-xs shadow-black/5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-[92px] sm:min-w-[280px] sm:p-3',
                 'hover:-translate-y-px hover:bg-card hover:shadow-md',
                 tone.hover,
                 isActive && 'ring-2',
@@ -142,7 +142,7 @@ export function ProjectStatusSummary({
                 </div>
 
                 <div className="space-y-0.5">
-                  <div className="truncate text-[19px] font-semibold leading-none text-foreground">
+                  <div className="truncate text-base font-semibold leading-none text-foreground sm:text-[19px]">
                     {formatCurrency(group.totalContractValue)}
                   </div>
                   <div className="text-[12px] font-medium text-label-lighter">
@@ -160,12 +160,12 @@ export function ProjectStatusSummary({
 
 function ProjectStatusSummarySkeleton() {
   return (
-    <div className="mb-5 w-fit max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5">
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-5 w-full max-w-full rounded-2xl border border-card-border bg-muted/50 p-1.5 shadow-xs shadow-black/5 sm:w-fit">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`project-status-loader-${index}`}
-            className="min-h-[92px] rounded-xl border border-card-border bg-card p-3 shadow-xs shadow-black/5 sm:min-w-[280px]"
+            className="min-h-[88px] min-w-0 rounded-xl border border-card-border bg-card p-2.5 shadow-xs shadow-black/5 sm:min-h-[92px] sm:min-w-[280px] sm:p-3"
           >
             <div className="flex h-full flex-col justify-between gap-3">
               <div className="flex items-center justify-between gap-3">

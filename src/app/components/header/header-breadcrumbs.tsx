@@ -79,7 +79,7 @@ export function HeaderBreadcrumbs() {
   }
 
   const breadcrumbItemClassName =
-    'block min-w-0 truncate rounded-md px-2 py-1 font-medium transition-colors hover:bg-accent hover:text-foreground';
+    'block min-w-0 truncate rounded-md px-2 py-1 font-medium transition-colors hover:bg-surface-hover hover:text-foreground';
 
   return (
     <Breadcrumb className="min-w-0 max-w-full overflow-hidden lg:-translate-x-2">

@@ -21,7 +21,7 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-rule-strong sm:inline-flex sm:flex-nowrap sm:gap-0',
+        'flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-current/40 sm:inline-flex sm:flex-nowrap sm:gap-0',
         className
       )}
     >
@@ -36,8 +36,8 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
             className={cn(
               '-mb-px shrink-0 border-b-2 px-3 py-2 text-xs uppercase tracking-normal transition-colors sm:px-4',
               isActive
-                ? 'border-primary font-semibold text-primary'
-                : 'border-transparent font-medium text-foreground/75 hover:text-primary'
+                ? 'border-current font-semibold text-current'
+                : 'border-transparent font-medium text-current/75 hover:text-current'
             )}
           >
             {option.label}

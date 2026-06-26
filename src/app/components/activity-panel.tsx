@@ -132,7 +132,7 @@ export function ActivityPanel({
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-4">
         {Array.from({ length: 3 }, (_, index) => (
           <div key={'activity-loader-' + index} className="flex gap-3">
             <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -160,7 +160,7 @@ export function ActivityPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-4 p-4">
+    <div className="min-w-0 space-y-4">
       {canComment && onCreateComment && (
         <div className="rounded-md border border-border bg-muted/25 p-3">
           {composerOpen ? (
@@ -222,19 +222,28 @@ export function ActivityPanel({
         </div>
       ) : (
         <div className="space-y-5">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const isComment = item.actionType === 'comment';
             const isEditing = editingId === item.id;
+            const showConnector = index < items.length - 1;
 
             return (
-              <div key={item.id} className="flex min-w-0 gap-3">
-                <div
-                  className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-full border',
-                    item.toneClassName
-                  )}
-                >
-                  {item.icon}
+              <div key={item.id} className="relative flex min-w-0 gap-3">
+                <div className="relative flex shrink-0 flex-col items-center">
+                  <div
+                    className={cn(
+                      'relative z-10 flex size-9 items-center justify-center rounded-full border bg-background',
+                      item.toneClassName
+                    )}
+                  >
+                    {item.icon}
+                  </div>
+                  {showConnector ? (
+                    <div
+                      aria-hidden="true"
+                      className="absolute top-9 bottom-[-1.25rem] left-1/2 w-0.5 -translate-x-1/2 bg-activity-timeline-rail"
+                    />
+                  ) : null}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-start justify-between gap-2">

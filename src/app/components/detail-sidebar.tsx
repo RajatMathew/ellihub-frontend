@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useIsMobile } from '@/app/hooks/use-mobile';
+import { cn } from '@/app/lib/utils';
 import { Clock, PanelRightClose } from 'lucide-react';
 
 interface DetailSidebarProps {
@@ -18,9 +19,16 @@ interface DetailSidebarProps {
   onClose: () => void;
   children: ReactNode;
   activityChildren?: ReactNode;
+  desktopClassName?: string;
 }
 
-export function DetailSidebar({ open, onClose, children, activityChildren }: DetailSidebarProps) {
+export function DetailSidebar({
+  open,
+  onClose,
+  children,
+  activityChildren,
+  desktopClassName,
+}: DetailSidebarProps) {
   const isMobile = useIsMobile();
 
   if (!open) return null;
@@ -44,7 +52,7 @@ export function DetailSidebar({ open, onClose, children, activityChildren }: Det
             <SheetTitle>Details panel</SheetTitle>
             <SheetDescription>Supplemental details and activity for this record.</SheetDescription>
           </SheetHeader>
-          <SheetBody className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4">
+          <SheetBody className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-0">
             <DetailSidebarContent onClose={onClose} activityChildren={activityChildren}>
               {children}
             </DetailSidebarContent>
@@ -55,7 +63,12 @@ export function DetailSidebar({ open, onClose, children, activityChildren }: Det
   }
 
   return (
-    <aside className="hidden min-w-0 shrink-0 overflow-hidden lg:sticky lg:top-4 lg:block lg:max-h-[calc(100dvh-var(--header-height)-2rem)] lg:w-72 lg:overflow-y-auto xl:w-80">
+    <aside
+      className={cn(
+        'hidden min-w-0 shrink-0 overflow-hidden lg:sticky lg:top-4 lg:block lg:h-[calc(100dvh-var(--header-height)-2rem)] lg:w-72 lg:overflow-y-auto xl:w-80',
+        desktopClassName
+      )}
+    >
       <DetailSidebarContent onClose={onClose} activityChildren={activityChildren}>
         {children}
       </DetailSidebarContent>
@@ -71,8 +84,8 @@ interface DetailSidebarContentProps {
 
 function DetailSidebarContent({ onClose, children, activityChildren }: DetailSidebarContentProps) {
   return (
-    <div className="min-w-0 max-w-full overflow-hidden">
-      <Tabs defaultValue="details">
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-card-border bg-white p-4 shadow-xs shadow-black/5">
+      <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <TabsList variant="line">
             <TabsTrigger value="details">Details</TabsTrigger>
@@ -90,11 +103,11 @@ function DetailSidebarContent({ onClose, children, activityChildren }: DetailSid
           </Button>
         </div>
 
-        <TabsContent value="details" className="min-w-0 max-w-full overflow-hidden">
+        <TabsContent value="details" className="min-h-0 min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </TabsContent>
 
-        <TabsContent value="activity" className="min-w-0 max-w-full overflow-hidden">
+        <TabsContent value="activity" className="min-h-0 min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden">
           {activityChildren || (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Clock className="size-10 text-muted-foreground/40" />
