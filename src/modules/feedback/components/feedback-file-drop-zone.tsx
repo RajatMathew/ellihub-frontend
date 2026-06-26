@@ -5,6 +5,7 @@ import { FileIconDisplay } from '@/app/components/ui/file-drop-zone';
 import { cn } from '@/app/lib/utils';
 import {
   FEEDBACK_FILE_ACCEPT,
+  FEEDBACK_MAX_FILES,
   formatFeedbackFileSize,
   getFeedbackFileValidationError,
 } from '@/modules/feedback/lib/feedback-file-validation';
@@ -51,8 +52,14 @@ export function FeedbackFileDropZone({
 
     const acceptedFiles: File[] = [];
     const rejectedMessages: string[] = [];
+    const availableSlots = Math.max(0, FEEDBACK_MAX_FILES - value.length);
 
-    for (const file of files) {
+    if (availableSlots === 0) {
+      setError(`Attach up to ${FEEDBACK_MAX_FILES} files.`);
+      return;
+    }
+
+    for (const file of files.slice(0, availableSlots)) {
       const validationError = getFeedbackFileValidationError(file);
 
       if (validationError) {
@@ -60,6 +67,10 @@ export function FeedbackFileDropZone({
       } else {
         acceptedFiles.push(file);
       }
+    }
+
+    if (files.length > availableSlots) {
+      rejectedMessages.push(`Attach up to ${FEEDBACK_MAX_FILES} files.`);
     }
 
     if (rejectedMessages.length > 0) {

@@ -48,6 +48,8 @@ export function FeedbackEntryForm({ onCancel, onSubmitted }: FeedbackEntryFormPr
   });
 
   const handleSubmit = async (values: FeedbackFormData) => {
+    if (submitFeedback.isPending) return;
+
     await submitFeedback.mutateAsync({
       ...values,
       currentUrl: getCurrentUrl(),
