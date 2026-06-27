@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import api from '@/app/api';
 import {
   contactPaginatedResponseSchema,
@@ -14,6 +12,7 @@ import {
   type ProfessionalRole,
   type UpdateContactInput,
 } from '@/modules/directory/schemas/contact.schema';
+import { z } from 'zod';
 
 const BASE = '/contact';
 
@@ -29,8 +28,7 @@ export const contactsApi = {
     const filter: Record<string, string> = {};
     if (params?.professionalRoleId) filter.professionalRoleId = params.professionalRoleId;
     if (params?.vendorId) filter.vendorId = params.vendorId;
-    if (params?.generalContractorId)
-      filter.generalContractorId = params.generalContractorId;
+    if (params?.generalContractorId) filter.generalContractorId = params.generalContractorId;
     if (Object.keys(filter).length > 0) query.filter = JSON.stringify(filter);
 
     const res = await api.get(BASE, { params: query });
@@ -137,7 +135,7 @@ export const contactsApi = {
   },
 
   async getProfessionalRoles(): Promise<ProfessionalRole[]> {
-    const res = await api.get('/lookup/type/PROFESSIONAL_ROLE');
+    const res = await api.get('/lookup/type/CONTACT_PROFESSIONAL_ROLE');
     const raw = res.data?.data ?? res.data ?? [];
     const result = z.array(professionalRoleSchema).safeParse(raw);
     if (!result.success) {
