@@ -18,7 +18,7 @@ export const employeeDepartmentSchema = z
   })
   .passthrough();
 
-export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'pm', 'user']);
+export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user']);
 export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
 
 export const employeeAuthUserSchema = z
@@ -53,7 +53,7 @@ export const employeeSchema = z
     emergencyContactPhone: z.string().optional().nullable(),
     emergencyContactRelation: z.string().optional().nullable(),
     userId: z.string().optional().nullable(),
-    authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+    authRole: z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user', 'unlinked']).optional(),
     authUser: employeeAuthUserSchema.optional().nullable(),
     departmentId: z.string().optional().nullable(),
     roleId: z.string().optional().nullable(),
@@ -193,7 +193,7 @@ export const listEmployeesParamsSchema = z.object({
   sortBy: z.string().optional().default('name'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('asc'),
   search: z.string().optional(),
-  authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+  authRole: z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user', 'unlinked']).optional(),
 });
 
 export type ListEmployeesParams = z.infer<typeof listEmployeesParamsSchema>;

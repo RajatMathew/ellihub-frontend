@@ -73,6 +73,7 @@ function canRemoveRole(
 function getAuthRoleLabel(authRole: string) {
   if (authRole === 'pm') return 'PM';
   if (authRole === 'user') return 'Member';
+  if (authRole === 'ap') return 'A/P';
   if (authRole === 'unlinked') return 'Unlinked';
   return authRole.toUpperCase();
 }
