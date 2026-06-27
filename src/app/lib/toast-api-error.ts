@@ -41,7 +41,6 @@ const FIELD_LABELS: Record<string, string> = {
   name: 'Name',
   notes: 'Notes',
   paidDate: 'Paid date',
-  paymentMethodId: 'Payment method',
   paymentReference: 'Payment reference',
   projectId: 'Project',
   purchaseOrderId: 'Purchase order',

@@ -30,9 +30,3 @@ export const useInvoicesByPurchaseOrderQuery = (poId: string) =>
     queryFn: () => invoiceApi.listByPurchaseOrder(poId),
     enabled: !!poId,
   });
-
-export const useInvoiceStatusesQuery = () =>
-  useQuery({
-    queryKey: invoiceKeys.statuses(),
-    queryFn: () => invoiceApi.listStatuses(),
-  });

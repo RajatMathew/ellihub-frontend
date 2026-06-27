@@ -43,27 +43,17 @@ export type LookupUpdate = z.infer<typeof lookupUpdateSchema>;
 
 /* ---- Known lookup types ---- */
 export const lookupTypeSchema = z.enum([
-  'INVOICE_STATUS',
-  'INVOICE_TYPE',
-  'INVOICE_CATEGORY',
-  'PCO_STATUS',
-  'PCO_CHANGE_TYPE',
-  'PCO_PRIORITY',
-  'RFQ_STATUS',
-  'RFQ_TYPE',
-  'RFQ_TRACK',
-  'SCO_CHANGE_TYPE',
-  'PROJECT_STATUS',
+  'PROFESSIONAL_ROLE',
+  'CONTACT_PROFESSIONAL_ROLE',
+  'VENDOR_TYPE',
+  'GC_TYPE',
   'PROJECT_DIVISION',
   'PROJECT_STAGE',
   'PROJECT_CONTRACT_TYPE',
-  'GC_TYPE',
-  'PROFESSIONAL_ROLE',
-  'CONTACT_PROFESSIONAL_ROLE',
-  'PAYMENT_METHOD',
-  'UNIT_OF_MEASURE',
-  'PTO_TYPE',
   'TRADE_CATEGORY',
+  'UNIT',
+  'PTO_TYPE',
+  'SCO_CHANGE_TYPE',
 ]);
 
 export type LookupType = z.infer<typeof lookupTypeSchema>;
