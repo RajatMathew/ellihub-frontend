@@ -10,14 +10,8 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
 import {
   useCreateContactMutation,
   useProfessionalRolesQuery,
@@ -27,7 +21,7 @@ import {
   type QuickCreateContactValues,
 } from '@/modules/directory/schemas/contact.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useController, useForm } from 'react-hook-form';
 
 export function QuickCreateContactDialog({
   open,
@@ -39,21 +33,36 @@ export function QuickCreateContactDialog({
   onCreated: (contact: { id: string; fullName: string }) => void;
 }) {
   const createMutation = useCreateContactMutation();
-  const { data: roles = [] } = useProfessionalRolesQuery();
+  const { data: roles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
+  const roleOptions = roles.map((role) => ({
+    value: role.id,
+    label: role.label || role.name || role.id,
+  }));
 
   const { control, handleSubmit, reset, formState } = useForm<QuickCreateContactValues>({
     resolver: zodResolver(quickCreateContactSchema),
     defaultValues: {
       fullName: '',
       professionalRoleId: undefined,
+      professionalRoleLabel: '',
       email: '',
       phone: '',
     },
   });
+  const { field: roleLabelField, fieldState: roleLabelFieldState } = useController({
+    control,
+    name: 'professionalRoleLabel',
+  });
 
   useEffect(() => {
     if (open) {
-      reset({ fullName: '', professionalRoleId: undefined, email: '', phone: '' });
+      reset({
+        fullName: '',
+        professionalRoleId: undefined,
+        professionalRoleLabel: '',
+        email: '',
+        phone: '',
+      });
     }
   }, [open, reset]);
 
@@ -64,9 +73,11 @@ export function QuickCreateContactDialog({
 
   const onSubmit = async (data: QuickCreateContactValues, e?: BaseSyntheticEvent) => {
     e?.stopPropagation();
+    const professionalRoleLabel = data.professionalRoleLabel?.trim() || undefined;
     const created = await createMutation.mutateAsync({
       fullName: data.fullName,
-      professionalRoleId: data.professionalRoleId || undefined,
+      professionalRoleId: professionalRoleLabel ? undefined : data.professionalRoleId || undefined,
+      professionalRoleLabel,
       email: data.email || undefined,
       phoneNumber: data.phone || undefined,
     });
@@ -105,29 +116,40 @@ export function QuickCreateContactDialog({
           <Controller
             name="professionalRoleId"
             control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Professional Role
-                </FieldLabel>
-                <Select
-                  value={field.value ?? ''}
-                  onValueChange={(v) => field.onChange(v || undefined)}
-                >
-                  <SelectTrigger aria-invalid={fieldState.invalid}>
-                    <SelectValue placeholder="Select role..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.label || role.name || role.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
+            render={({ field, fieldState }) => {
+              const isInvalid = fieldState.invalid || roleLabelFieldState.invalid;
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Professional Role
+                  </FieldLabel>
+                  <SearchableSelect
+                    options={roleOptions}
+                    value={field.value ?? ''}
+                    onValueChange={(value) => {
+                      field.onChange(value || undefined);
+                      if (value) roleLabelField.onChange('');
+                    }}
+                    allowCustomValue
+                    customValue={roleLabelField.value ?? ''}
+                    onCustomValueChange={(value) => {
+                      roleLabelField.onChange(value || '');
+                      if (value) field.onChange(undefined);
+                    }}
+                    customValueLabel={(value) => `Use "${value}" as professional role`}
+                    placeholder={isRolesLoading ? 'Loading roles...' : 'Select or type role...'}
+                    searchPlaceholder="Search or type role..."
+                    emptyMessage="No contact roles found."
+                    disabled={isRolesLoading}
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  {!fieldState.invalid && roleLabelFieldState.invalid && (
+                    <FieldError errors={[roleLabelFieldState.error]} />
+                  )}
+                </Field>
+              );
+            }}
           />
 
           <Controller

@@ -113,6 +113,7 @@ export default function ProjectContractOverview() {
       }).toString()}`
     : undefined;
   const canManageProject = project?.capabilities?.canManage ?? false;
+  const canManageSchedule = project?.capabilities?.canManageSchedule ?? false;
   const projectTeamActions = project?.capabilities?.actions?.projectTeam;
   const canAddTeamMembers = projectTeamActions?.add === true;
   const canRemoveTeamMembers = projectTeamActions?.remove === true;
@@ -304,7 +305,7 @@ export default function ProjectContractOverview() {
           entries={scheduleData ?? []}
           isLoading={isLoadingSchedule}
           parentFolderId={primeContractFolderId}
-          canManage={canManageProject}
+          canManage={canManageSchedule}
         />
 
         <PinPrimeContractDialog

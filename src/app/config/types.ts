@@ -44,6 +44,7 @@ export interface MenuAccessRule {
 export interface MenuProjectActionRule {
   resource:
     | 'projectTeam'
+    | 'projectSchedule'
     | 'primeContract'
     | 'rfq'
     | 'purchaseOrder'

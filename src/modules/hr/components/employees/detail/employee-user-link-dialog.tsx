@@ -1,9 +1,5 @@
 import { useEffect } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, ShieldCheck } from 'lucide-react';
-import { Controller, useForm } from 'react-hook-form';
-
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -14,7 +10,6 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   Select,
   SelectContent,
@@ -22,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { generateEmployeePassword } from '@/modules/hr/lib/employee-auth.utils';
 import {
   linkEmployeeUserInputSchema,
@@ -29,6 +25,9 @@ import {
   type EmployeeAuthRole,
   type LinkEmployeeUserInput,
 } from '@/modules/hr/schemas/employee.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound, ShieldCheck } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 
 interface EmployeeUserLinkDialogProps {
   employee: Employee;
@@ -94,6 +93,7 @@ export function EmployeeUserLinkDialog({
                     <SelectItem value="dev">Dev</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="accountant">Accountant</SelectItem>
+                    <SelectItem value="ap">A/P</SelectItem>
                     <SelectItem value="pm">PM</SelectItem>
                     <SelectItem value="user">User</SelectItem>
                   </SelectContent>

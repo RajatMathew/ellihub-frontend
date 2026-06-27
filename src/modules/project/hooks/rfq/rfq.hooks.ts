@@ -42,12 +42,6 @@ export const useRFQStatsQuery = (projectId: string) =>
     enabled: !!projectId,
   });
 
-export const useRFQStatusesQuery = () =>
-  useQuery({
-    queryKey: rfqKeys.statuses(),
-    queryFn: () => rfqApi.getStatuses(),
-  });
-
 export const useRFQTypesQuery = () =>
   useQuery({
     queryKey: [...rfqKeys.all, 'types'],

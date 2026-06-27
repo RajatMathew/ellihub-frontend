@@ -1,21 +1,15 @@
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import { Separator } from '@/app/components/ui/separator';
 import { TagInput } from '@/app/components/ui/tag-input';
 import type {
   ContactFormValues,
   ProfessionalRole,
 } from '@/modules/directory/schemas/contact.schema';
-import { Building2, CircleUserRound, Mail, Phone } from 'lucide-react';
-import { Controller, type Control, type FormState } from 'react-hook-form';
+import { CircleUserRound, Mail, Phone } from 'lucide-react';
+import { Controller, useController, type Control, type FormState } from 'react-hook-form';
 
 import { ContactFormFieldLabel, contactInvalidControlClassName } from './contact-form-field';
 
@@ -32,6 +26,14 @@ export function ContactInfoFormSection({
   roles,
   isLoadingRoles,
 }: ContactInfoFormSectionProps) {
+  const { field: roleLabelField, fieldState: roleLabelFieldState } = useController({
+    control,
+    name: 'professionalRoleLabel',
+  });
+  const roleOptions = roles.map((role) => ({
+    value: role.id,
+    label: role.label || role.name || role.id,
+  }));
   return (
     <Card id="contact-info">
       <CardContent className="space-y-6">
@@ -69,41 +71,42 @@ export function ContactInfoFormSection({
           <Controller
             name="professionalRoleId"
             control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <ContactFormFieldLabel>Professional Role</ContactFormFieldLabel>
-                <Select
-                  key={`${roles.length}-${field.value || 'none'}`}
-                  value={field.value ? String(field.value) : ''}
-                  onValueChange={(value) => field.onChange(value || undefined)}
-                  disabled={isLoadingRoles}
-                >
-                  <SelectTrigger
-                    aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? contactInvalidControlClassName : undefined}
-                    data-testid="contact-role-select"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Building2 className="size-4 text-muted-foreground" />
-                      <SelectValue
-                        placeholder={isLoadingRoles ? 'Loading roles...' : 'Select role...'}
-                      />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.label || role.name || role.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
+            render={({ field, fieldState }) => {
+              const isInvalid = fieldState.invalid || roleLabelFieldState.invalid;
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <ContactFormFieldLabel>Professional Role</ContactFormFieldLabel>
+                  <SearchableSelect
+                    options={roleOptions}
+                    value={field.value ?? ''}
+                    onValueChange={(value) => {
+                      field.onChange(value || undefined);
+                      if (value) roleLabelField.onChange('');
+                    }}
+                    allowCustomValue
+                    customValue={roleLabelField.value ?? ''}
+                    onCustomValueChange={(value) => {
+                      roleLabelField.onChange(value || '');
+                      if (value) field.onChange(undefined);
+                    }}
+                    customValueLabel={(value) => `Use "${value}" as professional role`}
+                    placeholder={isLoadingRoles ? 'Loading roles...' : 'Select or type role...'}
+                    searchPlaceholder="Search or type role..."
+                    emptyMessage="No contact roles found."
+                    disabled={isLoadingRoles}
+                    className={isInvalid ? contactInvalidControlClassName : undefined}
+                    testId="contact-role-select"
+                  />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  {!fieldState.invalid && roleLabelFieldState.invalid && (
+                    <FieldError errors={[roleLabelFieldState.error]} />
+                  )}
+                </Field>
+              );
+            }}
           />
         </div>
-
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="email"

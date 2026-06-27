@@ -18,7 +18,7 @@ export const employeeDepartmentSchema = z
   })
   .passthrough();
 
-export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'pm', 'user']);
+export const employeeAuthRoleSchema = z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user']);
 export type EmployeeAuthRole = z.infer<typeof employeeAuthRoleSchema>;
 
 export const employeeAuthUserSchema = z
@@ -53,7 +53,7 @@ export const employeeSchema = z
     emergencyContactPhone: z.string().optional().nullable(),
     emergencyContactRelation: z.string().optional().nullable(),
     userId: z.string().optional().nullable(),
-    authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+    authRole: z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user', 'unlinked']).optional(),
     authUser: employeeAuthUserSchema.optional().nullable(),
     departmentId: z.string().optional().nullable(),
     roleId: z.string().optional().nullable(),
@@ -95,6 +95,11 @@ export const employeeStatsSchema = z.object({
 export type EmployeeStats = z.infer<typeof employeeStatsSchema>;
 
 // Input schema for creation
+const optionalTrimmedStringSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() || undefined : value),
+  z.string().optional()
+);
+
 const createEmployeeBaseSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
@@ -104,16 +109,30 @@ const createEmployeeBaseSchema = z.object({
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   emergencyContactRelation: z.string().optional(),
-  roleId: z
-    .string({ required_error: 'Professional role is required' })
-    .min(1, 'Professional role is required')
-    .transform((value) => (value === '' ? undefined : value)),
+  roleId: optionalTrimmedStringSchema,
+  roleLabel: optionalTrimmedStringSchema,
   createAccount: z.boolean().default(false),
   authRole: employeeAuthRoleSchema.optional(),
   password: z.string().optional(),
 });
 
 export const createEmployeeInputSchema = createEmployeeBaseSchema.superRefine((value, ctx) => {
+  if (!value.roleId && !value.roleLabel) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['roleId'],
+      message: 'Job title is required',
+    });
+  }
+
+  if (value.roleId && value.roleLabel) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['roleLabel'],
+      message: 'Use either an existing job title or a custom job title',
+    });
+  }
+
   if (!value.createAccount) return;
 
   if (!value.authRole) {
@@ -139,6 +158,23 @@ export const updateEmployeeInputSchema = createEmployeeBaseSchema
   .omit({ createAccount: true, authRole: true, password: true })
   .extend({
     id: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.roleId && !value.roleLabel) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['roleId'],
+        message: 'Job title is required',
+      });
+    }
+
+    if (value.roleId && value.roleLabel) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['roleLabel'],
+        message: 'Use either an existing job title or a custom job title',
+      });
+    }
   });
 
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeInputSchema>;
@@ -157,7 +193,7 @@ export const listEmployeesParamsSchema = z.object({
   sortBy: z.string().optional().default('name'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('asc'),
   search: z.string().optional(),
-  authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+  authRole: z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user', 'unlinked']).optional(),
 });
 
 export type ListEmployeesParams = z.infer<typeof listEmployeesParamsSchema>;

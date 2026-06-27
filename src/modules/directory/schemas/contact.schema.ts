@@ -37,7 +37,7 @@ export const contactPhoneInputSchema = z.object({
   label: z.string(),
 });
 
-/** Form-level phone validation — errors surface on the object (for Controller fieldState). */
+/** Form-level phone validation - errors surface on the object (for Controller fieldState). */
 export const contactPhoneFormSchema = z
   .object({
     number: z.string(),
@@ -121,6 +121,23 @@ export const contactSchema = z.object({
 
 export type Contact = z.infer<typeof contactSchema>;
 
+const optionalTrimmedStringSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() || undefined : value),
+  z.string().optional()
+);
+
+const hasSingleProfessionalRoleSource = (
+  data: { professionalRoleId?: string | null; professionalRoleLabel?: string | undefined },
+  ctx: z.RefinementCtx
+) => {
+  if (data.professionalRoleId && data.professionalRoleLabel) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['professionalRoleLabel'],
+      message: 'Use either an existing professional role or a custom professional role',
+    });
+  }
+};
 // --- List ---
 
 export const contactListSchema = z.array(contactSchema);
@@ -145,10 +162,12 @@ export const contactFormSchema = z
   .object({
     fullName: z.string().min(2, 'Full name should be at least 2 characters'),
     professionalRoleId: z.string().optional(),
+    professionalRoleLabel: optionalTrimmedStringSchema,
     email: contactEmailSchema.nullable().optional(),
     phoneNumber: contactPhoneFormSchema.nullable().optional(),
     tags: z.array(z.string()).optional(),
   })
+  .superRefine(hasSingleProfessionalRoleSource)
   .refine(
     (data) => (data.email && data.email.email) || (data.phoneNumber && data.phoneNumber.number),
     {
@@ -161,29 +180,35 @@ export type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 // --- Inputs ---
 
-export const createContactInputSchema = z.object({
-  fullName: z.string().min(2, 'Full name should be at least 2 characters'),
-  professionalRoleId: z.string().optional(),
-  email: z.string().email('Invalid email address').optional(),
-  phoneNumber: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  isPrimary: z.boolean().optional(),
-  vendorId: z.string().optional(),
-  generalContractorId: z.string().optional(),
-});
+export const createContactInputSchema = z
+  .object({
+    fullName: z.string().min(2, 'Full name should be at least 2 characters'),
+    professionalRoleId: z.string().optional(),
+    professionalRoleLabel: optionalTrimmedStringSchema,
+    email: z.string().email('Invalid email address').optional(),
+    phoneNumber: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    isPrimary: z.boolean().optional(),
+    vendorId: z.string().optional(),
+    generalContractorId: z.string().optional(),
+  })
+  .superRefine(hasSingleProfessionalRoleSource);
 
 export type CreateContactInput = z.infer<typeof createContactInputSchema>;
 
-export const updateContactInputSchema = z.object({
-  fullName: z.string().min(1).optional(),
-  professionalRoleId: z.string().nullable().optional(),
-  email: z.string().email('Invalid email address').optional(),
-  phoneNumber: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  isPrimary: z.boolean().optional(),
-  vendorId: z.string().optional(),
-  generalContractorId: z.string().optional(),
-});
+export const updateContactInputSchema = z
+  .object({
+    fullName: z.string().min(1).optional(),
+    professionalRoleId: z.string().nullable().optional(),
+    professionalRoleLabel: optionalTrimmedStringSchema,
+    email: z.string().email('Invalid email address').optional(),
+    phoneNumber: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    isPrimary: z.boolean().optional(),
+    vendorId: z.string().optional(),
+    generalContractorId: z.string().optional(),
+  })
+  .superRefine(hasSingleProfessionalRoleSource);
 
 export type UpdateContactInput = z.infer<typeof updateContactInputSchema>;
 
@@ -193,6 +218,7 @@ export const quickCreateContactSchema = z
   .object({
     fullName: z.string().min(1, 'Name is required'),
     professionalRoleId: z.string().optional(),
+    professionalRoleLabel: optionalTrimmedStringSchema,
     email: z
       .string()
       .refine((val) => !val || z.string().email().safeParse(val).success, 'Invalid email address')
@@ -206,6 +232,7 @@ export const quickCreateContactSchema = z
       .refine((val) => !val || val.replace(/\D/g, '').length >= 7, 'Enter a valid phone number')
       .optional(),
   })
+  .superRefine(hasSingleProfessionalRoleSource)
   .refine((data) => (data.email && data.email.trim()) || (data.phone && data.phone.trim()), {
     message: 'At least one email or phone number is required',
     path: ['email'],

@@ -1,5 +1,3 @@
-import { Controller, type Control } from 'react-hook-form';
-
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import {
   Select,
@@ -9,6 +7,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import type { MemberFormInput, MemberRole } from '@/modules/settings/schemas/members.schema';
+import { Controller, type Control } from 'react-hook-form';
 
 interface MemberRoleSelectProps {
   control: Control<MemberFormInput>;
@@ -35,6 +34,7 @@ export function MemberRoleSelect({ control, disabled }: MemberRoleSelectProps) {
               <SelectItem value="dev">Dev</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="accountant">Accountant</SelectItem>
+              <SelectItem value="ap">A/P</SelectItem>
               <SelectItem value="pm">PM</SelectItem>
               <SelectItem value="user">User</SelectItem>
             </SelectContent>
@@ -45,4 +45,3 @@ export function MemberRoleSelect({ control, disabled }: MemberRoleSelectProps) {
     />
   );
 }
-

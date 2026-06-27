@@ -23,6 +23,7 @@ export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   dev: 'Dev',
   admin: 'Admin',
   accountant: 'Accountant',
+  ap: 'A/P',
   pm: 'PM',
   user: 'User',
 };

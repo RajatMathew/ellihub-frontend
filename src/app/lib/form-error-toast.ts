@@ -35,7 +35,6 @@ const FIELD_LABELS: Record<string, string> = {
   externalInvoiceNumber: 'External invoice number',
   lineItems: 'Line items',
   name: 'Name',
-  paymentMethodId: 'Payment method',
   projectId: 'Project',
   purchaseOrderId: 'Purchase order',
   quantity: 'Quantity',

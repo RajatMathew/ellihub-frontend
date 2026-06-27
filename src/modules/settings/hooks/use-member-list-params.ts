@@ -2,11 +2,11 @@ import { useCallback } from 'react';
 
 import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
+  isMembersSortByField,
   MEMBERS_DEFAULT_PAGE_SIZE,
   MEMBERS_DEFAULT_SORT_BY,
   MEMBERS_DEFAULT_SORT_ORDER,
   MEMBERS_SEARCH_DEBOUNCE_MS,
-  isMembersSortByField,
 } from '@/modules/settings/constants/members-list.constants';
 import type {
   MemberEmailStatus,
@@ -20,6 +20,7 @@ function isMemberRole(value: string | null): value is MemberRole {
     value === 'dev' ||
     value === 'admin' ||
     value === 'accountant' ||
+    value === 'ap' ||
     value === 'pm' ||
     value === 'user'
   );
@@ -47,9 +48,7 @@ export function useMemberListParams() {
   const emailStatusParam = listParams.searchParams.get('emailStatus');
   const roleFilter = isMemberRole(roleParam) ? roleParam : undefined;
   const statusFilter = isMemberStatus(statusParam) ? statusParam : undefined;
-  const emailStatusFilter = isMemberEmailStatus(emailStatusParam)
-    ? emailStatusParam
-    : undefined;
+  const emailStatusFilter = isMemberEmailStatus(emailStatusParam) ? emailStatusParam : undefined;
 
   const params: MembersListParams = {
     page: listParams.page,

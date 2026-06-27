@@ -27,7 +27,8 @@ function toCreatePayload(input: CreateEmployeeInput) {
     emergencyContactName: input.emergencyContactName,
     emergencyContactPhone: input.emergencyContactPhone,
     emergencyContactRelation: input.emergencyContactRelation,
-    roleId: input.roleId,
+    roleId: input.roleId || undefined,
+    roleLabel: input.roleLabel || undefined,
     createAccount: input.createAccount,
     ...(input.createAccount
       ? {
@@ -49,7 +50,8 @@ function toUpdatePayload(input: UpdateEmployeeInput) {
     emergencyContactName: input.emergencyContactName,
     emergencyContactPhone: input.emergencyContactPhone,
     emergencyContactRelation: input.emergencyContactRelation,
-    roleId: input.roleId,
+    roleId: input.roleId || undefined,
+    roleLabel: input.roleLabel || undefined,
   };
 }
 

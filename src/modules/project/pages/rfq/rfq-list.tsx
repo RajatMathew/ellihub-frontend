@@ -18,7 +18,6 @@ import {
   useRFQListParams,
   useRFQListQuery,
   useRFQStatsQuery,
-  useRFQStatusesQuery,
   type RFQListParamPatch,
 } from '@/modules/project/hooks/rfq';
 import type { ListRFQParams, RFQListItem } from '@/modules/project/schemas/rfq';
@@ -59,7 +58,6 @@ export default function RFQListPage() {
 
   const rfqsQuery = useRFQListQuery(filters);
   const statsQuery = useRFQStatsQuery(projectId);
-  const { data: statuses } = useRFQStatusesQuery();
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { mutate: deleteRFQ, isPending: isDeletePending } = useDeleteRFQMutation();
   const { mutate: voidRFQ, isPending: isVoidPending } = useCancelRFQMutation();
@@ -193,7 +191,6 @@ export default function RFQListPage() {
           hasActiveFilters={hasActiveFilters}
           searchInput={searchInput}
           tradeCategories={tradeCategories}
-          statuses={statuses}
           onSearchChange={handleSearchChange}
           onUpdateParams={updateParams}
           onClearFilters={clearFilters}

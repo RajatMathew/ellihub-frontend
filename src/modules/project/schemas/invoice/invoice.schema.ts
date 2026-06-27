@@ -101,8 +101,6 @@ export const invoiceListItemSchema = z
     isDisputed: z.boolean().optional(),
     paidDate: z.string().nullable().optional(),
     paymentReference: z.string().nullable().optional(),
-    paymentMethodId: z.string().nullable().optional(),
-    paymentMethod: z.unknown().optional(),
     paymentNotes: z.string().nullable().optional(),
     disputeReason: z.string().nullable().optional(),
     disputedAt: z.string().nullable().optional(),
@@ -156,16 +154,6 @@ export const invoiceDetailSchema = z
     paidAmount: z.coerce.number().nullable().optional(),
     paidDate: z.string().nullable().optional(),
     paymentReference: z.string().nullable().optional(),
-    paymentMethodId: z.string().nullable().optional(),
-    paymentMethod: z
-      .object({
-        id: z.string().optional(),
-        name: z.string().nullable().optional(),
-        label: z.string().nullable().optional(),
-      })
-      .passthrough()
-      .nullable()
-      .optional(),
     paymentNotes: z.string().nullable().optional(),
     disputeReason: z.string().nullable().optional(),
     disputeDate: z.string().nullable().optional(),
