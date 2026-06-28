@@ -31,6 +31,9 @@ interface MonthlyBillsFiltersProps {
   onClearFilters: () => void;
 }
 
+const tableHeaderMultiSelectTriggerClassName =
+  '!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_.text-muted-foreground]:!text-muted-foreground [&_svg]:!text-muted-foreground';
+
 export function MonthlyBillsFilters({
   searchInput,
   vendorIds,
@@ -72,7 +75,7 @@ export function MonthlyBillsFilters({
           placeholder="All Vendors"
           searchPlaceholder="Search vendors..."
           emptyMessage="No vendors found."
-          selectionDisplay="summary"
+          triggerClassName={tableHeaderMultiSelectTriggerClassName}
         />
       </div>
 
@@ -86,7 +89,7 @@ export function MonthlyBillsFilters({
           placeholder="All Trades"
           searchPlaceholder="Search trades..."
           emptyMessage="No trades found."
-          selectionDisplay="summary"
+          triggerClassName={tableHeaderMultiSelectTriggerClassName}
         />
       </div>
 

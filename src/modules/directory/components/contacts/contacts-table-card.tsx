@@ -31,6 +31,9 @@ interface ContactsTableCardProps {
   onRetry: () => void;
 }
 
+const tableHeaderFilterTriggerClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground sm:w-44 [&_svg]:!text-muted-foreground';
+
 export function ContactsTableCard({
   table,
   professionalRoles,
@@ -50,7 +53,7 @@ export function ContactsTableCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Contact Directory</CardTitle>
+        <CardTitle className="!text-table-card-header-foreground">Contact Directory</CardTitle>
         <CardToolbar className="w-full sm:w-auto">
           <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
             {isRolesLoading ? (
@@ -60,7 +63,7 @@ export function ContactsTableCard({
                 value={roleFilter ?? 'all'}
                 onValueChange={(value) => onRoleChange(value === 'all' ? undefined : value)}
               >
-                <SelectTrigger className="h-8 w-full text-xs sm:w-44">
+                <SelectTrigger className={tableHeaderFilterTriggerClassName}>
                   <Filter className="me-1.5 size-3.5" />
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>

@@ -31,6 +31,9 @@ const PAYMENT_TABS = [
   { label: 'Paid', value: 'true' },
   { label: 'Unpaid', value: 'false' },
 ] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 text-xs !border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+const tableHeaderFilterPlaceholderClassName = '!text-muted-foreground';
 
 export function InvoiceListFilters({
   paidFilter,
@@ -85,8 +88,8 @@ export function InvoiceListFilters({
               placeholder="All Vendors"
               searchPlaceholder="Search vendors..."
               emptyMessage="No vendors found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
           <div className="w-full sm:w-56">
@@ -105,8 +108,8 @@ export function InvoiceListFilters({
               placeholder="All Purchase Orders"
               searchPlaceholder="Search purchase orders..."
               emptyMessage="No purchase orders found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
           {hasActiveFilters && (

@@ -1,5 +1,3 @@
-import { Search, X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardToolbar } from '@/app/components/ui/card';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -10,8 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { PRIME_CHANGE_ORDER_STATUSES } from '@/modules/project/schemas/prime-change-order';
 import type { PrimeChangeOrderListParamPatch } from '@/modules/project/hooks/prime-change-order';
+import { PRIME_CHANGE_ORDER_STATUSES } from '@/modules/project/schemas/prime-change-order';
+import { Search, X } from 'lucide-react';
 
 interface PrimeChangeOrderListFiltersProps {
   searchInput: string;
@@ -23,6 +22,9 @@ interface PrimeChangeOrderListFiltersProps {
   onUpdateParams: (patch: PrimeChangeOrderListParamPatch) => void;
   onClearFilters: () => void;
 }
+
+const tableHeaderFilterTriggerClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
 
 export function PrimeChangeOrderListFilters({
   searchInput,
@@ -56,7 +58,7 @@ export function PrimeChangeOrderListFilters({
               })
             }
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-44">
+            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} sm:w-44`}>
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>

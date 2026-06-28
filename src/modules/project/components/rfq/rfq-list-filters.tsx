@@ -22,6 +22,8 @@ const RFQ_STATUS_FILTER_OPTIONS = [
   { value: 'PUBLISHED', label: 'Published' },
   { value: 'AWARDED', label: 'Awarded' },
 ] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
 
 interface RFQListFiltersProps {
   trackFilter?: string;
@@ -85,7 +87,7 @@ export function RFQListFilters({
               })
             }
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-36">
+            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} sm:w-36`}>
               <SelectValue placeholder="All..." />
             </SelectTrigger>
             <SelectContent>

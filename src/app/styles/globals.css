@@ -67,9 +67,6 @@
   --card-border: #e4e4e7;
   --card-border-hover: #d4d4d8;
   --rule-strong: #a1a1aa;
-  --activity-timeline-rail: color-mix(in srgb, var(--foreground) 35%, transparent);
-  --tabs-line: color-mix(in srgb, var(--foreground) 18%, transparent);
-  --tabs-line-active: var(--primary);
   --brand-gold: var(--color-amber-500);
   --brand-clay: var(--color-orange-600);
   --surface-raised: var(--color-white);
@@ -335,7 +332,7 @@
   --ring: #1a3a5f;
   --radius: 0.5rem;
   --card-header: #1a3a5f;
-  --card-header-foreground: #e0a94d;
+  --card-header-foreground: #fff;
   --table-card-header-foreground: #fdfbf6;
   --card-header-border: #112b47;
   --teal-header-accent: #1a3a5f;
@@ -358,9 +355,6 @@
   --card-border: #d5cfc0;
   --card-border-hover: #c5bfb0;
   --rule-strong: #a09683;
-  --activity-timeline-rail: #6b6359;
-  --tabs-line: #6b6359;
-  --tabs-line-active: #4f6f8f;
   --brand-gold: #e0a94d;
   --brand-clay: #c75e40;
   --surface-raised: #ffffff;
@@ -617,9 +611,6 @@
   --color-card-border: var(--card-border);
   --color-card-border-hover: var(--card-border-hover);
   --color-rule-strong: var(--rule-strong);
-  --color-activity-timeline-rail: var(--activity-timeline-rail);
-  --color-tabs-line: var(--tabs-line);
-  --color-tabs-line-active: var(--tabs-line-active);
   --color-brand-gold: var(--brand-gold);
   --color-brand-clay: var(--brand-clay);
   --color-surface-raised: var(--surface-raised);

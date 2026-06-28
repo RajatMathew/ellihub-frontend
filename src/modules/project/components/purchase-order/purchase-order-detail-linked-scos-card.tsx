@@ -34,17 +34,22 @@ export function PurchaseOrderDetailLinkedSCOsCard({
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-normal !text-table-card-header-foreground">
           Sub Change Orders ({scos.length})
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           {approvedTotal > 0 && (
-            <span className="text-xs font-semibold text-muted-foreground">
+            <span className="text-xs font-semibold text-table-card-header-foreground/80">
               Approved {formatCurrency(approvedTotal)}
             </span>
           )}
           {canCreate && createTo && (
-            <Button variant="outline" size="sm" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground"
+              asChild
+            >
               <Link to={createTo}>
                 <Plus className="size-4" />
                 Add SCO

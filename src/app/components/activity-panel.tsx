@@ -132,7 +132,7 @@ export function ActivityPanel({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         {Array.from({ length: 3 }, (_, index) => (
           <div key={'activity-loader-' + index} className="flex gap-3">
             <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -160,7 +160,7 @@ export function ActivityPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-4 p-4">
       {canComment && onCreateComment && (
         <div className="rounded-md border border-border bg-muted/25 p-3">
           {composerOpen ? (
@@ -228,11 +228,11 @@ export function ActivityPanel({
             const showConnector = index < items.length - 1;
 
             return (
-              <div key={item.id} className="relative flex min-w-0 gap-3">
+              <div key={item.id} className="flex min-w-0 gap-3">
                 <div className="relative flex shrink-0 flex-col items-center">
                   <div
                     className={cn(
-                      'relative z-10 flex size-9 items-center justify-center rounded-full border bg-background',
+                      'relative z-10 flex size-9 items-center justify-center rounded-full border',
                       item.toneClassName
                     )}
                   >
@@ -241,7 +241,7 @@ export function ActivityPanel({
                   {showConnector ? (
                     <div
                       aria-hidden="true"
-                      className="absolute top-9 bottom-[-1.25rem] left-1/2 w-0.5 -translate-x-1/2 bg-activity-timeline-rail"
+                      className="absolute top-9 -bottom-5 left-1/2 w-px -translate-x-1/2 bg-border"
                     />
                   ) : null}
                 </div>

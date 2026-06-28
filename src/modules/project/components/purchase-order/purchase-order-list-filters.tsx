@@ -48,6 +48,9 @@ interface PurchaseOrderListFiltersProps {
 }
 
 const STATUS_TABS = [{ label: 'All', value: undefined }, ...PO_STATUS_OPTIONS] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 text-xs !border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+const tableHeaderFilterPlaceholderClassName = '!text-muted-foreground';
 
 export function PurchaseOrderListFilters({
   statusFilter,
@@ -98,8 +101,8 @@ export function PurchaseOrderListFilters({
               placeholder="All Vendors"
               searchPlaceholder="Search vendors..."
               emptyMessage="No vendors found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
           <Select
@@ -111,7 +114,7 @@ export function PurchaseOrderListFilters({
               })
             }
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-48">
+            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} w-full sm:w-48`}>
               <SelectValue placeholder="All Trades" />
             </SelectTrigger>
             <SelectContent>

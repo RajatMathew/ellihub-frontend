@@ -39,6 +39,9 @@ interface VendorsTableCardProps {
   onRetry: () => void;
 }
 
+const tableHeaderFilterTriggerClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground sm:w-44 [&_svg]:!text-muted-foreground';
+
 export function VendorsTableCard({
   table,
   typeTabs,
@@ -68,7 +71,7 @@ export function VendorsTableCard({
               <Skeleton className="h-8 w-28" />
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-0 border-b border-current/40">
+            <div className="flex flex-wrap items-center gap-0 border-b border-table-card-header-foreground/40">
               <TypeTab active={!typeFilter} label="All" onClick={() => onTypeChange(undefined)} />
               {typeTabs.map((tab) => (
                 <TypeTab
@@ -98,7 +101,7 @@ export function VendorsTableCard({
                 onStatusChange(value === 'all' ? undefined : (value as VendorStatus))
               }
             >
-              <SelectTrigger className="h-8 w-full text-xs sm:w-44">
+              <SelectTrigger className={tableHeaderFilterTriggerClassName}>
                 <Filter className="me-1.5 size-3.5" />
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
@@ -159,8 +162,8 @@ function TypeTab({
       onClick={onClick}
       className={
         active
-          ? '-mb-px border-b-2 border-current px-4 py-2 text-xs font-semibold uppercase tracking-wider text-current transition-colors'
-          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider text-current/75 transition-colors hover:text-current'
+          ? '-mb-px border-b-2 border-current px-4 py-2 text-xs font-semibold uppercase tracking-wider !text-table-card-header-foreground transition-colors'
+          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider !text-table-card-header-foreground/75 transition-colors hover:!text-table-card-header-foreground'
       }
     >
       {label}

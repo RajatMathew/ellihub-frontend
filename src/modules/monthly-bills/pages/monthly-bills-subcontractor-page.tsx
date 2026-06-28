@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -21,6 +21,9 @@ import {
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+const tableHeaderActionButtonClassName =
+  '!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
 
 interface MonthlyBillsSubcontractorPageProps {
   selectedDate: Date;
@@ -83,10 +86,7 @@ export function MonthlyBillsSubcontractorPage({
       .filter((option) => !query || option.label.toLowerCase().includes(query));
   }, [tradeCategories, tradeCategorySearch]);
 
-  const vendorIds = useMemo(
-    () => selectedVendors.map((vendor) => vendor.value),
-    [selectedVendors]
-  );
+  const vendorIds = useMemo(() => selectedVendors.map((vendor) => vendor.value), [selectedVendors]);
   const hasActiveFilters = Boolean(search || vendorIds.length || tradeCategoryIds.length);
 
   const monthlyBillsParams = useMemo(
@@ -106,12 +106,9 @@ export function MonthlyBillsSubcontractorPage({
   const hasMonthlyBillsData = monthlyBillsPages !== undefined;
   const showMonthlyBillsInitialLoader =
     enabled &&
-    (monthlyBillsQuery.isLoading ||
-      (monthlyBillsQuery.isFetching && !hasMonthlyBillsData));
+    (monthlyBillsQuery.isLoading || (monthlyBillsQuery.isFetching && !hasMonthlyBillsData));
   const isRefreshingMonthlyBills =
-    hasMonthlyBillsData &&
-    monthlyBillsQuery.isFetching &&
-    !monthlyBillsQuery.isFetchingNextPage;
+    hasMonthlyBillsData && monthlyBillsQuery.isFetching && !monthlyBillsQuery.isFetchingNextPage;
   const monthlyBillsResponse = monthlyBillsPages?.[0];
   const groups = useMemo(
     () => monthlyBillsPages?.flatMap((page) => page.groups) ?? [],
@@ -234,7 +231,7 @@ export function MonthlyBillsSubcontractorPage({
 
       <Card className="overflow-hidden">
         <CardHeader className="items-stretch gap-3 2xl:flex-row 2xl:items-center">
-          <CardTitle className="text-base font-semibold tracking-normal text-foreground">
+          <CardTitle className="!text-table-card-header-foreground text-base font-semibold tracking-normal">
             Subcontractor Bills
           </CardTitle>
           <CardToolbar className="w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">
@@ -289,7 +286,7 @@ export function MonthlyBillsSubcontractorPage({
                       size="sm"
                       disabled={effectiveBulkSaving}
                       onClick={handleBulkCancel}
-                      className="min-w-24"
+                      className={`min-w-24 ${tableHeaderActionButtonClassName}`}
                     >
                       <X className="size-3.5" />
                       Cancel
@@ -301,7 +298,7 @@ export function MonthlyBillsSubcontractorPage({
                     variant="outline"
                     size="sm"
                     onClick={() => setBulkEditMode(true)}
-                    className="w-full sm:w-auto"
+                    className={`w-full sm:w-auto ${tableHeaderActionButtonClassName}`}
                   >
                     <Pencil className="size-3.5" />
                     Bulk Edit
@@ -329,7 +326,9 @@ export function MonthlyBillsSubcontractorPage({
         <MonthlyBillsLoadMore
           ref={loadMoreRef}
           loadedCount={groups.length}
-          totalCount={pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0}
+          totalCount={
+            pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0
+          }
           hasNextPage={Boolean(monthlyBillsQuery.hasNextPage)}
           isFetchingNextPage={monthlyBillsQuery.isFetchingNextPage}
         />

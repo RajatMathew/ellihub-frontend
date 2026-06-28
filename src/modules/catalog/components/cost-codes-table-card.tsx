@@ -57,8 +57,8 @@ export function CostCodesTableCard({
                   type="button"
                   className={`shrink-0 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
                     categoryFilter === tab.value
-                      ? 'text-foreground border-b-2 border-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? '!text-table-card-header-foreground border-b-2 border-current'
+                      : '!text-table-card-header-foreground/75 hover:!text-table-card-header-foreground'
                   }`}
                   onClick={() => onCategoryChange(tab.value)}
                 >

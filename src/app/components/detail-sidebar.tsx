@@ -90,11 +90,11 @@ function DetailSidebarContent({ onClose, children, activityChildren }: DetailSid
           </Button>
         </div>
 
-        <TabsContent value="details" className="min-h-0 min-w-0 max-w-full overflow-hidden">
+        <TabsContent value="details" className="min-w-0 max-w-full overflow-hidden">
           {children}
         </TabsContent>
 
-        <TabsContent value="activity" className="min-h-0 min-w-0 max-w-full overflow-hidden">
+        <TabsContent value="activity" className="min-w-0 max-w-full overflow-hidden">
           {activityChildren || (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Clock className="size-10 text-muted-foreground/40" />

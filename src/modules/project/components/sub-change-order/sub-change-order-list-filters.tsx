@@ -26,6 +26,8 @@ interface SubChangeOrderListFiltersProps {
 }
 
 const STATUS_TABS = [{ label: 'All', value: undefined }, ...SCO_STATUS_OPTIONS] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
 
 export function SubChangeOrderListFilters({
   statusFilter,
@@ -65,7 +67,7 @@ export function SubChangeOrderListFilters({
               })
             }
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-48">
+            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} sm:w-48`}>
               <SelectValue placeholder="All Change Types" />
             </SelectTrigger>
             <SelectContent>

@@ -614,7 +614,7 @@ export default function ProjectForm() {
       <FormLayout className="pt-4 pb-8 lg:pb-10">
         <FormContent>
           {/* Section 1: Project Info */}
-          <Card id="project-info">
+          <Card id="project-info" className="bg-surface-raised">
             <CardContent className="space-y-6">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Project Info</h2>
@@ -911,7 +911,7 @@ export default function ProjectForm() {
           </Card>
 
           {/* Section 2: Contract */}
-          <Card id="contract">
+          <Card id="contract" className="bg-surface-raised">
             <CardContent className="space-y-6">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Contract</h2>
