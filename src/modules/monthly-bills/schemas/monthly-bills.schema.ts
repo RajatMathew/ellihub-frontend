@@ -163,6 +163,7 @@ export const markPaymentSchema = z.object({
   /** QuickBooks line-item category reference id. */
   categoryId: z.string().min(1),
   saveVendorMapping: z.boolean().optional().default(false),
+  printLater: z.boolean().optional().default(false),
 });
 
 export type MarkPaymentPayload = z.infer<typeof markPaymentSchema>;
@@ -190,6 +191,7 @@ export const markPaymentFormSchema = z.object({
   description: z.string().trim().min(1, 'Line item description is required.').max(4000),
   memo: z.string().trim().max(4000),
   saveVendorMapping: z.boolean(),
+  printLater: z.boolean(),
 });
 
 export type MarkPaymentFormData = z.infer<typeof markPaymentFormSchema>;
