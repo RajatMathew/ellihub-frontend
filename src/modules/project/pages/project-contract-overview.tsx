@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { EntityActivitySheet } from '@/app/components/entity-activity-sheet';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
@@ -44,16 +45,17 @@ import { usePOStatsQuery } from '@/modules/project/hooks/purchase-order';
 import { useSCOStatsQuery } from '@/modules/project/hooks/sub-change-order';
 import { useProjectTeamEmployeePickerOptions } from '@/modules/project/hooks/use-project-team-employee-picker-options';
 import { useTeamMemberActions } from '@/modules/project/hooks/use-team-member-actions';
-import { EllipsisVertical, Pencil } from 'lucide-react';
+import { EllipsisVertical, History, Pencil } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProjectContractOverview() {
-  const { isAdmin } = useAccess();
+  const { isAdmin, can } = useAccess();
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
 
   /* ---- Queries ---- */
@@ -113,6 +115,7 @@ export default function ProjectContractOverview() {
       }).toString()}`
     : undefined;
   const canManageProject = project?.capabilities?.canManage ?? false;
+  const canViewActivity = can('activityLog', 'read');
   const canManageSchedule = project?.capabilities?.canManageSchedule ?? false;
   const projectTeamActions = project?.capabilities?.actions?.projectTeam;
   const canAddTeamMembers = projectTeamActions?.add === true;
@@ -192,6 +195,12 @@ export default function ProjectContractOverview() {
             <Share2 className="size-4" />
             Share
           </Button> */}
+          {canViewActivity && (
+            <Button variant="outline" size="sm" onClick={() => setActivityOpen(true)}>
+              <History className="size-4" />
+              Activity
+            </Button>
+          )}
           {canManageProject && (
             <>
               <Button variant="outline" size="sm" asChild>
@@ -317,6 +326,17 @@ export default function ProjectContractOverview() {
           onPin={handlePinContractDocuments}
         />
       </div>
+
+      <EntityActivitySheet
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        entityType="project"
+        entityId={projectId}
+        entityName={project.name}
+        title="Project Activity"
+        description="Project updates, schedule tracker changes, and related records."
+        emptyMessage="No project activity recorded yet."
+      />
 
       {/* ---- Delete confirmation ---- */}
       <ConfirmDialog

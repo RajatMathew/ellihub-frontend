@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -38,8 +39,8 @@ import { MarkPaymentReferenceSelect } from '@/modules/monthly-bills/components/m
 import { MarkPaymentSummary } from '@/modules/monthly-bills/components/mark-payment-summary';
 import { MarkPaymentVendorField } from '@/modules/monthly-bills/components/mark-payment-vendor-field';
 import { useMarkPaymentMutation } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
-import { findVendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
 import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import { findVendorMatch } from '@/modules/monthly-bills/lib/monthly-bills-vendor-match';
 import {
   markPaymentFormSchema,
   type MarkPaymentFormData,
@@ -154,6 +155,7 @@ export function MarkPaymentDialog({
       description: defaultLineDescription,
       memo: '',
       saveVendorMapping: false,
+      printLater: false,
     },
   });
 
@@ -168,6 +170,7 @@ export function MarkPaymentDialog({
       description: defaultLineDescription,
       memo: '',
       saveVendorMapping: false,
+      printLater: false,
     });
   }, [
     bill.purchaseOrder.id,
@@ -296,12 +299,7 @@ export function MarkPaymentDialog({
                       <FormItem className="space-y-1.5">
                         <FormLabel>Payment Date</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            type="date"
-                            min={dateRange.min}
-                            max={dateRange.max}
-                          />
+                          <Input {...field} type="date" min={dateRange.min} max={dateRange.max} />
                         </FormControl>
                         <FormDescription>
                           Must be between{' '}
@@ -320,9 +318,7 @@ export function MarkPaymentDialog({
                 <div className="space-y-4 rounded-md border bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        QuickBooks Line Item
-                      </p>
+                      <p className="text-sm font-semibold text-foreground">QuickBooks Line Item</p>
                       <p className="text-xs text-muted-foreground">
                         This appears under Category details in QuickBooks.
                       </p>
@@ -373,6 +369,29 @@ export function MarkPaymentDialog({
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="printLater"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start gap-3 rounded-md border border-border bg-muted/30 p-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                        />
+                      </FormControl>
+                      <div className="flex min-w-0 flex-col gap-1 text-left">
+                        <FormLabel className="cursor-pointer select-none text-sm font-medium">
+                          Print later in QuickBooks
+                        </FormLabel>
+                        <FormDescription className="text-xs leading-5">
+                          Marks the QuickBooks check as needing to be printed.
+                        </FormDescription>
+                      </div>
                     </FormItem>
                   )}
                 />
