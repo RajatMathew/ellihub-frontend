@@ -42,7 +42,7 @@ export function useActivityLogQuery(
 export function useActivityPanelItems(
   entityType: string,
   entityId: string | undefined,
-  options?: { entityName?: string }
+  options?: { entityName?: string; enabled?: boolean; size?: number }
 ) {
   const { access, can } = useAccess();
   const queryClient = useQueryClient();
@@ -52,9 +52,9 @@ export function useActivityPanelItems(
       entityId,
       sortBy: 'createdAt',
       sortOrder: 'desc',
-      size: 50,
+      size: options?.size ?? 50,
     },
-    { enabled: Boolean(entityId) }
+    { enabled: Boolean(entityId) && (options?.enabled ?? true) }
   );
 
   const invalidateActivity = () => queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
@@ -251,6 +251,8 @@ function activityLogToPanelItem(
     action: formatPanelActivityDescription(log.description, context),
     timestamp: formatActivityTimestamp(log.createdAt),
     actionType: action,
+    revision: log.revision,
+    details: log.details,
     note: log.note,
     editedAt: log.editedAt,
     canManage: action === 'comment' && Boolean(currentUserId && log.user?.id === currentUserId),
@@ -307,11 +309,12 @@ function activityLogToPanelItem(
   ) {
     return {
       ...base,
-      icon: action.includes('delete') || action.includes('remove') ? (
-        <Trash2 className="size-4 text-destructive" />
-      ) : (
-        <XCircle className="size-4 text-destructive" />
-      ),
+      icon:
+        action.includes('delete') || action.includes('remove') ? (
+          <Trash2 className="size-4 text-destructive" />
+        ) : (
+          <XCircle className="size-4 text-destructive" />
+        ),
       toneClassName: 'border-destructive/20 bg-destructive/5',
     };
   }

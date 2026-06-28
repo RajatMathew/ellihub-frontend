@@ -1,5 +1,11 @@
 import { useState, type KeyboardEvent, type ReactNode } from 'react';
 
+import type { ActivityFieldDiffDetails } from '@/app/api/activity-log.api';
+import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
+import {
+  ActivityRevisionBadge,
+  stripActivityRevisionSuffix,
+} from '@/app/components/activity-revision-badge';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
@@ -31,6 +37,8 @@ export interface ActivityPanelItem {
   icon: ReactNode;
   toneClassName: string;
   actionType?: string;
+  revision?: number | null;
+  details?: ActivityFieldDiffDetails | null;
   note?: string | null;
   editedAt?: string | null;
   canManage?: boolean;
@@ -225,6 +233,7 @@ export function ActivityPanel({
           {items.map((item) => {
             const isComment = item.actionType === 'comment';
             const isEditing = editingId === item.id;
+            const displayAction = stripActivityRevisionSuffix(item.action, item.revision);
 
             return (
               <div key={item.id} className="flex min-w-0 gap-3">
@@ -240,7 +249,12 @@ export function ActivityPanel({
                   <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="break-words text-sm font-medium text-foreground">{item.user}</p>
-                      <p className="break-words text-sm text-muted-foreground">{item.action}</p>
+                      <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="min-w-0 break-words text-sm text-muted-foreground">
+                          {displayAction}
+                        </span>
+                        <ActivityRevisionBadge revision={item.revision} />
+                      </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -282,6 +296,15 @@ export function ActivityPanel({
                       )}
                     </div>
                   </div>
+
+                  {!isComment && item.details && (
+                    <ActivityChangeDetailsButton
+                      details={item.details}
+                      summary={displayAction}
+                      actor={item.user}
+                      timestamp={item.timestamp}
+                    />
+                  )}
 
                   {isComment && (
                     <div className="mt-2">

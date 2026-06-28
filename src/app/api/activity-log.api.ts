@@ -1,6 +1,80 @@
 import api from '@/app/api';
 import { z } from 'zod';
 
+const activityValueTypeSchema = z.enum([
+  'text',
+  'number',
+  'currency',
+  'date',
+  'datetime',
+  'boolean',
+  'email',
+  'phone',
+  'percent',
+  'list',
+  'collection',
+  'file',
+  'status',
+]);
+
+const activityChangeValueSchema = z.object({
+  raw: z.unknown().nullable(),
+  display: z.string(),
+});
+const activityCollectionFieldSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  valueType: activityValueTypeSchema.optional(),
+  from: activityChangeValueSchema,
+  to: activityChangeValueSchema,
+});
+
+const activityCollectionSchema = z.object({
+  itemLabel: z.string(),
+  addedCount: z.number(),
+  removedCount: z.number(),
+  modifiedCount: z.number(),
+  rows: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      status: z.enum(['added', 'removed', 'modified']),
+      fields: z.array(activityCollectionFieldSchema),
+    })
+  ),
+});
+
+export const activityFieldDiffDetailsSchema = z.object({
+  kind: z.literal('field-diff'),
+  schemaVersion: z.literal(1),
+  subject: z.object({
+    label: z.string().optional(),
+    displayName: z.string(),
+  }),
+  revision: z.number(),
+  changes: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      section: z.string(),
+      valueType: activityValueTypeSchema.optional(),
+      from: activityChangeValueSchema,
+      to: activityChangeValueSchema,
+      collection: activityCollectionSchema.optional(),
+    })
+  ),
+});
+
+export type ActivityFieldDiffDetails = z.infer<typeof activityFieldDiffDetailsSchema>;
+
+const activityLogDetailsSchema = z
+  .unknown()
+  .optional()
+  .nullable()
+  .transform((value): ActivityFieldDiffDetails | null => {
+    const parsed = activityFieldDiffDetailsSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+  });
 const activityUserSchema = z
   .object({
     id: z.string(),
@@ -18,6 +92,8 @@ export const activityLogItemSchema = z.object({
   action: z.string(),
   description: z.string(),
   note: z.string().optional().nullable(),
+  revision: z.number().optional().nullable(),
+  details: activityLogDetailsSchema,
   affectedEntityIds: z.array(z.string()).optional(),
   createdAt: z.string(),
   editedAt: z.string().optional().nullable(),
