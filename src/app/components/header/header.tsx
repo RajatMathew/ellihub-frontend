@@ -38,7 +38,7 @@ export function Header({
         <div className="container-fluid flex min-w-0 max-w-full grow items-stretch justify-between gap-2.5">
           {isMobile && <HeaderMenu menuConfig={menuConfig} />}
           <HeaderHamburger>{!isMobile && breadcrumbs && <HeaderBreadcrumbs />}</HeaderHamburger>
-          <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-2.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-1">
             {toolbar && toolbar}
 
             <Button
@@ -47,7 +47,7 @@ export function Header({
               size={isMobile ? 'icon' : 'sm'}
               type="button"
               variant="ghost"
-              className="gap-1.5 px-0 text-sm font-semibold text-primary hover:bg-transparent hover:text-primary/85 focus-visible:bg-transparent"
+              className="gap-2 px-2.5 text-sm font-semibold text-primary hover:duration-100 focus-visible:bg-transparent"
             >
               <MessageCircleMore className="size-4 text-current" />
               {!isMobile && <span>Mark feedback</span>}
@@ -57,17 +57,18 @@ export function Header({
               aria-label={isHelpOpen ? 'Close Help Center' : 'Open Help Center'}
               aria-pressed={isHelpOpen}
               data-state={isHelpOpen ? 'open' : 'closed'}
-              mode="icon"
               onClick={helpToggle}
-              size="icon"
+              size={isMobile ? 'icon' : 'sm'}
               type="button"
               variant="ghost"
+              className="gap-2 px-2.5 text-sm font-semibold text-primary hover:duration-100 focus-visible:bg-transparent"
             >
-              <CircleHelp />
+              <CircleHelp className="size-4 text-current" />
+              {!isMobile && <span>Help</span>}
             </Button>
             <UserDropdownMenu
               trigger={
-                <div className="size-8 rounded-full shrink-0 cursor-pointer bg-primary/10 flex items-center justify-center border border-primary/15">
+                <div className="size-8 ring-2 ring-transparent hover:ring-primary ring-offset-3 hover:duration-200 rounded-full shrink-0 cursor-pointer bg-primary/10 flex items-center justify-center border border-primary/15">
                   <div className="text-[11px] text-primary font-bold">
                     {data?.user?.name
                       ?.split(' ')
