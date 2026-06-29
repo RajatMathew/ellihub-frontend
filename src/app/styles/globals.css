@@ -4,7 +4,7 @@
 @import 'tw-animate-css';
 
 /** Dark Mode Variant **/
-@custom-variant dark (&:is(.dark *, .dark-blue *, .genz *));
+@custom-variant dark (&:is(.dark *, .dark-blue *));
 
 /** Colors - https://tailwindcss.com/docs/colors **/
 :root {
@@ -422,136 +422,6 @@
 
 .editorial .font-mono {
   font-family: 'DM Mono', 'IBM Plex Sans', monospace;
-}
-
-/* Catppuccin Theme — soft pastel dark (Mocha flavor) */
-.genz {
-  color-scheme: dark;
-  /* Base layers: Crust > Mantle > Base > Surface0 > Surface1 > Surface2 */
-  --background: #1e1e2e;
-  --main-background: #181825;
-  --form-background: #313244;
-  --foreground: #cdd6f4;
-  --card: #313244;
-  --card-foreground: #cdd6f4;
-  --popover: #313244;
-  --popover-foreground: #cdd6f4;
-
-  /* Accent colors */
-  --primary: #89b4fa;
-  --primary-hover: #74c7ec;
-  --primary-foreground: #1e1e2e;
-  --secondary: #cba6f7;
-  --secondary-foreground: #1e1e2e;
-
-  /* Muted / overlay */
-  --muted: #45475a;
-  --muted-foreground: #bac2de;
-  --project-tabs-background: #181825;
-  --sidebar-hover-foreground: #f5c2e7;
-  --accent: #cba6f7;
-  --accent-foreground: #1e1e2e;
-
-  /* Semantic */
-  --success: #a6e3a1;
-  --success-foreground: #1e1e2e;
-  --warning: #f9e2af;
-  --warning-foreground: #1e1e2e;
-  --destructive: #f38ba8;
-  --destructive-foreground: #1e1e2e;
-
-  /* Charts */
-  --chart-1: #89b4fa;
-  --chart-2: #a6e3a1;
-  --chart-3: #f9e2af;
-  --chart-4: #f38ba8;
-  --chart-5: #cba6f7;
-
-  /* Borders & inputs */
-  --border: #585b70;
-  --input: #7f849c;
-  --ring: #89b4fa;
-  --radius: 0.5rem;
-
-  /* Card headers — use Mauve for vibrant headers */
-  --card-header: #cba6f7;
-  --card-header-foreground: #1e1e2e;
-  --table-card-header-foreground: var(--card-header-foreground);
-  --card-header-border: #b4befe;
-  --teal-header-accent: #89b4fa;
-  --teal-header-accent-foreground: #1e1e2e;
-  --info: #89dceb;
-  --info-foreground: #1e1e2e;
-
-  /* Status colors */
-  --fieldwire-status-draft: #f9e2af;
-  --fieldwire-status-neutral: #9399b2;
-  --fieldwire-status-pending: #89b4fa;
-  --fieldwire-status-approved: #a6e3a1;
-  --fieldwire-status-rejected: #f38ba8;
-
-  /* Labels & separators */
-  --label-light: #89b4fa;
-  --label-lighter: #cba6f7;
-  --separator: #45475a;
-  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.4), -1px 0 4px rgba(0, 0, 0, 0.3);
-  --sidebar-bg: #181825;
-  --sidebar-foreground: #cdd6f4;
-  --sidebar-muted: #a6adc8;
-  --sidebar-border: #313244;
-  --card-border: #45475a;
-  --card-border-hover: #585b70;
-  --rule-strong: #7f849c;
-  --brand-gold: #f9e2af;
-  --brand-clay: #fab387;
-  --surface-raised: #313244;
-  --surface-hover: #45475a;
-  --sidebar-item-hover: rgba(205, 214, 244, 0.08);
-  --sidebar-item-active: #313244;
-  --sidebar-accent: #f5c2e7;
-  --sidebar-popover-bg: #181825;
-  --sidebar-popover-foreground: #cdd6f4;
-  --sidebar-popover-muted: #a6adc8;
-  --sidebar-popover-border: #45475a;
-  --sidebar-popover-hover: #313244;
-  --sidebar-popover-active: #313244;
-  --primary-soft: rgba(137, 180, 250, 0.14);
-  --primary-alpha: rgba(137, 180, 250, 0.28);
-  --primary-accent: #89b4fa;
-  --primary-soft-foreground: var(--primary-accent);
-  --success-soft: rgba(166, 227, 161, 0.14);
-  --success-alpha: rgba(166, 227, 161, 0.28);
-  --success-accent: #a6e3a1;
-  --success-soft-foreground: var(--success-accent);
-  --warning-soft: rgba(249, 226, 175, 0.14);
-  --warning-alpha: rgba(249, 226, 175, 0.28);
-  --warning-accent: #f9e2af;
-  --warning-soft-foreground: var(--warning-accent);
-  --info-soft: rgba(137, 220, 235, 0.14);
-  --info-alpha: rgba(137, 220, 235, 0.28);
-  --info-accent: #89dceb;
-  --info-soft-foreground: var(--info-accent);
-  --destructive-soft: rgba(243, 139, 168, 0.14);
-  --destructive-alpha: rgba(243, 139, 168, 0.28);
-  --destructive-accent: #f38ba8;
-  --destructive-soft-foreground: var(--destructive-accent);
-}
-
-.genz body,
-.genz {
-  font-family:
-    'Comic Neue',
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
-
-.genz h1,
-.genz h2,
-.genz h3,
-.genz h4 {
-  font-family: 'Comic Neue', system-ui, sans-serif;
-  font-weight: 700;
 }
 
 /* Sidebar border overrides - ensure app navigation sidebar always uses dark borders */
