@@ -22,11 +22,11 @@ export function PurchaseOrderDetailLinkedInvoicesCard({
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-normal !text-table-card-header-foreground">
           Linked Invoices ({invoices.length})
         </CardTitle>
         {invoiceTotal > 0 && (
-          <span className="text-xs font-semibold text-muted-foreground">
+          <span className="text-xs font-semibold tabular-nums text-table-card-header-foreground/80">
             {formatCurrency(invoiceTotal)}
           </span>
         )}

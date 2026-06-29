@@ -45,6 +45,12 @@ function parseDateString(value: string | undefined): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+const headerInputControlClassName =
+  'h-8 !border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+const headerSelectTriggerClassName = `${headerInputControlClassName} w-full text-xs data-[placeholder]:!text-muted-foreground sm:w-40`;
+const headerToggleItemClassName =
+  'flex-1 !bg-background !text-foreground hover:!bg-accent hover:!text-accent-foreground data-[state=on]:!bg-muted data-[state=on]:!text-foreground sm:flex-none [&_svg]:!text-current';
+
 export function FilesListFilters({
   sortBy,
   viewMode,
@@ -76,7 +82,7 @@ export function FilesListFilters({
   return (
     <CardHeader className="items-start">
       <CardTitle className="min-w-0">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-table-card-header-foreground">
           {totalCount} {totalCount === 1 ? 'item' : 'items'}
         </span>
       </CardTitle>
@@ -97,8 +103,10 @@ export function FilesListFilters({
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-8 min-w-0 justify-start gap-1.5 text-xs lg:max-w-64 ${
-                  hasDateRange ? 'border-primary text-primary' : ''
+                className={`min-w-0 justify-start gap-1.5 text-xs lg:max-w-64 ${
+                  hasDateRange
+                    ? 'h-8 !border-primary !bg-background !text-primary hover:!bg-background hover:!text-primary [&_svg]:!text-primary'
+                    : headerInputControlClassName
                 }`}
               >
                 <CalendarDays className="size-3.5" />
@@ -164,7 +172,7 @@ export function FilesListFilters({
             </PopoverContent>
           </Popover>
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="h-8 w-full text-xs sm:w-40">
+            <SelectTrigger className={headerSelectTriggerClassName}>
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -184,10 +192,18 @@ export function FilesListFilters({
               if (value === 'list' || value === 'grid') onViewChange(value);
             }}
           >
-            <ToggleGroupItem value="list" aria-label="List view" className="flex-1 sm:flex-none">
+            <ToggleGroupItem
+              value="list"
+              aria-label="List view"
+              className={headerToggleItemClassName}
+            >
               <List className="size-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="grid" aria-label="Grid view" className="flex-1 sm:flex-none">
+            <ToggleGroupItem
+              value="grid"
+              aria-label="Grid view"
+              className={headerToggleItemClassName}
+            >
               <LayoutGrid className="size-4" />
             </ToggleGroupItem>
           </ToggleGroup>

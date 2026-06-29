@@ -39,12 +39,12 @@ export function HeaderMenu({ menuConfig }: { menuConfig?: MenuConfig }) {
             </Button>
           </SheetTrigger>
           <SheetContent
-            className="p-0 gap-0 w-60 lg:w-(--sidebar-width) dark"
+            className="h-dvh max-h-dvh w-60 gap-0 overflow-hidden border-sidebar-border bg-sidebar-bg p-0 text-sidebar-foreground lg:w-(--sidebar-width) [&_[data-slot=separator]]:bg-sidebar-border"
             side="left"
             close={false}
           >
             <SheetHeader className="p-0 space-y-0" />
-            <SheetBody className="flex grow p-0">
+            <SheetBody className="flex min-h-0 flex-1 p-0">
               {menuConfig && <Sidebar menuConfig={menuConfig} />}
             </SheetBody>
           </SheetContent>

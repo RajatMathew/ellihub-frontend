@@ -15,6 +15,9 @@ interface MonthlyBillsColumnToggleProps {
   onToggleColumn: (key: MonthlyBillColumnKey) => void;
 }
 
+const tableHeaderActionButtonClassName =
+  '!border-input !bg-background !text-foreground hover:!border-success/40 hover:!bg-background hover:!text-foreground data-[state=open]:!border-success/50 data-[state=open]:!ring-2 data-[state=open]:!ring-success/15 [&_svg]:!text-muted-foreground';
+
 export function MonthlyBillsColumnToggle({
   visibleColumns,
   onToggleColumn,
@@ -29,7 +32,7 @@ export function MonthlyBillsColumnToggle({
           type="button"
           variant="outline"
           size="sm"
-          className="w-full shrink-0 justify-between gap-2 rounded-md border-border bg-background px-3 font-medium shadow-sm transition-all hover:border-success/40 data-[state=open]:border-success/50 data-[state=open]:ring-2 data-[state=open]:ring-success/15 sm:w-auto"
+          className={`w-full shrink-0 justify-between gap-2 rounded-md px-3 font-medium shadow-sm transition-all sm:w-auto ${tableHeaderActionButtonClassName}`}
         >
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate">Columns</span>

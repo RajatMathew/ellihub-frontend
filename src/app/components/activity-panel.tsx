@@ -230,20 +230,29 @@ export function ActivityPanel({
         </div>
       ) : (
         <div className="space-y-5">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const isComment = item.actionType === 'comment';
             const isEditing = editingId === item.id;
+            const showConnector = index < items.length - 1;
             const displayAction = stripActivityRevisionSuffix(item.action, item.revision);
 
             return (
               <div key={item.id} className="flex min-w-0 gap-3">
-                <div
-                  className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-full border',
-                    item.toneClassName
-                  )}
-                >
-                  {item.icon}
+                <div className="relative flex shrink-0 flex-col items-center">
+                  <div
+                    className={cn(
+                      'relative z-10 flex size-9 items-center justify-center rounded-full border',
+                      item.toneClassName
+                    )}
+                  >
+                    {item.icon}
+                  </div>
+                  {showConnector ? (
+                    <div
+                      aria-hidden="true"
+                      className="absolute top-9 -bottom-5 left-1/2 w-px -translate-x-1/2 bg-border"
+                    />
+                  ) : null}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-start justify-between gap-2">

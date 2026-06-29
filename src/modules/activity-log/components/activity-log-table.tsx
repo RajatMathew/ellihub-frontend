@@ -41,6 +41,9 @@ interface ActivityLogTableProps {
   onRetry: () => void;
 }
 
+const headerInputControlClassName =
+  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+
 export function ActivityLogTable({
   table,
   totalCount,
@@ -65,10 +68,10 @@ export function ActivityLogTable({
     <Card>
       <CardHeader className="items-start gap-4 xl:flex-row xl:items-center">
         <div className="space-y-1">
-          <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
+          <CardTitle className="text-xs font-semibold tracking-normal !text-table-card-header-foreground">
             Event Stream
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-table-card-header-foreground">
             {totalCount} log entr{totalCount === 1 ? 'y' : 'ies'}
           </p>
         </div>
@@ -86,8 +89,8 @@ export function ActivityLogTable({
             value={entityType ?? 'all'}
             onValueChange={(value) => onEntityTypeChange(value === 'all' ? undefined : value)}
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-48">
-              <SelectValue placeholder="Entity" />
+            <SelectTrigger className={`${headerInputControlClassName} sm:w-48`}>
+              <SelectValue placeholder="All Entities" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Entities</SelectItem>
@@ -103,8 +106,8 @@ export function ActivityLogTable({
             value={action ?? 'all'}
             onValueChange={(value) => onActionChange(value === 'all' ? undefined : value)}
           >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-40">
-              <SelectValue placeholder="Action" />
+            <SelectTrigger className={`${headerInputControlClassName} sm:w-40`}>
+              <SelectValue placeholder="All Actions" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Actions</SelectItem>
@@ -119,18 +122,23 @@ export function ActivityLogTable({
           <Input
             type="date"
             value={from ?? ''}
-            className="h-8 w-full text-xs sm:w-36"
+            className={`${headerInputControlClassName} sm:w-36`}
             onChange={(event) => onFromChange(event.target.value || undefined)}
           />
           <Input
             type="date"
             value={to ?? ''}
-            className="h-8 w-full text-xs sm:w-36"
+            className={`${headerInputControlClassName} sm:w-36`}
             onChange={(event) => onToChange(event.target.value || undefined)}
           />
 
           {hasActiveFilters && (
-            <Button variant="outline" size="sm" onClick={onClearFilters}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground"
+              onClick={onClearFilters}
+            >
               <X className="size-3.5" />
               Clear
             </Button>

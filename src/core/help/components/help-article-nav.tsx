@@ -51,9 +51,9 @@ export function HelpArticleNav({
   };
 
   return (
-    <aside className={cn('flex min-h-0 flex-col border-e bg-zinc-50 dark:bg-zinc-900/60 overflow-hidden', className)}>
+    <aside className={cn('flex min-h-0 flex-col overflow-hidden border-e bg-card', className)}>
       {/* Header */}
-      <div className="shrink-0 border-b border-border/50 px-4 pt-3 pb-4 flex flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-3 border-b border-border/50 bg-card px-4 pb-4 pt-3">
         <Button
           asChild
           className="justify-start -ms-2 px-2 text-muted-foreground hover:text-foreground"
@@ -65,12 +65,12 @@ export function HelpArticleNav({
             Back to app
           </Link>
         </Button>
-        <InputGroup>
-          <InputWrapper>
-            <Search className="text-muted-foreground/50" />
+        <InputGroup className="w-full">
+          <InputWrapper className="h-9 rounded-lg border-card-border bg-card px-3 shadow-sm shadow-black/5 transition-colors hover:border-card-border-hover">
+            <Search className="size-4 text-muted-foreground/60" />
             <Input
               aria-label="Search help articles"
-              className="min-w-0"
+              className="min-w-0 text-sm placeholder:text-muted-foreground/70"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search help"
               value={query}
@@ -91,7 +91,7 @@ export function HelpArticleNav({
                 <div key={section.title} className={cn(i !== 0 && 'mt-1')}>
                   {/* Collapsible section header */}
                   <button
-                    className="group flex w-full items-center justify-between px-4 py-2 text-left transition-colors hover:bg-accent/30"
+                    className="group flex w-full items-center justify-between px-4 py-2 text-left transition-colors hover:bg-surface-hover"
                     onClick={() => toggleSection(section.title)}
                     type="button"
                   >
@@ -118,8 +118,8 @@ export function HelpArticleNav({
                                 'relative w-full text-left text-sm transition-colors duration-100',
                                 'flex items-center pl-5 pr-3 py-[7px] border-l-2',
                                 isActive
-                                  ? 'border-l-blue-600 dark:border-l-blue-400 bg-blue-50 dark:bg-blue-900/20 text-foreground font-medium'
-                                  : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                                  ? 'border-l-primary bg-surface-hover text-foreground font-medium'
+                                  : 'border-l-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground'
                               )}
                               onClick={() => onSelect(article)}
                               type="button"

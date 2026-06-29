@@ -36,7 +36,7 @@ export function PTOTableCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All PTO Requests</CardTitle>
+        <CardTitle className="!text-table-card-header-foreground">All PTO Requests</CardTitle>
         <CardToolbar>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <InputWrapper variant="sm" className="w-full sm:w-72">

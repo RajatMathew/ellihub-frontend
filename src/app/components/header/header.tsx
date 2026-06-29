@@ -83,7 +83,10 @@ export function Header({
       </header>
       <MarkFeedbackDialog open={markFeedbackOpen} onOpenChange={setMarkFeedbackOpen} />
       {!isMobile && (
-        <aside className="fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)">
+        <aside
+          data-slot="app-sidebar"
+          className="fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)"
+        >
           <Suspense fallback={null}>
             <Sidebar menuConfig={menuConfig} mode={sidebarMode} />
           </Suspense>

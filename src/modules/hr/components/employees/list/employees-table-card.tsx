@@ -56,7 +56,7 @@ export function EmployeesTableCard({
   return (
     <Card className="min-w-0 max-w-full overflow-hidden">
       <CardHeader>
-        <CardTitle>All Employees</CardTitle>
+        <CardTitle className="!text-table-card-header-foreground">All Employees</CardTitle>
         <CardToolbar className="w-full sm:w-auto">
           <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <InputWrapper variant="sm" className="w-full min-w-0 sm:w-72">

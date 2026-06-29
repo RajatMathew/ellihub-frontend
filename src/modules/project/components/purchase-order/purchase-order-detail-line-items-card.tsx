@@ -37,7 +37,7 @@ export function PurchaseOrderDetailLineItemsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Line Items ({lineItemCount})
         </CardTitle>
       </CardHeader>

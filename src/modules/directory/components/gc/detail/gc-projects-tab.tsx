@@ -37,18 +37,18 @@ export function GCProjectsTab({ projects }: GCProjectsTabProps) {
     <Card>
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
             Project Section
           </CardTitle>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-table-card-header-foreground/80">
             {activeProjects} active of {projects.length} linked projects
           </p>
         </div>
         <div className="shrink-0 text-left sm:text-right">
-          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-widest text-table-card-header-foreground/80">
             Active Committed
           </div>
-          <div className="text-lg font-semibold text-foreground">
+          <div className="text-lg font-semibold text-table-card-header-foreground">
             {formatCurrency(totalCommitted)}
           </div>
         </div>

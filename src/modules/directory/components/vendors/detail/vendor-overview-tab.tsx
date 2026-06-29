@@ -36,7 +36,7 @@ export function VendorOverviewTab({ vendor, contacts }: VendorOverviewTabProps) 
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
             Team Directory
           </CardTitle>
         </CardHeader>
@@ -85,7 +85,7 @@ function VendorFinancialCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
           Financial Overview
         </CardTitle>
       </CardHeader>
@@ -108,7 +108,7 @@ function VendorInfoCard({ vendor }: { vendor: VendorDetail }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
           Info
         </CardTitle>
       </CardHeader>
