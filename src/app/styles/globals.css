@@ -297,8 +297,8 @@
 /* Editorial Theme - Navy accent + cream paper (matches client's V6.2 palette) */
 .editorial {
   color-scheme: light;
-  --background: #f8f4ed;
-  --main-background: #f1ece2;
+  --background: #f4f4f1;
+  --main-background: #f4f4f1;
   --form-background: #ffffff;
   --foreground: #1a1410;
   --card: #ffffff;
@@ -393,7 +393,6 @@
 .editorial body,
 .editorial {
   font-family:
-    'General Sans',
     'DM Sans',
     'IBM Plex Sans',
     system-ui,
