@@ -745,6 +745,25 @@
   }
 }
 
+@layer components {
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+    background: var(--popover) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--popover-foreground) !important;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 12%) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+    color: var(--muted-foreground) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-close-button] {
+    background: var(--popover) !important;
+    border-color: var(--border) !important;
+    color: var(--popover-foreground) !important;
+  }
+}
+
 /** Custom Scrollbar **/
 @layer base {
   ::-webkit-scrollbar {
