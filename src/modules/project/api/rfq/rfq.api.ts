@@ -11,14 +11,12 @@ import {
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatsSchema,
-  rfqStatusSchema,
   type CreateRFQInput,
   type ListRFQParams,
   type RFQDeliverableInput,
   type RFQDetail,
   type RFQPaginatedResponse,
   type RFQStats,
-  type RFQStatus,
   type UpdateRFQInput,
   type VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
@@ -230,17 +228,6 @@ export const rfqApi = {
     const result = rfqStatsSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.stats] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
-  },
-
-  async getStatuses(): Promise<RFQStatus[]> {
-    const res = await api.get('/lookup/type/RFQ_STATUS');
-    const raw = res.data?.data ?? res.data ?? [];
-    const result = z.array(rfqStatusSchema).safeParse(raw);
-    if (!result.success) {
-      console.error('[rfqApi.getStatuses] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;

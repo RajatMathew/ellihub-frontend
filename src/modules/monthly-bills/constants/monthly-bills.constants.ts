@@ -5,6 +5,6 @@ export const MONTHLY_BILL_TABS = [
 ] as const;
 
 export const MONTHLY_BILLS_DEFAULT_PATH = '/app/monthly-bills/subcontractor';
-export const MONTHLY_BILLS_ALLOWED_ROLES = new Set(['pm', 'accountant']);
+export const MONTHLY_BILLS_ALLOWED_ROLES = new Set(['pm', 'accountant', 'ap']);
 
 export type MonthlyBillTabPath = (typeof MONTHLY_BILL_TABS)[number]['path'];

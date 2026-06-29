@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
+import type { PendingContactAssociation } from '@/modules/directory/components/contacts/form/contact-form.types';
 import {
   useCreateContactMutation,
   useLinkEntityMutation,
   useUnlinkEntityMutation,
   useUpdateContactMutation,
 } from '@/modules/directory/hooks/contacts.hooks';
-import type { PendingContactAssociation } from '@/modules/directory/components/contacts/form/contact-form.types';
 import type {
   ContactFormValues,
   CreateContactInput,
@@ -51,7 +51,7 @@ export function useSaveContact({
           id: contactId,
           data: {
             fullName: formData.fullName,
-            professionalRoleId: formData.professionalRoleId ?? null,
+            ...getUpdateContactRolePayload(formData),
             email,
             phoneNumber,
             tags: formData.tags,
@@ -77,7 +77,7 @@ export function useSaveContact({
 
       const payload: CreateContactInput = {
         fullName: formData.fullName,
-        professionalRoleId: formData.professionalRoleId ?? undefined,
+        ...getCreateContactRolePayload(formData),
         email,
         phoneNumber,
         tags: formData.tags,
@@ -129,4 +129,37 @@ function hasAssociationChanged(
   next: Pick<PendingContactAssociation, 'id' | 'type'>
 ) {
   return Boolean(current && (current.id !== next.id || current.type !== next.type));
+}
+function getCreateContactRolePayload(
+  formData: ContactFormValues
+): Pick<CreateContactInput, 'professionalRoleId' | 'professionalRoleLabel'> {
+  const professionalRoleLabel = formData.professionalRoleLabel?.trim() || undefined;
+
+  if (professionalRoleLabel) {
+    return {
+      professionalRoleId: undefined,
+      professionalRoleLabel,
+    };
+  }
+
+  return {
+    professionalRoleId: formData.professionalRoleId || undefined,
+    professionalRoleLabel: undefined,
+  };
+}
+
+function getUpdateContactRolePayload(formData: ContactFormValues) {
+  const professionalRoleLabel = formData.professionalRoleLabel?.trim() || undefined;
+
+  if (professionalRoleLabel) {
+    return {
+      professionalRoleId: undefined,
+      professionalRoleLabel,
+    };
+  }
+
+  return {
+    professionalRoleId: formData.professionalRoleId || null,
+    professionalRoleLabel: undefined,
+  };
 }

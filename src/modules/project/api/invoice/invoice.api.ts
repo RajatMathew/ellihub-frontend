@@ -4,7 +4,6 @@ import {
   invoiceListItemSchema,
   invoicePaginatedResponseSchema,
   invoiceStatsSchema,
-  invoiceStatusSchema,
   invoiceSummarySchema,
   type CreateInvoiceInput,
   type InvoiceDetail,
@@ -16,7 +15,6 @@ import {
   type InvoiceRejectInput,
   type InvoiceResolveDisputeInput,
   type InvoiceStats,
-  type InvoiceStatus,
   type InvoiceSummary,
   type ListInvoiceParams,
   type UpdateInvoiceInput,
@@ -191,18 +189,5 @@ export const invoiceApi = {
 
   async removeLineItem(invoiceId: string, lineItemId: string): Promise<void> {
     await api.delete(`${BASE}/${invoiceId}/line-items/${lineItemId}`);
-  },
-
-  /* ---- lookups ---- */
-
-  async listStatuses(): Promise<InvoiceStatus[]> {
-    const res = await api.get('/lookup/type/INVOICE_STATUS');
-    const raw = res.data?.data ?? res.data ?? [];
-    const result = z.array(invoiceStatusSchema).safeParse(raw);
-    if (!result.success) {
-      console.error('[invoiceApi.listStatuses] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
   },
 };

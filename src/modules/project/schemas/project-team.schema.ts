@@ -8,7 +8,7 @@ export const teamEmployeeSchema = z
     id: z.string(),
     name: z.string(),
     email: z.string().nullable().optional(),
-    authRole: z.enum(['dev', 'admin', 'accountant', 'pm', 'user', 'unlinked']).optional(),
+    authRole: z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user', 'unlinked']).optional(),
     authUser: z
       .object({
         id: z.string(),

@@ -87,7 +87,6 @@ import {
   useRemoveRFQAttachmentMutation,
   useRemoveVendorMutation,
   useRFQDetailQuery,
-  useRFQStatusesQuery,
   useSaveRFQVendorPdfMutation,
   useSubmitQuoteMutation,
   useUnawardRFQMutation,
@@ -99,7 +98,7 @@ import {
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
 import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
-import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
+import type { RFQQuoteAttachment } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
   CheckCircle2,
@@ -121,6 +120,19 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+type RFQMutableStatusName = 'DRAFT' | 'PUBLISHED';
+
+type RFQMutableStatusOption = {
+  id: RFQMutableStatusName;
+  name: RFQMutableStatusName;
+  label: string;
+};
+
+const RFQ_MUTABLE_STATUS_OPTIONS: RFQMutableStatusOption[] = [
+  { id: 'DRAFT', name: 'DRAFT', label: 'Draft' },
+  { id: 'PUBLISHED', name: 'PUBLISHED', label: 'Published' },
+];
 
 function getQuoteDocumentUploadName(file: File) {
   const dotIndex = file.name.lastIndexOf('.');
@@ -257,7 +269,6 @@ export default function RFQDetailPage() {
   );
   const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 
-  const { data: rfqStatuses } = useRFQStatusesQuery();
   const { data: rfqPdfTermsConfig } = usePdfTermsConfigQuery('rfq');
   const { data: rfqPdfNoticeConfig } = usePdfNoticeConfigQuery('rfq');
   const rfqPdfTermsOptions = useMemo(
@@ -429,13 +440,7 @@ export default function RFQDetailPage() {
   const isEvaluation = statusName === 'EVALUATION';
   const isAwarded = statusName === 'AWARDED';
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
-  const draftPublishedStatuses =
-    rfqStatuses?.filter(
-      (status): status is RFQStatus & { id: string; name: 'DRAFT' | 'PUBLISHED' } =>
-        typeof status.id === 'string' &&
-        status.id.length > 0 &&
-        (status.name === 'DRAFT' || status.name === 'PUBLISHED')
-    ) ?? [];
+  const draftPublishedStatuses = RFQ_MUTABLE_STATUS_OPTIONS;
   const projectActions = project?.capabilities?.actions;
   const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
   const canUploadRfqAttachment = projectActions?.rfq?.update === true && !isTerminal;

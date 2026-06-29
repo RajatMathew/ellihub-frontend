@@ -291,6 +291,38 @@ test.describe('HR create and edit forms', () => {
     expect(createPayload).not.toHaveProperty('password');
   });
 
+  test('creates an employee with a custom job title', async ({ page }) => {
+    let createPayload: Record<string, unknown> | undefined;
+    await mockHRApi(page, { onCreateEmployee: (payload) => (createPayload = payload) });
+
+    await page.goto('/app/hr/employees/create');
+    await expect(page.getByRole('heading', { name: 'Personal Identity' })).toBeVisible({
+      timeout: routeLoadTimeout,
+    });
+
+    await page.getByTestId('employee-name-input').fill('Custom Role Employee');
+    await page.getByTestId('employee-email-input').fill('custom.role@example.com');
+    await page.getByTestId('employee-phone-input').fill('(212) 555-0188');
+    await page.getByTestId('employee-address-input').fill('300 Hudson St, New York, NY');
+    await page.getByTestId('employee-start-date-input').fill('2026-04-15');
+    await page.getByTestId('employee-role-select').click();
+    await page.getByPlaceholder('Search or type job title...').fill('Senior Estimator');
+    await page.getByText('Use "Senior Estimator" as job title', { exact: true }).click();
+    await expect(page.getByTestId('employee-role-select')).toContainText('Senior Estimator');
+    await page.getByRole('button', { name: 'Create Employee' }).click();
+
+    await expect.poll(() => createPayload).toBeDefined();
+    expect(createPayload).toMatchObject({
+      name: 'Custom Role Employee',
+      email: 'custom.role@example.com',
+      phoneNumber: '(212) 555-0188',
+      address: '300 Hudson St, New York, NY',
+      startDate: '2026-04-15',
+      roleLabel: 'Senior Estimator',
+      createAccount: false,
+    });
+    expect(createPayload).not.toHaveProperty('roleId');
+  });
   test('prefills and updates an employee', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined;
     await mockHRApi(page, { onUpdateEmployee: (payload) => (updatePayload = payload) });
@@ -331,9 +363,7 @@ test.describe('HR create and edit forms', () => {
     });
 
     await page.getByTestId('department-name-input').fill('Created Department');
-    await page
-      .getByTestId('department-description-input')
-      .fill('Created department description');
+    await page.getByTestId('department-description-input').fill('Created department description');
     await page.getByRole('button', { name: 'Create Department' }).click();
 
     await expect.poll(() => createPayload).toBeDefined();
@@ -358,9 +388,7 @@ test.describe('HR create and edit forms', () => {
     );
 
     await page.getByTestId('department-name-input').fill('Updated Department');
-    await page
-      .getByTestId('department-description-input')
-      .fill('Updated department description');
+    await page.getByTestId('department-description-input').fill('Updated department description');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     await expect.poll(() => updatePayload).toBeDefined();

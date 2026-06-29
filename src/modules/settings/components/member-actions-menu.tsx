@@ -1,14 +1,3 @@
-import {
-  KeyRound,
-  MoreHorizontal,
-  Pencil,
-  ShieldCheck,
-  Trash2,
-  UserCheck,
-  UserRound,
-  UserX,
-} from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
@@ -19,6 +8,16 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { normalizeMemberRole } from '@/modules/settings/lib/members.utils';
 import type { MemberRole, MemberUser } from '@/modules/settings/schemas/members.schema';
+import {
+  KeyRound,
+  MoreHorizontal,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserRound,
+  UserX,
+} from 'lucide-react';
 
 interface MemberActionsMenuProps {
   member: MemberUser;
@@ -95,6 +94,13 @@ export function MemberActionsMenu({
           Make Accountant
         </DropdownMenuItem>
         <DropdownMenuItem
+          disabled={isSelf || role === 'ap'}
+          onClick={() => onRoleChange(member, 'ap')}
+        >
+          <UserRound className="size-4" />
+          Make A/P
+        </DropdownMenuItem>
+        <DropdownMenuItem
           disabled={isSelf || role === 'pm'}
           onClick={() => onRoleChange(member, 'pm')}
         >
@@ -117,4 +123,3 @@ export function MemberActionsMenu({
     </DropdownMenu>
   );
 }
-

@@ -14,6 +14,8 @@ interface ProjectActivityPanelProps {
   entityId: string | undefined;
   entityName?: string;
   emptyMessage?: string;
+  enabled?: boolean;
+  size?: number;
 }
 
 export function ProjectActivityPanel({
@@ -21,8 +23,10 @@ export function ProjectActivityPanel({
   entityId,
   entityName,
   emptyMessage,
+  enabled,
+  size,
 }: ProjectActivityPanelProps) {
-  const activity = useActivityPanelItems(entityType, entityId, { entityName });
+  const activity = useActivityPanelItems(entityType, entityId, { entityName, enabled, size });
 
   return (
     <ActivityPanel

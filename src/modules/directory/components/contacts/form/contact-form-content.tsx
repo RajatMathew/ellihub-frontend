@@ -89,6 +89,7 @@ export function ContactFormContent({
     reset({
       fullName: name,
       professionalRoleId: randomRole?.id,
+      professionalRoleLabel: '',
       email: { email: fakeContactEmail(name), label: 'Work' },
       phoneNumber: {
         number: fakePhone(),

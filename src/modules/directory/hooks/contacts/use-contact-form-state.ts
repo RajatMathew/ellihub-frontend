@@ -15,12 +15,12 @@ interface UseContactFormStateArgs {
 }
 
 export function useContactFormState({ contact, isEdit, roles }: UseContactFormStateArgs) {
-  const form = useContactForm(getContactFormDefaults(isEdit ? contact : undefined));
+  const form = useContactForm(getContactFormDefaults(isEdit ? contact : undefined, roles));
   const { reset } = form;
 
   useEffect(() => {
     if (!isEdit || !contact) return;
-    reset(getContactFormDefaults(contact) as Partial<ContactFormValues>);
+    reset(getContactFormDefaults(contact, roles) as Partial<ContactFormValues>);
   }, [isEdit, contact, roles, reset]);
 
   return form;

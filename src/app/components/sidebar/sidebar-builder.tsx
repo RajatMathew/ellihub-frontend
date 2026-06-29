@@ -96,7 +96,10 @@ function filterMenuForAccess(
           if (path.includes('projects')) return access.access?.projectScope !== 'none';
           if (path.includes('monthly-bills')) {
             return (
-              access.isAdmin || access.access?.role === 'pm' || access.access?.role === 'accountant'
+              access.isAdmin ||
+              access.access?.role === 'pm' ||
+              access.access?.role === 'accountant' ||
+              access.access?.role === 'ap'
             );
           }
           if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');

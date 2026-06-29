@@ -14,7 +14,6 @@ import {
 } from '@/modules/project/components/shared';
 import type { RFQListParamPatch } from '@/modules/project/hooks/rfq';
 import type { Lookup } from '@/modules/project/schemas/lookup.schema';
-import type { RFQStatus } from '@/modules/project/schemas/rfq';
 import { Search, X } from 'lucide-react';
 
 const RFQ_STATUS_FILTER_OPTIONS = [
@@ -31,7 +30,6 @@ interface RFQListFiltersProps {
   hasActiveFilters: boolean;
   searchInput: string;
   tradeCategories?: Lookup[];
-  statuses?: RFQStatus[];
   onSearchChange: (value: string) => void;
   onUpdateParams: (patch: RFQListParamPatch) => void;
   onClearFilters: () => void;
