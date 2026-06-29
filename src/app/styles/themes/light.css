@@ -1,0 +1,103 @@
+/** Colors - https://tailwindcss.com/docs/colors **/
+:root {
+  color-scheme: light;
+
+  /** Base surfaces **/
+  --background: #fff;
+  --foreground: var(--color-zinc-950);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-950);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-zinc-950);
+  --surface-raised: var(--color-white);
+  --surface-hover: var(--color-zinc-50);
+
+  /** Brand and interactive colors **/
+  --primary: var(--color-emerald-600);
+  --primary-hover: var(--color-emerald-700);
+  --primary-foreground: var(--color-white);
+  --primary-soft: var(--color-emerald-50);
+  --primary-alpha: var(--color-emerald-100);
+  --primary-soft-foreground: var(--color-emerald-700);
+  --secondary: var(--color-zinc-100);
+  --secondary-foreground: var(--color-zinc-900);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-900);
+  --muted: var(--color-zinc-100);
+  --muted-foreground: var(--color-zinc-500);
+  --brand-gold: var(--color-amber-500);
+  --brand-clay: var(--color-orange-600);
+
+  /** Feedback colors **/
+  --success: var(--color-emerald-600);
+  --success-foreground: var(--color-white);
+  --success-soft: var(--color-emerald-50);
+  --success-alpha: var(--color-emerald-200);
+  --success-accent: var(--color-emerald-700);
+  --success-soft-foreground: var(--success-accent);
+  --warning: var(--color-amber-500);
+  --warning-foreground: var(--color-amber-950);
+  --warning-soft: var(--color-amber-50);
+  --warning-alpha: var(--color-amber-200);
+  --warning-accent: var(--color-amber-700);
+  --warning-soft-foreground: var(--warning-accent);
+  --info: var(--color-green-600);
+  --info-foreground: var(--color-white);
+  --info-soft: var(--color-sky-50);
+  --info-alpha: var(--color-sky-200);
+  --info-accent: var(--color-sky-700);
+  --info-soft-foreground: var(--info-accent);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --destructive-soft: var(--color-red-50);
+  --destructive-alpha: var(--color-red-100);
+  --destructive-soft-foreground: var(--color-red-700);
+
+  /** Charts **/
+  --chart-1: var(--color-blue-500);
+  --chart-2: var(--color-green-500);
+  --chart-3: var(--color-yellow-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-purple-500);
+
+  /** Borders, inputs, and elevation **/
+  --border: oklch(94% 0.004 286.32);
+  --input: var(--color-zinc-200);
+  --ring: var(--color-zinc-400);
+  --radius: 0.5rem;
+  --separator: lab(96.1634 0.0993311 -0.364041);
+  --card-border: #e4e4e7;
+  --card-border-hover: #d4d4d8;
+  --card-header: var(--color-slate-50);
+  --card-header-foreground: var(--color-zinc-950);
+  --table-card-header-foreground: var(--card-header-foreground);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+
+  /** App-specific accents **/
+  --project-tabs-background: #f8f9fa;
+  --label-light: lab(47.8878 1.65477 -5.77283);
+  --label-lighter: lab(35.1166 1.78212 -6.1173);
+  --rule-strong: #a1a1aa;
+
+  /** Fieldwire status colors **/
+  --fieldwire-status-draft: var(--color-amber-500);
+  --fieldwire-status-neutral: var(--color-slate-400);
+  --fieldwire-status-pending: var(--color-blue-500);
+  --fieldwire-status-approved: var(--color-emerald-500);
+  --fieldwire-status-rejected: var(--color-red-500);
+
+  /** Sidebar **/
+  --sidebar-bg: #191919;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #27272a;
+  --sidebar-hover-foreground: var(--color-green-400);
+  --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-item-active: #2f2f2f;
+  --sidebar-popover-bg: #191919;
+  --sidebar-popover-foreground: #f4f4f5;
+  --sidebar-popover-muted: #a1a1aa;
+  --sidebar-popover-border: #3f3f46;
+  --sidebar-popover-hover: #27272a;
+  --sidebar-popover-active: #27272a;
+}

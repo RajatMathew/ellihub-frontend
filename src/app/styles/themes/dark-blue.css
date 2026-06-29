@@ -1,0 +1,103 @@
+/* Dark Blue Theme - navy-tinted dark mode */
+.dark-blue {
+  color-scheme: dark;
+
+  /** Base surfaces **/
+  --background: #0a0f1a;
+  --foreground: #f1f5f9;
+  --card: #0f1624;
+  --card-foreground: #f1f5f9;
+  --popover: #0f1624;
+  --popover-foreground: #f1f5f9;
+  --surface-raised: #0f1624;
+  --surface-hover: #162033;
+
+  /** Brand and interactive colors **/
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-foreground: #0a0f1a;
+  --primary-soft: rgba(96, 165, 250, 0.12);
+  --primary-alpha: rgba(96, 165, 250, 0.25);
+  --primary-soft-foreground: #93c5fd;
+  --secondary: #162033;
+  --secondary-foreground: #e2e8f0;
+  --accent: #162033;
+  --accent-foreground: #e2e8f0;
+  --muted: #162033;
+  --muted-foreground: #94a3b8;
+  --brand-gold: #fbbf24;
+  --brand-clay: #f97316;
+
+  /** Feedback colors **/
+  --success: #4ade80;
+  --success-foreground: #0a0f1a;
+  --success-soft: rgba(74, 222, 128, 0.14);
+  --success-alpha: rgba(74, 222, 128, 0.28);
+  --success-accent: #86efac;
+  --success-soft-foreground: var(--success-accent);
+  --warning: #fbbf24;
+  --warning-foreground: #0a0f1a;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --warning-alpha: rgba(251, 191, 36, 0.3);
+  --warning-accent: #fcd34d;
+  --warning-soft-foreground: var(--warning-accent);
+  --info: #22d3ee;
+  --info-foreground: #0a0f1a;
+  --info-soft: rgba(34, 211, 238, 0.14);
+  --info-alpha: rgba(34, 211, 238, 0.28);
+  --info-accent: #67e8f9;
+  --info-soft-foreground: var(--info-accent);
+  --destructive: #f87171;
+  --destructive-foreground: #0a0f1a;
+  --destructive-soft: rgba(248, 113, 113, 0.14);
+  --destructive-alpha: rgba(248, 113, 113, 0.28);
+  --destructive-soft-foreground: #fca5a5;
+
+  /** Charts **/
+  --chart-1: #60a5fa;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #c084fc;
+
+  /** Borders, inputs, and elevation **/
+  --border: #1e293b;
+  --input: #334155;
+  --ring: #60a5fa;
+  --radius: 0.5rem;
+  --separator: #1e293b;
+  --card-border: #1e293b;
+  --card-border-hover: #334155;
+  --card-header: #162033;
+  --card-header-foreground: #f1f5f9;
+  --table-card-header-foreground: var(--card-header-foreground);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.5), -1px 0 4px rgba(0, 0, 0, 0.4);
+
+  /** App-specific accents **/
+  --project-tabs-background: #0a0f1a;
+  --label-light: #60a5fa;
+  --label-lighter: #c084fc;
+  --rule-strong: #334155;
+
+  /** Fieldwire status colors **/
+  --fieldwire-status-draft: #fbbf24;
+  --fieldwire-status-neutral: #64748b;
+  --fieldwire-status-pending: #60a5fa;
+  --fieldwire-status-approved: #4ade80;
+  --fieldwire-status-rejected: #f87171;
+
+  /** Sidebar **/
+  --sidebar-bg: #070c14;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+  --sidebar-border: #162033;
+  --sidebar-hover-foreground: #f97316;
+  --sidebar-item-hover: rgba(226, 232, 240, 0.08);
+  --sidebar-item-active: #162033;
+  --sidebar-popover-bg: #0f1624;
+  --sidebar-popover-foreground: #f1f5f9;
+  --sidebar-popover-muted: #94a3b8;
+  --sidebar-popover-border: #334155;
+  --sidebar-popover-hover: #162033;
+  --sidebar-popover-active: #162033;
+}
