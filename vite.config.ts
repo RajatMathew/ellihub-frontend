@@ -28,8 +28,15 @@ export default defineConfig({
             if (pkg === 'react-markdown' || pkg.startsWith('remark') || pkg.startsWith('rehype'))
               return 'markdown';
             if (pkg === 'tiptap') return 'editor';
+
             if (pkg === 'react-helmet-async') return 'helmet';
             if (pkg === 'lucide-react') return 'lucide';
+            if (pkg === 'lightgallery') return 'lgallery';
+
+            if (pkg === 'posthog-js' || pkg === 'posthog') return 'analytics';
+            if (pkg === 'react-hook-form' || pkg === 'hookform' || pkg === 'zod') return 'forms';
+            if (pkg === 'date-fns' || pkg === 'react-day-picker') return 'dates';
+
             return 'vendor';
           }
         },
