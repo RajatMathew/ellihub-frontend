@@ -121,10 +121,11 @@ export const contactSchema = z.object({
 
 export type Contact = z.infer<typeof contactSchema>;
 
-const optionalTrimmedStringSchema = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() || undefined : value),
-  z.string().optional()
-);
+const optionalTrimmedStringSchema = z
+  .string()
+  .trim()
+  .transform((value) => value || undefined)
+  .optional();
 
 const hasSingleProfessionalRoleSource = (
   data: { professionalRoleId?: string | null; professionalRoleLabel?: string | undefined },

@@ -39,10 +39,12 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-page-header: var(--page-header);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-page-header-border: var(--page-header-border);
   --color-project-tabs-background: var(--project-tabs-background);
   --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
   --color-sidebar-bg: var(--sidebar-bg);
@@ -62,7 +64,6 @@
   --color-rule-strong: var(--rule-strong);
   --color-brand-gold: var(--brand-gold);
   --color-brand-clay: var(--brand-clay);
-  --color-surface-raised: var(--surface-raised);
   --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -94,6 +95,7 @@
   --color-card-header: var(--card-header);
   --color-card-header-foreground: var(--card-header-foreground);
   --color-table-card-header-foreground: var(--table-card-header-foreground);
+  --color-table-card-tab-accent: var(--table-card-tab-accent);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-info-soft: var(--info-soft);
@@ -111,7 +113,7 @@
 
   /** Base Styles **/
   --color-border: var(--border);
-  --color-input: var(--input);
+  --color-input: var(--input-border);
   --color-ring: var(--ring);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-lg: var(--radius);
@@ -219,13 +221,13 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--input);
+    background: var(--color-input);
     border-radius: 5px;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--input) transparent;
+    scrollbar-color: var(--color-input) transparent;
   }
 }
 

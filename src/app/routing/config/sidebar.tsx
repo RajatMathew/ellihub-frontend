@@ -91,7 +91,7 @@ export const mainSidebarMenu: MenuConfig = [
   },
   {
     type: 'menu',
-    children: [{ title: 'Activity Logger', path: '../activity-log' }],
+    children: [{ title: 'Activity Log', path: '../activity-log' }],
   },
   {
     type: 'separator',
@@ -124,6 +124,7 @@ export const projectSidebarMenu: MenuConfig = [
   {
     type: 'group-collapsed',
     title: 'GC',
+    collapse: false,
     children: [
       {
         title: 'Prime Change Orders',
@@ -136,6 +137,7 @@ export const projectSidebarMenu: MenuConfig = [
   {
     type: 'group-collapsed',
     title: 'Vendor',
+    collapse: false,
     children: [
       {
         title: 'RFQs',

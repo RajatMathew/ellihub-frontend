@@ -69,7 +69,7 @@ export function Marquee({
       ref={marqueeRef}
       data-slot="marquee"
       className={cn(
-        'group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]',
+        'group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] gap-(--gap)',
         {
           'flex-row': !vertical,
           'flex-col': vertical,
@@ -88,7 +88,7 @@ export function Marquee({
               <div
                 key={i}
                 className={cn(
-                  !vertical ? 'flex-row [gap:var(--gap)]' : 'flex-col [gap:var(--gap)]',
+                  !vertical ? 'flex-row gap-(--gap)' : 'flex-col gap-(--gap)',
                   'flex shrink-0 justify-around',
                   !vertical && 'animate-marquee flex-row',
                   vertical && 'animate-marquee-vertical flex-col',

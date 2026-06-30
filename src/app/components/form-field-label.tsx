@@ -4,7 +4,7 @@ import { FieldInfoTooltip } from '@/app/components/field-info-tooltip';
 import { FieldLabel } from '@/app/components/ui/field';
 import { cn } from '@/app/lib/utils';
 
-export const formFieldLabelClassName = 'text-xs font-semibold uppercase tracking-normal';
+export const formFieldLabelClassName = 'text-xs font-semibold uppercase tracking-[0.06em]';
 
 export const formInvalidControlClassName =
   'border-destructive/60 ring-[3px] ring-destructive/10 dark:border-destructive dark:ring-destructive/20';

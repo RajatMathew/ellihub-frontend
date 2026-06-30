@@ -55,7 +55,7 @@ export function PageTabs<TValue extends PageTabValue = PageTabValue>({
     <nav
       aria-label={ariaLabel}
       className={cn(
-        '-mx-4 -mb-3 border-y border-rule-strong bg-project-tabs-background px-4 pt-1.5 lg:-mx-7.5 lg:px-7.5',
+        '-mx-4 -mb-3 border-y border-page-header-border bg-project-tabs-background px-4 pt-1.5 lg:-mx-7.5 lg:px-7.5',
         className
       )}
     >

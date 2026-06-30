@@ -39,8 +39,8 @@ export function SidebarMenuCreateAction({
             'ms-auto flex !h-6 !w-6 !min-w-6 shrink-0 items-center justify-center rounded-md p-0 text-sidebar-muted',
             'opacity-0 pointer-events-none transition-[opacity,color,background-color,box-shadow]',
             'hover:bg-sidebar-item-hover hover:text-sidebar-foreground hover:shadow-sm focus-visible:bg-sidebar-item-hover focus-visible:text-sidebar-foreground focus-visible:opacity-100',
-            'group-hover/sidebar-menu-item:pointer-events-auto group-hover/sidebar-menu-item:bg-sidebar-item-hover group-hover/sidebar-menu-item:opacity-100',
-            'group-focus-within/sidebar-menu-item:pointer-events-auto group-focus-within/sidebar-menu-item:bg-sidebar-item-hover group-focus-within/sidebar-menu-item:opacity-100'
+            'group-hover/sidebar-menu-item:pointer-events-auto group-hover/sidebar-menu-item:opacity-100',
+            'group-focus-within/sidebar-menu-item:pointer-events-auto group-focus-within/sidebar-menu-item:opacity-100'
           )}
         >
           <Plus className="size-3.25 opacity-100" strokeWidth={2.25} />

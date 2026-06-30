@@ -12,7 +12,6 @@ import {
 } from '@/app/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
-import { Separator } from '@/app/components/ui/separator';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,7 +79,6 @@ export function ProfileSecurityCard() {
         </CardHeading>
       </CardHeader>
       <CardContent>
-        <Separator className="mb-5" />
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <PasswordField
             control={form.control}

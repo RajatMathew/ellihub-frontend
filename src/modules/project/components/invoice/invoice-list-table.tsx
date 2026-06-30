@@ -24,8 +24,8 @@ export function InvoiceListTable({
     <DataGridSection
       table={table}
       totalCount={totalCount}
-      isLoading={isLoading}
-      isRefreshing={isRefreshing}
+      isLoading={isLoading || Boolean(isRefreshing)}
+      refreshIndicator="none"
       isError={isError}
       errorTitle="Failed to load invoices"
       emptyIcon={<FileText className="size-10 text-muted-foreground/50" />}

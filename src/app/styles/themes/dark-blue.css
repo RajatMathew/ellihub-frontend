@@ -7,9 +7,10 @@
   --foreground: #f1f5f9;
   --card: #0f1624;
   --card-foreground: #f1f5f9;
+  --page-header: #0f1624;
+  --page-header-border: #1e293b;
   --popover: #0f1624;
   --popover-foreground: #f1f5f9;
-  --surface-raised: #0f1624;
   --surface-hover: #162033;
 
   /** Brand and interactive colors **/
@@ -23,6 +24,12 @@
   --secondary-foreground: #e2e8f0;
   --accent: #162033;
   --accent-foreground: #e2e8f0;
+  --outline-button-background: transparent;
+  --outline-button-foreground: var(--accent-foreground);
+  --outline-button-border: var(--input-border);
+  --outline-button-hover-background: var(--accent);
+  --outline-button-hover-foreground: var(--accent-foreground);
+  --outline-button-hover-border: var(--input-border);
   --muted: #162033;
   --muted-foreground: #94a3b8;
   --brand-gold: #fbbf24;
@@ -62,7 +69,7 @@
 
   /** Borders, inputs, and elevation **/
   --border: #1e293b;
-  --input: #334155;
+  --input-border: #334155;
   --ring: #60a5fa;
   --radius: 0.5rem;
   --separator: #1e293b;
@@ -75,6 +82,8 @@
 
   /** App-specific accents **/
   --project-tabs-background: #0a0f1a;
+  --header-action-hover-background: rgba(96, 165, 250, 0.14);
+  --table-card-tab-accent: var(--primary);
   --label-light: #60a5fa;
   --label-lighter: #c084fc;
   --rule-strong: #334155;

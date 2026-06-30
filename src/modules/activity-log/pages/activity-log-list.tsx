@@ -150,7 +150,7 @@ export default function ActivityLogListPage() {
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Activity Logger"
+        title="Activity Log"
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="activity logs"

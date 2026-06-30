@@ -27,6 +27,7 @@ import type {
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
 import { Check, ChevronDown, Share2, Users } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface ProjectToolbarHeaderProps {
@@ -79,6 +80,7 @@ export function ProjectToolbarHeader({
   children,
   onTeamClick,
 }: ProjectToolbarHeaderProps) {
+  const location = useLocation();
   const { data: stages } = useProjectStagesQuery();
   const updateMutation = useUpdateProjectMutation();
   const canUpdateStage =
@@ -159,9 +161,10 @@ export function ProjectToolbarHeader({
 
   const displayedMembers = allTeamMembers.slice(0, 2);
   const remainingCount = allTeamMembers.length - displayedMembers.length;
+  const showProjectMetadata = location.pathname.endsWith('/prime-change-orders');
 
   return (
-    <Toolbar className="bg-card">
+    <Toolbar className="bg-page-header">
       <ToolbarWrapper>
         <ToolbarHeading>
           <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -235,36 +238,38 @@ export function ProjectToolbarHeader({
               )
             ) : null}
           </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {project?.name && title !== project.name && (
-              <span>
-                <span className="font-medium">Project:</span> {project.name}
-              </span>
-            )}
-            {project?.jobNumber && (
-              <span>
-                <span className="font-medium">Job #:</span> {project.jobNumber}
-              </span>
-            )}
-            {project?.division && (
-              <span>
-                <span className="font-medium">Division:</span>{' '}
-                {typeof project.division === 'string'
-                  ? (DIVISION_LABELS[project.division as Division] ?? project.division)
-                  : project.division?.label || project.division?.name || 'N/A'}
-              </span>
-            )}
-            {project?.gc && (
-              <span>
-                <span className="font-medium">GC:</span> {project.gc.name}
-              </span>
-            )}
-            {project?.leadPM && (
-              <span>
-                <span className="font-medium">Lead PM:</span> {project.leadPM.name}
-              </span>
-            )}
-          </div>
+          {showProjectMetadata && (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+              {project?.name && title !== project.name && (
+                <span>
+                  <span className="font-medium">Project:</span> {project.name}
+                </span>
+              )}
+              {project?.jobNumber && (
+                <span>
+                  <span className="font-medium">Job #:</span> {project.jobNumber}
+                </span>
+              )}
+              {project?.division && (
+                <span>
+                  <span className="font-medium">Division:</span>{' '}
+                  {typeof project.division === 'string'
+                    ? (DIVISION_LABELS[project.division as Division] ?? project.division)
+                    : project.division?.label || project.division?.name || 'N/A'}
+                </span>
+              )}
+              {project?.gc && (
+                <span>
+                  <span className="font-medium">GC:</span> {project.gc.name}
+                </span>
+              )}
+              {project?.leadPM && (
+                <span>
+                  <span className="font-medium">Lead PM:</span> {project.leadPM.name}
+                </span>
+              )}
+            </div>
+          )}
         </ToolbarHeading>
         <ToolbarActions>
           {/* Team Avatar Group Button */}
@@ -281,7 +286,7 @@ export function ProjectToolbarHeader({
                   {displayedMembers.map((member) => (
                     <Tooltip key={member.id}>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-surface-raised">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-foreground shadow-sm transition-colors group-hover:bg-card">
                           {getInitials(member.name)}
                         </span>
                       </TooltipTrigger>
@@ -291,7 +296,7 @@ export function ProjectToolbarHeader({
                   {remainingCount > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-surface-raised">
+                        <span className="-ml-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-background bg-surface-hover text-[10px] font-mono tracking-wider font-bold text-muted-foreground shadow-sm transition-colors group-hover:bg-card">
                           +{remainingCount}
                         </span>
                       </TooltipTrigger>

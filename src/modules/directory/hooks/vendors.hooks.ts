@@ -9,7 +9,7 @@ import type {
   UpdateVendorInput,
 } from '@/modules/directory/schemas/vendor.schema';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
 
@@ -17,6 +17,7 @@ export const useVendorsQuery = (params?: ListVendorsParams) =>
   useQuery({
     queryKey: [...vendorsKeys.list(), params],
     queryFn: () => vendorsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 
 export const useVendorDetailQuery = (id: string) =>

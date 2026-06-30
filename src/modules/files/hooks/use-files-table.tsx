@@ -93,6 +93,7 @@ export function useFilesTable({
     },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.id,
     manualPagination: true,
     manualSorting: true,
     onPaginationChange: (updater) => {

@@ -4,17 +4,18 @@ import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { FILE_TEXT_PREVIEW_BYTES, filesApi } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile, useTextContentQuery } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { Download, ExternalLink, Eye, Loader2 } from 'lucide-react';
+import { Download, Eye, Loader2, X } from 'lucide-react';
 
 import { FileTypeIcon } from './file-type-icon';
 
@@ -55,9 +56,100 @@ const TEXT_EXTENSIONS = [
   'sql',
 ];
 const LARGE_PREVIEW_BYTES = 10 * 1024 * 1024;
+const KNOWN_FILE_EXTENSIONS = new Set([
+  ...IMAGE_EXTENSIONS,
+  ...VIDEO_EXTENSIONS,
+  ...AUDIO_EXTENSIONS,
+  ...SPREADSHEET_EXTENSIONS,
+  ...DOCUMENT_EXTENSIONS,
+  ...ARCHIVE_EXTENSIONS,
+  ...TEXT_EXTENSIONS,
+  'dwg',
+  'dxf',
+  'heic',
+  'heif',
+  'ifc',
+  'mpp',
+  'nwc',
+  'nwd',
+  'pdf',
+  'rfa',
+  'rvt',
+  'skp',
+  'tif',
+  'tiff',
+]);
+
+function getKnownExtensionFromName(name: string | null | undefined): string | null {
+  if (!name) return null;
+
+  const dotIndex = name.lastIndexOf('.');
+  if (dotIndex <= 0 || dotIndex >= name.length - 1) return null;
+
+  const extension = name.slice(dotIndex + 1).toLowerCase();
+  return KNOWN_FILE_EXTENSIONS.has(extension) ? extension : null;
+}
+
+function getExtensionFromMimeType(mimeType: string | null | undefined): string | null {
+  if (!mimeType) return null;
+
+  const mimeToExtension: Record<string, string> = {
+    'application/msword': 'doc',
+    'application/pdf': 'pdf',
+    'application/rtf': 'rtf',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.ms-powerpoint': 'ppt',
+    'application/vnd.ms-project': 'mpp',
+    'application/vnd.ms-excel.sheet.macroenabled.12': 'xlsm',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/x-7z-compressed': '7z',
+    'application/x-zip-compressed': 'zip',
+    'application/zip': 'zip',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/wav': 'wav',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/jpeg': 'jpg',
+    'image/pjpeg': 'jpg',
+    'image/png': 'png',
+    'image/tiff': 'tif',
+    'image/vnd.dwg': 'dwg',
+    'image/vnd.dxf': 'dxf',
+    'image/webp': 'webp',
+    'text/csv': 'csv',
+    'text/plain': 'txt',
+    'text/xml': 'xml',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+  };
+
+  return mimeToExtension[mimeType.toLowerCase()] ?? null;
+}
 
 function getExtension(item: FilePreviewItem | null): string {
-  return (item?.displayName || item?.name || '').split('.').pop()?.toLowerCase() ?? '';
+  return (
+    getKnownExtensionFromName(item?.displayName) ??
+    getKnownExtensionFromName(item?.name) ??
+    getKnownExtensionFromName(item?.objectId) ??
+    getExtensionFromMimeType(item?.mimeType) ??
+    ''
+  );
+}
+
+function getDisplayNameWithExtension(item: FilePreviewItem | null): string {
+  const displayName = item?.displayName || item?.name || '';
+  if (!displayName || getKnownExtensionFromName(displayName)) return displayName;
+
+  const extension =
+    getKnownExtensionFromName(item?.name) ??
+    getKnownExtensionFromName(item?.objectId) ??
+    getExtensionFromMimeType(item?.mimeType);
+
+  return extension ? `${displayName}.${extension}` : displayName;
 }
 
 function getPreviewType(item: FilePreviewItem): PreviewType {
@@ -140,10 +232,6 @@ function isLargeEmbeddedPreview(item: FilePreviewItem | null, previewType: Previ
   return hasEmbeddedLoadState(previewType) && (item?.size ?? 0) > LARGE_PREVIEW_BYTES;
 }
 
-function openUrl(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
-
 function FileLoadingOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-md border bg-background">
@@ -221,12 +309,10 @@ interface FilePreviewDialogProps {
 
 function PreviewActions({
   file,
-  url,
   onPreview,
   showPreviewAction,
 }: {
   file: FilePreviewItem | null;
-  url?: string;
   onPreview?: () => void;
   showPreviewAction?: boolean;
 }) {
@@ -234,19 +320,23 @@ function PreviewActions({
 
   return (
     <div className="flex flex-wrap justify-center gap-2">
-      {url && (
-        <Button variant="outline" size="sm" onClick={() => openUrl(url)}>
-          <ExternalLink className="size-3.5" />
-          Open
-        </Button>
-      )}
       {showPreviewAction && onPreview && (
-        <Button variant="outline" size="sm" onClick={onPreview}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs"
+          onClick={onPreview}
+        >
           <Eye className="size-3.5" />
           Preview anyway
         </Button>
       )}
-      <Button size="sm" onClick={() => file && downloadFile.mutate(file)} disabled={!file}>
+      <Button
+        size="sm"
+        className="h-8 gap-1.5 px-3 text-xs"
+        onClick={() => file && downloadFile.mutate(file)}
+        disabled={!file}
+      >
         <Download className="size-3.5" />
         Download
       </Button>
@@ -254,59 +344,50 @@ function PreviewActions({
   );
 }
 
-function FallbackPreview({
-  file,
-  url,
-  type,
-}: {
-  file: FilePreviewItem | null;
-  url?: string;
-  type: string;
-}) {
+function FallbackPreview({ file, type }: { file: FilePreviewItem | null; type: string }) {
+  const displayName = getDisplayNameWithExtension(file);
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <FileTypeIcon
-        fileType="FILE"
-        mimeType={file?.mimeType}
-        fileName={file?.displayName || file?.name || ''}
-        className="size-16 text-muted-foreground/50"
-      />
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">Preview not available</p>
-        <p className="max-w-md text-sm text-muted-foreground">
-          {type} files can still be opened or downloaded from this window.
+    <div className="flex h-full items-center justify-center p-6">
+      <div className="flex w-full max-w-md flex-col items-center text-center">
+        <div className="mb-4 flex size-12 items-center justify-center rounded-md border border-border bg-background shadow-xs">
+          <FileTypeIcon
+            fileType="FILE"
+            mimeType={file?.mimeType}
+            fileName={displayName}
+            className="size-6"
+          />
+        </div>
+        <p className="text-sm font-semibold text-foreground">Preview not available</p>
+        <p className="mt-1 max-w-sm text-sm leading-5 text-muted-foreground">
+          This {type.toLowerCase()} can be downloaded.
         </p>
+
+        <div className="mt-4">
+          <PreviewActions file={file} />
+        </div>
       </div>
-      <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:text-left">
-        <span>Type</span>
-        <span className="min-w-0 break-all font-medium text-foreground">
-          {file?.mimeType || type}
-        </span>
-        <span>Size</span>
-        <span className="font-medium text-foreground">{formatFileSize(file?.size)}</span>
-      </div>
-      <PreviewActions file={file} url={url} />
     </div>
   );
 }
 
 function LargeFilePreview({
   file,
-  url,
   type,
   onPreview,
 }: {
   file: FilePreviewItem | null;
-  url?: string;
   type: string;
   onPreview: () => void;
 }) {
+  const displayName = getDisplayNameWithExtension(file);
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
       <FileTypeIcon
         fileType="FILE"
         mimeType={file?.mimeType}
-        fileName={file?.displayName || file?.name || ''}
+        fileName={displayName}
         className="size-16 text-muted-foreground/50"
       />
       <div className="space-y-1">
@@ -316,7 +397,7 @@ function LargeFilePreview({
           here when needed.
         </p>
       </div>
-      <PreviewActions file={file} url={url} onPreview={onPreview} showPreviewAction />
+      <PreviewActions file={file} onPreview={onPreview} showPreviewAction />
     </div>
   );
 }
@@ -370,6 +451,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
   const canPreviewDelimited = isDelimitedSpreadsheet(file);
   const [loadedFilePreviewKey, setLoadedFilePreviewKey] = useState<string | null>(null);
   const [previewLargeFileId, setPreviewLargeFileId] = useState<string | null>(null);
+  const [downloadTooltipOpen, setDownloadTooltipOpen] = useState(false);
   const url = isFile && file ? filesApi.getFileReadUrl(file.id) : undefined;
   const previewLargeFile = open && previewLargeFileId === file?.id;
   const shouldGateLargePreview = isLargeEmbeddedPreview(file, previewType) && !previewLargeFile;
@@ -400,6 +482,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
     textContent && textContent.length >= FILE_TEXT_PREVIEW_BYTES
       ? `Showing the first ${formatFileSize(FILE_TEXT_PREVIEW_BYTES)}.`
       : null;
+  const displayName = getDisplayNameWithExtension(file);
   const handleDownload = () => {
     if (file) downloadFile.mutate(file);
   };
@@ -410,31 +493,68 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent variant="fullscreen">
-        <DialogHeader>
-          <DialogTitle className="flex min-w-0 max-w-full items-center gap-2.5 pr-6">
-            {file && (
-              <FileTypeIcon
-                fileType={file.type ?? 'FILE'}
-                mimeType={file.mimeType}
-                fileName={file.displayName || file.name}
-                className="size-5 shrink-0"
-              />
-            )}
+      <DialogContent
+        variant="fullscreen"
+        showCloseButton={false}
+        className="inset-x-[4vw] inset-y-[4vh] gap-0 overflow-hidden border-0 bg-transparent p-0 shadow-2xl shadow-black/25 sm:rounded-md"
+      >
+        <DialogHeader className="mb-0 flex h-12 shrink-0 flex-row items-center justify-between gap-4 border-b border-border/70 bg-background px-4 py-0 text-start">
+          <DialogTitle
+            className="flex min-w-0 flex-1 items-center gap-2 text-sm leading-none font-semibold tracking-normal text-foreground"
+            style={{ fontFamily: '"DM Sans", "IBM Plex Sans", system-ui, sans-serif' }}
+          >
+            <FileTypeIcon
+              fileType={file?.type ?? 'FILE'}
+              mimeType={file?.mimeType}
+              fileName={displayName}
+              className="size-4 shrink-0 stroke-[2.2]"
+            />
             <span
               className="min-w-0 flex-1 truncate"
-              title={file?.displayName || file?.name || undefined}
+              title={displayName || undefined}
+              style={{ fontFamily: '"DM Sans", "IBM Plex Sans", system-ui, sans-serif' }}
             >
-              {file?.displayName || file?.name}
+              {displayName}
             </span>
           </DialogTitle>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Tooltip open={downloadTooltipOpen}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  mode="icon"
+                  size="sm"
+                  className="size-9 rounded-sm border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={handleDownload}
+                  onPointerEnter={() => setDownloadTooltipOpen(true)}
+                  onPointerLeave={() => setDownloadTooltipOpen(false)}
+                  onBlur={() => setDownloadTooltipOpen(false)}
+                  disabled={!file}
+                  aria-label="Download file"
+                >
+                  <Download className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download file</TooltipContent>
+            </Tooltip>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                mode="icon"
+                size="sm"
+                className="size-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Close preview"
+              >
+                <X className="size-4" />
+              </Button>
+            </DialogClose>
+          </div>
         </DialogHeader>
 
-        <DialogBody className="min-h-0 flex-1 overflow-auto">
+        <DialogBody className="min-h-0 flex-1 overflow-auto bg-muted">
           {shouldGateLargePreview && (
             <LargeFilePreview
               file={file}
-              url={url}
               type={previewTypeLabel}
               onPreview={() => setPreviewLargeFileId(file?.id ?? null)}
             />
@@ -445,7 +565,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <img
                 src={url}
-                alt={file?.displayName || file?.name || undefined}
+                alt={displayName || undefined}
                 className="max-h-full max-w-full rounded-md object-contain"
                 onLoad={markEmbeddedPreviewLoaded}
                 onError={markEmbeddedPreviewLoaded}
@@ -458,8 +578,8 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <iframe
                 src={url}
-                title={file?.displayName || file?.name || undefined}
-                className="h-full w-full rounded-md border"
+                title={displayName || undefined}
+                className="h-full w-full border-0"
                 onLoad={markEmbeddedPreviewLoaded}
               />
             </div>
@@ -486,7 +606,7 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
               <FileTypeIcon
                 fileType="FILE"
                 mimeType={file?.mimeType}
-                fileName={file?.displayName || file?.name || ''}
+                fileName={displayName}
                 className="size-16"
               />
               <audio
@@ -543,31 +663,21 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
             )}
 
           {!shouldGateLargePreview && previewType === 'spreadsheet' && !canPreviewDelimited && (
-            <FallbackPreview file={file} url={url} type="Spreadsheet" />
+            <FallbackPreview file={file} type="Spreadsheet" />
           )}
 
           {!shouldGateLargePreview && previewType === 'document' && (
-            <FallbackPreview file={file} url={url} type="Document" />
+            <FallbackPreview file={file} type="Document" />
           )}
 
           {!shouldGateLargePreview && previewType === 'archive' && (
-            <FallbackPreview file={file} url={url} type="Archive" />
+            <FallbackPreview file={file} type="Archive" />
           )}
 
           {!shouldGateLargePreview && previewType === 'generic' && (
-            <FallbackPreview file={file} url={url} type="File" />
+            <FallbackPreview file={file} type="File" />
           )}
         </DialogBody>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          <Button onClick={handleDownload} disabled={!file}>
-            <Download className="size-4" />
-            Download
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

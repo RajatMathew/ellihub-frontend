@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 
 import type { ActivityFieldDiffDetails } from '@/app/api/activity-log.api';
 import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
@@ -83,6 +83,7 @@ export function ActivityPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ActivityPanelItem | null>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const canSubmitComment = commentText.trim().length > 0 && !isCreatingComment;
   const canSaveEdit = editingText.trim().length > 0 && !isUpdatingComment;
@@ -131,6 +132,14 @@ export function ActivityPanel({
     }
   }
 
+  function handleComposerBlur(event: FocusEvent<HTMLDivElement>) {
+    const nextFocus = event.relatedTarget;
+    if (nextFocus instanceof Node && event.currentTarget.contains(nextFocus)) return;
+
+    setComposerOpen(false);
+    setCommentText('');
+  }
+
   function handleEditKeyDown(event: KeyboardEvent<HTMLTextAreaElement>, commentId: string) {
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
       event.preventDefault();
@@ -140,7 +149,7 @@ export function ActivityPanel({
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 rounded-md bg-card p-3">
         {Array.from({ length: 3 }, (_, index) => (
           <div key={'activity-loader-' + index} className="flex gap-3">
             <Skeleton className="size-9 shrink-0 rounded-full" />
@@ -156,7 +165,7 @@ export function ActivityPanel({
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center gap-3 p-6 text-center">
+      <div className="flex flex-col items-center gap-3 rounded-md bg-card p-6 text-center">
         <AlertCircle className="size-8 text-destructive/70" />
         <p className="text-sm font-medium">Unable to load activity.</p>
         <Button variant="outline" size="sm" onClick={onRetry}>
@@ -168,58 +177,59 @@ export function ActivityPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-4 p-4">
+    <div className="min-w-0 space-y-4 rounded-md bg-card p-3">
       {canComment && onCreateComment && (
-        <div className="rounded-md border border-border bg-muted/25 p-3">
-          {composerOpen ? (
-            <div className="space-y-2">
-              <Textarea
-                autoFocus
-                value={commentText}
-                maxLength={COMMENT_MAX_LENGTH}
-                placeholder="Leave a comment"
-                className="min-h-24 resize-none bg-background"
-                onChange={(event) => setCommentText(event.target.value)}
-                onKeyDown={handleComposerKeyDown}
-              />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={cn(
+            'overflow-hidden rounded-lg border bg-card transition-[border-color,box-shadow] duration-200 ease-out',
+            composerOpen
+              ? 'border-primary/70 shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_14%,transparent)]'
+              : 'border-border shadow-xs'
+          )}
+          onBlur={handleComposerBlur}
+          onClick={() => {
+            setComposerOpen(true);
+            composerTextareaRef.current?.focus();
+          }}
+        >
+          <Textarea
+            ref={composerTextareaRef}
+            value={commentText}
+            maxLength={COMMENT_MAX_LENGTH}
+            placeholder="Leave a comment"
+            readOnly={!composerOpen}
+            className={cn(
+              'resize-none border-0 bg-card text-sm transition-[min-height,padding] duration-200 ease-out focus-visible:border-transparent focus-visible:ring-0',
+              composerOpen ? 'min-h-32 px-3 py-3' : 'min-h-11 cursor-text px-3 py-2.5'
+            )}
+            onFocus={() => setComposerOpen(true)}
+            onChange={(event) => setCommentText(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
+          />
+          <div
+            className={cn(
+              'grid border-t border-border transition-[grid-template-rows,opacity] duration-200 ease-out',
+              composerOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2">
                 <span className="text-xs text-muted-foreground">
                   {commentText.length}/{COMMENT_MAX_LENGTH}
                 </span>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setComposerOpen(false);
-                      setCommentText('');
-                    }}
-                  >
-                    <X className="size-3.5" />
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!canSubmitComment}
-                    onClick={() => void handleCreateComment()}
-                  >
-                    <Send className="size-3.5" />
-                    {isCreatingComment ? 'Posting...' : 'Post'}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canSubmitComment}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => void handleCreateComment()}
+                >
+                  <Send className="size-3.5" />
+                  {isCreatingComment ? 'Commenting...' : 'Comment'}
+                </Button>
               </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="block w-full rounded-md bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              onClick={() => setComposerOpen(true)}
-            >
-              Leave a comment
-            </button>
-          )}
+          </div>
         </div>
       )}
 
@@ -229,7 +239,7 @@ export function ActivityPanel({
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="relative space-y-0">
           {items.map((item, index) => {
             const isComment = item.actionType === 'comment';
             const isEditing = editingId === item.id;
@@ -237,11 +247,16 @@ export function ActivityPanel({
             const displayAction = stripActivityRevisionSuffix(item.action, item.revision);
 
             return (
-              <div key={item.id} className="flex min-w-0 gap-3">
-                <div className="relative flex shrink-0 flex-col items-center">
+              <div
+                key={item.id}
+                className={cn('relative grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3', {
+                  'pb-6': showConnector,
+                })}
+              >
+                <div className="relative flex shrink-0 justify-center">
                   <div
                     className={cn(
-                      'relative z-10 flex size-9 items-center justify-center rounded-full border',
+                      'relative z-10 flex size-8 items-center justify-center rounded-full border shadow-xs ring-4 ring-card',
                       item.toneClassName
                     )}
                   >
@@ -250,25 +265,25 @@ export function ActivityPanel({
                   {showConnector ? (
                     <div
                       aria-hidden="true"
-                      className="absolute top-9 -bottom-5 left-1/2 w-px -translate-x-1/2 bg-border"
+                      className="absolute top-8 -bottom-6 left-1/2 w-px -translate-x-1/2 bg-border"
                     />
                   ) : null}
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 pt-0.5">
                   <div className="flex min-w-0 items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="break-words text-sm font-medium text-foreground">{item.user}</p>
-                      <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
-                        <span className="min-w-0 break-words text-sm text-muted-foreground">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-5">
+                        <span className="break-words font-semibold text-foreground">
+                          {item.user}
+                        </span>
+                        <span className="min-w-0 break-words text-muted-foreground">
                           {displayAction}
                         </span>
                         <ActivityRevisionBadge revision={item.revision} />
                       </div>
+                      <div className="text-xs text-muted-foreground">{item.timestamp}</div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {item.timestamp}
-                      </span>
                       {isComment && item.canManage && !isEditing && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -312,6 +327,7 @@ export function ActivityPanel({
                       summary={displayAction}
                       actor={item.user}
                       timestamp={item.timestamp}
+                      className="mt-2 h-7 rounded-full border border-border bg-card px-2.5 text-xs shadow-xs hover:bg-surface-hover"
                     />
                   )}
 
@@ -359,7 +375,7 @@ export function ActivityPanel({
                       ) : (
                         <>
                           {item.note && (
-                            <div className="whitespace-pre-wrap break-words rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed text-foreground shadow-xs">
+                            <div className="whitespace-pre-wrap break-words rounded-md border border-border bg-card px-3 py-2.5 text-sm leading-relaxed text-foreground shadow-xs">
                               {item.note}
                             </div>
                           )}

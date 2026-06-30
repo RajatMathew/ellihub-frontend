@@ -1,8 +1,13 @@
 import { useMemo } from 'react';
 
 import { DataGridSection } from '@/app/components/data-grid-section';
+import {
+  TableCardHeader,
+  TableCardHeaderSearch,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
+import { Card } from '@/app/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 import {
@@ -19,7 +23,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Tag, Trash2 } from 'lucide-react';
 
 interface CategoriesTableCardProps {
   categories: CostCodeCategory[];
@@ -111,31 +115,34 @@ export function CategoriesTableCard({
 
   return (
     <Card>
-      <CardHeader>
-        {isLoading ? (
-          <Skeleton className="h-4 w-40" />
-        ) : (
-          <h2 className="text-sm font-bold tracking-normal text-foreground">
-            All Categories ({categories.length})
-          </h2>
-        )}
-        <CardToolbar>
-          <InputWrapper variant="sm">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search categories..."
+      <TableCardHeader
+        title={
+          isLoading ? (
+            <span className="flex items-center">
+              <Skeleton className="h-4 w-40" />
+            </span>
+          ) : (
+            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+              All Categories ({categories.length})
+            </span>
+          )
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSearch
               value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search categories..."
+              onChange={onSearchChange}
             />
-          </InputWrapper>
-        </CardToolbar>
-      </CardHeader>
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={categories.length}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={Boolean(isError)}
         errorTitle="Failed to load categories"
         errorDescription="There was an error fetching the data. Please try again."

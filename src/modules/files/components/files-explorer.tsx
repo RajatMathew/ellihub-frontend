@@ -66,6 +66,11 @@ function getScopedBreadcrumbs(
   return breadcrumbs.slice(1);
 }
 
+function getFolderDisplayName(name: string | null | undefined, fallback: string) {
+  if (!name) return fallback;
+  return name.trim().toLowerCase() === 'root' ? 'Home' : name;
+}
+
 export function FilesExplorer({
   title = 'Files',
   rootFolderId,
@@ -148,6 +153,10 @@ export function FilesExplorer({
   const breadcrumbs = useMemo(
     () => getScopedBreadcrumbs(folderDetail?.breadcrumbs, navigationRootId),
     [folderDetail?.breadcrumbs, navigationRootId]
+  );
+  const currentFolderName = getFolderDisplayName(
+    folderDetail?.displayName || folderDetail?.name || breadcrumbs.at(-1)?.name,
+    rootLabel
   );
   const showResultLocation = isSearchActive && searchMode === 'global';
   const canCreate = permissions?.create ?? !readOnly;
@@ -285,12 +294,12 @@ export function FilesExplorer({
 
       <Card className="min-w-0 max-w-full overflow-hidden">
         <FilesListFilters
+          folderName={currentFolderName}
           sortBy={sortBy}
           viewMode={viewMode}
           hasActiveFilters={hasActiveFilters}
           dateFrom={dateFrom}
           dateTo={dateTo}
-          totalCount={totalCount}
           onSortChange={(value) =>
             updateParams({ sortBy: value === 'updatedAt' ? undefined : value, page: undefined })
           }

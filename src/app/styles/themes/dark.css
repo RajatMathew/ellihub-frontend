@@ -6,9 +6,10 @@
   --foreground: var(--color-zinc-50);
   --card: #141414;
   --card-foreground: var(--color-zinc-50);
+  --page-header: #141414;
+  --page-header-border: var(--color-zinc-800);
   --popover: oklch(14.43% 0.005 200);
   --popover-foreground: var(--color-zinc-50);
-  --surface-raised: #141414;
   --surface-hover: var(--color-zinc-800);
 
   /** Brand and interactive colors **/
@@ -22,6 +23,12 @@
   --secondary-foreground: var(--color-zinc-50);
   --accent: var(--color-zinc-800);
   --accent-foreground: var(--color-zinc-50);
+  --outline-button-background: transparent;
+  --outline-button-foreground: var(--accent-foreground);
+  --outline-button-border: var(--input-border);
+  --outline-button-hover-background: var(--accent);
+  --outline-button-hover-foreground: var(--accent-foreground);
+  --outline-button-hover-border: var(--input-border);
   --muted: var(--color-zinc-800);
   --muted-foreground: var(--color-zinc-400);
   --brand-gold: var(--color-amber-300);
@@ -61,7 +68,7 @@
 
   /** Borders, inputs, and elevation **/
   --border: var(--color-zinc-800);
-  --input: var(--color-zinc-800);
+  --input-border: var(--color-zinc-800);
   --ring: var(--color-zinc-600);
   --radius: 0.5rem;
   --separator: var(--color-zinc-800);
@@ -74,6 +81,8 @@
 
   /** App-specific accents **/
   --project-tabs-background: #131313;
+  --header-action-hover-background: rgba(143, 179, 213, 0.12);
+  --table-card-tab-accent: var(--primary);
   --label-light: lab(70 2 -7);
   --label-lighter: lab(60 2 -7);
   --rule-strong: var(--color-zinc-700);

@@ -1,16 +1,14 @@
-import { Button } from '@/app/components/ui/button';
-import { CardHeader, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
+import { Input } from '@/app/components/ui/input';
 import type { PrimeChangeOrderListParamPatch } from '@/modules/project/hooks/prime-change-order';
 import { PRIME_CHANGE_ORDER_STATUSES } from '@/modules/project/schemas/prime-change-order';
-import { Search, X } from 'lucide-react';
+import { ListFilterPlus } from 'lucide-react';
 
 interface PrimeChangeOrderListFiltersProps {
   searchInput: string;
@@ -24,7 +22,7 @@ interface PrimeChangeOrderListFiltersProps {
 }
 
 const tableHeaderFilterTriggerClassName =
-  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 placeholder:text-table-card-header-foreground/75 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-32';
 
 export function PrimeChangeOrderListFilters({
   searchInput,
@@ -37,80 +35,70 @@ export function PrimeChangeOrderListFilters({
   onClearFilters,
 }: PrimeChangeOrderListFiltersProps) {
   return (
-    <CardHeader className="items-stretch sm:items-center">
-      <CardToolbar className="w-full sm:w-auto sm:ml-auto">
-        <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
-          <InputWrapper variant="sm" className="w-full sm:w-64">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search change orders..."
-              value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </InputWrapper>
+    <TableCardHeader
+      title={
+        <span className="flex items-center font-mono text-xs font-semibold uppercase tracking-[0.08em] !text-table-card-header-foreground">
+          Prime Change Orders
+        </span>
+      }
+      actions={
+        <TableCardHeaderToolbar className="flex-wrap justify-end sm:ml-auto">
+          <TableCardHeaderSearch
+            value={searchInput}
+            placeholder="Search change orders..."
+            onChange={onSearchChange}
+            className="sm:w-64"
+          />
 
-          <Select
+          <TableCardHeaderSelect
             value={statusFilter ?? 'all'}
+            placeholder="All Statuses"
+            icon={ListFilterPlus}
+            options={[
+              { label: 'All Statuses', value: 'all' },
+              ...PRIME_CHANGE_ORDER_STATUSES.map((status) => ({ label: status, value: status })),
+            ]}
             onValueChange={(value) =>
               onUpdateParams({
                 statusName: value === 'all' ? undefined : value,
                 page: undefined,
               })
             }
-          >
-            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} sm:w-44`}>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {PRIME_CHANGE_ORDER_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
 
-          <InputWrapper variant="sm" className="w-full sm:w-32">
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Min cost"
-              value={totalCostMin ?? ''}
-              onChange={(event) =>
-                onUpdateParams({
-                  totalCostMin: event.target.value || undefined,
-                  page: undefined,
-                })
-              }
-            />
-          </InputWrapper>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="Min cost"
+            value={totalCostMin ?? ''}
+            className={tableHeaderFilterTriggerClassName}
+            onChange={(event) =>
+              onUpdateParams({
+                totalCostMin: event.target.value || undefined,
+                page: undefined,
+              })
+            }
+          />
 
-          <InputWrapper variant="sm" className="w-full sm:w-32">
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="Max cost"
-              value={totalCostMax ?? ''}
-              onChange={(event) =>
-                onUpdateParams({
-                  totalCostMax: event.target.value || undefined,
-                  page: undefined,
-                })
-              }
-            />
-          </InputWrapper>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="Max cost"
+            value={totalCostMax ?? ''}
+            className={tableHeaderFilterTriggerClassName}
+            onChange={(event) =>
+              onUpdateParams({
+                totalCostMax: event.target.value || undefined,
+                page: undefined,
+              })
+            }
+          />
 
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }

@@ -22,6 +22,7 @@ interface ResourcePageHeaderProps {
   addTo?: string;
   addIcon?: ReactNode;
   isLoading?: boolean;
+  showSummary?: boolean;
   onAdd?: () => void;
 }
 
@@ -36,6 +37,7 @@ export function ResourcePageHeader({
   addTo,
   addIcon,
   isLoading,
+  showSummary = false,
   onAdd,
 }: ResourcePageHeaderProps) {
   const summary = hasActiveFilters
@@ -44,11 +46,15 @@ export function ResourcePageHeader({
       ? `All ${resultLabel}: ${totalCount}`
       : `Total: ${totalCount}`;
   const hasAddAction = addLabel && (addTo || onAdd);
-  const descriptionContent = isLoading ? (
-    <Skeleton className="h-4 w-28" />
-  ) : (
-    (description ?? <span className="text-sm text-muted-foreground">{summary}</span>)
-  );
+  const descriptionContent = description ? (
+    isLoading ? (
+      <Skeleton className="h-4 w-28" />
+    ) : (
+      description
+    )
+  ) : showSummary ? (
+    <span className="text-sm text-muted-foreground">{summary}</span>
+  ) : null;
 
   return (
     <Toolbar>

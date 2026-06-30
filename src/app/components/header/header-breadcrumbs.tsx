@@ -14,9 +14,38 @@ import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { Link, useLocation, useParams } from 'react-router-dom';
 
 const ROUTE_LABELS: Record<string, string> = {
+  hr: 'HR',
   rfqs: 'RFQs',
   'sub-change-order': 'Sub Change Order',
 };
+
+const DYNAMIC_SEGMENT_PARENTS = new Set([
+  'contacts',
+  'departments',
+  'employees',
+  'general-contractors',
+  'invoices',
+  'pto',
+  'purchase-orders',
+  'rfqs',
+  'sub-change-order',
+  'vendors',
+]);
+
+const DYNAMIC_SEGMENT_PENDING_LABELS: Record<string, string> = {
+  contacts: 'Contact',
+  departments: 'Department',
+  employees: 'Employee',
+  'general-contractors': 'General Contractor',
+  invoices: 'Invoice',
+  pto: 'PTO Request',
+  'purchase-orders': 'Purchase Order',
+  rfqs: 'RFQ',
+  'sub-change-order': 'Sub Change Order',
+  vendors: 'Vendor',
+};
+
+const STATIC_DETAIL_ACTION_SEGMENTS = new Set(['create', 'edit', 'new']);
 
 export function HeaderBreadcrumbs() {
   const location = useLocation();
@@ -39,10 +68,14 @@ export function HeaderBreadcrumbs() {
   let breadcrumbs = pathSegments.map((segment, index) => {
     const path = '/' + ['app', ...pathSegments.slice(0, index + 1)].join('/');
     const dynamicLabel = breadcrumbLabels[path];
+    const previousSegment = pathSegments[index - 1];
 
     if (dynamicLabel) {
+      const pendingLabel =
+        previousSegment && DYNAMIC_SEGMENT_PENDING_LABELS[previousSegment] === dynamicLabel;
+
       return {
-        label: dynamicLabel,
+        label: pendingLabel ? '' : dynamicLabel,
         path,
         isLast: index === pathSegments.length - 1,
       };
@@ -53,6 +86,21 @@ export function HeaderBreadcrumbs() {
       return {
         label: project?.name ?? 'Loading...',
         path: path + '/overview',
+        isLast: index === pathSegments.length - 1,
+      };
+    }
+
+    const fallbackLabel =
+      previousSegment &&
+      !STATIC_DETAIL_ACTION_SEGMENTS.has(segment) &&
+      DYNAMIC_SEGMENT_PARENTS.has(previousSegment)
+        ? ''
+        : undefined;
+
+    if (fallbackLabel !== undefined) {
+      return {
+        label: fallbackLabel,
+        path,
         isLast: index === pathSegments.length - 1,
       };
     }
@@ -78,11 +126,14 @@ export function HeaderBreadcrumbs() {
     }
   }
 
-  const breadcrumbItemClassName =
-    'block min-w-0 truncate rounded-md px-2 py-1 font-medium transition-colors hover:bg-surface-hover hover:text-foreground';
+  const breadcrumbItemClassName = 'block min-w-0 truncate rounded-md px-2 py-1 font-medium';
+  const breadcrumbLinkClassName = cn(
+    breadcrumbItemClassName,
+    'transition-colors hover:cursor-pointer hover:bg-surface-hover hover:text-foreground'
+  );
 
   return (
-    <Breadcrumb className="min-w-0 max-w-full overflow-hidden lg:-translate-x-2">
+    <Breadcrumb className="min-w-0 max-w-full overflow-hidden">
       <BreadcrumbList className="min-w-0 flex-nowrap gap-0.5 overflow-hidden text-sm font-medium">
         {breadcrumbs.map((crumb, index) => {
           const itemWidthClassName = crumb.isLast
@@ -95,10 +146,10 @@ export function HeaderBreadcrumbs() {
                 <BreadcrumbSeparator className="mx-0 shrink-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
               )}
               <BreadcrumbItem className="min-w-0 gap-0.5">
-                {crumb.isLast || index === 0 ? (
+                {crumb.isLast ? (
                   <BreadcrumbPage
                     className={cn(
-                      breadcrumbItemClassName,
+                      crumb.label ? breadcrumbItemClassName : 'block min-w-0 truncate py-1',
                       itemWidthClassName,
                       crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
                     )}
@@ -110,7 +161,7 @@ export function HeaderBreadcrumbs() {
                   <BreadcrumbLink
                     asChild
                     className={cn(
-                      breadcrumbItemClassName,
+                      breadcrumbLinkClassName,
                       itemWidthClassName,
                       'text-muted-foreground'
                     )}

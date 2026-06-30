@@ -133,7 +133,7 @@ export const ProjectCard = memo(function ProjectCard({ project }: { project: Pro
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-[color:var(--card-border)] bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-[color:var(--card-border-hover)] hover:shadow-md hover:shadow-black/10 dark:hover:shadow-black/30">
+      <Card className="h-full rounded-lg border-(--card-border) bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-(--card-border-hover) hover:shadow-md hover:shadow-black/10 dark:hover:shadow-black/30">
         <CardContent className="flex flex-col gap-2 p-3.5 sm:p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -143,7 +143,7 @@ export const ProjectCard = memo(function ProjectCard({ project }: { project: Pro
               />
             </div>
             {badgeLabel && (
-              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-[color:var(--card-border)] bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75">
+              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-(--card-border) bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75">
                 <span
                   className={cn('size-1.5 rounded-[2px]', badgeDotClassName)}
                   aria-hidden="true"

@@ -1,11 +1,16 @@
 import { DataGridSection } from '@/app/components/data-grid-section';
-import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import {
+  TableCardHeader,
+  TableCardHeaderSearch,
+  TableCardHeaderTabs,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
+import { Card } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 import { type Table } from '@tanstack/react-table';
-import { Search, Tag } from 'lucide-react';
+import { Tag } from 'lucide-react';
 
 interface CostCodesTableCardProps {
   table: Table<CostCode>;
@@ -43,48 +48,38 @@ export function CostCodesTableCard({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="-mx-1 flex min-w-0 overflow-x-auto px-1">
-          {isCategoriesLoading
-            ? Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="shrink-0 px-3 py-1.5">
-                  <Skeleton className="h-4 w-20" />
-                </div>
-              ))
-            : tabs.map((tab) => (
-                <button
-                  key={tab.label}
-                  type="button"
-                  className={`shrink-0 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors ${
-                    categoryFilter === tab.value
-                      ? '!text-table-card-header-foreground border-b-2 border-current'
-                      : '!text-table-card-header-foreground/75 hover:!text-table-card-header-foreground'
-                  }`}
-                  onClick={() => onCategoryChange(tab.value)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-        </div>
-        <CardToolbar>
-          <div className="flex items-center gap-2.5">
-            <InputWrapper variant="sm">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search cost codes..."
-                value={searchInput}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
-            </InputWrapper>
-          </div>
-        </CardToolbar>
-      </CardHeader>
+      <TableCardHeader
+        title={
+          isCategoriesLoading ? (
+            <div className="flex flex-wrap items-center gap-2 py-2">
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-7 w-24" />
+              <Skeleton className="h-7 w-28" />
+            </div>
+          ) : (
+            <TableCardHeaderTabs
+              activeValue={categoryFilter}
+              tabs={tabs}
+              onChange={onCategoryChange}
+            />
+          )
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSearch
+              value={searchInput}
+              placeholder="Search cost codes..."
+              onChange={onSearchChange}
+            />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={isError}
         errorTitle="Failed to load cost codes"
         emptyIcon={<Tag className="size-10 text-muted-foreground/50" />}

@@ -1,5 +1,6 @@
 import { Button } from '@/app/components/ui/button';
-import { Progress } from '@/app/components/ui/progress';
+import { ProgressCircle } from '@/app/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { useUploadManager, type UploadTask } from '@/modules/files/uploads/upload-manager';
@@ -11,7 +12,7 @@ import {
   Loader2,
   RotateCcw,
   Trash2,
-  UploadCloud,
+  X,
   XCircle,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ type UploadSummary = {
   activeCount: number;
   failedCount: number;
   completedCount: number;
+  cancelledCount: number;
   terminalCount: number;
   progress: number;
   title: string;
@@ -47,25 +49,6 @@ function canRetry(task: UploadTask): boolean {
   return task.status === 'failed' && task.failureStage !== 'finalizing';
 }
 
-function getTaskStatusLabel(task: UploadTask): string {
-  switch (task.status) {
-    case 'queued':
-      return 'Queued';
-    case 'uploading':
-      return 'Uploading';
-    case 'finalizing':
-      return 'Finishing';
-    case 'completed':
-      return 'Complete';
-    case 'failed':
-      return 'Failed';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return 'Pending';
-  }
-}
-
 function getTaskStatusIcon(task: UploadTask) {
   if (task.status === 'completed') return <CheckCircle2 className="size-3.5 text-success" />;
   if (task.status === 'failed') return <AlertCircle className="size-3.5 text-destructive" />;
@@ -73,26 +56,40 @@ function getTaskStatusIcon(task: UploadTask) {
   return <Loader2 className="size-3.5 animate-spin text-primary" />;
 }
 
+function getProgressIndicatorClassName(summary: UploadSummary): string {
+  if (summary.failedCount > 0) return 'text-destructive';
+  if (summary.activeCount === 0 && summary.completedCount > 0) return 'text-success';
+  return 'text-primary';
+}
+
+function getHeaderProgressIndicatorClassName(summary: UploadSummary): string {
+  if (summary.failedCount > 0) return 'text-destructive-foreground';
+  return 'text-primary-foreground';
+}
+
 function getSummary(tasks: UploadTask[]): UploadSummary {
   const activeCount = tasks.filter(isActive).length;
   const failedCount = tasks.filter((task) => task.status === 'failed').length;
   const completedCount = tasks.filter((task) => task.status === 'completed').length;
+  const cancelledCount = tasks.filter((task) => task.status === 'cancelled').length;
   const terminalCount = tasks.length - activeCount;
   const totalBytes = tasks.reduce((sum, task) => sum + Math.max(task.totalBytes, task.fileSize), 0);
   const uploadedBytes = tasks.reduce((sum, task) => {
     if (task.status === 'completed') return sum + Math.max(task.totalBytes, task.fileSize);
     return sum + task.uploadedBytes;
   }, 0);
-  const progress = totalBytes > 0 ? Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
+  const progress =
+    totalBytes > 0 ? Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
 
   if (activeCount > 0) {
     return {
       activeCount,
       failedCount,
       completedCount,
+      cancelledCount,
       terminalCount,
       progress,
-      title: activeCount === 1 ? 'Uploading 1 file' : `Uploading ${activeCount} files`,
+      title: activeCount === 1 ? 'Uploading 1 item' : `Uploading ${activeCount} items`,
       status: `${progress}%`,
     };
   }
@@ -102,10 +99,24 @@ function getSummary(tasks: UploadTask[]): UploadSummary {
       activeCount,
       failedCount,
       completedCount,
+      cancelledCount,
       terminalCount,
       progress,
-      title: failedCount === 1 ? '1 upload failed' : `${failedCount} uploads failed`,
+      title: failedCount === 1 ? 'Upload failed' : `${failedCount} uploads failed`,
       status: 'Needs review',
+    };
+  }
+
+  if (cancelledCount > 0 && completedCount === 0) {
+    return {
+      activeCount,
+      failedCount,
+      completedCount,
+      cancelledCount,
+      terminalCount,
+      progress,
+      title: cancelledCount === 1 ? 'Upload cancelled' : `${cancelledCount} uploads cancelled`,
+      status: 'Cancelled',
     };
   }
 
@@ -113,125 +124,332 @@ function getSummary(tasks: UploadTask[]): UploadSummary {
     activeCount,
     failedCount,
     completedCount,
+    cancelledCount,
     terminalCount,
     progress: 100,
     title: completedCount === 1 ? 'Upload complete' : `${completedCount} uploads complete`,
-    status: 'Done',
+    status: 'Complete',
   };
+}
+
+function getSummaryDetail(summary: UploadSummary): string {
+  const details: string[] = [];
+  if (summary.activeCount > 0) {
+    details.push(
+      summary.activeCount === 1
+        ? '1 upload in progress'
+        : `${summary.activeCount} uploads in progress`
+    );
+  }
+  if (summary.completedCount > 0) {
+    details.push(
+      summary.completedCount === 1 ? '1 file uploaded' : `${summary.completedCount} files uploaded`
+    );
+  }
+  if (summary.failedCount > 0) {
+    details.push(
+      summary.failedCount === 1 ? '1 upload failed' : `${summary.failedCount} uploads failed`
+    );
+  }
+  if (summary.cancelledCount > 0) {
+    details.push(
+      summary.cancelledCount === 1
+        ? '1 upload cancelled'
+        : `${summary.cancelledCount} uploads cancelled`
+    );
+  }
+  return details.join(', ');
+}
+
+function getDismissTerminalLabel(summary: UploadSummary): string {
+  const labels: string[] = [];
+  if (summary.completedCount > 0) labels.push('completed');
+  if (summary.failedCount > 0) labels.push('failed');
+  if (summary.cancelledCount > 0) labels.push('cancelled');
+
+  if (labels.length === 0) return 'Dismiss uploads';
+  if (labels.length === 1) return `Dismiss ${labels[0]}`;
+  if (labels.length === 2) return `Dismiss ${labels.join(' and ')}`;
+  return `Dismiss ${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+function shouldShowSummaryStatus(summary: UploadSummary): boolean {
+  return summary.activeCount > 0 || summary.failedCount > 0 || summary.cancelledCount > 0;
+}
+
+function getTaskDetail(task: UploadTask, transferred: number): string {
+  const total = task.totalBytes || task.fileSize;
+  const label = task.label ?? task.fileName;
+
+  if (task.status === 'completed') return `${label} · ${formatBytes(total)}`;
+  return `${label} · ${formatBytes(transferred)} / ${formatBytes(total)}`;
 }
 
 function UploadTaskRow({ task }: { task: UploadTask }) {
   const { cancelUpload, clearUpload, retryUpload } = useUploadManager();
-  const statusLabel = getTaskStatusLabel(task);
   const transferred = task.status === 'completed' ? task.totalBytes : task.uploadedBytes;
+  const taskDetail = getTaskDetail(task, transferred);
+  const isComplete = task.status === 'completed';
+  const isFailed = task.status === 'failed';
+  const isCancelled = task.status === 'cancelled';
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3">
-      <div className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-background">
-          <FileTypeIcon fileType="FILE" fileName={task.fileName} className="size-4" />
-        </div>
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{task.displayName}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {task.label ?? task.fileName}
-              </p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              {getTaskStatusIcon(task)}
-              {statusLabel}
-            </span>
-          </div>
+    <div className="group flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/20">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/30">
+        <FileTypeIcon fileType="FILE" fileName={task.fileName} className="size-4" />
+      </div>
 
-          <Progress
-            value={task.status === 'completed' ? 100 : task.progress}
-            className={cn('h-1.5', task.status === 'failed' && 'bg-destructive/15')}
-            indicatorClassName={cn(task.status === 'failed' && 'bg-destructive')}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium leading-5 text-foreground">{task.displayName}</p>
+        <p className="truncate text-xs leading-4 text-muted-foreground">{taskDetail}</p>
+        {task.error && (
+          <p className="mt-1 line-clamp-2 text-xs text-destructive">
+            {task.failureStage === 'finalizing'
+              ? `${task.error} The file may already be uploaded; attach it again from the page if needed.`
+              : task.error}
+          </p>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1">
+        {canRetry(task) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            mode="icon"
+            className="size-7 text-muted-foreground hover:text-foreground"
+            aria-label="Retry upload"
+            onClick={() => retryUpload(task.id)}
+          >
+            <RotateCcw className="size-3.5" />
+          </Button>
+        )}
+        {canCancel(task) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            mode="icon"
+            className="size-7 text-muted-foreground hover:text-foreground"
+            aria-label="Cancel upload"
+            onClick={() => cancelUpload(task.id)}
+          >
+            <XCircle className="size-3.5" />
+          </Button>
+        )}
+        {isActive(task) ? (
+          <ProgressCircle
+            value={task.progress}
+            size={28}
+            strokeWidth={3}
+            trackClassName="text-muted"
+            indicatorClassName="text-primary"
           />
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {formatBytes(transferred)} / {formatBytes(task.totalBytes || task.fileSize)}
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {canRetry(task) && (
-                <Button size="sm" variant="outline" onClick={() => retryUpload(task.id)}>
-                  <RotateCcw className="size-3.5" />
-                  Retry
-                </Button>
-              )}
-              {canCancel(task) && (
-                <Button size="sm" variant="outline" onClick={() => cancelUpload(task.id)}>
-                  <XCircle className="size-3.5" />
-                  Cancel
-                </Button>
-              )}
-              {!isActive(task) && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  mode="icon"
-                  aria-label={`Clear ${task.displayName}`}
-                  onClick={() => clearUpload(task.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {task.error && (
-            <p className="text-xs text-destructive">
-              {task.failureStage === 'finalizing'
-                ? `${task.error} The file may already be uploaded; attach it again from the page if needed.`
-                : task.error}
-            </p>
-          )}
-        </div>
+        ) : isComplete ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                mode="icon"
+                className="size-8 rounded-full border border-success-alpha/80 bg-success-soft text-success transition-colors hover:border-destructive-alpha hover:bg-destructive-soft hover:text-destructive"
+                aria-label={`Delete ${task.displayName}`}
+                onClick={() => clearUpload(task.id)}
+              >
+                <CheckCircle2 className="size-4 group-hover:hidden" />
+                <X className="hidden size-4 group-hover:block" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Delete file</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span
+            className={cn(
+              'flex size-7 items-center justify-center',
+              isFailed && 'text-destructive',
+              isCancelled && 'text-muted-foreground'
+            )}
+          >
+            {getTaskStatusIcon(task)}
+          </span>
+        )}
+        {!isActive(task) && !isComplete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            mode="icon"
+            className="size-7 text-muted-foreground opacity-60 transition-opacity hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+            aria-label={`Dismiss ${task.displayName}`}
+            onClick={() => clearUpload(task.id)}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
+function UploadSummaryProgress({ summary }: { summary: UploadSummary }) {
+  if (
+    summary.activeCount === 0 &&
+    summary.completedCount > 0 &&
+    summary.failedCount === 0 &&
+    summary.cancelledCount === 0
+  ) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
+        <CheckCircle2 className="size-4" />
+      </div>
+    );
+  }
+
+  if (summary.failedCount > 0 && summary.activeCount === 0) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive-soft text-destructive">
+        <AlertCircle className="size-4" />
+      </div>
+    );
+  }
+
+  if (summary.cancelledCount > 0 && summary.completedCount === 0 && summary.activeCount === 0) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <XCircle className="size-4" />
+      </div>
+    );
+  }
+
+  return (
+    <ProgressCircle
+      value={summary.progress}
+      size={32}
+      strokeWidth={3}
+      trackClassName="text-muted"
+      indicatorClassName={getProgressIndicatorClassName(summary)}
+    >
+      {summary.activeCount > 0 && (
+        <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
+          {summary.progress}
+        </span>
+      )}
+    </ProgressCircle>
+  );
+}
+
+function UploadHeaderProgress({ summary }: { summary: UploadSummary }) {
+  if (
+    summary.activeCount === 0 &&
+    summary.completedCount > 0 &&
+    summary.failedCount === 0 &&
+    summary.cancelledCount === 0
+  ) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12 text-primary-foreground">
+        <CheckCircle2 className="size-4" />
+      </div>
+    );
+  }
+
+  if (summary.failedCount > 0 && summary.activeCount === 0) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12 text-primary-foreground">
+        <AlertCircle className="size-4" />
+      </div>
+    );
+  }
+
+  if (summary.cancelledCount > 0 && summary.completedCount === 0 && summary.activeCount === 0) {
+    return (
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12 text-primary-foreground/80">
+        <XCircle className="size-4" />
+      </div>
+    );
+  }
+
+  return (
+    <ProgressCircle
+      value={summary.progress}
+      size={32}
+      strokeWidth={3}
+      trackClassName="text-primary-foreground/25"
+      indicatorClassName={getHeaderProgressIndicatorClassName(summary)}
+    >
+      {summary.activeCount > 0 && (
+        <span className="text-[10px] font-semibold tabular-nums text-primary-foreground/90">
+          {summary.progress}
+        </span>
+      )}
+    </ProgressCircle>
+  );
+}
+
+function UploadTrayActions({
+  hasActiveTasks,
+  hasTerminalTasks,
+  cancelAll,
+  clearTerminalUploads,
+  dismissTerminalLabel,
+}: {
+  hasActiveTasks: boolean;
+  hasTerminalTasks: boolean;
+  cancelAll: () => void;
+  clearTerminalUploads: () => void;
+  dismissTerminalLabel: string;
+}) {
+  if (!hasActiveTasks && !hasTerminalTasks) return null;
+
+  return (
+    <div className="flex items-center justify-end gap-1.5 border-t border-border/70 bg-card px-2.5 py-1.5">
+      {hasActiveTasks && (
+        <Button variant="dim" size="sm" className="h-7 px-2 text-xs" onClick={cancelAll}>
+          Cancel all
+        </Button>
+      )}
+      {hasTerminalTasks && (
+        <Button variant="dim" size="sm" className="h-7 px-2 text-xs" onClick={clearTerminalUploads}>
+          {dismissTerminalLabel}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function UploadTransferTray() {
-  const {
-    tasks,
-    open,
-    collapsed,
-    cancelAll,
-    clearTerminalUploads,
-    setCollapsed,
-  } = useUploadManager();
+  const { tasks, open, collapsed, cancelAll, clearTerminalUploads, setCollapsed } =
+    useUploadManager();
 
   if (!open || tasks.length === 0) return null;
 
   const summary = getSummary(tasks);
   const hasActiveTasks = summary.activeCount > 0;
   const hasTerminalTasks = summary.terminalCount > 0;
+  const summaryDetail = getSummaryDetail(summary);
+  const dismissTerminalLabel = getDismissTerminalLabel(summary);
+  const showSummaryStatus = shouldShowSummaryStatus(summary);
 
   if (collapsed) {
     return (
       <div
-        className="fixed inset-x-4 bottom-4 z-50 rounded-md border bg-background p-3 shadow-lg sm:left-auto sm:right-6 sm:w-96"
+        className="fixed inset-x-4 bottom-4 z-50 rounded-md border bg-card p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.08)] sm:left-auto sm:right-6 sm:w-[360px]"
         aria-live="polite"
       >
         <button
           type="button"
-          className="flex w-full items-center gap-3 text-left"
+          className="flex w-full items-center gap-2.5 text-left"
           onClick={() => setCollapsed(false)}
           aria-label="Expand uploads"
         >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            {hasActiveTasks ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-          </div>
+          <UploadSummaryProgress summary={summary} />
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center justify-between gap-3">
               <p className="truncate text-sm font-semibold text-foreground">{summary.title}</p>
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">{summary.status}</span>
+              {showSummaryStatus && (
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                  {summary.status}
+                </span>
+              )}
             </div>
-            <Progress value={summary.progress} className="h-1.5" />
+            <p className="truncate text-xs text-muted-foreground">{summaryDetail}</p>
           </div>
           <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
         </button>
@@ -241,30 +459,30 @@ export function UploadTransferTray() {
 
   return (
     <div
-      className="fixed inset-x-4 bottom-4 z-50 rounded-md border bg-background shadow-xl sm:left-auto sm:right-6 sm:bottom-6 sm:w-[440px]"
+      className="fixed inset-x-4 bottom-4 z-50 overflow-hidden rounded-md border border-border/70 bg-card shadow-[0_16px_40px_rgba(15,23,42,0.14),0_4px_12px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.06)] sm:left-auto sm:right-6 sm:bottom-6 sm:w-[380px]"
       aria-live="polite"
     >
-      <div className="border-b p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            {hasActiveTasks ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-          </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">{summary.title}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {summary.completedCount} complete{summary.failedCount > 0 ? `, ${summary.failedCount} failed` : ''}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">{summary.status}</span>
+      <div className="bg-primary px-3.5 py-3 text-primary-foreground">
+        <div className="flex items-center gap-2.5">
+          <UploadHeaderProgress summary={summary} />
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-semibold text-primary-foreground">
+                {summary.title}
+              </p>
+              {showSummaryStatus && (
+                <span className="shrink-0 text-[11px] font-medium text-primary-foreground/75">
+                  {summary.status}
+                </span>
+              )}
             </div>
-            <Progress value={summary.progress} className="h-1.5" />
+            <p className="truncate text-xs text-primary-foreground/75">{summaryDetail}</p>
           </div>
           <Button
             size="sm"
             variant="ghost"
             mode="icon"
+            className="size-7 text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground"
             aria-label="Minimize uploads"
             onClick={() => setCollapsed(true)}
           >
@@ -273,22 +491,19 @@ export function UploadTransferTray() {
         </div>
       </div>
 
-      <div className="max-h-[min(55vh,420px)] space-y-2 overflow-y-auto p-3">
+      <div className="max-h-[min(50vh,320px)] divide-y divide-border/70 overflow-y-auto">
         {tasks.map((task) => (
           <UploadTaskRow key={task.id} task={task} />
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t p-3">
-        <Button variant="outline" size="sm" onClick={cancelAll} disabled={!hasActiveTasks}>
-          <XCircle className="size-3.5" />
-          Cancel all
-        </Button>
-        <Button variant="outline" size="sm" onClick={clearTerminalUploads} disabled={!hasTerminalTasks}>
-          <Trash2 className="size-3.5" />
-          Clear finished
-        </Button>
-      </div>
+      <UploadTrayActions
+        hasActiveTasks={hasActiveTasks}
+        hasTerminalTasks={hasTerminalTasks}
+        cancelAll={cancelAll}
+        clearTerminalUploads={clearTerminalUploads}
+        dismissTerminalLabel={dismissTerminalLabel}
+      />
     </div>
   );
 }

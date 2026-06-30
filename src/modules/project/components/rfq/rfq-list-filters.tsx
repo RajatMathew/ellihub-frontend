@@ -1,29 +1,26 @@
-import { Button } from '@/app/components/ui/button';
-import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import { useRef } from 'react';
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import {
   ProjectFilterTabs,
   type ProjectFilterTabOption,
 } from '@/modules/project/components/shared';
 import type { RFQListParamPatch } from '@/modules/project/hooks/rfq';
 import type { Lookup } from '@/modules/project/schemas/lookup.schema';
-import { Search, X } from 'lucide-react';
+import { ChevronRight, ListFilterPlus } from 'lucide-react';
 
 const RFQ_STATUS_FILTER_OPTIONS = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'PUBLISHED', label: 'Published' },
   { value: 'AWARDED', label: 'Awarded' },
 ] as const;
-const tableHeaderFilterTriggerClassName =
-  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
-
 interface RFQListFiltersProps {
   trackFilter?: string;
   statusFilter?: string;
@@ -45,6 +42,7 @@ export function RFQListFilters({
   onUpdateParams,
   onClearFilters,
 }: RFQListFiltersProps) {
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
   const trackOptions: ProjectFilterTabOption[] = [
     { label: 'All', value: undefined },
     ...(tradeCategories ?? []).map((category) => {
@@ -56,56 +54,75 @@ export function RFQListFilters({
       };
     }),
   ];
-  return (
-    <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full sm:w-auto">
-        <ProjectFilterTabs
-          value={trackFilter}
-          options={trackOptions}
-          onValueChange={(value) => onUpdateParams({ track: value, page: undefined })}
-        />
-      </CardTitle>
-      <CardToolbar className="w-full sm:w-auto">
-        <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
-          <InputWrapper variant="sm" className="w-full sm:w-60">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search RFQs..."
-              value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </InputWrapper>
+  const scrollTabsForward = () => {
+    const scrollElement = tabsScrollRef.current;
 
-          <Select
+    if (!scrollElement) return;
+
+    scrollElement.scrollBy({
+      left: Math.max(scrollElement.clientWidth * 0.75, 180),
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <TableCardHeader
+      title={
+        <div className="relative flex min-h-11 min-w-0 max-w-full items-stretch overflow-hidden pr-12 sm:w-[min(42vw,36rem)] lg:w-[min(46vw,42rem)] xl:w-[min(48vw,46rem)]">
+          <div
+            ref={tabsScrollRef}
+            className="flex min-w-0 items-stretch overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <ProjectFilterTabs
+              value={trackFilter}
+              options={trackOptions}
+              className="w-max min-w-max flex-nowrap pr-16"
+              onValueChange={(value) => onUpdateParams({ track: value, page: undefined })}
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex w-24 items-center justify-center bg-gradient-to-r from-card-header/0 via-card-header/90 to-card-header">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Scroll for more filters"
+                  className="pointer-events-auto flex size-5 cursor-pointer items-center justify-center rounded-full border border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground/80 shadow-xs shadow-black/10 transition-colors hover:border-table-card-header-foreground/45 hover:text-table-card-header-foreground"
+                  onClick={scrollTabsForward}
+                >
+                  <ChevronRight className="size-3.5" strokeWidth={2} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs font-medium">
+                Scroll for more filters
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      }
+      actions={
+        <TableCardHeaderToolbar className="flex-wrap">
+          <TableCardHeaderSearch
+            value={searchInput}
+            placeholder="Search RFQs..."
+            onChange={onSearchChange}
+            className="sm:w-60"
+          />
+          <TableCardHeaderSelect
             value={statusFilter ?? 'all'}
+            placeholder="All Statuses"
+            icon={ListFilterPlus}
+            options={[{ value: 'all', label: 'All Statuses' }, ...RFQ_STATUS_FILTER_OPTIONS]}
+            className="sm:w-36"
             onValueChange={(value) =>
               onUpdateParams({
                 statusId: value === 'all' ? undefined : value,
                 page: undefined,
               })
             }
-          >
-            <SelectTrigger className={`${tableHeaderFilterTriggerClassName} sm:w-36`}>
-              <SelectValue placeholder="All..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {RFQ_STATUS_FILTER_OPTIONS.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          />
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }

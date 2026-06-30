@@ -6,7 +6,6 @@ import {
   DataGridTable,
   DataGridTableBase,
   DataGridTableBody,
-  DataGridTableBodyRow,
   DataGridTableBodyRowCell,
   DataGridTableEmpty,
   DataGridTableHead,
@@ -17,10 +16,14 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { FilesEmptyState } from '@/modules/files/components/files-empty-state';
 import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
+import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { flexRender, type Cell, type ColumnDef, type Row, type Table } from '@tanstack/react-table';
+import { motion } from 'motion/react';
 
 import { FilesSectionHeader } from './files-section-header';
+
+const FILE_REORDER_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 34, mass: 0.8 };
 
 interface FilesListTableProps {
   table: Table<FileItem>;
@@ -87,13 +90,13 @@ export function FilesListTable({ table, columns, sectionedData, isLoading }: Fil
                         </td>
                       </tr>
                     )}
-                  <DataGridTableBodyRow row={row}>
+                  <FilesTableMotionRow row={row}>
                     {row.getVisibleCells().map((cell) => (
                       <DataGridTableBodyRowCell cell={cell} key={cell.id}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </DataGridTableBodyRowCell>
                     ))}
-                  </DataGridTableBodyRow>
+                  </FilesTableMotionRow>
                 </Fragment>
               ))
             ) : (
@@ -103,6 +106,32 @@ export function FilesListTable({ table, columns, sectionedData, isLoading }: Fil
         </DataGridTableBase>
       </CardTable>
     </>
+  );
+}
+
+function FilesTableMotionRow({ children, row }: { children: ReactNode; row: Row<FileItem> }) {
+  const { props, table } = useDataGrid();
+
+  return (
+    <motion.tr
+      layout="position"
+      transition={FILE_REORDER_TRANSITION}
+      data-state={table.options.enableRowSelection && row.getIsSelected() ? 'selected' : undefined}
+      onClick={() => props.onRowClick && props.onRowClick(row.original)}
+      className={cn(
+        'hover:bg-muted/40 data-[state=selected]:bg-muted/50',
+        props.onRowClick && 'cursor-pointer',
+        !props.tableLayout?.stripped &&
+          props.tableLayout?.rowBorder &&
+          'border-b border-border [&:not(:last-child)>td]:border-b',
+        props.tableLayout?.cellBorder && '*:last:border-e-0',
+        props.tableLayout?.stripped && 'odd:bg-muted/90 hover:bg-transparent odd:hover:bg-muted',
+        table.options.enableRowSelection && '*:first:relative',
+        props.tableClassNames?.bodyRow
+      )}
+    >
+      {children}
+    </motion.tr>
   );
 }
 
@@ -181,13 +210,17 @@ function FilesMobileRow({
   onRowClick?: (item: FileItem) => void;
 }) {
   const actionsCell = getCell(row, 'actions');
-  const fileName = row.original.displayName || row.original.name || 'file';
+  const fileName = getFileDisplayNameWithExtension(row.original);
   const summary = <FilesMobileRowSummary row={row} />;
   const interactiveClassName =
     'block w-full min-w-0 rounded-sm bg-transparent p-0 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
   return (
-    <div className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5">
+    <motion.div
+      layout="position"
+      transition={FILE_REORDER_TRANSITION}
+      className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5"
+    >
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         {onRowClick ? (
           <button
@@ -216,7 +249,7 @@ function FilesMobileRow({
       ) : (
         <div className="mt-3">{summary}</div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

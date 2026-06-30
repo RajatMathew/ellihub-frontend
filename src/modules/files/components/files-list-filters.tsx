@@ -1,8 +1,12 @@
 import { useState } from 'react';
 
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
 import { Calendar } from '@/app/components/ui/calendar';
-import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import {
   Select,
@@ -14,16 +18,16 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
 import { formatDate } from '@/app/lib/helpers';
 import { DATE_PRESETS, type SortField } from '@/modules/files/constants/files.constants';
-import { CalendarDays, LayoutGrid, List, X } from 'lucide-react';
+import { CalendarDays, LayoutGrid, List } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 
 interface FilesListFiltersProps {
+  folderName: string;
   sortBy: SortField;
   viewMode: 'list' | 'grid';
   hasActiveFilters: boolean;
   dateFrom: string | undefined;
   dateTo: string | undefined;
-  totalCount: number;
   onSortChange: (value: string) => void;
   onViewChange: (view: 'list' | 'grid') => void;
   onClearFilters: () => void;
@@ -46,18 +50,18 @@ function parseDateString(value: string | undefined): Date | undefined {
 }
 
 const headerInputControlClassName =
-  'h-8 !border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
-const headerSelectTriggerClassName = `${headerInputControlClassName} w-full text-xs data-[placeholder]:!text-muted-foreground sm:w-40`;
+  'h-8 !border-table-card-header-foreground/25 !bg-card-header !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+const headerSelectTriggerClassName = `${headerInputControlClassName} w-full text-xs data-[placeholder]:!text-table-card-header-foreground/75 sm:w-40`;
 const headerToggleItemClassName =
-  'flex-1 !bg-background !text-foreground hover:!bg-accent hover:!text-accent-foreground data-[state=on]:!bg-muted data-[state=on]:!text-foreground sm:flex-none [&_svg]:!text-current';
+  'flex-1 !bg-card-header !text-table-card-header-foreground hover:!bg-table-card-header-foreground/10 data-[state=on]:!bg-table-card-header-foreground/15 data-[state=on]:!text-table-card-header-foreground sm:flex-none [&_svg]:!text-current';
 
 export function FilesListFilters({
+  folderName,
   sortBy,
   viewMode,
   hasActiveFilters,
   dateFrom,
   dateTo,
-  totalCount,
   onSortChange,
   onViewChange,
   onClearFilters,
@@ -80,14 +84,14 @@ export function FilesListFilters({
           : 'Date range';
 
   return (
-    <CardHeader className="items-start">
-      <CardTitle className="min-w-0">
-        <span className="text-sm text-table-card-header-foreground">
-          {totalCount} {totalCount === 1 ? 'item' : 'items'}
+    <TableCardHeader
+      title={
+        <span className="flex min-h-11 min-w-0 items-center font-['DM_Sans',sans-serif] text-sm font-semibold leading-none tracking-normal text-table-card-header-foreground">
+          <span className="truncate">{folderName}</span>
         </span>
-      </CardTitle>
-      <CardToolbar className="w-full min-w-0 flex-wrap justify-start lg:w-auto">
-        <div className="grid w-full min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-[minmax(0,1fr)_10rem_auto] lg:flex lg:w-auto lg:flex-wrap lg:items-center">
+      }
+      actions={
+        <TableCardHeaderToolbar className="min-w-0 flex-wrap justify-start lg:w-auto">
           <Popover
             open={popoverOpen}
             onOpenChange={(open) => {
@@ -207,19 +211,9 @@ export function FilesListFilters({
               <LayoutGrid className="size-4" />
             </ToggleGroupItem>
           </ToggleGroup>
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-full text-xs sm:w-auto"
-              onClick={onClearFilters}
-            >
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }

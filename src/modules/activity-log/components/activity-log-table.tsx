@@ -1,16 +1,15 @@
 import type { ActivityLogItem } from '@/app/api/activity-log.api';
 import { DataGridSection } from '@/app/components/data-grid-section';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
+import { Badge } from '@/app/components/ui/badge';
+import { Card } from '@/app/components/ui/card';
+import { Input } from '@/app/components/ui/input';
 import {
   ACTIVITY_ACTION_OPTIONS,
   ACTIVITY_ENTITY_OPTIONS,
@@ -18,7 +17,7 @@ import {
   getActivityEntityLabel,
 } from '@/modules/activity-log/constants/activity-log.constants';
 import type { Table } from '@tanstack/react-table';
-import { Search, X } from 'lucide-react';
+import { ListFilterPlus, Search } from 'lucide-react';
 
 interface ActivityLogTableProps {
   table: Table<ActivityLogItem>;
@@ -42,7 +41,7 @@ interface ActivityLogTableProps {
 }
 
 const headerInputControlClassName =
-  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-36';
 
 export function ActivityLogTable({
   table,
@@ -64,93 +63,72 @@ export function ActivityLogTable({
   onClearFilters,
   onRetry,
 }: ActivityLogTableProps) {
+  const entityOptions = [{ label: 'All Entities', value: 'all' }, ...ACTIVITY_ENTITY_OPTIONS];
+  const actionOptions = [{ label: 'All Actions', value: 'all' }, ...ACTIVITY_ACTION_OPTIONS];
+
   return (
     <Card>
-      <CardHeader className="items-start gap-4 xl:flex-row xl:items-center">
-        <div className="space-y-1">
-          <CardTitle className="text-xs font-semibold tracking-normal !text-table-card-header-foreground">
-            Event Stream
-          </CardTitle>
-          <p className="text-xs text-table-card-header-foreground">
-            {totalCount} log entr{totalCount === 1 ? 'y' : 'ies'}
-          </p>
-        </div>
-        <CardToolbar className="w-full flex-wrap justify-start gap-2 xl:w-auto xl:justify-end">
-          <InputWrapper variant="sm" className="w-full sm:w-64">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search activity..."
+      <TableCardHeader
+        title={
+          <div className="flex flex-col justify-center gap-1">
+            <span className="text-xs font-semibold tracking-normal text-table-card-header-foreground">
+              Event Stream
+            </span>
+            <span className="text-xs text-table-card-header-foreground/75">
+              {totalCount} log entr{totalCount === 1 ? 'y' : 'ies'}
+            </span>
+          </div>
+        }
+        actions={
+          <TableCardHeaderToolbar className="flex-wrap justify-start xl:justify-end">
+            <TableCardHeaderSearch
               value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search activity..."
+              onChange={onSearchChange}
+              className="sm:w-64"
             />
-          </InputWrapper>
 
-          <Select
-            value={entityType ?? 'all'}
-            onValueChange={(value) => onEntityTypeChange(value === 'all' ? undefined : value)}
-          >
-            <SelectTrigger className={`${headerInputControlClassName} sm:w-48`}>
-              <SelectValue placeholder="All Entities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Entities</SelectItem>
-              {ACTIVITY_ENTITY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <TableCardHeaderSelect
+              value={entityType ?? 'all'}
+              placeholder="All Entities"
+              icon={ListFilterPlus}
+              options={entityOptions}
+              className="sm:w-48"
+              onValueChange={(value) => onEntityTypeChange(value === 'all' ? undefined : value)}
+            />
 
-          <Select
-            value={action ?? 'all'}
-            onValueChange={(value) => onActionChange(value === 'all' ? undefined : value)}
-          >
-            <SelectTrigger className={`${headerInputControlClassName} sm:w-40`}>
-              <SelectValue placeholder="All Actions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
-              {ACTIVITY_ACTION_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <TableCardHeaderSelect
+              value={action ?? 'all'}
+              placeholder="All Actions"
+              icon={ListFilterPlus}
+              options={actionOptions}
+              className="sm:w-40"
+              onValueChange={(value) => onActionChange(value === 'all' ? undefined : value)}
+            />
 
-          <Input
-            type="date"
-            value={from ?? ''}
-            className={`${headerInputControlClassName} sm:w-36`}
-            onChange={(event) => onFromChange(event.target.value || undefined)}
-          />
-          <Input
-            type="date"
-            value={to ?? ''}
-            className={`${headerInputControlClassName} sm:w-36`}
-            onChange={(event) => onToChange(event.target.value || undefined)}
-          />
+            <Input
+              type="date"
+              value={from ?? ''}
+              className={headerInputControlClassName}
+              onChange={(event) => onFromChange(event.target.value || undefined)}
+            />
+            <Input
+              type="date"
+              value={to ?? ''}
+              className={headerInputControlClassName}
+              onChange={(event) => onToChange(event.target.value || undefined)}
+            />
 
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground"
-              onClick={onClearFilters}
-            >
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </CardToolbar>
-      </CardHeader>
+            <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={isError}
         errorTitle="Failed to load activity logs"
         emptyIcon={<ActivityEmptyIcon />}

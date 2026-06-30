@@ -1,13 +1,12 @@
 import { cn } from '@/app/lib/utils';
 import {
-  FileAudio,
-  FileCode,
   FileIcon,
+  FileImage,
   FileSpreadsheet,
   FileText,
+  FileType2,
   FileVideo,
   FolderIcon,
-  Image as ImageIcon,
   type LucideProps,
 } from 'lucide-react';
 
@@ -22,21 +21,17 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
 
   if (
     mime?.startsWith('image/') ||
-    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)
+    ['heic', 'heif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp'].includes(ext)
   ) {
-    return { Icon: ImageIcon, color: 'text-success' };
+    return { Icon: FileImage, color: 'text-emerald-600', background: 'bg-emerald-50' };
   }
 
-  if (mime?.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
-    return { Icon: FileVideo, color: 'text-info' };
-  }
-
-  if (mime?.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext)) {
-    return { Icon: FileAudio, color: 'text-primary' };
+  if (mime?.startsWith('video/') || ['m4v', 'mov', 'mp4', 'webm'].includes(ext)) {
+    return { Icon: FileVideo, color: 'text-amber-600', background: 'bg-amber-50' };
   }
 
   if (mime === 'application/pdf' || ext === 'pdf') {
-    return { Icon: FileText, color: 'text-destructive' };
+    return { Icon: FileText, color: 'text-rose-600', background: 'bg-rose-50' };
   }
 
   if (
@@ -45,7 +40,7 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
     mime?.includes('msword') ||
     mime?.startsWith('text/')
   ) {
-    return { Icon: FileText, color: 'text-info' };
+    return { Icon: FileType2, color: 'text-sky-600', background: 'bg-sky-50' };
   }
 
   if (
@@ -53,55 +48,61 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
     mime?.includes('spreadsheet') ||
     mime?.includes('excel')
   ) {
-    return { Icon: FileSpreadsheet, color: 'text-success' };
+    return { Icon: FileSpreadsheet, color: 'text-emerald-600', background: 'bg-emerald-50' };
   }
 
-  if (
-    ['ppt', 'pptx', 'odp'].includes(ext) ||
-    mime?.includes('presentation') ||
-    mime?.includes('powerpoint')
-  ) {
-    return { Icon: FileText, color: 'text-warning' };
-  }
-
-  if (
-    ['json', 'xml', 'html', 'css', 'ts', 'tsx', 'jsx', 'py', 'java', 'yml', 'yaml', 'sql'].includes(
-      ext
-    ) ||
-    mime?.includes('json') ||
-    mime?.includes('xml')
-  ) {
-    return { Icon: FileCode, color: 'text-muted-foreground' };
-  }
-
-  if (
-    ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext) ||
-    mime?.includes('zip') ||
-    mime?.includes('compressed')
-  ) {
-    return { Icon: FileIcon, color: 'text-warning' };
-  }
-
-  return { Icon: FileIcon, color: 'text-info' };
+  return { Icon: FileIcon, color: 'text-sky-600', background: 'bg-sky-50' };
 }
 
 interface FileTypeIconProps extends LucideProps {
   mimeType?: string | null;
   fileName?: string | null;
   fileType: 'FILE' | 'FOLDER';
+  presentation?: 'icon' | 'badge';
+  iconClassName?: string;
 }
 
 export function FileTypeIcon({
   mimeType,
   fileName,
   fileType,
+  presentation = 'icon',
   className,
+  iconClassName,
   ...props
 }: FileTypeIconProps) {
   if (fileType === 'FOLDER') {
+    if (presentation === 'badge') {
+      return (
+        <span
+          className={cn(
+            'inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50',
+            className
+          )}
+        >
+          <FolderIcon className={cn('size-5 text-amber-600', iconClassName)} {...props} />
+        </span>
+      );
+    }
+
     return <FolderIcon className={cn('text-warning', className)} {...props} />;
   }
 
-  const { Icon, color } = resolveIcon(mimeType, fileName);
+  const { Icon, color, background } = resolveIcon(mimeType, fileName);
+
+  if (presentation === 'badge') {
+    return (
+      <span
+        className={cn(
+          'inline-flex size-10 shrink-0 items-center justify-center rounded-full',
+          background,
+          className
+        )}
+      >
+        <Icon className={cn('size-5', color, iconClassName)} {...props} />
+      </span>
+    );
+  }
+
   return <Icon className={cn(color, className)} {...props} />;
 }

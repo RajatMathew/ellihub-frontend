@@ -1,9 +1,11 @@
 import { lazy } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
+import { ModuleLoader } from '@/app/components/loader/elegant';
 import DelayForDemo from '@/app/lib/delay';
 import { NavigateTo } from '@/app/lib/navigateTo';
-import { Outlet } from 'react-router-dom';
+import { useInfiniteProjectOptionsQuery } from '@/modules/project/hooks';
+import { Navigate, Outlet } from 'react-router-dom';
 
 import type { RouteDef } from './types';
 
@@ -28,6 +30,26 @@ const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.rou
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
 
 const UIKit = lazy(() => DelayForDemo(import('@/core/ui/pages/page'), 5000));
+
+function ProjectIndexRedirect() {
+  const projectsQuery = useInfiniteProjectOptionsQuery({
+    page: 1,
+    size: 1,
+    sortBy: 'name',
+    sortOrder: 'asc',
+  });
+  const project = projectsQuery.data?.pages[0]?.data[0];
+
+  if (project) {
+    return <Navigate to={`/app/project/${encodeURIComponent(project.id)}/overview`} replace />;
+  }
+
+  if (projectsQuery.isLoading || projectsQuery.isFetching) {
+    return <ModuleLoader />;
+  }
+
+  return <Navigate to="/app/projects" replace />;
+}
 
 function formRouteTitles(resourceName: string) {
   return [
@@ -59,6 +81,12 @@ export const routeTree: RouteDef[] = [
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
       { path: 'monthly-bills/*', component: MonthlyBillsRoute, title: 'Monthly Bills' },
 
+      { path: 'project', component: ProjectIndexRedirect, title: 'Project' },
+      {
+        path: 'directory',
+        component: () => NavigateTo({ to: '/app/directory/contacts' }),
+        title: 'Directory',
+      },
       {
         path: 'catalog/*',
         title: 'Catalog',
@@ -76,6 +104,7 @@ export const routeTree: RouteDef[] = [
           },
         ],
       },
+      { path: 'hr', component: () => NavigateTo({ to: '/app/hr/employees' }), title: 'HR' },
       {
         path: 'directory/contacts/*',
         component: DirectoryContacts,
@@ -118,7 +147,7 @@ export const routeTree: RouteDef[] = [
       {
         path: 'activity-log/*',
         component: ActivityLogRoutes,
-        title: 'Activity Logger',
+        title: 'Activity Log',
         access: { resource: 'activityLog', action: 'read' },
       },
       {

@@ -1,8 +1,14 @@
 import { useMemo } from 'react';
 
 import { DataGridSection } from '@/app/components/data-grid-section';
+import {
+  TableCardHeader,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardToolbar } from '@/app/components/ui/card';
+import { Card } from '@/app/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,14 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { Lookup } from '@/modules/lookup/schemas/lookup.schema';
 import {
@@ -26,7 +24,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Search, Tag, Trash2 } from 'lucide-react';
+import { ListFilterPlus, MoreHorizontal, Pencil, Tag, Trash2 } from 'lucide-react';
 
 interface LookupTableCardProps {
   lookups: Lookup[];
@@ -57,6 +55,11 @@ export function LookupTableCard({
   onEdit,
   onDelete,
 }: LookupTableCardProps) {
+  const typeOptions = [
+    { label: 'All Types', value: '__all__' },
+    ...allTypes.map((type) => ({ label: type, value: type })),
+  ];
+
   const columns = useMemo<ColumnDef<Lookup>[]>(
     () => [
       {
@@ -122,49 +125,41 @@ export function LookupTableCard({
 
   return (
     <Card>
-      <CardHeader>
-        {isLoading ? (
-          <Skeleton className="h-4 w-40" />
-        ) : (
-          <h2 className="text-sm font-bold tracking-normal text-foreground">
-            {typeFilter ? `${typeFilter} (${lookups.length})` : `All Lookups (${lookups.length})`}
-          </h2>
-        )}
-        <CardToolbar>
-          <div className="flex items-center gap-2.5">
-            <Select
+      <TableCardHeader
+        title={
+          isLoading ? (
+            <span className="flex items-center">
+              <Skeleton className="h-4 w-40" />
+            </span>
+          ) : (
+            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+              {typeFilter ? `${typeFilter} (${lookups.length})` : `All Lookups (${lookups.length})`}
+            </span>
+          )
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSelect
               value={typeFilter ?? '__all__'}
+              placeholder="All Types"
+              icon={ListFilterPlus}
+              options={typeOptions}
               onValueChange={(val) => onTypeChange(val === '__all__' ? undefined : val)}
-            >
-              <SelectTrigger size="sm" className="w-44">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Types</SelectItem>
-                {allTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <InputWrapper variant="sm">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search lookups..."
-                value={search}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
-            </InputWrapper>
-          </div>
-        </CardToolbar>
-      </CardHeader>
+            />
+            <TableCardHeaderSearch
+              value={search}
+              placeholder="Search lookups..."
+              onChange={onSearchChange}
+            />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={lookups.length}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={Boolean(isError)}
         errorTitle="Failed to load lookups"
         errorDescription="There was an error fetching the data. Please try again."

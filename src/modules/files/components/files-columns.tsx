@@ -14,6 +14,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { formatDateTime } from '@/app/lib/helpers';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -78,7 +79,7 @@ export function useFilesColumns({
                 rootLabel: locationRootLabel,
               })
             : undefined;
-          const fileName = row.original.displayName || row.original.name || 'Unnamed';
+          const fileName = getFileDisplayNameWithExtension(row.original);
 
           return (
             <div className="flex min-w-0 max-w-full items-start gap-2.5">
@@ -122,7 +123,7 @@ export function useFilesColumns({
         meta: {
           headerClassName: 'min-w-72',
           textOverflow: 'truncate',
-          tooltipContent: (file) => file.displayName || file.name || 'Unnamed',
+          tooltipContent: (file) => getFileDisplayNameWithExtension(file),
           skeleton: <Skeleton className="h-3.5 w-48" />,
         },
       },

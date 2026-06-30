@@ -14,7 +14,7 @@ export const Toolbar = forwardRef<
     <div
       ref={ref}
       className={cn(
-        'flex min-w-0 grow flex-col gap-5 overflow-x-clip -mx-4 w-[calc(100%+2rem)] px-4 lg:-mx-7.5 lg:w-[calc(100%+3.75rem)] lg:px-7.5 -mt-7.5 pt-7.5 pb-6 mb-6 bg-card border-rule-strong',
+        'flex min-w-0 grow flex-col gap-5 overflow-x-clip -mx-4 w-[calc(100%+2rem)] px-4 lg:-mx-7.5 lg:w-[calc(100%+3.75rem)] lg:px-7.5 -mt-7.5 pt-7.5 pb-6 mb-6 bg-page-header border-page-header-border',
         sticky && 'sticky top-0 z-20 border-b',
         className
       )}

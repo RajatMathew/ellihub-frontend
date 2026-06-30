@@ -1,15 +1,13 @@
 import { DataGridSection } from '@/app/components/data-grid-section';
-import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import { Skeleton } from '@/app/components/ui/skeleton';
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderTabs,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
+import { Card } from '@/app/components/ui/card';
 import { getVendorTypeOptionLabel } from '@/modules/directory/components/vendors/vendor-list-utils';
 import { VENDOR_STATUS_LABELS } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import type {
@@ -18,7 +16,7 @@ import type {
   VendorTypeObject,
 } from '@/modules/directory/schemas/vendor.schema';
 import { type Table } from '@tanstack/react-table';
-import { Filter, Package, Search, X } from 'lucide-react';
+import { ListFilterPlus, Package } from 'lucide-react';
 
 interface VendorsTableCardProps {
   table: Table<Vendor>;
@@ -27,7 +25,6 @@ interface VendorsTableCardProps {
   statusFilter: VendorStatus | undefined;
   searchInput: string;
   isLoading: boolean;
-  isRefreshing?: boolean;
   isTypesLoading: boolean;
   isError: boolean;
   totalCount: number;
@@ -39,9 +36,6 @@ interface VendorsTableCardProps {
   onRetry: () => void;
 }
 
-const tableHeaderFilterTriggerClassName =
-  'h-8 w-full text-xs !border-input !bg-background !text-foreground data-[placeholder]:!text-muted-foreground hover:!bg-background hover:!text-foreground sm:w-44 [&_svg]:!text-muted-foreground';
-
 export function VendorsTableCard({
   table,
   typeTabs,
@@ -49,7 +43,6 @@ export function VendorsTableCard({
   statusFilter,
   searchInput,
   isLoading,
-  isRefreshing,
   isTypesLoading,
   isError,
   totalCount,
@@ -60,76 +53,55 @@ export function VendorsTableCard({
   onClearFilters,
   onRetry,
 }: VendorsTableCardProps) {
+  const typeTabItems = [
+    { label: 'All', value: undefined },
+    ...typeTabs.map((tab) => ({
+      label: getVendorTypeOptionLabel(tab),
+      value: tab.id,
+    })),
+  ];
+  const statusOptions = [
+    { label: 'All Statuses', value: 'all' },
+    ...Object.entries(VENDOR_STATUS_LABELS).map(([value, label]) => ({ label, value })),
+  ];
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>
-          {isTypesLoading ? (
-            <div className="flex flex-wrap gap-2">
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-8 w-28" />
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-0 border-b border-table-card-header-foreground/40">
-              <TypeTab active={!typeFilter} label="All" onClick={() => onTypeChange(undefined)} />
-              {typeTabs.map((tab) => (
-                <TypeTab
-                  key={tab.id}
-                  active={typeFilter === tab.id}
-                  label={getVendorTypeOptionLabel(tab)}
-                  onClick={() => onTypeChange(tab.id)}
-                />
-              ))}
-            </div>
-          )}
-        </CardTitle>
-        <CardToolbar className="w-full sm:w-auto">
-          <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-            <InputWrapper variant="sm" className="w-full sm:w-64">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search vendors..."
-                value={searchInput}
-                onChange={(event) => onSearchChange(event.target.value)}
-              />
-            </InputWrapper>
-
-            <Select
+      <TableCardHeader
+        title={
+          <TableCardHeaderTabs
+            activeValue={typeFilter}
+            isLoading={isTypesLoading}
+            tabs={typeTabItems}
+            onChange={onTypeChange}
+          />
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSearch
+              value={searchInput}
+              placeholder="Search vendors..."
+              onChange={onSearchChange}
+            />
+            <TableCardHeaderSelect
               value={statusFilter ?? 'all'}
+              placeholder="All Statuses"
+              options={statusOptions}
+              icon={ListFilterPlus}
               onValueChange={(value) =>
                 onStatusChange(value === 'all' ? undefined : (value as VendorStatus))
               }
-            >
-              <SelectTrigger className={tableHeaderFilterTriggerClassName}>
-                <Filter className="me-1.5 size-3.5" />
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {Object.entries(VENDOR_STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-                <X className="size-3.5" />
-                Clear
-              </Button>
-            )}
-          </div>
-        </CardToolbar>
-      </CardHeader>
+            />
+            <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={totalCount}
         isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        refreshIndicator="none"
         isError={isError}
         errorTitle="Failed to load vendors"
         emptyIcon={<Package className="size-10 text-muted-foreground/50" />}
@@ -144,29 +116,5 @@ export function VendorsTableCard({
         }}
       />
     </Card>
-  );
-}
-
-function TypeTab({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? '-mb-px border-b-2 border-current px-4 py-2 text-xs font-semibold uppercase tracking-wider !text-table-card-header-foreground transition-colors'
-          : '-mb-px border-b-2 border-transparent px-4 py-2 text-xs font-medium uppercase tracking-wider !text-table-card-header-foreground/75 transition-colors hover:!text-table-card-header-foreground'
-      }
-    >
-      {label}
-    </button>
   );
 }

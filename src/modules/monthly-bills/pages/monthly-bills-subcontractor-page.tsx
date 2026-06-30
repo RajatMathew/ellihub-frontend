@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 
+import { TableCardHeader } from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import { Card } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { useLookupsQuery } from '@/modules/lookup/hooks';
@@ -23,7 +24,7 @@ import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const tableHeaderActionButtonClassName =
-  '!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground';
+  '!border-table-card-header-foreground/25 !bg-card-header !text-table-card-header-foreground hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
 
 interface MonthlyBillsSubcontractorPageProps {
   selectedDate: Date;
@@ -124,18 +125,20 @@ export function MonthlyBillsSubcontractorPage({
   const effectiveBulkEditMode = isCurrentPeriod && bulkEditMode;
   const effectiveBulkSaving = isCurrentPeriod && bulkSaving;
   const effectiveBulkSaveVersion = isCurrentPeriod ? bulkSaveVersion : 0;
+  const {
+    fetchNextPage: fetchNextMonthlyBillsPage,
+    hasNextPage: hasNextMonthlyBillsPage,
+    isFetchingNextPage: isFetchingNextMonthlyBillsPage,
+  } = monthlyBillsQuery;
 
   useEffect(() => {
     const target = loadMoreRef.current;
-    if (!target || !monthlyBillsQuery.hasNextPage) return;
+    if (!target || !hasNextMonthlyBillsPage) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries.some((entry) => entry.isIntersecting) &&
-          !monthlyBillsQuery.isFetchingNextPage
-        ) {
-          void monthlyBillsQuery.fetchNextPage();
+        if (entries.some((entry) => entry.isIntersecting) && !isFetchingNextMonthlyBillsPage) {
+          void fetchNextMonthlyBillsPage();
         }
       },
       { rootMargin: '360px 0px' }
@@ -143,11 +146,7 @@ export function MonthlyBillsSubcontractorPage({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [
-    monthlyBillsQuery.fetchNextPage,
-    monthlyBillsQuery.hasNextPage,
-    monthlyBillsQuery.isFetchingNextPage,
-  ]);
+  }, [fetchNextMonthlyBillsPage, hasNextMonthlyBillsPage, isFetchingNextMonthlyBillsPage]);
 
   const handleVendorChange = (ids: string[]) => {
     setSelectedVendors(
@@ -230,83 +229,83 @@ export function MonthlyBillsSubcontractorPage({
       />
 
       <Card className="overflow-hidden">
-        <CardHeader className="items-stretch gap-3 2xl:flex-row 2xl:items-center">
-          <CardTitle className="!text-table-card-header-foreground text-base font-semibold tracking-normal">
-            Subcontractor Bills
-          </CardTitle>
-          <CardToolbar className="w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">
-            <MonthlyBillsFilters
-              searchInput={searchInput}
-              vendorIds={vendorIds}
-              vendorSearch={vendorSearchInput}
-              vendorPicker={vendorPicker}
-              tradeCategoryIds={tradeCategoryIds}
-              tradeCategorySearch={tradeCategorySearch}
-              tradeCategoryOptions={tradeCategoryOptions}
-              hasActiveFilters={hasActiveFilters}
-              onSearchChange={setSearchInput}
-              onVendorChange={handleVendorChange}
-              onVendorSearchChange={setVendorSearchInput}
-              onTradeCategoryChange={setTradeCategoryIds}
-              onTradeCategorySearchChange={setTradeCategorySearch}
-              onClearFilters={clearFilters}
-            />
-
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end 2xl:w-auto">
-              {isRefreshingMonthlyBills && (
-                <span className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium text-muted-foreground sm:w-auto">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Refreshing
-                </span>
-              )}
-              <MonthlyBillsColumnToggle
-                visibleColumns={visibleColumns}
-                onToggleColumn={toggleColumn}
+        <TableCardHeader
+          title={
+            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+              Subcontractor Bills
+            </span>
+          }
+          actions={
+            <div className="flex w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">
+              <MonthlyBillsFilters
+                searchInput={searchInput}
+                vendorIds={vendorIds}
+                vendorSearch={vendorSearchInput}
+                vendorPicker={vendorPicker}
+                tradeCategoryIds={tradeCategoryIds}
+                tradeCategorySearch={tradeCategorySearch}
+                tradeCategoryOptions={tradeCategoryOptions}
+                hasActiveFilters={hasActiveFilters}
+                onSearchChange={setSearchInput}
+                onVendorChange={handleVendorChange}
+                onVendorSearchChange={setVendorSearchInput}
+                onTradeCategoryChange={setTradeCategoryIds}
+                onTradeCategorySearchChange={setTradeCategorySearch}
+                onClearFilters={clearFilters}
               />
-              {canUpdateCurrentBills &&
-                (effectiveBulkEditMode ? (
-                  <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={effectiveBulkSaving}
-                      onClick={handleBulkSave}
-                      className="min-w-28"
-                    >
-                      {effectiveBulkSaving ? (
-                        <Loader2 className="size-4 animate-spin text-white!" />
-                      ) : (
-                        <Save className="size-4 text-white!" />
-                      )}
-                      Save All
-                    </Button>
+
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end 2xl:w-auto">
+                <MonthlyBillsColumnToggle
+                  visibleColumns={visibleColumns}
+                  onToggleColumn={toggleColumn}
+                  triggerClassName={`${tableHeaderActionButtonClassName} data-[state=open]:!border-table-card-header-foreground/40 data-[state=open]:!bg-card-header data-[state=open]:!text-table-card-header-foreground`}
+                  contentClassName="!bg-popover"
+                />
+                {canUpdateCurrentBills &&
+                  (effectiveBulkEditMode ? (
+                    <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={effectiveBulkSaving}
+                        onClick={handleBulkSave}
+                        className="min-w-28"
+                      >
+                        {effectiveBulkSaving ? (
+                          <Loader2 className="size-4 animate-spin text-white!" />
+                        ) : (
+                          <Save className="size-4 text-white!" />
+                        )}
+                        Save All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={effectiveBulkSaving}
+                        onClick={handleBulkCancel}
+                        className={`min-w-24 ${tableHeaderActionButtonClassName}`}
+                      >
+                        <X className="size-3.5" />
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={effectiveBulkSaving}
-                      onClick={handleBulkCancel}
-                      className={`min-w-24 ${tableHeaderActionButtonClassName}`}
+                      onClick={() => setBulkEditMode(true)}
+                      className={`w-full sm:w-auto ${tableHeaderActionButtonClassName}`}
                     >
-                      <X className="size-3.5" />
-                      Cancel
+                      <Pencil className="size-3.5" />
+                      Bulk Edit
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBulkEditMode(true)}
-                    className={`w-full sm:w-auto ${tableHeaderActionButtonClassName}`}
-                  >
-                    <Pencil className="size-3.5" />
-                    Bulk Edit
-                  </Button>
-                ))}
+                  ))}
+              </div>
             </div>
-          </CardToolbar>
-        </CardHeader>
+          }
+        />
 
         <MonthlyBillsTable
           groups={groups}
@@ -318,7 +317,7 @@ export function MonthlyBillsSubcontractorPage({
           bulkSaveVersion={effectiveBulkSaveVersion}
           bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
-          isLoading={showMonthlyBillsInitialLoader}
+          isLoading={showMonthlyBillsInitialLoader || isRefreshingMonthlyBills}
           isError={monthlyBillsQuery.isError}
           onRetry={() => void monthlyBillsQuery.refetch()}
           onBulkSaveComplete={handleBulkSaveComplete}
@@ -329,8 +328,8 @@ export function MonthlyBillsSubcontractorPage({
           totalCount={
             pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0
           }
-          hasNextPage={Boolean(monthlyBillsQuery.hasNextPage)}
-          isFetchingNextPage={monthlyBillsQuery.isFetchingNextPage}
+          hasNextPage={Boolean(hasNextMonthlyBillsPage)}
+          isFetchingNextPage={isFetchingNextMonthlyBillsPage}
         />
       </Card>
     </div>

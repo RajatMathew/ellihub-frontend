@@ -9,19 +9,19 @@ import { Slot as SlotPrimitive } from 'radix-ui';
 import { cn } from '@app/lib/utils';
 
 const buttonVariants = cva(
-  'cursor-pointer group whitespace-nowrap focus-visible:outline-hidden inline-flex items-center justify-center has-data-[arrow=true]:justify-between whitespace-nowrap text-sm font-medium ring-offset-background transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-60 [&_svg]:shrink-0',
+  'cursor-pointer group whitespace-nowrap focus-visible:outline-hidden inline-flex items-center justify-center has-data-[arrow=true]:justify-between whitespace-nowrap text-sm font-medium ring-offset-background transition-[color,background-color,border-color,box-shadow] duration-150 ease-out disabled:pointer-events-none disabled:opacity-60 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
         primary:
-          'bg-[var(--primary)]! text-[var(--primary-foreground)]! hover:bg-[var(--primary-hover)]! data-[state=open]:bg-[var(--primary-hover)]!',
+          'bg-(--primary)! text-(--primary-foreground)! hover:bg-(--primary-hover)! data-[state=open]:bg-(--primary-hover)!',
         mono: 'bg-zinc-950 text-white dark:bg-zinc-300 dark:text-black hover:bg-zinc-950/90 dark:hover:bg-zinc-300/90 data-[state=open]:bg-zinc-950/90 dark:data-[state=open]:bg-zinc-300/90',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 data-[state=open]:bg-destructive/90',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/90 data-[state=open]:bg-secondary/90',
         outline:
-          'bg-background text-accent-foreground border border-input hover:bg-accent data-[state=open]:bg-accent',
+          'border border-(--outline-button-border) bg-(--outline-button-background) text-(--outline-button-foreground) hover:border-(--outline-button-hover-border) hover:bg-(--outline-button-hover-background) hover:text-(--outline-button-hover-foreground) data-[state=open]:border-(--outline-button-hover-border) data-[state=open]:bg-(--outline-button-hover-background) data-[state=open]:text-(--outline-button-hover-foreground)',
         dashed:
           'text-accent-foreground border border-input border-dashed bg-background hover:bg-accent hover:text-accent-foreground data-[state=open]:text-accent-foreground',
         ghost:

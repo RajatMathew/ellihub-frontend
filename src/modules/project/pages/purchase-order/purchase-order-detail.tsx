@@ -579,7 +579,7 @@ export function PODetailPage() {
         <div className="min-w-0 flex-1 space-y-5">
           {/* ---- Overdue alert ---- */}
           {isOverdue && (
-            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-destructive bg-[var(--color-destructive-soft,var(--color-red-50))] dark:bg-[var(--color-destructive-soft,var(--color-red-950))] p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-destructive bg-destructive-soft p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-4">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-destructive shadow-xs border border-border">
                   <ShieldAlert className="size-5" />

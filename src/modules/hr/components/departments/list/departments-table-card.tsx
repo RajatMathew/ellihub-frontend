@@ -1,12 +1,17 @@
 import type { ReactNode } from 'react';
 
 import { DataGridSection } from '@/app/components/data-grid-section';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Card } from '@/app/components/ui/card';
 import type { Department } from '@/modules/hr/schemas/department.schema';
 import type { Table } from '@tanstack/react-table';
-import { Building2, Plus, RefreshCcw, Search, X } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface DepartmentsTableCardProps {
@@ -29,7 +34,6 @@ export function DepartmentsTableCard({
   isLoading,
   isRefreshing,
   isError,
-  isRefetching,
   searchInput,
   searchQuery,
   onSearchChange,
@@ -38,37 +42,30 @@ export function DepartmentsTableCard({
 }: DepartmentsTableCardProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="!text-table-card-header-foreground">All Departments</CardTitle>
-        <CardToolbar>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <InputWrapper variant="sm" className="w-full sm:w-72">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search departments..."
-                value={searchInput}
-                onChange={(event) => onSearchChange(event.target.value)}
-              />
-            </InputWrapper>
-            {(searchQuery || isRefetching) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearSearch}>
-                {isRefetching ? (
-                  <RefreshCcw className="size-3.5 animate-spin" />
-                ) : (
-                  <X className="size-3.5" />
-                )}
-                {isRefetching ? 'Refreshing...' : 'Clear'}
-              </Button>
-            )}
-          </div>
-        </CardToolbar>
-      </CardHeader>
+      <TableCardHeader
+        title={
+          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+            All Departments
+          </span>
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSearch
+              value={searchInput}
+              placeholder="Search departments..."
+              onChange={onSearchChange}
+              className="sm:w-72"
+            />
+            <TableCardHeaderClearButton active={Boolean(searchQuery)} onClick={onClearSearch} />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={isError}
         errorTitle="Failed to load departments."
         emptyIcon={<Building2 className="size-10 text-muted-foreground/40" />}

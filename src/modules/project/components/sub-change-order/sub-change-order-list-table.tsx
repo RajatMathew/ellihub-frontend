@@ -41,8 +41,8 @@ export function SubChangeOrderListTable({
     <DataGridSection
       table={table}
       totalCount={totalCount}
-      isLoading={isLoading}
-      isRefreshing={isRefreshing}
+      isLoading={isLoading || Boolean(isRefreshing)}
+      refreshIndicator="none"
       isError={isError}
       errorTitle="Failed to load sub change orders"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}

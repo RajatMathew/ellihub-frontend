@@ -159,7 +159,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
           return <SidebarCustomMenu key={key} menu={[group]} />;
 
         case 'separator':
-          return <Separator key={key} className="my-2.5" />;
+          return <Separator key={key} className="my-1 opacity-70" />;
 
         default:
           return null;
@@ -167,7 +167,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
     });
   }, [accessibleMenuConfig]);
 
-  return <div className="flex flex-col h-full min-w-60 mt-2.5">{renderedMenu}</div>;
+  return <div className="flex h-full min-w-60 flex-col gap-1 pt-2">{renderedMenu}</div>;
 };
 
 export default memo(SidebarBuilder);

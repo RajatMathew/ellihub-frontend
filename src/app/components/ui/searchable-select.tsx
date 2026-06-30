@@ -108,8 +108,8 @@ function SearchableSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
-            'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
+            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-(--text-sm--line-height) gap-1 transition-shadow outline-none',
+            'aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className
           )}

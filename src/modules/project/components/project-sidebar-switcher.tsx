@@ -120,17 +120,17 @@ export function ProjectSidebarSwitcher() {
   };
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5 py-2.5">
+    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5 py-2">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-sm border border-sidebar-border bg-sidebar-item-hover px-3 py-2 text-sidebar-foreground shadow-none hover:border-sidebar-border hover:bg-sidebar-item-active hover:text-sidebar-foreground data-[state=open]:border-sidebar-border data-[state=open]:bg-sidebar-item-active data-[state=open]:text-sidebar-foreground"
+            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-md border border-sidebar-border/80 bg-sidebar-item-hover/70 px-3 py-2 text-sidebar-foreground shadow-none hover:border-sidebar-border hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[state=open]:border-sidebar-border data-[state=open]:bg-sidebar-item-active data-[state=open]:text-sidebar-foreground"
           >
-            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />
+            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
             <div className="min-w-0 overflow-hidden text-left">
               <div
-                className="truncate text-sm font-semibold text-sidebar-foreground"
+                className="truncate text-[13px] font-semibold text-sidebar-foreground"
                 title={selectedProjectTitle}
               >
                 {selectedProjectTitle ??
@@ -145,7 +145,7 @@ export function ProjectSidebarSwitcher() {
                 </div>
               )}
             </div>
-            <ChevronsUpDown className="mt-1 size-4 shrink-0 text-sidebar-muted transition-colors group-hover:text-sidebar-foreground" />
+            <ChevronsUpDown className="mt-1 size-3.5 shrink-0 text-sidebar-muted transition-colors group-hover:text-sidebar-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
