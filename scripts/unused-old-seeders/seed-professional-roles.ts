@@ -1,0 +1,47 @@
+import { prisma } from '@lib/prisma';
+import { LookupType } from '@modules/lookup/models';
+import { generateNanoId } from '@utils/generateNanoId';
+
+const roles = [
+    'Project Manager',
+    'Site Superintendent',
+    'Estimator',
+    'Architect',
+    'Engineer',
+    'Foreman',
+    'Safety Officer',
+    'Accountant',
+    'Executive',
+];
+
+export const seedProfessionalRoles = async () => {
+    console.log('Seeding professional roles...');
+
+    for (const label of roles) {
+        const existing = await prisma.lookup.findUnique({
+            where: { type_label: { type: LookupType.PROFESSIONAL_ROLE, label } },
+        });
+
+        if (existing) {
+            console.log(`Already exists: ${label} (${existing.id})`);
+        } else {
+            const result = await prisma.lookup.create({
+                data: {
+                    id: generateNanoId(),
+                    type: LookupType.PROFESSIONAL_ROLE,
+                    label,
+                },
+            });
+            console.log(`Created: ${result.label} (${result.id})`);
+        }
+    }
+
+    console.log('\nSeed complete!');
+};
+
+if (process.argv[1]?.endsWith('seed-professional-roles.ts')) {
+    seedProfessionalRoles().catch((e) => {
+        console.error('Seed failed:', e);
+        process.exit(1);
+    });
+}
