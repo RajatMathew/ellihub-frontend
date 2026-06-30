@@ -1,0 +1,3 @@
+ALTER TYPE "FileExportStatus" ADD VALUE IF NOT EXISTS 'CANCELLED';
+
+ALTER TABLE "FileExportJob" ADD COLUMN "cancelledAt" TIMESTAMP(3);
