@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
 
 import type { ActivityLogItem } from '@/app/api/activity-log.api';
+import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
+import {
+  ActivityRevisionBadge,
+  stripActivityRevisionSuffix,
+} from '@/app/components/activity-revision-badge';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
 import { useActivityLogQuery } from '@/app/hooks/use-activity-log';
@@ -102,16 +107,7 @@ export default function ActivityLogListPage() {
         id: 'description',
         header: 'Description',
         size: 420,
-        cell: ({ row }) => (
-          <div className="max-w-xl">
-            <div className="text-sm font-medium">{row.original.description}</div>
-            {row.original.note && (
-              <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                {row.original.note}
-              </div>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => <ActivityLogDescriptionCell log={row.original} />,
         meta: {
           textOverflow: 'scroll',
         },
@@ -154,7 +150,7 @@ export default function ActivityLogListPage() {
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Activity Logger"
+        title="Activity Log"
         totalCount={totalCount}
         hasActiveFilters={hasActiveFilters}
         resultLabel="activity logs"
@@ -200,6 +196,31 @@ export default function ActivityLogListPage() {
   );
 }
 
+function ActivityLogDescriptionCell({ log }: { log: ActivityLogItem }) {
+  const { date, time } = formatActivityDate(log.createdAt);
+  const displayDescription = stripActivityRevisionSuffix(log.description, log.revision);
+
+  return (
+    <div className="max-w-xl">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-medium">
+        <span className="min-w-0 break-words">{displayDescription}</span>
+        <ActivityRevisionBadge revision={log.revision} />
+      </div>
+      {log.note && (
+        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{log.note}</div>
+      )}
+      {log.details && (
+        <ActivityChangeDetailsButton
+          details={log.details}
+          summary={displayDescription}
+          actor={log.user?.name ?? 'System'}
+          timestamp={`${date} ${time}`}
+          className="mt-1 px-0 hover:bg-transparent"
+        />
+      )}
+    </div>
+  );
+}
 function formatActivityDate(timestamp: string) {
   const date = new Date(timestamp);
   return {

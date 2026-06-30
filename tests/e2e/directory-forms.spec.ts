@@ -31,7 +31,7 @@ const vendorType = {
 
 const role = {
   id: 'role-pm',
-  type: 'PROFESSIONAL_ROLE',
+  type: 'CONTACT_PROFESSIONAL_ROLE',
   name: 'PROJECT_MANAGER',
   label: 'Project Manager',
   order: 1,
@@ -166,7 +166,7 @@ async function mockDirectoryApi(page: Page, handlers: MockHandlers = {}) {
       return;
     }
 
-    if (method === 'GET' && path === '/api/v1/lookup/type/PROFESSIONAL_ROLE') {
+    if (method === 'GET' && path === '/api/v1/lookup/type/CONTACT_PROFESSIONAL_ROLE') {
       await route.fulfill({ json: { data: [role] } });
       return;
     }
@@ -298,7 +298,9 @@ test.describe('directory create and edit forms', () => {
 
     await expect(page.getByTestId('gc-name-input')).toHaveValue('Existing GC');
     await expect(page.getByTestId('gc-type-select')).toContainText(gcType.label);
-    await expect(page.getByTestId('gc-website-input')).toHaveValue('https://existing-gc.example.com');
+    await expect(page.getByTestId('gc-website-input')).toHaveValue(
+      'https://existing-gc.example.com'
+    );
     await expect(page.getByTestId('gc-payment-terms-select')).toContainText('Net 45');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
@@ -392,6 +394,30 @@ test.describe('directory create and edit forms', () => {
     });
   });
 
+  test('creates a contact with a custom professional role', async ({ page }) => {
+    let createPayload: Record<string, unknown> | undefined;
+    await mockDirectoryApi(page, { onCreateContact: (payload) => (createPayload = payload) });
+    await page.goto('/app/directory/contacts/create');
+    await expect(page.getByRole('heading', { name: 'Contact Info' })).toBeVisible({
+      timeout: routeLoadTimeout,
+    });
+
+    await page.getByTestId('contact-full-name-input').fill('Custom Role Contact');
+    await page.getByTestId('contact-role-select').click();
+    await page.getByPlaceholder('Search or type role...').fill('Permit Expeditor');
+    await page.getByText('Use "Permit Expeditor" as professional role').click();
+    await page.getByTestId('contact-email-input').fill('custom.role@example.com');
+    await page.getByRole('button', { name: 'Create Contact' }).click();
+
+    await expect.poll(() => createPayload?.fullName).toBe('Custom Role Contact');
+    expect(createPayload?.professionalRoleId).toBeUndefined();
+    expect(createPayload).toMatchObject({
+      fullName: 'Custom Role Contact',
+      professionalRoleLabel: 'Permit Expeditor',
+      email: 'custom.role@example.com',
+      tags: [],
+    });
+  });
   test('prefills and preserves a contact on edit submit', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined;
     await mockDirectoryApi(page, { onUpdateContact: (payload) => (updatePayload = payload) });
@@ -402,7 +428,9 @@ test.describe('directory create and edit forms', () => {
 
     await expect(page.getByTestId('contact-full-name-input')).toHaveValue('Existing Contact');
     await expect(page.getByTestId('contact-role-select')).toContainText(role.label);
-    await expect(page.getByTestId('contact-email-input')).toHaveValue('existing.contact@example.com');
+    await expect(page.getByTestId('contact-email-input')).toHaveValue(
+      'existing.contact@example.com'
+    );
     await expect(page.getByTestId('contact-phone-input')).toHaveValue('(212) 555-0111');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 

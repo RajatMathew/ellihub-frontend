@@ -13,6 +13,7 @@ import { cva } from 'class-variance-authority';
 
 import { Checkbox } from '@app/components/ui/checkbox';
 import { useDataGrid } from '@app/components/ui/data-grid';
+import { Skeleton } from '@app/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@app/components/ui/tooltip';
 import { cn } from '@app/lib/utils';
 
@@ -40,6 +41,8 @@ const bodyCellSpacingVariants = cva('', {
   },
 });
 
+const fallbackSkeletonWidths = ['w-32', 'w-24', 'w-40', 'w-28', 'w-20', 'w-36'] as const;
+
 function getPinningStyles<TData>(column: Column<TData>): CSSProperties {
   const isPinned = column.getIsPinned();
 
@@ -53,11 +56,12 @@ function getPinningStyles<TData>(column: Column<TData>): CSSProperties {
 }
 
 function DataGridTableBase({ children }: { children: ReactNode }) {
-  const { props } = useDataGrid();
+  const { isLoading, props } = useDataGrid();
 
   return (
     <table
       data-slot="data-grid-table"
+      aria-busy={isLoading}
       className={cn(
         'w-full align-middle caption-bottom text-left rtl:text-right text-foreground font-normal text-sm',
         !props.tableLayout?.columnsDraggable && 'border-separate border-spacing-0',
@@ -67,6 +71,17 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
     >
       {children}
     </table>
+  );
+}
+
+function DataGridTableFallbackSkeleton({ columnIndex }: { columnIndex: number }) {
+  return (
+    <Skeleton
+      className={cn(
+        'h-3.5 max-w-full rounded-sm',
+        fallbackSkeletonWidths[columnIndex % fallbackSkeletonWidths.length]
+      )}
+    />
   );
 }
 
@@ -546,7 +561,9 @@ function DataGridTable<TData>() {
               {table.getVisibleFlatColumns().map((column, colIndex) => {
                 return (
                   <DataGridTableBodyRowSkeletonCell column={column} key={colIndex}>
-                    {column.columnDef.meta?.skeleton}
+                    {column.columnDef.meta?.skeleton ?? (
+                      <DataGridTableFallbackSkeleton columnIndex={colIndex} />
+                    )}
                   </DataGridTableBodyRowSkeletonCell>
                 );
               })}

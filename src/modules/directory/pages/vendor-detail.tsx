@@ -4,6 +4,7 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import { DirectoryDetailLoading, mergeLinkedContacts } from '@/modules/directory/components/shared';
 import {
   VendorDetailDialogs,
@@ -27,7 +28,7 @@ export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
 
   const { data: vendor, isLoading, isError, refetch } = useVendorDetailQuery(id ?? '');
   const deleteMutation = useDeleteVendorMutation();
@@ -111,6 +112,7 @@ export function VendorDetailPage() {
           activityItems={activity.items}
           isActivityLoading={activity.isLoading}
           isActivityError={activity.isError}
+          activityCommentControls={activity.commentControls}
           onClose={() => setSidebarOpen(false)}
           onRetryActivity={() => void activity.refetch()}
         />

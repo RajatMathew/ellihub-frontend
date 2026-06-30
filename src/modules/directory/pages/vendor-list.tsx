@@ -63,8 +63,9 @@ export function VendorListPage() {
   const hasListData = vendorsQuery.data !== undefined;
   const hasStatsData = statsQuery.data !== undefined;
   const showListInitialLoader = vendorsQuery.isLoading || (vendorsQuery.isFetching && !hasListData);
+  const showListTableSkeleton =
+    showListInitialLoader || (hasListData && vendorsQuery.isFetching);
   const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && vendorsQuery.isFetching && !showListInitialLoader;
 
   const listData = vendorsQuery.data?.data ?? [];
   const totalCount = vendorsQuery.data?.pagination?.totalItems ?? 0;
@@ -175,8 +176,7 @@ export function VendorListPage() {
         typeFilter={typeFilter}
         statusFilter={statusFilter}
         searchInput={searchInput}
-        isLoading={showListInitialLoader}
-        isRefreshing={isRefreshingList}
+        isLoading={showListTableSkeleton}
         isTypesLoading={isTypesLoading}
         isError={vendorsQuery.isError}
         totalCount={totalCount}

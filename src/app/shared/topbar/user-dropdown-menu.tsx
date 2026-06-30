@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 import { forceCheckForUpdate } from '@/core/pwa/usePwaUpdater';
 import { QuickBooksReferenceSyncDialog } from '@/modules/integrations/components/quickbooks-reference-sync-dialog';
@@ -12,7 +12,7 @@ import {
   Coffee,
   FileText,
   HistoryIcon,
-  Moon,
+  Palette,
   RefreshCcw,
   Settings,
   UserCircle,
@@ -28,23 +28,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@app/components/ui/dropdown-menu';
-import { Switch } from '@app/components/ui/switch';
 import { useAccess } from '@app/contexts/access-context';
-
-// const I18N_LANGUAGES = [
-//   {
-//     label: 'English',
-//     code: 'en',
-//     direction: 'ltr',
-//     flag: 'https://i.pravatar.cc/300?img=1',
-//   },
-// ];
+import {
+  DEFAULT_THEME,
+  isAppTheme,
+  THEME_GROUPS,
+  THEME_OPTIONS,
+  THEME_SWITCHER_ENABLED,
+} from '@app/theme/theme-registry';
 
 function formatSyncLabel(value: string | null | undefined, isLoading: boolean) {
   if (isLoading) return 'Loading sync status...';
@@ -81,15 +80,18 @@ function formatQuickBooksSyncLabel({
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const navigate = useNavigate();
-  // const currenLanguage = I18N_LANGUAGES[0];
-  const { theme, setTheme } = useTheme();
   const [fieldwireSyncOpen, setFieldwireSyncOpen] = useState(false);
   const [quickBooksSyncOpen, setQuickBooksSyncOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const activeTheme = isAppTheme(theme) ? theme : DEFAULT_THEME;
 
-  const handleThemeToggle = (checked: boolean) => {
-    setTheme(checked ? 'dark' : 'light');
-  };
-
+  const handleThemeChange = useCallback(
+    (value: string) => {
+      if (!isAppTheme(value)) return;
+      setTheme(value);
+    },
+    [setTheme]
+  );
   const { data } = useSession();
   const { isAdmin, can } = useAccess();
   const canSyncFieldwire = can('primeChangeOrder', 'sync');
@@ -368,18 +370,40 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </DropdownMenuSub> */}
 
           <DropdownMenuSeparator />
-
-          {/* Footer */}
-          <DropdownMenuItem
-            className="flex items-center gap-2"
-            onSelect={(event) => event.preventDefault()}
-          >
-            <Moon />
-            <div className="flex items-center gap-2 justify-between grow">
-              Dark Mode
-              <Switch size="sm" checked={theme === 'dark'} onCheckedChange={handleThemeToggle} />
-            </div>
-          </DropdownMenuItem>
+          {THEME_SWITCHER_ENABLED && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="flex items-center gap-2">
+                <Palette />
+                <span className="flex grow items-center justify-between gap-2">
+                  Theme
+                  <span className="text-xs capitalize text-muted-foreground">{activeTheme}</span>
+                </span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                {THEME_GROUPS.map((group, groupIndex) => (
+                  <div key={group.value}>
+                    {groupIndex > 0 && <div className="my-1 border-b" />}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      {group.label}
+                    </div>
+                    <DropdownMenuRadioGroup value={activeTheme} onValueChange={handleThemeChange}>
+                      {THEME_OPTIONS.filter((option) => option.group === group.value).map(
+                        (option) => (
+                          <DropdownMenuRadioItem
+                            key={option.value}
+                            value={option.value}
+                            className="flex cursor-pointer items-center gap-2"
+                          >
+                            <span>{option.label}</span>
+                          </DropdownMenuRadioItem>
+                        )
+                      )}
+                    </DropdownMenuRadioGroup>
+                  </div>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
           <div className="p-2 mt-1">
             <Button
               variant="outline"

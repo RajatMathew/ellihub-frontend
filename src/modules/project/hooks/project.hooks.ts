@@ -1,3 +1,5 @@
+import posthog from 'posthog-js';
+
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { projectApi } from '@/modules/project/api/project.api';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
@@ -9,7 +11,13 @@ import type {
   ProjectDetail,
   UpdateProjectInput,
 } from '@/modules/project/schemas/project.schema';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const hasProjectCapabilities = (project: ProjectDetail) =>
@@ -44,6 +52,7 @@ type InfiniteProjectsQueryOptions = {
   staleTime?: number;
   gcTime?: number;
   refetchOnWindowFocus?: boolean;
+  placeholderData?: typeof keepPreviousData;
 };
 
 export const useInfiniteProjectsQuery = (
@@ -54,6 +63,10 @@ export const useInfiniteProjectsQuery = (
     queryKey: [...projectKeys.list(), 'infinite', params],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => projectApi.list({ ...params, page: Number(pageParam) }),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     getNextPageParam: (lastPage) =>
       lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
     ...options,
@@ -76,6 +89,10 @@ export const useProjectStatsQuery = (params?: ListProjectsParams) =>
   useQuery({
     queryKey: [...projectKeys.stats(), params],
     queryFn: () => projectApi.stats(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
 export const useProjectDetailQuery = (id: string) =>
@@ -105,7 +122,7 @@ export const useProjectCostCodesQuery = (id: string) =>
 export const useProjectEmployeeOptionsQuery = (id: string, enabled = true) =>
   useQuery({
     queryKey: projectKeys.employeeOptions(id),
-    queryFn: () => projectApi.listProjectEmployeeOptions(id),
+    queryFn: async () => (await projectApi.listProjectEmployeeOptions(id)).data,
     enabled: !!id && enabled,
   });
 
@@ -132,7 +149,8 @@ export const useCreateProjectMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateProjectInput) => projectApi.create(data),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      posthog.capture('project_created', { project_id: created.id });
       qc.invalidateQueries({ queryKey: projectKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to create project.'),
@@ -190,6 +208,7 @@ export const useSetProjectActiveMutation = () => {
     onSuccess: (_updated, input) => {
       const id = getProjectStatusMutationId(input);
       if (!id) return;
+      posthog.capture('project_status_changed', { project_id: id, status: 'active' });
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         if (!isProjectStatusMutationSilent(input)) {
           toast.success('Project is now Active.');
@@ -208,6 +227,7 @@ export const useSetProjectInactiveMutation = () => {
     onSuccess: (_updated, input) => {
       const id = getProjectStatusMutationId(input);
       if (!id) return;
+      posthog.capture('project_status_changed', { project_id: id, status: 'inactive' });
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         if (!isProjectStatusMutationSilent(input)) {
           toast.success('Project is now Inactive.');
@@ -226,6 +246,7 @@ export const useSetProjectClosedMutation = () => {
     onSuccess: (_updated, input) => {
       const id = getProjectStatusMutationId(input);
       if (!id) return;
+      posthog.capture('project_status_changed', { project_id: id, status: 'closed' });
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         if (!isProjectStatusMutationSilent(input)) {
           toast.success('Project closed successfully.');
@@ -244,6 +265,7 @@ export const useSetProjectCompletedMutation = () => {
     onSuccess: (_updated, input) => {
       const id = getProjectStatusMutationId(input);
       if (!id) return;
+      posthog.capture('project_status_changed', { project_id: id, status: 'completed' });
       return invalidateProjectQueries(qc, [projectKeys.list(), projectKeys.detail(id)]).then(() => {
         if (!isProjectStatusMutationSilent(input)) {
           toast.success('Project marked as Completed.');

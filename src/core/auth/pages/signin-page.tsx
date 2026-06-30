@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { usePostHog } from '@posthog/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff, LoaderCircleIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -24,6 +25,7 @@ import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-
 
 export function SignInPageComponent() {
   const [searchParams] = useSearchParams();
+  const posthog = usePostHog();
 
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -80,6 +82,8 @@ export function SignInPageComponent() {
         },
         {
           onSuccess: () => {
+            posthog.identify(data.email);
+            posthog.capture('user_signed_in');
             setSuccessMessage('Successfully signed in! Redirecting...');
           },
           onError: (err) => {

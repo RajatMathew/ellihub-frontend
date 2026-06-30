@@ -66,6 +66,7 @@ export function ToPayCell({
           onChange(next);
         }}
         decimalPlaces={2}
+        useGrouping
         min={0}
         disabled={!inputEnabled}
         aria-label={`Planned payment for ${poNumber}`}

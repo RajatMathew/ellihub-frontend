@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ export const useApproveInvoiceMutation = () => {
   return useMutation({
     mutationFn: (id: string) => invoiceApi.approve(id),
     onSuccess: async (_, id) => {
+      posthog.capture('invoice_approved', { invoice_id: id });
       await invalidateInvoiceQueries(queryClient, id);
       toast.success('Invoice approved.');
     },
@@ -32,6 +34,7 @@ export const useRejectInvoiceMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: InvoiceRejectInput }) =>
       invoiceApi.reject(id, data),
     onSuccess: async (_, { id }) => {
+      posthog.capture('invoice_rejected', { invoice_id: id });
       await invalidateInvoiceQueries(queryClient, id);
       toast.success('Invoice rejected.');
     },
@@ -46,6 +49,7 @@ export const useMarkPaidInvoiceMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: InvoiceMarkPaidInput }) =>
       invoiceApi.markPaid(id, data),
     onSuccess: async (_, { id }) => {
+      posthog.capture('invoice_marked_paid', { invoice_id: id });
       await invalidateInvoiceQueries(queryClient, id);
       toast.success('Invoice marked as paid.');
     },
@@ -73,6 +77,7 @@ export const useDisputeInvoiceMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: InvoiceDisputeInput }) =>
       invoiceApi.dispute(id, data),
     onSuccess: async (_, { id }) => {
+      posthog.capture('invoice_disputed', { invoice_id: id });
       await invalidateInvoiceQueries(queryClient, id);
       toast.success('Invoice disputed.');
     },

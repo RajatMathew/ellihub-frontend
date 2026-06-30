@@ -33,6 +33,7 @@ export function RFQVendorActionItems({
   onOpenQuote,
   onGenerateVendorPdf,
   onEmailVendor,
+  onEmailAwardVendor,
   onAwardQuote,
   onUnaward,
   onGeneratePO,
@@ -66,6 +67,7 @@ export function RFQVendorActionItems({
   const canRemoveVendor = canManageVendors && !isVendorAwarded;
   const canDeclineInvite = canManageQuotes && !declined && !isVendorAwarded;
   const canUnaward = canUnawardQuotes && isVendorAwarded;
+  const canEmailAward = canEmailVendors && isVendorAwarded && !!quote;
   const hasDangerActions = canRemoveQuote || canUnaward || canRemoveVendor || canDeclineInvite;
 
   return (
@@ -115,10 +117,16 @@ export function RFQVendorActionItems({
         <FileDown className="size-4" />
         {isGeneratingVendorPdf ? 'Generating PDF...' : 'Generate PDF'}
       </DropdownMenuItem>
-      {canEmailVendors && (
+      {canEmailVendors && !isVendorAwarded && (
         <DropdownMenuItem onClick={() => onEmailVendor(invite.id)}>
           <Mail className="size-4" />
-          Email
+          Email RFQ
+        </DropdownMenuItem>
+      )}
+      {canEmailAward && (
+        <DropdownMenuItem onClick={() => onEmailAwardVendor(quote!.id)}>
+          <Mail className="size-4" />
+          Email Award
         </DropdownMenuItem>
       )}
       {hasDangerActions && <DropdownMenuSeparator />}

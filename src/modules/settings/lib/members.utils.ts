@@ -5,6 +5,7 @@ export function normalizeMemberRole(role: string | null | undefined): MemberRole
   if (roles.includes('dev')) return 'dev';
   if (roles.includes('admin') || roles.includes('owner')) return 'admin';
   if (roles.includes('accountant')) return 'accountant';
+  if (roles.includes('ap')) return 'ap';
   if (roles.includes('pm')) return 'pm';
   return 'user';
 }

@@ -44,19 +44,19 @@ export function VendorProjectsTab({ vendor }: VendorProjectsTabProps) {
     <Card>
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
             Committed Projects
           </CardTitle>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-table-card-header-foreground/80">
             {committedProjects.length} project{committedProjects.length === 1 ? '' : 's'} with
             active purchase orders
           </p>
         </div>
         <div className="shrink-0 text-left sm:text-right">
-          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-widest text-table-card-header-foreground/80">
             Total Committed
           </div>
-          <div className="text-lg font-semibold text-foreground">
+          <div className="text-lg font-semibold text-table-card-header-foreground">
             {formatCurrency(totalCommitted)}
           </div>
         </div>

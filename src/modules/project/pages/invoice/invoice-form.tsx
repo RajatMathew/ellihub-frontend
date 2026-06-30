@@ -9,6 +9,7 @@ import {
 } from '@/app/components/form-field-label';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { Card, CardContent } from '@/app/components/ui/card';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
@@ -18,11 +19,9 @@ import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatPercent } from '@/app/lib/helpers';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
-import { fakeInvoiceNumber } from '@/lib/fake-data';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -111,18 +110,20 @@ export function InvoiceFormPage() {
   const createMutation = useCreateInvoiceMutation();
   const updateMutation = useUpdateInvoiceMutation();
   const addAttachmentMutation = useAddInvoiceAttachmentMutation();
+  const { queueFiles, uploadFilesAndWait } = useManagedFileUploads();
 
   const defaultValues: CreateInvoiceInput = {
     projectId,
     vendorId: '',
     purchaseOrderId: '',
-    invoiceNumber: '',
+    externalInvoiceNumber: '',
     invoiceDate: new Date().toISOString().slice(0, 10),
     dueDate: '',
     totalAmount: 0,
     taxAmount: 0,
     taxRate: 0,
     notes: '',
+    vendorCoupon: false,
     relatedSCOIds: [],
     attachments: [],
   };
@@ -133,13 +134,14 @@ export function InvoiceFormPage() {
           projectId: invoiceDetail.projectId ?? invoiceDetail.project?.id ?? projectId,
           vendorId: invoiceDetail.vendorId ?? invoiceDetail.vendor?.id ?? '',
           purchaseOrderId: invoiceDetail.purchaseOrderId ?? invoiceDetail.purchaseOrder?.id ?? '',
-          invoiceNumber: invoiceDetail.invoiceNumber ?? '',
+          externalInvoiceNumber: invoiceDetail.externalInvoiceNumber ?? '',
           invoiceDate: toDateInput(invoiceDetail.invoiceDate),
           dueDate: toDateInput(invoiceDetail.dueDate),
           totalAmount: invoiceDetail.totalAmount ?? 0,
           taxAmount: invoiceDetail.taxAmount ?? 0,
           taxRate: invoiceDetail.taxRate ?? 0,
           notes: invoiceDetail.notes ?? '',
+          vendorCoupon: invoiceDetail.vendorCoupon ?? false,
           relatedSCOIds: invoiceDetail.relatedSCOIds ?? [],
           attachments: [],
         }
@@ -304,7 +306,8 @@ export function InvoiceFormPage() {
       vendorId:
         randomPoData?.vendorId ?? vendorOptions.find((option) => !option.disabled)?.value ?? '',
       purchaseOrderId: randomPo?.value ?? '',
-      invoiceNumber: fakeInvoiceNumber(),
+      externalInvoiceNumber: 'VENDOR-' + (Math.floor(Math.random() * 9000) + 1000),
+      vendorCoupon: false,
       invoiceDate: new Date().toISOString().slice(0, 10),
       dueDate: dueDate.toISOString().slice(0, 10),
       totalAmount: subtotal,
@@ -316,23 +319,28 @@ export function InvoiceFormPage() {
     });
   }, [poPicker.items, poPicker.options, projectId, reset, scoPicker.options, vendorOptions]);
 
-  async function uploadFiles(folderId: string, files: File[]) {
-    const documentIds: string[] = [];
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
+  async function uploadInvoiceFilesAndWait(folderId: string, files: File[]) {
+    const uploadedFiles = await uploadFilesAndWait({
+      files,
+      parentId: folderId,
+      label: 'Invoice attachment',
+    });
+
+    return uploadedFiles.map((file) => file.id);
+  }
+
+  function queueInvoiceFiles(targetInvoiceId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'Invoice attachment',
+      onUploaded: async (uploaded) => {
+        await addAttachmentMutation.mutateAsync({
+          invoiceId: targetInvoiceId,
+          data: { documentId: uploaded.id },
         });
-        documentIds.push(uploaded.id);
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
-        throw error;
-      }
-    }
-    return documentIds;
+      },
+    });
   }
 
   async function resolveInvoiceUploadFolderId(
@@ -348,12 +356,16 @@ export function InvoiceFormPage() {
   async function onSubmit(formData: CreateInvoiceInput) {
     const existingAttachmentCount = invoiceDetail?.attachments?.length ?? 0;
 
-    if (!isEdit && selectedFiles.length === 0) {
+    if (!isEdit && !formData.vendorCoupon && selectedFiles.length === 0) {
       toast.error('At least one attachment is required.');
       return;
     }
 
-    if (isEdit && existingAttachmentCount + selectedFiles.length === 0) {
+    if (
+      isEdit &&
+      !invoiceDetail?.vendorCoupon &&
+      existingAttachmentCount + selectedFiles.length === 0
+    ) {
       toast.error('At least one attachment is required.');
       return;
     }
@@ -367,10 +379,10 @@ export function InvoiceFormPage() {
     try {
       const attachmentIds =
         !isEdit && selectedFiles.length > 0 && invoiceFolderId
-          ? await uploadFiles(invoiceFolderId, selectedFiles)
+          ? await uploadInvoiceFilesAndWait(invoiceFolderId, selectedFiles)
           : [];
 
-      if (!isEdit && attachmentIds.length === 0) {
+      if (!isEdit && !formData.vendorCoupon && attachmentIds.length === 0) {
         toast.error('At least one attachment is required.');
         return;
       }
@@ -384,7 +396,7 @@ export function InvoiceFormPage() {
             projectId: formData.projectId,
             vendorId: formData.vendorId,
             purchaseOrderId: formData.purchaseOrderId,
-            invoiceNumber: formData.invoiceNumber,
+            externalInvoiceNumber: formData.externalInvoiceNumber || null,
             invoiceDate: formData.invoiceDate,
             dueDate: formData.dueDate,
             totalAmount: formData.totalAmount,
@@ -402,13 +414,7 @@ export function InvoiceFormPage() {
             return;
           }
 
-          const uploadedIds = await uploadFiles(folderId, selectedFiles);
-          for (const documentId of uploadedIds) {
-            await addAttachmentMutation.mutateAsync({
-              invoiceId,
-              data: { documentId },
-            });
-          }
+          queueInvoiceFiles(invoiceId, folderId, selectedFiles);
         }
 
         navigate(getInvoiceDetailPath(projectId, updated.id));
@@ -417,6 +423,7 @@ export function InvoiceFormPage() {
 
       const created = await createMutation.mutateAsync({
         ...formData,
+        externalInvoiceNumber: formData.externalInvoiceNumber || null,
         taxAmount: calculateTaxAmount(formData.totalAmount, formData.taxRate),
         attachments: attachmentIds,
       });
@@ -436,6 +443,8 @@ export function InvoiceFormPage() {
     ? project?.capabilities?.actions?.invoice?.update === true
     : project?.capabilities?.actions?.invoice?.create === true;
   if (!canSubmitInvoice) return <Forbidden />;
+
+  const invoiceNumberDisplay = invoiceDetail?.invoiceNumber ?? 'Invoice';
 
   return (
     <ProjectFormShell
@@ -540,29 +549,52 @@ export function InvoiceFormPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <div
+                className={cn(
+                  'grid grid-cols-1 gap-5',
+                  isEdit ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                )}
+              >
+                {isEdit && (
+                  <Field>
+                    <FormFieldLabel>Invoice Number</FormFieldLabel>
+                    <InputWrapper>
+                      <Input
+                        value={invoiceNumberDisplay}
+                        readOnly
+                        disabled
+                        aria-readonly="true"
+                        data-testid="invoice-number-display"
+                      />
+                    </InputWrapper>
+                  </Field>
+                )}
+
                 <Controller
-                  name="invoiceNumber"
+                  name="externalInvoiceNumber"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <InvoiceRequiredFieldLabel>Invoice Number</InvoiceRequiredFieldLabel>
+                      <FormFieldLabel>External Invoice Number</FormFieldLabel>
                       <InputWrapper
                         className={fieldState.invalid ? invoiceInvalidControlClassName : undefined}
                       >
                         <Input
-                          {...field}
-                          placeholder="INV-001"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          placeholder="Vendor invoice #"
                           autoComplete="off"
                           aria-invalid={fieldState.invalid}
-                          data-testid="invoice-number-input"
+                          data-testid="invoice-external-invoice-number-input"
                         />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                     </Field>
                   )}
                 />
-
                 <Controller
                   name="invoiceDate"
                   control={control}
@@ -636,17 +668,17 @@ export function InvoiceFormPage() {
               <Separator />
 
               <div className="flex justify-end">
-                <div className="w-full max-w-sm space-y-3 rounded-lg border bg-muted/20 p-4">
+                <div className="w-full max-w-full space-y-3 rounded-lg border bg-muted/20 p-4 sm:max-w-sm">
                   <Controller
                     name="totalAmount"
                     control={control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid} className="gap-1">
-                        <div className="flex items-center justify-between gap-3 text-sm">
+                        <div className="grid gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center">
                           <InvoiceRequiredFieldLabel>Invoice Amount</InvoiceRequiredFieldLabel>
                           <InputWrapper
                             className={cn(
-                              'w-32',
+                              'w-full sm:w-32',
                               fieldState.invalid && invoiceInvalidControlClassName
                             )}
                           >
@@ -659,6 +691,7 @@ export function InvoiceFormPage() {
                               min={0.01}
                               decimalPlaces={2}
                               placeholder="0.00"
+                              useGrouping
                               aria-invalid={fieldState.invalid}
                               className="text-right"
                               data-testid="invoice-total-amount-input"
@@ -669,7 +702,7 @@ export function InvoiceFormPage() {
                       </Field>
                     )}
                   />
-                  <div className="flex items-center justify-between gap-3 text-sm">
+                  <div className="grid gap-2 text-sm sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center">
                     <span className="text-muted-foreground">Tax Rate (%)</span>
                     <Controller
                       name="taxRate"
@@ -677,7 +710,7 @@ export function InvoiceFormPage() {
                       render={({ field, fieldState }) => (
                         <InputWrapper
                           className={cn(
-                            'w-32',
+                            'w-full sm:w-32',
                             fieldState.invalid && invoiceInvalidControlClassName
                           )}
                         >
@@ -699,14 +732,18 @@ export function InvoiceFormPage() {
                       )}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <span className="text-muted-foreground">Tax ({formatPercent(taxRate)})</span>
-                    <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
+                    <span className="font-medium tabular-nums sm:text-right">
+                      {formatCurrency(taxAmount)}
+                    </span>
                   </div>
                   <Separator className="my-3" />
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <span className="font-medium text-foreground">Grand Total</span>
-                    <span className="font-semibold tabular-nums">{formatCurrency(grandTotal)}</span>
+                    <span className="font-semibold tabular-nums sm:text-right">
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -772,7 +809,24 @@ export function InvoiceFormPage() {
             onRemoveFile={(index) =>
               setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))
             }
-          />
+          >
+            {!isEdit && (
+              <Controller
+                name="vendorCoupon"
+                control={control}
+                render={({ field }) => (
+                  <label className="flex items-start gap-3 rounded-md border bg-muted/20 p-3 text-sm">
+                    <Checkbox
+                      checked={field.value === true}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      data-testid="invoice-vendor-coupon-checkbox"
+                    />
+                    <span className="min-w-0 font-medium text-foreground">Vendor Coupon</span>
+                  </label>
+                )}
+              />
+            )}
+          </ProjectFormDocumentsCard>
         </FormContent>
       </FormLayout>
     </ProjectFormShell>

@@ -6,6 +6,15 @@ const isDev = import.meta.env.DEV;
 
 export const mainSidebarMenu: MenuConfig = [
   {
+    type: 'group-collapsed',
+    title: 'Emails',
+    children: [
+      { title: 'procurement@ellicorp.com', path: '../email/procurement' },
+      { title: 'requisitions@ellicorp.com', path: '../email/requisitions' },
+      { title: 'contracts@ellicorp.com', path: '../email/contracts' },
+    ],
+  },
+  {
     type: 'menu',
     children: [{ title: 'Projects', path: '../projects' }],
   },
@@ -19,13 +28,6 @@ export const mainSidebarMenu: MenuConfig = [
       },
     ],
   },
-  { type: 'separator' },
-  {
-    type: 'group-collapsed',
-    title: 'Catalog',
-    children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
-  },
-  { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'Directory',
@@ -53,7 +55,6 @@ export const mainSidebarMenu: MenuConfig = [
       },
     ],
   },
-  { type: 'separator' },
   {
     type: 'group-collapsed',
     title: 'HR',
@@ -81,29 +82,24 @@ export const mainSidebarMenu: MenuConfig = [
       },
     ],
   },
-  { type: 'separator' },
   {
     type: 'menu',
     children: [{ title: 'Files', path: '../files' }],
   },
   {
-    type: 'separator',
+    type: 'group-collapsed',
+    title: 'Catalog',
+    children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
   },
   {
     type: 'menu',
-    children: [{ title: 'Activity Logger', path: '../activity-log' }],
-  },
-  {
-    type: 'separator',
+    children: [{ title: 'Activity Log', path: '../activity-log' }],
   },
   {
     type: 'menu',
     children: [{ title: 'Lookups', path: '../lookup' }],
   },
 
-  isDev && {
-    type: 'separator',
-  },
   isDev && {
     type: 'menu',
     children: [{ title: 'UI Kit', path: '../ui', badge: { variant: 'primary', text: 'Dev' } }],
@@ -124,6 +120,7 @@ export const projectSidebarMenu: MenuConfig = [
   {
     type: 'group-collapsed',
     title: 'GC',
+    collapse: false,
     children: [
       {
         title: 'Prime Change Orders',
@@ -136,6 +133,7 @@ export const projectSidebarMenu: MenuConfig = [
   {
     type: 'group-collapsed',
     title: 'Vendor',
+    collapse: false,
     children: [
       {
         title: 'RFQs',

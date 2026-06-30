@@ -18,7 +18,7 @@ export function SidebarHeader() {
           size="md"
           variant="ghost"
           onClick={sidebarToggle}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[state=open]:bg-sidebar-item-hover data-[state=open]:text-sidebar-foreground"
         >
           <PanelRight className="opacity-100" />
         </Button>

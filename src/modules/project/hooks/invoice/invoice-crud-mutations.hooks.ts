@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -15,7 +16,8 @@ export const useCreateInvoiceMutation = () => {
 
   return useMutation({
     mutationFn: (data: CreateInvoiceInput) => invoiceApi.create(data),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      posthog.capture('invoice_created', { invoice_id: created.id, project_id: created.projectId });
       await invalidateInvoiceQueries(queryClient);
       toast.success('Invoice created.');
     },

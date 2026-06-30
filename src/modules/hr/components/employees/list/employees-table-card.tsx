@@ -1,9 +1,14 @@
 import type { ReactNode } from 'react';
 
 import { DataGridSection } from '@/app/components/data-grid-section';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
-import { Input, InputWrapper } from '@/app/components/ui/input';
+import { Card } from '@/app/components/ui/card';
 import { formatDate, getInitials } from '@/app/lib/helpers';
 import {
   EmployeeActionsCell,
@@ -11,17 +16,7 @@ import {
 } from '@/modules/hr/components/employees/list/employee-list-column-cells';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
 import type { Table } from '@tanstack/react-table';
-import {
-  Building2,
-  CalendarDays,
-  Mail,
-  Phone,
-  Plus,
-  RefreshCcw,
-  Search,
-  Users,
-  X,
-} from 'lucide-react';
+import { Building2, CalendarDays, Mail, Phone, Plus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface EmployeesTableCardProps {
@@ -45,7 +40,6 @@ export function EmployeesTableCard({
   isLoading,
   isRefreshing,
   isError,
-  isRefetching,
   searchInput,
   searchQuery,
   onDelete,
@@ -55,37 +49,30 @@ export function EmployeesTableCard({
 }: EmployeesTableCardProps) {
   return (
     <Card className="min-w-0 max-w-full overflow-hidden">
-      <CardHeader>
-        <CardTitle>All Employees</CardTitle>
-        <CardToolbar className="w-full sm:w-auto">
-          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <InputWrapper variant="sm" className="w-full min-w-0 sm:w-72">
-              <Search className="size-4" />
-              <Input
-                placeholder="Search employees..."
-                value={searchInput}
-                onChange={(event) => onSearchChange(event.target.value)}
-              />
-            </InputWrapper>
-            {(searchQuery || isRefetching) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearSearch}>
-                {isRefetching ? (
-                  <RefreshCcw className="size-3.5 animate-spin" />
-                ) : (
-                  <X className="size-3.5" />
-                )}
-                {isRefetching ? 'Refreshing...' : 'Clear'}
-              </Button>
-            )}
-          </div>
-        </CardToolbar>
-      </CardHeader>
+      <TableCardHeader
+        title={
+          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+            All Employees
+          </span>
+        }
+        actions={
+          <TableCardHeaderToolbar>
+            <TableCardHeaderSearch
+              value={searchInput}
+              placeholder="Search employees..."
+              onChange={onSearchChange}
+              className="min-w-0 sm:w-72"
+            />
+            <TableCardHeaderClearButton active={Boolean(searchQuery)} onClick={onClearSearch} />
+          </TableCardHeaderToolbar>
+        }
+      />
 
       <DataGridSection
         table={table}
         totalCount={totalCount}
-        isLoading={isLoading}
-        isRefreshing={isRefreshing}
+        isLoading={isLoading || Boolean(isRefreshing)}
+        refreshIndicator="none"
         isError={isError}
         errorTitle="Failed to load employees."
         emptyIcon={<Users className="size-10 text-muted-foreground/40" />}

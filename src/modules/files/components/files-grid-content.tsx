@@ -1,4 +1,4 @@
-﻿import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
+import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 
 import { FilesEmptyState } from './files-empty-state';
@@ -42,10 +42,10 @@ export function FilesGridContent({
   if (sectionedData.data.length === 0) return <FilesEmptyState />;
 
   return (
-    <div>
+    <div className="min-w-0">
       {sectionedData.protectedItems.length > 0 && (
         <>
-          <div className="border-y border-border bg-muted/50 px-5 py-2.5">
+          <div className="min-w-0 border-y border-border bg-muted/50 px-3 py-2.5 sm:px-5">
             <FilesSectionHeader type="protected" count={sectionedData.protectedItems.length} />
           </div>
           <FilesGridView
@@ -66,7 +66,7 @@ export function FilesGridContent({
       )}
       {sectionedData.sharedItems.length > 0 && (
         <>
-          <div className="border-y border-border bg-muted/50 px-5 py-2.5">
+          <div className="min-w-0 border-y border-border bg-muted/50 px-3 py-2.5 sm:px-5">
             <FilesSectionHeader type="shared" count={sectionedData.sharedItems.length} />
           </div>
           <FilesGridView

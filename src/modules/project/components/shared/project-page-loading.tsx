@@ -15,7 +15,7 @@ export function ProjectDetailPageLoading({
   sidebarCards = 2,
 }: ProjectDetailPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <ToolbarSkeleton />
 
       <div className="space-y-5 pt-5">
@@ -43,7 +43,7 @@ export function ProjectDetailPageLoading({
 
 export function ProjectFormPageLoading({ sections = 3 }: ProjectFormPageLoadingProps) {
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <ToolbarSkeleton />
 
       <div className="space-y-5 pt-5">

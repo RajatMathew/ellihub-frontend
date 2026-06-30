@@ -4,6 +4,7 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useActivityPanelItems } from '@/app/hooks/use-activity-log';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import {
   DepartmentDetailDialogs,
   DepartmentDetailLoading,
@@ -28,7 +29,7 @@ export default function DepartmentDetailPage() {
   const deleteMutation = useDeleteDepartmentMutation();
   const removeEmployeeMutation = useRemoveEmployeeMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [assignOpen, setAssignOpen] = useState(false);
 
   useBreadcrumbLabel(
@@ -109,6 +110,7 @@ export default function DepartmentDetailPage() {
           activityItems={activityQuery.items}
           isActivityLoading={activityQuery.isLoading}
           isActivityError={activityQuery.isError}
+          activityCommentControls={activityQuery.commentControls}
           onActivityRetry={() => void activityQuery.refetch()}
           onClose={() => setSidebarOpen(false)}
         />

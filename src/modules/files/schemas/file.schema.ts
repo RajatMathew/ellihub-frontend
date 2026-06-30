@@ -1,6 +1,4 @@
-﻿import { z } from 'zod';
-
-import { MAX_UPLOAD_BYTES } from '@/modules/files/lib/file-upload-policy';
+import { z } from 'zod';
 
 // --- Enums ---
 
@@ -18,6 +16,7 @@ export const fileExportStatusSchema = z.enum([
   'COMPLETED',
   'FAILED',
   'EXPIRED',
+  'CANCELLED',
 ]);
 
 // --- Main model ---
@@ -100,9 +99,18 @@ export const fileExportJobSchema = z
     processedBytes: z.string(),
     error: z.string().nullable().optional(),
     downloadUrl: z.string().nullable().optional(),
+    folder: z
+      .object({
+        id: z.string(),
+        name: z.string(),
+        displayName: z.string().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
     expiresAt: z.string(),
     startedAt: z.string().nullable().optional(),
     completedAt: z.string().nullable().optional(),
+    cancelledAt: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -123,7 +131,7 @@ export const fileUploadInputSchema = z.object({
   name: z.string().min(1, 'File name is required'),
   parentId: z.string(),
   mimeType: z.string().optional(),
-  size: z.number().int().positive().max(MAX_UPLOAD_BYTES),
+  size: z.number().int().positive(),
 });
 
 export type FileUploadInput = z.infer<typeof fileUploadInputSchema>;

@@ -22,6 +22,7 @@ export interface MenuItem {
   heading?: string;
   children?: MenuConfig;
   disabled?: boolean;
+  /** For sidebar groups: set false to open the group by default. */
   collapse?: boolean;
   collapseTitle?: string;
   expandTitle?: string;
@@ -44,6 +45,7 @@ export interface MenuAccessRule {
 export interface MenuProjectActionRule {
   resource:
     | 'projectTeam'
+    | 'projectSchedule'
     | 'primeContract'
     | 'rfq'
     | 'purchaseOrder'

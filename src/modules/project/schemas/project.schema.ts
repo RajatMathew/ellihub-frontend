@@ -98,6 +98,16 @@ const projectActionCapabilitiesSchema = z
       .passthrough()
       .optional()
       .default({}),
+    projectSchedule: z
+      .object({
+        create: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
+        read: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
     primeContract: z
       .object({
         read: z.boolean().optional(),
@@ -233,6 +243,7 @@ export const projectDetailSchema = z
         canEdit: z.boolean().optional().default(false),
         canCreateProjectDocuments: z.boolean().optional().default(false),
         canManageTeam: z.boolean().optional().default(false),
+        canManageSchedule: z.boolean().optional().default(false),
         actions: projectActionCapabilitiesSchema,
       })
       .optional()

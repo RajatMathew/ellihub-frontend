@@ -36,10 +36,22 @@ interface SearchableSelectProps {
   disabled?: boolean;
   className?: string;
   testId?: string;
-  /** Callback to create a new item — renders a "+ Add" button at the bottom */
+  /** Callback to create a new item - renders a "+ Add" button at the bottom */
   onAdd?: () => void;
   /** Label for the add button (default: "Add New") */
   addLabel?: string;
+  /** Allows the user to use the typed search text as the selected value. */
+  allowCustomValue?: boolean;
+  /** Currently selected custom value. Used when no option value is selected. */
+  customValue?: string | null;
+  /** Called when a custom value is selected or cleared. */
+  onCustomValueChange?: (value: string | null) => void;
+  /** Formats the custom option row shown inside the menu. */
+  customValueLabel?: (value: string) => string;
+}
+
+function normalizeCustomValue(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
 }
 
 function SearchableSelect({
@@ -54,8 +66,13 @@ function SearchableSelect({
   testId,
   onAdd,
   addLabel = 'Add New',
+  allowCustomValue = false,
+  customValue,
+  onCustomValueChange,
+  customValueLabel = (input) => `Use "${input}"`,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = React.useState<number>(0);
 
@@ -63,9 +80,22 @@ function SearchableSelect({
     if (open && triggerRef.current) {
       setTriggerWidth(triggerRef.current.offsetWidth);
     }
+    if (!open) {
+      setSearch('');
+    }
   }, [open]);
 
   const selectedOption = options.find((opt) => opt.value === value);
+  const normalizedCustomValue = normalizeCustomValue(customValue ?? '');
+  const normalizedSearch = normalizeCustomValue(search);
+  const hasCustomSelection = !selectedOption && normalizedCustomValue.length > 0;
+  const exactSearchMatch = options.some(
+    (option) => option.label.trim().toLowerCase() === normalizedSearch.toLowerCase()
+  );
+  const showCustomOption = allowCustomValue && normalizedSearch.length > 0 && !exactSearchMatch;
+  const displayLabel = selectedOption?.label ?? (hasCustomSelection ? normalizedCustomValue : '');
+
+  const clearCustomValue = () => onCustomValueChange?.(null);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,9 +108,8 @@ function SearchableSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            // Match SelectTrigger variants (md size)
-            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[var(--text-sm--line-height)] gap-1 shadow-xs shadow-black/5 transition-shadow outline-none',
-            'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
+            'flex h-8.5 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-(--text-sm--line-height) gap-1 transition-shadow outline-none',
+            'aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className
           )}
@@ -94,10 +123,10 @@ function SearchableSelect({
           <span
             className={cn(
               'min-w-0 flex-1 truncate text-left font-normal',
-              !selectedOption && 'text-muted-foreground'
+              !displayLabel && 'text-muted-foreground'
             )}
           >
-            {selectedOption ? selectedOption.label : placeholder}
+            {displayLabel || placeholder}
           </span>
           {selectedOption?.badge && (
             <Badge variant="secondary" size="sm" className="shrink-0">
@@ -114,7 +143,7 @@ function SearchableSelect({
         style={triggerWidth > 0 ? { width: triggerWidth } : undefined}
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
@@ -126,7 +155,9 @@ function SearchableSelect({
                   disabled={option.disabled}
                   onSelect={() => {
                     if (option.disabled) return;
-                    onValueChange(option.value === value ? null : option.value);
+                    const nextValue = option.value === value ? null : option.value;
+                    onValueChange(nextValue);
+                    clearCustomValue();
                     setOpen(false);
                   }}
                 >
@@ -147,6 +178,25 @@ function SearchableSelect({
                   {option.value === value && <CommandCheck />}
                 </CommandItem>
               ))}
+              {showCustomOption && (
+                <CommandItem
+                  key={`custom-${normalizedSearch}`}
+                  value={`custom-${normalizedSearch}`}
+                  onSelect={() => {
+                    onValueChange(null);
+                    onCustomValueChange?.(normalizedSearch);
+                    setOpen(false);
+                  }}
+                >
+                  <Plus className="size-4 text-primary" />
+                  <span className="min-w-0 flex-1 truncate font-normal">
+                    {customValueLabel(normalizedSearch)}
+                  </span>
+                  {hasCustomSelection && normalizedCustomValue === normalizedSearch && (
+                    <CommandCheck />
+                  )}
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
           {onAdd && (

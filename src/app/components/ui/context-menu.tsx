@@ -134,7 +134,7 @@ function ContextMenuCheckboxItem({
     >
       <span
         aria-hidden="true"
-        className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-muted-foreground/40 bg-background text-transparent transition-colors group-data-[state=checked]:border-success group-data-[state=checked]:bg-success group-data-[state=checked]:text-white group-data-[state=indeterminate]:border-success group-data-[state=indeterminate]:bg-success group-data-[state=indeterminate]:text-white"
+        className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-muted-foreground/40 bg-background text-transparent transition-colors group-data-[state=checked]:border-success group-data-[state=checked]:bg-success group-data-[state=checked]:text-success-foreground group-data-[state=indeterminate]:border-success group-data-[state=indeterminate]:bg-success group-data-[state=indeterminate]:text-success-foreground"
       >
         <ContextMenuPrimitive.ItemIndicator>
           <CheckIcon className="size-3 stroke-[3]" />

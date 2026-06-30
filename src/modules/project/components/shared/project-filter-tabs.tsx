@@ -21,7 +21,7 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 sm:inline-flex sm:flex-nowrap sm:gap-0',
+        'relative flex min-h-11 min-w-0 flex-wrap items-stretch gap-x-1 gap-y-1 sm:inline-flex sm:flex-nowrap sm:gap-0',
         className
       )}
     >
@@ -34,10 +34,10 @@ export function ProjectFilterTabs<TValue extends string | undefined = string | u
             type="button"
             onClick={() => onValueChange(option.value)}
             className={cn(
-              'shrink-0 border-b-2 px-3 py-2 text-xs font-medium uppercase tracking-normal transition-colors sm:px-4',
+              'relative z-10 flex cursor-pointer items-center px-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-4',
               isActive
-                ? 'border-foreground text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? '!text-table-card-header-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-table-card-tab-accent'
+                : '!text-table-card-header-foreground/75 hover:!text-table-card-header-foreground'
             )}
           >
             {option.label}

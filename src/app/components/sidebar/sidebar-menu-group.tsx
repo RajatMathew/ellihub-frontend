@@ -49,7 +49,7 @@ export function SidebarGroupMenu({
   menu,
   name = 'res',
   classNames = {},
-  containerClassName = 'space-y-5 px-2.5',
+  containerClassName = 'space-y-1 px-2.5',
 }: SidebarGroupMenuProps) {
   const { pathname } = useLocation();
   const { base, stripLeadingDotDotSlash } = getSidebarResolutionBase(pathname);
@@ -85,21 +85,25 @@ export function SidebarGroupMenu({
     () => ({
       item:
         classNames.item ||
-        'h-8 px-2.5 text-sm font-normal text-foreground hover:text-sidebar-hover-foreground data-[selected=true]:bg-[#2F2F2F] data-[selected=true]:text-foreground [&[data-selected=true]_svg]:opacity-100',
+        "h-8 rounded-md px-3 text-[13px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&[data-selected=true]_svg]:opacity-100",
       subTrigger:
-        classNames.subTrigger || 'text-xs font-normal text-muted-foreground hover:bg-transparent',
-      subContent: classNames.subContent || 'ps-0',
+        classNames.subTrigger ||
+        'h-7 rounded-md px-3 text-[11px] font-semibold uppercase text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground [&_[data-slot=accordion-menu-sub-indicator]]:text-sidebar-muted',
+      subContent: classNames.subContent || 'ps-2',
     }),
     [classNames]
   );
 
+  const defaultOpenValue = menu?.find((item) => item.collapse === false) ? `${name}s` : undefined;
+
   return (
     <AccordionMenu
-      selectedValue={`${name}-trigger`}
+      key={pathname}
+      selectedValue={undefined}
       matchPath={matchPath}
       type="single"
       collapsible
-      defaultValue={`${name}-trigger`}
+      defaultValue={defaultOpenValue}
       className={containerClassName}
       classNames={defaultClassNames}
     >

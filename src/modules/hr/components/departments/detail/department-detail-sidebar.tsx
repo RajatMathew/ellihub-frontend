@@ -1,5 +1,8 @@
-import { ActivityPanel } from '@/app/components/activity-panel';
-import type { ActivityPanelItem } from '@/app/components/activity-panel';
+import {
+  ActivityPanel,
+  type ActivityPanelCommentControls,
+  type ActivityPanelItem,
+} from '@/app/components/activity-panel';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
@@ -11,6 +14,7 @@ interface DepartmentDetailSidebarProps {
   activityItems: ActivityPanelItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
+  activityCommentControls?: ActivityPanelCommentControls;
   onActivityRetry: () => void;
   onClose: () => void;
 }
@@ -21,6 +25,7 @@ export function DepartmentDetailSidebar({
   activityItems,
   isActivityLoading,
   isActivityError,
+  activityCommentControls,
   onActivityRetry,
   onClose,
 }: DepartmentDetailSidebarProps) {
@@ -34,6 +39,7 @@ export function DepartmentDetailSidebar({
           isLoading={isActivityLoading}
           isError={isActivityError}
           onRetry={onActivityRetry}
+          {...activityCommentControls}
         />
       }
     >

@@ -96,9 +96,13 @@ function filterMenuForAccess(
           if (path.includes('projects')) return access.access?.projectScope !== 'none';
           if (path.includes('monthly-bills')) {
             return (
-              access.isAdmin || access.access?.role === 'pm' || access.access?.role === 'accountant'
+              access.isAdmin ||
+              access.access?.role === 'pm' ||
+              access.access?.role === 'accountant' ||
+              access.access?.role === 'ap'
             );
           }
+          if (path.includes('email')) return true;
           if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
           if (path.includes('directory/contacts')) return access.can('contact', 'read');
           if (path.includes('directory/general-contractors')) {
@@ -156,7 +160,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
           return <SidebarCustomMenu key={key} menu={[group]} />;
 
         case 'separator':
-          return <Separator key={key} className="my-2.5" />;
+          return <Separator key={key} className="my-1 opacity-70" />;
 
         default:
           return null;
@@ -164,7 +168,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
     });
   }, [accessibleMenuConfig]);
 
-  return <div className="flex flex-col h-full min-w-60 mt-2.5">{renderedMenu}</div>;
+  return <div className="flex h-full min-w-60 flex-col gap-1 pt-2">{renderedMenu}</div>;
 };
 
 export default memo(SidebarBuilder);

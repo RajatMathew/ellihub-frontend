@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/componen
 import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
   fakeProjectDescription,
   fakeRFQDeliverables,
@@ -20,7 +19,7 @@ import {
   pickRandom,
   randInt,
 } from '@/lib/fake-data';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -32,6 +31,7 @@ import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddRFQAttachmentMutation,
   useCreateRFQMutation,
+  useRemoveRFQAttachmentMutation,
   useRFQDetailQuery,
   useUpdateRFQMutation,
 } from '@/modules/project/hooks/rfq';
@@ -54,14 +54,14 @@ const rfqInvalidControlClassName = formInvalidControlClassName;
 /* ---- Random data for dev ---- */
 
 function generateRandomRFQ(rfqTypes?: { id: string }[], units?: { id: string }[]) {
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + randInt(7, 30));
+  const rfqDate = new Date();
+  rfqDate.setDate(rfqDate.getDate() + randInt(7, 30));
 
   return {
     title: fakeRFQTitle(),
     description: fakeProjectDescription(),
     typeId: rfqTypes && rfqTypes.length > 0 ? pickRandom(rfqTypes).id : '',
-    bidDeadline: deadline.toISOString().slice(0, 10),
+    rfqDate: rfqDate.toISOString().slice(0, 10),
     deliverables: fakeRFQDeliverables(units),
   };
 }
@@ -127,8 +127,11 @@ export default function RFQFormPage() {
   const createMutation = useCreateRFQMutation();
   const updateMutation = useUpdateRFQMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
+  const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [removingAttachmentId, setRemovingAttachmentId] = useState<string | null>(null);
   const rfqTypeOptions = useMemo<RFQTypeOption[]>(() => {
     const options = rfqTypes ?? [];
     if (!isEdit || !rfqDetail) return options;
@@ -146,7 +149,7 @@ export default function RFQFormPage() {
     title: '',
     description: '',
     typeId: '',
-    bidDeadline: '',
+    rfqDate: '',
     deliverables: [{ description: '', quantity: 0, unitId: '' }],
   };
 
@@ -167,9 +170,7 @@ export default function RFQFormPage() {
         title: rfqDetail.title,
         description: rfqDetail.description || '',
         typeId: selectedRFQTypeId,
-        bidDeadline: rfqDetail.bidDeadline
-          ? new Date(rfqDetail.bidDeadline).toISOString().split('T')[0]
-          : '',
+        rfqDate: rfqDetail.rfqDate ? new Date(rfqDetail.rfqDate).toISOString().split('T')[0] : '',
         deliverables:
           rfqDetail.deliverables && rfqDetail.deliverables.length > 0
             ? rfqDetail.deliverables.map((d) => ({
@@ -224,9 +225,9 @@ export default function RFQFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolveRfqUploadFolderId(rfqId);
           if (folderId) {
-            await uploadFilesAndAttach(rfqId, folderId, selectedFiles);
+            queueRfqFiles(rfqId, folderId, selectedFiles);
           } else {
-            toast.error('RFQ folder not found — files were not uploaded.');
+            toast.error('RFQ folder not found \u2014 files were not uploaded.');
           }
         }
 
@@ -242,9 +243,9 @@ export default function RFQFormPage() {
           if (selectedFiles.length > 0) {
             const folderId = await resolveRfqUploadFolderId(created.id);
             if (folderId) {
-              await uploadFilesAndAttach(created.id, folderId, selectedFiles);
+              queueRfqFiles(created.id, folderId, selectedFiles);
             } else {
-              toast.error('RFQ folder not found — files were not uploaded.');
+              toast.error('RFQ folder not found \u2014 files were not uploaded.');
             }
           }
           navigate(`../${created.id}`, { relative: 'path' });
@@ -253,25 +254,33 @@ export default function RFQFormPage() {
     }
   };
 
-  async function uploadFilesAndAttach(targetRfqId: string, folderId: string, files: File[]) {
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
-        });
+  function queueRfqFiles(targetRfqId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'RFQ attachment',
+      onUploaded: async (uploaded) => {
         await addAttachmentMutation.mutateAsync({
           rfqId: targetRfqId,
           documentId: uploaded.id,
         });
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
-      }
-    }
+      },
+    });
   }
 
+  const handleRemoveExistingAttachment = useCallback(
+    async (attachment: { id: string }) => {
+      if (!rfqId) return;
+
+      setRemovingAttachmentId(attachment.id);
+      try {
+        await removeAttachmentMutation.mutateAsync({ rfqId, attachmentId: attachment.id });
+      } finally {
+        setRemovingAttachmentId(null);
+      }
+    },
+    [removeAttachmentMutation, rfqId]
+  );
   if ((isEdit && isLoadingDetail) || isLoadingProject) {
     return <ProjectFormPageLoading sections={RFQ_FORM_SECTIONS.length} />;
   }
@@ -306,14 +315,14 @@ export default function RFQFormPage() {
 
               <Separator />
 
-              {/* Bid Deadline + Track */}
+              {/* RFQ Date + Track */}
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Controller
-                  name="bidDeadline"
+                  name="rfqDate"
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <RFQRequiredFieldLabel>Bid Deadline</RFQRequiredFieldLabel>
+                      <RFQRequiredFieldLabel>RFQ Date</RFQRequiredFieldLabel>
                       <InputWrapper
                         className={fieldState.invalid ? rfqInvalidControlClassName : undefined}
                       >
@@ -321,7 +330,7 @@ export default function RFQFormPage() {
                           type="date"
                           {...field}
                           aria-invalid={fieldState.invalid}
-                          data-testid="rfq-bid-deadline-input"
+                          data-testid="rfq-date-input"
                         />
                       </InputWrapper>
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -442,6 +451,10 @@ export default function RFQFormPage() {
           <ProjectFormDocumentsCard
             selectedFiles={selectedFiles}
             existingDocuments={isEdit && rfqDetail ? rfqDetail.attachments : undefined}
+            existingTitle="Existing Attachments"
+            onRemoveExistingDocument={isEdit ? handleRemoveExistingAttachment : undefined}
+            isRemovingExistingDocument={(attachment) => removingAttachmentId === attachment.id}
+            getExistingDocumentRemoveDisabled={() => removeAttachmentMutation.isPending}
             onAddFile={(file) => setSelectedFiles((prev) => [...prev, file])}
             onRemoveFile={(index) =>
               setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index))

@@ -9,7 +9,7 @@ export function HelpLayout() {
   const selectedArticle = getHelpArticle(slug);
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground">
+    <div className="flex h-screen w-full bg-card text-foreground">
       <HelpArticleNav
         className="hidden w-80 shrink-0 md:flex"
         onSelect={(article) =>
@@ -18,7 +18,7 @@ export function HelpLayout() {
         sections={helpSections}
         selectedSlug={selectedArticle?.slug ?? 'index'}
       />
-      <main className="min-w-0 flex-1 overflow-auto">
+      <main className="min-w-0 flex-1 overflow-auto bg-card">
         <Outlet />
       </main>
     </div>

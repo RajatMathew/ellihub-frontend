@@ -5,9 +5,8 @@ import { Forbidden } from '@/app/components/error/forbidden';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import {
   PurchaseOrderFormDetailsCard,
   PurchaseOrderFormLineItemsCard,
@@ -32,7 +31,9 @@ import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useAddPOAttachmentMutation,
   useCreatePOMutation,
+  useNextPONumberQuery,
   usePODetailQuery,
+  usePONumberAvailabilityQuery,
   useUpdatePOMutation,
 } from '@/modules/project/hooks/purchase-order';
 import {
@@ -41,6 +42,8 @@ import {
 } from '@/modules/project/hooks/use-project-folder';
 import {
   createPOInputSchema,
+  getPoNumberSuffix,
+  normalizePoNumberSuffixInput,
   type CreatePOInput,
   type PODetail,
 } from '@/modules/project/schemas/purchase-order';
@@ -57,6 +60,8 @@ function createDefaultPOValues(projectId: string, rfqId?: string | null): Create
     projectId,
     vendorId: '',
     rfqId: rfqId || undefined,
+    poNumberMode: 'AUTO',
+    poNumberSuffix: '',
     tradeCategoryId: '',
     description: '',
     leadTime: '',
@@ -122,6 +127,8 @@ function getPOFormValues(
     projectId: po.projectId,
     vendorId: po.vendorId,
     rfqId: po.rfqId ?? undefined,
+    poNumberMode: 'AUTO',
+    poNumberSuffix: getPoNumberSuffix(po.poNumber),
     tradeCategoryId: resolvePOTradeCategoryId(po, tradeCategoryOptions),
     description: po.description ?? '',
     leadTime: po.leadTime ?? '',
@@ -216,6 +223,7 @@ export function POFormPage() {
   const createMutation = useCreatePOMutation();
   const updateMutation = useUpdatePOMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
   const [vendorSearch, setVendorSearch] = useState('');
   const [rfqSearch, setRfqSearch] = useState('');
   const [costCodeSearch, setCostCodeSearch] = useState('');
@@ -234,18 +242,29 @@ export function POFormPage() {
     label: unit.label ?? unit.name ?? unit.id,
   }));
 
-  const { control, handleSubmit, formState, reset, setValue, watch } = useForm<CreatePOInput>({
-    resolver: zodResolver(createPOInputSchema),
-    defaultValues: getPOFormValues(
-      projectId,
-      isEditMode ? existingPO : undefined,
-      initialRfqId,
-      tradeCategoryOptions
-    ),
-  });
+  const { control, handleSubmit, formState, reset, setError, setValue, watch } =
+    useForm<CreatePOInput>({
+      resolver: zodResolver(createPOInputSchema),
+      defaultValues: getPOFormValues(
+        projectId,
+        isEditMode ? existingPO : undefined,
+        initialRfqId,
+        tradeCategoryOptions
+      ),
+    });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lineItems' });
   const selectedRfqId = watch('rfqId');
   const selectedVendorId = watch('vendorId');
+  const poNumberMode = watch('poNumberMode') ?? 'AUTO';
+  const poNumberSuffix = watch('poNumberSuffix') ?? '';
+  const normalizedPoNumberSuffix = normalizePoNumberSuffixInput(poNumberSuffix);
+  const shouldCheckPoNumberAvailability = poNumberMode === 'MANUAL' && !!normalizedPoNumberSuffix;
+  const nextPoNumberQuery = useNextPONumberQuery(!isEditMode);
+  const poNumberAvailabilityQuery = usePONumberAvailabilityQuery({
+    poNumberSuffix,
+    excludeId: poId,
+    enabled: shouldCheckPoNumberAvailability,
+  });
   const { data: selectedRfq } = useRFQDetailQuery(selectedRfqId ?? '');
 
   const populatedFromRfqId = useRef<string | null>(null);
@@ -371,6 +390,27 @@ export function POFormPage() {
   }, [existingPO, isEditMode, projectId, reset, tradeCategoryOptions]);
 
   useEffect(() => {
+    if (isEditMode || poNumberMode !== 'MANUAL' || poNumberSuffix.trim()) return;
+
+    const nextSuffix =
+      nextPoNumberQuery.data?.poNumberSuffix ?? getPoNumberSuffix(nextPoNumberQuery.data?.poNumber);
+    if (!nextSuffix) return;
+
+    setValue('poNumberSuffix', nextSuffix, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: true,
+    });
+  }, [
+    isEditMode,
+    nextPoNumberQuery.data?.poNumber,
+    nextPoNumberQuery.data?.poNumberSuffix,
+    poNumberMode,
+    poNumberSuffix,
+    setValue,
+  ]);
+
+  useEffect(() => {
     if (!isEditMode || !existingPO) return;
 
     const tradeCategoryId = resolvePOTradeCategoryId(existingPO, tradeCategoryOptions);
@@ -489,23 +529,18 @@ export function POFormPage() {
   const [activeSection, setActiveSection] = useState<string>('po-details');
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  async function uploadFilesAndAttach(targetPoId: string, folderId: string, files: File[]) {
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
-        });
+  function queuePoFiles(targetPoId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'Purchase order attachment',
+      onUploaded: async (uploaded) => {
         await addAttachmentMutation.mutateAsync({
           poId: targetPoId,
           data: { documentId: uploaded.id },
         });
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload ${file.name}.`));
-      }
-    }
+      },
+    });
   }
 
   async function resolvePoUploadFolderId(targetPoId: string): Promise<string | undefined> {
@@ -517,10 +552,34 @@ export function POFormPage() {
   }
 
   const onSubmit = async (formData: CreatePOInput) => {
+    if (formData.poNumberMode === 'MANUAL') {
+      const normalizedSuffix = normalizePoNumberSuffixInput(formData.poNumberSuffix);
+      if (!normalizedSuffix) {
+        setError('poNumberSuffix', {
+          type: 'validate',
+          message: 'Enter a unique numeric PO number',
+        });
+        return;
+      }
+
+      if (poNumberAvailabilityQuery.data?.available === false) {
+        setError('poNumberSuffix', {
+          type: 'validate',
+          message: `${poNumberAvailabilityQuery.data.poNumber} is already in use`,
+        });
+        return;
+      }
+    }
+
     const { lineItems, ...rest } = formData;
     const cleaned: CreatePOInput = {
       ...rest,
       rfqId: rest.rfqId || undefined,
+      poNumberMode: rest.poNumberMode ?? 'AUTO',
+      poNumberSuffix:
+        rest.poNumberMode === 'MANUAL'
+          ? (normalizePoNumberSuffixInput(rest.poNumberSuffix) ?? rest.poNumberSuffix)
+          : undefined,
       description: rest.description || undefined,
       leadTime: rest.leadTime || undefined,
       expectedDate: rest.expectedDate || undefined,
@@ -546,7 +605,7 @@ export function POFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolvePoUploadFolderId(poId);
           if (folderId) {
-            await uploadFilesAndAttach(poId, folderId, selectedFiles);
+            queuePoFiles(poId, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }
@@ -566,7 +625,7 @@ export function POFormPage() {
         if (selectedFiles.length > 0) {
           const folderId = await resolvePoUploadFolderId(created.id);
           if (folderId) {
-            await uploadFilesAndAttach(created.id, folderId, selectedFiles);
+            queuePoFiles(created.id, folderId, selectedFiles);
           } else {
             toast.error('PO folder not found - files were not uploaded.');
           }
@@ -650,6 +709,13 @@ export function POFormPage() {
             hasMoreRfqs={rfqPicker.hasNextPage}
             onFetchMoreRfqs={rfqPicker.fetchNextPage}
             isVendorLocked={isVendorLocked}
+            autoPoNumber={isEditMode ? existingPO?.poNumber : nextPoNumberQuery.data?.poNumber}
+            isAutoPoNumberLoading={nextPoNumberQuery.isLoading}
+            poNumberAvailability={{
+              isChecking: poNumberAvailabilityQuery.isFetching,
+              isAvailable: poNumberAvailabilityQuery.data?.available,
+              poNumber: poNumberAvailabilityQuery.data?.poNumber,
+            }}
           />
           <PurchaseOrderFormLineItemsCard
             control={control}

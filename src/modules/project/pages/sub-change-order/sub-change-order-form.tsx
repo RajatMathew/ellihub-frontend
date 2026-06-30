@@ -22,8 +22,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency } from '@/app/lib/helpers';
-import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import { filesApi } from '@/modules/files/api/files.api';
+import { useManagedFileUploads } from '@/modules/files/uploads/use-managed-file-uploads';
 import { poApi } from '@/modules/project/api/purchase-order';
 import { PurchaseOrderFormTotalsFooter } from '@/modules/project/components/purchase-order/purchase-order-form-totals-footer';
 import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
@@ -150,6 +149,7 @@ export function SCOFormPage() {
   const createMutation = useCreateSCOMutation();
   const updateMutation = useUpdateSCOMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
+  const { queueFiles } = useManagedFileUploads();
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeSection, setActiveSection] = useState<string>('sco-details');
@@ -258,23 +258,18 @@ export function SCOFormPage() {
   });
   const isSubmitting = isSaving || createMutation.isPending || updateMutation.isPending;
 
-  async function uploadFilesAndAttach(targetScoId: string, folderId: string, files: File[]) {
-    for (const file of files) {
-      try {
-        const uploaded = await filesApi.uploadFile(file, {
-          name: file.name,
-          parentId: folderId,
-          mimeType: file.type || undefined,
-          size: file.size,
-        });
+  function queueScoFiles(targetScoId: string, folderId: string, files: File[]) {
+    queueFiles({
+      files,
+      parentId: folderId,
+      label: 'SCO attachment',
+      onUploaded: async (uploaded) => {
         await addAttachmentMutation.mutateAsync({
           scoId: targetScoId,
           data: { documentId: uploaded.id },
         });
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, `Failed to upload file: ${file.name}`));
-      }
-    }
+      },
+    });
   }
 
   async function resolveScoUploadFolderId(targetScoId: string): Promise<string | undefined> {
@@ -314,7 +309,7 @@ export function SCOFormPage() {
       if (selectedFiles.length > 0) {
         const folderId = await resolveScoUploadFolderId(saved.id);
         if (folderId) {
-          await uploadFilesAndAttach(saved.id, folderId, selectedFiles);
+          queueScoFiles(saved.id, folderId, selectedFiles);
         } else {
           toast.error('SCO folder not found - files were not uploaded.');
         }

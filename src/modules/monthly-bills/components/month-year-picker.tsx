@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import {
   createMonthlyBillDate,
@@ -15,6 +16,7 @@ import {
   type MonthlyBillPeriod,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TextMorph } from 'torph/react';
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
@@ -65,26 +67,43 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
     update({ year: selectedPeriod.year, month: nextMonth });
   };
 
+  const nextButton = (
+    <button
+      type="button"
+      onClick={() => go(1)}
+      disabled={isAtCurrent}
+      className={cn(
+        'flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground/80 transition-colors duration-150 ease-out hover:bg-surface-hover hover:text-foreground',
+        isAtCurrent &&
+          'cursor-not-allowed text-muted-foreground/35 hover:bg-transparent hover:text-muted-foreground/35'
+      )}
+    >
+      <ChevronRight className="size-4" strokeWidth={2.25} />
+    </button>
+  );
+
   return (
-    <div className="flex w-fit items-center gap-0.5 rounded-md border border-border bg-background px-1 py-1 shadow-sm">
+    <div className="flex w-fit items-center gap-0.5 rounded-xl border border-input bg-transparent p-1 shadow-sm shadow-black/5 transition-shadow duration-150 ease-out hover:shadow-md hover:shadow-black/5">
       <button
         type="button"
         onClick={() => go(-1)}
-        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground/80 transition-colors duration-150 ease-out hover:bg-surface-hover hover:text-foreground"
       >
-        <ChevronLeft className="size-4" strokeWidth={2.5} />
+        <ChevronLeft className="size-4" strokeWidth={2.25} />
       </button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="group flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            className="group relative flex h-7 w-[3.375rem] cursor-pointer items-center justify-center overflow-hidden rounded-md text-sm font-semibold text-foreground transition-colors duration-150 ease-out hover:bg-surface-hover"
           >
-            {formatMonthlyBillMonthName(date, 'short')}
+            <span className="transition-transform duration-150 ease-out group-hover:-translate-x-1">
+              <TextMorph>{formatMonthlyBillMonthName(date, 'short')}</TextMorph>
+            </span>
             <ChevronDown
-              className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-              strokeWidth={2.5}
+              className="pointer-events-none absolute right-1.5 size-3 translate-x-1 text-muted-foreground/70 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover:translate-x-0 group-hover:opacity-100"
+              strokeWidth={2.25}
             />
           </button>
         </DropdownMenuTrigger>
@@ -105,12 +124,14 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="group flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            className="group relative flex h-7 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-md text-sm font-semibold text-foreground transition-colors duration-150 ease-out hover:bg-surface-hover"
           >
-            {selectedPeriod.year}
+            <span className="transition-transform duration-150 ease-out group-hover:-translate-x-1">
+              <TextMorph>{selectedPeriod.year}</TextMorph>
+            </span>
             <ChevronDown
-              className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-              strokeWidth={2.5}
+              className="pointer-events-none absolute right-1.5 size-3 translate-x-1 text-muted-foreground/70 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover:translate-x-0 group-hover:opacity-100"
+              strokeWidth={2.25}
             />
           </button>
         </DropdownMenuTrigger>
@@ -127,17 +148,16 @@ export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <button
-        type="button"
-        onClick={() => go(1)}
-        disabled={isAtCurrent}
-        className={cn(
-          'flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-          isAtCurrent && 'cursor-not-allowed text-muted-foreground/40 hover:bg-transparent'
-        )}
-      >
-        <ChevronRight className="size-4" strokeWidth={2.5} />
-      </button>
+      {isAtCurrent ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex cursor-not-allowed">{nextButton}</span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">You cannot go past the current month.</TooltipContent>
+        </Tooltip>
+      ) : (
+        nextButton
+      )}
     </div>
   );
 }

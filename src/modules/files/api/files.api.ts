@@ -1,8 +1,9 @@
 import api from '@/app/api';
+import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
 import {
   fileExportJobSchema,
-  fileSearchResponseSchema,
   fileSchema,
+  fileSearchResponseSchema,
   folderDetailSchema,
   type FileExportJob,
   type FileFolderRenameInput,
@@ -12,11 +13,13 @@ import {
   type FolderCreateInput,
   type FolderDetail,
 } from '@/modules/files/schemas/file.schema';
-import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
-import { isAxiosError } from 'axios';
+import { isAxiosError, type AxiosProgressEvent } from 'axios';
+import { z } from 'zod';
 
 const BASE = '/file';
-const FILE_UNAVAILABLE_MESSAGE = 'This file no longer exists or has been deleted.';
+export const FILE_TEXT_PREVIEW_BYTES = 256 * 1024;
+const CHUNKED_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024;
+const CHUNK_UPLOAD_RETRY_ATTEMPTS = 3;
 
 export type ProjectProtectedFolderType =
   | 'INVOICE'
@@ -31,6 +34,14 @@ export type ProjectProtectedFolderType =
 export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';
 
 type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
+
+const chunkedUploadStartSchema = z.object({
+  uploadId: z.string(),
+  chunkSize: z.number().int().positive(),
+  totalChunks: z.number().int().positive(),
+});
+
+type ChunkedUploadStart = z.infer<typeof chunkedUploadStartSchema>;
 
 export interface FileSearchParams {
   page: number;
@@ -60,6 +71,11 @@ export interface FileUploadBatchInput {
   onProgress?: (progress: FileUploadProgress) => void;
 }
 
+export interface FileUploadOptions {
+  signal?: AbortSignal;
+  onUploadProgress?: (event: AxiosProgressEvent) => void;
+}
+
 function parseFolderId(raw: unknown, context: string): string {
   if (typeof raw !== 'string' || !raw) {
     throw new Error(`${context} returned an invalid folder id`);
@@ -72,71 +88,17 @@ function getDownloadName(item: DownloadTarget, fallback: string): string {
   return item.displayName || item.name || fallback;
 }
 
-function downloadBlob(blob: Blob, fileName: string): void {
-  const blobUrl = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+type FileReadDisposition = 'inline' | 'attachment';
 
-  anchor.href = blobUrl;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(blobUrl);
-}
+function buildFileReadUrl(id: string, disposition: FileReadDisposition): string {
+  const baseUrl = String(api.defaults.baseURL ?? '').replace(/\/+$/, '');
+  const params = new URLSearchParams({ disposition });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function getMessageFromPayload(payload: unknown): string | undefined {
-  if (typeof payload === 'string') return payload;
-  if (!isRecord(payload)) return undefined;
-
-  const message = payload.message;
-  if (typeof message === 'string') return message;
-  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
-    return message.join('\n');
+  if (disposition === 'attachment') {
+    params.set('download', 'true');
   }
 
-  return undefined;
-}
-
-async function getBlobErrorMessage(blob: Blob): Promise<string | undefined> {
-  const text = await blob.text();
-  if (!text.trim()) return undefined;
-
-  try {
-    return getMessageFromPayload(JSON.parse(text) as unknown) ?? text;
-  } catch {
-    return text;
-  }
-}
-
-function isUnavailableFileMessage(message: string | undefined): boolean {
-  const normalized = message?.toLowerCase() ?? '';
-
-  return (
-    normalized.includes('no file found') ||
-    normalized.includes('deleted') ||
-    normalized.includes('no longer exists')
-  );
-}
-
-async function normalizeDownloadError(error: unknown): Promise<unknown> {
-  if (!isAxiosError(error)) return error;
-
-  const data = error.response?.data;
-  const status = error.response?.status;
-  const message =
-    data instanceof Blob ? await getBlobErrorMessage(data) : getMessageFromPayload(data);
-
-  if ((status === 400 || status === 404) && isUnavailableFileMessage(message)) {
-    return new Error(FILE_UNAVAILABLE_MESSAGE);
-  }
-
-  if (message) return new Error(message);
-
-  return error;
+  return `${baseUrl}${BASE}/read/${encodeURIComponent(id)}?${params.toString()}`;
 }
 
 function parseExportJob(raw: unknown, context: string): FileExportJob {
@@ -150,6 +112,12 @@ function parseExportJob(raw: unknown, context: string): FileExportJob {
   return result.data;
 }
 
+function parseNullableExportJob(raw: unknown, context: string): FileExportJob | null {
+  if (raw == null) return null;
+
+  return parseExportJob(raw, context);
+}
+
 function downloadFromUrl(url: string, fileName: string): void {
   const anchor = document.createElement('a');
 
@@ -161,6 +129,191 @@ function downloadFromUrl(url: string, fileName: string): void {
   document.body.removeChild(anchor);
 }
 
+function parseUploadedFile(raw: unknown, context: string): FileItem {
+  const result = fileSchema.safeParse(raw);
+
+  if (!result.success) {
+    console.error(`[${context}] Zod parse error:`, result.error.issues);
+    throw result.error;
+  }
+
+  return result.data;
+}
+
+function parseChunkedUploadStart(raw: unknown): ChunkedUploadStart {
+  const result = chunkedUploadStartSchema.safeParse(raw);
+
+  if (!result.success) {
+    console.error('[filesApi.startChunkedUpload] Zod parse error:', result.error.issues);
+    throw result.error;
+  }
+
+  return result.data;
+}
+
+function shouldUseChunkedUpload(file: File): boolean {
+  return file.size > CHUNKED_UPLOAD_THRESHOLD_BYTES;
+}
+
+function getChunkedUploadPayload(file: File, data: FileUploadInput) {
+  return {
+    ...data,
+    fileName: file.name,
+    mimeType: data.mimeType || file.type || undefined,
+  };
+}
+
+function emitUploadProgress(
+  onUploadProgress: FileUploadOptions['onUploadProgress'],
+  loaded: number,
+  total: number
+): void {
+  onUploadProgress?.({
+    loaded,
+    total,
+    progress: total > 0 ? loaded / total : undefined,
+  } as AxiosProgressEvent);
+}
+
+function isRetryableUploadError(error: unknown): boolean {
+  if (isAxiosError(error)) {
+    if (error.code === 'ERR_CANCELED') return false;
+
+    const status = error.response?.status;
+    return !status || status === 408 || status === 429 || status >= 500;
+  }
+
+  return true;
+}
+
+function isChunkedUploadUnsupported(error: unknown): boolean {
+  if (!isAxiosError(error)) return false;
+
+  const message = String(error.response?.data?.message ?? error.message ?? '');
+  return error.response?.status === 400 && message.includes('Chunked uploads are not supported');
+}
+function waitForRetry(attempt: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, 400 * (attempt + 1)));
+}
+
+async function runChunkRequestWithRetry(
+  action: () => Promise<void>,
+  signal?: AbortSignal
+): Promise<void> {
+  for (let attempt = 0; attempt < CHUNK_UPLOAD_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await action();
+      return;
+    } catch (error) {
+      if (signal?.aborted || attempt === CHUNK_UPLOAD_RETRY_ATTEMPTS - 1) throw error;
+      if (!isRetryableUploadError(error)) throw error;
+
+      await waitForRetry(attempt);
+    }
+  }
+}
+
+async function uploadFileWithFormData(
+  file: File,
+  data: FileUploadInput,
+  options: FileUploadOptions
+): Promise<FileItem> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('name', data.name);
+  formData.append('parentId', data.parentId);
+  if (data.mimeType) formData.append('mimeType', data.mimeType);
+  formData.append('size', String(data.size));
+  formData.append('data', JSON.stringify(data));
+
+  const res = await api.post(`${BASE}/upload`, formData, {
+    timeout: 0,
+    signal: options.signal,
+    onUploadProgress: options.onUploadProgress,
+  });
+
+  return parseUploadedFile(res.data?.data ?? res.data, 'filesApi.uploadFile');
+}
+
+async function uploadFileInChunks(
+  file: File,
+  data: FileUploadInput,
+  options: FileUploadOptions
+): Promise<FileItem> {
+  let uploadId: string | undefined;
+  let reportedBytes = 0;
+
+  const reportProgress = (loaded: number) => {
+    reportedBytes = Math.max(reportedBytes, Math.min(loaded, file.size));
+    emitUploadProgress(options.onUploadProgress, reportedBytes, file.size);
+  };
+
+  try {
+    const startRes = await api.post(
+      `${BASE}/upload/chunked/start`,
+      getChunkedUploadPayload(file, data),
+      {
+        timeout: 0,
+        signal: options.signal,
+      }
+    );
+    const upload = parseChunkedUploadStart(startRes.data?.data ?? startRes.data);
+    uploadId = upload.uploadId;
+
+    const totalChunks = Math.ceil(file.size / upload.chunkSize);
+    if (totalChunks !== upload.totalChunks) {
+      throw new Error('Upload session chunk count does not match the selected file.');
+    }
+
+    reportProgress(0);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+      const chunkStart = chunkIndex * upload.chunkSize;
+      const chunkEnd = Math.min(file.size, chunkStart + upload.chunkSize);
+      const chunk = file.slice(chunkStart, chunkEnd);
+
+      await runChunkRequestWithRetry(async () => {
+        await api.put(`${BASE}/upload/chunked/${upload.uploadId}/${chunkIndex}`, chunk, {
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'x-upload-parent-id': data.parentId,
+          },
+          timeout: 0,
+          signal: options.signal,
+          onUploadProgress: (event) => {
+            reportProgress(chunkStart + Math.min(event.loaded, chunk.size));
+          },
+        });
+      }, options.signal);
+
+      reportProgress(chunkEnd);
+    }
+
+    const completeRes = await api.post(
+      `${BASE}/upload/chunked/${upload.uploadId}/complete`,
+      {
+        ...getChunkedUploadPayload(file, data),
+        totalChunks,
+      },
+      {
+        timeout: 0,
+        signal: options.signal,
+      }
+    );
+
+    reportProgress(file.size);
+    return parseUploadedFile(
+      completeRes.data?.data ?? completeRes.data,
+      'filesApi.completeChunkedUpload'
+    );
+  } catch (error) {
+    if (uploadId) {
+      void api.delete(`${BASE}/upload/chunked/${uploadId}`, { timeout: 0 }).catch(() => undefined);
+    }
+
+    throw error;
+  }
+}
 export const filesApi = {
   async getRootFolder(): Promise<FileItem> {
     const res = await api.get(`${BASE}/root`);
@@ -268,27 +421,22 @@ export const filesApi = {
     return result.data;
   },
 
-  async uploadFile(file: File, data: FileUploadInput): Promise<FileItem> {
+  async uploadFile(
+    file: File,
+    data: FileUploadInput,
+    options: FileUploadOptions = {}
+  ): Promise<FileItem> {
     assertUploadFileIsValid(file, data);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('name', data.name);
-    formData.append('parentId', data.parentId);
-    if (data.mimeType) formData.append('mimeType', data.mimeType);
-    formData.append('size', String(data.size));
-    formData.append('data', JSON.stringify(data));
-
-    const res = await api.post(`${BASE}/upload`, formData, { timeout: 0 });
-    const raw = res.data?.data ?? res.data;
-    const result = fileSchema.safeParse(raw);
-
-    if (!result.success) {
-      console.error('[filesApi.uploadFile] Zod parse error:', result.error.issues);
-      throw result.error;
+    if (shouldUseChunkedUpload(file)) {
+      try {
+        return await uploadFileInChunks(file, data, options);
+      } catch (error) {
+        if (!isChunkedUploadUnsupported(error)) throw error;
+      }
     }
 
-    return result.data;
+    return uploadFileWithFormData(file, data, options);
   },
 
   async uploadFiles(
@@ -320,18 +468,22 @@ export const filesApi = {
     return res.data?.data ?? res.data;
   },
 
-  async downloadFile(file: DownloadTarget): Promise<void> {
-    try {
-      const res = await api.get<Blob>(`${BASE}/read/${file.id}`, {
-        params: { disposition: 'attachment' },
-        responseType: 'blob',
-        timeout: 0,
-      });
+  getFileReadUrl(id: string, disposition: FileReadDisposition = 'inline'): string {
+    return buildFileReadUrl(id, disposition);
+  },
 
-      downloadBlob(res.data, getDownloadName(file, 'download'));
-    } catch (error: unknown) {
-      throw await normalizeDownloadError(error);
-    }
+  async getTextPreview(id: string): Promise<string> {
+    const res = await api.get<string>(`${BASE}/read/${id}`, {
+      headers: { Range: `bytes=0-${FILE_TEXT_PREVIEW_BYTES - 1}` },
+      responseType: 'text',
+      transformResponse: [(data) => data],
+    });
+
+    return typeof res.data === 'string' ? res.data : String(res.data ?? '');
+  },
+
+  async downloadFile(file: DownloadTarget): Promise<void> {
+    downloadFromUrl(buildFileReadUrl(file.id, 'attachment'), getDownloadName(file, 'download'));
   },
 
   async startFolderExport(folder: DownloadTarget): Promise<FileExportJob> {
@@ -348,6 +500,21 @@ export const filesApi = {
     return parseExportJob(raw, 'filesApi.getFolderExportJob');
   },
 
+  async getActiveFolderExportJob(folderId?: string): Promise<FileExportJob | null> {
+    const res = await api.get(`${BASE}/export/active`, {
+      params: folderId ? { folderId } : undefined,
+    });
+    const raw = res.data?.data ?? res.data;
+
+    return parseNullableExportJob(raw, 'filesApi.getActiveFolderExportJob');
+  },
+
+  async cancelFolderExportJob(jobId: string): Promise<FileExportJob> {
+    const res = await api.post(`${BASE}/export/${jobId}/cancel`);
+    const raw = res.data?.data ?? res.data;
+
+    return parseExportJob(raw, 'filesApi.cancelFolderExportJob');
+  },
   downloadExportJob(job: FileExportJob): void {
     if (!job.downloadUrl) throw new Error('Export is not ready yet.');
 

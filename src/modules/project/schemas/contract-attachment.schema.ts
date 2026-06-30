@@ -5,6 +5,7 @@ export const contractAttachmentFileSchema = z
     id: z.string(),
     name: z.string().nullable().optional(),
     displayName: z.string().nullable().optional(),
+    objectId: z.string().nullable().optional(),
     mimeType: z.string().nullable().optional(),
     size: z.number().nullable().optional(),
     type: z.enum(['FILE', 'FOLDER']).optional(),

@@ -1,3 +1,5 @@
+import posthog from 'posthog-js';
+
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -36,6 +38,30 @@ export const usePOStatsQuery = (projectId: string) =>
     enabled: !!projectId,
   });
 
+export const useNextPONumberQuery = (enabled = true) =>
+  useQuery({
+    queryKey: poKeys.nextNumber(),
+    queryFn: () => poApi.getNextNumber(),
+    enabled,
+    staleTime: 0,
+  });
+
+export const usePONumberAvailabilityQuery = ({
+  poNumberSuffix,
+  excludeId,
+  enabled = true,
+}: {
+  poNumberSuffix: string;
+  excludeId?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: poKeys.numberAvailability(poNumberSuffix, excludeId),
+    queryFn: () => poApi.checkNumberAvailability({ poNumberSuffix, excludeId }),
+    enabled: enabled && poNumberSuffix.trim().length > 0,
+    staleTime: 0,
+  });
+
 export const usePODetailQuery = (id: string) =>
   useQuery({
     queryKey: poKeys.detail(id),
@@ -63,7 +89,8 @@ export const useCreatePOMutation = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreatePOInput) => poApi.create(data),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      posthog.capture('purchase_order_created', { purchase_order_id: created.id, project_id: created.projectId });
       await invalidatePOQueries(qc);
     },
     onError: (err) => toastApiError(err, 'Failed to create purchase order.'),
@@ -87,7 +114,8 @@ export const useIssuePOMutation = () => {
   return useMutation({
     mutationFn: ({ id, emailVendor }: { id: string; emailVendor?: boolean }) =>
       poApi.issue(id, { emailVendor }),
-    onSuccess: async (_, { id }) => {
+    onSuccess: async (_, { id, emailVendor }) => {
+      posthog.capture('purchase_order_issued', { purchase_order_id: id, email_vendor: emailVendor ?? false });
       await invalidatePOQueries(qc, id);
     },
     onError: (err) => toastApiError(err, 'Failed to issue purchase order.'),

@@ -27,14 +27,19 @@ export function InfoRow({
     <div className={cn('flex min-w-0 items-start justify-between gap-3', className)}>
       <span
         className={cn(
-          'min-w-0 shrink-0 text-sm font-semibold',
+          'min-w-0 shrink break-words text-sm font-semibold [overflow-wrap:anywhere]',
           labelVariantClasses[labelVariant],
           labelClassName
         )}
       >
         {label}
       </span>
-      <span className={cn('min-w-0 break-words text-end text-sm font-bold', valueClassName)}>
+      <span
+        className={cn(
+          'min-w-0 flex-1 break-words text-end text-sm font-bold [overflow-wrap:anywhere]',
+          valueClassName
+        )}
+      >
         {children}
       </span>
     </div>

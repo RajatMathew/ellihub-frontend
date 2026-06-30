@@ -15,6 +15,7 @@ interface DataGridSectionProps<TData extends object> {
   totalCount: number;
   isLoading: boolean;
   isRefreshing?: boolean;
+  refreshIndicator?: 'inline' | 'none';
   isError: boolean;
   errorTitle: string;
   errorDescription?: string;
@@ -52,6 +53,7 @@ export function DataGridSection<TData extends object>({
   totalCount,
   isLoading,
   isRefreshing = false,
+  refreshIndicator = 'inline',
   isError,
   errorTitle,
   errorDescription = 'Something went wrong. Please try again.',
@@ -113,7 +115,7 @@ export function DataGridSection<TData extends object>({
       }}
       tableClassNames={tableClassNames}
     >
-      {isRefreshing && !isLoading && (
+      {refreshIndicator === 'inline' && isRefreshing && !isLoading && (
         <div
           className="flex min-h-9 items-center justify-end border-t bg-muted/20 px-4 py-2"
           aria-live="polite"

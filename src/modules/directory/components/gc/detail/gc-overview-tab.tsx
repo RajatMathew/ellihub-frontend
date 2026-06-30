@@ -34,7 +34,7 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
     <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
             General Info
           </CardTitle>
         </CardHeader>
@@ -73,7 +73,7 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
             Company Contact Details
           </CardTitle>
         </CardHeader>

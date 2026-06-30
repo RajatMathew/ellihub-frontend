@@ -1,4 +1,7 @@
+import { memo } from 'react';
+
 import { Card, CardContent } from '@/app/components/ui/card';
+import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import { Progress } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { formatCurrency } from '@/app/lib/helpers';
@@ -7,17 +10,19 @@ import { getProjectStageSwatchClassName } from '@/modules/project/lib/project-st
 import type { ProjectListItem } from '@/modules/project/schemas/project.schema';
 import { Link } from 'react-router-dom';
 
+const PROJECT_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
 const formatProjectDate = (value: string | null | undefined): string | undefined => {
   if (!value) return undefined;
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
 
-  return new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  return PROJECT_DATE_FORMATTER.format(date);
 };
 
 const formatBalanceCurrency = (value: number): string => {
@@ -100,7 +105,7 @@ function ProjectName({ name }: { name: string }) {
   );
 }
 
-export function ProjectCard({ project }: { project: ProjectListItem }) {
+export const ProjectCard = memo(function ProjectCard({ project }: { project: ProjectListItem }) {
   const originalContractValue = project.contractValue ?? project.primeContract?.contractValue ?? 0;
   const approvedChangeOrdersTotal = project.approvedChangeOrdersTotal ?? 0;
   const revisedContractValue =
@@ -128,17 +133,21 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
       to={`/app/project/${project.id}/overview`}
       className="block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full rounded-lg border-zinc-300/70 bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-zinc-400/60 hover:shadow-md hover:shadow-zinc-950/10 dark:border-zinc-600/80 dark:bg-zinc-950/50 dark:hover:border-zinc-500/70 dark:hover:shadow-black/30">
+      <Card className="h-full rounded-lg border-(--card-border) bg-card shadow-none transition-all duration-100 ease-out hover:-translate-y-0.5 hover:border-(--card-border-hover) hover:shadow-md hover:shadow-black/10 dark:hover:shadow-black/30">
         <CardContent className="flex flex-col gap-2 p-3.5 sm:p-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold leading-tight text-foreground">
-                {projectIdentifier}
-              </span>
+              <ListingIdentifierText
+                value={projectIdentifier}
+                className="block truncate text-sm leading-tight"
+              />
             </div>
             {badgeLabel && (
-              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-zinc-300/80 bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75 dark:border-zinc-600/80 dark:bg-zinc-950/60">
-                <span className={cn('size-1.5 rounded-[2px]', badgeDotClassName)} aria-hidden="true" />
+              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md border border-(--card-border) bg-background px-2 text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-foreground/75">
+                <span
+                  className={cn('size-1.5 rounded-[2px]', badgeDotClassName)}
+                  aria-hidden="true"
+                />
                 {badgeLabel}
               </span>
             )}
@@ -147,7 +156,7 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
             <ProjectName name={project.name} />
           </div>
 
-          <div className="flex items-center justify-between gap-4 pt-0.5 text-xs font-medium text-cyan-700 dark:text-cyan-300">
+          <div className="flex items-center justify-between gap-4 pt-0.5 text-xs font-medium text-info">
             <ProjectPartyName name={project.gc?.name} fallback="No GC assigned" />
             <ProjectPartyName
               name={project.leadPM?.name}
@@ -188,13 +197,13 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
 
           {tcoDateLabel && (
             <div className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
-              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
+              <span className="h-px w-14 bg-border" aria-hidden="true" />
               <span className="shrink-0">TCO: {tcoDateLabel}</span>
-              <span className="h-px w-14 bg-border dark:bg-zinc-700/70" aria-hidden="true" />
+              <span className="h-px w-14 bg-border" aria-hidden="true" />
             </div>
           )}
         </CardContent>
       </Card>
     </Link>
   );
-}
+});

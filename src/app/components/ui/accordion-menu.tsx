@@ -97,9 +97,11 @@ function AccordionMenu({
           mapping[trimmedChain[i]] = trimmedChain[i + 1];
         }
       }
+    } else if (props.defaultValue) {
+      mapping['root'] = props.defaultValue;
     }
     return mapping;
-  }, [children, matchPath, selectedValue, props.type]);
+  }, [children, matchPath, selectedValue, props.defaultValue, props.type]);
 
   const [nestedStates, setNestedStates] =
     React.useState<Record<string, string | string[]>>(initialNestedStates);

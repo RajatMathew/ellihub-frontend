@@ -1,8 +1,12 @@
 import { useState } from 'react';
 
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
 import { Calendar } from '@/app/components/ui/calendar';
-import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import {
   Select,
@@ -14,16 +18,16 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
 import { formatDate } from '@/app/lib/helpers';
 import { DATE_PRESETS, type SortField } from '@/modules/files/constants/files.constants';
-import { CalendarDays, LayoutGrid, List, X } from 'lucide-react';
+import { CalendarDays, LayoutGrid, List } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 
 interface FilesListFiltersProps {
+  folderName: string;
   sortBy: SortField;
   viewMode: 'list' | 'grid';
   hasActiveFilters: boolean;
   dateFrom: string | undefined;
   dateTo: string | undefined;
-  totalCount: number;
   onSortChange: (value: string) => void;
   onViewChange: (view: 'list' | 'grid') => void;
   onClearFilters: () => void;
@@ -45,13 +49,19 @@ function parseDateString(value: string | undefined): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+const headerInputControlClassName =
+  'h-8 !border-table-card-header-foreground/25 !bg-card-header !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+const headerSelectTriggerClassName = `${headerInputControlClassName} w-full text-xs data-[placeholder]:!text-table-card-header-foreground/75 sm:w-40`;
+const headerToggleItemClassName =
+  'flex-1 !bg-card-header !text-table-card-header-foreground hover:!bg-table-card-header-foreground/10 data-[state=on]:!bg-table-card-header-foreground/15 data-[state=on]:!text-table-card-header-foreground sm:flex-none [&_svg]:!text-current';
+
 export function FilesListFilters({
+  folderName,
   sortBy,
   viewMode,
   hasActiveFilters,
   dateFrom,
   dateTo,
-  totalCount,
   onSortChange,
   onViewChange,
   onClearFilters,
@@ -74,14 +84,14 @@ export function FilesListFilters({
           : 'Date range';
 
   return (
-    <CardHeader>
-      <CardTitle>
-        <span className="text-sm text-muted-foreground">
-          {totalCount} {totalCount === 1 ? 'item' : 'items'}
+    <TableCardHeader
+      title={
+        <span className="flex min-h-11 min-w-0 items-center font-['DM_Sans',sans-serif] text-sm font-semibold leading-none tracking-normal text-table-card-header-foreground">
+          <span className="truncate">{folderName}</span>
         </span>
-      </CardTitle>
-      <CardToolbar className="w-full flex-wrap justify-start sm:w-auto">
-        <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+      }
+      actions={
+        <TableCardHeaderToolbar className="min-w-0 flex-wrap justify-start lg:w-auto">
           <Popover
             open={popoverOpen}
             onOpenChange={(open) => {
@@ -97,17 +107,23 @@ export function FilesListFilters({
               <Button
                 variant="outline"
                 size="sm"
-                className={`h-8 gap-1.5 text-xs ${
-                  hasDateRange ? 'border-primary text-primary' : ''
+                className={`min-w-0 justify-start gap-1.5 text-xs lg:max-w-64 ${
+                  hasDateRange
+                    ? 'h-8 !border-primary !bg-background !text-primary hover:!bg-background hover:!text-primary [&_svg]:!text-primary'
+                    : headerInputControlClassName
                 }`}
               >
                 <CalendarDays className="size-3.5" />
-                <span className="max-w-52 truncate">{dateLabel}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{dateLabel}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <div className="flex flex-col">
-                <div className="flex flex-wrap gap-1.5 border-b p-3">
+            <PopoverContent
+              className="w-[min(calc(100vw-1rem),22rem)] p-0"
+              align="start"
+              sideOffset={6}
+            >
+              <div className="flex min-w-0 flex-col">
+                <div className="flex min-w-0 flex-wrap gap-1.5 border-b p-3">
                   {DATE_PRESETS.map((preset) => (
                     <Button
                       key={preset.label}
@@ -160,7 +176,7 @@ export function FilesListFilters({
             </PopoverContent>
           </Popover>
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectTrigger className={headerSelectTriggerClassName}>
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -175,25 +191,29 @@ export function FilesListFilters({
             variant="outline"
             size="sm"
             value={viewMode}
+            className="w-full justify-start sm:w-auto"
             onValueChange={(value) => {
               if (value === 'list' || value === 'grid') onViewChange(value);
             }}
           >
-            <ToggleGroupItem value="list" aria-label="List view">
+            <ToggleGroupItem
+              value="list"
+              aria-label="List view"
+              className={headerToggleItemClassName}
+            >
               <List className="size-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
+            <ToggleGroupItem
+              value="grid"
+              aria-label="Grid view"
+              className={headerToggleItemClassName}
+            >
               <LayoutGrid className="size-4" />
             </ToggleGroupItem>
           </ToggleGroup>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }

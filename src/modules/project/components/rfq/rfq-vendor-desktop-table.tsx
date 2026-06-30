@@ -24,7 +24,7 @@ export function RFQVendorDesktopTable({
   actionContext,
 }: RFQVendorDesktopTableProps) {
   return (
-    <div className="hidden overflow-x-auto md:block">
+    <div className="hidden overflow-x-auto lg:block">
       <table className="min-w-max w-full text-sm">
         <thead>
           <tr className="border-b text-left">

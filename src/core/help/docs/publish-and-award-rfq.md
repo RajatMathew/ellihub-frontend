@@ -47,7 +47,7 @@ Select **Upload Quote**.
 
 ![Upload Quote action](/help/scribe/publish-award-rfq/scribe-assets/step-10.jpeg)
 
-Enter the quoted amount, lead time, any adjustment or discount, and attach the quote document when available.
+Enter the quoted amount, lead time, any adjustment or discount, and attach the quote document.
 
 ![Quote amount field](/help/scribe/publish-award-rfq/scribe-assets/step-12.jpeg)
 

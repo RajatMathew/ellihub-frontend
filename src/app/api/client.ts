@@ -11,6 +11,20 @@ export const api = axios.create({
 });
 
 let forceUpdating = false;
+let redirectingToSignIn = false;
+
+function redirectToSignIn() {
+  if (redirectingToSignIn || typeof window === 'undefined') return;
+
+  const { pathname, search, hash } = window.location;
+  if (pathname === '/sign-in') return;
+
+  redirectingToSignIn = true;
+  const next = `${pathname}${search}${hash}`;
+  const redirectPath = next === '/' ? '/sign-in' : `/sign-in?next=${encodeURIComponent(next)}`;
+
+  window.location.assign(redirectPath);
+}
 
 // Request interceptor
 api.interceptors.request.use(
@@ -69,6 +83,9 @@ api.interceptors.response.use(
       } finally {
         forceUpdating = false;
       }
+    }
+    if (status === 401) {
+      redirectToSignIn();
     }
 
     return Promise.reject(error);

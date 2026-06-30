@@ -56,7 +56,7 @@ function makePO() {
     projectId: PROJECT_ID,
     vendorId: VENDOR_ID,
     vendor,
-    poNumber: 'PO-INV-001',
+    poNumber: 'PO-006',
     description: 'Issued invoice PO',
     status: 'ISSUED',
     total: '2500.00',
@@ -87,7 +87,8 @@ function makeInvoice(overrides: Record<string, unknown> = {}) {
     projectId: PROJECT_ID,
     vendorId: VENDOR_ID,
     purchaseOrderId: PO_ID,
-    invoiceNumber: 'INV-EXISTING-001',
+    invoiceNumber: 'PO-006-INV-001',
+    externalInvoiceNumber: 'VEND-EXISTING-001',
     invoiceDate: '2026-06-01T00:00:00.000Z',
     dueDate: '2026-07-01T00:00:00.000Z',
     totalAmount: 1200,
@@ -95,8 +96,9 @@ function makeInvoice(overrides: Record<string, unknown> = {}) {
     taxRate: 8.875,
     notes: 'Existing invoice notes',
     relatedSCOIds: [],
+    vendorCoupon: false,
     vendor,
-    purchaseOrder: { id: PO_ID, poNumber: 'PO-INV-001', vendorId: VENDOR_ID, status: 'ISSUED' },
+    purchaseOrder: { id: PO_ID, poNumber: 'PO-006', vendorId: VENDOR_ID, status: 'ISSUED' },
     project: { id: PROJECT_ID, name: projectDetail.name, jobNumber: projectDetail.jobNumber },
     attachments: [
       {
@@ -190,7 +192,11 @@ async function mockInvoiceApi(page: Page, handlers: MockHandlers = {}) {
     if (method === 'POST' && path === '/api/v1/invoice') {
       const payload = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>;
       handlers.onCreate?.(payload);
-      await route.fulfill({ json: { data: makeInvoice({ id: 'invoice-created', ...payload }) } });
+      await route.fulfill({
+        json: {
+          data: makeInvoice({ id: 'invoice-created', ...payload, invoiceNumber: 'PO-006-INV-002' }),
+        },
+      });
       return;
     }
 
@@ -254,9 +260,10 @@ test.describe('invoice create and edit form', () => {
     await page.goto(`/app/project/${PROJECT_ID}/invoices/create`);
     await expect(page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible();
 
-    await chooseOption(page, 'invoice-purchase-order-select', 'PO-INV-001');
+    await chooseOption(page, 'invoice-purchase-order-select', 'PO-006');
     await expect(page.getByTestId('invoice-vendor-select')).toContainText(vendor.name);
-    await page.getByTestId('invoice-number-input').fill('INV-CREATED-001');
+    await expect(page.getByTestId('invoice-number-display')).toHaveCount(0);
+    await page.getByTestId('invoice-external-invoice-number-input').fill('VEND-CREATED-001');
     await page.getByTestId('invoice-date-input').fill('2026-06-15');
     await page.getByTestId('invoice-due-date-input').fill('2026-07-15');
     await page.getByTestId('invoice-notes-input').fill('Created invoice notes');
@@ -270,12 +277,13 @@ test.describe('invoice create and edit form', () => {
 
     await page.getByRole('button', { name: 'Create Invoice' }).click();
 
-    await expect.poll(() => createPayload?.invoiceNumber).toBe('INV-CREATED-001');
+    await expect.poll(() => createPayload?.externalInvoiceNumber).toBe('VEND-CREATED-001');
+    expect(createPayload).not.toHaveProperty('invoiceNumber');
     expect(createPayload).toMatchObject({
       projectId: PROJECT_ID,
       vendorId: VENDOR_ID,
       purchaseOrderId: PO_ID,
-      invoiceNumber: 'INV-CREATED-001',
+      externalInvoiceNumber: 'VEND-CREATED-001',
       invoiceDate: '2026-06-15',
       dueDate: '2026-07-15',
       totalAmount: 1000,
@@ -283,10 +291,35 @@ test.describe('invoice create and edit form', () => {
       taxRate: 8.875,
       notes: 'Created invoice notes',
       relatedSCOIds: [],
+      vendorCoupon: false,
       attachments: ['document-uploaded'],
     });
   });
 
+  test('creates a vendor coupon invoice without an attachment', async ({ page }) => {
+    let createPayload: Record<string, unknown> | undefined;
+    await mockInvoiceApi(page, { onCreate: (payload) => (createPayload = payload) });
+
+    await page.goto(`/app/project/${PROJECT_ID}/invoices/create`);
+    await expect(page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible();
+
+    await chooseOption(page, 'invoice-purchase-order-select', 'PO-006');
+    await page.getByTestId('invoice-date-input').fill('2026-06-15');
+    await page.getByTestId('invoice-due-date-input').fill('2026-07-15');
+    await page.getByTestId('invoice-total-amount-input').fill('1000');
+    await page.getByTestId('invoice-tax-rate-input').fill('8.875');
+    await page.getByTestId('invoice-vendor-coupon-checkbox').click();
+
+    await page.getByRole('button', { name: 'Create Invoice' }).click();
+
+    await expect.poll(() => createPayload?.vendorCoupon).toBe(true);
+    expect(createPayload).not.toHaveProperty('invoiceNumber');
+    expect(createPayload).toMatchObject({
+      externalInvoiceNumber: null,
+      vendorCoupon: true,
+      attachments: [],
+    });
+  });
   test('prefills and preserves invoice fields on edit submit', async ({ page }) => {
     let updatePayload: Record<string, unknown> | undefined;
     await mockInvoiceApi(page, { onUpdate: (payload) => (updatePayload = payload) });
@@ -294,9 +327,13 @@ test.describe('invoice create and edit form', () => {
     await page.goto(`/app/project/${PROJECT_ID}/invoices/${INVOICE_ID}/edit`);
     await expect(page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible();
 
-    await expect(page.getByTestId('invoice-purchase-order-select')).toContainText('PO-INV-001');
+    await expect(page.getByTestId('invoice-purchase-order-select')).toContainText('PO-006');
     await expect(page.getByTestId('invoice-vendor-select')).toContainText(vendor.name);
-    await expect(page.getByTestId('invoice-number-input')).toHaveValue('INV-EXISTING-001');
+    await expect(page.getByTestId('invoice-number-display')).toHaveValue('PO-006-INV-001');
+    await expect(page.getByTestId('invoice-number-display')).toBeDisabled();
+    await expect(page.getByTestId('invoice-external-invoice-number-input')).toHaveValue(
+      'VEND-EXISTING-001'
+    );
     await expect(page.getByTestId('invoice-date-input')).toHaveValue('2026-06-01');
     await expect(page.getByTestId('invoice-due-date-input')).toHaveValue('2026-07-01');
     await expect(page.getByTestId('invoice-total-amount-input')).toHaveValue('1200');
@@ -306,12 +343,13 @@ test.describe('invoice create and edit form', () => {
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     await expect.poll(() => updatePayload?.id).toBe(INVOICE_ID);
+    expect(updatePayload).not.toHaveProperty('invoiceNumber');
     expect(updatePayload).toMatchObject({
       id: INVOICE_ID,
       projectId: PROJECT_ID,
       vendorId: VENDOR_ID,
       purchaseOrderId: PO_ID,
-      invoiceNumber: 'INV-EXISTING-001',
+      externalInvoiceNumber: 'VEND-EXISTING-001',
       invoiceDate: '2026-06-01',
       dueDate: '2026-07-01',
       totalAmount: 1200,

@@ -103,7 +103,7 @@ function TagInput({ value, onChange, placeholder = 'Add a tag...', className, di
         placeholder={placeholder}
         disabled={disabled}
         autoComplete="off"
-        className="flex h-8.5 w-full rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[--text-sm--line-height] text-foreground shadow-xs shadow-black/5 transition-[color,box-shadow] placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed"
+        className="flex h-8.5 w-full rounded-md border border-input bg-background px-3 text-[0.8125rem] leading-[--text-sm--line-height] text-foreground transition-[color,box-shadow] placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed"
       />
     </div>
   );

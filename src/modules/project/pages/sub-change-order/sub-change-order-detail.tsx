@@ -24,16 +24,16 @@ import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
-import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -46,6 +46,7 @@ import {
 import {
   DocumentEmailWizardDialog,
   InfoRow,
+  ProjectActivityPanel,
   PdfGenerateDialog,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
@@ -71,15 +72,12 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  Clock,
   Download,
   ExternalLink,
   FileText,
-  History,
   Mail,
   PanelRightOpen,
   Pencil,
-  PlusCircle,
   ShieldAlert,
   Trash2,
   Upload,
@@ -162,7 +160,9 @@ function DetailField({
       <div className="mb-1 text-xs font-medium uppercase tracking-normal text-muted-foreground">
         {label}
       </div>
-      <div className="break-words text-sm font-semibold text-foreground">{children ?? '-'}</div>
+      <div className="min-w-0 break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
+        {children ?? '-'}
+      </div>
     </div>
   );
 }
@@ -221,7 +221,7 @@ export function SCODetailPage() {
   const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddSCOAttachmentMutation();
   const removeAttachmentMutation = useRemoveSCOAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
@@ -231,7 +231,7 @@ export function SCODetailPage() {
     document?: FilePreviewItem;
   }[];
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<GeneratedPdfFile | null>(null);
@@ -256,59 +256,7 @@ export function SCODetailPage() {
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-  const {
-    data: activityData,
-    isLoading: isActivityLoading,
-    refetch: refetchActivity,
-  } = useActivityLogQuery({
-    entityType: 'subChangeOrder',
-    entityId: scoId,
-    size: 50,
-  });
 
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    if (!activityData?.data) return [];
-    return activityData.data.map((log) => {
-      const action = log.action.toLowerCase();
-      let icon = <Clock className="size-4" />;
-      let color = 'border-muted-foreground/20 bg-muted/30';
-
-      if (action.includes('create') || action.includes('draft')) {
-        icon = <PlusCircle className="size-4 text-primary" />;
-        color = 'border-primary/20 bg-primary/5';
-      } else if (action.includes('update')) {
-        icon = <Pencil className="size-4 text-info" />;
-        color = 'border-info/20 bg-info/5';
-      } else if (action.includes('approve') || action.includes('execute')) {
-        icon = <CheckCircle2 className="size-4 text-success" />;
-        color = 'border-success/20 bg-success/5';
-      } else if (
-        action.includes('delete') ||
-        action.includes('reject') ||
-        action.includes('void')
-      ) {
-        icon = <Trash2 className="size-4 text-destructive" />;
-        color = 'border-destructive/20 bg-destructive/5';
-      }
-
-      return {
-        id: log.id,
-        user: log.user?.name || 'System',
-        action: log.description,
-        timestamp: log.createdAt
-          ? new Date(log.createdAt).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '-',
-        avatar: log.user?.image || undefined,
-        icon,
-        color,
-      };
-    });
-  }, [activityData]);
 
   const statusName = typeof sco?.status === 'string' ? sco.status : (sco?.status?.name ?? '');
   const statusLabel =
@@ -590,7 +538,7 @@ export function SCODetailPage() {
   const hasReasonBanner = (isRejected && sco.rejectionReason) || (isVoid && sco.voidReason);
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>
@@ -743,14 +691,25 @@ export function SCODetailPage() {
           </StatsBar>
 
           {hasReasonBanner && (
-            <div className="rounded-lg border border-muted bg-muted/30 px-5 py-4">
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                <AlertTriangle className="size-4" />
-                {isRejected ? 'Rejection Reason' : 'Void Reason'}
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-muted-foreground/30 bg-muted/20 p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground shadow-xs border border-border">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Change Order Alert
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    {isRejected ? 'Rejection Reason' : 'Void Reason'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                    {isRejected ? sco.rejectionReason : sco.voidReason}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-foreground">
-                {isRejected ? sco.rejectionReason : sco.voidReason}
-              </p>
             </div>
           )}
 
@@ -828,44 +787,84 @@ export function SCODetailPage() {
                 </div>
               )}
               {purchaseOrderDetail?.lineItems?.length ? (
-                <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-max w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          PO Item
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Qty
-                        </th>
-                        <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                          Unit
-                        </th>
-                        <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                          Amount
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {purchaseOrderDetail.lineItems.map((item) => (
-                        <tr key={item.id} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4">
-                            <div className="font-medium">{item.description}</div>
+                <div className="mt-5 min-w-0">
+                  <div className="space-y-3 lg:hidden">
+                    {purchaseOrderDetail.lineItems.map((item) => (
+                      <div key={item.id} className="min-w-0 rounded-lg border p-3">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
+                              {item.description}
+                            </div>
                             {item.notes && (
-                              <div className="mt-1 text-xs text-muted-foreground">{item.notes}</div>
+                              <div className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                                {item.notes}
+                              </div>
                             )}
-                          </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums">
-                            {formatDecimal(item.quantity)}
-                          </td>
-                          <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
-                          <td className="py-2.5 text-right font-medium tabular-nums">
+                          </div>
+                          <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                             {money(item.amount)}
-                          </td>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <div className="text-muted-foreground">Qty</div>
+                            <div className="font-medium tabular-nums">
+                              {formatDecimal(item.quantity)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Unit</div>
+                            <div className="break-words font-medium [overflow-wrap:anywhere]">
+                              {lookupLabel(item.unit ?? item.unitId)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="min-w-max w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left">
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            PO Item
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Qty
+                          </th>
+                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
+                            Unit
+                          </th>
+                          <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
+                            Amount
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {purchaseOrderDetail.lineItems.map((item) => (
+                          <tr key={item.id} className="border-b last:border-0">
+                            <td className="py-2.5 pr-4">
+                              <div className="font-medium">{item.description}</div>
+                              {item.notes && (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {item.notes}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                              {formatDecimal(item.quantity)}
+                            </td>
+                            <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
+                            <td className="py-2.5 text-right font-medium tabular-nums">
+                              {money(item.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : null}
             </CardContent>
@@ -899,7 +898,7 @@ export function SCODetailPage() {
             <CardContent>
               {sco.lineItems.length > 0 ? (
                 <>
-                  <div className="space-y-3 md:hidden">
+                  <div className="space-y-3 lg:hidden">
                     {sco.lineItems.map((li, idx) => (
                       <div key={li.id} className="rounded-lg border p-3">
                         <div className="flex min-w-0 items-start justify-between gap-3">
@@ -968,7 +967,7 @@ export function SCODetailPage() {
                     </div>
                   </div>
 
-                  <div className="hidden overflow-x-auto md:block">
+                  <div className="hidden overflow-x-auto lg:block">
                     <table className="min-w-max w-full text-sm">
                       <thead>
                         <tr className="border-b text-left">
@@ -1112,20 +1111,20 @@ export function SCODetailPage() {
                   {attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex min-w-0 max-w-full flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex min-w-0 max-w-full flex-1 items-center gap-3">
                         <FileText className="size-4 text-muted-foreground shrink-0" />
                         {att.document?.id ? (
                           <button
                             type="button"
-                            className="block max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
+                            className="block w-full max-w-full truncate text-left text-sm font-medium text-primary hover:underline"
                             onClick={() => setAttachmentPreviewFile(att.document!)}
                           >
                             {att.document?.displayName ?? att.document?.name ?? 'Document'}
                           </button>
                         ) : (
-                          <span className="text-sm font-medium truncate">
+                          <span className="max-w-full truncate text-sm font-medium">
                             {att.document?.name ?? 'Document'}
                           </span>
                         )}
@@ -1174,22 +1173,11 @@ export function SCODetailPage() {
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activityChildren={
-            <div className="p-4">
-              {isActivityLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground uppercase tracking-normal">
-                  Loading activity...
-                </div>
-              ) : activityItems.length > 0 ? (
-                <ActivityFeed items={activityItems} />
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-normal font-bold">
-                    No activity recorded yet.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ProjectActivityPanel
+              entityType="subChangeOrder"
+              entityId={scoId}
+              emptyMessage="No activity recorded yet."
+            />
           }
         >
           <div className="space-y-6 pt-2">
@@ -1366,7 +1354,6 @@ export function SCODetailPage() {
             draft: payload,
             pdfOptions,
           });
-          await refetchActivity();
           handleEmailOpenChange(false);
         }}
       />
@@ -1463,20 +1450,19 @@ export function SCODetailPage() {
           open={uploadOpen}
           onOpenChange={setUploadOpen}
           parentId={scoUploadFolderId}
-          onSubmit={({ file, data }) => {
-            uploadFileMutation.mutate(
-              { file, data },
-              {
-                onSuccess: (uploaded) => {
-                  addAttachmentMutation.mutate(
-                    { scoId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) }
-                  );
-                },
-              }
-            );
+          onSubmit={(payload) => {
+            uploadManager.enqueueUpload(payload, {
+              label: 'SCO attachment',
+              onUploaded: async (uploaded) => {
+                await addAttachmentMutation.mutateAsync({
+                  scoId,
+                  data: { documentId: uploaded.id },
+                });
+              },
+            });
+            setUploadOpen(false);
           }}
-          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+          isSubmitting={false}
         />
       )}
 

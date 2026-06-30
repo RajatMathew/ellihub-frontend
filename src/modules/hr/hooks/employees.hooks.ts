@@ -7,6 +7,7 @@ import type {
   ListEmployeesParams,
   UpdateEmployeeInput,
 } from '@/modules/hr/schemas/employee.schema';
+import { lookupKeys } from '@/modules/lookup/constants/lookup.keys';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const useEmployeesQuery = (
@@ -50,6 +51,7 @@ export const useCreateEmployeeMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      void queryClient.invalidateQueries({ queryKey: lookupKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to create employee.'),
   });
@@ -62,6 +64,7 @@ export const useUpdateEmployeeMutation = () => {
     mutationFn: (input: UpdateEmployeeInput) => employeesApi.update(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      void queryClient.invalidateQueries({ queryKey: lookupKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update employee.'),
   });

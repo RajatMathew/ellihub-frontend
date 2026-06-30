@@ -1,3 +1,5 @@
+import posthog from 'posthog-js';
+
 import {
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
@@ -26,6 +28,7 @@ export function useSaveEmployee({ id, isEdit, onSaved }: UseSaveEmployeeParams) 
       }
 
       const created = await createMutation.mutateAsync(formData);
+      posthog.capture('employee_created', { employee_id: created.id });
       toast.success('Employee created.');
       onSaved(created.id);
     } catch (error) {

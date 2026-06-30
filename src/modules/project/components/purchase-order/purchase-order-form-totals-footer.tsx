@@ -34,18 +34,20 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
     <>
       <Separator className="mt-4" />
       <div className="flex justify-end pt-4">
-        <div className="w-full max-w-sm space-y-3">
-          <div className="flex items-center justify-between text-sm">
+        <div className="w-full max-w-full space-y-3 sm:max-w-sm">
+          <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+            <span className="font-medium tabular-nums sm:text-right">
+              {formatCurrency(subtotal)}
+            </span>
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span className="text-muted-foreground">Negotiated Discount (-)</span>
             <Controller
               name={negotiatedDiscountName}
               control={control}
               render={({ field }) => (
-                <InputWrapper className="w-32">
+                <InputWrapper className="w-full sm:w-32">
                   <NumberInput
                     value={field.value ?? 0}
                     onValueChange={field.onChange}
@@ -55,19 +57,20 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
                     min={0}
                     decimalPlaces={2}
                     placeholder="0.00"
+                    useGrouping
                     className="text-right"
                   />
                 </InputWrapper>
               )}
             />
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span className="text-muted-foreground">Shipping and Handling Fee</span>
             <Controller
               name={shippingHandlingFeeName}
               control={control}
               render={({ field }) => (
-                <InputWrapper className="w-32">
+                <InputWrapper className="w-full sm:w-32">
                   <NumberInput
                     value={field.value ?? 0}
                     onValueChange={field.onChange}
@@ -77,19 +80,20 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
                     min={0}
                     decimalPlaces={2}
                     placeholder="0.00"
+                    useGrouping
                     className="text-right"
                   />
                 </InputWrapper>
               )}
             />
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span className="text-muted-foreground">Tax %</span>
             <Controller
               name={taxPercentName}
               control={control}
               render={({ field }) => (
-                <InputWrapper className="w-32">
+                <InputWrapper className="w-full sm:w-32">
                   <NumberInput
                     value={field.value ?? 0}
                     onValueChange={field.onChange}
@@ -106,14 +110,16 @@ export function PurchaseOrderFormTotalsFooter<TFieldValues extends FieldValues>(
               )}
             />
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="grid gap-1 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span className="text-muted-foreground">{formatPurchaseOrderTaxLabel(taxPercent)}</span>
-            <span className="font-medium tabular-nums">{formatCurrency(taxAmount)}</span>
+            <span className="font-medium tabular-nums sm:text-right">
+              {formatCurrency(taxAmount)}
+            </span>
           </div>
           <Separator />
-          <div className="flex items-center justify-between text-sm font-semibold">
+          <div className="grid gap-1 text-sm font-semibold sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <span>Total</span>
-            <span className="tabular-nums">{formatCurrency(total)}</span>
+            <span className="tabular-nums sm:text-right">{formatCurrency(total)}</span>
           </div>
         </div>
       </div>

@@ -2,151 +2,106 @@
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
+@import './theme.css';
 
 /** Dark Mode Variant **/
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .dark-blue *));
 
-/** Colors - https://tailwindcss.com/docs/colors **/
-:root {
-  --background: #fff;
-  --main-background: #f5f5f5;
-  --form-background: var(--color-zinc-100);
-  --foreground: var(--color-zinc-950);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-950);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-950);
-  --primary: var(--color-emerald-600);
-  --primary-hover: var(--color-emerald-700);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-100);
-  --secondary-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-500);
-  --project-tabs-background: #f8f9fa;
-  --sidebar-hover-foreground: var(--color-green-400);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --success: var(--color-emerald-600);
-  --success-foreground: var(--color-white);
-  --warning: var(--color-amber-500);
-  --warning-foreground: var(--color-amber-950);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: oklch(94% 0.004 286.32);
-  /* between --color-zinc-100 and --color-zinc-200 */
-  --input: var(--color-zinc-200);
-  --ring: var(--color-zinc-400);
-  --radius: 0.5rem;
-  --card-header: var(--color-slate-50);
-  --card-header-foreground: var(--color-zinc-950);
-  --card-header-border: var(--color-purple-950);
-  --teal-header-accent: var(--color-purple-800);
-  --teal-header-accent-foreground: var(--color-white);
-  --info: var(--color-green-600);
-  --fieldwire-status-draft: var(--color-amber-500);
-  --fieldwire-status-neutral: var(--color-slate-400);
-  --fieldwire-status-pending: var(--color-blue-500);
-  --fieldwire-status-approved: var(--color-emerald-500);
-  --fieldwire-status-rejected: var(--color-red-500);
-  --label-light: lab(47.8878 1.65477 -5.77283);
-  --label-lighter: lab(35.1166 1.78212 -6.1173);
-  --separator: lab(96.1634 0.0993311 -0.364041);
-  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+/* Sidebar border overrides - ensure app navigation sidebar always uses dark borders */
+[data-slot='app-sidebar'] .border-border {
+  border-color: var(--sidebar-border) !important;
 }
 
-.dark {
-  --background: #0f0f0f;
-  --main-background: var(--background);
-  --form-background: var(--color-zinc-900);
-  /* zinc-950 but standard black */
-  --foreground: var(--color-zinc-50);
-  --card: #0d0d0d;
-  /* Slightly teal-tinted near-black for elevation */
-  --card-foreground: var(--color-zinc-50);
-  --popover: oklch(14.43% 0.005 200);
-  --popover-foreground: var(--color-zinc-50);
-  --primary: var(--color-emerald-600);
-  --primary-hover: var(--color-emerald-700);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-zinc-800);
-  --secondary-foreground: var(--color-zinc-50);
-  --muted: var(--color-zinc-800);
-  --muted-foreground: var(--color-zinc-400);
-  --project-tabs-background: #131313;
-  --sidebar-hover-foreground: var(--color-green-400);
-  --accent: var(--color-zinc-800);
-  --accent-foreground: var(--color-zinc-50);
-  --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-950);
-  --warning: var(--color-amber-400);
-  --warning-foreground: var(--color-amber-950);
-  --destructive: var(--color-red-600);
-  --destructive-foreground: var(--color-white);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-green-500);
-  --chart-3: var(--color-yellow-500);
-  --chart-4: var(--color-red-500);
-  --chart-5: var(--color-purple-500);
-  --border: var(--color-zinc-800);
-  --input: var(--color-zinc-800);
-  --ring: var(--color-zinc-600);
-  --card-header: #131313;
-  --card-header-foreground: var(--color-white);
-  --card-header-border: var(--color-purple-950);
-  --teal-header-accent: var(--color-purple-800);
-  --teal-header-accent-foreground: var(--color-white);
-  --info: var(--color-green-500);
-  --fieldwire-status-draft: var(--color-amber-500);
-  --fieldwire-status-neutral: var(--color-slate-400);
-  --fieldwire-status-pending: var(--color-blue-500);
-  --fieldwire-status-approved: var(--color-emerald-500);
-  --fieldwire-status-rejected: var(--color-red-500);
-  --label-light: lab(70 2 -7);
-  --label-lighter: lab(60 2 -7);
-  --separator: var(--color-zinc-800);
-  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.3), -1px 0 4px rgba(0, 0, 0, 0.2);
+[data-slot='app-sidebar'] [class*='border-t'],
+[data-slot='app-sidebar'] [class*='border-b'],
+[data-slot='app-sidebar'] [class*='border-l'],
+[data-slot='app-sidebar'] [class*='border-r'] {
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Override Separator component inside sidebar */
+[data-slot='app-sidebar'] [data-slot='separator'],
+[data-slot='app-sidebar'] [data-slot='accordion-menu-separator'],
+[data-slot='app-sidebar'] .bg-border {
+  background-color: var(--sidebar-border) !important;
+}
+
+/* Override any horizontal/vertical separator lines in sidebar */
+[data-slot='app-sidebar'] .h-px,
+[data-slot='app-sidebar'] .w-px {
+  background-color: var(--sidebar-border) !important;
 }
 
 /** Theme Setup **/
 @theme inline {
   /** Base Colors **/
   --color-background: var(--background);
-  --color-main-background: var(--main-background);
-  --color-form-background: var(--form-background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-page-header: var(--page-header);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-page-header-border: var(--page-header-border);
   --color-project-tabs-background: var(--project-tabs-background);
   --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-item-hover: var(--sidebar-item-hover);
+  --color-sidebar-item-active: var(--sidebar-item-active);
+  --color-sidebar-popover-bg: var(--sidebar-popover-bg);
+  --color-sidebar-popover-foreground: var(--sidebar-popover-foreground);
+  --color-sidebar-popover-muted: var(--sidebar-popover-muted);
+  --color-sidebar-popover-border: var(--sidebar-popover-border);
+  --color-sidebar-popover-hover: var(--sidebar-popover-hover);
+  --color-sidebar-popover-active: var(--sidebar-popover-active);
+  --color-card-border: var(--card-border);
+  --color-card-border-hover: var(--card-border-hover);
+  --color-rule-strong: var(--rule-strong);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-clay: var(--brand-clay);
+  --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-alpha: var(--primary-alpha);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-alpha: var(--success-alpha);
+  --color-success-accent: var(--success-accent);
+  --color-success-soft-foreground: var(--success-soft-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-alpha: var(--warning-alpha);
+  --color-warning-accent: var(--warning-accent);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-alpha: var(--destructive-alpha);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
   --color-card-header: var(--card-header);
   --color-card-header-foreground: var(--card-header-foreground);
-  --color-card-header-border: var(--card-header-border);
-  --color-teal-header-accent: var(--teal-header-accent);
-  --color-teal-header-accent-foreground: var(--teal-header-accent-foreground);
+  --color-table-card-header-foreground: var(--table-card-header-foreground);
+  --color-table-card-tab-accent: var(--table-card-tab-accent);
   --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-alpha: var(--info-alpha);
+  --color-info-accent: var(--info-accent);
+  --color-info-soft-foreground: var(--info-soft-foreground);
   --color-fieldwire-status-draft: var(--fieldwire-status-draft);
   --color-fieldwire-status-neutral: var(--fieldwire-status-neutral);
   --color-fieldwire-status-pending: var(--fieldwire-status-pending);
@@ -158,7 +113,7 @@
 
   /** Base Styles **/
   --color-border: var(--border);
-  --color-input: var(--input);
+  --color-input: var(--input-border);
   --color-ring: var(--ring);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-lg: var(--radius);
@@ -236,6 +191,25 @@
   }
 }
 
+@layer components {
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+    background: var(--popover) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--popover-foreground) !important;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 12%) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+    color: var(--muted-foreground) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-close-button] {
+    background: var(--popover) !important;
+    border-color: var(--border) !important;
+    color: var(--popover-foreground) !important;
+  }
+}
+
 /** Custom Scrollbar **/
 @layer base {
   ::-webkit-scrollbar {
@@ -247,19 +221,29 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--input);
+    background: var(--color-input);
     border-radius: 5px;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--input) transparent;
+    scrollbar-color: var(--color-input) transparent;
   }
 }
 
 /** Smooth scroll **/
 html {
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
   scroll-behavior: smooth;
+}
+
+body,
+#root {
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /** Custom Containers **/
@@ -272,7 +256,7 @@ html {
 }
 
 @utility container-fluid {
-  @apply w-full mx-auto px-4 lg:px-5;
+  @apply w-full min-w-0 max-w-full mx-auto px-4 lg:px-5;
 }
 
 /* Metronic Configs */

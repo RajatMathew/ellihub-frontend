@@ -42,6 +42,8 @@ type InfiniteMultiSearchSelectProps = {
   emptyMessage?: string;
   loadingMessage?: string;
   searchDebounceMs?: number;
+  maxVisibleSelectedOptions?: number;
+  overflowLabel?: (count: number) => string;
   triggerClassName?: string;
   contentClassName?: string;
   testId?: string;
@@ -106,6 +108,8 @@ export function InfiniteMultiSearchSelect({
   emptyMessage = 'No results found.',
   loadingMessage = 'Loading...',
   searchDebounceMs = 300,
+  maxVisibleSelectedOptions = 1,
+  overflowLabel = (count) => `+${count} more`,
   triggerClassName,
   contentClassName,
   testId,
@@ -183,6 +187,23 @@ export function InfiniteMultiSearchSelect({
     return next;
   }, [options, selectedOptions]);
 
+  const normalizedMaxVisibleSelectedOptions = Math.max(
+    0,
+    Math.trunc(maxVisibleSelectedOptions)
+  );
+  const visibleSelectedOptions = useMemo(
+    () => selectedOptions.slice(0, normalizedMaxVisibleSelectedOptions),
+    [normalizedMaxVisibleSelectedOptions, selectedOptions]
+  );
+  const hiddenSelectedOptions = useMemo(
+    () => selectedOptions.slice(normalizedMaxVisibleSelectedOptions),
+    [normalizedMaxVisibleSelectedOptions, selectedOptions]
+  );
+  const selectedSummary = useMemo(
+    () => selectedOptions.map((option) => option.label).join(', '),
+    [selectedOptions]
+  );
+
   useEffect(() => {
     setLocalSearch(search);
   }, [search]);
@@ -240,38 +261,54 @@ export function InfiniteMultiSearchSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal shadow-xs shadow-black/5 outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            'flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
             triggerClassName
           )}
         >
-          <span className="flex min-w-0 flex-1 flex-wrap gap-1">
+          <span
+            className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+            title={selectedSummary || undefined}
+          >
             {selectedOptions.length > 0 ? (
-              selectedOptions.map((option) => (
-                <Badge key={option.value} variant="secondary" appearance="outline" size="sm">
-                  <span className="max-w-[180px] truncate">{option.label}</span>
-                  {option.badge && <span className="text-muted-foreground">{option.badge}</span>}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Remove ${option.label}`}
-                    className="ml-1 inline-flex rounded-xs"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      toggle(option);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
+              <>
+                {visibleSelectedOptions.map((option) => (
+                  <Badge key={option.value} variant="secondary" appearance="outline" size="sm">
+                    <span className="max-w-[180px] truncate">{option.label}</span>
+                    {option.badge && <span className="text-muted-foreground">{option.badge}</span>}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Remove ${option.label}`}
+                      className="ml-1 inline-flex rounded-xs"
+                      onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
                         toggle(option);
-                      }
-                    }}
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggle(option);
+                        }
+                      }}
+                    >
+                      <X className="size-3" />
+                    </span>
+                  </Badge>
+                ))}
+                {hiddenSelectedOptions.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    appearance="outline"
+                    size="sm"
+                    className="shrink-0 border-dashed text-muted-foreground"
+                    aria-label={hiddenSelectedOptions.map((option) => option.label).join(', ')}
                   >
-                    <X className="size-3" />
-                  </span>
-                </Badge>
-              ))
+                    {overflowLabel(hiddenSelectedOptions.length)}
+                  </Badge>
+                )}
+              </>
             ) : (
               <span className="truncate text-muted-foreground">{placeholder}</span>
             )}
@@ -352,7 +389,7 @@ export function InfiniteMultiSearchSelect({
                           className={cn(
                             'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
                             selected
-                              ? 'border-success bg-success text-white'
+                              ? 'border-success bg-success text-success-foreground'
                               : 'border-muted-foreground/40 bg-background text-transparent',
                             option.disabled && 'opacity-60'
                           )}

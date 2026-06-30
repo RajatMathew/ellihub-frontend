@@ -8,8 +8,8 @@
 @import './components/scrollable.css';
 
 /** Dark/Light Theme Variant **/
-@custom-variant dark (&:is(.dark *));
-@custom-variant light (&:not(.dark *));
+@custom-variant dark (&:is(.dark *, .dark-blue *));
+@custom-variant light (&:not(:is(.dark *, .dark-blue *)));
 
 /** Custom Font Size **/
 @theme {

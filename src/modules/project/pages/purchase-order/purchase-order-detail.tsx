@@ -31,12 +31,12 @@ import { Separator } from '@/app/components/ui/separator';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
-import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useUploadFileMutation } from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -55,6 +55,7 @@ import {
 import {
   DocumentEmailWizardDialog,
   InfoRow,
+  ProjectActivityPanel,
   ProjectDetailDocumentsCard,
   ProjectDetailField,
   ProjectDetailPageLoading,
@@ -87,15 +88,12 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  Clock,
   ExternalLink,
   FileText,
-  History,
   Mail,
   MoreHorizontal,
   PanelRightOpen,
   Pencil,
-  PlusCircle,
   ShieldAlert,
   Truck,
   XCircle,
@@ -132,15 +130,6 @@ export function PODetailPage() {
     useInvoicesByPurchaseOrderQuery(poId);
   const { data: linkedSCOs = [], isLoading: isLinkedSCOsLoading } =
     useSCOsByPurchaseOrderQuery(poId);
-  const {
-    data: activityData,
-    isLoading: isActivityLoading,
-    refetch: refetchActivity,
-  } = useActivityLogQuery({
-    entityType: 'purchaseOrder',
-    entityId: poId,
-    size: 50,
-  });
   useBreadcrumbLabel(
     projectId && poId ? `/app/project/${projectId}/purchase-orders/${poId}` : undefined,
     po?.poNumber ?? undefined
@@ -184,13 +173,13 @@ export function PODetailPage() {
   const sendEmailMutation = useSendFeatureMailMutation();
   const addAttachmentMutation = useAddPOAttachmentMutation();
   const removeAttachmentMutation = useRemovePOAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const costCodeMap = new Map(costCodes.map((cc) => [cc.id, `${cc.code} - ${cc.name}`]));
   const attachments = po?.attachments ?? [];
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [issueOpen, setIssueOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pdfOptionsOpen, setPdfOptionsOpen] = useState(false);
@@ -381,45 +370,6 @@ export function PODetailPage() {
     setPdfDefaultTermsApplied(true);
   }
 
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    if (!activityData?.data) return [];
-    return activityData.data.map((log) => {
-      const action = log.action.toLowerCase();
-      let icon = <Clock className="size-4" />;
-      let color = 'border-muted-foreground/20 bg-muted/30';
-
-      if (action.includes('create') || action.includes('draft')) {
-        icon = <PlusCircle className="size-4 text-primary" />;
-        color = 'border-primary/20 bg-primary/5';
-      } else if (action.includes('update')) {
-        icon = <Pencil className="size-4 text-info" />;
-        color = 'border-info/20 bg-info/5';
-      } else if (action.includes('issue') || action.includes('deliver')) {
-        icon = <CheckCircle2 className="size-4 text-success" />;
-        color = 'border-success/20 bg-success/5';
-      } else if (action.includes('cancel') || action.includes('reject')) {
-        icon = <XCircle className="size-4 text-destructive" />;
-        color = 'border-destructive/20 bg-destructive/5';
-      }
-
-      return {
-        id: log.id,
-        user: log.user?.name || 'System',
-        action: log.description,
-        timestamp: log.createdAt
-          ? new Date(log.createdAt).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '-',
-        avatar: log.user?.image || undefined,
-        icon,
-        color,
-      };
-    });
-  }, [activityData]);
 
   const statusName = (po?.status?.name ?? '') as POStatusName;
   const isDraft = statusName === 'DRAFT';
@@ -458,7 +408,7 @@ export function PODetailPage() {
 
   if (!po) {
     return (
-      <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+      <div className="container-fluid max-w-full overflow-x-clip pb-5">
         <p className="text-sm text-muted-foreground">Purchase order not found.</p>
       </div>
     );
@@ -494,7 +444,7 @@ export function PODetailPage() {
   const vendorEmail = typeof po.vendor?.email === 'string' ? po.vendor.email : undefined;
 
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <Toolbar>
         <ToolbarWrapper>
@@ -629,25 +579,38 @@ export function PODetailPage() {
         <div className="min-w-0 flex-1 space-y-5">
           {/* ---- Overdue alert ---- */}
           {isOverdue && (
-            <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <ShieldAlert className="size-4 text-destructive" />
-                  <span className="text-xs font-semibold tracking-normal text-destructive uppercase">
-                    Purchase Alert
-                  </span>
+            <div className="relative flex flex-col gap-4 rounded-xl border border-border border-s-4 border-s-destructive bg-destructive-soft p-5 shadow-xs shadow-black/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-destructive shadow-xs border border-border">
+                  <ShieldAlert className="size-5" />
                 </div>
-                <p className="text-sm font-semibold text-destructive">Purchase Order is Overdue</p>
-                <p className="text-xs text-destructive/70 mt-0.5">
-                  Expected delivery was {po.expectedDate ? formatDate(po.expectedDate) : '-'}.
-                  Delivery has not been recorded.
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                      Purchase Alert
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    Purchase Order is Overdue
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Expected delivery was{' '}
+                    <span className="font-semibold text-foreground">
+                      {po.expectedDate ? formatDate(po.expectedDate) : '-'}
+                    </span>
+                    . Delivery has not been recorded.
+                  </p>
+                </div>
               </div>
-              <div className="shrink-0 text-left sm:pl-8 sm:text-right">
-                <div className="text-4xl font-bold text-destructive tabular-nums leading-none">
-                  {overdueDays}
+              <div className="flex items-center gap-4 shrink-0 sm:pl-8 sm:border-s sm:border-border/60">
+                <div className="text-left sm:text-right">
+                  <h2 className="text-5xl font-black text-destructive tracking-tight leading-none tabular-nums">
+                    {overdueDays}
+                  </h2>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1">
+                    days overdue
+                  </div>
                 </div>
-                <div className="text-xs text-destructive/70 mt-1">days overdue</div>
               </div>
             </div>
           )}
@@ -861,22 +824,11 @@ export function PODetailPage() {
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activityChildren={
-            <div className="p-4">
-              {isActivityLoading ? (
-                <div className="py-6 text-center text-sm uppercase tracking-normal text-muted-foreground">
-                  Loading activity...
-                </div>
-              ) : activityItems.length > 0 ? (
-                <ActivityFeed items={activityItems} />
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
-                    No activity recorded yet.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ProjectActivityPanel
+              entityType="purchaseOrder"
+              entityId={poId}
+              emptyMessage="No activity recorded yet."
+            />
           }
         >
           <div className="space-y-6 pt-2">
@@ -1113,7 +1065,7 @@ export function PODetailPage() {
             draft: payload,
             pdfOptions,
           });
-          await Promise.all([refetchPoDetail(), refetchActivity()]);
+          await refetchPoDetail();
           handleEmailOpenChange(false);
         }}
       />
@@ -1222,20 +1174,19 @@ export function PODetailPage() {
           open={uploadOpen}
           onOpenChange={setUploadOpen}
           parentId={poUploadFolderId}
-          onSubmit={({ file, data }) => {
-            uploadFileMutation.mutate(
-              { file, data },
-              {
-                onSuccess: (uploaded) => {
-                  addAttachmentMutation.mutate(
-                    { poId, data: { documentId: uploaded.id } },
-                    { onSuccess: () => setUploadOpen(false) }
-                  );
-                },
-              }
-            );
+          onSubmit={(payload) => {
+            uploadManager.enqueueUpload(payload, {
+              label: 'Purchase order attachment',
+              onUploaded: async (uploaded) => {
+                await addAttachmentMutation.mutateAsync({
+                  poId,
+                  data: { documentId: uploaded.id },
+                });
+              },
+            });
+            setUploadOpen(false);
           }}
-          isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+          isSubmitting={false}
         />
       )}
     </div>

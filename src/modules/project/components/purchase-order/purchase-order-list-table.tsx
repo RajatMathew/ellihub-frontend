@@ -1,5 +1,6 @@
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Badge } from '@/app/components/ui/badge';
+import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import {
   PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
@@ -7,7 +8,6 @@ import {
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
 import type { Table } from '@tanstack/react-table';
 import { ClipboardList } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 import { getSubChangeOrderTotalAmount } from '../sub-change-order/sub-change-order-list-utils';
 import {
@@ -46,8 +46,8 @@ export function PurchaseOrderListTable({
     <DataGridSection
       table={table}
       totalCount={totalCount}
-      isLoading={isLoading}
-      isRefreshing={isRefreshing}
+      isLoading={isLoading || Boolean(isRefreshing)}
+      refreshIndicator="none"
       isError={isError}
       errorTitle="Failed to load purchase orders"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}
@@ -90,13 +90,11 @@ function PurchaseOrderMobileCard({
     <div className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5">
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <Link
+          <ListingIdentifierLink
             to={`${po.id}`}
-            className="block max-w-full truncate text-sm font-semibold text-foreground hover:text-primary"
-            title={po.poNumber ?? undefined}
-          >
-            {po.poNumber ?? '-'}
-          </Link>
+            value={po.poNumber}
+            className="block max-w-full truncate text-sm"
+          />
           <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
             {po.description ?? '-'}
           </p>
@@ -114,13 +112,12 @@ function PurchaseOrderMobileCard({
         </Badge>
         <PurchaseOrderTradeCategoryCell po={po} />
         {rfqLabel && po.rfqId && (
-          <Link
+          <ListingIdentifierLink
             to={`/app/project/${po.projectId}/rfqs/${po.rfqId}`}
-            className="inline-flex max-w-full items-center rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-foreground hover:text-primary"
+            value={`RFQ ${rfqLabel}`}
+            className="inline-flex max-w-full items-center rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-xs"
             title={rfqLabel}
-          >
-            <span className="truncate">RFQ {rfqLabel}</span>
-          </Link>
+          />
         )}
       </div>
 

@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -14,6 +14,7 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 import { formatDateTime } from '@/app/lib/helpers';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
+import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -78,19 +79,23 @@ export function useFilesColumns({
                 rootLabel: locationRootLabel,
               })
             : undefined;
+          const fileName = getFileDisplayNameWithExtension(row.original);
 
           return (
-            <div className="flex min-w-0 items-start gap-2.5">
+            <div className="flex min-w-0 max-w-full items-start gap-2.5">
               <FileTypeIcon
                 fileType={row.original.type}
                 mimeType={row.original.mimeType}
-                fileName={row.original.displayName || row.original.name}
+                fileName={fileName}
                 className="mt-0.5 size-4 shrink-0"
               />
-              <div className="min-w-0">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="line-clamp-1 text-sm font-medium text-foreground">
-                    {row.original.displayName || row.original.name || 'Unnamed'}
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
+                  <span
+                    className="min-w-0 max-w-full truncate text-sm font-medium text-foreground"
+                    title={fileName}
+                  >
+                    {fileName}
                   </span>
                   {row.original.primeContract?.isPinned && (
                     <Badge variant="secondary" appearance="light" size="sm">
@@ -104,9 +109,9 @@ export function useFilesColumns({
                   )}
                 </div>
                 {location && (
-                  <span className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                  <span className="mt-1 flex min-w-0 max-w-full items-center gap-1 text-xs text-muted-foreground">
                     <FolderTree className="size-3 shrink-0" />
-                    <span className="truncate" title={location}>
+                    <span className="min-w-0 flex-1 truncate" title={location}>
                       {location}
                     </span>
                   </span>
@@ -118,7 +123,7 @@ export function useFilesColumns({
         meta: {
           headerClassName: 'min-w-72',
           textOverflow: 'truncate',
-          tooltipContent: (file) => file.displayName || file.name || 'Unnamed',
+          tooltipContent: (file) => getFileDisplayNameWithExtension(file),
           skeleton: <Skeleton className="h-3.5 w-48" />,
         },
       },

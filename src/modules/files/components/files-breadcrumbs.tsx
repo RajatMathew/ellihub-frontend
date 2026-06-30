@@ -1,58 +1,93 @@
 import {
   Breadcrumb,
+  BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/app/components/ui/breadcrumb';
-import type { FolderPathEntry } from '@/modules/files/hooks/use-files-list-params';
+import { cn } from '@/app/lib/utils';
 import { Home } from 'lucide-react';
 
-interface FilesBreadcrumbsProps {
-  folderPath: FolderPathEntry[];
-  rootLabel?: string;
-  onBreadcrumbClick: (index: number) => void;
+export interface FilesBreadcrumbEntry {
+  id: string;
+  name: string;
 }
 
+interface FilesBreadcrumbsProps {
+  breadcrumbs: FilesBreadcrumbEntry[];
+  rootLabel?: string;
+  onBreadcrumbClick: (folderId?: string) => void;
+}
+
+const MAX_VISIBLE_ENTRIES = 2;
+
 export function FilesBreadcrumbs({
-  folderPath,
+  breadcrumbs,
   rootLabel = 'Files',
   onBreadcrumbClick,
 }: FilesBreadcrumbsProps) {
-  if (folderPath.length === 0) return null;
+  if (breadcrumbs.length === 0) return null;
+
+  const shouldCollapse = breadcrumbs.length > MAX_VISIBLE_ENTRIES;
+  const visibleStartIndex = shouldCollapse ? breadcrumbs.length - MAX_VISIBLE_ENTRIES : 0;
+  const visibleEntries = breadcrumbs.slice(visibleStartIndex);
 
   return (
-    <Breadcrumb className="mb-4 overflow-x-auto">
-      <BreadcrumbList className="flex-nowrap">
-        <BreadcrumbItem>
-          <BreadcrumbLink
-            className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap"
-            onClick={() => onBreadcrumbClick(-1)}
-          >
-            <Home className="size-3.5" />
-            {rootLabel}
+    <Breadcrumb className="mb-4 w-full min-w-0 max-w-full overflow-hidden">
+      <BreadcrumbList className="w-full min-w-0 flex-nowrap overflow-hidden">
+        <BreadcrumbItem className="min-w-0 shrink-0">
+          <BreadcrumbLink asChild>
+            <button
+              type="button"
+              className="flex max-w-[7.5rem] min-w-0 cursor-pointer items-center gap-1.5 overflow-hidden whitespace-nowrap sm:max-w-48"
+              onClick={() => onBreadcrumbClick(undefined)}
+              title={rootLabel}
+            >
+              <Home className="size-3.5 shrink-0" />
+              <span className="min-w-0 truncate">{rootLabel}</span>
+            </button>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        {folderPath.map((entry, index) => (
-          <span key={entry.id} className="contents">
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              {index === folderPath.length - 1 ? (
-                <BreadcrumbPage className="max-w-52 truncate sm:max-w-xs">
-                  {entry.name}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink
-                  className="max-w-40 cursor-pointer truncate sm:max-w-52"
-                  onClick={() => onBreadcrumbClick(index)}
-                >
-                  {entry.name}
-                </BreadcrumbLink>
-              )}
+
+        {shouldCollapse && (
+          <>
+            <BreadcrumbSeparator className="shrink-0" />
+            <BreadcrumbItem className="shrink-0">
+              <BreadcrumbEllipsis className="size-6" />
             </BreadcrumbItem>
-          </span>
-        ))}
+          </>
+        )}
+
+        {visibleEntries.map((entry, visibleIndex) => {
+          const originalIndex = visibleStartIndex + visibleIndex;
+          const isLast = originalIndex === breadcrumbs.length - 1;
+
+          return (
+            <span key={entry.id} className="contents">
+              <BreadcrumbSeparator className="shrink-0" />
+              <BreadcrumbItem className={cn('min-w-0', isLast ? 'flex-1' : 'shrink-0')}>
+                {isLast ? (
+                  <BreadcrumbPage className="block min-w-0 max-w-full truncate" title={entry.name}>
+                    {entry.name}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <button
+                      type="button"
+                      className="block max-w-[7.5rem] min-w-0 cursor-pointer truncate text-left sm:max-w-44"
+                      onClick={() => onBreadcrumbClick(entry.id)}
+                      title={entry.name}
+                    >
+                      {entry.name}
+                    </button>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </span>
+          );
+        })}
       </BreadcrumbList>
     </Breadcrumb>
   );

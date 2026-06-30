@@ -6,6 +6,9 @@ import '@app/styles/globals.css';
 
 import { lazy, Suspense, useEffect, useState } from 'react';
 
+import { UploadManagerProvider } from '@/modules/files/uploads/upload-manager';
+import { UploadTransferTray } from '@/modules/files/uploads/upload-transfer-tray';
+
 import { AppLayout } from './components/layouts';
 import { AppLoadingScreen } from './components/loader/app';
 import { AccessProvider } from './contexts/access';
@@ -30,18 +33,21 @@ export function App() {
   }, []);
   return (
     <QueryProvider>
-      <AccessProvider>
-        <BreadcrumbLabelsProvider>
-          <LoadingBarContainer>
-            <Suspense fallback={<AppLoadingScreen />}>
-              <AppLayout>
-                <AppRouting />
-              </AppLayout>
-            </Suspense>
-            <Toaster position="top-center" />
-          </LoadingBarContainer>
-        </BreadcrumbLabelsProvider>
-      </AccessProvider>
+      <UploadManagerProvider>
+        <AccessProvider>
+          <BreadcrumbLabelsProvider>
+            <LoadingBarContainer>
+              <Suspense fallback={<AppLoadingScreen />}>
+                <AppLayout>
+                  <AppRouting />
+                </AppLayout>
+              </Suspense>
+              <Toaster position="top-center" />
+            </LoadingBarContainer>
+          </BreadcrumbLabelsProvider>
+        </AccessProvider>
+        <UploadTransferTray />
+      </UploadManagerProvider>
       {showDevtools && (
         <Suspense fallback={null}>
           <ReactQueryDevtoolsProduction initialIsOpen={true} />

@@ -25,28 +25,14 @@ const useCardContext = () => {
 };
 
 // Variants
-const cardVariants = cva('flex min-w-0 flex-col items-stretch text-card-foreground rounded-xl', {
-  variants: {
-    variant: {
-      default: 'bg-card border border-border shadow-xs black/5',
-      accent: 'bg-muted shadow-xs p-1',
-      themed: 'bg-card border border-border shadow-xs',
-    },
-  },
-  defaultVariants: {
-    variant: 'themed',
-  },
-});
-
-const cardHeaderVariants = cva(
-  'flex min-w-0 items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
+const cardVariants = cva(
+  'flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
   {
     variants: {
       variant: {
-        default: 'border-b border-border',
-        accent: '',
-        themed:
-          'bg-card-header text-card-header-foreground rounded-t-xl [&_h3]:text-card-header-foreground [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/60 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_svg]:text-card-header-foreground',
+        default: 'bg-card border border-card-border shadow-xs black/5',
+        accent: 'bg-muted shadow-xs p-1',
+        themed: 'bg-card border border-card-border shadow-xs',
       },
     },
     defaultVariants: {
@@ -55,7 +41,24 @@ const cardHeaderVariants = cva(
   }
 );
 
-const cardContentVariants = cva('min-w-0 grow p-4 sm:p-5', {
+const cardHeaderVariants = cva(
+  'flex min-w-0 max-w-full items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
+  {
+    variants: {
+      variant: {
+        default: 'border-b border-card-border',
+        accent: '',
+        themed:
+          'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_[data-slot=card-description]]:!text-card-header-foreground/80 [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button:hover]:text-card-header-foreground [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/80 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline [&_svg]:text-card-header-foreground',
+      },
+    },
+    defaultVariants: {
+      variant: 'themed',
+    },
+  }
+);
+
+const cardContentVariants = cva('min-w-0 max-w-full grow p-4 sm:p-5', {
   variants: {
     variant: {
       default: '',
@@ -84,9 +87,9 @@ const cardTableVariants = cva('grid min-w-0 max-w-full grow', {
 const cardFooterVariants = cva('flex min-w-0 max-w-full items-center px-5 min-h-14', {
   variants: {
     variant: {
-      default: 'border-t border-border',
+      default: 'border-t border-card-border',
       accent: 'bg-card rounded-b-xl mt-[2px]',
-      themed: 'border-t border-border',
+      themed: 'border-t border-card-border',
     },
   },
   defaultVariants: {
@@ -164,7 +167,7 @@ function CardToolbar({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       data-slot="card-toolbar"
-      className={cn('flex min-w-0 items-center gap-2.5', className)}
+      className={cn('flex min-w-0 max-w-full flex-wrap items-center gap-2.5', className)}
       {...props}
     />
   );
@@ -174,7 +177,10 @@ function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElem
   return (
     <h3
       data-slot="card-title"
-      className={cn('min-w-0 text-base font-semibold leading-none tracking-tight', className)}
+      className={cn(
+        'min-w-0 max-w-full break-words text-base font-semibold leading-none tracking-tight [overflow-wrap:anywhere]',
+        className
+      )}
       {...props}
     />
   );
@@ -184,7 +190,10 @@ function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return (
     <div
       data-slot="card-description"
-      className={cn('min-w-0 text-sm text-muted-foreground', className)}
+      className={cn(
+        'min-w-0 max-w-full break-words text-sm text-muted-foreground [overflow-wrap:anywhere]',
+        className
+      )}
       {...props}
     />
   );

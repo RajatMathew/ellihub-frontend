@@ -4,6 +4,7 @@ import { QueryErrorState } from '@/app/components/query-error-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import {
   GCDetailDialogs,
   GCDetailSidebar,
@@ -23,7 +24,7 @@ export function GCDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
 
   const { data: gc, isLoading, isError, refetch } = useGCDetailQuery(id ?? '');
   const deleteMutation = useDeleteGCMutation();
@@ -106,6 +107,7 @@ export function GCDetailPage() {
           activityItems={activity.items}
           isActivityLoading={activity.isLoading}
           isActivityError={activity.isError}
+          activityCommentControls={activity.commentControls}
           onClose={() => setSidebarOpen(false)}
           onRetryActivity={() => void activity.refetch()}
         />

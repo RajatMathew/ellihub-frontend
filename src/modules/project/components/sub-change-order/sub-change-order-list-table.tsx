@@ -1,10 +1,10 @@
 import { DataGridSection } from '@/app/components/data-grid-section';
 import { Badge } from '@/app/components/ui/badge';
+import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 import type { Table } from '@tanstack/react-table';
 import { ClipboardList } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 import {
   SubChangeOrderActionsCell,
@@ -41,8 +41,8 @@ export function SubChangeOrderListTable({
     <DataGridSection
       table={table}
       totalCount={totalCount}
-      isLoading={isLoading}
-      isRefreshing={isRefreshing}
+      isLoading={isLoading || Boolean(isRefreshing)}
+      refreshIndicator="none"
       isError={isError}
       errorTitle="Failed to load sub change orders"
       emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}
@@ -80,13 +80,11 @@ function SubChangeOrderMobileCard({
     <div className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5">
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <Link
+          <ListingIdentifierLink
             to={`${sco.id}`}
-            className="block max-w-full truncate text-sm font-semibold text-foreground hover:text-primary"
-            title={sco.scoNumber ?? undefined}
-          >
-            {sco.scoNumber ?? '-'}
-          </Link>
+            value={sco.scoNumber}
+            className="block max-w-full truncate text-sm"
+          />
           <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{title}</p>
         </div>
         <SubChangeOrderActionsCell sco={sco} />
@@ -148,13 +146,7 @@ function SubChangeOrderMobileMetric({
     <div className="min-w-0">
       <p className="text-muted-foreground">{label}</p>
       {to ? (
-        <Link
-          to={to}
-          className="mt-1 block truncate font-medium tabular-nums text-foreground hover:text-primary"
-          title={value}
-        >
-          {value}
-        </Link>
+        <ListingIdentifierLink to={to} value={value} className="mt-1 block truncate text-xs" />
       ) : (
         <p className="mt-1 truncate font-medium tabular-nums text-foreground" title={value}>
           {value}

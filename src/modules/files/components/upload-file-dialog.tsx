@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { X } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -19,11 +17,12 @@ import { Progress } from '@/app/components/ui/progress';
 import type { FileUploadProgress } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import {
+  DEFAULT_UPLOAD_MAX_BYTES,
   FILE_UPLOAD_ACCEPT,
-  MAX_UPLOAD_BYTES,
   getUploadDisplayNameValidationError,
 } from '@/modules/files/lib/file-upload-policy';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
+import { X } from 'lucide-react';
 
 export interface UploadFilePayload {
   file: File;
@@ -119,7 +118,7 @@ export function UploadFileDialog({
   const [drafts, setDrafts] = useState<UploadDraft[]>([]);
   const isMultiple = props.multiple === true;
   const accept = props.accept ?? FILE_UPLOAD_ACCEPT;
-  const maxSize = props.maxSize ?? MAX_UPLOAD_BYTES;
+  const maxSize = props.maxSize ?? DEFAULT_UPLOAD_MAX_BYTES;
   const selectedFiles = useMemo(() => drafts.map((draft) => draft.file), [drafts]);
   const canUpload =
     drafts.length > 0 &&
@@ -185,7 +184,11 @@ export function UploadFileDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={isMultiple ? 'sm:max-w-2xl' : undefined}>
+      <DialogContent
+        className={
+          isMultiple ? 'w-[calc(100vw-2rem)] sm:max-w-2xl' : 'w-[calc(100vw-2rem)] sm:max-w-lg'
+        }
+      >
         <DialogHeader>
           <DialogTitle>{isMultiple ? 'Upload Files' : 'Upload File'}</DialogTitle>
           <DialogDescription>{getSelectionMessage(drafts.length, isMultiple)}</DialogDescription>
@@ -218,7 +221,7 @@ export function UploadFileDialog({
               {drafts.map((draft) => (
                 <div
                   key={draft.id}
-                  className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center"
+                  className="flex min-w-0 max-w-full flex-col gap-3 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background">
@@ -244,8 +247,8 @@ export function UploadFileDialog({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 sm:shrink-0">
-                    <span className="text-xs text-muted-foreground sm:min-w-28 sm:text-right">
+                  <div className="flex min-w-0 items-center justify-between gap-3 sm:shrink-0">
+                    <span className="min-w-0 truncate text-xs text-muted-foreground sm:min-w-28 sm:text-right">
                       {getFileExtensionLabel(draft.file.name)} - {formatFileSize(draft.file.size)}
                     </span>
                     <Button
@@ -266,9 +269,9 @@ export function UploadFileDialog({
           )}
 
           {isMultiple && isSubmitting && uploadProgress && uploadProgress.total > 0 && (
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-                <span className="truncate font-medium">
+            <div className="min-w-0 rounded-lg border bg-muted/30 p-3">
+              <div className="mb-2 flex min-w-0 items-center justify-between gap-3 text-xs">
+                <span className="min-w-0 flex-1 truncate font-medium">
                   {uploadProgress.currentFileName
                     ? `Uploading ${uploadProgress.currentFileName}`
                     : 'Uploading files'}
@@ -283,19 +286,14 @@ export function UploadFileDialog({
         </div>
 
         <DialogFooter className="items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-x-0">
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="min-w-0 truncate text-sm font-medium text-muted-foreground">
             {drafts.length > 0
               ? `${drafts.length} ${drafts.length === 1 ? 'file' : 'files'} ready`
               : 'No file selected'}
           </p>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             {isMultiple && drafts.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={reset}
-                disabled={isSubmitting}
-              >
+              <Button type="button" variant="outline" onClick={reset} disabled={isSubmitting}>
                 Clear all
               </Button>
             )}

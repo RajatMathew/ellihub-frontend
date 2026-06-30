@@ -42,8 +42,8 @@ function ProjectSwitcherLoadingRows() {
     <div className="space-y-2 p-2.5">
       {[1, 2, 3].map((row) => (
         <div key={row} className="space-y-1.5 rounded-md px-2 py-1.5">
-          <div className="h-3.5 w-3/4 animate-pulse rounded bg-zinc-700/80" />
-          <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-800" />
+          <div className="h-3.5 w-3/4 animate-pulse rounded bg-sidebar-popover-muted/35" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-sidebar-popover-muted/20" />
         </div>
       ))}
     </div>
@@ -120,20 +120,17 @@ export function ProjectSidebarSwitcher() {
   };
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5 py-2.5">
+    <div className="w-full min-w-0 max-w-full overflow-hidden px-2.5 py-2">
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-lg border border-emerald-800/70 bg-emerald-950/75 px-3 py-2 text-emerald-50 shadow-none hover:border-emerald-700/80 hover:bg-emerald-900/70 hover:text-white data-[state=open]:border-emerald-700/80 data-[state=open]:bg-emerald-900/70 data-[state=open]:text-white"
+            className="group grid h-auto w-full min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 overflow-hidden rounded-md border border-sidebar-border/80 bg-sidebar-item-hover/70 px-3 py-2 text-sidebar-foreground shadow-none hover:border-sidebar-border hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[state=open]:border-sidebar-border data-[state=open]:bg-sidebar-item-active data-[state=open]:text-sidebar-foreground"
           >
-            <span
-              className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-400"
-              aria-hidden="true"
-            />
+            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-success" aria-hidden="true" />
             <div className="min-w-0 overflow-hidden text-left">
               <div
-                className="truncate text-sm font-semibold text-emerald-50"
+                className="truncate text-[13px] font-semibold text-sidebar-foreground"
                 title={selectedProjectTitle}
               >
                 {selectedProjectTitle ??
@@ -141,37 +138,37 @@ export function ProjectSidebarSwitcher() {
               </div>
               {selectedProjectSubtitle && (
                 <div
-                  className="truncate text-xs text-emerald-200/75"
+                  className="truncate text-xs text-sidebar-muted"
                   title={selectedProjectSubtitle}
                 >
                   {selectedProjectSubtitle}
                 </div>
               )}
             </div>
-            <ChevronsUpDown className="mt-1 size-4 shrink-0 text-emerald-300/65 transition-colors group-hover:text-emerald-100" />
+            <ChevronsUpDown className="mt-1 size-3.5 shrink-0 text-sidebar-muted transition-colors group-hover:text-sidebar-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-72 border-zinc-700/80 bg-zinc-900 p-0 text-zinc-50 shadow-xl shadow-black/30"
+          className="w-72 border-sidebar-popover-border bg-sidebar-popover-bg p-0 text-sidebar-popover-foreground shadow-xl shadow-black/30"
           align="start"
           sideOffset={4}
         >
           <Command
             shouldFilter={false}
-            className="bg-zinc-900 text-zinc-50 [&_[data-slot=command-input]]:border-zinc-700/80"
+            className="bg-sidebar-popover-bg text-sidebar-popover-foreground [&_[data-slot=command-input]]:border-sidebar-popover-border"
           >
             <div className="relative">
               <CommandInput
                 value={searchInput}
                 onValueChange={setSearchInput}
                 placeholder="Search projects..."
-                className="pr-8 text-zinc-50 placeholder:text-zinc-500"
+                className="pr-8 text-sidebar-popover-foreground placeholder:text-sidebar-popover-muted"
               />
               {searchInput && (
                 <button
                   type="button"
                   onClick={() => setSearchInput('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-zinc-500 opacity-70 transition-opacity hover:bg-zinc-800 hover:text-zinc-100 hover:opacity-100"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-sidebar-popover-muted opacity-70 transition-opacity hover:bg-sidebar-popover-hover hover:text-sidebar-popover-foreground hover:opacity-100"
                   aria-label="Clear project search"
                 >
                   <X className="size-4" />
@@ -197,14 +194,14 @@ export function ProjectSidebarSwitcher() {
               {isInitialListLoading ? (
                 <ProjectSwitcherLoadingRows />
               ) : projectsQuery.isError ? (
-                <div className="px-4 py-6 text-center text-sm text-zinc-400">
+                <div className="px-4 py-6 text-center text-sm text-sidebar-popover-muted">
                   Unable to load projects.
                 </div>
               ) : (
                 <>
                   {isRefreshingResults && renderedProjects.length > 0 && (
-                    <div className="flex items-center justify-center gap-1.5 border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
-                      <Loader2 className="size-3 animate-spin text-emerald-400" />
+                    <div className="flex items-center justify-center gap-1.5 border-b border-sidebar-popover-border bg-sidebar-popover-bg px-3 py-2 text-xs text-sidebar-popover-muted">
+                      <Loader2 className="size-3 animate-spin text-brand-gold" />
                       Updating results
                     </div>
                   )}
@@ -221,8 +218,8 @@ export function ProjectSidebarSwitcher() {
                           keywords={[project.name, project.jobNumber ?? '', subtitle]}
                           onSelect={() => handleSelect(project.id)}
                           className={cn(
-                            'grid min-w-0 grid-cols-[minmax(0,1fr)_auto] rounded-md text-zinc-50 data-[selected=true]:bg-zinc-800',
-                            isSelected && 'bg-zinc-800/60'
+                            'grid min-w-0 grid-cols-[minmax(0,1fr)_auto] rounded-md text-sidebar-popover-foreground data-[selected=true]:bg-sidebar-popover-hover',
+                            isSelected && 'bg-sidebar-popover-active'
                           )}
                           title={subtitle ? `${project.name} - ${subtitle}` : project.name}
                         >
@@ -231,24 +228,31 @@ export function ProjectSidebarSwitcher() {
                               {project.name}
                             </div>
                             {subtitle && (
-                              <div className="truncate text-xs text-zinc-400" title={subtitle}>
+                              <div
+                                className="truncate text-xs text-sidebar-popover-muted"
+                                title={subtitle}
+                              >
                                 {subtitle}
                               </div>
                             )}
                           </div>
-                          {isSelected && <CommandCheck className="text-emerald-400" />}
+                          {isSelected && <CommandCheck className="text-brand-gold" />}
                         </CommandItem>
                       );
                     })}
                     {projectsQuery.isFetchingNextPage && (
-                      <CommandItem value="loading-more-projects" disabled className="text-zinc-400">
-                        <Loader2 className="me-2 size-3 animate-spin text-emerald-400" />
+                      <CommandItem
+                        value="loading-more-projects"
+                        disabled
+                        className="text-sidebar-popover-muted"
+                      >
+                        <Loader2 className="me-2 size-3 animate-spin text-brand-gold" />
                         Loading more projects...
                       </CommandItem>
                     )}
                   </CommandGroup>
                   {totalProjects > renderedProjects.length && !projectsQuery.isFetchingNextPage && (
-                    <div className="border-t border-zinc-800 px-3 py-2 text-center text-xs text-zinc-500">
+                    <div className="border-t border-sidebar-popover-border px-3 py-2 text-center text-xs text-sidebar-popover-muted">
                       Showing {renderedProjects.length} of {totalProjects}
                     </div>
                   )}

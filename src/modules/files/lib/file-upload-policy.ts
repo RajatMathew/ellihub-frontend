@@ -1,17 +1,50 @@
-export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const DEFAULT_UPLOAD_MAX_BYTES: number | undefined = undefined;
 export const MAX_UPLOAD_NAME_LENGTH = 180;
 
 export const ALLOWED_UPLOAD_EXTENSIONS = [
-  'csv',
+  // Documents commonly exchanged for contracts, RFIs, submittals, and closeout packages.
+  'doc',
   'docx',
+  'pdf',
+  'ppt',
+  'pptx',
+  'rtf',
+  'txt',
+  'xml',
+  // Spreadsheets, schedules, estimates, and project plans.
+  'csv',
+  'mpp',
+  'xls',
+  'xlsm',
+  'xlsx',
+  // Site photos, scanned documents, video walkthroughs, and audio notes.
+  'heic',
+  'heif',
   'jpeg',
   'jpg',
-  'pdf',
+  'm4a',
+  'm4v',
+  'mov',
+  'mp3',
+  'mp4',
   'png',
-  'pptx',
-  'txt',
+  'tif',
+  'tiff',
+  'wav',
+  'webm',
   'webp',
-  'xlsx',
+  // Drawing and model formats used in construction coordination.
+  'dwg',
+  'dxf',
+  'ifc',
+  'nwc',
+  'nwd',
+  'rfa',
+  'rvt',
+  'skp',
+  // Archives are useful for drawing packages and vendor submittal bundles.
+  'zip',
+  '7z',
 ] as const;
 
 export const FILE_UPLOAD_ACCEPT = ALLOWED_UPLOAD_EXTENSIONS.map((ext) => `.${ext}`).join(',');
@@ -57,15 +90,43 @@ const DANGEROUS_EXTENSIONS = new Set([
 
 const MIME_BY_EXTENSION: Record<(typeof ALLOWED_UPLOAD_EXTENSIONS)[number], readonly string[]> = {
   csv: ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain'],
+  doc: ['application/msword', 'application/vnd.ms-word'],
   docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  dwg: ['image/vnd.dwg', 'application/acad', 'application/x-acad', 'application/x-autocad'],
+  dxf: ['image/vnd.dxf', 'application/dxf', 'application/x-dxf', 'application/x-autocad'],
+  heic: ['image/heic', 'image/heif'],
+  heif: ['image/heif', 'image/heic'],
+  ifc: ['application/x-step', 'application/step', 'text/plain'],
   jpeg: ['image/jpeg', 'image/pjpeg'],
   jpg: ['image/jpeg', 'image/pjpeg'],
+  m4a: ['audio/mp4', 'audio/x-m4a'],
+  m4v: ['video/mp4', 'video/x-m4v'],
+  mov: ['video/quicktime'],
+  mp3: ['audio/mpeg', 'audio/mp3'],
+  mp4: ['video/mp4'],
+  mpp: ['application/vnd.ms-project', 'application/msproj', 'application/msproject'],
+  nwc: ['application/octet-stream', 'application/x-navisworks'],
+  nwd: ['application/octet-stream', 'application/x-navisworks'],
   pdf: ['application/pdf'],
   png: ['image/png'],
+  ppt: ['application/vnd.ms-powerpoint'],
   pptx: ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+  rfa: ['application/octet-stream', 'application/x-revit'],
+  rtf: ['application/rtf', 'text/rtf'],
+  rvt: ['application/octet-stream', 'application/x-revit'],
+  skp: ['application/octet-stream', 'application/vnd.sketchup.skp', 'application/x-skp'],
+  tif: ['image/tiff'],
+  tiff: ['image/tiff'],
   txt: ['text/plain'],
+  wav: ['audio/wav', 'audio/x-wav'],
+  webm: ['video/webm', 'audio/webm'],
   webp: ['image/webp'],
+  xls: ['application/vnd.ms-excel'],
+  xlsm: ['application/vnd.ms-excel.sheet.macroenabled.12'],
   xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  xml: ['application/xml', 'text/xml'],
+  zip: ['application/zip', 'application/x-zip-compressed'],
+  '7z': ['application/x-7z-compressed'],
 };
 
 export function formatUploadFileSize(bytes: number): string {
@@ -149,12 +210,17 @@ export function getUploadFileValidationError(
   file: File,
   options: { accept?: string; maxSize?: number } = {}
 ): string | null {
-  const maxSize = options.maxSize ?? MAX_UPLOAD_BYTES;
+  const maxSize = options.maxSize;
   const fileNameError = getUploadNameError(file.name, 'Uploaded file name');
 
   if (fileNameError) return fileNameError;
   if (file.size <= 0) return 'File is empty.';
-  if (file.size > maxSize) {
+  if (
+    typeof maxSize === 'number' &&
+    Number.isFinite(maxSize) &&
+    maxSize > 0 &&
+    file.size > maxSize
+  ) {
     return `File is too large. Maximum size is ${formatUploadFileSize(maxSize)}.`;
   }
 

@@ -70,6 +70,18 @@ function canRemoveRole(
   return canRemoveMember;
 }
 
+function getAuthRoleLabel(authRole: string) {
+  if (authRole === 'pm') return 'PM';
+  if (authRole === 'user') return 'Member';
+  if (authRole === 'ap') return 'A/P';
+  if (authRole === 'unlinked') return 'Unlinked';
+  return authRole.toUpperCase();
+}
+
+function getProjectTeamRoleLabel(role: ProjectTeamRole) {
+  return role === 'Member' ? 'Viewer' : role;
+}
+
 export function TeamMemberGrid({
   teamMembers,
   canAssignRole = false,
@@ -117,7 +129,7 @@ export function TeamMemberGrid({
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span className="min-w-0 truncate text-sm font-semibold">{name}</span>
                   <Badge variant={authRole === 'pm' ? 'primary' : 'secondary'} appearance="light">
-                    {authRole === 'unlinked' ? 'Unlinked' : authRole.toUpperCase()}
+                    {getAuthRoleLabel(authRole)}
                   </Badge>
                 </div>
                 {email && (
@@ -136,12 +148,12 @@ export function TeamMemberGrid({
                 onValueChange={(value) => onRoleChange?.(member, value as ProjectTeamRole)}
               >
                 <SelectTrigger className="h-9 min-w-0 flex-1 md:h-8 md:w-full">
-                  <SelectValue />
+                  <SelectValue>{getProjectTeamRoleLabel(role)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((option) => (
                     <SelectItem key={option} value={option}>
-                      {option}
+                      {getProjectTeamRoleLabel(option)}
                     </SelectItem>
                   ))}
                 </SelectContent>

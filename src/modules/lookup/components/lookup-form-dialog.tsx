@@ -89,7 +89,7 @@ export function LookupFormDialog({
                 <Input
                   id="lookup-type"
                   {...field}
-                  placeholder="e.g. INVOICE_STATUS"
+                  placeholder="e.g. TRADE_CATEGORY"
                   aria-invalid={fieldState.invalid}
                   disabled={isEditing}
                 />

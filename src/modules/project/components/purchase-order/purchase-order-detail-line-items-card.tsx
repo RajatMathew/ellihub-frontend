@@ -37,14 +37,14 @@ export function PurchaseOrderDetailLineItemsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-normal text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">
           Line Items ({lineItemCount})
         </CardTitle>
       </CardHeader>
       <CardContent>
         {lineItemCount > 0 ? (
           <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 lg:hidden">
               {lineItems.map((lineItem) => (
                 <div key={lineItem.id} className="rounded-lg border p-3">
                   <div className="flex min-w-0 items-start justify-between gap-3">
@@ -113,7 +113,7 @@ export function PurchaseOrderDetailLineItemsCard({
               </div>
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-max text-sm">
                 <thead>
                   <tr className="border-b text-left">

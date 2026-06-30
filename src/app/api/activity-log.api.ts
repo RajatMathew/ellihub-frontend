@@ -1,6 +1,80 @@
 import api from '@/app/api';
 import { z } from 'zod';
 
+const activityValueTypeSchema = z.enum([
+  'text',
+  'number',
+  'currency',
+  'date',
+  'datetime',
+  'boolean',
+  'email',
+  'phone',
+  'percent',
+  'list',
+  'collection',
+  'file',
+  'status',
+]);
+
+const activityChangeValueSchema = z.object({
+  raw: z.unknown().nullable(),
+  display: z.string(),
+});
+const activityCollectionFieldSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  valueType: activityValueTypeSchema.optional(),
+  from: activityChangeValueSchema,
+  to: activityChangeValueSchema,
+});
+
+const activityCollectionSchema = z.object({
+  itemLabel: z.string(),
+  addedCount: z.number(),
+  removedCount: z.number(),
+  modifiedCount: z.number(),
+  rows: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      status: z.enum(['added', 'removed', 'modified']),
+      fields: z.array(activityCollectionFieldSchema),
+    })
+  ),
+});
+
+export const activityFieldDiffDetailsSchema = z.object({
+  kind: z.literal('field-diff'),
+  schemaVersion: z.literal(1),
+  subject: z.object({
+    label: z.string().optional(),
+    displayName: z.string(),
+  }),
+  revision: z.number(),
+  changes: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      section: z.string(),
+      valueType: activityValueTypeSchema.optional(),
+      from: activityChangeValueSchema,
+      to: activityChangeValueSchema,
+      collection: activityCollectionSchema.optional(),
+    })
+  ),
+});
+
+export type ActivityFieldDiffDetails = z.infer<typeof activityFieldDiffDetailsSchema>;
+
+const activityLogDetailsSchema = z
+  .unknown()
+  .optional()
+  .nullable()
+  .transform((value): ActivityFieldDiffDetails | null => {
+    const parsed = activityFieldDiffDetailsSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+  });
 const activityUserSchema = z
   .object({
     id: z.string(),
@@ -18,8 +92,13 @@ export const activityLogItemSchema = z.object({
   action: z.string(),
   description: z.string(),
   note: z.string().optional().nullable(),
+  revision: z.number().optional().nullable(),
+  details: activityLogDetailsSchema,
   affectedEntityIds: z.array(z.string()).optional(),
   createdAt: z.string(),
+  editedAt: z.string().optional().nullable(),
+  deletedAt: z.string().optional().nullable(),
+  deletedBy: z.string().optional().nullable(),
   user: activityUserSchema,
 });
 
@@ -52,7 +131,22 @@ export interface ListActivityLogParams {
   search?: string;
 }
 
+export interface CreateActivityCommentInput {
+  entityType: string;
+  entityId: string;
+  note: string;
+}
+
+export interface UpdateActivityCommentInput {
+  commentId: string;
+  note: string;
+}
+
 const BASE = '/activity-log';
+
+function parseActivityLogItem(payload: unknown): ActivityLogItem {
+  return activityLogItemSchema.parse(payload);
+}
 
 export const activityLogApi = {
   async list(params?: ListActivityLogParams): Promise<ActivityLogPaginatedResponse> {
@@ -62,7 +156,7 @@ export const activityLogApi = {
 
     const endpoint =
       params?.entityType && params?.entityId
-        ? `${BASE}/entity/${params.entityType}/${params.entityId}`
+        ? BASE + '/entity/' + params.entityType + '/' + params.entityId
         : BASE;
 
     if (!params?.entityType || !params?.entityId) {
@@ -102,7 +196,7 @@ export const activityLogApi = {
     if (params?.page != null) query.page = params.page;
     if (params?.size != null) query.size = params.size;
 
-    const res = await api.get(`${BASE}/employee/${employeeId}`, { params: query });
+    const res = await api.get(BASE + '/employee/' + employeeId, { params: query });
     const rows = res.data?.data ?? res.data ?? [];
     const pagination = res.data?.pagination ?? {};
 
@@ -117,5 +211,25 @@ export const activityLogApi = {
         itemsPerPage: pagination.itemsPerPage ?? params?.size ?? 100,
       },
     });
+  },
+
+  async createComment(input: CreateActivityCommentInput): Promise<ActivityLogItem> {
+    const res = await api.post(
+      BASE + '/entity/' + input.entityType + '/' + input.entityId + '/comments',
+      {
+        note: input.note,
+      }
+    );
+    return parseActivityLogItem(res.data?.data ?? res.data);
+  },
+
+  async updateComment(input: UpdateActivityCommentInput): Promise<ActivityLogItem> {
+    const res = await api.patch(BASE + '/comments/' + input.commentId, { note: input.note });
+    return parseActivityLogItem(res.data?.data ?? res.data);
+  },
+
+  async deleteComment(commentId: string): Promise<ActivityLogItem> {
+    const res = await api.delete(BASE + '/comments/' + commentId);
+    return parseActivityLogItem(res.data?.data ?? res.data);
   },
 };

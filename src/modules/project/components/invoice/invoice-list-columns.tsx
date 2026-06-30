@@ -30,7 +30,13 @@ export function useInvoiceListColumns(projectId: string) {
           preserveTruncatedCellLayout: true,
           alwaysShowTooltip: true,
           tooltipContent: (invoice) =>
-            [invoice.invoiceNumber ?? '-', invoice.notes].filter(Boolean).join('\n'),
+            [
+              invoice.invoiceNumber ?? '-',
+              invoice.externalInvoiceNumber ? `External: ${invoice.externalInvoiceNumber}` : null,
+              invoice.notes,
+            ]
+              .filter(Boolean)
+              .join('\n'),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />

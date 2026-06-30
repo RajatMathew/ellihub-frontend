@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
 import { formatDate } from '@/app/lib/helpers';
 import {
   FilePreviewDialog,
@@ -35,15 +35,15 @@ export function EmployeeDocumentsTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Employee Documents
-          </span>
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest">
+          Employee Documents
+        </CardTitle>
+        <CardToolbar>
           <Button size="xs" variant="primary" disabled={isRemoving} onClick={onAddDocument}>
             <PlusCircle className="size-3" />
             Add Document
           </Button>
-        </CardTitle>
+        </CardToolbar>
       </CardHeader>
       <CardContent>
         {documents.length > 0 ? (

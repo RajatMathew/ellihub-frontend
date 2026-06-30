@@ -250,10 +250,6 @@ const RFQ_DELIVERABLES = [
   { description: 'Drywall, 5/8" Type X fire-rated', unit: 'SF', qtyRange: [1000, 10000] as const },
 ] as const;
 
-export function fakeInvoiceNumber(): string {
-  return `INV-${randInt(10000, 99999)}`;
-}
-
 export function fakeRFQTitle(): string {
   return pickRandom(RFQ_TITLES);
 }

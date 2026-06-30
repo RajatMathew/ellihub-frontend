@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const memberRoleSchema = z.enum(['dev', 'admin', 'accountant', 'pm', 'user']);
+export const memberRoleSchema = z.enum(['dev', 'admin', 'accountant', 'ap', 'pm', 'user']);
 export const memberStatusSchema = z.enum(['active', 'suspended']);
 export const memberEmailStatusSchema = z.enum(['verified', 'pending']);
 export const membersSortBySchema = z.enum([

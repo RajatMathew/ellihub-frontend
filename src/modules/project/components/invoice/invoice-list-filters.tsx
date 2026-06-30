@@ -1,13 +1,15 @@
-import { Button } from '@/app/components/ui/button';
-import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import type {
   InvoiceFilterOptionsResult,
   InvoiceListParamPatch,
 } from '@/modules/project/hooks/invoice';
-import { Search, X } from 'lucide-react';
 
 interface InvoiceListFiltersProps {
   paidFilter: boolean | undefined;
@@ -31,6 +33,9 @@ const PAYMENT_TABS = [
   { label: 'Paid', value: 'true' },
   { label: 'Unpaid', value: 'false' },
 ] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+const tableHeaderFilterPlaceholderClassName = '!text-table-card-header-foreground/75';
 
 export function InvoiceListFilters({
   paidFilter,
@@ -51,24 +56,22 @@ export function InvoiceListFilters({
   const paymentValue = paidFilter === undefined ? undefined : paidFilter ? 'true' : 'false';
 
   return (
-    <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full sm:w-auto">
+    <TableCardHeader
+      title={
         <ProjectFilterTabs
           value={paymentValue}
           options={PAYMENT_TABS}
           onValueChange={(value) => onUpdateParams({ isPaid: value, page: undefined })}
         />
-      </CardTitle>
-      <CardToolbar className="w-full sm:w-auto">
-        <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
-          <InputWrapper variant="sm" className="w-full sm:w-60">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search invoices..."
-              value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </InputWrapper>
+      }
+      actions={
+        <TableCardHeaderToolbar className="flex-wrap">
+          <TableCardHeaderSearch
+            value={searchInput}
+            placeholder="Search invoices..."
+            onChange={onSearchChange}
+            className="sm:w-60"
+          />
           <div className="w-full sm:w-52">
             <InfiniteSearchSelect
               options={vendorPicker.options}
@@ -85,8 +88,8 @@ export function InvoiceListFilters({
               placeholder="All Vendors"
               searchPlaceholder="Search vendors..."
               emptyMessage="No vendors found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
           <div className="w-full sm:w-56">
@@ -105,18 +108,13 @@ export function InvoiceListFilters({
               placeholder="All Purchase Orders"
               searchPlaceholder="Search purchase orders..."
               emptyMessage="No purchase orders found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }

@@ -13,11 +13,18 @@ import { Check, ChevronDown } from 'lucide-react';
 interface MonthlyBillsColumnToggleProps {
   visibleColumns: Set<MonthlyBillColumnKey>;
   onToggleColumn: (key: MonthlyBillColumnKey) => void;
+  triggerClassName?: string;
+  contentClassName?: string;
 }
+
+const tableHeaderActionButtonClassName =
+  '!border-input !bg-background !text-foreground hover:!border-success/40 hover:!bg-background hover:!text-foreground data-[state=open]:!border-success/50 data-[state=open]:!ring-2 data-[state=open]:!ring-success/15 [&_svg]:!text-muted-foreground';
 
 export function MonthlyBillsColumnToggle({
   visibleColumns,
   onToggleColumn,
+  triggerClassName,
+  contentClassName,
 }: MonthlyBillsColumnToggleProps) {
   const [open, setOpen] = useState(false);
   const selectedCount = visibleColumns.size;
@@ -29,11 +36,14 @@ export function MonthlyBillsColumnToggle({
           type="button"
           variant="outline"
           size="sm"
-          className="w-full shrink-0 justify-between gap-2 rounded-md border-border bg-background px-3 font-medium shadow-sm transition-all hover:border-success/40 data-[state=open]:border-success/50 data-[state=open]:ring-2 data-[state=open]:ring-success/15 sm:w-auto"
+          className={cn(
+            'w-full shrink-0 justify-between gap-2 rounded-md px-3 font-medium shadow-sm transition-all sm:w-auto',
+            triggerClassName ?? tableHeaderActionButtonClassName
+          )}
         >
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate">Columns</span>
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-white">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-success text-[11px] font-semibold leading-none text-success-foreground">
               {selectedCount}
             </span>
           </span>
@@ -48,13 +58,16 @@ export function MonthlyBillsColumnToggle({
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[min(calc(100vw-1.5rem),18rem)] overflow-hidden rounded-lg border-border p-0 shadow-xl shadow-black/10"
+        className={cn(
+          'w-[min(calc(100vw-1.5rem),15rem)] overflow-hidden rounded-lg border-border p-0 shadow-xl shadow-black/10',
+          contentClassName
+        )}
       >
-        <div className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground">
+        <div className="px-3 pt-3 pb-1.5 text-xs font-medium text-muted-foreground">
           Select columns
         </div>
-        <ScrollArea className="h-[min(20rem,calc(var(--radix-popover-content-available-height)-4rem))] px-3 pb-3">
-          <div className="space-y-1 pr-1">
+        <ScrollArea className="h-[min(16rem,calc(var(--radix-popover-content-available-height)-3.5rem))] px-2 pb-2">
+          <div className="space-y-0.5 pr-1">
             {MONTHLY_BILL_COLUMNS.map((column) => {
               const checked = visibleColumns.has(column.key);
               const isLastVisible = checked && visibleColumns.size === 1;
@@ -66,7 +79,7 @@ export function MonthlyBillsColumnToggle({
                   aria-checked={checked}
                   disabled={isLastVisible}
                   className={cn(
-                    'flex min-h-10 w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm text-foreground outline-hidden transition-colors duration-150',
+                    'flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-foreground outline-hidden transition-colors duration-150',
                     'hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring/20',
                     isLastVisible && 'cursor-not-allowed opacity-60'
                   )}
@@ -75,13 +88,13 @@ export function MonthlyBillsColumnToggle({
                   <span
                     aria-hidden="true"
                     className={cn(
-                      'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
+                      'flex size-4.5 shrink-0 items-center justify-center rounded-sm border transition-colors duration-150',
                       checked
-                        ? 'border-success bg-success text-white'
+                        ? 'border-success bg-success text-success-foreground'
                         : 'border-muted-foreground/40 bg-background text-transparent'
                     )}
                   >
-                    <Check className="size-3.5 stroke-[3]" />
+                    <Check className="size-3 stroke-[3]" />
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium">{column.label}</span>
                 </button>

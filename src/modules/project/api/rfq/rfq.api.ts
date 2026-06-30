@@ -11,14 +11,12 @@ import {
   rfqDetailSchema,
   rfqPaginatedResponseSchema,
   rfqStatsSchema,
-  rfqStatusSchema,
   type CreateRFQInput,
   type ListRFQParams,
   type RFQDeliverableInput,
   type RFQDetail,
   type RFQPaginatedResponse,
   type RFQStats,
-  type RFQStatus,
   type UpdateRFQInput,
   type VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
@@ -31,7 +29,6 @@ export type BidComparisonQuote = {
   status: { id: string; name: string; label: string } | null;
   totalAmount: number | null;
   negotiationAmount?: number | null;
-  vendorCoupon?: boolean;
   taxAmount: number | null;
   grandTotal: number | null;
   leadTimeDays: number | null;
@@ -58,7 +55,7 @@ export type BidComparison = {
     rfqNumber: string;
     title: string;
     estimatedBudget: number | null;
-    bidDeadline: string;
+    rfqDate: string;
     status: { id: string; name: string; label: string } | null;
   };
   deliverables: {
@@ -99,7 +96,6 @@ type RFQApiVendorQuote = RFQApiObject & {
   hasSubmittedQuote?: boolean | null;
   quotedAmount?: unknown;
   negotiationAmount?: unknown;
-  vendorCoupon?: boolean | null;
   leadTime?: string | number | null;
   notes?: string | null;
 };
@@ -107,6 +103,8 @@ type RFQApiResponse = RFQApiObject & {
   track?: string | null;
   type?: RFQApiType | null;
   typeId?: string | null;
+  rfqDate?: string | null;
+  bidDeadline?: string | null;
   deliverables?: unknown;
   rfqdeliverables?: unknown;
   vendorQuotes?: unknown;
@@ -165,7 +163,6 @@ function normalizeRFQ(item: unknown) {
         totalAmount: q.quotedAmount,
         grandTotal: q.quotedAmount,
         negotiationAmount: q.negotiationAmount,
-        vendorCoupon: q.vendorCoupon ?? false,
         leadTimeDays: leadTime ? parseInt(leadTime, 10) : undefined,
         notes: leadTime ? `${leadTime} days` : q.notes,
         vendor: q.vendor ?? (q.vendorId ? { id: q.vendorId } : undefined),
@@ -180,6 +177,7 @@ function normalizeRFQ(item: unknown) {
         : record.status,
     track,
     typeId,
+    rfqDate: record.rfqDate ?? record.bidDeadline,
     deliverables,
     voidReason: record.voidReason ?? record.cancellationReason,
     attachments: record.attachments ?? record.rfqattachments,
@@ -230,17 +228,6 @@ export const rfqApi = {
     const result = rfqStatsSchema.safeParse(raw);
     if (!result.success) {
       console.error('[rfqApi.stats] Zod parse error:', result.error.issues);
-      throw result.error;
-    }
-    return result.data;
-  },
-
-  async getStatuses(): Promise<RFQStatus[]> {
-    const res = await api.get('/lookup/type/RFQ_STATUS');
-    const raw = res.data?.data ?? res.data ?? [];
-    const result = z.array(rfqStatusSchema).safeParse(raw);
-    if (!result.success) {
-      console.error('[rfqApi.getStatuses] Zod parse error:', result.error.issues);
       throw result.error;
     }
     return result.data;
@@ -391,8 +378,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-    vendorCoupon?: boolean;
-    leadTime?: string;
+      leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
@@ -403,8 +389,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-    vendorCoupon?: boolean;
-    leadTime?: string;
+      leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/edit-quote`, data);

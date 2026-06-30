@@ -1,8 +1,6 @@
-import { ExternalLink } from 'lucide-react';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
+import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import {
   formatPrimeChangeOrderCost,
   formatPrimeChangeOrderDate,
@@ -10,13 +8,13 @@ import {
   getPrimeChangeOrderFieldwireUrl,
   getPrimeChangeOrderStatusDotClass,
 } from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
+import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
+import { ExternalLink } from 'lucide-react';
 
 export function PrimeChangeOrderReferenceCell({ order }: { order: PrimeChangeOrder }) {
   return (
     <div className="space-y-1">
-      <div className="text-sm font-semibold text-foreground">
-        {order.referenceNumber ?? '-'}
-      </div>
+      <ListingIdentifierText value={order.referenceNumber} className="block text-sm" />
       <div className="text-xs text-muted-foreground">
         {order.pmGroupNumber != null ? `Rev. ${order.pmGroupNumber}` : 'Rev. -'}
       </div>
@@ -25,15 +23,15 @@ export function PrimeChangeOrderReferenceCell({ order }: { order: PrimeChangeOrd
 }
 
 export function PrimeChangeOrderNameCell({ order }: { order: PrimeChangeOrder }) {
-  return (
-    <div className="max-w-lg truncate text-sm font-medium text-foreground">{order.name}</div>
-  );
+  return <div className="max-w-lg truncate text-sm font-medium text-foreground">{order.name}</div>;
 }
 
 export function PrimeChangeOrderStatusCell({ order }: { order: PrimeChangeOrder }) {
   return (
     <div className="flex items-center gap-2 text-sm text-foreground">
-      <span className={`size-2 rounded-full ${getPrimeChangeOrderStatusDotClass(order.statusName)}`} />
+      <span
+        className={`size-2 rounded-full ${getPrimeChangeOrderStatusDotClass(order.statusName)}`}
+      />
       <span>{order.statusName}</span>
       {order.deletedAt && (
         <Badge variant="destructive" appearance="light" size="sm">

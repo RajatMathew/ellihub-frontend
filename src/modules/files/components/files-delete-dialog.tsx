@@ -25,8 +25,9 @@ export function FilesDeleteDialog({
       isPending={isPending}
       onConfirm={onConfirm}
     >
-      Are you sure you want to delete <strong>{item?.displayName || item?.name}</strong>? This
-      action cannot be undone.
+      Are you sure you want to delete{' '}
+      <strong className="break-all">{item?.displayName || item?.name}</strong>? This action cannot
+      be undone.
     </ResourceDeleteDialog>
   );
 }

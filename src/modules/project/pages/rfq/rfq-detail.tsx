@@ -12,7 +12,6 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {
   Dialog,
@@ -40,10 +39,9 @@ import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
 import { useAccess } from '@/app/contexts/access-context';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
-import { ActivityFeed, type ActivityItem } from '@/core/ui/components/sections/activity-feed';
-import { useActivityLogQuery } from '@/modules/directory/hooks/activity.hooks';
 import {
   useVendorPickerOptions,
   type VendorPickerOption,
@@ -53,11 +51,10 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import {
-  useDownloadFile,
-  useFilePreviewQuery,
-  useUploadFileMutation,
-} from '@/modules/files/hooks/files.hooks';
+import { useDownloadFile, useFilePreviewQuery } from '@/modules/files/hooks/files.hooks';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { createFileUploadPayload } from '@/modules/files/uploads/use-managed-file-uploads';
+import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';
@@ -70,6 +67,7 @@ import {
 } from '@/modules/project/components/rfq';
 import {
   InfoRow,
+  ProjectActivityPanel,
   PdfGenerateDialog,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
@@ -89,7 +87,6 @@ import {
   useRemoveRFQAttachmentMutation,
   useRemoveVendorMutation,
   useRFQDetailQuery,
-  useRFQStatusesQuery,
   useSaveRFQVendorPdfMutation,
   useSubmitQuoteMutation,
   useUnawardRFQMutation,
@@ -101,19 +98,17 @@ import {
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
 import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
-import type { RFQQuoteAttachment, RFQStatus } from '@/modules/project/schemas/rfq';
+import type { RFQQuoteAttachment } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
   CheckCircle2,
   ChevronDown,
   Clock,
   FileText,
-  History,
   Mail,
   PanelRightOpen,
   Paperclip,
   Pencil,
-  PlusCircle,
   Send,
   ShieldAlert,
   Trash2,
@@ -125,6 +120,25 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+type RFQMutableStatusName = 'DRAFT' | 'PUBLISHED';
+
+type RFQMutableStatusOption = {
+  id: RFQMutableStatusName;
+  name: RFQMutableStatusName;
+  label: string;
+};
+
+const RFQ_MUTABLE_STATUS_OPTIONS: RFQMutableStatusOption[] = [
+  { id: 'DRAFT', name: 'DRAFT', label: 'Draft' },
+  { id: 'PUBLISHED', name: 'PUBLISHED', label: 'Published' },
+];
+
+function getQuoteDocumentUploadName(file: File) {
+  const dotIndex = file.name.lastIndexOf('.');
+
+  return dotIndex > 0 ? file.name.slice(0, dotIndex) : file.name;
+}
 
 function hasHtmlText(value: string): boolean {
   return (
@@ -195,7 +209,7 @@ function QuoteDocPreview({
     return <iframe src={url} title={name} className="w-full h-full border-0" />;
   }
 
-  // Generic file — show icon + name + download
+  // Generic file - show icon + name + download
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
       <FileText className="size-10 text-muted-foreground/40" />
@@ -243,7 +257,7 @@ export default function RFQDetailPage() {
   const declineInviteMutation = useDeclineInviteMutation();
   const addAttachmentMutation = useAddRFQAttachmentMutation();
   const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
-  const uploadFileMutation = useUploadFileMutation();
+  const uploadManager = useUploadManager();
   const downloadFile = useDownloadFile();
 
   const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
@@ -255,7 +269,6 @@ export default function RFQDetailPage() {
   );
   const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 
-  const { data: rfqStatuses } = useRFQStatusesQuery();
   const { data: rfqPdfTermsConfig } = usePdfTermsConfigQuery('rfq');
   const { data: rfqPdfNoticeConfig } = usePdfNoticeConfigQuery('rfq');
   const rfqPdfTermsOptions = useMemo(
@@ -281,7 +294,7 @@ export default function RFQDetailPage() {
     [rfqPdfNoticeConfig?.defaultOptionId, rfqPdfNoticeOptions]
   );
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useResponsiveDetailSidebar();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Publish dialog
@@ -306,10 +319,10 @@ export default function RFQDetailPage() {
   const [quoteInviteId, setQuoteInviteId] = useState<string>('');
   const [quoteAmount, setQuoteAmount] = useState<number | ''>('');
   const [quoteNegotiationAmount, setQuoteNegotiationAmount] = useState<number | ''>('');
-  const [quoteVendorCoupon, setQuoteVendorCoupon] = useState(false);
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
   const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
+  const [isQuoteUploadPending, setIsQuoteUploadPending] = useState(false);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<RFQQuoteAttachment[]>([]);
   const [quoteAttachmentPreviewFile, setQuoteAttachmentPreviewFile] =
@@ -353,9 +366,12 @@ export default function RFQDetailPage() {
   // Vendor email dialog
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTarget, setEmailTarget] = useState<FeatureMailTarget | null>(null);
+  const [awardEmailOpen, setAwardEmailOpen] = useState(false);
+  const [awardEmailTarget, setAwardEmailTarget] = useState<FeatureMailTarget | null>(null);
   const vendorPdfRequestIdRef = useRef(0);
 
   const vendorEmailDraftQuery = useFeatureMailDraftQuery(emailTarget, emailOpen);
+  const awardEmailDraftQuery = useFeatureMailDraftQuery(awardEmailTarget, awardEmailOpen);
 
   const {
     data: bidComparison,
@@ -394,60 +410,7 @@ export default function RFQDetailPage() {
     selectedComparisonAttachments.find((attachment) => attachment.id === activePreviewDocId) ??
     selectedComparisonAttachments[0];
 
-  const { data: activityData, isLoading: isActivityLoading } = useActivityLogQuery({
-    entityType: 'rfq',
-    entityId: rfqId,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    size: 50,
-  });
 
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    if (!activityData?.data) return [];
-    return activityData.data.map((log) => {
-      const action = log.action.toLowerCase();
-      let icon = <Clock className="size-4" />;
-      let color = 'border-muted-foreground/20 bg-muted/30';
-
-      if (action.includes('create') || action.includes('publish')) {
-        icon = <PlusCircle className="size-4 text-primary" />;
-        color = 'border-primary/20 bg-primary/5';
-      } else if (action.includes('update')) {
-        icon = <Pencil className="size-4 text-info" />;
-        color = 'border-info/20 bg-info/5';
-      } else if (action.includes('award')) {
-        icon = <Trophy className="size-4 text-warning" />;
-        color = 'border-warning/20 bg-warning/5';
-      } else if (
-        action.includes('delete') ||
-        action.includes('cancel') ||
-        action.includes('void')
-      ) {
-        icon = <Trash2 className="size-4 text-destructive" />;
-        color = 'border-destructive/20 bg-destructive/5';
-      } else if (action.includes('invite') || action.includes('quote')) {
-        icon = <CheckCircle2 className="size-4 text-success" />;
-        color = 'border-success/20 bg-success/5';
-      }
-
-      return {
-        id: log.id,
-        user: log.user?.name || 'System',
-        action: log.description,
-        timestamp: log.createdAt
-          ? new Date(log.createdAt).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '—',
-        avatar: log.user?.image || undefined,
-        icon,
-        color,
-      };
-    });
-  }, [activityData]);
 
   const alreadyInvitedVendorIds = useMemo(
     () =>
@@ -477,13 +440,7 @@ export default function RFQDetailPage() {
   const isEvaluation = statusName === 'EVALUATION';
   const isAwarded = statusName === 'AWARDED';
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
-  const draftPublishedStatuses =
-    rfqStatuses?.filter(
-      (status): status is RFQStatus & { id: string; name: 'DRAFT' | 'PUBLISHED' } =>
-        typeof status.id === 'string' &&
-        status.id.length > 0 &&
-        (status.name === 'DRAFT' || status.name === 'PUBLISHED')
-    ) ?? [];
+  const draftPublishedStatuses = RFQ_MUTABLE_STATUS_OPTIONS;
   const projectActions = project?.capabilities?.actions;
   const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
   const canUploadRfqAttachment = projectActions?.rfq?.update === true && !isTerminal;
@@ -499,8 +456,7 @@ export default function RFQDetailPage() {
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
   const canSaveVendorPdf = projectActions?.rfq?.update === true;
-  const hasQuoteAttachment =
-    quoteVendorCoupon || existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
+  const hasQuoteAttachment = existingAttachments.length > 0 || (!!quoteFile && !!rfqUploadFolderId);
 
   const isActionPending =
     publishMutation.isPending ||
@@ -569,7 +525,6 @@ export default function RFQDetailPage() {
       const eq = quotes.find((q) => q.id === existingQuoteId);
       setQuoteAmount(eq?.grandTotal ?? eq?.totalAmount ?? '');
       setQuoteNegotiationAmount(eq?.negotiationAmount ?? '');
-      setQuoteVendorCoupon(eq?.vendorCoupon ?? false);
       // Use leadTimeDays if available (numeric), fallback to notes but strip non-numeric
       const lt = eq?.leadTimeDays?.toString() || eq?.notes?.replace(/[^0-9]/g, '') || '';
       setQuoteLeadTime(lt);
@@ -577,7 +532,6 @@ export default function RFQDetailPage() {
     } else {
       setQuoteAmount('');
       setQuoteNegotiationAmount('');
-      setQuoteVendorCoupon(false);
       setQuoteLeadTime('');
       setExistingAttachments([]);
     }
@@ -590,7 +544,6 @@ export default function RFQDetailPage() {
     setQuoteInviteId('');
     setQuoteAmount('');
     setQuoteNegotiationAmount('');
-    setQuoteVendorCoupon(false);
     setQuoteLeadTime('');
     setEditingQuoteId(null);
     setIsQuoteViewOnly(false);
@@ -842,6 +795,17 @@ export default function RFQDetailPage() {
     return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
   }
 
+  function getQuoteRecipientEmails(quote: (typeof quotes)[number]): string[] {
+    const vendorEmail = normalizeEmail(quote.vendor?.email);
+    const contactEmails =
+      quote.vendor?.contacts?.flatMap((contact) => {
+        const email = normalizeEmail(contact.email);
+        return email ? [email] : [];
+      }) ?? [];
+
+    return [...new Set([...(vendorEmail ? [vendorEmail] : []), ...contactEmails])];
+  }
+
   function openRfqEmailFlow(
     target: FeatureMailTarget,
     pdfTarget: { quoteId: string; vendorName: string }
@@ -907,6 +871,31 @@ export default function RFQDetailPage() {
     );
   }
 
+  function handleEmailAwardVendor(quoteId: string) {
+    const quote = quotes.find((item) => item.id === quoteId);
+    if (!quote) return;
+
+    const vendorId = quote.vendor?.id ?? quote.vendorId;
+    const vendorName = quote.vendor?.name ?? 'Awarded vendor';
+    if (!quote.isAwarded && vendorId !== rfq?.awardedVendorId) {
+      toast.error('Award email can only be sent to the awarded vendor.');
+      return;
+    }
+
+    if (getQuoteRecipientEmails(quote).length === 0) {
+      toast.error(`${vendorName} does not have a vendor or linked contact email.`);
+      return;
+    }
+
+    if (!normalizeEmail(quote.vendor?.email)) {
+      toast.info(`${vendorName} does not have a vendor email. Select a contact recipient.`);
+    }
+
+    setAwardEmailTarget({ feature: 'rfq.awardNotice', entityId: quoteId });
+    sendVendorEmailMutation.reset();
+    setAwardEmailOpen(true);
+  }
+
   function handleCreatePurchaseOrder() {
     navigate(`/app/project/${projectId}/purchase-orders/create?rfqId=${rfqId}`);
   }
@@ -920,8 +909,16 @@ export default function RFQDetailPage() {
     }
   }
 
+  function handleAwardEmailOpenChange(open: boolean) {
+    setAwardEmailOpen(open);
+    if (!open) {
+      setAwardEmailTarget(null);
+      sendVendorEmailMutation.reset();
+    }
+  }
+
   return (
-    <div className="container-fluid max-w-full overflow-x-clip px-4 pb-5 sm:px-6 lg:px-7.5">
+    <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {vendorPdfOptionsOpen && vendorPdfTarget && (
         <PdfGenerateDialog
           open={vendorPdfOptionsOpen}
@@ -1005,6 +1002,24 @@ export default function RFQDetailPage() {
           handleEmailOpenChange(false);
         }}
       />
+      <EmailComposePreviewDialog
+        open={awardEmailOpen}
+        onOpenChange={handleAwardEmailOpenChange}
+        title="Email Award Notice"
+        draft={awardEmailDraftQuery.data ?? null}
+        isLoading={awardEmailDraftQuery.isLoading}
+        isSending={sendVendorEmailMutation.isPending}
+        onSend={async (payload) => {
+          if (!awardEmailTarget) return;
+          await sendVendorEmailMutation.mutateAsync({
+            feature: awardEmailTarget.feature,
+            entityId: awardEmailTarget.entityId,
+            draft: payload,
+          });
+          await refetchRfqDetail();
+          handleAwardEmailOpenChange(false);
+        }}
+      />
 
       {/* ---- Toolbar ---- */}
       <Toolbar>
@@ -1015,7 +1030,7 @@ export default function RFQDetailPage() {
                 Back to RFQs
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
               <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
               {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
                 <Select
@@ -1126,7 +1141,7 @@ export default function RFQDetailPage() {
       {/* ---- Two-column layout ---- */}
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         {/* Left column */}
-        <div className="min-w-0 flex-1 space-y-5">
+        <div className="min-w-0 max-w-full flex-1 space-y-5">
           {/* Key Metrics */}
           <StatsBar variant="cards" width="full" columns={{ sm: 2, xl: 3 }}>
             <StatsBarItem
@@ -1148,7 +1163,7 @@ export default function RFQDetailPage() {
             <StatsBarItem
               variant="card"
               label="Lowest Quote"
-              value={lowestQuote != null ? formatCurrency(lowestQuote) : '—'}
+              value={lowestQuote != null ? formatCurrency(lowestQuote) : '\u2014'}
               description={lowestQuote != null ? 'Lowest current bid' : 'No quotes yet'}
               dotColor="bg-warning"
               valueColor="text-foreground"
@@ -1157,22 +1172,28 @@ export default function RFQDetailPage() {
 
           {/* Quick Actions */}
           {!isDraft && (quotes.length >= 2 || (canEmailVendors && invites.length > 0)) && (
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 max-w-full flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               {quotes.length >= 2 && (
-                <Button variant="outline" size="sm" onClick={() => setComparisonOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full min-w-0 justify-center sm:w-auto"
+                  onClick={() => setComparisonOpen(true)}
+                >
                   <FileText className="size-4" />
-                  Compare {quotes.length} Quotes
+                  <span className="min-w-0 truncate">Compare {quotes.length} Quotes</span>
                 </Button>
               )}
               {canEmailVendors && invites.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
+                  className="w-full min-w-0 justify-center sm:w-auto"
                   disabled={sendVendorEmailMutation.isPending}
                   onClick={handleEmailAllVendors}
                 >
                   <Mail className="size-4" />
-                  Email All Vendors
+                  <span className="min-w-0 truncate">Email All Vendors</span>
                 </Button>
               )}
             </div>
@@ -1200,6 +1221,7 @@ export default function RFQDetailPage() {
             onOpenQuote={openQuoteDialog}
             onGenerateVendorPdf={handleGenerateVendorPdf}
             onEmailVendor={handleEmailVendor}
+            onEmailAwardVendor={handleEmailAwardVendor}
             onAwardQuote={handleAwardFromTable}
             onUnaward={handleUnaward}
             onGeneratePO={handleCreatePurchaseOrder}
@@ -1230,15 +1252,16 @@ export default function RFQDetailPage() {
               open={uploadOpen}
               onOpenChange={setUploadOpen}
               parentId={rfqUploadFolderId}
-              onSubmit={async (payload) => {
-                try {
-                  const fileItem = await uploadFileMutation.mutateAsync(payload);
-                  await addAttachmentMutation.mutateAsync({ rfqId, documentId: fileItem.id });
-                } finally {
-                  setUploadOpen(false);
-                }
+              onSubmit={(payload) => {
+                uploadManager.enqueueUpload(payload, {
+                  label: 'RFQ attachment',
+                  onUploaded: async (uploaded) => {
+                    await addAttachmentMutation.mutateAsync({ rfqId, documentId: uploaded.id });
+                  },
+                });
+                setUploadOpen(false);
               }}
-              isSubmitting={uploadFileMutation.isPending || addAttachmentMutation.isPending}
+              isSubmitting={false}
             />
           )}
 
@@ -1266,22 +1289,11 @@ export default function RFQDetailPage() {
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activityChildren={
-            <div className="p-4">
-              {isActivityLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground uppercase tracking-normal">
-                  Loading activity...
-                </div>
-              ) : activityItems.length > 0 ? (
-                <ActivityFeed items={activityItems} />
-              ) : (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <History className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-normal font-bold">
-                    No activity recorded yet.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ProjectActivityPanel
+              entityType="rfq"
+              entityId={rfqId}
+              emptyMessage="No activity recorded yet."
+            />
           }
         >
           <div className="space-y-6 pt-2">
@@ -1296,12 +1308,12 @@ export default function RFQDetailPage() {
                   <InfoRow label="Project">
                     {rfq.project
                       ? `${rfq.project.name}${rfq.project.jobNumber ? ` (${rfq.project.jobNumber})` : ''}`
-                      : '—'}
+                      : '\u2014'}
                   </InfoRow>
                   <InfoRow label="Track">
-                    {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '—'}
+                    {rfq.track ? (RFQ_TRACK_LABELS[rfq.track] ?? rfq.track) : '\u2014'}
                   </InfoRow>
-                  <InfoRow label="Bid Deadline">{formatDate(rfq.bidDeadline || '')}</InfoRow>
+                  <InfoRow label="RFQ Date">{formatDate(rfq.rfqDate || '')}</InfoRow>
                   {rfq.minimumVendors != null && (
                     <InfoRow label="Min. Vendors">{rfq.minimumVendors}</InfoRow>
                   )}
@@ -1671,21 +1683,19 @@ export default function RFQDetailPage() {
                       <div>
                         <div className="text-xs text-muted-foreground">Issue</div>
                         <div className="mt-0.5 font-medium">
-                          {rfq.createdAt ? formatDate(rfq.createdAt) : '-'}
+                          {rfq.createdAt ? formatDate(rfq.createdAt) : '\u2014'}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground">Due</div>
-                        <div className="mt-0.5 font-medium">
-                          {formatDate(rfq.bidDeadline || '')}
-                        </div>
+                        <div className="text-xs text-muted-foreground">RFQ Date</div>
+                        <div className="mt-0.5 font-medium">{formatDate(rfq.rfqDate || '')}</div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Lowest</div>
                         <div className="mt-0.5 font-medium">
                           {bidComparison.statistics.lowestQuote != null
                             ? formatCurrency(bidComparison.statistics.lowestQuote)
-                            : '-'}
+                            : '\u2014'}
                         </div>
                       </div>
                       <div>
@@ -1693,7 +1703,7 @@ export default function RFQDetailPage() {
                         <div className="mt-0.5 font-medium">
                           {bidComparison.statistics.averageQuote != null
                             ? formatCurrency(bidComparison.statistics.averageQuote)
-                            : '-'}
+                            : '\u2014'}
                         </div>
                       </div>
                     </div>
@@ -1799,6 +1809,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                   disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
@@ -1816,6 +1827,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                   disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
@@ -1841,16 +1853,6 @@ export default function RFQDetailPage() {
                 />
               </InputWrapper>
             </Field>
-
-            <label className="flex items-start gap-3 rounded-md border bg-muted/20 p-3 text-sm">
-              <Checkbox
-                checked={quoteVendorCoupon}
-                disabled={isQuoteViewOnly}
-                onCheckedChange={(checked) => setQuoteVendorCoupon(checked === true)}
-              />
-              <span className="min-w-0 font-medium text-foreground">Vendor Coupon</span>
-            </label>
-
             <Field>
               <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                 Quote Document
@@ -1952,7 +1954,7 @@ export default function RFQDetailPage() {
                     !hasQuoteAttachment ||
                     submitQuoteMutation.isPending ||
                     updateQuoteMutation.isPending ||
-                    uploadFileMutation.isPending
+                    isQuoteUploadPending
                   }
                   onClick={async () => {
                     if (!quoteAmount || quoteAmount <= 0) return;
@@ -1961,19 +1963,18 @@ export default function RFQDetailPage() {
                     try {
                       let fileIds: string[] = [];
                       if (quoteFile && rfqUploadFolderId) {
-                        const dotIdx = quoteFile.name.lastIndexOf('.');
-                        const docName =
-                          dotIdx > 0 ? quoteFile.name.slice(0, dotIdx) : quoteFile.name;
-                        const fileItem = await uploadFileMutation.mutateAsync({
-                          file: quoteFile,
-                          data: {
-                            name: docName,
-                            parentId: rfqUploadFolderId,
-                            mimeType: quoteFile.type || undefined,
-                            size: quoteFile.size,
-                          },
-                        });
-                        fileIds = [fileItem.id];
+                        setIsQuoteUploadPending(true);
+                        const [fileItem] = await uploadManager.enqueueUploadsAndWait(
+                          [
+                            createFileUploadPayload(
+                              quoteFile,
+                              rfqUploadFolderId,
+                              getQuoteDocumentUploadName
+                            ),
+                          ],
+                          { label: 'Quote document' }
+                        );
+                        fileIds = fileItem ? [fileItem.id] : [];
                       }
 
                       const existingIds = existingAttachments.map((a) => a.documentId || a.id);
@@ -1990,7 +1991,6 @@ export default function RFQDetailPage() {
                               quoteNegotiationAmount > 0
                                 ? quoteNegotiationAmount
                                 : null,
-                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },
@@ -2006,7 +2006,6 @@ export default function RFQDetailPage() {
                               quoteNegotiationAmount > 0
                                 ? quoteNegotiationAmount
                                 : null,
-                            vendorCoupon: quoteVendorCoupon,
                             leadTime: quoteLeadTime || undefined,
                             attachments: allFileIds,
                           },
@@ -2015,12 +2014,14 @@ export default function RFQDetailPage() {
                       resetQuoteDialog();
                     } catch {
                       // errors handled by mutations
+                    } finally {
+                      setIsQuoteUploadPending(false);
                     }
                   }}
                 >
                   {submitQuoteMutation.isPending ||
                   updateQuoteMutation.isPending ||
-                  uploadFileMutation.isPending
+                  isQuoteUploadPending
                     ? 'Uploading...'
                     : editingQuoteId
                       ? 'Save Changes'
@@ -2309,7 +2310,7 @@ export default function RFQDetailPage() {
                         )}
                       </div>
                       <div className="text-muted-foreground">
-                        {q.grandTotal != null ? formatCurrency(q.grandTotal) : '—'}
+                        {q.grandTotal != null ? formatCurrency(q.grandTotal) : '\u2014'}
                       </div>
                     </div>
                   </label>
@@ -2329,6 +2330,7 @@ export default function RFQDetailPage() {
                   min={0}
                   decimalPlaces={2}
                   placeholder="0.00"
+                  useGrouping
                 />
               </InputWrapper>
             </Field>

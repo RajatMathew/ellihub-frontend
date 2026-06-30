@@ -1,22 +1,19 @@
-import { Button } from '@/app/components/ui/button';
-import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderSearch,
+  TableCardHeaderSelect,
+  TableCardHeaderToolbar,
+} from '@/app/components/table-card-header';
 import {
   InfiniteSearchSelect,
   type InfiniteSearchSelectOption,
 } from '@/app/components/ui/infinite-search-select';
-import { Input, InputWrapper } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
 import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import { PO_STATUS_OPTIONS } from '@/modules/project/constants/purchase-order';
 import type { PurchaseOrderListParamPatch } from '@/modules/project/hooks/purchase-order';
 import type { POStatusName } from '@/modules/project/schemas/purchase-order';
-import { Search, X } from 'lucide-react';
+import { ListFilterPlus } from 'lucide-react';
 
 interface PurchaseOrderLookupOption {
   id: string;
@@ -48,6 +45,9 @@ interface PurchaseOrderListFiltersProps {
 }
 
 const STATUS_TABS = [{ label: 'All', value: undefined }, ...PO_STATUS_OPTIONS] as const;
+const tableHeaderFilterTriggerClassName =
+  'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+const tableHeaderFilterPlaceholderClassName = '!text-table-card-header-foreground/75';
 
 export function PurchaseOrderListFilters({
   statusFilter,
@@ -64,24 +64,22 @@ export function PurchaseOrderListFilters({
   onClearFilters,
 }: PurchaseOrderListFiltersProps) {
   return (
-    <CardHeader className="items-stretch sm:items-center">
-      <CardTitle className="w-full sm:w-auto">
+    <TableCardHeader
+      title={
         <ProjectFilterTabs
           value={statusFilter}
           options={STATUS_TABS}
           onValueChange={(value) => onUpdateParams({ status: value, page: undefined })}
         />
-      </CardTitle>
-      <CardToolbar className="w-full sm:w-auto">
-        <div className="grid w-full grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
-          <InputWrapper variant="sm" className="w-full sm:w-60">
-            <Search className="size-4" />
-            <Input
-              placeholder="Search POs..."
-              value={searchInput}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </InputWrapper>
+      }
+      actions={
+        <TableCardHeaderToolbar className="flex-wrap">
+          <TableCardHeaderSearch
+            value={searchInput}
+            placeholder="Search POs..."
+            onChange={onSearchChange}
+            className="sm:w-60"
+          />
           <div className="w-full sm:w-52">
             <InfiniteSearchSelect
               options={vendorPicker.options}
@@ -98,39 +96,32 @@ export function PurchaseOrderListFilters({
               placeholder="All Vendors"
               searchPlaceholder="Search vendors..."
               emptyMessage="No vendors found."
-              triggerClassName="h-8 text-xs"
-              placeholderClassName="text-foreground"
+              triggerClassName={tableHeaderFilterTriggerClassName}
+              placeholderClassName={tableHeaderFilterPlaceholderClassName}
             />
           </div>
-          <Select
+          <TableCardHeaderSelect
             value={tradeCategoryFilter ?? 'all'}
+            placeholder="All Trades"
+            icon={ListFilterPlus}
+            options={[
+              { label: 'All Trades', value: 'all' },
+              ...tradeCategories.map((option) => ({
+                label: option.label ?? option.name ?? option.id,
+                value: option.id,
+              })),
+            ]}
+            className="sm:w-48"
             onValueChange={(value) =>
               onUpdateParams({
                 tradeCategoryId: value === 'all' ? undefined : value,
                 page: undefined,
               })
             }
-          >
-            <SelectTrigger className="h-8 w-full text-xs sm:w-48">
-              <SelectValue placeholder="All Trades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Trades</SelectItem>
-              {tradeCategories.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label ?? option.name ?? option.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClearFilters}>
-              <X className="size-3.5" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardToolbar>
-    </CardHeader>
+          />
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearFilters} />
+        </TableCardHeaderToolbar>
+      }
+    />
   );
 }
