@@ -102,6 +102,7 @@ function filterMenuForAccess(
               access.access?.role === 'ap'
             );
           }
+          if (path.includes('email')) return true;
           if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
           if (path.includes('directory/contacts')) return access.can('contact', 'read');
           if (path.includes('directory/general-contractors')) {
