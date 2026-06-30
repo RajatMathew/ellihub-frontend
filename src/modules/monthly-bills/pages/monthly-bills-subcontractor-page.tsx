@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 
-import { TableCardHeader } from '@/app/components/table-card-header';
+import { TableCardHeader, TableCardHeaderClearButton } from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
@@ -230,31 +230,27 @@ export function MonthlyBillsSubcontractorPage({
 
       <Card className="overflow-hidden">
         <TableCardHeader
-          title={
-            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-              Subcontractor Bills
-            </span>
-          }
           actions={
-            <div className="flex w-full flex-col items-stretch gap-2.5 2xl:w-auto 2xl:flex-row 2xl:items-center">
-              <MonthlyBillsFilters
-                searchInput={searchInput}
-                vendorIds={vendorIds}
-                vendorSearch={vendorSearchInput}
-                vendorPicker={vendorPicker}
-                tradeCategoryIds={tradeCategoryIds}
-                tradeCategorySearch={tradeCategorySearch}
-                tradeCategoryOptions={tradeCategoryOptions}
-                hasActiveFilters={hasActiveFilters}
-                onSearchChange={setSearchInput}
-                onVendorChange={handleVendorChange}
-                onVendorSearchChange={setVendorSearchInput}
-                onTradeCategoryChange={setTradeCategoryIds}
-                onTradeCategorySearchChange={setTradeCategorySearch}
-                onClearFilters={clearFilters}
-              />
+            <div className="ml-auto flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end">
+              <div className="min-w-0 xl:w-auto xl:shrink-0">
+                <MonthlyBillsFilters
+                  searchInput={searchInput}
+                  vendorIds={vendorIds}
+                  vendorSearch={vendorSearchInput}
+                  vendorPicker={vendorPicker}
+                  tradeCategoryIds={tradeCategoryIds}
+                  tradeCategorySearch={tradeCategorySearch}
+                  tradeCategoryOptions={tradeCategoryOptions}
+                  onSearchChange={setSearchInput}
+                  onVendorChange={handleVendorChange}
+                  onVendorSearchChange={setVendorSearchInput}
+                  onTradeCategoryChange={setTradeCategoryIds}
+                  onTradeCategorySearchChange={setTradeCategorySearch}
+                  className="xl:w-auto xl:grid-cols-[18rem_12rem_12rem]"
+                />
+              </div>
 
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end 2xl:w-auto">
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:w-auto xl:flex-nowrap">
                 <MonthlyBillsColumnToggle
                   visibleColumns={visibleColumns}
                   onToggleColumn={toggleColumn}
@@ -296,12 +292,13 @@ export function MonthlyBillsSubcontractorPage({
                       variant="outline"
                       size="sm"
                       onClick={() => setBulkEditMode(true)}
-                      className={`w-full sm:w-auto ${tableHeaderActionButtonClassName}`}
+                      className={`w-full shrink-0 sm:w-auto ${tableHeaderActionButtonClassName}`}
                     >
                       <Pencil className="size-3.5" />
                       Bulk Edit
                     </Button>
                   ))}
+                <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
               </div>
             </div>
           }
