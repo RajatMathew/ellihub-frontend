@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
@@ -15,7 +16,7 @@ import type {
   ProjectTeamRole,
 } from '@/modules/project/schemas/project-team.schema';
 import type { ProjectDetail } from '@/modules/project/schemas/project.schema';
-import { UserPlus, Users } from 'lucide-react';
+import { Eye, Info, ShieldCheck, UserCog, UserPlus, Users } from 'lucide-react';
 
 import { AddTeamMemberForm } from './add-team-member-form';
 import { EmptyTeamState } from './empty-team-state';
@@ -69,6 +70,7 @@ export function ProjectTeamDialog({
   const [pendingLeadTransfer, setPendingLeadTransfer] = useState<ProjectTeamAssignment | null>(
     null
   );
+  const [rolesInfoOpen, setRolesInfoOpen] = useState(false);
   const { teamMembers, totalMembers, hasMembers } = useFilteredTeamMembers({ project });
   const allTeamMembers = [
     ...(project.leadPM
@@ -208,6 +210,16 @@ export function ProjectTeamDialog({
                 <p className="text-sm text-muted-foreground">No team members assigned.</p>
               </div>
             )}
+            <div className="flex justify-start pt-1">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary underline underline-offset-4 transition-colors hover:text-primary-hover"
+                onClick={() => setRolesInfoOpen(true)}
+              >
+                <Info className="size-4" aria-hidden="true" />
+                What are project roles?
+              </button>
+            </div>
           </DialogBody>
         </DialogContent>
       </Dialog>
@@ -246,6 +258,86 @@ export function ProjectTeamDialog({
         onConfirm={handleConfirmLeadTransfer}
         isPending={isUpdatingRole}
       />
+      <Dialog open={rolesInfoOpen} onOpenChange={setRolesInfoOpen}>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-2xl overflow-hidden bg-popover p-0 text-popover-foreground">
+          <DialogHeader className="border-b bg-popover px-6 py-5 pr-14">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <ShieldCheck className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-xl">Project Roles</DialogTitle>
+                <DialogDescription className="mt-1 max-w-xl text-sm leading-6">
+                  Decide who can manage the project, who can help run it, and who can only review
+                  the work.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogBody className="space-y-5 bg-popover px-6 py-5">
+            <div className="rounded-md border bg-background/55 p-4">
+              <p className="text-sm font-medium text-foreground">Access rules</p>
+              <div className="mt-3 grid gap-2 text-sm leading-6 text-muted-foreground">
+                <p>
+                  Admins, accountants, and AP users already have access to every project. Add PMs
+                  here only when they need project-specific access.
+                </p>
+                <p>Only the Lead PM or an admin can add more PMs to this project.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <ProjectRoleInfoItem
+                icon={ShieldCheck}
+                title="Lead PM"
+                label="Full access"
+                description="Owns the project team and can work with every project record. Each project can have only one Lead PM at a time."
+              />
+              <ProjectRoleInfoItem
+                icon={UserCog}
+                title="PM"
+                label="Full access"
+                description="Can work with RFQs, POs, SCOs, and the rest of the project data. Use this for secondary PMs who help manage the project."
+              />
+              <ProjectRoleInfoItem
+                icon={Eye}
+                title="Viewer"
+                label="Read only"
+                description="Can view project data, but cannot add or edit RFQs, POs, SCOs, or similar records."
+              />
+            </div>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function ProjectRoleInfoItem({
+  icon: Icon,
+  title,
+  label,
+  description,
+}: {
+  icon: typeof ShieldCheck;
+  title: string;
+  label: string;
+  description: string;
+}) {
+  return (
+    <div className="flex gap-3 rounded-md border bg-popover p-4 shadow-sm shadow-black/5">
+      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-primary">
+            {label}
+          </span>
+        </div>
+        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </div>
   );
 }

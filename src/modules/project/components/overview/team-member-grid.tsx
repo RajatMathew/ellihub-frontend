@@ -78,6 +78,10 @@ function getAuthRoleLabel(authRole: string) {
   return authRole.toUpperCase();
 }
 
+function getProjectTeamRoleLabel(role: ProjectTeamRole) {
+  return role === 'Member' ? 'Viewer' : role;
+}
+
 export function TeamMemberGrid({
   teamMembers,
   canAssignRole = false,
@@ -144,12 +148,12 @@ export function TeamMemberGrid({
                 onValueChange={(value) => onRoleChange?.(member, value as ProjectTeamRole)}
               >
                 <SelectTrigger className="h-9 min-w-0 flex-1 md:h-8 md:w-full">
-                  <SelectValue />
+                  <SelectValue>{getProjectTeamRoleLabel(role)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((option) => (
                     <SelectItem key={option} value={option}>
-                      {option}
+                      {getProjectTeamRoleLabel(option)}
                     </SelectItem>
                   ))}
                 </SelectContent>
