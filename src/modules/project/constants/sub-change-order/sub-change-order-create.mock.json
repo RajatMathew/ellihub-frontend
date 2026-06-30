@@ -1,0 +1,171 @@
+[
+  {
+    "purchaseOrderId": "",
+    "title": "Additional framing for revised wall layout",
+    "initiatedBy": "VENDOR",
+    "date": "2026-03-08",
+    "changeType": "DESIGN_CHANGE",
+    "priority": "MEDIUM",
+    "reasonForChange": "Architect issued revised partition plan (ASI #14) requiring additional metal stud framing at grid lines C-D on floors 2 and 3.",
+    "detailedScope": "Furnish and install 3-5/8\" metal studs at 16\" O.C. for new partition walls. Includes track, studs, and blocking for door frames. Approximately 480 LF of new wall.",
+    "vendorContactName": "Carlos Rivera",
+    "vendorContactEmail": "c.rivera@eliteframing.com",
+    "vendorReferenceNumber": "EF-CO-2026-031",
+    "lineItems": [
+      { "description": "3-5/8\" Metal Studs 25ga (10ft)", "qty": 350, "unit": "EA", "unitPrice": 4.85, "costCategory": "MATERIALS" },
+      { "description": "Floor/Ceiling Track 3-5/8\"", "qty": 960, "unit": "LF", "unitPrice": 1.25, "costCategory": "MATERIALS" },
+      { "description": "Framing Labor — Journeyman", "qty": 64, "unit": "HR", "unitPrice": 78.00, "costCategory": "LABOR" },
+      { "description": "Door Frame Blocking (HM frames)", "qty": 12, "unit": "EA", "unitPrice": 45.00, "costCategory": "MATERIALS" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Extra excavation due to rock encountered",
+    "initiatedBy": "VENDOR",
+    "date": "2026-02-20",
+    "changeType": "UNFORESEEN_CONDITIONS",
+    "priority": "HIGH",
+    "reasonForChange": "Unforeseen rock formation encountered at foundation excavation between elevations -8' and -12' at Building A. Geotech report did not indicate rock at this depth.",
+    "detailedScope": "Hydraulic rock breaking and removal of approximately 180 CY of rock. Includes additional trucking for disposal at certified facility.",
+    "vendorContactName": "Mike Patterson",
+    "vendorContactEmail": "mike@siteworkpros.com",
+    "vendorReferenceNumber": "SWP-RFQ-0088",
+    "lineItems": [
+      { "description": "Hydraulic Rock Breaking", "qty": 180, "unit": "CY", "unitPrice": 125.00, "costCategory": "EQUIPMENT" },
+      { "description": "Rock Disposal & Trucking", "qty": 22, "unit": "LOAD", "unitPrice": 450.00, "costCategory": "EQUIPMENT" },
+      { "description": "Excavator Operator — OT Premium", "qty": 16, "unit": "HR", "unitPrice": 135.00, "costCategory": "LABOR" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Upgrade HVAC ductwork to larger capacity",
+    "initiatedBy": "FIRM",
+    "date": "2026-03-01",
+    "changeType": "DESIGN_CHANGE",
+    "priority": "MEDIUM",
+    "reasonForChange": "Mechanical engineer redesigned supply ductwork from 12\" to 16\" diameter to meet updated air-flow requirements per energy model revision.",
+    "detailedScope": "Remove existing 12\" spiral duct on floor 4 and replace with 16\" spiral duct. Re-support with new hangers. Includes balancing and testing.",
+    "vendorContactName": "Angela Torres",
+    "vendorContactEmail": "atorres@climatecraft.com",
+    "vendorReferenceNumber": "CC-2026-0145",
+    "lineItems": [
+      { "description": "16\" Spiral Duct (galvanized)", "qty": 320, "unit": "LF", "unitPrice": 18.50, "costCategory": "MATERIALS" },
+      { "description": "Duct Hangers & Supports (16\")", "qty": 65, "unit": "EA", "unitPrice": 12.00, "costCategory": "MATERIALS" },
+      { "description": "Demo Existing 12\" Ductwork", "qty": 320, "unit": "LF", "unitPrice": 4.50, "costCategory": "LABOR" },
+      { "description": "Sheet Metal Installer — Journeyman", "qty": 48, "unit": "HR", "unitPrice": 92.00, "costCategory": "LABOR" },
+      { "description": "Air Balancing & Testing", "qty": 1, "unit": "LS", "unitPrice": 1800.00, "costCategory": "SUBCONTRACTOR" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Credit for deleted partition wall at Level 2",
+    "initiatedBy": "FIRM",
+    "date": "2026-02-28",
+    "changeType": "CREDIT",
+    "priority": "LOW",
+    "reasonForChange": "Owner directed removal of partition wall between rooms 204 and 206 to create open-plan layout. ASI #17.",
+    "detailedScope": "Credit for deletion of approximately 42 LF of partition wall including metal studs, drywall (both sides), taping, and painting.",
+    "vendorContactName": "Lisa Chen",
+    "vendorContactEmail": "l.chen@precisiondrywall.com",
+    "vendorReferenceNumber": "",
+    "lineItems": [
+      { "description": "Credit — Metal Stud & Track (42 LF wall)", "qty": 1, "unit": "LS", "unitPrice": -1260.00, "costCategory": "MATERIALS" },
+      { "description": "Credit — Drywall Both Sides (42 LF x 10')", "qty": 840, "unit": "SF", "unitPrice": -1.85, "costCategory": "MATERIALS" },
+      { "description": "Credit — Taping, Finishing & Paint", "qty": 840, "unit": "SF", "unitPrice": -1.10, "costCategory": "LABOR" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Overtime labor for accelerated concrete schedule",
+    "initiatedBy": "FIRM",
+    "date": "2026-03-05",
+    "changeType": "SCHEDULE_ACCELERATION",
+    "priority": "URGENT",
+    "reasonForChange": "Owner requires Level 5 slab pour completed 2 weeks ahead of baseline schedule to accommodate early tenant fit-out.",
+    "detailedScope": "Weekend overtime for concrete crew (Saturday and Sunday) for 2 weekends. Includes pump truck standby and additional finisher.",
+    "vendorContactName": "James O'Brien",
+    "vendorContactEmail": "jobrien@foundationfirst.com",
+    "vendorReferenceNumber": "FF-CO-0312",
+    "lineItems": [
+      { "description": "Concrete Finisher — OT (1.5x)", "qty": 128, "unit": "HR", "unitPrice": 112.50, "costCategory": "LABOR" },
+      { "description": "Concrete Laborer — OT (1.5x)", "qty": 192, "unit": "HR", "unitPrice": 82.50, "costCategory": "LABOR" },
+      { "description": "Pump Truck Weekend Standby", "qty": 4, "unit": "DAY", "unitPrice": 2800.00, "costCategory": "EQUIPMENT" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Material substitution — premium porcelain tile",
+    "initiatedBy": "VENDOR",
+    "date": "2026-03-02",
+    "changeType": "MATERIAL_SUBSTITUTION",
+    "priority": "MEDIUM",
+    "reasonForChange": "Originally specified tile (Daltile Keystones) discontinued by manufacturer. Proposed substitution with equivalent Crossville porcelain approved by architect.",
+    "detailedScope": "Substitute floor tile for lobbies and corridors (floors 1-3). Approximately 4,200 SF. Includes revised setting material for large-format tile.",
+    "vendorContactName": "Raj Patel",
+    "vendorContactEmail": "raj@premiertile.com",
+    "vendorReferenceNumber": "PT-SUB-2026-008",
+    "lineItems": [
+      { "description": "Crossville Porcelain Tile 24x24 (premium)", "qty": 4200, "unit": "SF", "unitPrice": 8.75, "costCategory": "MATERIALS" },
+      { "description": "Credit — Daltile Keystones (original spec)", "qty": 4200, "unit": "SF", "unitPrice": -6.20, "costCategory": "MATERIALS" },
+      { "description": "Large-Format Mortar (Mapei Kerabond)", "qty": 85, "unit": "BAG", "unitPrice": 32.00, "costCategory": "MATERIALS" },
+      { "description": "Additional Setting Labor — Large Format", "qty": 24, "unit": "HR", "unitPrice": 75.00, "costCategory": "LABOR" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Backcharge for damaged drywall repair — Building B",
+    "initiatedBy": "FIRM",
+    "date": "2026-02-15",
+    "changeType": "BACKCHARGE",
+    "priority": "LOW",
+    "reasonForChange": "Plumbing subcontractor damaged installed drywall at 14 locations while running drain lines on floors 3-5. Documented with photos and daily reports.",
+    "detailedScope": "Patch, tape, sand, and repaint 14 drywall penetrations / damaged areas. Average size 2'x3' per location.",
+    "vendorContactName": "Tom Bradley",
+    "vendorContactEmail": "tbradley@aceplumbing.net",
+    "vendorReferenceNumber": "",
+    "lineItems": [
+      { "description": "Drywall Patch & Repair (14 locations)", "qty": 14, "unit": "EA", "unitPrice": 185.00, "costCategory": "LABOR" },
+      { "description": "Drywall Repair Materials (compound, tape, board)", "qty": 1, "unit": "LS", "unitPrice": 320.00, "costCategory": "MATERIALS" },
+      { "description": "Touch-Up Paint (match existing)", "qty": 14, "unit": "EA", "unitPrice": 45.00, "costCategory": "MATERIALS" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "Added fire stopping at floor penetrations",
+    "initiatedBy": "VENDOR",
+    "date": "2026-03-06",
+    "changeType": "OTHER",
+    "priority": "HIGH",
+    "reasonForChange": "Fire marshal inspection identified 38 unprotected floor penetrations requiring UL-listed fire stopping. Code compliance issue — must be resolved before framing inspection.",
+    "detailedScope": "Install Hilti FS-ONE firestop sealant at all MEP penetrations through rated floor assemblies on floors 2-6. Includes metal sleeve sleeves where required.",
+    "vendorContactName": "Sarah Kim",
+    "vendorContactEmail": "skim@fireproofspecialists.com",
+    "vendorReferenceNumber": "FPS-2026-0071",
+    "lineItems": [
+      { "description": "Firestop Sealant Application (per penetration)", "qty": 38, "unit": "EA", "unitPrice": 85.00, "costCategory": "LABOR" },
+      { "description": "Hilti FS-ONE Sealant (10.1 oz tubes)", "qty": 24, "unit": "EA", "unitPrice": 18.50, "costCategory": "MATERIALS" },
+      { "description": "Metal Sleeve Collars (4\" & 6\")", "qty": 16, "unit": "EA", "unitPrice": 42.00, "costCategory": "MATERIALS" },
+      { "description": "UL Listing Documentation & Labels", "qty": 1, "unit": "LS", "unitPrice": 350.00, "costCategory": "OTHER" }
+    ]
+  },
+  {
+    "purchaseOrderId": "",
+    "title": "ADA-compliant ramp modification at main entrance",
+    "initiatedBy": "FIRM",
+    "date": "2026-03-04",
+    "changeType": "QUANTITY_ADJUSTMENT",
+    "priority": "HIGH",
+    "reasonForChange": "Building official rejected original ramp slope (1:11). Must be regraded to 1:12 per ADA/CBC requirements. Requires extended ramp run and additional handrails.",
+    "detailedScope": "Demo existing concrete ramp (approx 140 SF), regrade subbase, pour new ramp at 1:12 slope with broom finish and edge detailing. Extend handrails 12\" beyond top and bottom landings.",
+    "vendorContactName": "David Nguyen",
+    "vendorContactEmail": "david@concreteworks.com",
+    "vendorReferenceNumber": "CW-CO-2026-019",
+    "lineItems": [
+      { "description": "Demo Existing Concrete Ramp", "qty": 140, "unit": "SF", "unitPrice": 12.00, "costCategory": "LABOR" },
+      { "description": "Subgrade Prep & Compaction", "qty": 180, "unit": "SF", "unitPrice": 3.50, "costCategory": "LABOR" },
+      { "description": "New Concrete Ramp — 4\" w/ #4 rebar", "qty": 180, "unit": "SF", "unitPrice": 28.00, "costCategory": "MATERIALS" },
+      { "description": "Stainless Steel Handrails (ADA compliant)", "qty": 48, "unit": "LF", "unitPrice": 95.00, "costCategory": "MATERIALS" },
+      { "description": "Concrete Pump (half-day)", "qty": 1, "unit": "EA", "unitPrice": 1400.00, "costCategory": "EQUIPMENT" }
+    ]
+  }
+]
