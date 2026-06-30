@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { usePostHog } from '@posthog/react';
 import { useNavigate } from 'react-router-dom';
 
 import { signOut } from '@app/api';
@@ -8,6 +9,7 @@ const SignOutPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [dots, setDots] = useState('');
   const navigate = useNavigate();
+  const posthog = usePostHog();
 
   // Animated dots
   useEffect(() => {
@@ -22,6 +24,8 @@ const SignOutPage = () => {
   useEffect(() => {
     signOut()
       .then(() => {
+        posthog.capture('user_signed_out');
+        posthog.reset();
         setTimeout(() => {
           navigate('/sign-in', {
             replace: true,
@@ -32,7 +36,7 @@ const SignOutPage = () => {
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'Failed to sign out. Please try again.');
       });
-  }, [navigate]);
+  }, [navigate, posthog]);
 
   if (error) {
     return <div className="py-6 text-center text-red-500">{error}</div>;

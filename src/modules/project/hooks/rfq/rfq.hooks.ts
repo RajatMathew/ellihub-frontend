@@ -1,3 +1,5 @@
+import posthog from 'posthog-js';
+
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -311,6 +313,7 @@ export const usePublishRFQMutation = () => {
   return useMutation({
     mutationFn: (id: string) => rfqApi.publish(id),
     onSuccess: async (_, id) => {
+      posthog.capture('rfq_published', { rfq_id: id });
       await invalidateRFQQueries(qc, id);
       toast.success('RFQ published.');
     },
@@ -342,7 +345,8 @@ export const useAwardRFQMutation = () => {
       quoteId: string;
       negotiationAmount?: number | null;
     }) => rfqApi.award(quoteId, { negotiationAmount }),
-    onSuccess: async (_, { rfqId }) => {
+    onSuccess: async (_, { rfqId, quoteId }) => {
+      posthog.capture('rfq_awarded', { rfq_id: rfqId, quote_id: quoteId });
       await invalidateRFQQueries(qc, rfqId);
       toast.success('RFQ awarded.');
     },
