@@ -1,0 +1,111 @@
+.dark {
+  color-scheme: dark;
+
+  /** Base surfaces **/
+  --background: #0f0f0f;
+  --foreground: var(--color-zinc-50);
+  --card: #141414;
+  --card-foreground: var(--color-zinc-50);
+  --page-header: #141414;
+  --page-header-border: var(--color-zinc-800);
+  --popover: oklch(14.43% 0.005 200);
+  --popover-foreground: var(--color-zinc-50);
+  --surface-hover: var(--color-zinc-800);
+
+  /** Brand and interactive colors **/
+  --primary: #4f7da8;
+  --primary-hover: #6d97c0;
+  --primary-foreground: #0f0f0f;
+  --primary-soft: var(--color-zinc-900);
+  --primary-alpha: var(--color-zinc-800);
+  --primary-soft-foreground: #6d97c0;
+  --secondary: var(--color-zinc-800);
+  --secondary-foreground: var(--color-zinc-50);
+  --accent: var(--color-zinc-800);
+  --accent-foreground: var(--color-zinc-50);
+  --outline-button-background: transparent;
+  --outline-button-foreground: var(--accent-foreground);
+  --outline-button-border: var(--input-border);
+  --outline-button-hover-background: var(--accent);
+  --outline-button-hover-foreground: var(--accent-foreground);
+  --outline-button-hover-border: var(--input-border);
+  --muted: var(--color-zinc-800);
+  --muted-foreground: var(--color-zinc-400);
+  --brand-gold: var(--color-amber-300);
+  --brand-clay: #c75e40;
+
+  /** Feedback colors **/
+  --success: var(--color-emerald-500);
+  --success-foreground: var(--color-emerald-950);
+  --success-soft: var(--color-emerald-950);
+  --success-alpha: var(--color-emerald-900);
+  --success-accent: var(--color-emerald-400);
+  --success-soft-foreground: var(--success-accent);
+  --warning: var(--color-amber-400);
+  --warning-foreground: var(--color-amber-950);
+  --warning-soft: var(--color-amber-950);
+  --warning-alpha: var(--color-amber-900);
+  --warning-accent: var(--color-amber-300);
+  --warning-soft-foreground: var(--warning-accent);
+  --info: var(--color-green-500);
+  --info-foreground: #0f0f0f;
+  --info-soft: var(--color-blue-950);
+  --info-alpha: var(--color-blue-900);
+  --info-accent: var(--color-blue-400);
+  --info-soft-foreground: var(--info-accent);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --destructive-soft: var(--color-red-950);
+  --destructive-alpha: var(--color-red-900);
+  --destructive-soft-foreground: var(--color-red-400);
+
+  /** Charts **/
+  --chart-1: var(--color-blue-500);
+  --chart-2: var(--color-green-500);
+  --chart-3: var(--color-yellow-500);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-purple-500);
+
+  /** Borders, inputs, and elevation **/
+  --border: var(--color-zinc-800);
+  --input-border: var(--color-zinc-800);
+  --ring: var(--color-zinc-600);
+  --radius: 0.5rem;
+  --separator: var(--color-zinc-800);
+  --card-border: #2a2a2a;
+  --card-border-hover: #3f3f46;
+  --card-header: #131313;
+  --card-header-foreground: var(--color-white);
+  --table-card-header-foreground: var(--card-header-foreground);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.3), -1px 0 4px rgba(0, 0, 0, 0.2);
+
+  /** App-specific accents **/
+  --project-tabs-background: #131313;
+  --header-action-hover-background: rgba(143, 179, 213, 0.12);
+  --table-card-tab-accent: var(--primary);
+  --label-light: lab(70 2 -7);
+  --label-lighter: lab(60 2 -7);
+  --rule-strong: var(--color-zinc-700);
+
+  /** Fieldwire status colors **/
+  --fieldwire-status-draft: var(--color-amber-500);
+  --fieldwire-status-neutral: var(--color-slate-400);
+  --fieldwire-status-pending: var(--color-blue-500);
+  --fieldwire-status-approved: var(--color-emerald-500);
+  --fieldwire-status-rejected: var(--color-red-500);
+
+  /** Sidebar **/
+  --sidebar-bg: #191919;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #27272a;
+  --sidebar-hover-foreground: #c75e40;
+  --sidebar-item-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-item-active: #2f2f2f;
+  --sidebar-popover-bg: #191919;
+  --sidebar-popover-foreground: #f4f4f5;
+  --sidebar-popover-muted: #a1a1aa;
+  --sidebar-popover-border: #3f3f46;
+  --sidebar-popover-hover: #27272a;
+  --sidebar-popover-active: #27272a;
+}
