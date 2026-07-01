@@ -179,7 +179,7 @@ export function PurchaseOrderActionsCell({
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const projectActions = project?.capabilities?.actions;
-  const canEdit = projectActions?.purchaseOrder?.update === true && po.status === 'DRAFT';
+  const canEdit = projectActions?.purchaseOrder?.update === true;
   const canCancel =
     projectActions?.purchaseOrder?.cancel === true &&
     po.status !== 'CANCELLED' &&

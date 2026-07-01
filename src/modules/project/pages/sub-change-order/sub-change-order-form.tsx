@@ -114,14 +114,13 @@ export function SCOFormPage() {
 
   const { data: changeTypes } = useSCOChangeTypesForForm();
   const { data: units } = useLookupsQuery('UNIT');
-  const currentPurchaseOrderIsIssued = scoDetail?.purchaseOrder?.status === 'ISSUED';
   const sourcePurchaseOrderStatus =
     typeof sourcePurchaseOrder?.status === 'string'
       ? sourcePurchaseOrder.status
       : sourcePurchaseOrder?.status?.name;
   const sourcePurchaseOrderIsIssued = sourcePurchaseOrderStatus === 'ISSUED';
   const selectedPurchaseOrderOption =
-    scoDetail?.purchaseOrder?.id && currentPurchaseOrderIsIssued
+    scoDetail?.purchaseOrder?.id
       ? {
           value: scoDetail.purchaseOrder.id,
           label: scoDetail.purchaseOrder.poNumber ?? scoDetail.purchaseOrder.id,
@@ -189,9 +188,7 @@ export function SCOFormPage() {
 
     reset({
       projectId: scoDetail.projectId ?? projectId,
-      purchaseOrderId: currentPurchaseOrderIsIssued
-        ? (scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '')
-        : '',
+      purchaseOrderId: scoDetail.purchaseOrderId ?? scoDetail.purchaseOrder?.id ?? '',
       date: scoDetail.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       title: scoDetail.title ?? '',
       description: scoDetail.description ?? '',
@@ -211,7 +208,7 @@ export function SCOFormPage() {
             }))
           : [defaultLineItem],
     });
-  }, [currentPurchaseOrderIsIssued, isEdit, projectId, reset, scoDetail]);
+  }, [isEdit, projectId, reset, scoDetail]);
 
   useEffect(() => {
     if (isEdit || !sourcePurchaseOrderIsIssued || !sourcePurchaseOrder?.id) return;

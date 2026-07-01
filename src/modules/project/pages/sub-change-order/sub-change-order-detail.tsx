@@ -270,7 +270,7 @@ export function SCODetailPage() {
   const canApprove = projectActions?.subChangeOrder?.approve === true && isDraft;
   const canReject = projectActions?.subChangeOrder?.reject === true && isDraft;
   const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
-  const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
+  const canEdit = projectActions?.subChangeOrder?.update === true;
   const canSavePdf = projectActions?.subChangeOrder?.update === true;
   const canEmailSCO = can('mail', 'send') && isApproved;
 
@@ -632,8 +632,6 @@ export function SCODetailPage() {
                 Void
               </Button>
             )}
-
-            {/* Edit - only on DRAFT */}
             {canEdit && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
