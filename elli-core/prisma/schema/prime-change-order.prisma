@@ -1,0 +1,167 @@
+enum FieldwireSyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum PrimeChangeOrderSyncTrigger {
+  MANUAL
+  SCHEDULED
+}
+
+model PrimeChangeOrder {
+  id String @id
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  fieldwireId        String @unique
+  creatorUserId      Int
+  lastEditorUserId   Int
+  fieldwireProjectId String
+
+  fieldwireCreatedAt DateTime
+  fieldwireUpdatedAt DateTime
+  deviceCreatedAt    DateTime
+  deviceUpdatedAt    DateTime
+  fieldwireDeletedAt DateTime?
+
+  referenceNumber        String?
+  name                   String
+  dueDate                DateTime?
+  pmGroupNumber          Int?
+  totalCost              Decimal?  @db.Decimal(15, 2)
+  revisionId             String
+  statusName             String
+  description            String?   @db.Text
+  assigneeUserId         Int?
+  externalAssigneeUserId Int?
+  scheduleImpact         String?
+  scheduleImpactDays     Int?
+  currentRevisionId      String
+  reasonTypeId           String?
+
+  lastSyncedAt DateTime
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  projectSchedules ProjectSchedule[]
+
+  @@index([projectId])
+  @@index([statusName])
+  @@index([fieldwireUpdatedAt])
+  @@index([deletedAt])
+}
+
+model PrimeChangeOrderSyncStatus {
+  id String @id
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String  @unique
+
+  lastSyncedAt   DateTime?
+  lastSyncStatus FieldwireSyncStatus?
+  lastSyncError  String?              @db.Text
+  totalReceived  Int                  @default(0)
+  createdCount   Int                  @default(0)
+  updatedCount   Int                  @default(0)
+  deletedCount   Int                  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastSyncStatus])
+}
+
+model PrimeChangeOrderSyncRun {
+  id String @id
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  trigger    PrimeChangeOrderSyncTrigger
+  status     FieldwireSyncStatus
+  startedAt  DateTime                    @default(now())
+  finishedAt DateTime?
+
+  totalReceived Int     @default(0)
+  createdCount  Int     @default(0)
+  updatedCount  Int     @default(0)
+  deletedCount  Int     @default(0)
+  error         String? @db.Text
+  userId        String?
+  user          User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, startedAt])
+  @@index([status])
+  @@index([userId])
+}
+
+model IntegrationSyncRun {
+  id String @id
+
+  provider String
+  scope    String
+  trigger  PrimeChangeOrderSyncTrigger
+  status   FieldwireSyncStatus
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  attempted Int @default(0)
+  succeeded Int @default(0)
+  failed    Int @default(0)
+
+  totalReceived Int @default(0)
+  createdCount  Int @default(0)
+  updatedCount  Int @default(0)
+  deletedCount  Int @default(0)
+
+  error  String? @db.Text
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, scope, startedAt])
+  @@index([status])
+  @@index([userId])
+}
+
+model FieldwireProjectUser {
+  id String @id
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  fieldwireProjectId String
+  fieldwireUserId    Int
+  accountId          Int?
+
+  email       String
+  firstName   String
+  lastName    String
+  displayName String
+  company     String?
+  jobTitle    String?
+  phoneNumber String?
+  photoUrl    String? @db.Text
+
+  role          String?
+  isAdmin       Boolean?
+  isApproved    Boolean?
+  userDeletedAt DateTime?
+
+  fieldwireCreatedAt DateTime
+  fieldwireUpdatedAt DateTime
+  lastSyncedAt       DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([projectId, fieldwireUserId])
+  @@index([fieldwireProjectId])
+  @@index([fieldwireUserId])
+  @@index([lastSyncedAt])
+}
