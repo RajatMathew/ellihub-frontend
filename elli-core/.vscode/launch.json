@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: Bun Dev (Hot Reload)",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/index.ts",
+      "args": ["--hot"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "watchMode": true,
+      "runtime": "bun",
+      "env": {},
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Debug: Bun Dev (No Hot Reload)",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/index.ts",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "runtime": "bun",
+      "env": {},
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Debug: Current File",
+      "type": "bun",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "runtime": "bun"
+    },
+    {
+      "name": "Debug: Bun Test",
+      "type": "bun",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/bun",
+      "args": ["test"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "runtime": "bun"
+    },
+    {
+      "name": "Debug: Attach to Process",
+      "type": "bun",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
