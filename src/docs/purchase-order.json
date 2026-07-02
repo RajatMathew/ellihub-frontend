@@ -1,0 +1,341 @@
+{
+    "paths": {
+        "/purchase-order": {
+            "get": {
+                "tags": ["Purchase Order"],
+                "summary": "List purchase orders (paginated)",
+                "operationId": "listPurchaseOrders",
+                "parameters": [
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "default": 25 } },
+                    { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "createdAt" } },
+                    { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[projectId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[vendorId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[rfqId]", "in": "query", "schema": { "type": "string" } },
+                    { "name": "filter[status]", "in": "query", "schema": { "$ref": "#/components/schemas/POStatus" } },
+                    { "name": "filter[tradeCategoryId]", "in": "query", "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/PurchaseOrder" } } } }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Purchase Order"],
+                "summary": "Create a purchase order with an auto-generated or manual PO number",
+                "operationId": "createPurchaseOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PoCreateRequest" } } }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PurchaseOrder" } } }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": { "description": "Validation / project missing job number / RFQ project mismatch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Project / vendor / RFQ / trade category / unit / cost code not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Manual PO number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            },
+            "put": {
+                "tags": ["Purchase Order"],
+                "summary": "Update a purchase order, including optional manual PO number changes",
+                "operationId": "updatePurchaseOrder",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PoUpdateRequest" } } }
+                },
+                "responses": {
+                    "200": { "description": "Updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PurchaseOrder" } } }] } } } },
+                    "400": { "description": "Project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "Manual PO number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/next-number": {
+            "get": {
+                "tags": ["Purchase Order"],
+                "summary": "Preview the next auto-generated PO number",
+                "operationId": "getNextPurchaseOrderNumber",
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PONumberPreview" } } }] } } } }
+                }
+            }
+        },
+        "/purchase-order/po-number/availability": {
+            "get": {
+                "tags": ["Purchase Order"],
+                "summary": "Check whether a manual PO number is available",
+                "operationId": "checkPurchaseOrderNumberAvailability",
+                "parameters": [
+                    { "name": "poNumberSuffix", "in": "query", "required": true, "schema": { "type": "string", "pattern": "^(?:PO-)?\\d+$" } },
+                    { "name": "excludeId", "in": "query", "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PONumberAvailability" } } }] } } } },
+                    "400": { "description": "Invalid PO number", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/{id}": {
+            "get": {
+                "tags": ["Purchase Order"],
+                "summary": "Get a purchase order by id",
+                "operationId": "getPurchaseOrder",
+                "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PurchaseOrder" } } }] } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/from-rfq/{rfqId}": {
+            "post": {
+                "tags": ["Purchase Order"],
+                "summary": "Create a PO from an awarded RFQ",
+                "operationId": "createPurchaseOrderFromRfq",
+                "parameters": [{ "name": "rfqId", "in": "path", "required": true, "schema": { "type": "string" } }],
+                "responses": {
+                    "201": { "description": "Created", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PurchaseOrder" } } }] } } } },
+                    "400": { "description": "RFQ not AWARDED or missing fields", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "RFQ / vendor not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/set-issued": {
+            "patch": {
+                "tags": ["Purchase Order"],
+                "summary": "Issue a DRAFT PO",
+                "operationId": "setPoIssued",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetPoIssuedRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/set-delivered": {
+            "patch": {
+                "tags": ["Purchase Order"],
+                "summary": "Mark an ISSUED PO as DELIVERED",
+                "operationId": "setPoDelivered",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetPoDeliveredRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Not in ISSUED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/set-cancelled": {
+            "patch": {
+                "tags": ["Purchase Order"],
+                "summary": "Cancel a PO (with reason)",
+                "operationId": "setPoCancelled",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SetPoCancelledRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Already cancelled or DELIVERED", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/attachment/add": {
+            "patch": {
+                "tags": ["Purchase Order"],
+                "summary": "Attach a file to a PO (moved to PURCHASE_ORDER subfolder)",
+                "operationId": "addPoAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddPoAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "PO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "409": { "description": "File already attached to a PO", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        },
+        "/purchase-order/attachment/remove": {
+            "patch": {
+                "tags": ["Purchase Order"],
+                "summary": "Remove a PO attachment",
+                "operationId": "removePoAttachment",
+                "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemovePoAttachmentRequest" } } } },
+                "responses": {
+                    "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "POStatus": { "type": "string", "enum": ["DRAFT", "ISSUED", "DELIVERED", "CANCELLED"] },
+            "PaymentTerms": { "type": "string", "enum": ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "DUE_ON_RECEIPT"] },
+            "PONumberMode": { "type": "string", "enum": ["AUTO", "MANUAL"] },
+            "PONumberPreview": { "type": "object", "required": ["poNumber", "poNumberSuffix"], "properties": { "poNumber": { "type": "string", "example": "PO-006" }, "poNumberSuffix": { "type": "string", "example": "006" } } },
+            "PONumberAvailability": { "allOf": [{ "$ref": "#/components/schemas/PONumberPreview" }, { "type": "object", "required": ["available"], "properties": { "available": { "type": "boolean" }, "conflictingPurchaseOrderId": { "type": "string", "nullable": true } } }] },
+            "POLineItemInput": {
+                "type": "object",
+                "required": ["description", "unitId", "quantity", "unitPrice"],
+                "properties": {
+                    "description": { "type": "string" },
+                    "unitId": { "type": "string" },
+                    "quantity": { "type": "number" },
+                    "unitPrice": { "type": "number" },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true }
+                }
+            },
+            "PoCreateRequest": {
+                "type": "object",
+                "required": ["projectId", "vendorId", "tradeCategoryId", "paymentTerms", "lineItems"],
+                "properties": {
+                    "projectId": { "type": "string" },
+                    "vendorId": { "type": "string" },
+                    "rfqId": { "type": "string", "nullable": true },
+                    "poNumberMode": { "$ref": "#/components/schemas/PONumberMode", "description": "AUTO keeps the generated sequence. MANUAL uses poNumberSuffix with an immutable PO- prefix.", "default": "AUTO" },
+                    "poNumberSuffix": { "type": "string", "nullable": true, "description": "Numeric suffix for manual PO numbers. The API stores it as PO-{suffix}, padded to at least three digits.", "example": "1001" },
+                    "tradeCategoryId": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "shipToAddress": { "type": "string", "nullable": true },
+                    "address": { "type": "string", "nullable": true },
+                    "expectedDate": { "type": "string", "format": "date", "nullable": true },
+                    "taxPercent": { "type": "number", "nullable": true },
+                    "negotiatedDiscount": { "type": "number", "nullable": true },
+                    "shippingHandlingFee": { "type": "number", "nullable": true },
+                    "retainagePercent": { "type": "number", "nullable": true },
+                    "paymentTerms": { "$ref": "#/components/schemas/PaymentTerms" },
+                    "notes": { "type": "string", "nullable": true },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/POLineItemInput" }, "minItems": 1 }
+                }
+            },
+            "PoUpdateRequest": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/PoCreateRequest" },
+                    { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+                ]
+            },
+            "SetPoIssuedRequest": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+            "SetPoDeliveredRequest": {
+                "type": "object",
+                "required": ["id", "deliveryDate"],
+                "properties": { "id": { "type": "string" }, "deliveryDate": { "type": "string", "format": "date" } }
+            },
+            "SetPoCancelledRequest": {
+                "type": "object",
+                "required": ["id", "cancellationReason"],
+                "properties": { "id": { "type": "string" }, "cancellationReason": { "type": "string" } }
+            },
+            "AddPoAttachmentRequest": {
+                "type": "object",
+                "required": ["purchaseOrderId", "documentId"],
+                "properties": { "purchaseOrderId": { "type": "string" }, "documentId": { "type": "string" } }
+            },
+            "RemovePoAttachmentRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": { "id": { "type": "string" } }
+            },
+            "PurchaseOrderLineItem": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "purchaseOrderId": { "type": "string" },
+                    "lineNumber": { "type": "integer" },
+                    "description": { "type": "string" },
+                    "unitId": { "type": "string" },
+                    "unit": { "type": "object", "description": "Lookup row for the unit" },
+                    "quantity": { "type": "string", "nullable": true },
+                    "unitPrice": { "type": "string", "nullable": true },
+                    "amount": { "type": "string", "nullable": true },
+                    "costCodeId": { "type": "string", "nullable": true },
+                    "notes": { "type": "string", "nullable": true },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "POAttachment": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "purchaseOrderId": { "type": "string" },
+                    "documentId": { "type": "string" },
+                    "document": { "$ref": "#/components/schemas/File" },
+                    "createdAt": { "type": "string", "format": "date-time" }
+                }
+            },
+            "PurchaseOrder": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "poNumber": { "type": "string" },
+                    "projectId": { "type": "string" },
+                    "project": { "$ref": "#/components/schemas/Project" },
+                    "vendorId": { "type": "string" },
+                    "vendor": { "$ref": "#/components/schemas/Vendor" },
+                    "rfqId": { "type": "string", "nullable": true },
+                    "rfq": { "$ref": "#/components/schemas/RFQ", "nullable": true },
+                    "tradeCategoryId": { "type": "string" },
+                    "tradeCategory": { "type": "object", "description": "Lookup row for the trade category" },
+                    "description": { "type": "string", "nullable": true },
+                    "status": { "$ref": "#/components/schemas/POStatus" },
+                    "leadTime": { "type": "string", "nullable": true },
+                    "shipToAddress": { "type": "string", "nullable": true },
+                    "address": { "type": "string", "nullable": true },
+                    "expectedDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "deliveryDate": { "type": "string", "format": "date-time", "nullable": true },
+                    "subtotal": { "type": "string" },
+                    "negotiatedDiscount": { "type": "string", "nullable": true },
+                    "shippingHandlingFee": { "type": "string", "nullable": true },
+                    "taxPercent": { "type": "string", "nullable": true },
+                    "taxAmount": { "type": "string", "nullable": true },
+                    "total": { "type": "string" },
+                    "retainagePercent": { "type": "string", "nullable": true },
+                    "paymentTerms": { "$ref": "#/components/schemas/PaymentTerms" },
+                    "notes": { "type": "string", "nullable": true },
+                    "issuedBy": { "type": "string", "nullable": true },
+                    "issuedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "approvedBy": { "type": "string", "nullable": true },
+                    "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectedBy": { "type": "string", "nullable": true },
+                    "rejectedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "rejectionReason": { "type": "string", "nullable": true },
+                    "cancelledBy": { "type": "string", "nullable": true },
+                    "cancelledAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "cancellationReason": { "type": "string", "nullable": true },
+                    "createdBy": { "type": "string" },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "lineItems": { "type": "array", "items": { "$ref": "#/components/schemas/PurchaseOrderLineItem" } },
+                    "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/POAttachment" } }
+                }
+            }
+        }
+    }
+}
