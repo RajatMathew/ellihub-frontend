@@ -14,6 +14,10 @@ import {
   useQuickBooksCategoriesQuery,
   useQuickBooksVendorsQuery,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
+import {
+  formatMonthlyBillMonthName,
+  getMonthlyBillYear,
+} from '@/modules/monthly-bills/lib/monthly-bills-date';
 import { toast } from 'sonner';
 
 interface MonthlyBillsRecurringPageProps {
@@ -60,6 +64,7 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
 
       <RecurringBillsWorkspace
         rules={rules}
+        selectedDate={selectedDate}
         search={search}
         onSearchChange={setSearch}
         onCreateRule={() => setCreateRuleOpen(true)}
@@ -97,7 +102,9 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
                     categoryId: payment.categoryId,
                     categoryName: payment.categoryName,
                     lastPaidAmount: payment.amount,
+                    lastPaidCycleLabel: formatRecurringCycleLabel(selectedDate),
                     lastPaidLabel: payment.label,
+                    lastInvoiceFile: payment.invoiceFile ?? rule.lastInvoiceFile,
                   }
                 : rule
             )
@@ -107,4 +114,8 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
       />
     </>
   );
+}
+
+function formatRecurringCycleLabel(selectedDate: Date) {
+  return `${formatMonthlyBillMonthName(selectedDate, 'short')} ${getMonthlyBillYear(selectedDate)}`;
 }

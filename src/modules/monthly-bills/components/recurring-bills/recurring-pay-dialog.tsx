@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
@@ -20,7 +20,9 @@ import {
   FormLabel,
   FormMessage,
 } from '@/app/components/ui/form';
+import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input } from '@/app/components/ui/input';
+import { NumberInput } from '@/app/components/ui/number-input';
 import {
   Select,
   SelectContent,
@@ -36,7 +38,7 @@ import {
 } from '@/modules/integrations/hooks/quickbooks.hooks';
 import type { RecurringBillRule } from '@/modules/monthly-bills/types/recurring-bills.types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Paperclip } from 'lucide-react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -67,7 +69,13 @@ interface RecurringPayDialogProps {
     bankAccountName?: string;
     categoryId: string;
     categoryName?: string;
+    invoiceFile?: File;
   }) => void;
+}
+
+interface InvoiceDraft {
+  ruleId: string;
+  file: File | null;
 }
 
 interface ReferenceOption {
@@ -84,12 +92,15 @@ export function RecurringPayDialog({
   onOpenChange,
   onPaid,
 }: RecurringPayDialogProps) {
+  const [invoiceDraft, setInvoiceDraft] = useState<InvoiceDraft | null>(null);
   const bankAccountsQuery = useQuickBooksBankAccountsQuery(open);
   const categoriesQuery = useQuickBooksCategoriesQuery(open);
   const form = useForm<RecurringPayFormData>({
     resolver: zodResolver(recurringPayFormSchema),
     defaultValues: buildDefaultValues(rule, selectedDate),
   });
+  const selectedInvoiceFile =
+    rule && invoiceDraft?.ruleId === rule.id ? invoiceDraft.file : null;
 
   useEffect(() => {
     if (!open) return;
@@ -107,17 +118,26 @@ export function RecurringPayDialog({
       bankAccountName: values.bankAccountName,
       categoryId: values.categoryId,
       categoryName: values.categoryName,
+      invoiceFile: selectedInvoiceFile ?? undefined,
     });
+    setInvoiceDraft(null);
     onOpenChange(false);
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setInvoiceDraft(null);
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Pay Recurring Bill</DialogTitle>
+          <DialogTitle>{rule ? getDialogTitle(rule) : 'Pay Recurring Bill'}</DialogTitle>
           <DialogDescription>
-            Create the QuickBooks payment, then record it against this recurring bill.
+            {rule && isVariableAmountRule(rule)
+              ? 'Update the amount if this bill changed, then save the payment.'
+              : 'Confirm the payment details before saving.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,6 +146,34 @@ export function RecurringPayDialog({
             <form onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}>
               <DialogBody className="space-y-5">
                 <RecurringPaymentSummary rule={rule} />
+
+                {isVariableAmountRule(rule) && (
+                  <div className="space-y-4 rounded-md border bg-muted/20 p-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Variable amount</p>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel>Amount</FormLabel>
+                          <FormControl>
+                            <NumberInput
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              decimalPlaces={2}
+                              min={0}
+                              className="text-right text-base font-semibold"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ReferenceSelect
@@ -154,26 +202,11 @@ export function RecurringPayDialog({
                 </div>
 
                 <div className="space-y-4 rounded-md border bg-muted/20 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">QuickBooks Line Item</p>
-                      <p className="text-xs text-muted-foreground">
-                        This appears under Category details in QuickBooks.
-                      </p>
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem className="w-36 space-y-1.5">
-                          <FormLabel className="sr-only">Amount</FormLabel>
-                          <FormControl>
-                            <Input {...field} inputMode="decimal" className="text-right" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">QuickBooks Line Item</p>
+                    <p className="text-xs text-muted-foreground">
+                      These accounting details are used when creating the payment.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -244,10 +277,27 @@ export function RecurringPayDialog({
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Paperclip className="size-4 text-muted-foreground" />
+                      Invoice or bill
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Optional for now. This is kept locally and is not uploaded to backend.
+                    </p>
+                  </div>
+                  <FileDropZone
+                    value={selectedInvoiceFile}
+                    onChange={(file) => setInvoiceDraft(rule ? { ruleId: rule.id, file } : null)}
+                    showSelectedPreview
+                  />
+                </div>
               </DialogBody>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="primary">
@@ -264,9 +314,11 @@ export function RecurringPayDialog({
 }
 
 function RecurringPaymentSummary({ rule }: { rule: RecurringBillRule }) {
+  const amountValue = formatCurrency(rule.lastPaidAmount ?? rule.defaultAmount);
+
   return (
     <div className="grid grid-cols-1 gap-4 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-3">
-      <SummaryItem label="Amount" value={formatCurrency(rule.defaultAmount)} emphasize />
+      <SummaryItem label="Amount" value={amountValue} emphasize />
       <SummaryItem label="Vendor" value={rule.vendorName} />
       <SummaryItem label="Bill" value={rule.name} />
     </div>
@@ -351,7 +403,7 @@ function buildDefaultValues(
   const txnDate = getDefaultPaymentDate(rule, selectedDate);
 
   return {
-    amount: rule?.defaultAmount ?? 0,
+    amount: rule?.lastPaidAmount ?? rule?.defaultAmount ?? 0,
     bankAccountId: rule?.bankAccountId ?? '',
     bankAccountName: rule?.bankAccountName ?? '',
     categoryId: rule?.categoryId ?? '',
@@ -361,6 +413,14 @@ function buildDefaultValues(
     memo: '',
     printLater: false,
   };
+}
+
+function getDialogTitle(rule: RecurringBillRule) {
+  return isVariableAmountRule(rule) ? 'Pay Variable Bill' : 'Pay Recurring Bill';
+}
+
+function isVariableAmountRule(rule: RecurringBillRule) {
+  return rule.amountMode === 'variable' || rule.amountMode === 'requires-entry';
 }
 
 function getDefaultPaymentDate(rule: RecurringBillRule | null, selectedDate: Date) {

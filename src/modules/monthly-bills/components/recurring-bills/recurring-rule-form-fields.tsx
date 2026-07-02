@@ -20,7 +20,10 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import type { RecurringRuleFormData } from '@/modules/monthly-bills/schemas/recurring-rule-form.schema';
-import type { RecurringBillFrequency } from '@/modules/monthly-bills/types/recurring-bills.types';
+import type {
+  RecurringBillAmountMode,
+  RecurringBillFrequency,
+} from '@/modules/monthly-bills/types/recurring-bills.types';
 import type { Control, UseFormReturn } from 'react-hook-form';
 import { useFormContext } from 'react-hook-form';
 
@@ -57,7 +60,7 @@ export function AmountField({ control }: { control: Control<RecurringRuleFormDat
       name="amount"
       render={({ field }) => (
         <FormItem className="space-y-1.5">
-          <FormLabel>Default amount</FormLabel>
+          <FormLabel>Expected amount</FormLabel>
           <FormControl>
             <NumberInput
               value={field.value}
@@ -66,6 +69,39 @@ export function AmountField({ control }: { control: Control<RecurringRuleFormDat
               min={0}
             />
           </FormControl>
+          <FormDescription>Use the usual amount. You can change it for each payment.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+export function AmountModeField({ control }: { control: Control<RecurringRuleFormData> }) {
+  return (
+    <FormField
+      control={control}
+      name="amountMode"
+      render={({ field }) => (
+        <FormItem className="space-y-1.5">
+          <FormLabel>Amount type</FormLabel>
+          <Select
+            value={field.value}
+            onValueChange={(value) => field.onChange(value as RecurringBillAmountMode)}
+          >
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="fixed">Fixed</SelectItem>
+              <SelectItem value="variable">Variable</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormDescription>
+            Variable bills ask for this month's actual amount before payment.
+          </FormDescription>
           <FormMessage />
         </FormItem>
       )}

@@ -1,4 +1,5 @@
 import { TableCardHeader, TableCardHeaderSearch } from '@/app/components/table-card-header';
+import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import { Switch } from '@/app/components/ui/switch';
@@ -11,14 +12,22 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
+import { formatUploadFileSize } from '@/modules/files/lib/file-upload-policy';
+import {
+  formatMonthlyBillMonthName,
+  getMonthlyBillYear,
+} from '@/modules/monthly-bills/lib/monthly-bills-date';
 import type {
   RecurringBillFrequency,
   RecurringBillRule,
 } from '@/modules/monthly-bills/types/recurring-bills.types';
-import { CreditCard, Plus, Receipt, X } from 'lucide-react';
+import { CheckCircle2, CreditCard, Paperclip, Plus, Receipt, X } from 'lucide-react';
+
+type RecurringBillRowState = 'payable' | 'paid';
 
 interface RecurringBillsWorkspaceProps {
   rules: RecurringBillRule[];
+  selectedDate: Date;
   search: string;
   onSearchChange: (search: string) => void;
   onCreateRule: () => void;
@@ -28,12 +37,14 @@ interface RecurringBillsWorkspaceProps {
 
 export function RecurringBillsWorkspace({
   rules,
+  selectedDate,
   search,
   onSearchChange,
   onCreateRule,
   onPayRule,
   onToggleActive,
 }: RecurringBillsWorkspaceProps) {
+  const selectedCycleLabel = getCycleLabel(selectedDate);
   const visibleRules = rules.filter((rule) => {
     const query = search.trim().toLowerCase();
     if (!query) return true;
@@ -100,73 +111,159 @@ export function RecurringBillsWorkspace({
                 <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
                   Due
                 </TableHead>
-                <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
+                <TableHead className="h-10 min-w-40 text-xs font-semibold uppercase tracking-normal">
                   Amount
                 </TableHead>
-                <TableHead className="h-10 min-w-28 text-center text-xs font-semibold uppercase tracking-normal" />
+                <TableHead className="h-10 min-w-32 text-center text-xs font-semibold uppercase tracking-normal">
+                  Status
+                </TableHead>
                 <TableHead className="h-10 w-24 text-center text-xs font-semibold uppercase tracking-normal">
                   Active
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRules.map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell className="min-w-64 py-3">
-                    <p className="break-words text-sm font-semibold leading-5 text-foreground">
-                      {rule.name}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">{rule.vendorName}</p>
-                  </TableCell>
-                  <TableCell className="min-w-52 py-3 text-sm text-muted-foreground">
-                    {rule.categoryName ?? 'Not assigned'}
-                  </TableCell>
-                  <TableCell className="min-w-36 py-3 text-sm text-muted-foreground">
-                    {rule.bankAccountName ?? 'Not selected'}
-                  </TableCell>
-                  <TableCell className="min-w-32 py-3 text-sm text-foreground">
-                    {getFrequencyLabel(rule.frequency)}
-                  </TableCell>
-                  <TableCell className="min-w-28 py-3 text-sm text-foreground">
-                    {getDueLabel(rule)}
-                  </TableCell>
-                  <TableCell className="min-w-32 py-3">
-                    <p className="text-sm font-semibold tabular-nums text-foreground">
-                      {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Variable'}
-                    </p>
-                    {rule.lastPaidLabel && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Paid {rule.lastPaidLabel}
+              {visibleRules.map((rule) => {
+                const rowState = getRowState(rule, selectedCycleLabel);
+
+                return (
+                  <TableRow key={rule.id}>
+                    <TableCell className="min-w-64 py-3">
+                      <p className="break-words text-sm font-semibold leading-5 text-foreground">
+                        {rule.name}
                       </p>
-                    )}
-                  </TableCell>
-                  <TableCell className="min-w-28 py-3 text-center">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!rule.isActive}
-                      onClick={() => onPayRule(rule)}
-                    >
-                      <CreditCard className="size-3.5" />
-                      Pay
-                    </Button>
-                  </TableCell>
-                  <TableCell className="w-24 py-3 text-center">
-                    <Switch
-                      size="sm"
-                      checked={rule.isActive}
-                      onCheckedChange={(isActive) => onToggleActive(rule.id, isActive)}
-                      aria-label={`Toggle ${rule.name}`}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
+                      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                        <p className="text-sm text-muted-foreground">{rule.vendorName}</p>
+                        {isVariableAmountRule(rule) && (
+                          <Badge variant="warning" appearance="light" size="sm">
+                            Variable
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-52 py-3 text-sm text-muted-foreground">
+                      {rule.categoryName ?? 'Not assigned'}
+                    </TableCell>
+                    <TableCell className="min-w-36 py-3 text-sm text-muted-foreground">
+                      {rule.bankAccountName ?? 'Not selected'}
+                    </TableCell>
+                    <TableCell className="min-w-32 py-3 text-sm text-foreground">
+                      {getFrequencyLabel(rule.frequency)}
+                    </TableCell>
+                    <TableCell className="min-w-28 py-3 text-sm text-foreground">
+                      {getDueLabel(rule)}
+                    </TableCell>
+                    <TableCell className="min-w-40 py-3">
+                      <RecurringBillAmountCell
+                        rule={rule}
+                        rowState={rowState}
+                        selectedCycleLabel={selectedCycleLabel}
+                      />
+                      {getInvoiceFile(rule, rowState) && (
+                        <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                          <Paperclip className="size-3 shrink-0" />
+                          <span className="truncate">
+                            {getInvoiceFile(rule, rowState)?.name} -{' '}
+                            {formatUploadFileSize(getInvoiceFile(rule, rowState)!.size)}
+                          </span>
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell className="min-w-32 py-3 text-center">
+                      <RecurringBillRowAction
+                        rule={rule}
+                        rowState={rowState}
+                        onPayRule={onPayRule}
+                      />
+                    </TableCell>
+                    <TableCell className="w-24 py-3 text-center">
+                      <Switch
+                        size="sm"
+                        checked={rule.isActive}
+                        onCheckedChange={(isActive) => onToggleActive(rule.id, isActive)}
+                        aria-label={`Toggle ${rule.name}`}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
     </Card>
+  );
+}
+
+function RecurringBillRowAction({
+  rule,
+  rowState,
+  onPayRule,
+}: {
+  rule: RecurringBillRule;
+  rowState: RecurringBillRowState;
+  onPayRule: (rule: RecurringBillRule) => void;
+}) {
+  if (rowState === 'paid') {
+    return (
+      <Badge variant="success" appearance="light" size="md" className="h-9 px-3">
+        <CheckCircle2 className="size-3.5" />
+        Paid
+      </Badge>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="primary"
+      size="sm"
+      disabled={!rule.isActive}
+      onClick={() => onPayRule(rule)}
+    >
+      <CreditCard className="size-3.5" />
+      Pay
+    </Button>
+  );
+}
+
+function RecurringBillAmountCell({
+  rule,
+  rowState,
+  selectedCycleLabel,
+}: {
+  rule: RecurringBillRule;
+  rowState: RecurringBillRowState;
+  selectedCycleLabel: string;
+}) {
+  if (rowState === 'paid') {
+    return (
+      <>
+        <p className="text-sm font-semibold tabular-nums text-foreground">
+          {formatCurrency(rule.lastPaidAmount ?? rule.defaultAmount)}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {rule.lastPaidLabel ? `Paid ${rule.lastPaidLabel}` : `Paid ${selectedCycleLabel}`}
+        </p>
+      </>
+    );
+  }
+
+  const amount = rule.lastPaidAmount ?? rule.defaultAmount;
+
+  if (isVariableAmountRule(rule)) {
+    return (
+      <p className="text-sm font-semibold tabular-nums text-foreground">
+        {amount > 0 ? formatCurrency(amount) : 'Needs amount'}{' '}
+        <span className="text-xs font-normal text-muted-foreground">expected</span>
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-sm font-semibold tabular-nums text-foreground">
+      {amount > 0 ? formatCurrency(amount) : 'Needs amount'}
+    </p>
   );
 }
 
@@ -212,4 +309,28 @@ function getDueLabel(rule: RecurringBillRule) {
   }
 
   return `Day ${rule.dueDay}`;
+}
+
+function getInvoiceFile(rule: RecurringBillRule, rowState: RecurringBillRowState) {
+  if (rowState === 'paid') return rule.lastInvoiceFile;
+  return undefined;
+}
+
+function getRowState(rule: RecurringBillRule, selectedCycleLabel: string): RecurringBillRowState {
+  if (isPaidForCycle(rule, selectedCycleLabel)) return 'paid';
+  return 'payable';
+}
+
+function isPaidForCycle(rule: RecurringBillRule, selectedCycleLabel: string) {
+  if (rule.lastPaidCycleLabel) return rule.lastPaidCycleLabel === selectedCycleLabel;
+
+  return Boolean(rule.lastPaidLabel && rule.lastPaidLabel.includes(selectedCycleLabel));
+}
+
+function isVariableAmountRule(rule: RecurringBillRule) {
+  return rule.amountMode === 'variable' || rule.amountMode === 'requires-entry';
+}
+
+function getCycleLabel(selectedDate: Date) {
+  return `${formatMonthlyBillMonthName(selectedDate, 'short')} ${getMonthlyBillYear(selectedDate)}`;
 }

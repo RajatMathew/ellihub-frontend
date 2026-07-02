@@ -19,6 +19,7 @@ import {
 } from '@/modules/integrations/hooks/quickbooks.hooks';
 import {
   AmountField,
+  AmountModeField,
   DueDayField,
   FrequencyField,
   ReferenceField,
@@ -82,7 +83,7 @@ export function CreateRecurringRuleDialog({
       bankAccountId: values.bankAccountId || undefined,
       bankAccountName: values.bankAccountName || undefined,
       frequency: values.frequency,
-      amountMode: values.amount > 0 ? 'fixed' : 'requires-entry',
+      amountMode: values.amountMode,
       defaultAmount: values.amount,
       dueDay: values.dueDay,
       isActive: true,
@@ -118,6 +119,7 @@ export function CreateRecurringRuleDialog({
                   onOptionChange={setSelectedVendorOption}
                 />
                 <FrequencyField control={form.control} />
+                <AmountModeField control={form.control} />
                 <AmountField control={form.control} />
                 <DueDayField control={form.control} />
                 <ReferenceField

@@ -16,7 +16,9 @@ export interface RecurringBillRule {
   defaultAmount: number;
   dueDay: number;
   isActive: boolean;
+  lastPaidCycleLabel?: string;
   lastPaidLabel?: string;
   lastPaidAmount?: number;
+  lastInvoiceFile?: File;
   notes?: string;
 }
