@@ -2,7 +2,10 @@ import { useMemo } from 'react';
 
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import { toastApiError } from '@/app/lib/toast-api-error';
-import { quickBooksApi } from '@/modules/integrations/api/quickbooks.api';
+import {
+  quickBooksApi,
+  type ListQuickBooksRegisterTransactionsParams,
+} from '@/modules/integrations/api/quickbooks.api';
 import { integrationsKeys } from '@/modules/integrations/constants/integrations.keys';
 import type {
   QuickBooksCreateVendorPayload,
@@ -10,7 +13,13 @@ import type {
   QuickBooksPayee,
 } from '@/modules/integrations/schemas/quickbooks.schema';
 import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const useQuickBooksStatusQuery = () =>
@@ -31,6 +40,24 @@ export const useQuickBooksBankAccountsQuery = (enabled = true) =>
     queryKey: integrationsKeys.quickBooksBankAccounts(),
     queryFn: quickBooksApi.listBankAccounts,
     enabled,
+  });
+
+export const useQuickBooksRegisterAccountsQuery = (enabled = true) =>
+  useQuery({
+    queryKey: integrationsKeys.quickBooksRegisterAccounts(),
+    queryFn: quickBooksApi.listRegisterAccounts,
+    enabled,
+  });
+
+export const useQuickBooksRegisterTransactionsQuery = (
+  params: ListQuickBooksRegisterTransactionsParams | undefined,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: integrationsKeys.quickBooksRegisterTransactions(params),
+    queryFn: () => quickBooksApi.listRegisterTransactions(params!),
+    enabled: enabled && Boolean(params?.accountId),
+    placeholderData: keepPreviousData,
   });
 
 export const useQuickBooksCategoriesQuery = (enabled = true) =>

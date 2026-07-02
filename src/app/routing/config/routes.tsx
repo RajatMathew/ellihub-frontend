@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- route config exports routeTree and route helper components */
+
 import { lazy } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
@@ -15,6 +16,7 @@ const isDev = import.meta.env.DEV;
 // Main (top-level) layout & pages
 const Costcodes = lazy(() => import('@/modules/catalog/routes/costcodes.route'));
 const MonthlyBillsRoute = lazy(() => import('@/modules/monthly-bills/routes/monthly-bills.route'));
+const FinanceRoute = lazy(() => import('@/modules/finance/routes/finance.route'));
 const EmailRoutes = lazy(() => import('@/modules/email/routes/email.route'));
 const LookupRoutes = lazy(() => import('@/modules/lookup/routes/lookup.route'));
 const DirectoryContacts = lazy(() => import('@/modules/directory/routes/contacts.route'));
@@ -82,6 +84,13 @@ export const routeTree: RouteDef[] = [
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
       { path: 'monthly-bills/*', component: MonthlyBillsRoute, title: 'Monthly Bills' },
+      {
+        path: 'finance/*',
+        component: FinanceRoute,
+        title: 'Finance',
+        access: { resource: 'integration', action: 'read' },
+        children: [{ path: 'checking-register', title: 'Checking Register' }],
+      },
       {
         path: 'email/*',
         component: EmailRoutes,

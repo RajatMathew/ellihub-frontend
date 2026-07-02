@@ -30,6 +30,17 @@ export const mainSidebarMenu: MenuConfig = [
   },
   {
     type: 'group-collapsed',
+    title: 'Finance',
+    children: [
+      {
+        title: 'Checking Register',
+        path: '../finance/checking-register',
+        access: { resource: 'integration', action: 'read' },
+      },
+    ],
+  },
+  {
+    type: 'group-collapsed',
     title: 'Directory',
     children: [
       {
