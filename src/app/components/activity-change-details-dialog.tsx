@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 
-import type { ActivityFieldDiffDetails } from '@/app/api/activity-log.api';
+import type {
+  ActivityFieldDiffDetails,
+  ActivityFieldSnapshotDetails,
+  ActivityLogDetails,
+} from '@/app/api/activity-log.api';
 import {
   ActivityRevisionBadge,
   stripActivityRevisionSuffix,
@@ -19,7 +23,7 @@ import { cn } from '@/app/lib/utils';
 import { ListTree } from 'lucide-react';
 
 interface ActivityChangeDetailsButtonProps {
-  details?: ActivityFieldDiffDetails | null;
+  details?: ActivityLogDetails | null;
   summary?: string;
   actor?: string;
   timestamp?: string;
@@ -30,7 +34,7 @@ interface ActivityChangeDetailsButtonProps {
 interface ActivityChangeDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  details: ActivityFieldDiffDetails;
+  details: ActivityLogDetails;
   summary?: string;
   actor?: string;
   timestamp?: string;
@@ -38,6 +42,7 @@ interface ActivityChangeDetailsDialogProps {
 
 type ActivityChange = ActivityFieldDiffDetails['changes'][number];
 type ActivityCollectionRow = NonNullable<ActivityChange['collection']>['rows'][number];
+type ActivitySnapshotField = ActivityFieldSnapshotDetails['fields'][number];
 
 export function ActivityChangeDetailsButton({
   details,
@@ -83,12 +88,14 @@ function ActivityChangeDetailsDialog({
   actor,
   timestamp,
 }: ActivityChangeDetailsDialogProps) {
-  const sections = useMemo(() => groupChangesBySection(details), [details]);
+  const isDiff = details.kind === 'field-diff';
+  const revision = isDiff ? details.revision : null;
   const title = stripActivityRevisionSuffix(
-    summary ?? `Edited ${details.subject.displayName}`,
-    details.revision
+    summary ?? `${isDiff ? 'Edited' : 'Details for'} ${details.subject.displayName}`,
+    revision
   );
-  const meta = [actor ? `Changed by ${actor}` : null, timestamp].filter(Boolean).join(' / ');
+  const actorLabel = isDiff ? 'Changed by' : 'Logged by';
+  const meta = [actor ? `${actorLabel} ${actor}` : null, timestamp].filter(Boolean).join(' / ');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,7 +103,7 @@ function ActivityChangeDetailsDialog({
         <DialogHeader className="mb-0 border-b border-border px-5 py-4 pe-12 text-start">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <DialogTitle className="min-w-0 truncate text-base">{title}</DialogTitle>
-            <ActivityRevisionBadge revision={details.revision} />
+            <ActivityRevisionBadge revision={revision} />
           </div>
           <DialogDescription className="mt-1 flex flex-col gap-1 text-xs sm:flex-row sm:items-center">
             {details.subject.label && <span>{details.subject.label}</span>}
@@ -107,19 +114,49 @@ function ActivityChangeDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="min-h-0 overflow-y-auto p-4">
-          <div className="mb-4 rounded-md border border-border bg-muted/25 px-3 py-2 text-sm text-muted-foreground">
-            {details.changes.length} changed field{details.changes.length === 1 ? '' : 's'}
-          </div>
-
-          <div className="space-y-4">
-            {sections.map((section) => (
-              <ActivityChangeSection key={section.name} section={section} />
-            ))}
-          </div>
-        </DialogBody>
+        {isDiff ? (
+          <FieldDiffDetailsBody details={details} />
+        ) : (
+          <FieldSnapshotDetailsBody details={details} />
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FieldDiffDetailsBody({ details }: { details: ActivityFieldDiffDetails }) {
+  const sections = useMemo(() => groupChangesBySection(details), [details]);
+
+  return (
+    <DialogBody className="min-h-0 overflow-y-auto p-4">
+      <div className="mb-4 rounded-md border border-border bg-muted/25 px-3 py-2 text-sm text-muted-foreground">
+        {details.changes.length} changed field{details.changes.length === 1 ? '' : 's'}
+      </div>
+
+      <div className="space-y-4">
+        {sections.map((section) => (
+          <ActivityChangeSection key={section.name} section={section} />
+        ))}
+      </div>
+    </DialogBody>
+  );
+}
+
+function FieldSnapshotDetailsBody({ details }: { details: ActivityFieldSnapshotDetails }) {
+  const sections = useMemo(() => groupSnapshotFieldsBySection(details), [details]);
+
+  return (
+    <DialogBody className="min-h-0 overflow-y-auto p-4">
+      <div className="mb-4 rounded-md border border-border bg-muted/25 px-3 py-2 text-sm text-muted-foreground">
+        {details.fields.length} field{details.fields.length === 1 ? '' : 's'} recorded
+      </div>
+
+      <div className="space-y-4">
+        {sections.map((section) => (
+          <ActivitySnapshotSection key={section.name} section={section} />
+        ))}
+      </div>
+    </DialogBody>
   );
 }
 
@@ -153,6 +190,24 @@ function ActivityChangeSection({
   );
 }
 
+function ActivitySnapshotSection({
+  section,
+}: {
+  section: { name: string; fields: ActivitySnapshotField[] };
+}) {
+  return (
+    <section className="overflow-hidden rounded-md border border-border">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-2">
+        <h3 className="text-sm font-semibold text-foreground">{section.name}</h3>
+        <span className="text-xs text-muted-foreground">
+          {section.fields.length} field{section.fields.length === 1 ? '' : 's'}
+        </span>
+      </div>
+      <SnapshotFieldsTable fields={section.fields} />
+    </section>
+  );
+}
+
 function ScalarChangesTable({ changes }: { changes: ActivityChange[] }) {
   return (
     <>
@@ -182,6 +237,37 @@ function ScalarChangesTable({ changes }: { changes: ActivityChange[] }) {
               <LabeledChangeValue label="Before" display={change.from.display} tone="before" />
               <LabeledChangeValue label="After" display={change.to.display} tone="after" />
             </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SnapshotFieldsTable({ fields }: { fields: ActivitySnapshotField[] }) {
+  return (
+    <>
+      <div className="hidden md:block">
+        <div className="grid grid-cols-[minmax(9rem,0.8fr)_minmax(0,1.5fr)] border-b border-border bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span>Field</span>
+          <span>Value</span>
+        </div>
+        {fields.map((field) => (
+          <div
+            key={field.key}
+            className="grid grid-cols-[minmax(9rem,0.8fr)_minmax(0,1.5fr)] gap-3 border-b border-border px-3 py-3 last:border-b-0"
+          >
+            <FieldLabel label={field.label} fieldKey={field.key} />
+            <ChangeValue display={field.value.display} tone="neutral" />
+          </div>
+        ))}
+      </div>
+
+      <div className="divide-y divide-border md:hidden">
+        {fields.map((field) => (
+          <div key={field.key} className="space-y-3 p-3">
+            <FieldLabel label={field.label} fieldKey={field.key} />
+            <LabeledChangeValue label="Value" display={field.value.display} tone="neutral" />
           </div>
         ))}
       </div>
@@ -277,6 +363,17 @@ function groupChangesBySection(details: ActivityFieldDiffDetails) {
   return Array.from(sections.entries()).map(([name, changes]) => ({ name, changes }));
 }
 
+function groupSnapshotFieldsBySection(details: ActivityFieldSnapshotDetails) {
+  const sections = new Map<string, ActivityFieldSnapshotDetails['fields']>();
+
+  for (const field of details.fields) {
+    const section = field.section || 'Details';
+    sections.set(section, [...(sections.get(section) ?? []), field]);
+  }
+
+  return Array.from(sections.entries()).map(([name, fields]) => ({ name, fields }));
+}
+
 function FieldLabel({ label, fieldKey }: { label: string; fieldKey: string }) {
   return (
     <div className="min-w-0 space-y-1">
@@ -293,7 +390,7 @@ function LabeledChangeValue({
 }: {
   label: string;
   display: string;
-  tone: 'before' | 'after';
+  tone: 'before' | 'after' | 'neutral';
 }) {
   return (
     <div className="space-y-1">
@@ -303,16 +400,16 @@ function LabeledChangeValue({
   );
 }
 
-function ChangeValue({ display, tone }: { display: string; tone: 'before' | 'after' }) {
+function ChangeValue({ display, tone }: { display: string; tone: 'before' | 'after' | 'neutral' }) {
   const isEmpty = !display || display === 'none';
 
   return (
     <div
       className={cn(
         'min-h-9 min-w-0 rounded-md border px-3 py-2 text-sm leading-relaxed',
-        tone === 'after'
-          ? 'border-primary/20 bg-primary/5 text-foreground'
-          : 'border-border bg-muted/20 text-foreground',
+        tone === 'after' && 'border-primary/20 bg-primary/5 text-foreground',
+        tone === 'before' && 'border-border bg-muted/20 text-foreground',
+        tone === 'neutral' && 'border-border bg-background text-foreground',
         isEmpty && 'text-muted-foreground'
       )}
     >
