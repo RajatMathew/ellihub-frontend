@@ -20,9 +20,8 @@ import {
 import {
   AmountField,
   AmountModeField,
-  DueDayField,
-  FrequencyField,
   ReferenceField,
+  ScheduleFields,
   TextField,
   VendorField,
 } from '@/modules/monthly-bills/components/recurring-bills/recurring-rule-form-fields';
@@ -73,6 +72,8 @@ export function CreateRecurringRuleDialog({
   };
 
   const handleSubmit = (values: RecurringRuleFormData) => {
+    const dueDay = getRecurringRuleDueDay(values);
+
     onCreate({
       id: `rule-${Date.now()}`,
       name: values.name.trim(),
@@ -83,9 +84,13 @@ export function CreateRecurringRuleDialog({
       bankAccountId: values.bankAccountId || undefined,
       bankAccountName: values.bankAccountName || undefined,
       frequency: values.frequency,
+      scheduleTiming: values.scheduleTiming,
+      weeklyDay: values.frequency === 'weekly' ? values.weeklyDay : undefined,
+      customIntervalMonths:
+        values.frequency === 'custom' ? values.customIntervalMonths : undefined,
       amountMode: values.amountMode,
       defaultAmount: values.amount,
-      dueDay: values.dueDay,
+      dueDay,
       isActive: true,
     });
     resetForm();
@@ -97,7 +102,7 @@ export function CreateRecurringRuleDialog({
         <DialogHeader>
           <DialogTitle>Add Recurring Bill</DialogTitle>
           <DialogDescription>
-            Set the vendor, frequency, due timing, amount, and accounting references.
+            Add the basics, then choose the repeat schedule that matches how the bill arrives.
           </DialogDescription>
         </DialogHeader>
 
@@ -118,10 +123,9 @@ export function CreateRecurringRuleDialog({
                   onFetchNextPage={vendorPicker.fetchNextPage}
                   onOptionChange={setSelectedVendorOption}
                 />
-                <FrequencyField control={form.control} />
+                <ScheduleFields control={form.control} />
                 <AmountModeField control={form.control} />
                 <AmountField control={form.control} />
-                <DueDayField control={form.control} />
                 <ReferenceField
                   control={form.control}
                   name="categoryId"
@@ -154,4 +158,11 @@ export function CreateRecurringRuleDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getRecurringRuleDueDay(values: RecurringRuleFormData) {
+  if (values.frequency === 'weekly') return values.weeklyDay;
+  if (values.scheduleTiming === 'start') return 1;
+  if (values.scheduleTiming === 'end') return 28;
+  return values.dueDay;
 }

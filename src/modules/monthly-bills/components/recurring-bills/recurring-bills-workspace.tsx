@@ -298,16 +298,29 @@ function RecurringBillsEmptyState({
 }
 
 function getFrequencyLabel(frequency: RecurringBillFrequency) {
+  if (frequency === 'custom') return 'Custom';
   if (frequency === 'biweekly') return 'Every 2 weeks';
   return frequency.charAt(0).toUpperCase() + frequency.slice(1);
 }
 
 function getDueLabel(rule: RecurringBillRule) {
-  if (rule.frequency === 'weekly' || rule.frequency === 'biweekly') {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[Math.max(0, Math.min(rule.dueDay - 1, 6))];
+  if (rule.frequency === 'custom') {
+    const interval = rule.customIntervalMonths ?? 1;
+    return `Every ${interval} months, ${getMonthlyTimingLabel(rule)}`;
   }
 
+  if (rule.frequency === 'weekly' || rule.frequency === 'biweekly') {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const day = rule.weeklyDay ?? rule.dueDay;
+    return days[Math.max(0, Math.min(day - 1, 6))];
+  }
+
+  return getMonthlyTimingLabel(rule);
+}
+
+function getMonthlyTimingLabel(rule: RecurringBillRule) {
+  if (rule.scheduleTiming === 'start') return 'Start of month';
+  if (rule.scheduleTiming === 'end') return 'End of month';
   return `Day ${rule.dueDay}`;
 }
 

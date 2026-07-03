@@ -1,9 +1,6 @@
 import { ListStatsCards } from '@/app/components/ui/list-stats-cards';
 import { formatCurrency } from '@/app/lib/helpers';
-import type {
-  RecurringBillFrequency,
-  RecurringBillRule,
-} from '@/modules/monthly-bills/types/recurring-bills.types';
+import type { RecurringBillRule } from '@/modules/monthly-bills/types/recurring-bills.types';
 
 interface RecurringBillsStatsProps {
   rules: RecurringBillRule[];
@@ -14,13 +11,11 @@ export function RecurringBillsStats({ rules, selectedDate }: RecurringBillsStats
   const activeRules = rules.filter((rule) => rule.isActive);
   const pausedRules = rules.filter((rule) => !rule.isActive);
   const scheduledCount = activeRules.reduce(
-    (total, rule) => total + getOccurrencesInMonth(rule.frequency, rule.dueDay, selectedDate),
+    (total, rule) => total + getOccurrencesInMonth(rule, selectedDate),
     0
   );
   const plannedAmount = activeRules.reduce(
-    (total, rule) =>
-      total +
-      rule.defaultAmount * getOccurrencesInMonth(rule.frequency, rule.dueDay, selectedDate),
+    (total, rule) => total + rule.defaultAmount * getOccurrencesInMonth(rule, selectedDate),
     0
   );
   const paidRules = rules.filter((rule) => (rule.lastPaidAmount ?? 0) > 0);
@@ -59,18 +54,18 @@ export function RecurringBillsStats({ rules, selectedDate }: RecurringBillsStats
   );
 }
 
-function getOccurrencesInMonth(
-  frequency: RecurringBillFrequency,
-  dueDay: number,
-  selectedDate: Date
-) {
-  if (frequency === 'monthly') return 1;
-  if (frequency === 'quarterly') return selectedDate.getMonth() % 3 === 0 ? 1 : 0;
-  if (frequency === 'yearly') return selectedDate.getMonth() === 0 ? 1 : 0;
+function getOccurrencesInMonth(rule: RecurringBillRule, selectedDate: Date) {
+  if (rule.frequency === 'monthly') return 1;
+  if (rule.frequency === 'custom') {
+    const interval = Math.max(2, rule.customIntervalMonths ?? 1);
+    return selectedDate.getMonth() % interval === 0 ? 1 : 0;
+  }
+  if (rule.frequency === 'quarterly') return selectedDate.getMonth() % 3 === 0 ? 1 : 0;
+  if (rule.frequency === 'yearly') return selectedDate.getMonth() === 0 ? 1 : 0;
 
-  const weekdayCount = countWeekdaysInMonth(selectedDate, dueDay);
-  if (frequency === 'weekly') return weekdayCount;
-  if (frequency === 'biweekly') return Math.ceil(weekdayCount / 2);
+  const weekdayCount = countWeekdaysInMonth(selectedDate, rule.weeklyDay ?? rule.dueDay);
+  if (rule.frequency === 'weekly') return weekdayCount;
+  if (rule.frequency === 'biweekly') return Math.ceil(weekdayCount / 2);
 
   return 0;
 }

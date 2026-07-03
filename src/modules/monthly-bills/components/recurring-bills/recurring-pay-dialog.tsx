@@ -424,13 +424,42 @@ function isVariableAmountRule(rule: RecurringBillRule) {
 }
 
 function getDefaultPaymentDate(rule: RecurringBillRule | null, selectedDate: Date) {
-  const dueDay = Math.max(1, Math.min(rule?.dueDay ?? 1, 28));
+  const dueDay = getScheduledDayOfMonth(rule, selectedDate);
   const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dueDay);
   return [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('-');
+}
+
+function getScheduledDayOfMonth(rule: RecurringBillRule | null, selectedDate: Date) {
+  if (!rule) return 1;
+
+  if (rule.frequency === 'weekly' || rule.frequency === 'biweekly') {
+    return getFirstWeekdayInMonth(selectedDate, rule.weeklyDay ?? rule.dueDay);
+  }
+
+  if (rule.scheduleTiming === 'end') {
+    return new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+  }
+
+  if (rule.scheduleTiming === 'start') return 1;
+
+  return Math.max(1, Math.min(rule.dueDay, 28));
+}
+
+function getFirstWeekdayInMonth(selectedDate: Date, dueDay: number) {
+  const targetDay = Math.max(1, Math.min(dueDay, 7)) % 7;
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    if (new Date(year, month, day).getDay() === targetDay) return day;
+  }
+
+  return 1;
 }
 
 function formatPaymentLabel(dateValue: string) {

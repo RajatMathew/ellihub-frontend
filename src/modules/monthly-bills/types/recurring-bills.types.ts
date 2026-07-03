@@ -1,6 +1,14 @@
 export type RecurringBillAmountMode = 'fixed' | 'variable' | 'requires-entry';
 
-export type RecurringBillFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+export type RecurringBillFrequency =
+  | 'weekly'
+  | 'monthly'
+  | 'custom'
+  | 'biweekly'
+  | 'quarterly'
+  | 'yearly';
+
+export type RecurringBillScheduleTiming = 'start' | 'date' | 'end';
 
 export interface RecurringBillRule {
   id: string;
@@ -12,6 +20,9 @@ export interface RecurringBillRule {
   bankAccountId?: string;
   bankAccountName?: string;
   frequency: RecurringBillFrequency;
+  scheduleTiming?: RecurringBillScheduleTiming;
+  weeklyDay?: number;
+  customIntervalMonths?: number;
   amountMode: RecurringBillAmountMode;
   defaultAmount: number;
   dueDay: number;
