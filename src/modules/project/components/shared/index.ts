@@ -10,3 +10,4 @@ export * from './project-form-toolbar';
 export * from './pdf-generate-dialog';
 export * from './document-email-wizard-dialog';
 export * from './project-activity-panel';
+export * from './feature-email-sent-badge';
