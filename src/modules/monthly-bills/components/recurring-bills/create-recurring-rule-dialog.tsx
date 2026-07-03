@@ -19,7 +19,6 @@ import {
 } from '@/modules/integrations/hooks/quickbooks.hooks';
 import {
   AmountField,
-  AmountModeField,
   ReferenceField,
   ScheduleFields,
   TextField,
@@ -102,7 +101,7 @@ export function CreateRecurringRuleDialog({
         <DialogHeader>
           <DialogTitle>Add Recurring Bill</DialogTitle>
           <DialogDescription>
-            Add the basics, then choose the repeat schedule that matches how the bill arrives.
+            Choose the bill, then tell ElliHub when it should come back.
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +123,6 @@ export function CreateRecurringRuleDialog({
                   onOptionChange={setSelectedVendorOption}
                 />
                 <ScheduleFields control={form.control} />
-                <AmountModeField control={form.control} />
                 <AmountField control={form.control} />
                 <ReferenceField
                   control={form.control}

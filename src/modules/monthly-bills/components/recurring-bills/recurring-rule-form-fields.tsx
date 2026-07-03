@@ -28,37 +28,51 @@ import { useFormContext } from 'react-hook-form';
 
 const scheduleOptions = [
   {
-    value: 'monthly',
-    title: 'Monthly',
-    description: 'Best for rent, subscriptions, and regular bills.',
-  },
-  {
     value: 'weekly',
     title: 'Weekly',
-    description: 'Pick the weekday this should show up.',
+    description: 'Use this for bills that are paid on the same weekday.',
+  },
+  {
+    value: 'monthly',
+    title: 'Monthly',
+    description: 'Use this for bills due once every month.',
   },
   {
     value: 'custom',
     title: 'Custom',
-    description: 'Repeat every few months, such as 4 or 6.',
+    description: 'Use this for bills due every few months.',
   },
 ] as const;
 
 const weekdayOptions = [
-  { value: '1', label: 'Monday' },
-  { value: '2', label: 'Tuesday' },
-  { value: '3', label: 'Wednesday' },
-  { value: '4', label: 'Thursday' },
-  { value: '5', label: 'Friday' },
-  { value: '6', label: 'Saturday' },
-  { value: '7', label: 'Sunday' },
+  { value: '1', label: 'Mon' },
+  { value: '2', label: 'Tue' },
+  { value: '3', label: 'Wed' },
+  { value: '4', label: 'Thu' },
+  { value: '5', label: 'Fri' },
+  { value: '6', label: 'Sat' },
+  { value: '7', label: 'Sun' },
 ] as const;
 
 const monthTimingOptions = [
-  { value: 'start', label: 'Start of the month' },
-  { value: 'date', label: 'A specific date' },
-  { value: 'end', label: 'End of the month' },
+  {
+    value: 'start',
+    title: 'Start',
+    description: 'Due at the beginning of the month.',
+  },
+  {
+    value: 'date',
+    title: 'Exact date',
+    description: 'Due on the same date each month.',
+  },
+  {
+    value: 'end',
+    title: 'End',
+    description: 'Due on the last day of the month.',
+  },
 ] as const;
+
+const scheduleDetailGridClass = 'grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-3';
 
 export function TextField({
   control,
@@ -93,7 +107,7 @@ export function AmountField({ control }: { control: Control<RecurringRuleFormDat
       name="amount"
       render={({ field }) => (
         <FormItem className="space-y-1.5">
-          <FormLabel>Expected amount</FormLabel>
+          <FormLabel>Default amount</FormLabel>
           <FormControl>
             <NumberInput
               value={field.value}
@@ -102,7 +116,6 @@ export function AmountField({ control }: { control: Control<RecurringRuleFormDat
               min={0}
             />
           </FormControl>
-          <FormDescription>Use the usual amount. You can change it for each payment.</FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -154,7 +167,7 @@ export function ScheduleFields({ control }: { control: Control<RecurringRuleForm
         name="frequency"
         render={({ field }) => (
           <FormItem className="space-y-2">
-            <FormLabel>When should this bill repeat?</FormLabel>
+            <FormLabel>How often should this bill repeat?</FormLabel>
             <FormControl>
               <RadioGroup
                 value={field.value}
@@ -181,13 +194,13 @@ export function ScheduleFields({ control }: { control: Control<RecurringRuleForm
                   <label
                     key={option.value}
                     className={cn(
-                      'flex min-h-28 cursor-pointer gap-3 rounded-md border bg-background p-3 text-left transition-colors',
+                      'flex min-h-24 cursor-pointer rounded-md border bg-background p-3 text-left transition-colors',
                       field.value === option.value
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:bg-muted/50'
                     )}
                   >
-                    <RadioGroupItem value={option.value} className="mt-0.5 shrink-0" />
+                    <RadioGroupItem value={option.value} className="sr-only" />
                     <span className="space-y-1">
                       <span className="block text-sm font-semibold text-foreground">
                         {option.title}
@@ -205,20 +218,26 @@ export function ScheduleFields({ control }: { control: Control<RecurringRuleForm
         )}
       />
 
-      {frequency === 'weekly' ? <WeeklyDayField control={control} /> : null}
+      {frequency === 'weekly' ? (
+        <WeeklyDayField control={control} />
+      ) : null}
 
       {frequency === 'monthly' ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <MonthTimingField control={control} />
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-4">
+          <MonthTimingField control={control} className="sm:col-span-3" />
           {scheduleTiming === 'date' ? <DueDayField control={control} /> : null}
         </div>
       ) : null}
 
       {frequency === 'custom' ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <CustomIntervalField control={control} />
-          <MonthTimingField control={control} />
-          {scheduleTiming === 'date' ? <DueDayField control={control} /> : null}
+        <div className="space-y-4">
+          <div className={scheduleDetailGridClass}>
+            <CustomIntervalField control={control} />
+          </div>
+          <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-4">
+            <MonthTimingField control={control} className="sm:col-span-3" />
+            {scheduleTiming === 'date' ? <DueDayField control={control} /> : null}
+          </div>
         </div>
       ) : null}
     </div>
@@ -233,30 +252,36 @@ function WeeklyDayField({ control }: { control: Control<RecurringRuleFormData> }
       control={control}
       name="weeklyDay"
       render={({ field }) => (
-        <FormItem className="space-y-1.5">
-          <FormLabel>Day of the week</FormLabel>
-          <Select
-            value={String(field.value)}
-            onValueChange={(value) => {
-              const day = Number(value);
-              field.onChange(day);
-              form.setValue('dueDay', day, { shouldValidate: true });
-            }}
-          >
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {weekdayOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormDescription>We will place this bill on that weekday every week.</FormDescription>
+        <FormItem className="space-y-2">
+          <FormLabel>Which day of the week?</FormLabel>
+          <FormControl>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-7">
+              {weekdayOptions.map((option) => {
+                const selected = String(field.value) === option.value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={cn(
+                      'h-10 rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      selected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:bg-muted/50'
+                    )}
+                    onClick={() => {
+                      const day = Number(option.value);
+                      field.onChange(day);
+                      form.setValue('dueDay', day, { shouldValidate: true });
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </FormControl>
+          <FormDescription>The bill will appear each selected weekday.</FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -264,7 +289,13 @@ function WeeklyDayField({ control }: { control: Control<RecurringRuleFormData> }
   );
 }
 
-function MonthTimingField({ control }: { control: Control<RecurringRuleFormData> }) {
+function MonthTimingField({
+  control,
+  className,
+}: {
+  control: Control<RecurringRuleFormData>;
+  className?: string;
+}) {
   const form = useFormContext<RecurringRuleFormData>();
 
   return (
@@ -272,32 +303,41 @@ function MonthTimingField({ control }: { control: Control<RecurringRuleFormData>
       control={control}
       name="scheduleTiming"
       render={({ field }) => (
-        <FormItem className="space-y-1.5">
-          <FormLabel>Timing</FormLabel>
-          <Select
-            value={field.value}
-            onValueChange={(value) => {
-              field.onChange(value);
-              if (value === 'start') form.setValue('dueDay', 1, { shouldValidate: true });
-              if (value === 'end') form.setValue('dueDay', 28, { shouldValidate: true });
-            }}
-          >
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
+        <FormItem className={cn('space-y-2', className)}>
+          <FormLabel>When in the month?</FormLabel>
+          <FormControl>
+            <RadioGroup
+              value={field.value}
+              onValueChange={(value) => {
+                field.onChange(value);
+                if (value === 'start') form.setValue('dueDay', 1, { shouldValidate: true });
+                if (value === 'end') form.setValue('dueDay', 28, { shouldValidate: true });
+              }}
+              className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+            >
               {monthTimingOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
+                <label
+                  key={option.value}
+                  className={cn(
+                    'flex min-h-24 cursor-pointer rounded-md border bg-background p-3 text-left transition-colors',
+                    field.value === option.value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-muted/50'
+                  )}
+                >
+                  <RadioGroupItem value={option.value} className="sr-only" />
+                  <span className="space-y-1">
+                    <span className="block text-sm font-semibold text-foreground">
+                      {option.title}
+                    </span>
+                    <span className="block text-xs leading-5 text-muted-foreground">
+                      {option.description}
+                    </span>
+                  </span>
+                </label>
               ))}
-            </SelectContent>
-          </Select>
-          <FormDescription>
-            Choose start, end, or a fixed day for each month it repeats.
-          </FormDescription>
+            </RadioGroup>
+          </FormControl>
           <FormMessage />
         </FormItem>
       )}
@@ -316,7 +356,7 @@ function DueDayField({ control }: { control: Control<RecurringRuleFormData> }) {
           <FormControl>
             <NumberInput value={field.value} onValueChange={field.onChange} min={1} max={28} />
           </FormControl>
-          <FormDescription>Use days 1-28 so the bill fits every month.</FormDescription>
+          <FormDescription>Use 1-28 so every month is covered.</FormDescription>
           <FormMessage />
         </FormItem>
       )}
@@ -332,13 +372,12 @@ function CustomIntervalField({ control }: { control: Control<RecurringRuleFormDa
       render={({ field }) => (
         <FormItem className="space-y-1.5">
           <FormLabel>Every</FormLabel>
-          <div className="flex items-center gap-2">
+          <div className="max-w-40">
             <FormControl>
               <NumberInput value={field.value} onValueChange={field.onChange} min={2} max={24} />
             </FormControl>
-            <span className="shrink-0 text-sm text-muted-foreground">months</span>
           </div>
-          <FormDescription>Use 4 for quarterly-style bills, or 6 for twice a year.</FormDescription>
+          <FormDescription>Months</FormDescription>
           <FormMessage />
         </FormItem>
       )}
