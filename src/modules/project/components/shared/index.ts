@@ -11,3 +11,5 @@ export * from './pdf-generate-dialog';
 export * from './document-email-wizard-dialog';
 export * from './project-activity-panel';
 export * from './feature-email-sent-badge';
+
+export { ProjectFormMasterScheduleField } from './project-form-master-schedule-field';

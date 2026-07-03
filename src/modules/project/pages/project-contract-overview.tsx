@@ -17,6 +17,7 @@ import {
   ContractDocumentsSimpleCard,
   FinancialStatsBar,
   FinancialSummarySimpleCard,
+  MasterScheduleCard,
   PaymentsPlaceholderCard,
   PinPrimeContractDialog,
   PrimeChangeOrdersCard,
@@ -32,7 +33,10 @@ import {
   usePrimeChangeOrdersQuery,
   useProjectDetailQuery,
   useProjectFolderQuery,
+  useProjectMasterScheduleQuery,
   useProjectScheduleQuery,
+  useRemoveProjectMasterScheduleMutation,
+  useSetProjectMasterScheduleMutation,
 } from '@/modules/project/hooks';
 import {
   useContractAttachmentsQuery,
@@ -74,9 +78,15 @@ export default function ProjectContractOverview() {
   const { data: primeContractCandidates = [], isLoading: isLoadingPrimeContractCandidates } =
     usePrimeContractCandidatesQuery(projectId, pinDialogOpen);
   const { data: scheduleData, isLoading: isLoadingSchedule } = useProjectScheduleQuery(projectId);
+  const { data: masterScheduleData, isLoading: isLoadingMasterSchedule } =
+    useProjectMasterScheduleQuery(projectId);
   const { data: primeContractFolderId } = useProjectFolderQuery(
     projectId || undefined,
     'prime contract'
+  );
+  const { data: masterScheduleFolderId } = useProjectFolderQuery(
+    projectId || undefined,
+    'master schedule'
   );
   const contract = project?.primeContract ?? undefined;
 
@@ -85,6 +95,8 @@ export default function ProjectContractOverview() {
   const pinPrimeContractsMutation = usePinPrimeContractsMutation();
   const unpinPrimeContractsMutation = useUnpinPrimeContractsMutation();
   const setPrimeContractPrimaryMutation = useSetPrimeContractPrimaryMutation();
+  const setMasterScheduleMutation = useSetProjectMasterScheduleMutation();
+  const removeMasterScheduleMutation = useRemoveProjectMasterScheduleMutation();
 
   /* ---- Custom Hooks ---- */
   const totalCommitted = poStats?.totalCommitted ?? 0;
@@ -109,6 +121,8 @@ export default function ProjectContractOverview() {
   /* ---- Derived Data ---- */
   const recentPCOs = pcoList?.data ?? [];
   const docs = attachments ?? [];
+  const masterSchedule =
+    masterScheduleData === undefined ? (project?.masterSchedule ?? null) : masterScheduleData;
   const primeContractFolderUrl = primeContractFolderId
     ? `/app/project/${projectId}/files?${new URLSearchParams({
         folderId: primeContractFolderId,
@@ -117,6 +131,10 @@ export default function ProjectContractOverview() {
   const canManageProject = project?.capabilities?.canManage ?? false;
   const canViewActivity = can('activityLog', 'read');
   const canManageSchedule = project?.capabilities?.canManageSchedule ?? false;
+  const masterScheduleActions = project?.capabilities?.actions?.projectMasterSchedule;
+  const canUpdateMasterSchedule = masterScheduleActions?.update === true;
+  const canDeleteMasterSchedule = masterScheduleActions?.delete === true;
+  const canManageMasterSchedule = canUpdateMasterSchedule || canDeleteMasterSchedule;
   const projectTeamActions = project?.capabilities?.actions?.projectTeam;
   const canAddTeamMembers = projectTeamActions?.add === true;
   const canRemoveTeamMembers = projectTeamActions?.remove === true;
@@ -169,6 +187,12 @@ export default function ProjectContractOverview() {
       primeContractIds: [attachmentId],
       isPrimary,
     });
+  };
+  const handleUploadAndSetMasterSchedule = async (fileId: string) => {
+    await setMasterScheduleMutation.mutateAsync({ projectId, data: { fileId } });
+  };
+  const handleRemoveMasterSchedule = async () => {
+    await removeMasterScheduleMutation.mutateAsync({ projectId });
   };
 
   /* ---- Loading & Error States ---- */
@@ -304,6 +328,25 @@ export default function ProjectContractOverview() {
           onUpdateRole={canUpdateTeamRoles ? teamActions.updateRole : undefined}
           isRemovingMember={teamActions.isRemovingMember}
           isUpdatingRole={teamActions.isUpdatingRole}
+        />
+
+        {/* ---- Master Schedule ---- */}
+        <MasterScheduleCard
+          masterSchedule={masterSchedule}
+          isLoading={isLoadingMasterSchedule}
+          parentFolderId={masterScheduleFolderId}
+          folderUrl={
+            masterScheduleFolderId
+              ? `/app/project/${projectId}/files?${new URLSearchParams({
+                  folderId: masterScheduleFolderId,
+                }).toString()}`
+              : undefined
+          }
+          canManage={canManageMasterSchedule}
+          onUploadAndSet={canUpdateMasterSchedule ? handleUploadAndSetMasterSchedule : undefined}
+          onRemove={canDeleteMasterSchedule ? handleRemoveMasterSchedule : undefined}
+          isSaving={setMasterScheduleMutation.isPending}
+          isRemoving={removeMasterScheduleMutation.isPending}
         />
 
         {/* ---- Schedule Tracker ---- */}
