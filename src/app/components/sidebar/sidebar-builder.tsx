@@ -102,7 +102,7 @@ function filterMenuForAccess(
               access.access?.role === 'ap'
             );
           }
-          if (path.includes('finance/checking-register')) return access.can('integration', 'read');
+          if (path.includes('finance/checking-register')) return access.isAdmin;
           if (path.includes('email')) return true;
           if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
           if (path.includes('directory/contacts')) return access.can('contact', 'read');

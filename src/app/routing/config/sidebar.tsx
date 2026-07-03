@@ -35,7 +35,6 @@ export const mainSidebarMenu: MenuConfig = [
       {
         title: 'Checking Register',
         path: '../finance/checking-register',
-        access: { resource: 'integration', action: 'read' },
       },
     ],
   },
