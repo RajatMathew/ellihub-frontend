@@ -15,6 +15,7 @@ const PROJECT_SUBFOLDER_TYPES: Record<string, ProjectProtectedFolderType> = {
   'sub change order': 'SUB_CHANGE_ORDER',
   sco: 'SUB_CHANGE_ORDER',
   'prime contract': 'PRIME_CONTRACT',
+  'master schedule': 'MASTER_SCHEDULE',
   schedule: 'SCHEDULE',
 };
 

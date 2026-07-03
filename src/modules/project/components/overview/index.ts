@@ -10,3 +10,5 @@ export { ProjectOverviewLoading } from './project-overview-loading';
 export { ProjectTeamDialog } from './project-team-dialog';
 export { ScheduleTrackerCard } from './schedule-tracker-card';
 export { usePrimeContractComputations } from './use-prime-contract-computations';
+
+export { MasterScheduleCard } from './master-schedule-card';
