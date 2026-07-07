@@ -1,4 +1,6 @@
-export type RecurringBillAmountMode = 'fixed' | 'variable' | 'requires-entry';
+import type { RecurringBillItem } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
+
+export type RecurringBillAmountMode = 'fixed' | 'variable';
 
 export type RecurringBillFrequency =
   | 'weekly'
@@ -9,27 +11,4 @@ export type RecurringBillFrequency =
   | 'yearly';
 
 export type RecurringBillScheduleTiming = 'start' | 'date' | 'end';
-
-export interface RecurringBillRule {
-  id: string;
-  name: string;
-  vendorId: string;
-  vendorName: string;
-  categoryId?: string;
-  categoryName?: string;
-  bankAccountId?: string;
-  bankAccountName?: string;
-  frequency: RecurringBillFrequency;
-  scheduleTiming?: RecurringBillScheduleTiming;
-  weeklyDay?: number;
-  customIntervalMonths?: number;
-  amountMode: RecurringBillAmountMode;
-  defaultAmount: number;
-  dueDay: number;
-  isActive: boolean;
-  lastPaidCycleLabel?: string;
-  lastPaidLabel?: string;
-  lastPaidAmount?: number;
-  lastInvoiceFile?: File;
-  notes?: string;
-}
+export type RecurringBillRule = RecurringBillItem;

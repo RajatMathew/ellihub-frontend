@@ -2,6 +2,20 @@ import { TableCardHeader, TableCardHeaderSearch } from '@/app/components/table-c
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { Switch } from '@/app/components/ui/switch';
 import {
   Table,
@@ -12,47 +26,72 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
-import { formatUploadFileSize } from '@/modules/files/lib/file-upload-policy';
-import {
-  formatMonthlyBillMonthName,
-  getMonthlyBillYear,
-} from '@/modules/monthly-bills/lib/monthly-bills-date';
+import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import type {
   RecurringBillFrequency,
   RecurringBillRule,
 } from '@/modules/monthly-bills/types/recurring-bills.types';
-import { CheckCircle2, CreditCard, Paperclip, Plus, Receipt, X } from 'lucide-react';
+import {
+  Ban,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Receipt,
+  Trash2,
+  X,
+} from 'lucide-react';
 
-type RecurringBillRowState = 'payable' | 'paid';
+type RecurringBillRowState = 'payable' | 'paid' | 'skipped' | 'disabled';
+export type RecurringStatusFilter = 'all' | 'due' | 'paid' | 'skipped';
 
 interface RecurringBillsWorkspaceProps {
   rules: RecurringBillRule[];
-  selectedDate: Date;
   search: string;
+  status: RecurringStatusFilter;
+  canUpdateBills: boolean;
+  canMarkPayment: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
   onSearchChange: (search: string) => void;
+  onStatusChange: (status: RecurringStatusFilter) => void;
   onCreateRule: () => void;
   onPayRule: (rule: RecurringBillRule) => void;
+  onEditRule: (rule: RecurringBillRule) => void;
+  onSkipRule: (rule: RecurringBillRule) => void;
+  onDeleteRule: (rule: RecurringBillRule) => void;
   onToggleActive: (ruleId: string, isActive: boolean) => void;
+  onFetchNextPage?: () => void;
 }
+
+const statusOptions: { value: RecurringStatusFilter; label: string }[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'due', label: 'Due' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'skipped', label: 'Skipped' },
+];
 
 export function RecurringBillsWorkspace({
   rules,
-  selectedDate,
   search,
+  status,
+  canUpdateBills,
+  canMarkPayment,
+  hasNextPage = false,
+  isFetchingNextPage = false,
   onSearchChange,
+  onStatusChange,
   onCreateRule,
   onPayRule,
+  onEditRule,
+  onSkipRule,
+  onDeleteRule,
   onToggleActive,
+  onFetchNextPage,
 }: RecurringBillsWorkspaceProps) {
-  const selectedCycleLabel = getCycleLabel(selectedDate);
-  const visibleRules = rules.filter((rule) => {
-    const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return [rule.name, rule.vendorName, rule.categoryName, rule.bankAccountName]
-      .filter(Boolean)
-      .some((value) => value!.toLowerCase().includes(query));
-  });
-  const hasActiveFilters = Boolean(search);
+  const hasActiveFilters = Boolean(search) || status !== 'all';
 
   return (
     <Card className="overflow-hidden">
@@ -70,30 +109,48 @@ export function RecurringBillsWorkspace({
               onChange={onSearchChange}
               className="xl:w-[34rem]"
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground hover:border-table-card-header-foreground/40 hover:bg-card-header hover:text-table-card-header-foreground [&_svg]:text-table-card-header-foreground"
-              onClick={onCreateRule}
+            <Select
+              value={status}
+              onValueChange={(value) => onStatusChange(value as RecurringStatusFilter)}
             >
-              <Plus className="size-3.5" />
-              Add recurring bill
-            </Button>
+              <SelectTrigger className="h-9 w-full border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground hover:border-table-card-header-foreground/40 xl:w-44 [&_svg]:text-table-card-header-foreground">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {canUpdateBills && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground hover:border-table-card-header-foreground/40 hover:bg-card-header hover:text-table-card-header-foreground [&_svg]:text-table-card-header-foreground"
+                onClick={onCreateRule}
+              >
+                <Plus className="size-3.5" />
+                Add recurring bill
+              </Button>
+            )}
           </div>
         }
       />
 
-      {visibleRules.length === 0 ? (
+      {rules.length === 0 ? (
         <RecurringBillsEmptyState
           hasActiveFilters={hasActiveFilters}
           onClearFilters={() => {
             onSearchChange('');
+            onStatusChange('all');
           }}
         />
       ) : (
         <div className="border-t">
-          <Table className="min-w-[68rem]">
+          <Table className="min-w-[78rem]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-10 min-w-64 text-xs font-semibold uppercase tracking-normal">
@@ -108,23 +165,26 @@ export function RecurringBillsWorkspace({
                 <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
                   Repeats
                 </TableHead>
-                <TableHead className="h-10 min-w-28 text-xs font-semibold uppercase tracking-normal">
+                <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
                   Due
                 </TableHead>
                 <TableHead className="h-10 min-w-40 text-xs font-semibold uppercase tracking-normal">
                   Amount
                 </TableHead>
-                <TableHead className="h-10 min-w-32 text-center text-xs font-semibold uppercase tracking-normal">
+                <TableHead className="h-10 min-w-36 text-center text-xs font-semibold uppercase tracking-normal">
                   Status
                 </TableHead>
                 <TableHead className="h-10 w-24 text-center text-xs font-semibold uppercase tracking-normal">
                   Active
                 </TableHead>
+                <TableHead className="h-10 w-16 text-right text-xs font-semibold uppercase tracking-normal">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRules.map((rule) => {
-                const rowState = getRowState(rule, selectedCycleLabel);
+              {rules.map((rule) => {
+                const rowState = getRowState(rule);
 
                 return (
                   <TableRow key={rule.id}>
@@ -150,29 +210,17 @@ export function RecurringBillsWorkspace({
                     <TableCell className="min-w-32 py-3 text-sm text-foreground">
                       {getFrequencyLabel(rule.frequency)}
                     </TableCell>
-                    <TableCell className="min-w-28 py-3 text-sm text-foreground">
-                      {getDueLabel(rule)}
+                    <TableCell className="min-w-32 py-3 text-sm text-foreground">
+                      {formatDateOnlyLabel(rule.dueDate, { month: 'short', day: 'numeric' })}
                     </TableCell>
                     <TableCell className="min-w-40 py-3">
-                      <RecurringBillAmountCell
-                        rule={rule}
-                        rowState={rowState}
-                        selectedCycleLabel={selectedCycleLabel}
-                      />
-                      {getInvoiceFile(rule, rowState) && (
-                        <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                          <Paperclip className="size-3 shrink-0" />
-                          <span className="truncate">
-                            {getInvoiceFile(rule, rowState)?.name} -{' '}
-                            {formatUploadFileSize(getInvoiceFile(rule, rowState)!.size)}
-                          </span>
-                        </p>
-                      )}
+                      <RecurringBillAmountCell rule={rule} rowState={rowState} />
                     </TableCell>
-                    <TableCell className="min-w-32 py-3 text-center">
+                    <TableCell className="min-w-36 py-3 text-center">
                       <RecurringBillRowAction
                         rule={rule}
                         rowState={rowState}
+                        canMarkPayment={canMarkPayment}
                         onPayRule={onPayRule}
                       />
                     </TableCell>
@@ -180,8 +228,19 @@ export function RecurringBillsWorkspace({
                       <Switch
                         size="sm"
                         checked={rule.isActive}
-                        onCheckedChange={(isActive) => onToggleActive(rule.id, isActive)}
+                        disabled={!canUpdateBills}
+                        onCheckedChange={(isActive) => onToggleActive(rule.ruleId, isActive)}
                         aria-label={`Toggle ${rule.name}`}
+                      />
+                    </TableCell>
+                    <TableCell className="w-16 py-3 text-right">
+                      <RecurringBillActionsMenu
+                        rule={rule}
+                        rowState={rowState}
+                        canUpdateBills={canUpdateBills}
+                        onEditRule={onEditRule}
+                        onSkipRule={onSkipRule}
+                        onDeleteRule={onDeleteRule}
                       />
                     </TableCell>
                   </TableRow>
@@ -189,6 +248,19 @@ export function RecurringBillsWorkspace({
               })}
             </TableBody>
           </Table>
+          {hasNextPage && (
+            <div className="flex justify-center border-t p-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isFetchingNextPage}
+                onClick={onFetchNextPage}
+              >
+                {isFetchingNextPage ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -198,17 +270,39 @@ export function RecurringBillsWorkspace({
 function RecurringBillRowAction({
   rule,
   rowState,
+  canMarkPayment,
   onPayRule,
 }: {
   rule: RecurringBillRule;
   rowState: RecurringBillRowState;
+  canMarkPayment: boolean;
   onPayRule: (rule: RecurringBillRule) => void;
 }) {
   if (rowState === 'paid') {
     return (
-      <Badge variant="success" appearance="light" size="md" className="h-9 px-3">
-        <CheckCircle2 className="size-3.5" />
-        Paid
+      <div className="flex flex-col items-center gap-1">
+        <Badge variant="success" appearance="light" size="md" className="h-8 px-3">
+          <CheckCircle2 className="size-3.5" />
+          Paid
+        </Badge>
+        {rule.payment?.transactionUrl && (
+          <a
+            href={rule.payment.transactionUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Transaction <ExternalLink className="size-3" />
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (rowState === 'skipped') {
+    return (
+      <Badge variant="secondary" appearance="light" size="md" className="h-8 px-3">
+        Skipped
       </Badge>
     );
   }
@@ -218,7 +312,7 @@ function RecurringBillRowAction({
       type="button"
       variant="primary"
       size="sm"
-      disabled={!rule.isActive}
+      disabled={!rule.isActive || !canMarkPayment}
       onClick={() => onPayRule(rule)}
     >
       <CreditCard className="size-3.5" />
@@ -227,34 +321,83 @@ function RecurringBillRowAction({
   );
 }
 
-function RecurringBillAmountCell({
+function RecurringBillActionsMenu({
   rule,
   rowState,
-  selectedCycleLabel,
+  canUpdateBills,
+  onEditRule,
+  onSkipRule,
+  onDeleteRule,
 }: {
   rule: RecurringBillRule;
   rowState: RecurringBillRowState;
-  selectedCycleLabel: string;
+  canUpdateBills: boolean;
+  onEditRule: (rule: RecurringBillRule) => void;
+  onSkipRule: (rule: RecurringBillRule) => void;
+  onDeleteRule: (rule: RecurringBillRule) => void;
+}) {
+  const canSkip = canUpdateBills && rowState === 'payable';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Actions for ${rule.name}`}>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          disabled={!canUpdateBills || !isSupportedFormFrequency(rule.frequency)}
+          onClick={() => onEditRule(rule)}
+        >
+          <Pencil className="size-4" />
+          Edit rule
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!canSkip} onClick={() => onSkipRule(rule)}>
+          <Ban className="size-4" />
+          Skip this cycle
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!canUpdateBills}
+          onClick={() => onDeleteRule(rule)}
+        >
+          <Trash2 className="size-4" />
+          Delete rule
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RecurringBillAmountCell({
+  rule,
+  rowState,
+}: {
+  rule: RecurringBillRule;
+  rowState: RecurringBillRowState;
 }) {
   if (rowState === 'paid') {
     return (
       <>
         <p className="text-sm font-semibold tabular-nums text-foreground">
-          {formatCurrency(rule.lastPaidAmount ?? rule.defaultAmount)}
+          {formatCurrency(rule.payment?.amount ?? rule.defaultAmount)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {rule.lastPaidLabel ? `Paid ${rule.lastPaidLabel}` : `Paid ${selectedCycleLabel}`}
+          Paid{' '}
+          {rule.payment
+            ? formatDateOnlyLabel(rule.payment.txnDate)
+            : formatDateOnlyLabel(rule.dueDate)}
         </p>
       </>
     );
   }
 
-  const amount = rule.lastPaidAmount ?? rule.defaultAmount;
-
   if (isVariableAmountRule(rule)) {
     return (
       <p className="text-sm font-semibold tabular-nums text-foreground">
-        {amount > 0 ? formatCurrency(amount) : 'Needs amount'}{' '}
+        {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Needs amount'}{' '}
         <span className="text-xs font-normal text-muted-foreground">expected</span>
       </p>
     );
@@ -262,7 +405,7 @@ function RecurringBillAmountCell({
 
   return (
     <p className="text-sm font-semibold tabular-nums text-foreground">
-      {amount > 0 ? formatCurrency(amount) : 'Needs amount'}
+      {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Needs amount'}
     </p>
   );
 }
@@ -283,7 +426,9 @@ function RecurringBillsEmptyState({
         <div className="space-y-1">
           <p className="text-sm font-medium">No recurring bills found</p>
           <p className="text-xs text-muted-foreground">
-            Clear the search or choose another filter.
+            {hasActiveFilters
+              ? 'Clear the search or choose another filter.'
+              : 'Add a recurring bill to start tracking it.'}
           </p>
         </div>
         {hasActiveFilters && (
@@ -303,47 +448,18 @@ function getFrequencyLabel(frequency: RecurringBillFrequency) {
   return frequency.charAt(0).toUpperCase() + frequency.slice(1);
 }
 
-function getDueLabel(rule: RecurringBillRule) {
-  if (rule.frequency === 'custom') {
-    const interval = rule.customIntervalMonths ?? 1;
-    return `Every ${interval} months, ${getMonthlyTimingLabel(rule)}`;
-  }
-
-  if (rule.frequency === 'weekly' || rule.frequency === 'biweekly') {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const day = rule.weeklyDay ?? rule.dueDay;
-    return days[Math.max(0, Math.min(day - 1, 6))];
-  }
-
-  return getMonthlyTimingLabel(rule);
-}
-
-function getMonthlyTimingLabel(rule: RecurringBillRule) {
-  if (rule.scheduleTiming === 'start') return 'Start of month';
-  if (rule.scheduleTiming === 'end') return 'End of month';
-  return `Day ${rule.dueDay}`;
-}
-
-function getInvoiceFile(rule: RecurringBillRule, rowState: RecurringBillRowState) {
-  if (rowState === 'paid') return rule.lastInvoiceFile;
-  return undefined;
-}
-
-function getRowState(rule: RecurringBillRule, selectedCycleLabel: string): RecurringBillRowState {
-  if (isPaidForCycle(rule, selectedCycleLabel)) return 'paid';
+function getRowState(rule: RecurringBillRule): RecurringBillRowState {
+  if (!rule.isActive) return 'disabled';
+  if (rule.status === 'paid') return 'paid';
+  if (rule.status === 'skipped') return 'skipped';
   return 'payable';
 }
 
-function isPaidForCycle(rule: RecurringBillRule, selectedCycleLabel: string) {
-  if (rule.lastPaidCycleLabel) return rule.lastPaidCycleLabel === selectedCycleLabel;
-
-  return Boolean(rule.lastPaidLabel && rule.lastPaidLabel.includes(selectedCycleLabel));
-}
-
 function isVariableAmountRule(rule: RecurringBillRule) {
-  return rule.amountMode === 'variable' || rule.amountMode === 'requires-entry';
+  return rule.amountMode === 'variable';
 }
 
-function getCycleLabel(selectedDate: Date) {
-  return `${formatMonthlyBillMonthName(selectedDate, 'short')} ${getMonthlyBillYear(selectedDate)}`;
+function isSupportedFormFrequency(frequency: RecurringBillFrequency) {
+  return frequency === 'weekly' || frequency === 'monthly' || frequency === 'custom';
 }
+

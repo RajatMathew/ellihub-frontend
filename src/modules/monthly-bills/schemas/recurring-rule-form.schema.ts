@@ -16,12 +16,16 @@ export const recurringRuleFormSchema = z
     categoryName: z.string().optional(),
     bankAccountId: z.string().optional(),
     bankAccountName: z.string().optional(),
+  })
+  .refine((value) => value.amountMode !== 'fixed' || value.amount > 0, {
+    message: 'Fixed recurring bills must have an amount greater than zero.',
+    path: ['amount'],
   });
 
 export type RecurringRuleFormData = z.infer<typeof recurringRuleFormSchema>;
 
 export const recurringRuleFormDefaultValues: RecurringRuleFormData = {
-  name: 'Office rent',
+  name: '',
   vendorId: '',
   vendorName: '',
   frequency: 'monthly',
@@ -29,7 +33,7 @@ export const recurringRuleFormDefaultValues: RecurringRuleFormData = {
   weeklyDay: 1,
   customIntervalMonths: 6,
   amountMode: 'fixed',
-  amount: 8500,
+  amount: 0,
   dueDay: 1,
   categoryId: '',
   categoryName: '',

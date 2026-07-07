@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
@@ -20,7 +20,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/app/components/ui/form';
-import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import {
@@ -36,9 +35,11 @@ import {
   useQuickBooksBankAccountsQuery,
   useQuickBooksCategoriesQuery,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
+import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import type { PayRecurringBillPayload } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import type { RecurringBillRule } from '@/modules/monthly-bills/types/recurring-bills.types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreditCard, Paperclip } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -58,24 +59,10 @@ type RecurringPayFormData = z.infer<typeof recurringPayFormSchema>;
 
 interface RecurringPayDialogProps {
   rule: RecurringBillRule | null;
-  selectedDate: Date;
   open: boolean;
+  isSaving?: boolean;
   onOpenChange: (open: boolean) => void;
-  onPaid: (payment: {
-    ruleId: string;
-    amount: number;
-    label: string;
-    bankAccountId: string;
-    bankAccountName?: string;
-    categoryId: string;
-    categoryName?: string;
-    invoiceFile?: File;
-  }) => void;
-}
-
-interface InvoiceDraft {
-  ruleId: string;
-  file: File | null;
+  onPaid: (ruleId: string, payload: PayRecurringBillPayload) => Promise<void> | void;
 }
 
 interface ReferenceOption {
@@ -87,57 +74,50 @@ interface ReferenceOption {
 
 export function RecurringPayDialog({
   rule,
-  selectedDate,
   open,
+  isSaving = false,
   onOpenChange,
   onPaid,
 }: RecurringPayDialogProps) {
-  const [invoiceDraft, setInvoiceDraft] = useState<InvoiceDraft | null>(null);
   const bankAccountsQuery = useQuickBooksBankAccountsQuery(open);
   const categoriesQuery = useQuickBooksCategoriesQuery(open);
   const form = useForm<RecurringPayFormData>({
     resolver: zodResolver(recurringPayFormSchema),
-    defaultValues: buildDefaultValues(rule, selectedDate),
+    defaultValues: buildDefaultValues(rule),
   });
-  const selectedInvoiceFile =
-    rule && invoiceDraft?.ruleId === rule.id ? invoiceDraft.file : null;
 
   useEffect(() => {
     if (!open) return;
-    form.reset(buildDefaultValues(rule, selectedDate));
-  }, [form, open, rule, selectedDate]);
+    form.reset(buildDefaultValues(rule));
+  }, [form, open, rule]);
 
-  const handleSubmit = (values: RecurringPayFormData) => {
+  const handleSubmit = async (values: RecurringPayFormData) => {
     if (!rule) return;
 
-    onPaid({
-      ruleId: rule.id,
+    await onPaid(rule.ruleId, {
+      cycleKey: rule.cycleKey,
+      dueDate: rule.dueDate,
       amount: values.amount,
-      label: formatPaymentLabel(values.txnDate),
+      txnDate: values.txnDate,
+      qbVendorId: rule.vendorId,
       bankAccountId: values.bankAccountId,
-      bankAccountName: values.bankAccountName,
       categoryId: values.categoryId,
-      categoryName: values.categoryName,
-      invoiceFile: selectedInvoiceFile ?? undefined,
+      description: values.description,
+      memo: values.memo || '',
+      printLater: values.printLater,
     });
-    setInvoiceDraft(null);
     onOpenChange(false);
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) setInvoiceDraft(null);
-    onOpenChange(nextOpen);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{rule ? getDialogTitle(rule) : 'Pay Recurring Bill'}</DialogTitle>
           <DialogDescription>
             {rule && isVariableAmountRule(rule)
-              ? 'Update the amount if this bill changed, then save the payment.'
-              : 'Confirm the payment details before saving.'}
+              ? 'Enter this period\'s actual amount, then create the QuickBooks payment.'
+              : 'Confirm the details, then create the QuickBooks payment.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -147,33 +127,25 @@ export function RecurringPayDialog({
               <DialogBody className="space-y-5">
                 <RecurringPaymentSummary rule={rule} />
 
-                {isVariableAmountRule(rule) && (
-                  <div className="space-y-4 rounded-md border bg-muted/20 p-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Variable amount</p>
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel>Amount</FormLabel>
-                          <FormControl>
-                            <NumberInput
-                              value={field.value}
-                              onValueChange={field.onChange}
-                              decimalPlaces={2}
-                              min={0}
-                              className="text-right text-base font-semibold"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel>Amount</FormLabel>
+                      <FormControl>
+                        <NumberInput
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          decimalPlaces={2}
+                          min={0}
+                          className="text-right text-base font-semibold"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ReferenceSelect
@@ -277,32 +249,15 @@ export function RecurringPayDialog({
                     </FormItem>
                   )}
                 />
-
-                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
-                  <div className="space-y-1">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <Paperclip className="size-4 text-muted-foreground" />
-                      Invoice or bill
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Optional for now. This is kept locally and is not uploaded to backend.
-                    </p>
-                  </div>
-                  <FileDropZone
-                    value={selectedInvoiceFile}
-                    onChange={(file) => setInvoiceDraft(rule ? { ruleId: rule.id, file } : null)}
-                    showSelectedPreview
-                  />
-                </div>
               </DialogBody>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" variant="primary">
+                <Button type="submit" variant="primary" disabled={isSaving}>
                   <CreditCard className="size-4" />
-                  Save
+                  Create payment
                 </Button>
               </DialogFooter>
             </form>
@@ -314,13 +269,11 @@ export function RecurringPayDialog({
 }
 
 function RecurringPaymentSummary({ rule }: { rule: RecurringBillRule }) {
-  const amountValue = formatCurrency(rule.lastPaidAmount ?? rule.defaultAmount);
-
   return (
     <div className="grid grid-cols-1 gap-4 rounded-md border border-border bg-muted/30 p-4 sm:grid-cols-3">
-      <SummaryItem label="Amount" value={amountValue} emphasize />
+      <SummaryItem label="Amount" value={formatCurrency(rule.defaultAmount)} emphasize />
       <SummaryItem label="Vendor" value={rule.vendorName} />
-      <SummaryItem label="Bill" value={rule.name} />
+      <SummaryItem label="Due" value={formatDateOnlyLabel(rule.dueDate)} />
     </div>
   );
 }
@@ -396,20 +349,15 @@ function ReferenceSelect({
   );
 }
 
-function buildDefaultValues(
-  rule: RecurringBillRule | null,
-  selectedDate: Date
-): RecurringPayFormData {
-  const txnDate = getDefaultPaymentDate(rule, selectedDate);
-
+function buildDefaultValues(rule: RecurringBillRule | null): RecurringPayFormData {
   return {
-    amount: rule?.lastPaidAmount ?? rule?.defaultAmount ?? 0,
+    amount: rule?.defaultAmount ?? 0,
     bankAccountId: rule?.bankAccountId ?? '',
     bankAccountName: rule?.bankAccountName ?? '',
     categoryId: rule?.categoryId ?? '',
     categoryName: rule?.categoryName ?? '',
-    txnDate,
-    description: rule ? `${rule.name} - ${formatPaymentLabel(txnDate)}` : '',
+    txnDate: rule?.dueDate ?? '',
+    description: rule ? `${rule.name} - ${formatDateOnlyLabel(rule.dueDate)}` : '',
     memo: '',
     printLater: false,
   };
@@ -420,53 +368,5 @@ function getDialogTitle(rule: RecurringBillRule) {
 }
 
 function isVariableAmountRule(rule: RecurringBillRule) {
-  return rule.amountMode === 'variable' || rule.amountMode === 'requires-entry';
-}
-
-function getDefaultPaymentDate(rule: RecurringBillRule | null, selectedDate: Date) {
-  const dueDay = getScheduledDayOfMonth(rule, selectedDate);
-  const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dueDay);
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-');
-}
-
-function getScheduledDayOfMonth(rule: RecurringBillRule | null, selectedDate: Date) {
-  if (!rule) return 1;
-
-  if (rule.frequency === 'weekly' || rule.frequency === 'biweekly') {
-    return getFirstWeekdayInMonth(selectedDate, rule.weeklyDay ?? rule.dueDay);
-  }
-
-  if (rule.scheduleTiming === 'end') {
-    return new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
-  }
-
-  if (rule.scheduleTiming === 'start') return 1;
-
-  return Math.max(1, Math.min(rule.dueDay, 28));
-}
-
-function getFirstWeekdayInMonth(selectedDate: Date, dueDay: number) {
-  const targetDay = Math.max(1, Math.min(dueDay, 7)) % 7;
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    if (new Date(year, month, day).getDay() === targetDay) return day;
-  }
-
-  return 1;
-}
-
-function formatPaymentLabel(dateValue: string) {
-  const [year, month, day] = dateValue.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, day));
+  return rule.amountMode === 'variable';
 }

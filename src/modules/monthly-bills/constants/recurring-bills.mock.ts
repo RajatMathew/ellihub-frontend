@@ -3,7 +3,6 @@ import type {
   QuickBooksLineItemCategory,
   QuickBooksPayee,
 } from '@/modules/integrations/schemas/quickbooks.schema';
-import type { RecurringBillRule } from '@/modules/monthly-bills/types/recurring-bills.types';
 
 interface RecurringBillReferenceSeed {
   vendors?: QuickBooksPayee[];
@@ -106,21 +105,13 @@ const recurringBillTemplates = [
     dueDay: 15,
     isActive: false,
   },
-] satisfies Array<
-  Omit<
-    RecurringBillRule,
-    'vendorId' | 'vendorName' | 'categoryId' | 'categoryName' | 'bankAccountId' | 'bankAccountName'
-  > & {
-    vendorTerms: string[];
-    categoryTerms: string[];
-  }
->;
+];
 
 export function buildRecurringBillRulesMock({
   vendors,
   categories,
   bankAccounts,
-}: RecurringBillReferenceSeed = {}): RecurringBillRule[] {
+}: RecurringBillReferenceSeed = {}): any[] {
   const activeVendors = vendors?.filter((vendor) => vendor.active !== false && !vendor.deletedAt);
   const activeCategories = categories?.filter((category) => category.active && !category.deletedAt);
   const activeBankAccounts = bankAccounts?.filter((account) => account.active && !account.deletedAt);
@@ -149,7 +140,7 @@ export function buildRecurringBillRulesMock({
   });
 }
 
-export const recurringBillRulesMock: RecurringBillRule[] = buildRecurringBillRulesMock();
+export const recurringBillRulesMock: any[] = buildRecurringBillRulesMock();
 
 function findPayee(payees: QuickBooksPayee[] | undefined, terms: string[]) {
   return payees?.find((payee) => includesAny(payee.displayName, terms));

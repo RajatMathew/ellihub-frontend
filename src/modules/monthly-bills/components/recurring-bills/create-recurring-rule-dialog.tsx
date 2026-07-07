@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/modules/integrations/hooks/quickbooks.hooks';
 import {
   AmountField,
+  AmountModeField,
   ReferenceField,
   ScheduleFields,
   TextField,
@@ -29,19 +30,29 @@ import {
   recurringRuleFormSchema,
   type RecurringRuleFormData,
 } from '@/modules/monthly-bills/schemas/recurring-rule-form.schema';
-import type { RecurringBillRule } from '@/modules/monthly-bills/types/recurring-bills.types';
+import type {
+  CreateRecurringBillRulePayload,
+  RecurringBillItem,
+} from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 export function CreateRecurringRuleDialog({
   open,
+  rule,
+  isSaving = false,
   onOpenChange,
   onCreate,
+  onUpdate,
 }: {
   open: boolean;
+  rule?: RecurringBillItem | null;
+  isSaving?: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (rule: RecurringBillRule) => void;
+  onCreate: (rule: CreateRecurringBillRulePayload) => Promise<void> | void;
+  onUpdate?: (ruleId: string, rule: CreateRecurringBillRulePayload) => Promise<void> | void;
 }) {
+  const isEdit = Boolean(rule);
   const [vendorSearch, setVendorSearch] = useState('');
   const [selectedVendorOption, setSelectedVendorOption] =
     useState<InfiniteSearchSelectOption | null>(null);
@@ -50,6 +61,21 @@ export function CreateRecurringRuleDialog({
     resolver: zodResolver(recurringRuleFormSchema),
     defaultValues: recurringRuleFormDefaultValues,
   });
+
+  useEffect(() => {
+    if (!open) return;
+    const nextValues = buildFormValues(rule ?? null);
+    form.reset(nextValues);
+    setSelectedVendorOption(
+      rule
+        ? {
+            value: rule.vendorId,
+            label: rule.vendorName,
+          }
+        : null
+    );
+    setVendorSearch('');
+  }, [form, open, rule]);
 
   const vendorPicker = useQuickBooksVendorOptions({
     search: vendorSearch,
@@ -70,28 +96,14 @@ export function CreateRecurringRuleDialog({
     onOpenChange(nextOpen);
   };
 
-  const handleSubmit = (values: RecurringRuleFormData) => {
-    const dueDay = getRecurringRuleDueDay(values);
+  const handleSubmit = async (values: RecurringRuleFormData) => {
+    const payload = toPayload(values);
 
-    onCreate({
-      id: `rule-${Date.now()}`,
-      name: values.name.trim(),
-      vendorId: values.vendorId,
-      vendorName: values.vendorName.trim(),
-      categoryId: values.categoryId || undefined,
-      categoryName: values.categoryName || undefined,
-      bankAccountId: values.bankAccountId || undefined,
-      bankAccountName: values.bankAccountName || undefined,
-      frequency: values.frequency,
-      scheduleTiming: values.scheduleTiming,
-      weeklyDay: values.frequency === 'weekly' ? values.weeklyDay : undefined,
-      customIntervalMonths:
-        values.frequency === 'custom' ? values.customIntervalMonths : undefined,
-      amountMode: values.amountMode,
-      defaultAmount: values.amount,
-      dueDay,
-      isActive: true,
-    });
+    if (isEdit && rule && onUpdate) {
+      await onUpdate(rule.ruleId, payload);
+    } else {
+      await onCreate(payload);
+    }
     resetForm();
   };
 
@@ -99,9 +111,11 @@ export function CreateRecurringRuleDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Add Recurring Bill</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Recurring Bill' : 'Add Recurring Bill'}</DialogTitle>
           <DialogDescription>
-            Choose the bill, then tell ElliHub when it should come back.
+            {isEdit
+              ? 'Update the bill details and future recurring cycles.'
+              : 'Choose the bill, then tell ElliHub when it should come back.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,6 +137,7 @@ export function CreateRecurringRuleDialog({
                   onOptionChange={setSelectedVendorOption}
                 />
                 <ScheduleFields control={form.control} />
+                <AmountModeField control={form.control} />
                 <AmountField control={form.control} />
                 <ReferenceField
                   control={form.control}
@@ -147,8 +162,8 @@ export function CreateRecurringRuleDialog({
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary">
-                Add recurring bill
+              <Button type="submit" variant="primary" disabled={isSaving}>
+                {isEdit ? 'Save recurring bill' : 'Add recurring bill'}
               </Button>
             </DialogFooter>
           </form>
@@ -156,6 +171,54 @@ export function CreateRecurringRuleDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function toPayload(values: RecurringRuleFormData): CreateRecurringBillRulePayload {
+  const dueDay = getRecurringRuleDueDay(values);
+
+  return {
+    name: values.name.trim(),
+    vendorId: values.vendorId,
+    vendorName: values.vendorName.trim(),
+    categoryId: values.categoryId || undefined,
+    categoryName: values.categoryName || undefined,
+    bankAccountId: values.bankAccountId || undefined,
+    bankAccountName: values.bankAccountName || undefined,
+    frequency: values.frequency,
+    scheduleTiming: values.scheduleTiming,
+    weeklyDay: values.frequency === 'weekly' ? values.weeklyDay : undefined,
+    customIntervalMonths: values.frequency === 'custom' ? values.customIntervalMonths : undefined,
+    amountMode: values.amountMode,
+    defaultAmount: values.amount,
+    dueDay,
+  };
+}
+
+function buildFormValues(rule: RecurringBillItem | null): RecurringRuleFormData {
+  if (!rule || !isSupportedFormFrequency(rule.frequency)) return recurringRuleFormDefaultValues;
+
+  return {
+    name: rule.name,
+    vendorId: rule.vendorId,
+    vendorName: rule.vendorName,
+    frequency: rule.frequency,
+    scheduleTiming: rule.scheduleTiming,
+    weeklyDay: rule.weeklyDay ?? 1,
+    customIntervalMonths: rule.customIntervalMonths ?? 6,
+    amountMode: rule.amountMode,
+    amount: rule.defaultAmount,
+    dueDay: rule.dueDay,
+    categoryId: rule.categoryId ?? '',
+    categoryName: rule.categoryName ?? '',
+    bankAccountId: rule.bankAccountId ?? '',
+    bankAccountName: rule.bankAccountName ?? '',
+  };
+}
+
+function isSupportedFormFrequency(
+  frequency: RecurringBillItem['frequency']
+): frequency is RecurringRuleFormData['frequency'] {
+  return frequency === 'weekly' || frequency === 'monthly' || frequency === 'custom';
 }
 
 function getRecurringRuleDueDay(values: RecurringRuleFormData) {
