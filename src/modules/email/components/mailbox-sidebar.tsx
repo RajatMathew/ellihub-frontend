@@ -2,6 +2,7 @@ import { useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
+import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   Archive,
   ChevronDown,
@@ -23,10 +24,10 @@ const MAX_WIDTH = 336;
 
 type MailboxFolder = {
   key: string;
+  folder: EmailFolderKey;
   label: string;
   count?: number | string;
   icon: typeof Inbox;
-  selected?: boolean;
 };
 
 type MailboxFolderGroup = {
@@ -36,30 +37,40 @@ type MailboxFolderGroup = {
 };
 
 const favouriteFolders: MailboxFolder[] = [
-  { key: 'fav-inbox', label: 'Inbox', count: 139, icon: Inbox },
-  { key: 'fav-sent', label: 'Sent Items', icon: Send },
-  { key: 'fav-drafts', label: 'Drafts', count: '[7]', icon: Edit3 },
-  { key: 'fav-deleted', label: 'Deleted Items', count: 9, icon: Trash2 },
+  { key: 'fav-inbox', folder: 'inbox', label: 'Inbox', icon: Inbox },
+  { key: 'fav-sent', folder: 'sent', label: 'Sent Items', icon: Send },
+  { key: 'fav-drafts', folder: 'drafts', label: 'Drafts', icon: Edit3 },
+  { key: 'fav-deleted', folder: 'deleted', label: 'Deleted Items', icon: Trash2 },
 ];
 
 const accountFolders: MailboxFolder[] = [
-  { key: 'inbox', label: 'Inbox', count: 139, icon: Inbox, selected: true },
-  { key: 'drafts', label: 'Drafts', count: '[7]', icon: Edit3 },
-  { key: 'sent', label: 'Sent Items', icon: Send },
-  { key: 'deleted', label: 'Deleted Items', count: 9, icon: Trash2 },
-  { key: 'junk', label: 'Junk Email', icon: Folder },
-  { key: 'notes', label: 'Notes', icon: NotebookText },
-  { key: 'archive', label: 'Archive', icon: Archive },
-  { key: 'history', label: 'Conversation History', icon: Folder },
-  { key: 'rss', label: 'RSS Feeds', icon: Folder },
-  { key: 'search', label: 'Search Folders', icon: Search },
+  { key: 'inbox', folder: 'inbox', label: 'Inbox', icon: Inbox },
+  { key: 'drafts', folder: 'drafts', label: 'Drafts', icon: Edit3 },
+  { key: 'sent', folder: 'sent', label: 'Sent Items', icon: Send },
+  { key: 'deleted', folder: 'deleted', label: 'Deleted Items', icon: Trash2 },
+  { key: 'junk', folder: 'junk', label: 'Junk Email', icon: Folder },
+  { key: 'notes', folder: 'notes', label: 'Notes', icon: NotebookText },
+  { key: 'archive', folder: 'archive', label: 'Archive', icon: Archive },
+  { key: 'history', folder: 'history', label: 'Conversation History', icon: Folder },
+  { key: 'rss', folder: 'rss', label: 'RSS Feeds', icon: Folder },
+  { key: 'search', folder: 'search', label: 'Search Folders', icon: Search },
 ];
 
 interface MailboxSidebarProps {
   mailboxAddress: string;
+  selectedFolder: EmailFolderKey;
+  folderCounts: Partial<Record<EmailFolderKey, number>>;
+  onSelectFolder: (folder: EmailFolderKey) => void;
+  onCompose: () => void;
 }
 
-export function MailboxSidebar({ mailboxAddress }: MailboxSidebarProps) {
+export function MailboxSidebar({
+  mailboxAddress,
+  selectedFolder,
+  folderCounts,
+  onSelectFolder,
+  onCompose,
+}: MailboxSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -72,12 +83,18 @@ export function MailboxSidebar({ mailboxAddress }: MailboxSidebarProps) {
     {
       key: 'favourites',
       label: 'Favourites',
-      folders: favouriteFolders,
+      folders: favouriteFolders.map((folder) => ({
+        ...folder,
+        count: getFolderCount(folder.folder, folderCounts),
+      })),
     },
     {
       key: 'account',
       label: mailboxAddress,
-      folders: accountFolders,
+      folders: accountFolders.map((folder) => ({
+        ...folder,
+        count: getFolderCount(folder.folder, folderCounts),
+      })),
     },
   ];
 
@@ -140,7 +157,7 @@ export function MailboxSidebar({ mailboxAddress }: MailboxSidebarProps) {
         </Button>
 
         {!collapsed && (
-          <Button type="button" size="sm" className="ml-auto w-28 justify-center">
+          <Button type="button" size="sm" className="ml-auto w-28 justify-center" onClick={onCompose}>
             <span className="flex min-w-0 items-center gap-2">
               <Edit3 aria-hidden="true" className="size-4" />
               <span>New email</span>
@@ -173,7 +190,13 @@ export function MailboxSidebar({ mailboxAddress }: MailboxSidebarProps) {
             {(collapsed || openGroups[group.key]) && (
               <div className={cn('space-y-1', !collapsed && 'pl-7')}>
                 {group.folders.map((folder) => (
-                  <MailboxFolderButton key={folder.key} folder={folder} collapsed={collapsed} />
+                  <MailboxFolderButton
+                    key={folder.key}
+                    folder={folder}
+                    collapsed={collapsed}
+                    selected={folder.folder === selectedFolder}
+                    onSelect={() => onSelectFolder(folder.folder)}
+                  />
                 ))}
               </div>
             )}
@@ -193,7 +216,17 @@ export function MailboxSidebar({ mailboxAddress }: MailboxSidebarProps) {
   );
 }
 
-function MailboxFolderButton({ folder, collapsed }: { folder: MailboxFolder; collapsed: boolean }) {
+function MailboxFolderButton({
+  folder,
+  collapsed,
+  selected,
+  onSelect,
+}: {
+  folder: MailboxFolder;
+  collapsed: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const Icon = folder.icon;
 
   return (
@@ -203,10 +236,11 @@ function MailboxFolderButton({ folder, collapsed }: { folder: MailboxFolder; col
         'group relative flex h-10 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm text-muted-foreground',
         'hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         'motion-safe:transition-colors motion-safe:duration-150',
-        folder.selected && 'bg-primary/10 font-semibold text-primary hover:bg-primary/15',
+        selected && 'bg-primary/10 font-semibold text-primary hover:bg-primary/15',
         collapsed && 'justify-center px-0'
       )}
-      aria-current={folder.selected ? 'page' : undefined}
+      aria-current={selected ? 'page' : undefined}
+      onClick={onSelect}
       title={collapsed ? folder.label : undefined}
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
@@ -222,4 +256,12 @@ function MailboxFolderButton({ folder, collapsed }: { folder: MailboxFolder; col
       )}
     </button>
   );
+}
+
+function getFolderCount(
+  folder: EmailFolderKey,
+  folderCounts: Partial<Record<EmailFolderKey, number>>
+) {
+  const count = folderCounts[folder];
+  return count && count > 0 ? count : undefined;
 }

@@ -5,12 +5,16 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
+import { getEmailFolderLabel, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import type { EmailMailboxKey } from '@/modules/email/constants/email-mailboxes';
 import emailData from '@/modules/email/data/emails.json';
 import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: EmailMailboxKey;
+  folder: EmailFolderKey;
+  selectedEmailId?: string;
+  onSelectEmail?: (emailId: string) => void;
 }
 
 const DEFAULT_WIDTH = 320;
@@ -20,14 +24,20 @@ const emails = emailData as EmailListItem[];
 const isLoading = false;
 const isError = false;
 
-export function EmailListPane({ mailbox }: EmailListPaneProps) {
+export function EmailListPane({
+  mailbox,
+  folder,
+  selectedEmailId,
+  onSelectEmail,
+}: EmailListPaneProps) {
   const [search, setSearch] = useState('');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const folderLabel = getEmailFolderLabel(folder);
 
   const mailboxEmails = useMemo(
-    () => emails.filter((email) => email.mailbox === mailbox && email.folder === 'inbox'),
-    [mailbox]
+    () => emails.filter((email) => email.mailbox === mailbox && email.folder === folder),
+    [folder, mailbox]
   );
 
   const filteredEmails = useMemo(() => {
@@ -75,11 +85,11 @@ export function EmailListPane({ mailbox }: EmailListPaneProps) {
         'motion-reduce:transition-none'
       )}
       style={{ width }}
-      aria-label="Email list"
+      aria-label={`${folderLabel} email list`}
     >
       <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold text-foreground">Inbox</h1>
+          <h1 className="truncate text-base font-semibold text-foreground">{folderLabel}</h1>
           <p className="text-xs text-muted-foreground">{mailboxEmails.length} emails</p>
         </div>
       </div>
@@ -120,6 +130,7 @@ export function EmailListPane({ mailbox }: EmailListPaneProps) {
         {!isLoading && !isError && filteredEmails.length === 0 && (
           <EmailListEmptyState
             hasSearch={Boolean(search.trim())}
+            folderLabel={folderLabel}
             onClearSearch={() => setSearch('')}
           />
         )}
@@ -127,7 +138,12 @@ export function EmailListPane({ mailbox }: EmailListPaneProps) {
         {!isLoading && !isError && filteredEmails.length > 0 && (
           <div>
             {filteredEmails.map((email) => (
-              <EmailRowCard key={email.id} email={email} />
+              <EmailRowCard
+                key={email.id}
+                email={email}
+                selected={email.id === selectedEmailId}
+                onSelect={() => onSelectEmail?.(email.id)}
+              />
             ))}
           </div>
         )}
@@ -168,21 +184,23 @@ function EmailListSkeleton() {
 
 function EmailListEmptyState({
   hasSearch,
+  folderLabel,
   onClearSearch,
 }: {
   hasSearch: boolean;
+  folderLabel: string;
   onClearSearch: () => void;
 }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center px-6 py-10 text-center">
       <Inbox aria-hidden="true" className="size-9 text-muted-foreground" strokeWidth={1.8} />
       <p className="mt-4 text-sm font-semibold text-foreground">
-        {hasSearch ? 'No emails found' : 'Inbox is empty'}
+        {hasSearch ? 'No emails found' : `${folderLabel} is empty`}
       </p>
       <p className="mt-1 max-w-56 text-sm leading-6 text-muted-foreground">
         {hasSearch
           ? 'Try another sender, subject, or project keyword.'
-          : 'New messages for this mailbox will appear here.'}
+          : 'Messages for this folder will appear here.'}
       </p>
       {hasSearch && (
         <Button
