@@ -12,6 +12,7 @@ import {
   Inbox,
   Menu,
   NotebookText,
+  Plus,
   Search,
   Send,
   Trash2,
@@ -203,6 +204,18 @@ export function MailboxSidebar({
           </div>
         ))}
       </div>
+
+      {!collapsed && (
+        <div className="shrink-0 px-2 pb-4 pt-2">
+          <button
+            type="button"
+            className="flex h-10 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm font-semibold text-primary hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+          >
+            <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+            <span className="min-w-0 flex-1 truncate">Add account</span>
+          </button>
+        </div>
+      )}
 
       {!collapsed && (
         <button
