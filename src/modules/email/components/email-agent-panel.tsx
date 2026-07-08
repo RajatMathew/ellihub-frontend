@@ -182,10 +182,14 @@ export function EmailAgentPanel({
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background"
             aria-hidden="true"
           >
-            <Sparkles className="size-4" strokeWidth={1.9} />
+            <img
+              src="/favicon/apple-touch-icon.png"
+              alt=""
+              className="size-7 rounded-sm object-contain"
+            />
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-foreground">Elli agent</h2>
