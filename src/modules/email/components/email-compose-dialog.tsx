@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -36,10 +36,14 @@ export function EmailComposeDialog({
     subject: '',
     body: '',
   });
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
   const canSend = form.to.trim().length > 0 && form.subject.trim().length > 0;
 
   function resetForm() {
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
+    setShowCc(false);
+    setShowBcc(false);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -72,22 +76,45 @@ export function EmailComposeDialog({
                 required
                 placeholder="recipient@example.com"
                 onChange={(to) => setForm((current) => ({ ...current, to }))}
-              />
-              <EmailAddressField
-                id={ccId}
-                label="Cc"
-                value={form.cc}
-                placeholder="Optional"
-                onChange={(cc) => setForm((current) => ({ ...current, cc }))}
-              />
-              <EmailAddressField
-                id={bccId}
-                label="Bcc"
-                value={form.bcc}
-                placeholder="Optional"
-                onChange={(bcc) => setForm((current) => ({ ...current, bcc }))}
-              />
-              <div className="flex items-center gap-3 px-5 py-3">
+              >
+                {!showCc && (
+                  <button
+                    type="button"
+                    className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
+                    onClick={() => setShowCc(true)}
+                  >
+                    Cc
+                  </button>
+                )}
+                {!showBcc && (
+                  <button
+                    type="button"
+                    className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
+                    onClick={() => setShowBcc(true)}
+                  >
+                    Bcc
+                  </button>
+                )}
+              </EmailAddressField>
+              {showCc && (
+                <EmailAddressField
+                  id={ccId}
+                  label="Cc"
+                  value={form.cc}
+                  placeholder="Optional"
+                  onChange={(cc) => setForm((current) => ({ ...current, cc }))}
+                />
+              )}
+              {showBcc && (
+                <EmailAddressField
+                  id={bccId}
+                  label="Bcc"
+                  value={form.bcc}
+                  placeholder="Optional"
+                  onChange={(bcc) => setForm((current) => ({ ...current, bcc }))}
+                />
+              )}
+              <div className="flex items-center gap-3 px-5 py-2.5">
                 <label
                   htmlFor={subjectId}
                   className="w-16 shrink-0 text-xs font-medium text-muted-foreground"
@@ -164,6 +191,7 @@ function EmailAddressField({
   placeholder,
   required,
   onChange,
+  children,
 }: {
   id: string;
   label: string;
@@ -171,9 +199,10 @@ function EmailAddressField({
   placeholder: string;
   required?: boolean;
   onChange: (value: string) => void;
+  children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-3">
+    <div className="flex items-center gap-3 px-5 py-2.5">
       <label htmlFor={id} className="w-16 shrink-0 text-xs font-medium text-muted-foreground">
         {label}
         {required && <span className="text-destructive"> *</span>}
@@ -186,9 +215,10 @@ function EmailAddressField({
         autoComplete="email"
         spellCheck={false}
         placeholder={placeholder}
-        className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        className="min-w-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
         onChange={(event) => onChange(event.target.value)}
       />
+      {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
     </div>
   );
 }
