@@ -14,14 +14,37 @@ export type EmailListItem = {
   selected?: boolean;
   attachmentCount?: number;
   category?: string;
+  body?: string[];
+  attachments?: EmailAttachment[];
+  threadMessages?: EmailThreadMessage[];
+};
+
+export type EmailAttachment = {
+  id: string;
+  name: string;
+  size?: string;
+};
+
+export type EmailThreadMessage = {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  sentAt: string;
+  body: string[];
+  attachments?: EmailAttachment[];
 };
 
 interface EmailRowCardProps {
   email: EmailListItem;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
-export function EmailRowCard({ email }: EmailRowCardProps) {
+export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
   const initials = getInitials(email.senderName);
+  const isSelected = selected ?? Boolean(email.selected);
 
   return (
     <button
@@ -30,9 +53,10 @@ export function EmailRowCard({ email }: EmailRowCardProps) {
         'flex w-full cursor-pointer gap-3 border-b border-border px-3 py-4 text-left',
         'hover:bg-accent/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
         'motion-safe:transition-colors motion-safe:duration-150',
-        email.selected && 'border-l-2 border-l-primary bg-primary/10 hover:bg-primary/15'
+        isSelected && 'border-l-2 border-l-primary bg-primary/10 hover:bg-primary/15'
       )}
-      aria-current={email.selected ? 'true' : undefined}
+      aria-current={isSelected ? 'true' : undefined}
+      onClick={onSelect}
     >
       <span
         className={cn(

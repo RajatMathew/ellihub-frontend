@@ -11,7 +11,86 @@
     "unread": true,
     "selected": true,
     "attachmentCount": 2,
-    "category": "ITB"
+    "category": "ITB",
+    "body": [
+      "Hi Elli team,",
+      "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+      "Dear Estimating Team, Acme Corp. Constructors is soliciting bids for the custom millwork scope at the NYU renovation.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-001-att-1",
+        "name": "ITB_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-001-att-2",
+        "name": "ITB_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-001-message-1",
+        "senderName": "John Martinez",
+        "senderEmail": "john.martinez@acmecorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "12 min ago",
+        "body": [
+          "Hi Elli team,",
+          "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+          "Dear Estimating Team, Acme Corp. Constructors is soliciting bids for the custom millwork scope at the NYU renovation.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-001-att-1",
+            "name": "ITB_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-001-att-2",
+            "name": "ITB_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-001-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "John Martinez",
+        "recipientEmail": "john.martinez@acmecorp.com",
+        "sentAt": "8 min ago",
+        "body": [
+          "Hi John,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-001-message-3",
+        "senderName": "John Martinez",
+        "senderEmail": "john.martinez@acmecorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "3 min ago",
+        "body": [
+          "One more note for the estimating team: Addendum 02 is included in the attachment set and supersedes the millwork elevations issued last week.",
+          "The bid form deadline is still Friday at 4:00 PM. Please send questions by Wednesday noon."
+        ],
+        "attachments": [
+          {
+            "id": "email-001-att-followup",
+            "name": "NYU_Millwork_Addendum_02.pdf",
+            "size": "842 KB"
+          }
+        ]
+      }
+    ]
   },
   {
     "id": "email-002",
@@ -24,7 +103,45 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 0,
-    "category": "Follow up"
+    "category": "Follow up",
+    "body": [
+      "Hi Elli team,",
+      "I am following up on the prior request and would appreciate confirmation on the next step.",
+      "Dear Estimating Team, I hope this email finds you well. I am writing to request the updated bid package for review.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [],
+    "threadMessages": [
+      {
+        "id": "email-002-message-1",
+        "senderName": "Kenda Jenner",
+        "senderEmail": "kenda.jenner@nycddc.gov",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "38 min ago",
+        "body": [
+          "Hi Elli team,",
+          "I am following up on the prior request and would appreciate confirmation on the next step.",
+          "Dear Estimating Team, I hope this email finds you well. I am writing to request the updated bid package for review.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-002-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Kenda Jenner",
+        "recipientEmail": "kenda.jenner@nycddc.gov",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Kenda,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-003",
@@ -37,7 +154,57 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 1,
-    "category": "ITB"
+    "category": "ITB",
+    "body": [
+      "Hi Elli team,",
+      "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+      "Hello, Premium Contractors is requesting bids for custom millwork and casework for the library renovation project.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-003-att-1",
+        "name": "ITB_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-003-message-1",
+        "senderName": "Sarah Chen",
+        "senderEmail": "sarah.chen@columbia.edu",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "1 hr ago",
+        "body": [
+          "Hi Elli team,",
+          "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+          "Hello, Premium Contractors is requesting bids for custom millwork and casework for the library renovation project.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-003-att-1",
+            "name": "ITB_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-003-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Sarah Chen",
+        "recipientEmail": "sarah.chen@columbia.edu",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Sarah,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-004",
@@ -50,7 +217,87 @@
     "mailbox": "procurement",
     "unread": true,
     "attachmentCount": 4,
-    "category": "ITB"
+    "category": "ITB",
+    "body": [
+      "Hi Elli team,",
+      "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+      "Dear Sarah, Reliable Builders Corp is soliciting competitive bids for laboratory casework and installation.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-004-att-1",
+        "name": "ITB_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-004-att-2",
+        "name": "ITB_02.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-004-att-3",
+        "name": "ITB_03.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-004-att-4",
+        "name": "ITB_04.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-004-message-1",
+        "senderName": "Michael Rodriguez",
+        "senderEmail": "michael.rodriguez@weillcornell.org",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "2 hrs ago",
+        "body": [
+          "Hi Elli team,",
+          "The bid documents are ready for estimating review and include the key scope notes for the project team.",
+          "Dear Sarah, Reliable Builders Corp is soliciting competitive bids for laboratory casework and installation.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-004-att-1",
+            "name": "ITB_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-004-att-2",
+            "name": "ITB_02.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-004-att-3",
+            "name": "ITB_03.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-004-att-4",
+            "name": "ITB_04.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-004-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Michael Rodriguez",
+        "recipientEmail": "michael.rodriguez@weillcornell.org",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Michael,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-005",
@@ -63,7 +310,57 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 1,
-    "category": "Pricing"
+    "category": "Pricing",
+    "body": [
+      "Hi Elli team,",
+      "The pricing file has been updated with the latest vendor notes and alternates.",
+      "Dear Estimating Team, Acme Corp. Constructors is soliciting bids for the upcoming interiors package.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-005-att-1",
+        "name": "Pricing_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-005-message-1",
+        "senderName": "Custom Millwork Solutions",
+        "senderEmail": "estimating@custommillwork.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Today",
+        "body": [
+          "Hi Elli team,",
+          "The pricing file has been updated with the latest vendor notes and alternates.",
+          "Dear Estimating Team, Acme Corp. Constructors is soliciting bids for the upcoming interiors package.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-005-att-1",
+            "name": "Pricing_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-005-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Custom Millwork Solutions",
+        "recipientEmail": "estimating@custommillwork.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Custom,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-006",
@@ -76,7 +373,67 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 2,
-    "category": "Clarification"
+    "category": "Clarification",
+    "body": [
+      "Hi Elli team,",
+      "The open clarification items are listed below so the team can keep procurement moving.",
+      "Please see the updated clarification log. We need confirmation on veneer species and stone threshold transitions.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-006-att-1",
+        "name": "Clarification_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-006-att-2",
+        "name": "Clarification_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-006-message-1",
+        "senderName": "Priya Shah",
+        "senderEmail": "priya.shah@turnerbuilds.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Yesterday",
+        "body": [
+          "Hi Elli team,",
+          "The open clarification items are listed below so the team can keep procurement moving.",
+          "Please see the updated clarification log. We need confirmation on veneer species and stone threshold transitions.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-006-att-1",
+            "name": "Clarification_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-006-att-2",
+            "name": "Clarification_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-006-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Priya Shah",
+        "recipientEmail": "priya.shah@turnerbuilds.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Priya,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-007",
@@ -89,7 +446,45 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 0,
-    "category": "Lead time"
+    "category": "Lead time",
+    "body": [
+      "Hi Elli team,",
+      "Please review the message details and let me know if Elli should move this forward today.",
+      "Our shop can hold the current price through Friday, but the walnut lead time is now six to eight weeks.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [],
+    "threadMessages": [
+      {
+        "id": "email-007-message-1",
+        "senderName": "Noah Brooks",
+        "senderEmail": "nbrooks@hudsoninteriors.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Yesterday",
+        "body": [
+          "Hi Elli team,",
+          "Please review the message details and let me know if Elli should move this forward today.",
+          "Our shop can hold the current price through Friday, but the walnut lead time is now six to eight weeks.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-007-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Noah Brooks",
+        "recipientEmail": "nbrooks@hudsoninteriors.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Noah,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-008",
@@ -102,7 +497,97 @@
     "mailbox": "procurement",
     "unread": true,
     "attachmentCount": 5,
-    "category": "Addendum"
+    "category": "Addendum",
+    "body": [
+      "Hi Elli team,",
+      "The addendum package includes revised drawings, notes, and response dates.",
+      "Addendum 03 includes revised elevations, door hardware notes, and the final bid form template.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-008-att-1",
+        "name": "Addendum_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-008-att-2",
+        "name": "Addendum_02.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-008-att-3",
+        "name": "Addendum_03.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-008-att-4",
+        "name": "Addendum_04.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-008-att-5",
+        "name": "Addendum_05.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-008-message-1",
+        "senderName": "Emily Watson",
+        "senderEmail": "ewatson@skanska.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Mon",
+        "body": [
+          "Hi Elli team,",
+          "The addendum package includes revised drawings, notes, and response dates.",
+          "Addendum 03 includes revised elevations, door hardware notes, and the final bid form template.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-008-att-1",
+            "name": "Addendum_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-008-att-2",
+            "name": "Addendum_02.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-008-att-3",
+            "name": "Addendum_03.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-008-att-4",
+            "name": "Addendum_04.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-008-att-5",
+            "name": "Addendum_05.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-008-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Emily Watson",
+        "recipientEmail": "ewatson@skanska.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Emily,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-009",
@@ -115,7 +600,67 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 2,
-    "category": "Substitution"
+    "category": "Substitution",
+    "body": [
+      "Hi Elli team,",
+      "The proposed substitution is ready for review before the next coordination meeting.",
+      "Can ElliHub review the proposed acoustic panel substitution before our coordination meeting tomorrow morning?",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-009-att-1",
+        "name": "Substitution_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-009-att-2",
+        "name": "Substitution_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-009-message-1",
+        "senderName": "Robert Kim",
+        "senderEmail": "robert.kim@brightlinegc.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Mon",
+        "body": [
+          "Hi Elli team,",
+          "The proposed substitution is ready for review before the next coordination meeting.",
+          "Can ElliHub review the proposed acoustic panel substitution before our coordination meeting tomorrow morning?",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-009-att-1",
+            "name": "Substitution_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-009-att-2",
+            "name": "Substitution_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-009-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Robert Kim",
+        "recipientEmail": "robert.kim@brightlinegc.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Robert,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-010",
@@ -128,7 +673,57 @@
     "mailbox": "procurement",
     "unread": false,
     "attachmentCount": 1,
-    "category": "Action"
+    "category": "Action",
+    "body": [
+      "Hi Elli team,",
+      "The action items are grouped by owner and due date for easier tracking.",
+      "Attached is the recap from today's site walk. Please confirm the long-lead procurement items by Wednesday.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-010-att-1",
+        "name": "Action_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-010-message-1",
+        "senderName": "Lena Ortiz",
+        "senderEmail": "lortiz@metronorthbuild.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "procurement@ellicorp.com",
+        "sentAt": "Last week",
+        "body": [
+          "Hi Elli team,",
+          "The action items are grouped by owner and due date for easier tracking.",
+          "Attached is the recap from today's site walk. Please confirm the long-lead procurement items by Wednesday.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-010-att-1",
+            "name": "Action_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-010-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "procurement@ellicorp.com",
+        "recipientName": "Lena Ortiz",
+        "recipientEmail": "lortiz@metronorthbuild.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Lena,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-011",
@@ -141,7 +736,77 @@
     "mailbox": "requisitions",
     "unread": true,
     "attachmentCount": 3,
-    "category": "Approval"
+    "category": "Approval",
+    "body": [
+      "Hi Elli team,",
+      "This requisition needs approval before purchasing can release the vendor package.",
+      "Please review the attached requisition list before end of day so procurement can release the vendor package.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-011-att-1",
+        "name": "Approval_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-011-att-2",
+        "name": "Approval_02.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-011-att-3",
+        "name": "Approval_03.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-011-message-1",
+        "senderName": "Alicia Morgan",
+        "senderEmail": "alicia.morgan@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "2 days ago",
+        "body": [
+          "Hi Elli team,",
+          "This requisition needs approval before purchasing can release the vendor package.",
+          "Please review the attached requisition list before end of day so procurement can release the vendor package.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-011-att-1",
+            "name": "Approval_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-011-att-2",
+            "name": "Approval_02.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-011-att-3",
+            "name": "Approval_03.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-011-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Alicia Morgan",
+        "recipientEmail": "alicia.morgan@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Alicia,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-012",
@@ -154,7 +819,57 @@
     "mailbox": "requisitions",
     "unread": false,
     "attachmentCount": 1,
-    "category": "PO request"
+    "category": "PO request",
+    "body": [
+      "Hi Elli team,",
+      "Please review the message details and let me know if Elli should move this forward today.",
+      "The site team uploaded the latest vendor quote. Can you convert this requisition into a purchase order?",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-012-att-1",
+        "name": "PO request_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-012-message-1",
+        "senderName": "Marcus Lee",
+        "senderEmail": "marcus.lee@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "3 days ago",
+        "body": [
+          "Hi Elli team,",
+          "Please review the message details and let me know if Elli should move this forward today.",
+          "The site team uploaded the latest vendor quote. Can you convert this requisition into a purchase order?",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-012-att-1",
+            "name": "PO request_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-012-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Marcus Lee",
+        "recipientEmail": "marcus.lee@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Marcus,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-013",
@@ -167,7 +882,45 @@
     "mailbox": "requisitions",
     "unread": true,
     "attachmentCount": 0,
-    "category": "Review"
+    "category": "Review",
+    "body": [
+      "Hi Elli team,",
+      "The attached request is ready for review except for the item called out below.",
+      "This requisition is ready except for the cost code. I highlighted the line item that needs accounting review.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [],
+    "threadMessages": [
+      {
+        "id": "email-013-message-1",
+        "senderName": "Nina Patel",
+        "senderEmail": "nina.patel@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "4 days ago",
+        "body": [
+          "Hi Elli team,",
+          "The attached request is ready for review except for the item called out below.",
+          "This requisition is ready except for the cost code. I highlighted the line item that needs accounting review.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-013-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Nina Patel",
+        "recipientEmail": "nina.patel@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Nina,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-014",
@@ -180,7 +933,67 @@
     "mailbox": "requisitions",
     "unread": false,
     "attachmentCount": 2,
-    "category": "Rush"
+    "category": "Rush",
+    "body": [
+      "Hi Elli team,",
+      "This request is time sensitive and needs attention before the weekend shutdown.",
+      "The superintendent needs temporary protection released before the weekend shutdown. Vendor details are below.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-014-att-1",
+        "name": "Rush_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-014-att-2",
+        "name": "Rush_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-014-message-1",
+        "senderName": "Owen Sullivan",
+        "senderEmail": "owen.sullivan@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "Last week",
+        "body": [
+          "Hi Elli team,",
+          "This request is time sensitive and needs attention before the weekend shutdown.",
+          "The superintendent needs temporary protection released before the weekend shutdown. Vendor details are below.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-014-att-1",
+            "name": "Rush_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-014-att-2",
+            "name": "Rush_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-014-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Owen Sullivan",
+        "recipientEmail": "owen.sullivan@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Owen,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-015",
@@ -193,7 +1006,57 @@
     "mailbox": "requisitions",
     "unread": false,
     "attachmentCount": 1,
-    "category": "Correction"
+    "category": "Correction",
+    "body": [
+      "Hi Elli team,",
+      "The rejected item has been returned with the required correction noted.",
+      "Purchasing rejected the request because the vendor certificate expired. Please upload the renewed insurance document.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-015-att-1",
+        "name": "Correction_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-015-message-1",
+        "senderName": "Hannah Green",
+        "senderEmail": "hannah.green@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "Last week",
+        "body": [
+          "Hi Elli team,",
+          "The rejected item has been returned with the required correction noted.",
+          "Purchasing rejected the request because the vendor certificate expired. Please upload the renewed insurance document.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-015-att-1",
+            "name": "Correction_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-015-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Hannah Green",
+        "recipientEmail": "hannah.green@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Hannah,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-016",
@@ -206,7 +1069,45 @@
     "mailbox": "requisitions",
     "unread": false,
     "attachmentCount": 0,
-    "category": "Confirmation"
+    "category": "Confirmation",
+    "body": [
+      "Hi Elli team,",
+      "We received confirmation and can hold the planned schedule pending your review.",
+      "We received the requisition confirmation and can hold the delivery date pending approved shop drawings.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [],
+    "threadMessages": [
+      {
+        "id": "email-016-message-1",
+        "senderName": "Ethan Ross",
+        "senderEmail": "eross@bronxsteel.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "2 weeks ago",
+        "body": [
+          "Hi Elli team,",
+          "We received confirmation and can hold the planned schedule pending your review.",
+          "We received the requisition confirmation and can hold the delivery date pending approved shop drawings.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-016-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Ethan Ross",
+        "recipientEmail": "eross@bronxsteel.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Ethan,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-017",
@@ -219,7 +1120,77 @@
     "mailbox": "requisitions",
     "unread": false,
     "attachmentCount": 3,
-    "category": "Bulk"
+    "category": "Bulk",
+    "body": [
+      "Hi Elli team,",
+      "The grouped requisitions are ready to release together once approved.",
+      "I grouped the drywall, insulation, and fastener requisitions so procurement can release them together.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-017-att-1",
+        "name": "Bulk_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-017-att-2",
+        "name": "Bulk_02.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-017-att-3",
+        "name": "Bulk_03.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-017-message-1",
+        "senderName": "Sophia Nguyen",
+        "senderEmail": "sophia.nguyen@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "requisitions@ellicorp.com",
+        "sentAt": "2 weeks ago",
+        "body": [
+          "Hi Elli team,",
+          "The grouped requisitions are ready to release together once approved.",
+          "I grouped the drywall, insulation, and fastener requisitions so procurement can release them together.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-017-att-1",
+            "name": "Bulk_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-017-att-2",
+            "name": "Bulk_02.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-017-att-3",
+            "name": "Bulk_03.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-017-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "requisitions@ellicorp.com",
+        "recipientName": "Sophia Nguyen",
+        "recipientEmail": "sophia.nguyen@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Sophia,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-018",
@@ -232,7 +1203,57 @@
     "mailbox": "contracts",
     "unread": false,
     "attachmentCount": 1,
-    "category": "Contract"
+    "category": "Contract",
+    "body": [
+      "Hi Elli team,",
+      "The contract exhibit has been marked up with the latest comments.",
+      "I marked up the latest contract exhibit and noted the open exclusions from the vendor call.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-018-att-1",
+        "name": "Contract_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-018-message-1",
+        "senderName": "Daniel Park",
+        "senderEmail": "daniel.park@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "Yesterday",
+        "body": [
+          "Hi Elli team,",
+          "The contract exhibit has been marked up with the latest comments.",
+          "I marked up the latest contract exhibit and noted the open exclusions from the vendor call.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-018-att-1",
+            "name": "Contract_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-018-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Daniel Park",
+        "recipientEmail": "daniel.park@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Daniel,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-019",
@@ -245,7 +1266,67 @@
     "mailbox": "contracts",
     "unread": true,
     "attachmentCount": 2,
-    "category": "Legal"
+    "category": "Legal",
+    "body": [
+      "Hi Elli team,",
+      "The legal language is ready for review before circulation.",
+      "Please review the revised insurance language before we circulate the subcontract to the vendor for signature.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-019-att-1",
+        "name": "Legal_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-019-att-2",
+        "name": "Legal_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-019-message-1",
+        "senderName": "Grace Miller",
+        "senderEmail": "grace.miller@lawsonlegal.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "Yesterday",
+        "body": [
+          "Hi Elli team,",
+          "The legal language is ready for review before circulation.",
+          "Please review the revised insurance language before we circulate the subcontract to the vendor for signature.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-019-att-1",
+            "name": "Legal_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-019-att-2",
+            "name": "Legal_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-019-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Grace Miller",
+        "recipientEmail": "grace.miller@lawsonlegal.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Grace,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-020",
@@ -258,7 +1339,87 @@
     "mailbox": "contracts",
     "unread": false,
     "attachmentCount": 4,
-    "category": "Executed"
+    "category": "Executed",
+    "body": [
+      "Hi Elli team,",
+      "The executed package is attached for filing and reference.",
+      "Attached is the fully executed package with W-9, COI, payment terms, and signed scope exhibit.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-020-att-1",
+        "name": "Executed_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-020-att-2",
+        "name": "Executed_02.pdf",
+        "size": "1.2 MB"
+      },
+      {
+        "id": "email-020-att-3",
+        "name": "Executed_03.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-020-att-4",
+        "name": "Executed_04.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-020-message-1",
+        "senderName": "Victor Allen",
+        "senderEmail": "vallen@northstarmechanical.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "2 days ago",
+        "body": [
+          "Hi Elli team,",
+          "The executed package is attached for filing and reference.",
+          "Attached is the fully executed package with W-9, COI, payment terms, and signed scope exhibit.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-020-att-1",
+            "name": "Executed_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-020-att-2",
+            "name": "Executed_02.pdf",
+            "size": "1.2 MB"
+          },
+          {
+            "id": "email-020-att-3",
+            "name": "Executed_03.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-020-att-4",
+            "name": "Executed_04.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-020-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Victor Allen",
+        "recipientEmail": "vallen@northstarmechanical.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Victor,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-021",
@@ -271,7 +1432,45 @@
     "mailbox": "contracts",
     "unread": false,
     "attachmentCount": 0,
-    "category": "Signature"
+    "category": "Signature",
+    "body": [
+      "Hi Elli team,",
+      "The contract is ready for signature routing after your confirmation.",
+      "The GC agreement is approved by finance and ready for routing. Please confirm who should sign first.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [],
+    "threadMessages": [
+      {
+        "id": "email-021-message-1",
+        "senderName": "Maya Thompson",
+        "senderEmail": "maya.thompson@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "3 days ago",
+        "body": [
+          "Hi Elli team,",
+          "The contract is ready for signature routing after your confirmation.",
+          "The GC agreement is approved by finance and ready for routing. Please confirm who should sign first.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": []
+      },
+      {
+        "id": "email-021-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Maya Thompson",
+        "recipientEmail": "maya.thompson@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Maya,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-022",
@@ -284,7 +1483,67 @@
     "mailbox": "contracts",
     "unread": true,
     "attachmentCount": 2,
-    "category": "Change order"
+    "category": "Change order",
+    "body": [
+      "Hi Elli team,",
+      "Please review the message details and let me know if Elli should move this forward today.",
+      "Our team reviewed the proposed change order terms and added comments around schedule impact and retainage.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-022-att-1",
+        "name": "Change order_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-022-att-2",
+        "name": "Change order_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-022-message-1",
+        "senderName": "Peter Wallace",
+        "senderEmail": "pwallace@eastbridgegc.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "Last week",
+        "body": [
+          "Hi Elli team,",
+          "Please review the message details and let me know if Elli should move this forward today.",
+          "Our team reviewed the proposed change order terms and added comments around schedule impact and retainage.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-022-att-1",
+            "name": "Change order_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-022-att-2",
+            "name": "Change order_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-022-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Peter Wallace",
+        "recipientEmail": "pwallace@eastbridgegc.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Peter,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-023",
@@ -297,7 +1556,67 @@
     "mailbox": "contracts",
     "unread": false,
     "attachmentCount": 2,
-    "category": "Renewal"
+    "category": "Renewal",
+    "body": [
+      "Hi Elli team,",
+      "The renewal packet is attached with current rates and supporting documents.",
+      "This vendor's master agreement expires next month. I attached the renewal packet and current rate sheet.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-023-att-1",
+        "name": "Renewal_01.pdf",
+        "size": "284 KB"
+      },
+      {
+        "id": "email-023-att-2",
+        "name": "Renewal_02.pdf",
+        "size": "1.2 MB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-023-message-1",
+        "senderName": "Julia Foster",
+        "senderEmail": "jfoster@ellicorp.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "Last week",
+        "body": [
+          "Hi Elli team,",
+          "The renewal packet is attached with current rates and supporting documents.",
+          "This vendor's master agreement expires next month. I attached the renewal packet and current rate sheet.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-023-att-1",
+            "name": "Renewal_01.pdf",
+            "size": "284 KB"
+          },
+          {
+            "id": "email-023-att-2",
+            "name": "Renewal_02.pdf",
+            "size": "1.2 MB"
+          }
+        ]
+      },
+      {
+        "id": "email-023-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Julia Foster",
+        "recipientEmail": "jfoster@ellicorp.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Julia,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   },
   {
     "id": "email-024",
@@ -310,6 +1629,56 @@
     "mailbox": "contracts",
     "unread": false,
     "attachmentCount": 1,
-    "category": "Redline"
+    "category": "Redline",
+    "body": [
+      "Hi Elli team,",
+      "The redline is ready for review with the open items highlighted.",
+      "Please see the attached redline. The only open items are indemnity, reimbursables, and termination notice.",
+      "Please confirm receipt and advise if you need any additional backup from our side."
+    ],
+    "attachments": [
+      {
+        "id": "email-024-att-1",
+        "name": "Redline_01.pdf",
+        "size": "284 KB"
+      }
+    ],
+    "threadMessages": [
+      {
+        "id": "email-024-message-1",
+        "senderName": "Thomas Reed",
+        "senderEmail": "treed@reedconsulting.com",
+        "recipientName": "Elli Team",
+        "recipientEmail": "contracts@ellicorp.com",
+        "sentAt": "2 weeks ago",
+        "body": [
+          "Hi Elli team,",
+          "The redline is ready for review with the open items highlighted.",
+          "Please see the attached redline. The only open items are indemnity, reimbursables, and termination notice.",
+          "Please confirm receipt and advise if you need any additional backup from our side."
+        ],
+        "attachments": [
+          {
+            "id": "email-024-att-1",
+            "name": "Redline_01.pdf",
+            "size": "284 KB"
+          }
+        ]
+      },
+      {
+        "id": "email-024-message-2",
+        "senderName": "Elli Estimating",
+        "senderEmail": "contracts@ellicorp.com",
+        "recipientName": "Thomas Reed",
+        "recipientEmail": "treed@reedconsulting.com",
+        "sentAt": "Earlier today",
+        "body": [
+          "Hi Thomas,",
+          "Thanks for sending this over. We are reviewing the package and will route any questions back through this thread.",
+          "If there are revised dates or addenda, please keep this conversation updated so the project record stays complete."
+        ],
+        "attachments": []
+      }
+    ]
   }
 ]
