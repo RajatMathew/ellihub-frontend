@@ -11,6 +11,7 @@ import {
   useDeleteRecurringBillRuleMutation,
   useInfiniteRecurringBillsQuery,
   usePayRecurringBillMutation,
+  useSkipRecurringBillMonthMutation,
   useSkipRecurringBillMutation,
   useToggleRecurringBillRuleMutation,
   useUpdateRecurringBillRuleMutation,
@@ -22,6 +23,7 @@ import {
 import type {
   CreateRecurringBillRulePayload,
   PayRecurringBillPayload,
+  RecurringBillGroup,
   RecurringBillItem,
   RecurringBillsSummary,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
@@ -42,32 +44,36 @@ const emptySummary: RecurringBillsSummary = {
 };
 
 export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurringPageProps) {
+  const selectedMonth = getMonthlyBillMonthNumber(selectedDate);
+  const selectedYear = getMonthlyBillYear(selectedDate);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<RecurringStatusFilter>('all');
   const [createRuleOpen, setCreateRuleOpen] = useState(false);
-  const [payRule, setPayRule] = useState<RecurringBillItem | null>(null);
-  const [editRule, setEditRule] = useState<RecurringBillItem | null>(null);
-  const [skipRule, setSkipRule] = useState<RecurringBillItem | null>(null);
-  const [deleteRule, setDeleteRule] = useState<RecurringBillItem | null>(null);
+  const [payOccurrence, setPayOccurrence] = useState<RecurringBillItem | null>(null);
+  const [editRule, setEditRule] = useState<RecurringBillGroup | null>(null);
+  const [skipOccurrence, setSkipOccurrence] = useState<RecurringBillItem | null>(null);
+  const [skipMonthRule, setSkipMonthRule] = useState<RecurringBillGroup | null>(null);
+  const [deleteRule, setDeleteRule] = useState<RecurringBillGroup | null>(null);
   const createRule = useCreateRecurringBillRuleMutation();
   const updateRule = useUpdateRecurringBillRuleMutation();
   const toggleRule = useToggleRecurringBillRuleMutation();
   const skipRecurringBill = useSkipRecurringBillMutation();
+  const skipRecurringBillMonth = useSkipRecurringBillMonthMutation();
   const deleteRecurringBill = useDeleteRecurringBillRuleMutation();
   const payRecurringBill = usePayRecurringBillMutation();
   const queryParams = useMemo(
     () => ({
-      month: getMonthlyBillMonthNumber(selectedDate),
-      year: getMonthlyBillYear(selectedDate),
+      month: selectedMonth,
+      year: selectedYear,
       size: 25,
       search: search.trim() || undefined,
       status: status === 'all' ? undefined : [status],
     }),
-    [search, selectedDate, status]
+    [search, selectedMonth, selectedYear, status]
   );
   const recurringBillsQuery = useInfiniteRecurringBillsQuery(queryParams);
   const pages = recurringBillsQuery.data?.pages ?? [];
-  const rules = pages.flatMap((page) => page.items);
+  const groups = pages.flatMap((page) => page.groups);
   const meta = pages[0]?.meta;
 
   if (recurringBillsQuery.isLoading) {
@@ -79,7 +85,7 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
       <RecurringBillsStats summary={meta?.summary ?? emptySummary} />
 
       <RecurringBillsWorkspace
-        rules={rules}
+        groups={groups}
         search={search}
         status={status}
         canUpdateBills={meta?.capabilities.canUpdateBills ?? false}
@@ -89,9 +95,10 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
         onSearchChange={setSearch}
         onStatusChange={setStatus}
         onCreateRule={() => setCreateRuleOpen(true)}
-        onPayRule={setPayRule}
+        onPayOccurrence={setPayOccurrence}
         onEditRule={setEditRule}
-        onSkipRule={setSkipRule}
+        onSkipOccurrence={setSkipOccurrence}
+        onSkipMonth={setSkipMonthRule}
         onDeleteRule={setDeleteRule}
         onToggleActive={(ruleId, isActive) => {
           toggleRule.mutate({ ruleId, isActive });
@@ -104,6 +111,7 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
       <CreateRecurringRuleDialog
         open={createRuleOpen || Boolean(editRule)}
         rule={editRule}
+        selectedDate={selectedDate}
         isSaving={createRule.isPending || updateRule.isPending}
         onOpenChange={(open) => {
           if (!open) {
@@ -124,44 +132,72 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
       />
 
       <RecurringPayDialog
-        rule={payRule}
-        open={Boolean(payRule)}
+        rule={payOccurrence}
+        open={Boolean(payOccurrence)}
         isSaving={payRecurringBill.isPending}
         onOpenChange={(open) => {
-          if (!open) setPayRule(null);
+          if (!open) setPayOccurrence(null);
         }}
         onPaid={async (ruleId: string, payload: PayRecurringBillPayload) => {
           await payRecurringBill.mutateAsync({ ruleId, payload });
-          setPayRule(null);
+          setPayOccurrence(null);
         }}
       />
 
       <ConfirmDialog
-        open={Boolean(skipRule)}
-        onOpenChange={(open) => !open && setSkipRule(null)}
+        open={Boolean(skipOccurrence)}
+        onOpenChange={(open) => !open && setSkipOccurrence(null)}
         title="Skip Recurring Bill?"
         description={
           <>
-            This will mark <strong>{skipRule?.name}</strong> as skipped for this cycle only. The
-            rule will stay active for future cycles.
+            This will mark <strong>{skipOccurrence?.name}</strong> as skipped for this cycle only.
+            The rule will stay active for future cycles.
           </>
         }
         confirmLabel="Skip bill"
         onConfirm={() => {
-          if (!skipRule) return;
+          if (!skipOccurrence) return;
           skipRecurringBill.mutate(
             {
-              ruleId: skipRule.ruleId,
+              ruleId: skipOccurrence.ruleId,
               payload: {
-                cycleKey: skipRule.cycleKey,
-                dueDate: skipRule.dueDate,
+                cycleKey: skipOccurrence.cycleKey,
+                dueDate: skipOccurrence.dueDate,
                 reason: '',
               },
             },
-            { onSuccess: () => setSkipRule(null) }
+            { onSuccess: () => setSkipOccurrence(null) }
           );
         }}
         isPending={skipRecurringBill.isPending}
+      />
+
+      <ConfirmDialog
+        open={Boolean(skipMonthRule)}
+        onOpenChange={(open) => !open && setSkipMonthRule(null)}
+        title="Skip This Month?"
+        description={
+          <>
+            This will skip all unpaid <strong>{skipMonthRule?.name}</strong> occurrences in the
+            selected month. Paid transactions will stay unchanged.
+          </>
+        }
+        confirmLabel="Skip month"
+        onConfirm={() => {
+          if (!skipMonthRule) return;
+          skipRecurringBillMonth.mutate(
+            {
+              ruleId: skipMonthRule.ruleId,
+              payload: {
+                month: selectedMonth,
+                year: selectedYear,
+                reason: '',
+              },
+            },
+            { onSuccess: () => setSkipMonthRule(null) }
+          );
+        }}
+        isPending={skipRecurringBillMonth.isPending}
       />
 
       <ConfirmDialog

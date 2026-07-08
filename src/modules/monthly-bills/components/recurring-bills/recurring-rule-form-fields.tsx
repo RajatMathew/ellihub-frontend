@@ -100,6 +100,24 @@ export function TextField({
   );
 }
 
+export function StartDateField({ control }: { control: Control<RecurringRuleFormData> }) {
+  return (
+    <FormField
+      control={control}
+      name="startsOn"
+      render={({ field }) => (
+        <FormItem className="space-y-1.5">
+          <FormLabel>Start date</FormLabel>
+          <FormControl>
+            <Input {...field} type="date" />
+          </FormControl>
+          <FormDescription>The first date this rule can appear in recurring bills.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
 export function AmountField({ control }: { control: Control<RecurringRuleFormData> }) {
   return (
     <FormField

@@ -17,22 +17,17 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Switch } from '@/app/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/app/components/ui/table';
 import { formatCurrency } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
 import type {
   RecurringBillFrequency,
-  RecurringBillRule,
+  RecurringBillRuleGroup,
 } from '@/modules/monthly-bills/types/recurring-bills.types';
+import type { RecurringBillItem } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import {
   Ban,
+  CalendarDays,
   CheckCircle2,
   CreditCard,
   ExternalLink,
@@ -40,6 +35,7 @@ import {
   Pencil,
   Plus,
   Receipt,
+  Repeat,
   Trash2,
   X,
 } from 'lucide-react';
@@ -48,7 +44,7 @@ type RecurringBillRowState = 'payable' | 'paid' | 'skipped' | 'disabled';
 export type RecurringStatusFilter = 'all' | 'due' | 'paid' | 'skipped';
 
 interface RecurringBillsWorkspaceProps {
-  rules: RecurringBillRule[];
+  groups: RecurringBillRuleGroup[];
   search: string;
   status: RecurringStatusFilter;
   canUpdateBills: boolean;
@@ -58,10 +54,11 @@ interface RecurringBillsWorkspaceProps {
   onSearchChange: (search: string) => void;
   onStatusChange: (status: RecurringStatusFilter) => void;
   onCreateRule: () => void;
-  onPayRule: (rule: RecurringBillRule) => void;
-  onEditRule: (rule: RecurringBillRule) => void;
-  onSkipRule: (rule: RecurringBillRule) => void;
-  onDeleteRule: (rule: RecurringBillRule) => void;
+  onPayOccurrence: (occurrence: RecurringBillItem) => void;
+  onEditRule: (group: RecurringBillRuleGroup) => void;
+  onSkipOccurrence: (occurrence: RecurringBillItem) => void;
+  onSkipMonth: (group: RecurringBillRuleGroup) => void;
+  onDeleteRule: (group: RecurringBillRuleGroup) => void;
   onToggleActive: (ruleId: string, isActive: boolean) => void;
   onFetchNextPage?: () => void;
 }
@@ -73,8 +70,10 @@ const statusOptions: { value: RecurringStatusFilter; label: string }[] = [
   { value: 'skipped', label: 'Skipped' },
 ];
 
+const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export function RecurringBillsWorkspace({
-  rules,
+  groups,
   search,
   status,
   canUpdateBills,
@@ -84,9 +83,10 @@ export function RecurringBillsWorkspace({
   onSearchChange,
   onStatusChange,
   onCreateRule,
-  onPayRule,
+  onPayOccurrence,
   onEditRule,
-  onSkipRule,
+  onSkipOccurrence,
+  onSkipMonth,
   onDeleteRule,
   onToggleActive,
   onFetchNextPage,
@@ -140,7 +140,7 @@ export function RecurringBillsWorkspace({
         }
       />
 
-      {rules.length === 0 ? (
+      {groups.length === 0 ? (
         <RecurringBillsEmptyState
           hasActiveFilters={hasActiveFilters}
           onClearFilters={() => {
@@ -149,105 +149,22 @@ export function RecurringBillsWorkspace({
           }}
         />
       ) : (
-        <div className="border-t">
-          <Table className="min-w-[78rem]">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-10 min-w-64 text-xs font-semibold uppercase tracking-normal">
-                  Bill
-                </TableHead>
-                <TableHead className="h-10 min-w-52 text-xs font-semibold uppercase tracking-normal">
-                  Category
-                </TableHead>
-                <TableHead className="h-10 min-w-36 text-xs font-semibold uppercase tracking-normal">
-                  Pay from
-                </TableHead>
-                <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
-                  Repeats
-                </TableHead>
-                <TableHead className="h-10 min-w-32 text-xs font-semibold uppercase tracking-normal">
-                  Due
-                </TableHead>
-                <TableHead className="h-10 min-w-40 text-xs font-semibold uppercase tracking-normal">
-                  Amount
-                </TableHead>
-                <TableHead className="h-10 min-w-36 text-center text-xs font-semibold uppercase tracking-normal">
-                  Status
-                </TableHead>
-                <TableHead className="h-10 w-24 text-center text-xs font-semibold uppercase tracking-normal">
-                  Active
-                </TableHead>
-                <TableHead className="h-10 w-16 text-right text-xs font-semibold uppercase tracking-normal">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rules.map((rule) => {
-                const rowState = getRowState(rule);
+        <div className="divide-y border-t">
+          {groups.map((group) => (
+            <RecurringBillSection
+              key={group.ruleId}
+              group={group}
+              canUpdateBills={canUpdateBills}
+              canMarkPayment={canMarkPayment}
+              onPayOccurrence={onPayOccurrence}
+              onEditRule={onEditRule}
+              onSkipOccurrence={onSkipOccurrence}
+              onSkipMonth={onSkipMonth}
+              onDeleteRule={onDeleteRule}
+              onToggleActive={onToggleActive}
+            />
+          ))}
 
-                return (
-                  <TableRow key={rule.id}>
-                    <TableCell className="min-w-64 py-3">
-                      <p className="break-words text-sm font-semibold leading-5 text-foreground">
-                        {rule.name}
-                      </p>
-                      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-                        <p className="text-sm text-muted-foreground">{rule.vendorName}</p>
-                        {isVariableAmountRule(rule) && (
-                          <Badge variant="warning" appearance="light" size="sm">
-                            Variable
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="min-w-52 py-3 text-sm text-muted-foreground">
-                      {rule.categoryName ?? 'Not assigned'}
-                    </TableCell>
-                    <TableCell className="min-w-36 py-3 text-sm text-muted-foreground">
-                      {rule.bankAccountName ?? 'Not selected'}
-                    </TableCell>
-                    <TableCell className="min-w-32 py-3 text-sm text-foreground">
-                      {getFrequencyLabel(rule.frequency)}
-                    </TableCell>
-                    <TableCell className="min-w-32 py-3 text-sm text-foreground">
-                      {formatDateOnlyLabel(rule.dueDate, { month: 'short', day: 'numeric' })}
-                    </TableCell>
-                    <TableCell className="min-w-40 py-3">
-                      <RecurringBillAmountCell rule={rule} rowState={rowState} />
-                    </TableCell>
-                    <TableCell className="min-w-36 py-3 text-center">
-                      <RecurringBillRowAction
-                        rule={rule}
-                        rowState={rowState}
-                        canMarkPayment={canMarkPayment}
-                        onPayRule={onPayRule}
-                      />
-                    </TableCell>
-                    <TableCell className="w-24 py-3 text-center">
-                      <Switch
-                        size="sm"
-                        checked={rule.isActive}
-                        disabled={!canUpdateBills}
-                        onCheckedChange={(isActive) => onToggleActive(rule.ruleId, isActive)}
-                        aria-label={`Toggle ${rule.name}`}
-                      />
-                    </TableCell>
-                    <TableCell className="w-16 py-3 text-right">
-                      <RecurringBillActionsMenu
-                        rule={rule}
-                        rowState={rowState}
-                        canUpdateBills={canUpdateBills}
-                        onEditRule={onEditRule}
-                        onSkipRule={onSkipRule}
-                        onDeleteRule={onDeleteRule}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
           {hasNextPage && (
             <div className="flex justify-center border-t p-3">
               <Button
@@ -267,27 +184,195 @@ export function RecurringBillsWorkspace({
   );
 }
 
+function RecurringBillSection({
+  group,
+  canUpdateBills,
+  canMarkPayment,
+  onPayOccurrence,
+  onEditRule,
+  onSkipOccurrence,
+  onSkipMonth,
+  onDeleteRule,
+  onToggleActive,
+}: {
+  group: RecurringBillRuleGroup;
+  canUpdateBills: boolean;
+  canMarkPayment: boolean;
+  onPayOccurrence: (occurrence: RecurringBillItem) => void;
+  onEditRule: (group: RecurringBillRuleGroup) => void;
+  onSkipOccurrence: (occurrence: RecurringBillItem) => void;
+  onSkipMonth: (group: RecurringBillRuleGroup) => void;
+  onDeleteRule: (group: RecurringBillRuleGroup) => void;
+  onToggleActive: (ruleId: string, isActive: boolean) => void;
+}) {
+  const hasOccurrences = group.occurrences.length > 0;
+
+  return (
+    <section className="bg-card">
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h3 className="min-w-0 break-words text-base font-semibold leading-6 text-foreground">
+                {group.name}
+              </h3>
+              {!group.isActive && (
+                <Badge variant="secondary" appearance="light" size="sm">
+                  Paused
+                </Badge>
+              )}
+              {group.summary.isCompleteForPeriod && (
+                <Badge variant="success" appearance="light" size="sm">
+                  Complete
+                </Badge>
+              )}
+              {isVariableAmountRule(group) && (
+                <Badge variant="warning" appearance="light" size="sm">
+                  Variable
+                </Badge>
+              )}
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span className="min-w-0 break-words">{group.vendorName}</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Repeat className="size-3.5" />
+                {getFrequencyLabel(group.frequency)}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="size-3.5" />
+                {getScheduleLabel(group)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+            <div className="min-w-32 rounded-md border bg-muted/20 px-3 py-2 text-right">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Planned</p>
+              <p className="text-sm font-semibold tabular-nums text-foreground">
+                {formatCurrency(group.summary.plannedAmount)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2">
+              <span className="text-xs font-medium uppercase text-muted-foreground">Active</span>
+              <Switch
+                size="sm"
+                checked={group.isActive}
+                disabled={!canUpdateBills}
+                onCheckedChange={(isActive) => onToggleActive(group.ruleId, isActive)}
+                aria-label={`Toggle ${group.name}`}
+              />
+            </div>
+            <RecurringBillGroupActionsMenu
+              group={group}
+              canUpdateBills={canUpdateBills}
+              onEditRule={onEditRule}
+              onSkipMonth={onSkipMonth}
+              onDeleteRule={onDeleteRule}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SummaryPill label="Scheduled" value={String(group.summary.occurrenceCount)} />
+          <SummaryPill label="Due" value={String(group.summary.dueCount)} />
+          <SummaryPill label="Paid" value={String(group.summary.paidCount)} />
+          <SummaryPill label="Skipped" value={String(group.summary.skippedCount)} />
+        </div>
+
+        {hasOccurrences ? (
+          <div className="space-y-2">
+            {group.occurrences.map((occurrence) => (
+              <RecurringBillOccurrenceRow
+                key={occurrence.id}
+                group={group}
+                occurrence={occurrence}
+                canMarkPayment={canMarkPayment}
+                canUpdateBills={canUpdateBills}
+                onPayOccurrence={onPayOccurrence}
+                onSkipOccurrence={onSkipOccurrence}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed bg-muted/10 px-4 py-5 text-sm text-muted-foreground">
+            No payment due in this period.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RecurringBillOccurrenceRow({
+  group,
+  occurrence,
+  canMarkPayment,
+  canUpdateBills,
+  onPayOccurrence,
+  onSkipOccurrence,
+}: {
+  group: RecurringBillRuleGroup;
+  occurrence: RecurringBillItem;
+  canMarkPayment: boolean;
+  canUpdateBills: boolean;
+  onPayOccurrence: (occurrence: RecurringBillItem) => void;
+  onSkipOccurrence: (occurrence: RecurringBillItem) => void;
+}) {
+  const rowState = getRowState(group, occurrence);
+
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-3 rounded-md border bg-background p-3 sm:grid-cols-[minmax(9rem,1fr)_minmax(9rem,1fr)_auto] sm:items-center',
+        rowState === 'disabled' && 'opacity-70'
+      )}
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase text-muted-foreground">Due date</p>
+        <p className="text-sm font-semibold text-foreground">
+          {formatDateOnlyLabel(occurrence.dueDate, { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
+      </div>
+      <RecurringBillAmountCell rule={occurrence} rowState={rowState} />
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        <RecurringBillRowAction
+          occurrence={occurrence}
+          rowState={rowState}
+          canMarkPayment={canMarkPayment}
+          onPayOccurrence={onPayOccurrence}
+        />
+        <RecurringBillOccurrenceActionsMenu
+          occurrence={occurrence}
+          rowState={rowState}
+          canUpdateBills={canUpdateBills}
+          onSkipOccurrence={onSkipOccurrence}
+        />
+      </div>
+    </div>
+  );
+}
+
 function RecurringBillRowAction({
-  rule,
+  occurrence,
   rowState,
   canMarkPayment,
-  onPayRule,
+  onPayOccurrence,
 }: {
-  rule: RecurringBillRule;
+  occurrence: RecurringBillItem;
   rowState: RecurringBillRowState;
   canMarkPayment: boolean;
-  onPayRule: (rule: RecurringBillRule) => void;
+  onPayOccurrence: (occurrence: RecurringBillItem) => void;
 }) {
   if (rowState === 'paid') {
     return (
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-start gap-1 sm:items-end">
         <Badge variant="success" appearance="light" size="md" className="h-8 px-3">
           <CheckCircle2 className="size-3.5" />
           Paid
         </Badge>
-        {rule.payment?.transactionUrl && (
+        {occurrence.payment?.transactionUrl && (
           <a
-            href={rule.payment.transactionUrl}
+            href={occurrence.payment.transactionUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -312,8 +397,8 @@ function RecurringBillRowAction({
       type="button"
       variant="primary"
       size="sm"
-      disabled={!rule.isActive || !canMarkPayment}
-      onClick={() => onPayRule(rule)}
+      disabled={rowState !== 'payable' || !canMarkPayment}
+      onClick={() => onPayOccurrence(occurrence)}
     >
       <CreditCard className="size-3.5" />
       Pay
@@ -321,50 +406,78 @@ function RecurringBillRowAction({
   );
 }
 
-function RecurringBillActionsMenu({
-  rule,
-  rowState,
+function RecurringBillGroupActionsMenu({
+  group,
   canUpdateBills,
   onEditRule,
-  onSkipRule,
+  onSkipMonth,
   onDeleteRule,
 }: {
-  rule: RecurringBillRule;
+  group: RecurringBillRuleGroup;
+  canUpdateBills: boolean;
+  onEditRule: (group: RecurringBillRuleGroup) => void;
+  onSkipMonth: (group: RecurringBillRuleGroup) => void;
+  onDeleteRule: (group: RecurringBillRuleGroup) => void;
+}) {
+  const canSkipMonth = canUpdateBills && group.summary.dueCount > 0;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Actions for ${group.name}`}>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem
+          disabled={!canUpdateBills || !isSupportedFormFrequency(group.frequency)}
+          onClick={() => onEditRule(group)}
+        >
+          <Pencil className="size-4" />
+          Edit rule
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!canSkipMonth} onClick={() => onSkipMonth(group)}>
+          <Ban className="size-4" />
+          Skip this month
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!canUpdateBills}
+          onClick={() => onDeleteRule(group)}
+        >
+          <Trash2 className="size-4" />
+          Delete rule
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RecurringBillOccurrenceActionsMenu({
+  occurrence,
+  rowState,
+  canUpdateBills,
+  onSkipOccurrence,
+}: {
+  occurrence: RecurringBillItem;
   rowState: RecurringBillRowState;
   canUpdateBills: boolean;
-  onEditRule: (rule: RecurringBillRule) => void;
-  onSkipRule: (rule: RecurringBillRule) => void;
-  onDeleteRule: (rule: RecurringBillRule) => void;
+  onSkipOccurrence: (occurrence: RecurringBillItem) => void;
 }) {
   const canSkip = canUpdateBills && rowState === 'payable';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Actions for ${rule.name}`}>
+        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Cycle actions for ${occurrence.name}`}>
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem
-          disabled={!canUpdateBills || !isSupportedFormFrequency(rule.frequency)}
-          onClick={() => onEditRule(rule)}
-        >
-          <Pencil className="size-4" />
-          Edit rule
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={!canSkip} onClick={() => onSkipRule(rule)}>
+        <DropdownMenuItem disabled={!canSkip} onClick={() => onSkipOccurrence(occurrence)}>
           <Ban className="size-4" />
           Skip this cycle
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={!canUpdateBills}
-          onClick={() => onDeleteRule(rule)}
-        >
-          <Trash2 className="size-4" />
-          Delete rule
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -375,12 +488,13 @@ function RecurringBillAmountCell({
   rule,
   rowState,
 }: {
-  rule: RecurringBillRule;
+  rule: RecurringBillItem;
   rowState: RecurringBillRowState;
 }) {
   if (rowState === 'paid') {
     return (
-      <>
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase text-muted-foreground">Amount</p>
         <p className="text-sm font-semibold tabular-nums text-foreground">
           {formatCurrency(rule.payment?.amount ?? rule.defaultAmount)}
         </p>
@@ -390,23 +504,29 @@ function RecurringBillAmountCell({
             ? formatDateOnlyLabel(rule.payment.txnDate)
             : formatDateOnlyLabel(rule.dueDate)}
         </p>
-      </>
-    );
-  }
-
-  if (isVariableAmountRule(rule)) {
-    return (
-      <p className="text-sm font-semibold tabular-nums text-foreground">
-        {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Needs amount'}{' '}
-        <span className="text-xs font-normal text-muted-foreground">expected</span>
-      </p>
+      </div>
     );
   }
 
   return (
-    <p className="text-sm font-semibold tabular-nums text-foreground">
-      {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Needs amount'}
-    </p>
+    <div className="min-w-0">
+      <p className="text-xs font-medium uppercase text-muted-foreground">Amount</p>
+      <p className="text-sm font-semibold tabular-nums text-foreground">
+        {rule.defaultAmount > 0 ? formatCurrency(rule.defaultAmount) : 'Needs amount'}
+        {isVariableAmountRule(rule) && (
+          <span className="text-xs font-normal text-muted-foreground"> expected</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-muted/20 px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{value}</p>
+    </div>
   );
 }
 
@@ -448,18 +568,35 @@ function getFrequencyLabel(frequency: RecurringBillFrequency) {
   return frequency.charAt(0).toUpperCase() + frequency.slice(1);
 }
 
-function getRowState(rule: RecurringBillRule): RecurringBillRowState {
-  if (!rule.isActive) return 'disabled';
-  if (rule.status === 'paid') return 'paid';
-  if (rule.status === 'skipped') return 'skipped';
+function getScheduleLabel(group: RecurringBillRuleGroup) {
+  if (group.frequency === 'weekly' || group.frequency === 'biweekly') {
+    const dayIndex = group.weeklyDay === 7 ? 0 : (group.weeklyDay ?? 1);
+    return weekdayLabels[dayIndex] ?? 'Weekly';
+  }
+
+  if (group.frequency === 'custom') {
+    return `Every ${group.customIntervalMonths ?? 1} months`;
+  }
+
+  if (group.scheduleTiming === 'start') return 'Start of month';
+  if (group.scheduleTiming === 'end') return 'End of month';
+  return `Day ${group.dueDay}`;
+}
+
+function getRowState(
+  group: RecurringBillRuleGroup,
+  occurrence: RecurringBillItem
+): RecurringBillRowState {
+  if (!group.isActive || !occurrence.isActive) return 'disabled';
+  if (occurrence.status === 'paid') return 'paid';
+  if (occurrence.status === 'skipped') return 'skipped';
   return 'payable';
 }
 
-function isVariableAmountRule(rule: RecurringBillRule) {
+function isVariableAmountRule(rule: RecurringBillItem | RecurringBillRuleGroup) {
   return rule.amountMode === 'variable';
 }
 
 function isSupportedFormFrequency(frequency: RecurringBillFrequency) {
   return frequency === 'weekly' || frequency === 'monthly' || frequency === 'custom';
 }
-

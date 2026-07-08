@@ -40,11 +40,46 @@ export const recurringBillItemSchema = z.object({
   amountMode: recurringBillAmountModeSchema,
   defaultAmount: z.coerce.number(),
   dueDay: z.number(),
+  startsOn: z.string().nullable().optional(),
+  endsOn: z.string().nullable().optional(),
   dueDate: z.string(),
   cycleKey: z.string(),
   status: recurringBillStatusSchema,
   isActive: z.boolean(),
   payment: recurringBillPaymentSchema.nullable(),
+});
+
+export const recurringBillGroupSummarySchema = z.object({
+  occurrenceCount: z.coerce.number(),
+  dueCount: z.coerce.number(),
+  paidCount: z.coerce.number(),
+  skippedCount: z.coerce.number(),
+  plannedAmount: z.coerce.number(),
+  paidAmount: z.coerce.number(),
+  isCompleteForPeriod: z.boolean(),
+});
+
+export const recurringBillGroupSchema = z.object({
+  ruleId: z.string(),
+  name: z.string(),
+  vendorId: z.string(),
+  vendorName: z.string(),
+  categoryId: z.string().nullable().optional(),
+  categoryName: z.string().nullable().optional(),
+  bankAccountId: z.string().nullable().optional(),
+  bankAccountName: z.string().nullable().optional(),
+  frequency: recurringBillFrequencySchema,
+  scheduleTiming: recurringBillScheduleTimingSchema,
+  weeklyDay: z.number().nullable().optional(),
+  customIntervalMonths: z.number().nullable().optional(),
+  amountMode: recurringBillAmountModeSchema,
+  defaultAmount: z.coerce.number(),
+  dueDay: z.number(),
+  startsOn: z.string().nullable().optional(),
+  endsOn: z.string().nullable().optional(),
+  isActive: z.boolean(),
+  occurrences: z.array(recurringBillItemSchema),
+  summary: recurringBillGroupSummarySchema,
 });
 
 export const recurringBillsSummarySchema = z.object({
@@ -82,6 +117,7 @@ export const recurringBillsCapabilitiesSchema = z.object({
 
 export const recurringBillsResponseSchema = z.object({
   items: z.array(recurringBillItemSchema),
+  groups: z.array(recurringBillGroupSchema).default([]),
   meta: z.object({
     period: recurringBillsPeriodSchema,
     capabilities: recurringBillsCapabilitiesSchema,
@@ -105,6 +141,9 @@ export const createRecurringBillRuleSchema = z.object({
   amountMode: recurringBillAmountModeSchema,
   defaultAmount: z.number().nonnegative(),
   dueDay: z.number().int().min(1).max(28),
+  startsOn: z.string().optional(),
+  anchorDate: z.string().optional(),
+  endsOn: z.string().optional().nullable(),
 });
 
 export const toggleRecurringBillRuleSchema = z.object({
@@ -131,7 +170,14 @@ export const skipRecurringBillSchema = z.object({
   reason: z.string().trim().max(1000).optional().default(''),
 });
 
+export const skipRecurringBillMonthSchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int(),
+  reason: z.string().trim().max(1000).optional().default(''),
+});
+
 export type RecurringBillItem = z.infer<typeof recurringBillItemSchema>;
+export type RecurringBillGroup = z.infer<typeof recurringBillGroupSchema>;
 export type RecurringBillPayment = z.infer<typeof recurringBillPaymentSchema>;
 export type RecurringBillsSummary = z.infer<typeof recurringBillsSummarySchema>;
 export type RecurringBillsResponse = z.infer<typeof recurringBillsResponseSchema>;
@@ -139,3 +185,4 @@ export type CreateRecurringBillRulePayload = z.infer<typeof createRecurringBillR
 export type ToggleRecurringBillRulePayload = z.infer<typeof toggleRecurringBillRuleSchema>;
 export type PayRecurringBillPayload = z.infer<typeof payRecurringBillSchema>;
 export type SkipRecurringBillPayload = z.infer<typeof skipRecurringBillSchema>;
+export type SkipRecurringBillMonthPayload = z.infer<typeof skipRecurringBillMonthSchema>;

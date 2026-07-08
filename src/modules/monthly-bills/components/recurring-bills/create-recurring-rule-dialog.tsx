@@ -22,6 +22,7 @@ import {
   AmountModeField,
   ReferenceField,
   ScheduleFields,
+  StartDateField,
   TextField,
   VendorField,
 } from '@/modules/monthly-bills/components/recurring-bills/recurring-rule-form-fields';
@@ -32,22 +33,27 @@ import {
 } from '@/modules/monthly-bills/schemas/recurring-rule-form.schema';
 import type {
   CreateRecurringBillRulePayload,
+  RecurringBillGroup,
   RecurringBillItem,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+type EditableRecurringRule = RecurringBillItem | RecurringBillGroup;
+
 export function CreateRecurringRuleDialog({
   open,
   rule,
   isSaving = false,
+  selectedDate,
   onOpenChange,
   onCreate,
   onUpdate,
 }: {
   open: boolean;
-  rule?: RecurringBillItem | null;
+  rule?: EditableRecurringRule | null;
   isSaving?: boolean;
+  selectedDate?: Date;
   onOpenChange: (open: boolean) => void;
   onCreate: (rule: CreateRecurringBillRulePayload) => Promise<void> | void;
   onUpdate?: (ruleId: string, rule: CreateRecurringBillRulePayload) => Promise<void> | void;
@@ -59,12 +65,12 @@ export function CreateRecurringRuleDialog({
 
   const form = useForm<RecurringRuleFormData>({
     resolver: zodResolver(recurringRuleFormSchema),
-    defaultValues: recurringRuleFormDefaultValues,
+    defaultValues: buildFormValues(null, selectedDate),
   });
 
   useEffect(() => {
     if (!open) return;
-    const nextValues = buildFormValues(rule ?? null);
+    const nextValues = buildFormValues(rule ?? null, selectedDate);
     form.reset(nextValues);
     setSelectedVendorOption(
       rule
@@ -75,7 +81,7 @@ export function CreateRecurringRuleDialog({
         : null
     );
     setVendorSearch('');
-  }, [form, open, rule]);
+  }, [form, open, rule, selectedDate]);
 
   const vendorPicker = useQuickBooksVendorOptions({
     search: vendorSearch,
@@ -86,7 +92,7 @@ export function CreateRecurringRuleDialog({
   const categoriesQuery = useQuickBooksCategoriesQuery(open);
 
   const resetForm = () => {
-    form.reset(recurringRuleFormDefaultValues);
+    form.reset(buildFormValues(null, selectedDate));
     setSelectedVendorOption(null);
     setVendorSearch('');
   };
@@ -136,6 +142,7 @@ export function CreateRecurringRuleDialog({
                   onFetchNextPage={vendorPicker.fetchNextPage}
                   onOptionChange={setSelectedVendorOption}
                 />
+                <StartDateField control={form.control} />
                 <ScheduleFields control={form.control} />
                 <AmountModeField control={form.control} />
                 <AmountField control={form.control} />
@@ -191,11 +198,17 @@ function toPayload(values: RecurringRuleFormData): CreateRecurringBillRulePayloa
     amountMode: values.amountMode,
     defaultAmount: values.amount,
     dueDay,
+    startsOn: values.startsOn,
+    anchorDate: values.startsOn,
   };
 }
 
-function buildFormValues(rule: RecurringBillItem | null): RecurringRuleFormData {
-  if (!rule || !isSupportedFormFrequency(rule.frequency)) return recurringRuleFormDefaultValues;
+function buildFormValues(
+  rule: EditableRecurringRule | null,
+  selectedDate?: Date
+): RecurringRuleFormData {
+  const defaults = { ...recurringRuleFormDefaultValues, startsOn: getDefaultStartDate(selectedDate) };
+  if (!rule || !isSupportedFormFrequency(rule.frequency)) return defaults;
 
   return {
     name: rule.name,
@@ -208,6 +221,7 @@ function buildFormValues(rule: RecurringBillItem | null): RecurringRuleFormData 
     amountMode: rule.amountMode,
     amount: rule.defaultAmount,
     dueDay: rule.dueDay,
+    startsOn: rule.startsOn ?? defaults.startsOn,
     categoryId: rule.categoryId ?? '',
     categoryName: rule.categoryName ?? '',
     bankAccountId: rule.bankAccountId ?? '',
@@ -215,8 +229,15 @@ function buildFormValues(rule: RecurringBillItem | null): RecurringRuleFormData 
   };
 }
 
+function getDefaultStartDate(selectedDate?: Date) {
+  const date = selectedDate ?? new Date();
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
 function isSupportedFormFrequency(
-  frequency: RecurringBillItem['frequency']
+  frequency: EditableRecurringRule['frequency']
 ): frequency is RecurringRuleFormData['frequency'] {
   return frequency === 'weekly' || frequency === 'monthly' || frequency === 'custom';
 }

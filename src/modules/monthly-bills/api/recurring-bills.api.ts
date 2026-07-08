@@ -6,6 +6,7 @@ import {
   type PayRecurringBillPayload,
   type RecurringBillPayment,
   type RecurringBillsResponse,
+  type SkipRecurringBillMonthPayload,
   type SkipRecurringBillPayload,
   type ToggleRecurringBillRulePayload,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
@@ -61,6 +62,11 @@ export const recurringBillsApi = {
     return res.data?.data ?? res.data;
   },
 
+  async skipMonth(ruleId: string, payload: SkipRecurringBillMonthPayload): Promise<unknown> {
+    const res = await api.post(`${BASE}/${ruleId}/skip-month`, payload);
+    return res.data?.data ?? res.data;
+  },
+
   async delete(ruleId: string): Promise<unknown> {
     const res = await api.delete(`${BASE}/${ruleId}`);
     return res.data?.data ?? res.data;
@@ -84,6 +90,3 @@ export const recurringBillsApi = {
     return result.data;
   },
 };
-
-
-

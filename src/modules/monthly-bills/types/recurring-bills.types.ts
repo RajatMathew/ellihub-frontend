@@ -1,4 +1,7 @@
-import type { RecurringBillItem } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
+import type {
+  RecurringBillGroup,
+  RecurringBillItem,
+} from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 
 export type RecurringBillAmountMode = 'fixed' | 'variable';
 
@@ -12,3 +15,4 @@ export type RecurringBillFrequency =
 
 export type RecurringBillScheduleTiming = 'start' | 'date' | 'end';
 export type RecurringBillRule = RecurringBillItem;
+export type RecurringBillRuleGroup = RecurringBillGroup;

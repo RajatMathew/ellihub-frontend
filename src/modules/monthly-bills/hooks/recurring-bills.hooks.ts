@@ -7,6 +7,7 @@ import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bill
 import type {
   CreateRecurringBillRulePayload,
   PayRecurringBillPayload,
+  SkipRecurringBillMonthPayload,
   SkipRecurringBillPayload,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +55,7 @@ export const useUpdateRecurringBillRuleMutation = () => {
     onError: (error) => toastApiError(error, 'Failed to update recurring bill.'),
   });
 };
+
 export const useToggleRecurringBillRuleMutation = () => {
   const queryClient = useQueryClient();
 
@@ -78,6 +80,20 @@ export const useSkipRecurringBillMutation = () => {
       toast.success('Recurring bill skipped.');
     },
     onError: (error) => toastApiError(error, 'Failed to skip recurring bill.'),
+  });
+};
+
+export const useSkipRecurringBillMonthMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ ruleId, payload }: { ruleId: string; payload: SkipRecurringBillMonthPayload }) =>
+      recurringBillsApi.skipMonth(ruleId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.recurring() });
+      toast.success('Recurring bill month skipped.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to skip recurring bill month.'),
   });
 };
 
@@ -107,4 +123,3 @@ export const usePayRecurringBillMutation = () => {
     onError: (error) => toastApiError(error, 'Failed to record recurring bill payment.'),
   });
 };
-
