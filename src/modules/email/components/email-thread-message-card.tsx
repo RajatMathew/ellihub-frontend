@@ -5,7 +5,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/app/components/ui/hover-card';
-import { cn } from '@/app/lib/utils';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
@@ -32,14 +31,9 @@ export function EmailThreadMessageCard({
   const handleReply = () => onReply(message.id);
 
   return (
-    <article
-      className={cn(
-        'rounded-md border border-border bg-background',
-        latest && 'border-primary/30 bg-primary/5'
-      )}
-    >
+    <article className="rounded-md border border-border bg-background">
       <div className="flex items-start gap-3 border-b border-border px-4 py-3">
-        <SenderProfileHoverCard message={message} latest={latest} />
+        <SenderProfileHoverCard message={message} />
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-3">
@@ -108,10 +102,8 @@ export function EmailThreadMessageCard({
 
 function SenderProfileHoverCard({
   message,
-  latest,
 }: {
   message: EmailThreadMessage;
-  latest?: boolean;
 }) {
   const initials = getInitials(message.senderName);
 
@@ -124,12 +116,7 @@ function SenderProfileHoverCard({
           aria-label={`View ${message.senderName} profile`}
         >
           <Avatar className="size-9">
-            <AvatarFallback
-              className={cn(
-                'border-0 bg-muted text-xs font-semibold text-muted-foreground',
-                latest && 'bg-primary/10 text-primary'
-              )}
-            >
+            <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
