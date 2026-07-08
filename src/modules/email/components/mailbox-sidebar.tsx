@@ -61,24 +61,36 @@ interface MailboxSidebarProps {
   mailboxAddress: string;
   selectedFolder: EmailFolderKey;
   folderCounts: Partial<Record<EmailFolderKey, number>>;
+  collapsed?: boolean;
   onSelectFolder: (folder: EmailFolderKey) => void;
   onCompose: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export function MailboxSidebar({
   mailboxAddress,
   selectedFolder,
   folderCounts,
+  collapsed: controlledCollapsed,
   onSelectFolder,
   onCompose,
+  onCollapsedChange,
 }: MailboxSidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     favourites: true,
     account: true,
   });
   const [isResizing, setIsResizing] = useState(false);
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+
+  const setCollapsed = (nextCollapsed: boolean | ((current: boolean) => boolean)) => {
+    const nextValue =
+      typeof nextCollapsed === 'function' ? nextCollapsed(collapsed) : nextCollapsed;
+    setInternalCollapsed(nextValue);
+    onCollapsedChange?.(nextValue);
+  };
 
   const folderGroups: MailboxFolderGroup[] = [
     {
