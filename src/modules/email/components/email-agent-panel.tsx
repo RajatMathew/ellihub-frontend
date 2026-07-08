@@ -12,11 +12,9 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import {
-  CheckCircle2,
   GripVertical,
   Mail,
   Mic,
-  MoreHorizontal,
   PanelRightClose,
   PanelRightOpen,
   Plus,
@@ -215,22 +213,6 @@ export function EmailAgentPanel({
       </header>
 
       <div className="kt-scrollable-y-auto flex min-h-0 flex-1 flex-col px-4 py-5">
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            aria-label="Open agent menu"
-          >
-            <MoreHorizontal aria-hidden="true" className="size-4" strokeWidth={1.8} />
-          </Button>
-          <span className="inline-flex items-center gap-1.5 rounded-sm bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-            <CheckCircle2 aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-            Mailbox app test
-          </span>
-        </div>
-
         <div className="flex flex-1 flex-col justify-center gap-6">
           <div className="space-y-2 text-center">
             <p className="text-xl font-semibold text-foreground">Find recent key emails</p>
