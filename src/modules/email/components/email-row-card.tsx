@@ -3,6 +3,8 @@ import { Paperclip } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
+  providerId?: string;
+  threadId?: string | null;
   senderName: string;
   senderEmail: string;
   subject: string;
@@ -21,12 +23,15 @@ export type EmailListItem = {
 
 export type EmailAttachment = {
   id: string;
+  providerId?: string;
   name: string;
   size?: string;
+  mimeType?: string | null;
 };
 
 export type EmailThreadMessage = {
   id: string;
+  providerId?: string;
   senderName: string;
   senderEmail: string;
   recipientName: string;
