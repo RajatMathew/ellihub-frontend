@@ -13,22 +13,28 @@ import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
 interface EmailListPaneProps {
   mailbox: EmailMailboxKey;
   folder: EmailFolderKey;
+  emails?: EmailListItem[];
+  isLoading?: boolean;
+  isError?: boolean;
   selectedEmailId?: string;
   onSelectEmail?: (emailId: string) => void;
+  onRetry?: () => void;
 }
 
 const DEFAULT_WIDTH = 320;
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 420;
-const emails = emailData as EmailListItem[];
-const isLoading = false;
-const isError = false;
+const fallbackEmails = emailData as EmailListItem[];
 
 export function EmailListPane({
   mailbox,
   folder,
+  emails,
+  isLoading = false,
+  isError = false,
   selectedEmailId,
   onSelectEmail,
+  onRetry,
 }: EmailListPaneProps) {
   const [search, setSearch] = useState('');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -36,8 +42,10 @@ export function EmailListPane({
   const folderLabel = getEmailFolderLabel(folder);
 
   const mailboxEmails = useMemo(
-    () => emails.filter((email) => email.mailbox === mailbox && email.folder === folder),
-    [folder, mailbox]
+    () =>
+      emails ??
+      fallbackEmails.filter((email) => email.mailbox === mailbox && email.folder === folder),
+    [emails, folder, mailbox]
   );
 
   const filteredEmails = useMemo(() => {
@@ -125,7 +133,7 @@ export function EmailListPane({
       <div className="kt-scrollable-y-auto min-h-0 flex-1">
         {isLoading && <EmailListSkeleton />}
 
-        {!isLoading && isError && <EmailListErrorState />}
+        {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
 
         {!isLoading && !isError && filteredEmails.length === 0 && (
           <EmailListEmptyState
@@ -217,7 +225,7 @@ function EmailListEmptyState({
   );
 }
 
-function EmailListErrorState() {
+function EmailListErrorState({ onRetry }: { onRetry?: () => void }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center px-6 py-10 text-center">
       <RefreshCcw aria-hidden="true" className="size-9 text-muted-foreground" strokeWidth={1.8} />
@@ -225,7 +233,7 @@ function EmailListErrorState() {
       <p className="mt-1 max-w-56 text-sm leading-6 text-muted-foreground">
         This mailbox did not respond. Try again in a moment.
       </p>
-      <Button type="button" variant="secondary" size="sm" className="mt-4">
+      <Button type="button" variant="secondary" size="sm" className="mt-4" onClick={onRetry}>
         Retry
       </Button>
     </div>
