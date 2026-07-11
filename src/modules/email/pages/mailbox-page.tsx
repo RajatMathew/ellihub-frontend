@@ -14,6 +14,14 @@ import { MailboxSidebar } from '@/modules/email/components/mailbox-sidebar';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import { EMAIL_MAILBOXES, type EmailMailboxKey } from '@/modules/email/constants/email-mailboxes';
 import emailData from '@/modules/email/data/emails.json';
+import {
+  useEmailAccountsQuery,
+  useEmailConversationQuery,
+  useEmailFoldersQuery,
+  useEmailMessagesQuery,
+  useSendConnectedEmailMutation,
+  useStartEmailAuthMutation,
+} from '@/modules/email/hooks';
 import { PanelLeftOpen } from 'lucide-react';
 
 interface MailboxPageProps {
@@ -21,8 +29,6 @@ interface MailboxPageProps {
 }
 
 const emails = emailData as EmailListItem[];
-const isMailboxLoading = false;
-const isMailboxError = false;
 const DEFAULT_AGENT_LAYOUT: EmailAgentLayout = {
   open: true,
   width: 392,
@@ -41,23 +47,59 @@ export function MailboxPage({ mailbox }: MailboxPageProps) {
     folder: EmailFolderKey;
     emailId: string;
   } | null>(null);
+  const accountsQuery = useEmailAccountsQuery();
+  const connectedAccount = accountsQuery.data?.[0] ?? null;
+  const isConnected = Boolean(connectedAccount);
+  const foldersQuery = useEmailFoldersQuery(connectedAccount?.id);
+  const messagesQuery = useEmailMessagesQuery(connectedAccount?.id, selectedFolder);
+  const startAuthMutation = useStartEmailAuthMutation();
+  const sendMutation = useSendConnectedEmailMutation();
+  const connectedEmails = useMemo<EmailListItem[]>(
+    () =>
+      (messagesQuery.data ?? []).map<EmailListItem>((email) => ({
+        ...email,
+        mailbox,
+        folder: selectedFolder,
+      })),
+    [mailbox, messagesQuery.data, selectedFolder]
+  );
   const mailboxEmails = useMemo(
-    () => emails.filter((email) => email.mailbox === mailbox),
-    [mailbox]
+    () => (isConnected ? connectedEmails : emails.filter((email) => email.mailbox === mailbox)),
+    [connectedEmails, isConnected, mailbox]
   );
   const folderEmails = useMemo(
-    () => mailboxEmails.filter((email) => email.folder === selectedFolder),
-    [mailboxEmails, selectedFolder]
+    () =>
+      isConnected
+        ? mailboxEmails
+        : mailboxEmails.filter((email) => email.folder === selectedFolder),
+    [isConnected, mailboxEmails, selectedFolder]
   );
-  const folderCounts = useMemo(() => getFolderCounts(mailboxEmails), [mailboxEmails]);
+  const folderCounts = useMemo(
+    () =>
+      isConnected
+        ? getConnectedFolderCounts(foldersQuery.data ?? [])
+        : getFolderCounts(mailboxEmails),
+    [foldersQuery.data, isConnected, mailboxEmails]
+  );
   const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
   const selectedEmailId =
     selectedTarget?.mailbox === mailbox && selectedTarget.folder === selectedFolder
       ? selectedTarget.emailId
       : defaultEmailId;
   const mailboxConfig = EMAIL_MAILBOXES.find((item) => item.key === mailbox);
-  const address = mailboxConfig?.address ?? 'email@ellicorp.com';
+  const address =
+    connectedAccount?.mailboxAddress ?? mailboxConfig?.address ?? 'email@ellicorp.com';
   const selectedEmail = folderEmails.find((email) => email.id === selectedEmailId) ?? null;
+  const conversationQuery = useEmailConversationQuery(
+    connectedAccount?.id,
+    isConnected ? selectedEmail?.threadId : null
+  );
+  const visibleEmail =
+    isConnected && selectedEmail && conversationQuery.data?.length
+      ? { ...selectedEmail, threadMessages: conversationQuery.data }
+      : selectedEmail;
+  const isMailboxLoading = isConnected ? messagesQuery.isLoading : false;
+  const isMailboxError = isConnected ? messagesQuery.isError : false;
   const showEmailList = emailListVisible || !agentLayout.hidesEmailList;
 
   const handleAgentLayoutChange = useCallback((layout: EmailAgentLayout) => {
@@ -86,22 +128,28 @@ export function MailboxPage({ mailbox }: MailboxPageProps) {
           selectedFolder={selectedFolder}
           folderCounts={folderCounts}
           collapsed={mailboxSidebarCollapsed}
+          isAddingAccount={startAuthMutation.isPending}
           onSelectFolder={setSelectedFolder}
           onCompose={() => setComposeOpen(true)}
+          onAddAccount={(provider) => startAuthMutation.mutate(provider)}
           onCollapsedChange={setMailboxSidebarCollapsed}
         />
         {showEmailList ? (
           <EmailListPane
             mailbox={mailbox}
             folder={selectedFolder}
+            emails={isConnected ? folderEmails : undefined}
+            isLoading={isMailboxLoading}
+            isError={isMailboxError}
             selectedEmailId={selectedEmailId}
             onSelectEmail={(emailId) =>
               setSelectedTarget({ mailbox, folder: selectedFolder, emailId })
             }
+            onRetry={() => messagesQuery.refetch()}
           />
         ) : null}
         <EmailReadingPane
-          email={selectedEmail}
+          email={visibleEmail}
           mailboxAddress={address}
           isLoading={isMailboxLoading}
           isError={isMailboxError}
@@ -122,7 +170,7 @@ export function MailboxPage({ mailbox }: MailboxPageProps) {
         </Button>
       )}
       <EmailAgentPanel
-        email={selectedEmail}
+        email={visibleEmail}
         mailboxAddress={address}
         onLayoutChange={handleAgentLayoutChange}
         onRequestMailboxCollapse={() => setMailboxSidebarCollapsed(true)}
@@ -130,7 +178,20 @@ export function MailboxPage({ mailbox }: MailboxPageProps) {
       <EmailComposeDialog
         open={composeOpen}
         mailboxAddress={address}
+        isSending={sendMutation.isPending}
         onOpenChange={setComposeOpen}
+        onSend={async (payload) => {
+          if (!connectedAccount) return;
+          await sendMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            subject: payload.subject,
+            body: payload.body,
+            bodyType: 'html',
+            to: parseEmailAddresses(payload.to),
+            cc: parseEmailAddresses(payload.cc),
+            bcc: parseEmailAddresses(payload.bcc),
+          });
+        }}
       />
     </div>
   );
@@ -142,4 +203,23 @@ function getFolderCounts(mailboxEmails: EmailListItem[]) {
     counts[folder] = (counts[folder] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function getConnectedFolderCounts(
+  folders: Array<{ key: string | null; totalCount: number }>
+): Partial<Record<EmailFolderKey, number>> {
+  return folders.reduce<Partial<Record<EmailFolderKey, number>>>((counts, folder) => {
+    const key = folder.key?.toLowerCase() as EmailFolderKey | undefined;
+    if (!key) return counts;
+    counts[key] = folder.totalCount;
+    return counts;
+  }, {});
+}
+
+function parseEmailAddresses(value: string) {
+  return value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((address) => ({ address }));
 }
