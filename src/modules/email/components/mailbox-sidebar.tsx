@@ -1,6 +1,12 @@
 import { useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { cn } from '@/app/lib/utils';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
@@ -62,8 +68,10 @@ interface MailboxSidebarProps {
   selectedFolder: EmailFolderKey;
   folderCounts: Partial<Record<EmailFolderKey, number>>;
   collapsed?: boolean;
+  isAddingAccount?: boolean;
   onSelectFolder: (folder: EmailFolderKey) => void;
   onCompose: () => void;
+  onAddAccount?: (provider: 'gmail' | 'outlook') => void;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
@@ -72,8 +80,10 @@ export function MailboxSidebar({
   selectedFolder,
   folderCounts,
   collapsed: controlledCollapsed,
+  isAddingAccount = false,
   onSelectFolder,
   onCompose,
+  onAddAccount,
   onCollapsedChange,
 }: MailboxSidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -219,13 +229,22 @@ export function MailboxSidebar({
 
       {!collapsed && (
         <div className="shrink-0 px-2 pb-4 pt-2">
-          <button
-            type="button"
-            className="flex h-10 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm font-semibold text-primary hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-          >
-            <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
-            <span className="min-w-0 flex-1 truncate">Add account</span>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-10 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm font-semibold text-primary hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:transition-colors motion-safe:duration-150"
+                disabled={isAddingAccount}
+              >
+                <Plus aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+                <span className="min-w-0 flex-1 truncate">Add account</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem onClick={() => onAddAccount?.('gmail')}>Gmail</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddAccount?.('outlook')}>Outlook</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 
