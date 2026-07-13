@@ -6,6 +6,7 @@ const BASE = '/email';
 
 const emailAccountSchema = z.object({
   id: z.string(),
+  slug: z.string().optional(),
   email: z.string(),
   mailboxAddress: z.string(),
   displayName: z.string(),
@@ -20,7 +21,11 @@ const emailFolderSchema = z.object({
   providerId: z.string(),
   name: z.string(),
   fullName: z.string().nullable(),
+  parentId: z.string().nullable().optional(),
+  sysLabel: z.string().nullable().optional(),
   key: z.string().nullable(),
+  isFolder: z.boolean().optional(),
+  isLabel: z.boolean().optional(),
   totalCount: z.number(),
   unreadCount: z.number(),
 });
@@ -33,6 +38,14 @@ const emailAttachmentSchema = z.object({
   mimeType: z.string().nullable().optional(),
 });
 
+const emailTagSchema = z.object({
+  id: z.string(),
+  providerId: z.string(),
+  name: z.string(),
+  color: z.string().nullable().optional(),
+  source: z.enum(['provider', 'cache']),
+});
+
 const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
@@ -42,9 +55,11 @@ const emailListItemSchema = z.object({
   subject: z.string(),
   preview: z.string(),
   receivedAt: z.string(),
+  folderId: z.string().nullable().optional(),
   folder: z.string(),
   mailbox: z.string(),
   unread: z.boolean(),
+  keywords: z.array(z.string()).optional(),
   attachmentCount: z.number().optional(),
   body: z.array(z.string()).optional(),
   attachments: z.array(emailAttachmentSchema).optional(),
@@ -58,6 +73,8 @@ const emailThreadMessageSchema = z.object({
   recipientName: z.string(),
   recipientEmail: z.string(),
   sentAt: z.string(),
+  folderId: z.string().nullable().optional(),
+  keywords: z.array(z.string()).optional(),
   body: z.array(z.string()),
   attachments: z.array(emailAttachmentSchema).optional(),
 });
@@ -70,6 +87,7 @@ export type EmailAccount = z.infer<typeof emailAccountSchema>;
 export type ConnectedEmailFolder = z.infer<typeof emailFolderSchema>;
 export type ConnectedEmailListItem = z.infer<typeof emailListItemSchema>;
 export type ConnectedEmailThreadMessage = z.infer<typeof emailThreadMessageSchema>;
+export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
 export type EmailProvider = 'gmail' | 'outlook';
 
 export type SendConnectedEmailPayload = {
@@ -108,14 +126,21 @@ export const emailApi = {
     return z.array(emailFolderSchema).parse(unwrapData(res.data));
   },
 
+  async listTags(accountId: string): Promise<ConnectedEmailTag[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/tags`);
+    return z.array(emailTagSchema).parse(unwrapData(res.data));
+  },
+
   async listMessages(params: {
     accountId: string;
-    folderKey: EmailFolderKey;
+    folderKey?: EmailFolderKey;
+    folderId?: string;
     refresh?: boolean;
   }): Promise<ConnectedEmailListItem[]> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
       params: {
         folderKey: params.folderKey,
+        folderId: params.folderId,
         size: 100,
         refresh: params.refresh,
       },
@@ -123,7 +148,10 @@ export const emailApi = {
     return z.array(emailListItemSchema).parse(unwrapData(res.data, 'messages'));
   },
 
-  async listConversation(accountId: string, threadId: string): Promise<ConnectedEmailThreadMessage[]> {
+  async listConversation(
+    accountId: string,
+    threadId: string
+  ): Promise<ConnectedEmailThreadMessage[]> {
     const res = await api.get(
       `${BASE}/accounts/${accountId}/conversations/${encodeURIComponent(threadId)}/messages`
     );
@@ -139,5 +167,39 @@ export const emailApi = {
       attachments: [],
       ...message,
     });
+  },
+
+  async createFolder(accountId: string, payload: { name: string; parentId?: string }) {
+    const res = await api.post(`${BASE}/accounts/${accountId}/folders`, payload);
+    return emailFolderSchema.parse(unwrapData(res.data));
+  },
+
+  async createTag(accountId: string, payload: { name: string; color?: string }) {
+    const res = await api.post(`${BASE}/accounts/${accountId}/tags`, payload);
+    return emailTagSchema.parse(unwrapData(res.data));
+  },
+
+  async moveMessage(accountId: string, messageId: string, folderId: string): Promise<void> {
+    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/move`, { folderId });
+  },
+
+  async archiveMessage(accountId: string, messageId: string): Promise<void> {
+    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/archive`);
+  },
+
+  async unarchiveMessage(accountId: string, messageId: string): Promise<void> {
+    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/unarchive`);
+  },
+
+  async deleteMessage(accountId: string, messageId: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}`);
+  },
+
+  async updateMessageTags(
+    accountId: string,
+    messageId: string,
+    payload: { add?: string[]; remove?: string[] }
+  ): Promise<void> {
+    await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/tags`, payload);
   },
 };
