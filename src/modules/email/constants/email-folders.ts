@@ -13,6 +13,6 @@ export const EMAIL_FOLDERS = [
 
 export type EmailFolderKey = (typeof EMAIL_FOLDERS)[number]['key'];
 
-export function getEmailFolderLabel(folder: EmailFolderKey) {
+export function getEmailFolderLabel(folder: string) {
   return EMAIL_FOLDERS.find((item) => item.key === folder)?.label ?? 'Inbox';
 }

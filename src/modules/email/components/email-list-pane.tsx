@@ -5,14 +5,14 @@ import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
-import { getEmailFolderLabel, type EmailFolderKey } from '@/modules/email/constants/email-folders';
-import type { EmailMailboxKey } from '@/modules/email/constants/email-mailboxes';
+import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import emailData from '@/modules/email/data/emails.json';
 import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
 
 interface EmailListPaneProps {
-  mailbox: EmailMailboxKey;
-  folder: EmailFolderKey;
+  mailbox: string;
+  folder: string;
+  folderLabel?: string;
   emails?: EmailListItem[];
   isLoading?: boolean;
   isError?: boolean;
@@ -29,6 +29,7 @@ const fallbackEmails = emailData as EmailListItem[];
 export function EmailListPane({
   mailbox,
   folder,
+  folderLabel: folderLabelProp,
   emails,
   isLoading = false,
   isError = false,
@@ -39,7 +40,7 @@ export function EmailListPane({
   const [search, setSearch] = useState('');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
-  const folderLabel = getEmailFolderLabel(folder);
+  const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
 
   const mailboxEmails = useMemo(
     () =>

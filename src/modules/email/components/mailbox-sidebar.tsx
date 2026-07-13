@@ -2,21 +2,32 @@ import { useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
-import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
+import type { ConnectedEmailFolder } from '@/modules/email/api';
 import {
   Archive,
   ChevronDown,
   ChevronsLeft,
   Edit3,
   Folder,
+  FolderPlus,
   Inbox,
   Menu,
+  MoreHorizontal,
   NotebookText,
   Plus,
   Search,
@@ -31,7 +42,7 @@ const MAX_WIDTH = 336;
 
 type MailboxFolder = {
   key: string;
-  folder: EmailFolderKey;
+  folder: string;
   label: string;
   count?: number | string;
   icon: typeof Inbox;
@@ -65,12 +76,15 @@ const accountFolders: MailboxFolder[] = [
 
 interface MailboxSidebarProps {
   mailboxAddress: string;
-  selectedFolder: EmailFolderKey;
-  folderCounts: Partial<Record<EmailFolderKey, number>>;
+  selectedFolder: string;
+  folderCounts: Partial<Record<string, number>>;
+  folders?: ConnectedEmailFolder[];
   collapsed?: boolean;
   isAddingAccount?: boolean;
-  onSelectFolder: (folder: EmailFolderKey) => void;
+  isCreatingFolder?: boolean;
+  onSelectFolder: (folder: string) => void;
   onCompose: () => void;
+  onCreateFolder?: (name: string) => void;
   onAddAccount?: (provider: 'gmail' | 'outlook') => void;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
@@ -79,15 +93,20 @@ export function MailboxSidebar({
   mailboxAddress,
   selectedFolder,
   folderCounts,
+  folders,
   collapsed: controlledCollapsed,
   isAddingAccount = false,
+  isCreatingFolder = false,
   onSelectFolder,
   onCompose,
+  onCreateFolder,
   onAddAccount,
   onCollapsedChange,
 }: MailboxSidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     favourites: true,
     account: true,
@@ -102,6 +121,16 @@ export function MailboxSidebar({
     onCollapsedChange?.(nextValue);
   };
 
+  const providerFolders = folders?.length
+    ? folders.map<MailboxFolder>((folder) => ({
+        key: folder.id,
+        folder: folder.id,
+        label: folder.name,
+        count: folder.totalCount > 0 ? folder.totalCount : undefined,
+        icon: getProviderFolderIcon(folder),
+      }))
+    : null;
+
   const folderGroups: MailboxFolderGroup[] = [
     {
       key: 'favourites',
@@ -114,12 +143,22 @@ export function MailboxSidebar({
     {
       key: 'account',
       label: mailboxAddress,
-      folders: accountFolders.map((folder) => ({
-        ...folder,
-        count: getFolderCount(folder.folder, folderCounts),
-      })),
+      folders:
+        providerFolders ??
+        accountFolders.map((folder) => ({
+          ...folder,
+          count: getFolderCount(folder.folder, folderCounts),
+        })),
     },
   ];
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    onCreateFolder?.(name);
+    setNewFolderName('');
+    setCreateFolderOpen(false);
+  };
 
   const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (collapsed) setCollapsed(false);
@@ -180,7 +219,12 @@ export function MailboxSidebar({
         </Button>
 
         {!collapsed && (
-          <Button type="button" size="sm" className="ml-auto w-28 justify-center" onClick={onCompose}>
+          <Button
+            type="button"
+            size="sm"
+            className="ml-auto w-28 justify-center"
+            onClick={onCompose}
+          >
             <span className="flex min-w-0 items-center gap-2">
               <Edit3 aria-hidden="true" className="size-4" />
               <span>New email</span>
@@ -193,21 +237,46 @@ export function MailboxSidebar({
         {folderGroups.map((group) => (
           <div key={group.key} className={cn(collapsed ? 'mb-6' : 'mb-4', 'last:mb-0')}>
             {!collapsed && (
-              <button
-                type="button"
-                className="mb-1 flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-                aria-expanded={openGroups[group.key]}
-                onClick={() => toggleGroup(group.key)}
-              >
-                <ChevronDown
-                  aria-hidden="true"
-                  className={cn(
-                    'size-4 text-muted-foreground motion-safe:transition-transform motion-safe:duration-150',
-                    !openGroups[group.key] && '-rotate-90'
-                  )}
-                />
-                <span className="truncate">{group.label}</span>
-              </button>
+              <div className="mb-1 flex h-8 items-center gap-1">
+                <button
+                  type="button"
+                  className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+                  aria-expanded={openGroups[group.key]}
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn(
+                      'size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-150',
+                      !openGroups[group.key] && '-rotate-90'
+                    )}
+                  />
+                  <span className="truncate">{group.label}</span>
+                </button>
+
+                {group.key === 'account' && onCreateFolder && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/50"
+                        aria-label={`Folder actions for ${mailboxAddress}`}
+                      >
+                        <MoreHorizontal aria-hidden="true" className="size-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44 p-1">
+                      <DropdownMenuItem
+                        className="h-8 gap-2 rounded-sm px-2 text-xs"
+                        onClick={() => setCreateFolderOpen(true)}
+                      >
+                        <FolderPlus aria-hidden="true" className="size-3.5" />
+                        Create new folder
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             )}
 
             {(collapsed || openGroups[group.key]) && (
@@ -247,6 +316,47 @@ export function MailboxSidebar({
           </DropdownMenu>
         </div>
       )}
+
+      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create new folder</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <label htmlFor="email-new-folder" className="sr-only">
+              Folder name
+            </label>
+            <Input
+              id="email-new-folder"
+              value={newFolderName}
+              placeholder="Folder name"
+              autoFocus
+              disabled={isCreatingFolder}
+              onChange={(event) => setNewFolderName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleCreateFolder();
+              }}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isCreatingFolder}
+              onClick={() => setCreateFolderOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!newFolderName.trim() || isCreatingFolder}
+              onClick={handleCreateFolder}
+            >
+              Create folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {!collapsed && (
         <button
@@ -302,10 +412,18 @@ function MailboxFolderButton({
   );
 }
 
-function getFolderCount(
-  folder: EmailFolderKey,
-  folderCounts: Partial<Record<EmailFolderKey, number>>
-) {
+function getFolderCount(folder: string, folderCounts: Partial<Record<string, number>>) {
   const count = folderCounts[folder];
   return count && count > 0 ? count : undefined;
+}
+
+function getProviderFolderIcon(folder: ConnectedEmailFolder) {
+  const key = folder.key?.toLowerCase();
+  const name = folder.name.toLowerCase();
+  if (key === 'inbox' || name.includes('inbox')) return Inbox;
+  if (key === 'sent' || name.includes('sent')) return Send;
+  if (key === 'drafts' || name.includes('draft')) return Edit3;
+  if (key === 'deleted' || name.includes('delete') || name.includes('trash')) return Trash2;
+  if (key === 'archive' || name.includes('archive')) return Archive;
+  return Folder;
 }
