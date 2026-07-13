@@ -1,10 +1,7 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/app/components/ui/hover-card';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
@@ -28,6 +25,7 @@ export function EmailThreadMessageCard({
   onCancelReply,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
+  const tags = message.keywords ?? [];
   const handleReply = () => onReply(message.id);
 
   return (
@@ -49,6 +47,18 @@ export function EmailThreadMessageCard({
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 To: {message.recipientName} &lt;{message.recipientEmail}&gt;
               </p>
+              {tags.length > 0 && (
+                <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="max-w-36 truncate rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               <time className="mr-2 text-xs text-muted-foreground">{message.sentAt}</time>
@@ -67,11 +77,7 @@ export function EmailThreadMessageCard({
       </div>
 
       <div className="space-y-4 px-4 py-4">
-        <div className="max-w-prose space-y-3 text-sm leading-6 text-foreground">
-          {message.body.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-        </div>
+        <EmailMessageBody body={message.body} />
 
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
@@ -100,11 +106,7 @@ export function EmailThreadMessageCard({
   );
 }
 
-function SenderProfileHoverCard({
-  message,
-}: {
-  message: EmailThreadMessage;
-}) {
+function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
   const initials = getInitials(message.senderName);
 
   return (
@@ -131,9 +133,7 @@ function SenderProfileHoverCard({
           </Avatar>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{message.senderName}</p>
-            <p className="mt-0.5 break-all text-xs text-muted-foreground">
-              {message.senderEmail}
-            </p>
+            <p className="mt-0.5 break-all text-xs text-muted-foreground">{message.senderEmail}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 border-t border-border px-2 py-2">
@@ -189,9 +189,7 @@ function EmailAttachmentChip({ attachment }: { attachment: EmailAttachment }) {
     >
       <FileText aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="min-w-0 truncate">{attachment.name}</span>
-      {attachment.size && (
-        <span className="shrink-0 text-muted-foreground">{attachment.size}</span>
-      )}
+      {attachment.size && <span className="shrink-0 text-muted-foreground">{attachment.size}</span>}
     </button>
   );
 }

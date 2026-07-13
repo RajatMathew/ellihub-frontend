@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
 import {
   EmailReadingPaneEmptyState,
@@ -16,6 +17,16 @@ interface EmailReadingPaneProps {
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  folders?: ConnectedEmailFolder[];
+  tags?: ConnectedEmailTag[];
+  isUpdatingTags?: boolean;
+  isCreatingTag?: boolean;
+  archiveActionLabel?: string;
+  onMoveToFolder?: (messageId: string, folderId: string) => void;
+  onToggleTag?: (messageId: string, tag: ConnectedEmailTag, enabled: boolean) => void;
+  onCreateTag?: (name: string) => void;
+  onArchive?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
 }
 
 export function EmailReadingPane({
@@ -24,6 +35,16 @@ export function EmailReadingPane({
   isLoading = false,
   isError = false,
   onRetry,
+  folders,
+  tags,
+  isUpdatingTags = false,
+  isCreatingTag = false,
+  archiveActionLabel,
+  onMoveToFolder,
+  onToggleTag,
+  onCreateTag,
+  onArchive,
+  onDelete,
 }: EmailReadingPaneProps) {
   const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
     null
@@ -75,7 +96,24 @@ export function EmailReadingPane({
             </p>
           </div>
 
-          <EmailActionToolbar />
+          <EmailActionToolbar
+            folders={folders}
+            tags={tags}
+            keywords={email.keywords}
+            currentFolderId={email.folderId ?? null}
+            isUpdatingTags={isUpdatingTags}
+            isCreatingTag={isCreatingTag}
+            archiveActionLabel={archiveActionLabel}
+            onMoveToFolder={
+              onMoveToFolder ? (folderId) => onMoveToFolder(email.id, folderId) : undefined
+            }
+            onToggleTag={
+              onToggleTag ? (tag, enabled) => onToggleTag(email.id, tag, enabled) : undefined
+            }
+            onCreateTag={onCreateTag}
+            onArchive={onArchive ? () => onArchive(email.id) : undefined}
+            onDelete={onDelete ? () => onDelete(email.id) : undefined}
+          />
         </div>
       </div>
 
@@ -110,6 +148,7 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       sentAt: email.receivedAt,
       body: email.body?.length ? email.body : [email.preview],
       attachments: email.attachments ?? [],
+      keywords: email.keywords ?? [],
     },
   ];
 }

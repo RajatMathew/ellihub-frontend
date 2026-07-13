@@ -55,7 +55,7 @@ export function EmailAgentPanel({
   onLayoutChange,
   onRequestMailboxCollapse,
 }: EmailAgentPanelProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -70,11 +70,7 @@ export function EmailAgentPanel({
   const suggestions = useMemo(
     () =>
       email
-        ? [
-            'Summarise this email',
-            'Draft a concise reply',
-            'Find the main asks in this thread',
-          ]
+        ? ['Summarise this email', 'Draft a concise reply', 'Find the main asks in this thread']
         : ['Find recent key emails', 'Summarise unread messages', 'Show emails with attachments'],
     [email]
   );
