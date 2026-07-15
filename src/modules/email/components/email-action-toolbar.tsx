@@ -40,6 +40,7 @@ type EmailActionToolbarProps = {
   onCreateTag?: (name: string) => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  onReply?: () => void;
 };
 
 export function EmailActionToolbar({
@@ -55,6 +56,7 @@ export function EmailActionToolbar({
   onCreateTag,
   onArchive,
   onDelete,
+  onReply,
 }: EmailActionToolbarProps) {
   const [newTagName, setNewTagName] = useState('');
   const movableFolders = folders.filter((folder) => folder.id !== currentFolderId);
@@ -69,9 +71,9 @@ export function EmailActionToolbar({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2" aria-label="Email actions">
-      <Button type="button" variant="outline" size="sm">
+      <Button type="button" variant="outline" size="sm" disabled={!onReply} onClick={onReply}>
         <ReplyAll aria-hidden="true" className="size-3.5" />
-        Reply all
+        Reply
       </Button>
       <Button type="button" variant="secondary" size="sm" disabled={!onArchive} onClick={onArchive}>
         <Archive aria-hidden="true" className="size-3.5" />

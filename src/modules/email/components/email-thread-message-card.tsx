@@ -13,7 +13,9 @@ interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
   latest?: boolean;
   replyOpen?: boolean;
+  isSendingReply?: boolean;
   onReply: (messageId: string) => void;
+  onSendReply: (messageId: string, body: string) => Promise<void> | void;
   onCancelReply: () => void;
 }
 
@@ -21,7 +23,9 @@ export function EmailThreadMessageCard({
   message,
   latest,
   replyOpen,
+  isSendingReply = false,
   onReply,
+  onSendReply,
   onCancelReply,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
@@ -61,6 +65,15 @@ export function EmailThreadMessageCard({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
+              {message.deliveryStatus && (
+                <span className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  {message.deliveryStatus === 'sending'
+                    ? 'Sending'
+                    : message.deliveryStatus === 'failed'
+                      ? 'Failed'
+                      : 'Sent'}
+                </span>
+              )}
               <time className="mr-2 text-xs text-muted-foreground">{message.sentAt}</time>
               <MessageIconAction
                 label={`Reply to ${message.senderName}`}
@@ -87,7 +100,14 @@ export function EmailThreadMessageCard({
           </div>
         )}
 
-        {replyOpen && <EmailReplyComposer message={message} onCancel={onCancelReply} />}
+        {replyOpen && (
+          <EmailReplyComposer
+            message={message}
+            isSending={isSendingReply}
+            onSend={(body) => onSendReply(message.id, body)}
+            onCancel={onCancelReply}
+          />
+        )}
 
         {latest && !replyOpen && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">

@@ -3,6 +3,7 @@ import { Paperclip } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
+  latestMessageId?: string;
   providerId?: string;
   threadId?: string | null;
   senderName: string;
@@ -21,6 +22,7 @@ export type EmailListItem = {
   body?: string[];
   attachments?: EmailAttachment[];
   threadMessages?: EmailThreadMessage[];
+  threadMessageCount?: number;
 };
 
 export type EmailAttachment = {
@@ -41,6 +43,7 @@ export type EmailThreadMessage = {
   sentAt: string;
   folderId?: string | null;
   keywords?: string[];
+  deliveryStatus?: 'sending' | 'failed' | 'sent';
   body: string[];
   attachments?: EmailAttachment[];
 };
@@ -89,6 +92,14 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
           >
             {email.senderName}
           </span>
+          {email.threadMessageCount && email.threadMessageCount > 1 && (
+            <span
+              className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-semibold leading-none text-muted-foreground"
+              title={`${email.threadMessageCount} messages in this thread`}
+            >
+              {email.threadMessageCount}
+            </span>
+          )}
           <span className="shrink-0 text-xs text-muted-foreground">{email.receivedAt}</span>
         </span>
 
