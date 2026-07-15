@@ -4,12 +4,30 @@ import {
   type ConnectedEmailFolder,
   type ConnectedEmailListItem,
   type ConnectedEmailTag,
+  type EmailAccount,
+  type EmailMessagePage,
   type EmailProvider,
+  type ReplyConnectedEmailPayload,
   type SendConnectedEmailPayload,
 } from '@/modules/email/api';
+import {
+  EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
+  EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
+} from '@/modules/email/constants/email-account-storage';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
-import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
+
+const EMAIL_METADATA_STALE_TIME_MS = 5 * 60 * 1000;
+const EMAIL_MESSAGES_STALE_TIME_MS = 60 * 1000;
+const EMAIL_MESSAGES_CACHE_TIME_MS = 15 * 60 * 1000;
 
 export const emailKeys = {
   all: ['connected-email'] as const,
@@ -17,8 +35,10 @@ export const emailKeys = {
   folders: (accountId?: string) => [...emailKeys.all, 'folders', accountId] as const,
   tags: (accountId?: string) => [...emailKeys.all, 'tags', accountId] as const,
   messagesRoot: (accountId?: string) => [...emailKeys.all, 'messages', accountId] as const,
-  messages: (accountId?: string, folder?: string) =>
-    [...emailKeys.messagesRoot(accountId), folder] as const,
+  messages: (accountId?: string, folder?: string, page?: number, size?: number, search?: string) =>
+    [...emailKeys.messagesRoot(accountId), folder, page, size, search] as const,
+  message: (accountId?: string, messageId?: string | null) =>
+    [...emailKeys.all, 'message', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
   conversation: (accountId?: string, threadId?: string | null) =>
     [...emailKeys.conversationRoot(accountId), threadId] as const,
@@ -28,6 +48,11 @@ export const useEmailAccountsQuery = () =>
   useQuery({
     queryKey: emailKeys.accounts(),
     queryFn: emailApi.listAccounts,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 export const useEmailFoldersQuery = (accountId?: string) =>
@@ -35,6 +60,11 @@ export const useEmailFoldersQuery = (accountId?: string) =>
     queryKey: emailKeys.folders(accountId),
     queryFn: () => emailApi.listFolders(accountId!),
     enabled: Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 export const useEmailTagsQuery = (accountId?: string) =>
@@ -42,18 +72,81 @@ export const useEmailTagsQuery = (accountId?: string) =>
     queryKey: emailKeys.tags(accountId),
     queryFn: () => emailApi.listTags(accountId!),
     enabled: Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
-  folder: { key?: EmailFolderKey; id?: string }
+  folder: { key?: EmailFolderKey; id?: string },
+  pagination?: { page?: number; size?: number; search?: string }
 ) =>
   useQuery({
-    queryKey: emailKeys.messages(accountId, folder.id ?? folder.key),
+    queryKey: emailKeys.messages(
+      accountId,
+      folder.id ?? folder.key,
+      pagination?.page,
+      pagination?.size,
+      pagination?.search
+    ),
     queryFn: () =>
-      emailApi.listMessages({ accountId: accountId!, folderKey: folder.key, folderId: folder.id }),
+      emailApi.listMessages({
+        accountId: accountId!,
+        folderKey: folder.key,
+        folderId: folder.id,
+        page: pagination?.page,
+        size: pagination?.size,
+        search: pagination?.search,
+      }),
     enabled: Boolean(accountId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+
+export const useRefreshEmailMessagesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; daysWithin?: number }) => {
+      const run = async () => {
+        let result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+        for (let step = 1; result.hasMore && step < 5; step += 1) {
+          result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+        }
+        return result;
+      };
+      return run();
+    },
+    onSuccess: async (result, payload) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.tags(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
+      ]);
+      if (result.hasMore) {
+        toast.info('More email is available. Refresh again to continue syncing.');
+      }
+    },
+    onError: (error) => toastApiError(error, 'Failed to refresh emails.'),
+  });
+};
 
 export const useEmailConversationQuery = (
   accountId: string | undefined,
@@ -63,6 +156,26 @@ export const useEmailConversationQuery = (
     queryKey: emailKeys.conversation(accountId, threadId),
     queryFn: () => emailApi.listConversation(accountId!, threadId!),
     enabled: Boolean(accountId && threadId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useEmailMessageQuery = (
+  accountId: string | undefined,
+  messageId: string | null | undefined,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: emailKeys.message(accountId, messageId),
+    queryFn: () => emailApi.getMessage(accountId!, messageId!),
+    enabled: enabled && Boolean(accountId && messageId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
 export const useStartEmailAuthMutation = () =>
@@ -74,6 +187,112 @@ export const useStartEmailAuthMutation = () =>
     onError: (error) => toastApiError(error, 'Unable to start email account connection.'),
   });
 
+type DisconnectAccountSnapshot = {
+  accounts: EmailAccount[] | undefined;
+  connectedAccountsStorage: string | null;
+  selectedAccountStorage: string | null;
+};
+
+function writeConnectedAccountsStorage(accounts: EmailAccount[]) {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(
+    EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
+    JSON.stringify(
+      accounts.map((account) => ({
+        id: account.id,
+        slug: getEmailAccountSlug(account),
+        email: account.email,
+        mailboxAddress: account.mailboxAddress,
+        displayName: account.displayName,
+        provider: account.provider,
+      }))
+    )
+  );
+}
+
+function restoreAccountStorage(snapshot: DisconnectAccountSnapshot | undefined) {
+  if (!snapshot || typeof window === 'undefined') return;
+
+  if (snapshot.connectedAccountsStorage === null) {
+    window.localStorage.removeItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY);
+  } else {
+    window.localStorage.setItem(
+      EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
+      snapshot.connectedAccountsStorage
+    );
+  }
+
+  if (snapshot.selectedAccountStorage === null) {
+    window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
+  } else {
+    window.localStorage.setItem(
+      EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
+      snapshot.selectedAccountStorage
+    );
+  }
+}
+
+export const useDisconnectEmailAccountMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string }) => emailApi.disconnectAccount(payload.accountId),
+    onMutate: async (payload): Promise<DisconnectAccountSnapshot> => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.accounts() });
+
+      const accounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
+      const nextAccounts = accounts?.filter((account) => account.id !== payload.accountId);
+      const disconnectedAccount = accounts?.find((account) => account.id === payload.accountId);
+      const disconnectedSlug = disconnectedAccount
+        ? getEmailAccountSlug(disconnectedAccount)
+        : null;
+      const snapshot = {
+        accounts,
+        connectedAccountsStorage:
+          typeof window === 'undefined'
+            ? null
+            : window.localStorage.getItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY),
+        selectedAccountStorage:
+          typeof window === 'undefined'
+            ? null
+            : window.localStorage.getItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY),
+      };
+
+      if (nextAccounts) {
+        queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), nextAccounts);
+        writeConnectedAccountsStorage(nextAccounts);
+      }
+
+      if (typeof window !== 'undefined') {
+        const selectedAccount = window.localStorage.getItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
+        if (
+          selectedAccount &&
+          (selectedAccount === payload.accountId || selectedAccount === disconnectedSlug)
+        ) {
+          window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
+        }
+      }
+
+      queryClient.removeQueries({ queryKey: emailKeys.folders(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.tags(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) });
+      toast.success('Email account disconnected.');
+
+      return snapshot;
+    },
+    onError: (error, _payload, snapshot) => {
+      queryClient.setQueryData(emailKeys.accounts(), snapshot?.accounts);
+      restoreAccountStorage(snapshot);
+      toastApiError(error, 'Failed to disconnect email account.');
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: emailKeys.accounts() });
+    },
+  });
+};
+
 export const useSendConnectedEmailMutation = () => {
   const queryClient = useQueryClient();
 
@@ -84,6 +303,22 @@ export const useSendConnectedEmailMutation = () => {
       toast.success('Email sent.');
     },
     onError: (error) => toastApiError(error, 'Failed to send email.'),
+  });
+};
+
+export const useReplyConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ReplyConnectedEmailPayload) => emailApi.replyMessage(payload),
+    onSuccess: async (_result, payload) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      toast.success('Reply sent.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to send reply.'),
   });
 };
 
@@ -116,7 +351,7 @@ export const useCreateEmailTagMutation = () => {
 };
 
 type EmailActionSnapshot = {
-  messages: Array<[QueryKey, ConnectedEmailListItem[] | undefined]>;
+  messages: Array<[QueryKey, EmailMessagePage | undefined]>;
   folders: ConnectedEmailFolder[] | undefined;
 };
 
@@ -130,17 +365,17 @@ function getMessageQuerySnapshots(
   queryClient: ReturnType<typeof useQueryClient>,
   accountId: string
 ) {
-  return queryClient.getQueriesData<ConnectedEmailListItem[]>({
+  return queryClient.getQueriesData<EmailMessagePage>({
     queryKey: emailKeys.messagesRoot(accountId),
   });
 }
 
 function findCachedMessage(
-  snapshots: Array<[QueryKey, ConnectedEmailListItem[] | undefined]>,
+  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
   messageId: string
 ) {
-  for (const [, messages] of snapshots) {
-    const message = messages?.find((item) => item.id === messageId);
+  for (const [, page] of snapshots) {
+    const message = page?.records.find((item) => item.id === messageId);
     if (message) return message;
   }
   return null;
@@ -148,31 +383,33 @@ function findCachedMessage(
 
 function removeMessageFromCachedLists(
   queryClient: ReturnType<typeof useQueryClient>,
-  snapshots: Array<[QueryKey, ConnectedEmailListItem[] | undefined]>,
+  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
   messageId: string
 ) {
-  for (const [queryKey, messages] of snapshots) {
-    if (!messages) continue;
-    queryClient.setQueryData<ConnectedEmailListItem[]>(
-      queryKey,
-      messages.filter((message) => message.id !== messageId)
-    );
+  for (const [queryKey, page] of snapshots) {
+    if (!page) continue;
+    queryClient.setQueryData<EmailMessagePage>(queryKey, {
+      ...page,
+      records: page.records.filter((message) => message.id !== messageId),
+    });
   }
 }
 
 function putMessageInCachedFolder(
   queryClient: ReturnType<typeof useQueryClient>,
-  accountId: string,
+  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
   folderId: string | null | undefined,
   message: ConnectedEmailListItem | null
 ) {
   if (!folderId || !message) return;
-  const targetKey = emailKeys.messages(accountId, folderId);
   const movedMessage = { ...message, folderId, folder: folderId };
-  queryClient.setQueryData<ConnectedEmailListItem[]>(targetKey, (current = []) => {
-    if (current.some((item) => item.id === movedMessage.id)) return current;
-    return [movedMessage, ...current];
-  });
+  for (const [queryKey, page] of snapshots) {
+    if (!page || queryKey[3] !== folderId) continue;
+    queryClient.setQueryData<EmailMessagePage>(queryKey, (current) => {
+      if (!current || current.records.some((item) => item.id === movedMessage.id)) return current;
+      return { ...current, records: [movedMessage, ...current.records] };
+    });
+  }
 }
 
 function updateFolderCounts(
@@ -214,7 +451,7 @@ async function applyOptimisticEmailMove(
   const sourceFolderId = movedMessage?.folderId ?? null;
 
   removeMessageFromCachedLists(queryClient, messages, payload.messageId);
-  putMessageInCachedFolder(queryClient, payload.accountId, payload.targetFolderId, movedMessage);
+  putMessageInCachedFolder(queryClient, messages, payload.targetFolderId, movedMessage);
   updateFolderCounts(queryClient, payload.accountId, sourceFolderId, payload.targetFolderId);
 
   return { messages, folders };
@@ -237,9 +474,18 @@ async function refreshEmailActionQueries(
   accountId: string
 ) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(accountId) }),
-    queryClient.invalidateQueries({ queryKey: emailKeys.folders(accountId) }),
-    queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(accountId) }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.messagesRoot(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.folders(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.conversationRoot(accountId),
+      refetchType: 'active',
+    }),
   ]);
 }
 
@@ -249,14 +495,13 @@ export const useMoveEmailMessageMutation = () => {
   return useMutation({
     mutationFn: (payload: { accountId: string; messageId: string; folderId: string }) =>
       emailApi.moveMessage(payload.accountId, payload.messageId, payload.folderId),
-    onMutate: (payload) => {
-      toast.success('Email moved.');
-      return applyOptimisticEmailMove(queryClient, {
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
         accountId: payload.accountId,
         messageId: payload.messageId,
         targetFolderId: payload.folderId,
-      });
-    },
+      }),
+    onSuccess: () => toast.success('Email moved.'),
     onError: (error, payload, snapshot) => {
       rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
       toastApiError(error, 'Failed to move email.');
@@ -276,14 +521,13 @@ export const useArchiveEmailMessageMutation = () => {
       messageId: string;
       targetFolderId?: string | null;
     }) => emailApi.archiveMessage(payload.accountId, payload.messageId),
-    onMutate: (payload) => {
-      toast.success('Email archived.');
-      return applyOptimisticEmailMove(queryClient, {
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
         accountId: payload.accountId,
         messageId: payload.messageId,
         targetFolderId: payload.targetFolderId,
-      });
-    },
+      }),
+    onSuccess: () => toast.success('Email archived.'),
     onError: (error, payload, snapshot) => {
       rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
       toastApiError(error, 'Failed to archive email.');
@@ -303,14 +547,13 @@ export const useUnarchiveEmailMessageMutation = () => {
       messageId: string;
       targetFolderId?: string | null;
     }) => emailApi.unarchiveMessage(payload.accountId, payload.messageId),
-    onMutate: (payload) => {
-      toast.success('Email unarchived.');
-      return applyOptimisticEmailMove(queryClient, {
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
         accountId: payload.accountId,
         messageId: payload.messageId,
         targetFolderId: payload.targetFolderId,
-      });
-    },
+      }),
+    onSuccess: () => toast.success('Email unarchived.'),
     onError: (error, payload, snapshot) => {
       rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
       toastApiError(error, 'Failed to unarchive email.');
@@ -330,21 +573,11 @@ export const useDeleteEmailMessageMutation = () => {
       messageId: string;
       targetFolderId?: string | null;
     }) => emailApi.deleteMessage(payload.accountId, payload.messageId),
-    onMutate: (payload) => {
+    onSuccess: async (_result, payload) => {
       toast.success('Email moved to deleted items.');
-      return applyOptimisticEmailMove(queryClient, {
-        accountId: payload.accountId,
-        messageId: payload.messageId,
-        targetFolderId: payload.targetFolderId,
-      });
-    },
-    onError: (error, payload, snapshot) => {
-      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
-      toastApiError(error, 'Failed to delete email.');
-    },
-    onSettled: async (_result, _error, payload) => {
       await refreshEmailActionQueries(queryClient, payload.accountId);
     },
+    onError: (error) => toastApiError(error, 'Failed to delete email.'),
   });
 };
 

@@ -4,6 +4,15 @@ import { z } from 'zod';
 
 const BASE = '/email';
 
+const emailFreshnessSchema = z.object({
+  state: z.enum(['fresh', 'stale', 'syncing', 'error']),
+  lastSyncedAt: z.string().nullable(),
+  staleSince: z.string().nullable(),
+  reason: z.string().nullable(),
+  errorCode: z.string().nullable(),
+  syncing: z.boolean(),
+});
+
 const emailAccountSchema = z.object({
   id: z.string(),
   slug: z.string().optional(),
@@ -14,6 +23,7 @@ const emailAccountSchema = z.object({
   status: z.string(),
   lastSyncedAt: z.string().nullable(),
   connectedById: z.string().nullable(),
+  freshness: emailFreshnessSchema.optional(),
 });
 
 const emailFolderSchema = z.object({
@@ -50,6 +60,7 @@ const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
   threadId: z.string().nullable().optional(),
+  conversationKey: z.string().optional(),
   senderName: z.string(),
   senderEmail: z.string(),
   subject: z.string(),
@@ -61,6 +72,7 @@ const emailListItemSchema = z.object({
   unread: z.boolean(),
   keywords: z.array(z.string()).optional(),
   attachmentCount: z.number().optional(),
+  threadMessageCount: z.number().optional(),
   body: z.array(z.string()).optional(),
   attachments: z.array(emailAttachmentSchema).optional(),
 });
@@ -83,12 +95,55 @@ const emailAuthStartSchema = z.object({
   authorizationUrl: z.string().url(),
 });
 
+const emailListResponseSchema = z.union([
+  z.array(emailListItemSchema),
+  z.object({
+    records: z.array(emailListItemSchema),
+    count: z.number().optional(),
+    pagination: z
+      .object({
+        currentPage: z.number(),
+        totalPages: z.number(),
+        hasNextPage: z.boolean(),
+        hasPreviousPage: z.boolean(),
+        totalItems: z.number(),
+        itemsPerPage: z.number(),
+      })
+      .nullable()
+      .optional(),
+    freshness: emailFreshnessSchema.optional(),
+  }),
+]);
+
+const emailSyncResultSchema = z.object({
+  synced: z.boolean(),
+  status: z.enum(['ready', 'partial']),
+  processed: z.number(),
+  hasMore: z.boolean(),
+  lastSyncedAt: z.string().nullable(),
+});
+
 export type EmailAccount = z.infer<typeof emailAccountSchema>;
 export type ConnectedEmailFolder = z.infer<typeof emailFolderSchema>;
 export type ConnectedEmailListItem = z.infer<typeof emailListItemSchema>;
 export type ConnectedEmailThreadMessage = z.infer<typeof emailThreadMessageSchema>;
 export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
+export type EmailFreshness = z.infer<typeof emailFreshnessSchema>;
+export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
 export type EmailProvider = 'gmail' | 'outlook';
+export type EmailMessagePage = {
+  records: ConnectedEmailListItem[];
+  count?: number;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    totalItems: number;
+    itemsPerPage: number;
+  } | null;
+  freshness?: EmailFreshness;
+};
 
 export type SendConnectedEmailPayload = {
   accountId: string;
@@ -96,6 +151,17 @@ export type SendConnectedEmailPayload = {
   body: string;
   bodyType?: 'html' | 'text';
   to: Array<{ address: string; name?: string }>;
+  cc?: Array<{ address: string; name?: string }>;
+  bcc?: Array<{ address: string; name?: string }>;
+};
+
+export type ReplyConnectedEmailPayload = {
+  accountId: string;
+  messageId: string;
+  body: string;
+  bodyType?: 'html' | 'text';
+  subject?: string;
+  to?: Array<{ address: string; name?: string }>;
   cc?: Array<{ address: string; name?: string }>;
   bcc?: Array<{ address: string; name?: string }>;
 };
@@ -109,6 +175,10 @@ export const emailApi = {
   async listAccounts(): Promise<EmailAccount[]> {
     const res = await api.get(`${BASE}/accounts`);
     return z.array(emailAccountSchema).parse(unwrapData(res.data));
+  },
+
+  async disconnectAccount(accountId: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}`);
   },
 
   async startAuth(provider: EmailProvider): Promise<{ authorizationUrl: string }> {
@@ -135,17 +205,43 @@ export const emailApi = {
     accountId: string;
     folderKey?: EmailFolderKey;
     folderId?: string;
-    refresh?: boolean;
-  }): Promise<ConnectedEmailListItem[]> {
+    page?: number;
+    size?: number;
+    search?: string;
+  }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
       params: {
         folderKey: params.folderKey,
         folderId: params.folderId,
-        size: 100,
-        refresh: params.refresh,
+        page: params.page,
+        size: params.size ?? 30,
+        search: params.search || undefined,
       },
     });
-    return z.array(emailListItemSchema).parse(unwrapData(res.data, 'messages'));
+    const response = res.data as Record<string, unknown>;
+    const data = response.data as Record<string, unknown> | undefined;
+    const payload = response.messages ?? (data?.records ? data : response.data) ?? response;
+    const parsed = emailListResponseSchema.parse(payload);
+    return {
+      records: Array.isArray(parsed) ? parsed : parsed.records,
+      count: Array.isArray(parsed) ? undefined : parsed.count,
+      pagination: Array.isArray(parsed)
+        ? ((response.pagination as EmailMessagePage['pagination']) ?? null)
+        : (parsed.pagination ?? (response.pagination as EmailMessagePage['pagination']) ?? null),
+      freshness: Array.isArray(parsed) ? undefined : parsed.freshness,
+    };
+  },
+
+  async syncAccount(accountId: string, daysWithin = 30): Promise<EmailSyncResult> {
+    const res = await api.post(`${BASE}/accounts/${accountId}/sync`, undefined, {
+      params: { daysWithin },
+    });
+    return emailSyncResultSchema.parse(unwrapData(res.data));
+  },
+
+  async getMessage(accountId: string, messageId: string): Promise<ConnectedEmailListItem> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/messages/${messageId}`);
+    return emailListItemSchema.parse(unwrapData(res.data, 'message'));
   },
 
   async listConversation(
@@ -161,6 +257,17 @@ export const emailApi = {
   async sendMessage(payload: SendConnectedEmailPayload): Promise<void> {
     const { accountId, ...message } = payload;
     await api.post(`${BASE}/accounts/${accountId}/messages/send`, {
+      bodyType: 'html',
+      cc: [],
+      bcc: [],
+      attachments: [],
+      ...message,
+    });
+  },
+
+  async replyMessage(payload: ReplyConnectedEmailPayload): Promise<void> {
+    const { accountId, messageId, ...message } = payload;
+    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
       bodyType: 'html',
       cc: [],
       bcc: [],
@@ -201,5 +308,13 @@ export const emailApi = {
     payload: { add?: string[]; remove?: string[] }
   ): Promise<void> {
     await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/tags`, payload);
+  },
+
+  async updateMessageStatus(
+    accountId: string,
+    messageId: string,
+    payload: { unread?: boolean }
+  ): Promise<void> {
+    await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/status`, payload);
   },
 };
