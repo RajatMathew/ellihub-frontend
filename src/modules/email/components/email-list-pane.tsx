@@ -7,7 +7,7 @@ import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import emailData from '@/modules/email/data/emails.json';
-import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, RefreshCcw, Search, X } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: string;
@@ -17,8 +17,17 @@ interface EmailListPaneProps {
   isLoading?: boolean;
   isError?: boolean;
   selectedEmailId?: string;
+  page?: number;
+  pageSize?: number;
+  hasPreviousPage?: boolean;
+  hasNextPage?: boolean;
+  isPageChanging?: boolean;
+  search?: string;
   onSelectEmail?: (emailId: string) => void;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
   onRetry?: () => void;
+  onSearchChange?: (value: string) => void;
 }
 
 const DEFAULT_WIDTH = 320;
@@ -34,10 +43,21 @@ export function EmailListPane({
   isLoading = false,
   isError = false,
   selectedEmailId,
+  page,
+  pageSize,
+  hasPreviousPage = false,
+  hasNextPage = false,
+  isPageChanging = false,
+  search: controlledSearch,
   onSelectEmail,
+  onPreviousPage,
+  onNextPage,
   onRetry,
+  onSearchChange,
 }: EmailListPaneProps) {
-  const [search, setSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const search = controlledSearch ?? localSearch;
+  const setSearch = onSearchChange ?? setLocalSearch;
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
@@ -52,14 +72,14 @@ export function EmailListPane({
   const filteredEmails = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return mailboxEmails;
+    if (!query || onSearchChange) return mailboxEmails;
 
     return mailboxEmails.filter((email) =>
       [email.senderName, email.senderEmail, email.subject, email.preview, email.category]
         .filter((value): value is string => Boolean(value))
         .some((value) => value.toLowerCase().includes(query))
     );
-  }, [mailboxEmails, search]);
+  }, [mailboxEmails, onSearchChange, search]);
 
   const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const startX = event.clientX;
@@ -96,10 +116,69 @@ export function EmailListPane({
       style={{ width }}
       aria-label={`${folderLabel} email list`}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold text-foreground">{folderLabel}</h1>
-          <p className="text-xs text-muted-foreground">{mailboxEmails.length} emails</p>
+          <h1 className="truncate font-sans text-base font-semibold normal-case tracking-normal text-foreground">
+            {folderLabel}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground">
+            {mailboxEmails.length} emails
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {onRetry && (
+            <Button
+              type="button"
+              variant="ghost"
+              mode="icon"
+              size="icon"
+              className="size-8"
+              disabled={isLoading || isPageChanging}
+              aria-busy={isPageChanging}
+              aria-label="Refresh emails"
+              onClick={onRetry}
+            >
+              <RefreshCcw
+                aria-hidden="true"
+                className={cn('size-4', isPageChanging && 'motion-safe:animate-spin')}
+              />
+            </Button>
+          )}
+          {page && pageSize && (
+            <div
+              className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5"
+              role="group"
+              aria-label="Email pagination"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                mode="icon"
+                size="icon"
+                className="size-8"
+                disabled={!hasPreviousPage || isPageChanging}
+                aria-label="Previous email page"
+                onClick={onPreviousPage}
+              >
+                <ChevronLeft aria-hidden="true" className="size-4" />
+              </Button>
+              <span className="min-w-5 text-center font-mono text-xs font-medium tabular-nums text-foreground">
+                {page}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                mode="icon"
+                size="icon"
+                className="size-8"
+                disabled={!hasNextPage || isPageChanging}
+                aria-label="Next email page"
+                onClick={onNextPage}
+              >
+                <ChevronRight aria-hidden="true" className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -121,7 +200,7 @@ export function EmailListPane({
           {search && (
             <button
               type="button"
-              className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Clear email search"
               onClick={() => setSearch('')}
             >
