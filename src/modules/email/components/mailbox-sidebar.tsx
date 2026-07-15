@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
@@ -26,6 +27,7 @@ import {
   Folder,
   FolderPlus,
   Inbox,
+  LogOut,
   Menu,
   MoreHorizontal,
   NotebookText,
@@ -77,14 +79,16 @@ const accountFolders: MailboxFolder[] = [
 interface MailboxSidebarProps {
   mailboxAddress: string;
   selectedFolder: string;
-  folderCounts: Partial<Record<string, number>>;
+  folderCounts: Partial<Record<string, number | string>>;
   folders?: ConnectedEmailFolder[];
   collapsed?: boolean;
   isAddingAccount?: boolean;
   isCreatingFolder?: boolean;
+  isDisconnectingAccount?: boolean;
   onSelectFolder: (folder: string) => void;
   onCompose: () => void;
   onCreateFolder?: (name: string) => void;
+  onDisconnectAccount?: () => void;
   onAddAccount?: (provider: 'gmail' | 'outlook') => void;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
@@ -97,9 +101,11 @@ export function MailboxSidebar({
   collapsed: controlledCollapsed,
   isAddingAccount = false,
   isCreatingFolder = false,
+  isDisconnectingAccount = false,
   onSelectFolder,
   onCompose,
   onCreateFolder,
+  onDisconnectAccount,
   onAddAccount,
   onCollapsedChange,
 }: MailboxSidebarProps) {
@@ -107,6 +113,7 @@ export function MailboxSidebar({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [newFolderName, setNewFolderName] = useState('');
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     favourites: true,
     account: true,
@@ -126,7 +133,7 @@ export function MailboxSidebar({
         key: folder.id,
         folder: folder.id,
         label: folder.name,
-        count: folder.totalCount > 0 ? folder.totalCount : undefined,
+        count: formatFolderCount(folder.totalCount),
         icon: getProviderFolderIcon(folder),
       }))
     : null;
@@ -233,7 +240,7 @@ export function MailboxSidebar({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden px-2 py-3">
+      <div className="kt-scrollable-y-auto min-h-0 flex-1 px-2 py-3">
         {folderGroups.map((group) => (
           <div key={group.key} className={cn(collapsed ? 'mb-6' : 'mb-4', 'last:mb-0')}>
             {!collapsed && (
@@ -254,7 +261,7 @@ export function MailboxSidebar({
                   <span className="truncate">{group.label}</span>
                 </button>
 
-                {group.key === 'account' && onCreateFolder && (
+                {group.key === 'account' && (onCreateFolder || onDisconnectAccount) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -265,14 +272,30 @@ export function MailboxSidebar({
                         <MoreHorizontal aria-hidden="true" className="size-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 p-1">
-                      <DropdownMenuItem
-                        className="h-8 gap-2 rounded-sm px-2 text-xs"
-                        onClick={() => setCreateFolderOpen(true)}
-                      >
-                        <FolderPlus aria-hidden="true" className="size-3.5" />
-                        Create new folder
-                      </DropdownMenuItem>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-44 p-1 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                    >
+                      {onCreateFolder && (
+                        <DropdownMenuItem
+                          className="h-8 gap-2 rounded-sm px-2 text-xs"
+                          onClick={() => setCreateFolderOpen(true)}
+                        >
+                          <FolderPlus aria-hidden="true" className="size-3.5" />
+                          Create new folder
+                        </DropdownMenuItem>
+                      )}
+                      {onCreateFolder && onDisconnectAccount && <DropdownMenuSeparator />}
+                      {onDisconnectAccount && (
+                        <DropdownMenuItem
+                          className="h-8 gap-2 rounded-sm px-2 text-xs text-destructive focus:text-destructive"
+                          disabled={isDisconnectingAccount}
+                          onClick={() => setDisconnectConfirmOpen(true)}
+                        >
+                          <LogOut aria-hidden="true" className="size-3.5" />
+                          Disconnect account
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -358,6 +381,40 @@ export function MailboxSidebar({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={disconnectConfirmOpen} onOpenChange={setDisconnectConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Disconnect account</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p className="text-sm text-muted-foreground">
+              This removes {mailboxAddress} from Elli and stops future sync for this mailbox.
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isDisconnectingAccount}
+              onClick={() => setDisconnectConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDisconnectingAccount}
+              onClick={() => {
+                onDisconnectAccount?.();
+                setDisconnectConfirmOpen(false);
+              }}
+            >
+              Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {!collapsed && (
         <button
           type="button"
@@ -412,9 +469,16 @@ function MailboxFolderButton({
   );
 }
 
-function getFolderCount(folder: string, folderCounts: Partial<Record<string, number>>) {
+function getFolderCount(folder: string, folderCounts: Partial<Record<string, number | string>>) {
   const count = folderCounts[folder];
-  return count && count > 0 ? count : undefined;
+  if (typeof count === 'string') return count;
+  return formatFolderCount(count);
+}
+
+function formatFolderCount(count: number | null | undefined) {
+  if (!count || count <= 0) return undefined;
+  if (count >= 100) return '100+';
+  return count;
 }
 
 function getProviderFolderIcon(folder: ConnectedEmailFolder) {
