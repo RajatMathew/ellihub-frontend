@@ -1,0 +1,187 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "company",
+    "sub_change_order",
+    "purchase_order",
+    "project",
+    "vendor",
+    "request",
+    "line_items",
+    "line_items_count",
+    "summary",
+    "terms",
+    "footer"
+  ],
+  "properties": {
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address_lines", "phone", "logo_path"],
+      "properties": {
+        "name": { "type": "string" },
+        "address_lines": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "phone": { "type": "string" },
+        "logo_path": { "type": "string" }
+      }
+    },
+    "sub_change_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "title",
+        "description",
+        "status",
+        "date",
+        "change_type",
+        "approved_on",
+        "rejected_on",
+        "voided_on",
+        "reason_label",
+        "reason"
+      ],
+      "properties": {
+        "number": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "date": { "type": "string" },
+        "change_type": { "type": "string" },
+        "approved_on": { "type": "string" },
+        "rejected_on": { "type": "string" },
+        "voided_on": { "type": "string" },
+        "reason_label": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "purchase_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "description",
+        "status",
+        "trade_category",
+        "payment_terms",
+        "total"
+      ],
+      "properties": {
+        "number": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "trade_category": { "type": "string" },
+        "payment_terms": { "type": "string" },
+        "total": { "type": "string" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "number", "contract_number", "address"],
+      "properties": {
+        "name": { "type": "string" },
+        "number": { "type": "string" },
+        "contract_number": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    },
+    "vendor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "email", "phone"],
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_by"],
+      "properties": {
+        "requested_by": { "type": "string" }
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "line_number",
+          "description",
+          "cost_code",
+          "quantity",
+          "unit",
+          "unit_price",
+          "amount"
+        ],
+        "properties": {
+          "line_number": { "type": "string" },
+          "description": { "type": "string" },
+          "cost_code": { "type": "string" },
+          "quantity": { "type": "string" },
+          "unit": { "type": "string" },
+          "unit_price": { "type": "string" },
+          "amount": { "type": "string" }
+        }
+      }
+    },
+    "line_items_count": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subtotal",
+        "negotiated_discount",
+        "shipping_and_handling_fee",
+        "tax_label",
+        "tax_amount",
+        "total"
+      ],
+      "properties": {
+        "subtotal": { "type": "string" },
+        "negotiated_discount": { "type": "string" },
+        "shipping_and_handling_fee": { "type": "string" },
+        "tax_label": { "type": "string" },
+        "tax_amount": { "type": "string" },
+        "total": { "type": "string" }
+      }
+    },
+    "terms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "html"],
+      "properties": {
+        "included": { "type": "boolean" },
+        "html": { "type": "string" }
+      }
+    },
+    "notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "title", "html"],
+      "properties": {
+        "included": { "type": "boolean" },
+        "title": { "type": "string" },
+        "html": { "type": "string" }
+      }
+    },
+    "footer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left"],
+      "properties": {
+        "left": { "type": "string" }
+      }
+    }
+  }
+}
