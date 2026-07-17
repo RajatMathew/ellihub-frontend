@@ -1,0 +1,339 @@
+{
+    "paths": {
+        "/lookup": {
+            "get": {
+                "tags": ["Lookup"],
+                "summary": "List all lookups",
+                "operationId": "listLookups",
+                "responses": {
+                    "200": {
+                        "description": "List of all lookups",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Lookup"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": ["Lookup"],
+                "summary": "Create a lookup",
+                "operationId": "createLookup",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/LookupCreateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Lookup created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Lookup" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Lookup with this type and label already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": ["Lookup"],
+                "summary": "Update a lookup",
+                "operationId": "updateLookup",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/LookupUpdateRequest" }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lookup updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Lookup" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Lookup not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Lookup with this type and label already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/lookup/type/{type}": {
+            "get": {
+                "tags": ["Lookup"],
+                "summary": "List lookups by type",
+                "operationId": "listLookupsByType",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Lookup type (e.g. \"TRADE_CATEGORY\", \"GC_TYPE\", \"UNIT\")"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of lookups for the given type",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Lookup"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/lookup/{id}": {
+            "get": {
+                "tags": ["Lookup"],
+                "summary": "Get a lookup by ID",
+                "operationId": "getLookup",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Lookup ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lookup details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        { "$ref": "#/components/schemas/SuccessResponse" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": { "$ref": "#/components/schemas/Lookup" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Lookup not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": ["Lookup"],
+                "summary": "Delete a lookup",
+                "operationId": "deleteLookup",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string" },
+                        "description": "Lookup ID (ULID)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lookup deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Lookup not found",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Lookup": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "ULID" },
+                    "type": {
+                        "type": "string",
+                        "description": "Lookup type (e.g. TRADE_CATEGORY, GC_TYPE, UNIT)"
+                    },
+                    "label": { "type": "string" }
+                }
+            },
+            "LookupCreateRequest": {
+                "type": "object",
+                "required": ["type", "label"],
+                "properties": {
+                    "type": { "type": "string", "minLength": 1 },
+                    "label": { "type": "string", "minLength": 1 }
+                }
+            },
+            "LookupUpdateRequest": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                    "id": { "type": "string", "description": "Lookup ID (ULID)" },
+                    "type": { "type": "string", "minLength": 1 },
+                    "label": { "type": "string", "minLength": 1 }
+                }
+            }
+        }
+    }
+}
