@@ -1,0 +1,44 @@
+import { z } from 'zod';
+
+export const recurringRuleFormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Bill name is required'),
+    vendorId: z.string().trim().min(1, 'Vendor is required'),
+    vendorName: z.string().trim().min(1),
+    frequency: z.enum(['weekly', 'monthly', 'custom']),
+    scheduleTiming: z.enum(['start', 'date', 'end']),
+    weeklyDay: z.number().int().min(1).max(7),
+    customIntervalMonths: z.number().int().min(2).max(24),
+    amountMode: z.enum(['fixed', 'variable']),
+    amount: z.number().min(0),
+    dueDay: z.number().int().min(1).max(28),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date is required'),
+    categoryId: z.string().optional(),
+    categoryName: z.string().optional(),
+    bankAccountId: z.string().optional(),
+    bankAccountName: z.string().optional(),
+  })
+  .refine((value) => value.amountMode !== 'fixed' || value.amount > 0, {
+    message: 'Fixed recurring bills must have an amount greater than zero.',
+    path: ['amount'],
+  });
+
+export type RecurringRuleFormData = z.infer<typeof recurringRuleFormSchema>;
+
+export const recurringRuleFormDefaultValues: RecurringRuleFormData = {
+  name: '',
+  vendorId: '',
+  vendorName: '',
+  frequency: 'monthly',
+  scheduleTiming: 'start',
+  weeklyDay: 1,
+  customIntervalMonths: 6,
+  amountMode: 'fixed',
+  amount: 0,
+  dueDay: 1,
+  startsOn: new Date().toISOString().slice(0, 10),
+  categoryId: '',
+  categoryName: '',
+  bankAccountId: '',
+  bankAccountName: '',
+};
