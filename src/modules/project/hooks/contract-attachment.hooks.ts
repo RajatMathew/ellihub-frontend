@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
+import { filesKeys } from '@/modules/files/constants/files.keys';
 import { contractAttachmentApi } from '@/modules/project/api/contract-attachment.api';
 import { contractAttachmentKeys } from '@/modules/project/constants/contract-attachment.keys';
-import { filesKeys } from '@/modules/files/constants/files.keys';
 import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
+import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export const useContractAttachmentsQuery = (projectId: string) =>
   useQuery({
@@ -25,13 +25,8 @@ export const usePrimeContractCandidatesQuery = (projectId: string, enabled = tru
 export const usePinPrimeContractsMutation = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      fileIds,
-    }: {
-      projectId: string;
-      fileIds: string[];
-    }) => contractAttachmentApi.pin(projectId, fileIds),
+    mutationFn: ({ projectId, fileIds }: { projectId: string; fileIds: string[] }) =>
+      contractAttachmentApi.pin(projectId, fileIds),
     onSuccess: async (_, { projectId }) => {
       await invalidateProjectQueries(qc, [
         contractAttachmentKeys.list(projectId),
@@ -49,13 +44,8 @@ export const useAddContractAttachmentMutation = () => {
 
   return {
     ...mutation,
-    mutateAsync: ({
-      projectId,
-      data,
-    }: {
-      projectId: string;
-      data: { fileId: string };
-    }) => mutation.mutateAsync({ projectId, fileIds: [data.fileId] }),
+    mutateAsync: ({ projectId, data }: { projectId: string; data: { fileId: string } }) =>
+      mutation.mutateAsync({ projectId, fileIds: [data.fileId] }),
     mutate: (
       {
         projectId,
@@ -79,7 +69,12 @@ export const useUnpinPrimeContractsMutation = () => {
       projectId: string;
       primeContractIds: string[];
     }) => contractAttachmentApi.unpin(projectId, primeContractIds),
-    onSuccess: async (_, { projectId }) => {
+    onSuccess: async (_, { projectId, primeContractIds }) => {
+      qc.setQueryData<ContractAttachment[] | undefined>(
+        contractAttachmentKeys.list(projectId),
+        (attachments) =>
+          attachments?.filter((attachment) => !primeContractIds.includes(attachment.id))
+      );
       await invalidateProjectQueries(qc, [
         contractAttachmentKeys.list(projectId),
         contractAttachmentKeys.candidates(projectId),
@@ -122,13 +117,8 @@ export const useRemoveContractAttachmentMutation = () => {
 
   return {
     ...mutation,
-    mutateAsync: ({
-      projectId,
-      attachmentId,
-    }: {
-      projectId: string;
-      attachmentId: string;
-    }) => mutation.mutateAsync({ projectId, primeContractIds: [attachmentId] }),
+    mutateAsync: ({ projectId, attachmentId }: { projectId: string; attachmentId: string }) =>
+      mutation.mutateAsync({ projectId, primeContractIds: [attachmentId] }),
     mutate: (
       {
         projectId,
@@ -147,13 +137,8 @@ export const useSetPrimaryContractAttachmentMutation = () => {
 
   return {
     ...mutation,
-    mutateAsync: ({
-      projectId,
-      attachmentId,
-    }: {
-      projectId: string;
-      attachmentId: string;
-    }) => mutation.mutateAsync({ projectId, primeContractIds: [attachmentId], isPrimary: true }),
+    mutateAsync: ({ projectId, attachmentId }: { projectId: string; attachmentId: string }) =>
+      mutation.mutateAsync({ projectId, primeContractIds: [attachmentId], isPrimary: true }),
     mutate: (
       {
         projectId,
@@ -163,10 +148,6 @@ export const useSetPrimaryContractAttachmentMutation = () => {
         attachmentId: string;
       },
       options?: Parameters<typeof mutation.mutate>[1]
-    ) =>
-      mutation.mutate(
-        { projectId, primeContractIds: [attachmentId], isPrimary: true },
-        options
-      ),
+    ) => mutation.mutate({ projectId, primeContractIds: [attachmentId], isPrimary: true }, options),
   };
 };

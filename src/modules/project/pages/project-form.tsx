@@ -43,7 +43,11 @@ import {
   type EmployeePickerOption,
 } from '@/modules/hr/hooks/use-employee-picker-options';
 import { FieldwireProjectSelect } from '@/modules/project/components/fieldwire-project-select';
-import { ProjectFormPageLoading, ProjectFormShell } from '@/modules/project/components/shared';
+import {
+  ProjectFormMasterScheduleField,
+  ProjectFormPageLoading,
+  ProjectFormShell,
+} from '@/modules/project/components/shared';
 import {
   getProjectStatusOrDefault,
   normalizeProjectStatus,
@@ -61,8 +65,10 @@ import {
   useProjectStagesQuery,
   useSetProjectActiveMutation,
   useSetProjectClosedMutation,
+  useRemoveProjectMasterScheduleMutation,
   useSetProjectCompletedMutation,
   useSetProjectInactiveMutation,
+  useSetProjectMasterScheduleMutation,
   useUpdateProjectMutation,
 } from '@/modules/project/hooks';
 import { toDateInputValue } from '@/modules/project/lib/project-date-utils';
@@ -372,6 +378,7 @@ export default function ProjectForm() {
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [selectedMasterScheduleFile, setSelectedMasterScheduleFile] = useState<File | null>(null);
 
   const handleFileSelected = useCallback((file: File | null) => {
     if (file) {
@@ -384,6 +391,14 @@ export default function ProjectForm() {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const handleMasterScheduleFileSelected = useCallback((file: File) => {
+    setSelectedMasterScheduleFile(file);
+  }, []);
+
+  const handleRemoveSelectedMasterScheduleFile = useCallback(() => {
+    setSelectedMasterScheduleFile(null);
+  }, []);
+
   /* ---- Mutations ---- */
 
   const createMutation = useCreateProjectMutation();
@@ -393,7 +408,14 @@ export default function ProjectForm() {
   const setClosedMutation = useSetProjectClosedMutation();
   const setCompletedMutation = useSetProjectCompletedMutation();
   const addContractAttachmentMutation = useAddContractAttachmentMutation();
+  const setMasterScheduleMutation = useSetProjectMasterScheduleMutation();
+  const removeMasterScheduleMutation = useRemoveProjectMasterScheduleMutation();
   const { queueFiles } = useManagedFileUploads();
+
+  const handleRemoveExistingMasterSchedule = useCallback(() => {
+    if (!projectId) return;
+    removeMasterScheduleMutation.mutate({ projectId });
+  }, [projectId, removeMasterScheduleMutation]);
 
   const [activeSection, setActiveSection] = useState<string>('project-info');
   const isSubmitting =
@@ -402,7 +424,9 @@ export default function ProjectForm() {
     setActiveMutation.isPending ||
     setInactiveMutation.isPending ||
     setClosedMutation.isPending ||
-    setCompletedMutation.isPending;
+    setCompletedMutation.isPending ||
+    setMasterScheduleMutation.isPending ||
+    removeMasterScheduleMutation.isPending;
 
   /* ---- Submit ---- */
 
@@ -573,6 +597,28 @@ export default function ProjectForm() {
         }
       }
 
+      if (selectedMasterScheduleFile) {
+        try {
+          const masterScheduleFolderId = await filesApi.getProjectSubFolderId(
+            resultProjectId,
+            'MASTER_SCHEDULE'
+          );
+
+          queueFiles({
+            files: [selectedMasterScheduleFile],
+            parentId: masterScheduleFolderId,
+            label: 'Master schedule',
+            onUploaded: async (uploaded) => {
+              await setMasterScheduleMutation.mutateAsync({
+                projectId: resultProjectId,
+                data: { fileId: uploaded.id },
+              });
+            },
+          });
+        } catch {
+          toast.error('Master Schedule folder not found - file was not uploaded.');
+        }
+      }
       navigate('..', { relative: 'path' });
     } catch {
       /* error toast from mutation */
@@ -1256,6 +1302,21 @@ export default function ProjectForm() {
                 </div>
               </div>
 
+              <Separator />
+
+              <ProjectFormMasterScheduleField
+                selectedFile={selectedMasterScheduleFile}
+                existingMasterSchedule={isEditMode ? existingProject?.masterSchedule : null}
+                onSelectFile={handleMasterScheduleFileSelected}
+                onRemoveSelectedFile={handleRemoveSelectedMasterScheduleFile}
+                onRemoveExisting={
+                  isEditMode && existingProject?.masterSchedule
+                    ? handleRemoveExistingMasterSchedule
+                    : undefined
+                }
+                disabled={isSubmitting}
+                isRemovingExisting={removeMasterScheduleMutation.isPending}
+              />
               {!isEditMode && (
                 <>
                   <Separator />

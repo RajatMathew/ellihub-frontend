@@ -92,6 +92,18 @@ const scoListAttachmentSchema = z
     createdAt: z.string().optional(),
   })
   .passthrough();
+const sentEmailLogSchema = z
+  .object({
+    id: z.string(),
+    from: z.string().nullable().optional(),
+    to: z.array(z.string()).optional().default([]),
+    cc: z.array(z.string()).optional().default([]),
+    bcc: z.array(z.string()).optional().default([]),
+    subject: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    sentAt: z.string().nullable().optional(),
+  })
+  .passthrough();
 
 // --- List item ---
 
@@ -404,6 +416,8 @@ export const scoDetailSchema = z
       )
       .optional()
       .default([]),
+    sentAt: z.string().nullable().optional(),
+    latestEmailLog: sentEmailLogSchema.nullable().optional(),
     statusHistory: z
       .array(
         z

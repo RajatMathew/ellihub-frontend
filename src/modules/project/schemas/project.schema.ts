@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { paymentTermsSchema, primeContractSchema } from './project-contract.schema';
+import { projectMasterScheduleSchema } from './project-master-schedule.schema';
 import { projectScheduleEntrySchema } from './project-schedule.schema';
 import {
   projectStatusSchema,
@@ -104,6 +105,15 @@ const projectActionCapabilitiesSchema = z
         update: z.boolean().optional(),
         delete: z.boolean().optional(),
         read: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional()
+      .default({}),
+    projectMasterSchedule: z
+      .object({
+        read: z.boolean().optional(),
+        update: z.boolean().optional(),
+        delete: z.boolean().optional(),
       })
       .passthrough()
       .optional()
@@ -234,6 +244,7 @@ export const projectDetailSchema = z
       .nullable()
       .optional(),
     primeContract: primeContractSchema.nullable().optional(),
+    masterSchedule: projectMasterScheduleSchema.nullable().optional(),
     projectScheduleEntries: z.array(projectScheduleEntrySchema).optional().default([]),
     teamMembers: z.array(projectTeamAssignmentSchema).optional().default([]),
     currentUserProjectRole: z.string().nullable().optional(),

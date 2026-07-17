@@ -1,6 +1,6 @@
 import { useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 
-import type { ActivityFieldDiffDetails } from '@/app/api/activity-log.api';
+import type { ActivityLogDetails } from '@/app/api/activity-log.api';
 import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
 import {
   ActivityRevisionBadge,
@@ -38,7 +38,7 @@ export interface ActivityPanelItem {
   toneClassName: string;
   actionType?: string;
   revision?: number | null;
-  details?: ActivityFieldDiffDetails | null;
+  details?: ActivityLogDetails | null;
   note?: string | null;
   editedAt?: string | null;
   canManage?: boolean;

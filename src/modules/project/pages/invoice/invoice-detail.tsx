@@ -205,7 +205,7 @@ export function InvoiceDetailPage() {
   const canMarkInvoiceUnpaid = projectActions?.invoice?.['mark-unpaid'] === true;
   const canDisputeInvoice = projectActions?.invoice?.dispute === true;
   const canResolveInvoiceDispute = projectActions?.invoice?.['resolve-dispute'] === true;
-  const canEditInvoice = projectActions?.invoice?.update === true && !isPaid;
+  const canEditInvoice = projectActions?.invoice?.update === true;
   const canUploadInvoiceAttachment = projectActions?.invoice?.update === true;
   const invoiceAmount = Number(invoice.totalAmount ?? 0);
   const taxAmount = Number(invoice.taxAmount ?? 0);
