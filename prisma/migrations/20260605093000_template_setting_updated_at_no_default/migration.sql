@@ -1,0 +1,1 @@
+ALTER TABLE "TemplateSetting" ALTER COLUMN "updatedAt" DROP DEFAULT;
