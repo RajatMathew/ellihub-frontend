@@ -30,8 +30,9 @@ import {
 import { EndUserLicenseAgreementPage, PrivacyPolicyPage } from './modules/public/pages/legal-pages';
 
 const posthogProjectToken = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const posthogEnabled = import.meta.env.VITE_ENABLE_POSTHOG === 'true';
 
-if (!import.meta.env.DEV && posthogProjectToken) {
+if (posthogEnabled && posthogProjectToken) {
   posthog.init(posthogProjectToken, {
     api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
     defaults: '2026-01-30',
