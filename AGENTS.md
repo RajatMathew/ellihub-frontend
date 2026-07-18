@@ -1,56 +1,62 @@
-# Repository Guidelines
+# NexusHub Frontend (AI Guide)
 
-## Project Structure & Module Organization
+This project uses Vite 8, React 19, TypeScript 6 (strict mode), Tailwind CSS v4, shadcn/ui (Radix Nova), TanStack React Query v5, React Router v7, React Hook Form, Zod v4, Zustand v5, Axios, and Recharts.
 
-This repository is the deployment/orchestration wrapper for two Git subtrees:
+## Commands
 
-- `elli-core/`: Bun + Hono backend API, Prisma schema and migrations, docs, and backend tests.
-- `elli-ui/`: React + Vite frontend, static assets in `public/`, application code in `src/`.
-- `nginx/default.conf`: root Nginx config. It serves the built UI and proxies `/api/*` to the API.
-- `Dockerfile.nginx` and `docker-compose.yml`: combined production-style stack.
+- `npm run dev` starts the dev server (Vite).
+- `npm run build` runs TypeScript type-check + production build.
+- `npm run lint` runs ESLint and should pass before work is considered complete.
+- `npm run preview` previews the production build locally.
 
-Do not edit subtree files unless the task explicitly targets that project. Prefer root-level deployment changes for orchestration issues.
+## Architecture
 
-## Build, Test, and Development Commands
+- `src/app/` contains the app shell: root component, providers, global router, and `globals.css` (now `index.css`).
+- `src/components/` contains shared components: `ui/` (shadcn/ui primitives — DO NOT EDIT), `layout/` (shell, sidebar, header), `common/` (PageHeader, EmptyState, etc.).
+- `src/modules/` contains feature modules with `api/`, `components/`, `constants/`, `hooks/`, `schemas/`, `pages/`, and `routes/`.
+- `src/hooks/`, `src/constants/`, `src/lib/`, `src/stores/`, `src/types/` contain shared app-level code.
+- `src/lib/mock-server.ts` provides the in-memory mock API layer.
 
-Use Bun inside each subtree:
+## Routing
 
-```sh
-cd elli-core && bun install && bun run dev
-cd elli-ui && bun install && bun run dev
-```
+- **Global router**: `src/app/router.tsx` composes module-level route arrays.
+- **Module routes**: Each module exports a `RouteObject[]` from `modules/{name}/routes/index.tsx`.
+- Use `react-router-dom` v7 Data Mode APIs (`createBrowserRouter`, `RouteObject`, `Outlet`).
 
-Root stack validation:
+## Working Rules
 
-```sh
-docker compose --env-file .env.example config
-docker compose --env-file .env.example up --build
-```
+- Use `@/` imports instead of deep relative paths.
+- Prefer named exports.
+- Respect TypeScript strict mode. Avoid `any`, `unknown`, `@ts-ignore`, and `@ts-expect-error` unless unavoidable and documented.
+- Use shadcn/ui as the base for UI work. Add new primitives with `npx shadcn@latest add {component-name}`.
+- Do not manually edit generated files in `src/components/ui/`.
+- Keep components focused and under 200 lines when practical. Split oversized components.
+- Every data-driven UI must handle loading, error, empty, and success states.
+- Use TanStack React Query v5 for server state. Keep query keys in module `constants/`.
+- Put API access in module `api/` files and query/mutation wrappers in module `hooks/`.
+- Use Zustand only for client-side UI state, not API responses.
+- Use React Hook Form with Zod v4 for forms, and derive form types with `z.infer`.
+- Use Tailwind utilities and `cn()` from `@/lib/utils` instead of inline styles or custom CSS.
+- Do not introduce arbitrary colors or arbitrary pixel values. Extend tokens in `src/index.css`.
+- Match the existing design language and avoid generic AI-looking UI patterns.
 
-Backend checks:
+## Important Notes
 
-```sh
-cd elli-core && bun run typecheck && bun test && bun run build
-```
+- Never commit `.env` files.
+- All API calls go through the mock server during development.
 
-Frontend checks:
+## Detailed References
 
-```sh
-cd elli-ui && bun run lint && bun run build
-```
+For more specific conventions, see the rule files in `.cursor/rules/` or `.claude/rules/`:
 
-## Coding Style & Naming Conventions
-
-Both subtrees use TypeScript, ESLint, and Prettier. Keep existing formatting and import conventions. Backend code uses modular route/service organization under `elli-core/src/modules`. Frontend code uses React components and feature modules under `elli-ui/src/modules`; prefer kebab-case filenames for UI files already following that pattern.
-
-## Testing Guidelines
-
-Backend tests run with `bun test`. Place backend tests near the relevant module when adding API behavior. The UI currently relies on lint/build validation; add focused tests only when introducing a test framework or matching an existing local pattern. Always run the relevant subtree build before changing Docker wiring.
-
-## Commit & Pull Request Guidelines
-
-History uses concise imperative commits, for example `Update environment URLs...` and `Refactor Docker setup...`. Keep commits scoped: root deployment changes separate from subtree updates. PRs should include a short summary, affected services, environment changes, validation commands run, and screenshots for visible UI changes.
-
-## Security & Configuration Tips
-
-Copy `.env.example` to deployment environment variables; do not commit real secrets. For production auth, `BETTER_AUTH_BASE_URL` and `CLIENT_URL` must match the public origin, such as `http://localhost` for local deployments. The compose file intentionally avoids public `ports:` bindings; expose services through the deployment platform's internal routing only.
+- `components.md` — shadcn/ui usage, component ownership
+- `data-fetching.md` — TanStack Query v5, Zustand v5
+- `error-handling.md` — Error patterns, toast usage, type-safe catch
+- `forms.md` — React Hook Form + Zod v4
+- `imports.md` — `@/` alias conventions
+- `module-structure.md` — Module layout, sub-folder rule
+- `routing.md` — React Router v7 Data Mode, module routing
+- `styling.md` — Tailwind v4 CSS-first theming
+- `typescript.md` — Strict mode, no `any`
+- `ui-quality.md` — Anti-AI-aesthetic patterns
+- `accessibility.md` — Keyboard, screen reader, semantic HTML

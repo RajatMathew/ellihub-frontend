@@ -1,5 +1,0 @@
-# Defaults
-
-CORE_BRANCH="bug-fix-albert"
-UI_BRANCH="feat-refactor-albert"
-ENGINE_BRANCH="advanced"
