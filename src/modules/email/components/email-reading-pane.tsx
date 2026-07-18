@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
 import {
   EmailReadingPaneEmptyState,
@@ -16,7 +17,25 @@ interface EmailReadingPaneProps {
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  folders?: ConnectedEmailFolder[];
+  tags?: ConnectedEmailTag[];
+  isUpdatingTags?: boolean;
+  isCreatingTag?: boolean;
+  archiveActionLabel?: string;
+  onMoveToFolder?: (messageId: string, folderId: string) => void;
+  onToggleTag?: (messageId: string, tag: ConnectedEmailTag, enabled: boolean) => void;
+  onCreateTag?: (name: string) => void;
+  onArchive?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
+  isSendingReply?: boolean;
+  onReply?: (messageId: string, body: string) => Promise<void> | void;
 }
+
+type PendingReply = {
+  emailId: string;
+  plainBody: string;
+  message: EmailThreadMessage;
+};
 
 export function EmailReadingPane({
   email,
@@ -24,10 +43,23 @@ export function EmailReadingPane({
   isLoading = false,
   isError = false,
   onRetry,
+  folders,
+  tags,
+  isUpdatingTags = false,
+  isCreatingTag = false,
+  archiveActionLabel,
+  onMoveToFolder,
+  onToggleTag,
+  onCreateTag,
+  onArchive,
+  onDelete,
+  isSendingReply = false,
+  onReply,
 }: EmailReadingPaneProps) {
   const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
     null
   );
+  const [pendingReplies, setPendingReplies] = useState<PendingReply[]>([]);
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -41,7 +73,14 @@ export function EmailReadingPane({
     return <EmailReadingPaneEmptyState mailboxAddress={mailboxAddress} />;
   }
 
-  const messages = getThreadMessages(email, mailboxAddress);
+  const baseMessages = getThreadMessages(email, mailboxAddress);
+  const actionMessageId = email.latestMessageId ?? email.id;
+  const visiblePendingReplies = pendingReplies
+    .filter((reply) => reply.emailId === email.id)
+    .filter((reply) => !hasMatchingSyncedReply(baseMessages, mailboxAddress, reply.plainBody))
+    .map((reply) => reply.message);
+  const messages = [...baseMessages, ...visiblePendingReplies];
+  const latestMessage = messages[messages.length - 1] ?? null;
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
   const totalAttachments = messages.reduce(
     (total, message) => total + (message.attachments?.length ?? 0),
@@ -75,7 +114,29 @@ export function EmailReadingPane({
             </p>
           </div>
 
-          <EmailActionToolbar />
+          <EmailActionToolbar
+            folders={folders}
+            tags={tags}
+            keywords={email.keywords}
+            currentFolderId={email.folderId ?? null}
+            isUpdatingTags={isUpdatingTags}
+            isCreatingTag={isCreatingTag}
+            archiveActionLabel={archiveActionLabel}
+            onMoveToFolder={
+              onMoveToFolder ? (folderId) => onMoveToFolder(actionMessageId, folderId) : undefined
+            }
+            onToggleTag={
+              onToggleTag ? (tag, enabled) => onToggleTag(actionMessageId, tag, enabled) : undefined
+            }
+            onCreateTag={onCreateTag}
+            onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
+            onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onReply={
+              latestMessage
+                ? () => setReplyTarget({ emailId: email.id, messageId: latestMessage.id })
+                : undefined
+            }
+          />
         </div>
       </div>
 
@@ -87,7 +148,66 @@ export function EmailReadingPane({
               message={message}
               latest={index === messages.length - 1}
               replyOpen={replyMessageId === message.id}
+              isSendingReply={isSendingReply}
               onReply={(messageId) => setReplyTarget({ emailId: email.id, messageId })}
+              onSendReply={(messageId, body) => {
+                if (!onReply) return;
+                const targetMessage = messages.find((message) => message.id === messageId);
+                const optimisticId = `optimistic-reply-${Date.now()}`;
+                const optimisticMessage: EmailThreadMessage = {
+                  id: optimisticId,
+                  senderName: mailboxAddress,
+                  senderEmail: mailboxAddress,
+                  recipientName: targetMessage?.senderName ?? email.senderName,
+                  recipientEmail: targetMessage?.senderEmail ?? email.senderEmail,
+                  sentAt: 'Sending...',
+                  body: [body],
+                  deliveryStatus: 'sending',
+                };
+
+                setPendingReplies((current) => [
+                  ...current,
+                  {
+                    emailId: email.id,
+                    plainBody: body,
+                    message: optimisticMessage,
+                  },
+                ]);
+                setReplyTarget(null);
+                Promise.resolve(onReply(messageId, body))
+                  .then(() => {
+                    setPendingReplies((current) =>
+                      current.map((reply) =>
+                        reply.message.id === optimisticId
+                          ? {
+                              ...reply,
+                              message: {
+                                ...reply.message,
+                                sentAt: 'Just now',
+                                deliveryStatus: 'sent',
+                              },
+                            }
+                          : reply
+                      )
+                    );
+                  })
+                  .catch(() => {
+                    setPendingReplies((current) =>
+                      current.map((reply) =>
+                        reply.message.id === optimisticId
+                          ? {
+                              ...reply,
+                              message: {
+                                ...reply.message,
+                                sentAt: 'Failed',
+                                deliveryStatus: 'failed',
+                              },
+                            }
+                          : reply
+                      )
+                    );
+                  });
+              }}
               onCancelReply={() => setReplyTarget(null)}
             />
           ))}
@@ -99,10 +219,12 @@ export function EmailReadingPane({
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {
   if (email.threadMessages?.length) return email.threadMessages;
+  const messageId = email.latestMessageId ?? email.id;
 
   return [
     {
-      id: `${email.id}-message`,
+      id: messageId,
+      providerId: email.providerId,
       senderName: email.senderName,
       senderEmail: email.senderEmail,
       recipientName: 'Elli Team',
@@ -110,6 +232,30 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       sentAt: email.receivedAt,
       body: email.body?.length ? email.body : [email.preview],
       attachments: email.attachments ?? [],
+      keywords: email.keywords ?? [],
     },
   ];
+}
+
+function hasMatchingSyncedReply(
+  messages: EmailThreadMessage[],
+  mailboxAddress: string,
+  plainBody: string
+) {
+  const normalizedBody = normalizeText(plainBody);
+  if (!normalizedBody) return false;
+
+  return messages.some((message) => {
+    if (message.senderEmail.toLowerCase() !== mailboxAddress.toLowerCase()) return false;
+    return normalizeText(message.body.join('\n')).includes(normalizedBody);
+  });
+}
+
+function normalizeText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }

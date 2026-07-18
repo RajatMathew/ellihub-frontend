@@ -7,14 +7,21 @@ import { Paperclip, Send, Trash2 } from 'lucide-react';
 
 interface EmailReplyComposerProps {
   message: EmailThreadMessage;
+  isSending?: boolean;
+  onSend: (body: string) => Promise<void> | void;
   onCancel: () => void;
 }
 
-export function EmailReplyComposer({ message, onCancel }: EmailReplyComposerProps) {
+export function EmailReplyComposer({
+  message,
+  isSending = false,
+  onSend,
+  onCancel,
+}: EmailReplyComposerProps) {
   const [body, setBody] = useState('');
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = body.trim().length > 0;
+  const canSend = body.trim().length > 0 && !isSending;
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -24,11 +31,11 @@ export function EmailReplyComposer({ message, onCancel }: EmailReplyComposerProp
     <form
       className="rounded-md border border-border bg-background"
       aria-label={`Reply to ${message.senderName}`}
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
         if (!canSend) return;
+        await onSend(body.trim());
         setBody('');
-        onCancel();
       }}
     >
       <div className="border-b border-border px-4 py-3">
@@ -51,19 +58,21 @@ export function EmailReplyComposer({ message, onCancel }: EmailReplyComposerProp
           rows={6}
           placeholder="Write your reply..."
           className="min-h-36 resize-y border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
+          disabled={isSending}
           onChange={(event) => setBody(event.target.value)}
         />
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <Button type="submit" size="sm" disabled={!canSend}>
             <Send aria-hidden="true" className="size-3.5" />
-            Send
+            {isSending ? 'Sending...' : 'Send'}
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground"
+            disabled={isSending}
           >
             <Paperclip aria-hidden="true" className="size-3.5" />
             Attach
@@ -73,6 +82,7 @@ export function EmailReplyComposer({ message, onCancel }: EmailReplyComposerProp
             variant="ghost"
             size="sm"
             className="ml-auto bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground"
+            disabled={isSending}
             onClick={onCancel}
           >
             <Trash2 aria-hidden="true" className="size-3.5" />
