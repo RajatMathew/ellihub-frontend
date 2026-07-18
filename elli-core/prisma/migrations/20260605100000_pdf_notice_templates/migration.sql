@@ -1,1 +1,0 @@
-ALTER TYPE "TemplateSettingKind" ADD VALUE IF NOT EXISTS 'PDF_NOTICE';
