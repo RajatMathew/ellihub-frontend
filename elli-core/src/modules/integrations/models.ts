@@ -35,6 +35,32 @@ export const QuickBooksReferenceListQuerySchema = z.object({
 
 export type QuickBooksReferenceListQuery = z.infer<typeof QuickBooksReferenceListQuerySchema>;
 
+export const QuickBooksRegisterAccountParamSchema = z.object({
+    accountId: z.string().min(1),
+});
+
+export type QuickBooksRegisterAccountParam = z.infer<typeof QuickBooksRegisterAccountParamSchema>;
+
+export const QuickBooksRegisterTransactionsQuerySchema = z.object({
+    startDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+    endDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+    search: z.string().trim().max(100).optional(),
+    clr: z.enum(['UNCLEARED', 'CLEARED', 'RECONCILED']).optional(),
+    transactionType: z.string().trim().max(80).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    size: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+export type QuickBooksRegisterTransactionsQuery = z.infer<
+    typeof QuickBooksRegisterTransactionsQuerySchema
+>;
+
 export const QuickBooksCreateVendorSchema = z
     .object({
         displayName: z.string().trim().min(1).max(100),

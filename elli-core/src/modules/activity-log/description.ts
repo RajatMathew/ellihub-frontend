@@ -132,6 +132,38 @@ export type ActivityFieldDiffDetails = {
     changes: ActivityFieldDiffChange[];
 };
 
+export type ActivitySnapshotField = {
+    key: string;
+    label: string;
+    section?: string;
+    valueType?: ActivityValueType;
+    value: string;
+    rawValue: unknown;
+};
+
+export type ActivityFieldSnapshotField = {
+    key: string;
+    label: string;
+    section: string;
+    valueType?: ActivityValueType;
+    value: {
+        raw: JsonFriendlyValue;
+        display: string;
+    };
+};
+
+export type ActivityFieldSnapshotDetails = {
+    kind: 'field-snapshot';
+    schemaVersion: 1;
+    subject: {
+        label?: string;
+        displayName: string;
+    };
+    fields: ActivityFieldSnapshotField[];
+};
+
+export type ActivityDetails = ActivityFieldDiffDetails | ActivityFieldSnapshotDetails;
+
 function isDateLike(value: unknown): value is Date {
     return value instanceof Date && !Number.isNaN(value.getTime());
 }
@@ -254,6 +286,22 @@ export function activityChange(
         to: formatter(to),
         rawFrom: from,
         rawTo: to,
+    };
+}
+
+export function activitySnapshotField(
+    label: string,
+    value: unknown,
+    formatter: ActivityValueFormatter = formatActivityValue,
+    options: ActivityChangeOptions = {}
+): ActivitySnapshotField {
+    return {
+        key: options.key ?? toActivityKey(label),
+        label,
+        ...(options.section ? { section: options.section } : {}),
+        ...(options.valueType ? { valueType: options.valueType } : {}),
+        value: formatter(value),
+        rawValue: value,
     };
 }
 
@@ -491,6 +539,29 @@ export function buildFieldDiffActivityDetails(
             ...(change.collection
                 ? { collection: toActivityFieldDiffCollection(change.collection) }
                 : {}),
+        })),
+    };
+}
+
+export function buildFieldSnapshotActivityDetails(
+    subject: ActivitySubject,
+    fields: ActivitySnapshotField[]
+): ActivityFieldSnapshotDetails {
+    const normalizedSubject = normalizeActivitySubject(subject);
+
+    return {
+        kind: 'field-snapshot',
+        schemaVersion: 1,
+        subject: normalizedSubject,
+        fields: fields.map((field) => ({
+            key: field.key,
+            label: field.label,
+            section: field.section ?? DEFAULT_ACTIVITY_CHANGE_SECTION,
+            ...(field.valueType ? { valueType: field.valueType } : {}),
+            value: {
+                raw: toJsonFriendlyValue(field.rawValue),
+                display: field.value,
+            },
         })),
     };
 }

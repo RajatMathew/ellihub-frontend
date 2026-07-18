@@ -12,6 +12,7 @@ import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
+import { cn } from '@/app/lib/utils';
 import { ProjectDivisionBoard } from '@/modules/project/components/project-division-board';
 import { ProjectListControls } from '@/modules/project/components/project-list-controls';
 import { ProjectListEmptyState } from '@/modules/project/components/project-list-empty-state';
@@ -316,7 +317,7 @@ export function ProjectList() {
             />
           )}
 
-          {isRefreshingPortfolio && <ProjectListRefreshIndicator />}
+          <ProjectListRefreshIndicator isVisible={isRefreshingPortfolio} />
 
           {hasProjects ? (
             <>
@@ -379,9 +380,16 @@ function ProjectListLoadMore({
   );
 }
 
-function ProjectListRefreshIndicator() {
+function ProjectListRefreshIndicator({ isVisible }: { isVisible: boolean }) {
   return (
-    <div className="mb-4 flex justify-end" aria-live="polite">
+    <div
+      className={cn(
+        'pointer-events-none fixed top-24 right-6 z-30 transition-opacity duration-150',
+        isVisible ? 'opacity-100' : 'opacity-0'
+      )}
+      aria-live="polite"
+      aria-hidden={!isVisible}
+    >
       <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 text-xs font-medium text-muted-foreground">
         <Loader2 className="size-3.5 animate-spin" />
         Refreshing

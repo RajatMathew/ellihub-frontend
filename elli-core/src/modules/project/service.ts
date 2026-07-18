@@ -8,11 +8,17 @@ import {
     ProjectStatus,
     ProjectTeamMember,
 } from '@db/client';
-import { AccessContext, mergeProjectAccessWhere } from '@lib/access';
+import { AccessContext, getProjectIdForFile, mergeProjectAccessWhere } from '@lib/access';
 import { ProjectTeamRole, projectTeamAssignableRolesByAuthRole } from '@lib/permissions';
 import { prisma } from '@lib/prisma';
 import { PaginationParams } from '@middleware/pagination';
-import { ActivityLogService, activityChange, formatEnumActivityValue } from '@modules/activity-log';
+import {
+    ActivityLogService,
+    activityChange,
+    activitySnapshotField,
+    buildFieldSnapshotActivityDetails,
+    formatEnumActivityValue,
+} from '@modules/activity-log';
 import { FileService } from '@modules/file/services';
 import { LookupType } from '@modules/lookup/models';
 import { FieldwireClient } from '@modules/prime-change-order/fieldwire-client';
@@ -31,10 +37,12 @@ import {
     ProjectUpdateRequest,
     PromoteTeamMemberRequest,
     RemovePrimeContractRequest,
+    RemoveProjectMasterScheduleRequest,
     RemoveScheduleRequest,
     RemoveTeamMemberRequest,
     SetPrimaryPrimeContractRequest,
     SetPrimeContractPrimaryRequest,
+    SetProjectMasterScheduleRequest,
     UnpinPrimeContractsRequest,
     UpdateScheduleRequest,
     UpdateTeamMemberRoleRequest,
@@ -90,6 +98,9 @@ type ProjectWithListFinancials<T> = T & ProjectListFinancialFields;
 type PrimeContractWithFile = Prisma.PrimeContractGetPayload<{ include: { file: true } }>;
 type ProjectScheduleWithRelations = Prisma.ProjectScheduleGetPayload<{
     include: { file: true; primeChangeOrder: true };
+}>;
+type ProjectMasterScheduleWithFile = Prisma.ProjectMasterScheduleGetPayload<{
+    include: { file: true };
 }>;
 
 type FieldwireProjectOption = {
@@ -154,6 +165,107 @@ const autoSyncLinkedFieldwireProject = async ({
 
 function getFileDisplayName(file: FileDisplayNameInput) {
     return file.displayName || file.name || file.id;
+}
+
+type MasterScheduleFileSnapshotInput = FileDisplayNameInput & {
+    objectId?: string | null;
+    mimeType?: string | null;
+    size?: number | null;
+};
+
+function getMasterScheduleFileSnapshotData(file: MasterScheduleFileSnapshotInput) {
+    return {
+        fileName: file.name || file.displayName || file.id,
+        displayName: file.displayName ?? null,
+        mimeType: file.mimeType ?? null,
+        size: file.size ?? null,
+        objectId: file.objectId ?? null,
+    };
+}
+
+function buildMasterScheduleSnapshotActivityDetails(
+    file: MasterScheduleFileSnapshotInput,
+    uploadedAt?: Date | null
+) {
+    return buildFieldSnapshotActivityDetails(
+        { label: 'Master schedule', name: getFileDisplayName(file) },
+        [
+            activitySnapshotField('File', getFileDisplayName(file), undefined, {
+                section: 'Document',
+                valueType: 'file',
+            }),
+            activitySnapshotField('MIME type', file.mimeType ?? null, undefined, {
+                section: 'Document',
+            }),
+            activitySnapshotField('Size', file.size ?? null, undefined, {
+                section: 'Document',
+            }),
+            activitySnapshotField('Uploaded at', uploadedAt ?? null, undefined, {
+                section: 'Document',
+                valueType: 'date',
+            }),
+        ]
+    );
+}
+
+type SchedulePrimeChangeOrderDisplayInput = {
+    referenceNumber: string | null;
+    name: string | null;
+    deletedAt?: Date | string | null;
+    fieldwireDeletedAt?: Date | string | null;
+} | null;
+
+type ScheduleActivityInput = Pick<
+    ProjectSchedule,
+    'date' | 'description' | 'adjustedFinishDate' | 'notes'
+>;
+
+function formatSchedulePrimeChangeOrder(value: SchedulePrimeChangeOrderDisplayInput) {
+    if (!value) return null;
+
+    const label = [value.referenceNumber, value.name].filter(Boolean).join(' - ');
+    const displayName = label || 'Prime Change Order';
+    return value.deletedAt || value.fieldwireDeletedAt ? `${displayName} (deleted)` : displayName;
+}
+
+function formatScheduleEntryActivityName(schedule: ScheduleActivityInput) {
+    const date = schedule.date.toISOString().slice(0, 10);
+    const description = schedule.description.trim();
+    return description ? `schedule entry "${description}" on ${date}` : `schedule entry on ${date}`;
+}
+
+function buildScheduleSnapshotActivityDetails(
+    schedule: ScheduleActivityInput,
+    file: FileDisplayNameInput | null | undefined,
+    primeChangeOrder: SchedulePrimeChangeOrderDisplayInput
+) {
+    return buildFieldSnapshotActivityDetails(
+        { label: 'Schedule entry', name: formatScheduleEntryActivityName(schedule) },
+        [
+            activitySnapshotField('Date', schedule.date, undefined, {
+                section: 'Schedule',
+                valueType: 'date',
+            }),
+            activitySnapshotField('Description', schedule.description, undefined, {
+                section: 'Schedule',
+            }),
+            activitySnapshotField('Adjusted finish date', schedule.adjustedFinishDate, undefined, {
+                section: 'Schedule',
+                valueType: 'date',
+            }),
+            activitySnapshotField('Notes', schedule.notes, undefined, { section: 'Schedule' }),
+            activitySnapshotField('File', file ? getFileDisplayName(file) : null, undefined, {
+                section: 'Attachments',
+                valueType: 'file',
+            }),
+            activitySnapshotField(
+                'Prime change order',
+                formatSchedulePrimeChangeOrder(primeChangeOrder),
+                undefined,
+                { section: 'Linked records' }
+            ),
+        ]
+    );
 }
 
 function normalizeAuthRole(role: string | string[] | null | undefined): EmployeeAuthRole {
@@ -309,6 +421,24 @@ async function assertSchedulePrimeChangeOrder(
             'Deleted prime change orders cannot be linked to schedule entries'
         );
     }
+}
+
+async function releaseFileDeletionLockIfUnused(
+    fileId: string,
+    tx: Prisma.TransactionClient
+): Promise<void> {
+    const [primeContractCount, scheduleCount, activeMasterScheduleCount] = await Promise.all([
+        tx.primeContract.count({ where: { fileId } }),
+        tx.projectSchedule.count({ where: { fileId, deletedAt: null } }),
+        tx.projectMasterSchedule.count({ where: { fileId, deletedAt: null } }),
+    ]);
+
+    if (primeContractCount + scheduleCount + activeMasterScheduleCount > 0) return;
+
+    await tx.file.update({
+        where: { id: fileId },
+        data: { isDeletable: true },
+    });
 }
 
 const getGroupedCount = (count: unknown): number => {
@@ -902,6 +1032,12 @@ export const ProjectService = {
                 gc: true,
                 leadPM: true,
                 teamMembers: { include: { employee: true } },
+                projectMasterSchedules: {
+                    where: { deletedAt: null, file: { deletedAt: null } },
+                    take: 1,
+                    orderBy: { uploadedAt: 'desc' },
+                    include: { file: true },
+                },
             },
         });
 
@@ -923,6 +1059,7 @@ export const ProjectService = {
 
         return {
             ...project,
+            masterSchedule: project.projectMasterSchedules[0] ?? null,
             leadPM: enrichedLeadPM,
             teamMembers: project.teamMembers.map((member) => ({
                 ...member,
@@ -1369,14 +1506,19 @@ export const ProjectService = {
 
         if (recentDuplicate) return recentDuplicate;
 
+        let attachedFile: File | null = null;
         if (fileId) {
-            const file = await prisma.file.findUnique({ where: { id: fileId } });
-            if (!file) throw new NotFoundError('File not found');
-            checkDeletedAt(file);
+            attachedFile = await prisma.file.findUnique({ where: { id: fileId } });
+            if (!attachedFile) throw new NotFoundError('File not found');
+            checkDeletedAt(attachedFile);
 
             const existing = await prisma.projectSchedule.findUnique({ where: { fileId } });
             if (existing) throw new ConflictError('File already attached to a schedule');
         }
+
+        const linkedPrimeChangeOrder = primeChangeOrderId
+            ? await prisma.primeChangeOrder.findUnique({ where: { id: primeChangeOrderId } })
+            : null;
 
         return await prisma.$transaction(async (tx) => {
             if (fileId) {
@@ -1401,7 +1543,12 @@ export const ProjectService = {
                 entityType: 'project',
                 entityId: projectId,
                 action: 'create',
-                description: `Added schedule entry to project ${project.name}`,
+                description: `Added ${formatScheduleEntryActivityName(schedule)}`,
+                details: buildScheduleSnapshotActivityDetails(
+                    schedule,
+                    attachedFile,
+                    linkedPrimeChangeOrder
+                ) as Prisma.InputJsonValue,
                 affectedEntityIds: [
                     schedule.id,
                     ...(fileId ? [fileId] : []),
@@ -1445,9 +1592,6 @@ export const ProjectService = {
                 : primeChangeOrderId
                   ? schedule.primeChangeOrder
                   : null;
-        const formatSchedulePrimeChangeOrder = (
-            value: { referenceNumber: string | null; name: string } | null
-        ) => (value ? [value.referenceNumber, value.name].filter(Boolean).join(' - ') : null);
 
         return await prisma.$transaction(async (tx) => {
             if (fileId && fileId !== schedule.fileId) {
@@ -1476,7 +1620,7 @@ export const ProjectService = {
                 entityId: schedule.projectId,
                 subject: {
                     label: 'Schedule entry',
-                    name: `schedule entry on project ${schedule.project.name}`,
+                    name: formatScheduleEntryActivityName(updated),
                 },
                 changes: [
                     activityChange('Date', schedule.date, updated.date, undefined, {
@@ -1539,23 +1683,35 @@ export const ProjectService = {
 
         const schedule = await prisma.projectSchedule.findUnique({
             where: { id },
-            include: { project: true },
+            include: { project: true, file: true, primeChangeOrder: true },
         });
         if (!schedule) throw new NotFoundError('Schedule not found');
         checkDeletedAt(schedule);
 
-        await prisma.projectSchedule.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
+        await prisma.$transaction(async (tx) => {
+            await tx.projectSchedule.update({
+                where: { id },
+                data: { deletedAt: new Date() },
+            });
 
-        await ActivityLogService.log({
-            userId,
-            entityType: 'project',
-            entityId: schedule.projectId,
-            action: 'delete',
-            description: `Removed schedule entry from project ${schedule.project.name}`,
-            affectedEntityIds: [schedule.id, ...(schedule.fileId ? [schedule.fileId] : [])],
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: schedule.projectId,
+                action: 'delete',
+                description: `Removed ${formatScheduleEntryActivityName(schedule)}`,
+                details: buildScheduleSnapshotActivityDetails(
+                    schedule,
+                    schedule.file,
+                    schedule.primeChangeOrder
+                ) as Prisma.InputJsonValue,
+                affectedEntityIds: [
+                    schedule.id,
+                    ...(schedule.fileId ? [schedule.fileId] : []),
+                    ...(schedule.primeChangeOrderId ? [schedule.primeChangeOrderId] : []),
+                ],
+                tx,
+            });
         });
     },
 
@@ -1734,6 +1890,172 @@ export const ProjectService = {
         });
     },
 
+    getProjectMasterSchedule: async (
+        projectId: string
+    ): Promise<ProjectMasterScheduleWithFile | null> => {
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+
+        return await prisma.projectMasterSchedule.findFirst({
+            where: { projectId, deletedAt: null, file: { deletedAt: null } },
+            orderBy: { uploadedAt: 'desc' },
+            include: { file: true },
+        });
+    },
+
+    setProjectMasterSchedule: async (
+        request: SetProjectMasterScheduleRequest,
+        userId: string
+    ): Promise<ProjectMasterScheduleWithFile> => {
+        const { projectId, fileId } = request;
+
+        const [project, file] = await Promise.all([
+            prisma.project.findUnique({ where: { id: projectId } }),
+            prisma.file.findUnique({ where: { id: fileId } }),
+        ]);
+
+        if (!project) throw new NotFoundError('Project not found');
+        checkDeletedAt(project);
+        if (!file || file.type !== 'FILE') throw new NotFoundError('File not found');
+        checkDeletedAt(file);
+
+        const fileProjectId = await getProjectIdForFile(fileId);
+        if (fileProjectId && fileProjectId !== projectId) {
+            throw new BadRequestError('Master schedule file must belong to this project');
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            const current = await tx.projectMasterSchedule.findFirst({
+                where: { projectId, deletedAt: null },
+                include: { file: true },
+            });
+
+            if (current?.fileId === fileId) return current;
+
+            const folderId = await FileService.getProjectSubFolderId(
+                projectId,
+                'MASTER_SCHEDULE',
+                tx
+            );
+            await FileService.moveFileToFolder(fileId, folderId, tx);
+
+            const linkedFile = await tx.file.findUnique({ where: { id: fileId } });
+            if (!linkedFile || linkedFile.deletedAt || linkedFile.type !== 'FILE') {
+                throw new NotFoundError('File not found');
+            }
+
+            const uploadedAt = new Date();
+
+            if (current) {
+                await tx.projectMasterSchedule.update({
+                    where: { id: current.id },
+                    data: { deletedAt: uploadedAt, deletedBy: userId },
+                });
+            }
+
+            await tx.file.update({
+                where: { id: fileId },
+                data: { isDeletable: false },
+            });
+
+            const masterSchedule = await tx.projectMasterSchedule.create({
+                data: {
+                    id: generateNanoId(),
+                    projectId,
+                    fileId,
+                    ...getMasterScheduleFileSnapshotData(linkedFile),
+                    uploadedAt,
+                    createdBy: userId,
+                },
+                include: { file: true },
+            });
+
+            if (current?.fileId && current.fileId !== fileId) {
+                await releaseFileDeletionLockIfUnused(current.fileId, tx);
+            }
+
+            if (current) {
+                await ActivityLogService.logFieldUpdate({
+                    userId,
+                    entityType: 'project',
+                    entityId: projectId,
+                    subject: { label: 'Master schedule', name: project.name },
+                    changes: [
+                        activityChange(
+                            'File',
+                            current.file ? getFileDisplayName(current.file) : current.fileName,
+                            getFileDisplayName(linkedFile),
+                            undefined,
+                            { section: 'Document', valueType: 'file' }
+                        ),
+                    ],
+                    affectedEntityIds: [masterSchedule.id, fileId, current.id, current.fileId],
+                    tx,
+                });
+            } else {
+                await ActivityLogService.log({
+                    userId,
+                    entityType: 'project',
+                    entityId: projectId,
+                    action: 'link',
+                    description: `Added master schedule ${getFileDisplayName(
+                        linkedFile
+                    )} to project ${project.name}`,
+                    details: buildMasterScheduleSnapshotActivityDetails(
+                        linkedFile,
+                        uploadedAt
+                    ) as Prisma.InputJsonValue,
+                    affectedEntityIds: [masterSchedule.id, fileId],
+                    tx,
+                });
+            }
+
+            return masterSchedule;
+        });
+    },
+
+    removeProjectMasterSchedule: async (
+        request: RemoveProjectMasterScheduleRequest,
+        userId: string
+    ): Promise<void> => {
+        const { projectId } = request;
+
+        const current = await prisma.projectMasterSchedule.findFirst({
+            where: { projectId, deletedAt: null },
+            include: { project: true, file: true },
+        });
+
+        if (!current) throw new NotFoundError('Master schedule not found');
+        checkDeletedAt(current.project);
+
+        await prisma.$transaction(async (tx) => {
+            const deletedAt = new Date();
+
+            await tx.projectMasterSchedule.update({
+                where: { id: current.id },
+                data: { deletedAt, deletedBy: userId },
+            });
+
+            await releaseFileDeletionLockIfUnused(current.fileId, tx);
+
+            await ActivityLogService.log({
+                userId,
+                entityType: 'project',
+                entityId: projectId,
+                action: 'unlink',
+                description: `Removed master schedule ${getFileDisplayName(
+                    current.file
+                )} from project ${current.project.name}`,
+                details: buildMasterScheduleSnapshotActivityDetails(
+                    current.file,
+                    current.uploadedAt
+                ) as Prisma.InputJsonValue,
+                affectedEntityIds: [current.id, current.fileId],
+                tx,
+            });
+        });
+    },
     addPrimeContract: async (
         request: AddPrimeContractRequest,
         userId: string

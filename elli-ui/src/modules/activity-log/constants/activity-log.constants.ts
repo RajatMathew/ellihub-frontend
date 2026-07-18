@@ -17,6 +17,7 @@ export const ACTIVITY_ENTITY_OPTIONS = [
   { value: 'primeChangeOrder', label: 'Prime Change Order' },
   { value: 'subChangeOrder', label: 'Sub Change Order' },
   { value: 'invoice', label: 'Invoice' },
+  { value: 'recurringBill', label: 'Recurring Bill' },
   { value: 'template', label: 'Template' },
 ] as const;
 

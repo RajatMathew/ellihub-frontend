@@ -377,9 +377,6 @@ export const InvoiceService = {
         const existing = await prisma.invoice.findUnique({ where: { id } });
         if (!existing) throw new NotFoundError('Invoice not found');
         checkDeletedAt(existing);
-        if (existing.isPaid) {
-            throw new BadRequestError('Paid invoices cannot be updated');
-        }
         if (existing.projectId !== projectId) {
             throw new BadRequestError('Invoice project cannot be changed');
         }
@@ -397,7 +394,6 @@ export const InvoiceService = {
             });
             if (!purchaseOrder) throw new NotFoundError('Purchase order not found');
             checkDeletedAt(purchaseOrder);
-            assertPurchaseOrderCanBeInvoiced(purchaseOrder);
             if (purchaseOrder.projectId !== projectId) {
                 throw new BadRequestError('Purchase order does not belong to the project');
             }
@@ -576,9 +572,6 @@ export const InvoiceService = {
         });
         if (!attachment) throw new NotFoundError('Attachment not found');
         checkDeletedAt(attachment.invoice);
-        if (attachment.invoice.isPaid) {
-            throw new BadRequestError('Cannot modify attachments on a paid invoice');
-        }
 
         const remaining = await prisma.invoiceAttachment.count({
             where: { invoiceId: attachment.invoiceId },

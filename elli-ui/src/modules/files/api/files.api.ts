@@ -29,6 +29,7 @@ export type ProjectProtectedFolderType =
   | 'PRIME_CO'
   | 'SUB_CHANGE_ORDER'
   | 'PRIME_CONTRACT'
+  | 'MASTER_SCHEDULE'
   | 'SCHEDULE';
 
 export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';

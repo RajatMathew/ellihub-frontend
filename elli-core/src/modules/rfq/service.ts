@@ -964,9 +964,6 @@ export const RfqService = {
         const rfq = await prisma.rFQ.findUnique({ where: { id } });
         if (!rfq) throw new NotFoundError('RFQ not found');
         checkDeletedAt(rfq);
-        if (rfq.status !== 'DRAFT') {
-            throw new BadRequestError('RFQ can only be updated while in DRAFT');
-        }
 
         const type = await prisma.lookup.findUnique({ where: { id: typeId } });
         if (!type) throw new NotFoundError('RFQ type not found');
@@ -1479,9 +1476,6 @@ export const RfqService = {
         const rfq = await prisma.rFQ.findUnique({ where: { id: rfqId } });
         if (!rfq) throw new NotFoundError('RFQ not found');
         checkDeletedAt(rfq);
-        if (rfq.status === 'VOID') {
-            throw new BadRequestError('Attachments cannot be added to a void RFQ');
-        }
 
         const file = await prisma.file.findUnique({ where: { id: documentId } });
         if (!file) throw new NotFoundError('File not found');
@@ -1527,9 +1521,7 @@ export const RfqService = {
             include: { rfq: true, document: true },
         });
         if (!attachment) throw new NotFoundError('Attachment not found');
-        if (attachment.rfq.status !== 'DRAFT') {
-            throw new BadRequestError('Attachments can only be removed while RFQ is in DRAFT');
-        }
+        checkDeletedAt(attachment.rfq);
 
         await prisma.rFQAttachment.delete({ where: { id } });
 

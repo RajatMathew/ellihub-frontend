@@ -97,7 +97,7 @@ export function RFQActionsCell({ rfq, onDelete, onVoid, onCreatePO }: RFQActions
   const { data: project } = useProjectDetailQuery(projectId);
   const projectActions = project?.capabilities?.actions;
   const statusName = getRFQStatusName(rfq);
-  const canEdit = projectActions?.rfq?.update === true && statusName === 'DRAFT';
+  const canEdit = projectActions?.rfq?.update === true;
   const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
   const canDelete = projectActions?.rfq?.delete === true && statusName === 'DRAFT';
   const canVoid =

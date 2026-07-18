@@ -60,6 +60,7 @@ type ActivityEntityType =
     | 'primeChangeOrder'
     | 'subChangeOrder'
     | 'invoice'
+    | 'recurringBill'
     | 'template';
 
 type RevisionEntityType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE' | 'PROJECT';
@@ -760,6 +761,11 @@ export async function assertActivityEntityAccess(
 
     if (entityType === 'user') {
         if (entityId === access.userId) return;
+        throw new ForbiddenError('Entity access denied');
+    }
+
+    if (entityType === 'recurringBill') {
+        if (hasPermission(access, 'monthlyBills', 'list')) return;
         throw new ForbiddenError('Entity access denied');
     }
 

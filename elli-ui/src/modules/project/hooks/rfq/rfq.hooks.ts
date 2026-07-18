@@ -1,5 +1,3 @@
-import posthog from 'posthog-js';
-
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -11,10 +9,12 @@ import type {
   CreateRFQInput,
   ListRFQParams,
   RFQDeliverableInput,
+  RFQDetail,
   UpdateRFQInput,
   VoidAwardInput,
 } from '@/modules/project/schemas/rfq';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import posthog from 'posthog-js';
 import { toast } from 'sonner';
 
 function invalidateRFQQueries(queryClient: QueryClient, rfqId?: string) {
@@ -160,7 +160,7 @@ export const useSubmitQuoteMutation = () => {
         id: string;
         quotedAmount: number;
         negotiationAmount?: number | null;
-              leadTime?: string;
+        leadTime?: string;
         attachments: string[];
       };
     }) => rfqApi.submitQuote(data),
@@ -183,7 +183,7 @@ export const useEditQuoteMutation = () => {
         id: string;
         quotedAmount: number;
         negotiationAmount?: number | null;
-              leadTime?: string;
+        leadTime?: string;
         attachments: string[];
       };
     }) => rfqApi.editQuote(data),
@@ -397,7 +397,17 @@ export const useRemoveRFQAttachmentMutation = () => {
   return useMutation({
     mutationFn: ({ attachmentId }: { rfqId: string; attachmentId: string }) =>
       rfqApi.removeAttachment(attachmentId),
-    onSuccess: async (_, { rfqId }) => {
+    onSuccess: async (_, { rfqId, attachmentId }) => {
+      qc.setQueryData<RFQDetail | undefined>(rfqKeys.detail(rfqId), (rfq) =>
+        rfq
+          ? {
+              ...rfq,
+              attachments: (rfq.attachments ?? []).filter(
+                (attachment) => attachment.id !== attachmentId
+              ),
+            }
+          : rfq
+      );
       await invalidateRFQDetail(qc, rfqId);
       toast.success('Attachment removed.');
     },

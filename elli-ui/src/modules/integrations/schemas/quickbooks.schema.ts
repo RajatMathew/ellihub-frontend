@@ -175,6 +175,77 @@ export const quickBooksUnmapVendorResultSchema = z.object({
   unmapped: z.boolean(),
 });
 
+export const quickBooksRegisterClrSchema = z.enum(['UNCLEARED', 'CLEARED', 'RECONCILED']);
+
+export const quickBooksRegisterAccountSchema = z.object({
+  id: z.string(),
+  realmId: z.string(),
+  qbId: z.string(),
+  name: z.string(),
+  fullyQualifiedName: z.string().nullable(),
+  accountType: z.string().nullable(),
+  accountSubType: z.string().nullable(),
+  currencyCode: z.string().nullable(),
+  currentBalance: z.string().nullable(),
+  currentBalanceWithSubAccounts: z.string().nullable(),
+  active: z.boolean().nullable(),
+  lastSyncedAt: z.string().nullable(),
+});
+
+export const quickBooksRegisterTransactionSchema = z.object({
+  id: z.string(),
+  accountId: z.string(),
+  accountQbId: z.string(),
+  transactionId: z.string().nullable(),
+  txnDate: z.string().nullable(),
+  transactionType: z.string().nullable(),
+  checkNumber: z.string().nullable(),
+  payee: z.string().nullable(),
+  category: z.string().nullable(),
+  clr: quickBooksRegisterClrSchema.nullable(),
+  amount: z.string().nullable(),
+  debit: z.string().nullable(),
+  credit: z.string().nullable(),
+  balance: z.string().nullable(),
+  memo: z.string().nullable(),
+});
+
+export const quickBooksRegisterTransactionsResponseSchema = z.object({
+  account: quickBooksRegisterAccountSchema,
+  transactions: z.array(quickBooksRegisterTransactionSchema),
+  meta: z.object({
+    reportName: z.literal('GeneralLedger'),
+    generatedAt: z.string(),
+    filters: z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+      search: z.string().nullable(),
+      clr: quickBooksRegisterClrSchema.nullable(),
+      transactionType: z.string().nullable(),
+    }),
+    pagination: z.object({
+      currentPage: z.number(),
+      totalPages: z.number(),
+      hasNextPage: z.boolean(),
+      hasPreviousPage: z.boolean(),
+      totalItems: z.number(),
+      itemsPerPage: z.number(),
+    }),
+    transactionTypes: z.array(z.string()),
+    openingBalance: z.string().nullable(),
+    endingBalance: z.string().nullable(),
+  }),
+});
+
+export const quickBooksRegisterAccountsSchema = z.array(quickBooksRegisterAccountSchema);
+
+export type QuickBooksRegisterClr = z.infer<typeof quickBooksRegisterClrSchema>;
+export type QuickBooksRegisterAccount = z.infer<typeof quickBooksRegisterAccountSchema>;
+export type QuickBooksRegisterTransaction = z.infer<typeof quickBooksRegisterTransactionSchema>;
+export type QuickBooksRegisterTransactionsResponse = z.infer<
+  typeof quickBooksRegisterTransactionsResponseSchema
+>;
+
 export type QuickBooksBankAccount = z.infer<typeof quickBooksBankAccountSchema>;
 export type QuickBooksLineItemCategory = z.infer<typeof quickBooksLineItemCategorySchema>;
 export type QuickBooksPayee = z.infer<typeof quickBooksPayeeSchema>;

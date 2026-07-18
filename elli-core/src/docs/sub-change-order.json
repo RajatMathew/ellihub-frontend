@@ -59,7 +59,7 @@
             },
             "put": {
                 "tags": ["Sub Change Order"],
-                "summary": "Update a sub change order (DRAFT only, replaces line items)",
+                "summary": "Update a sub change order (replaces line items)",
                 "operationId": "updateSubChangeOrder",
                 "requestBody": {
                     "required": true,
@@ -67,7 +67,7 @@
                 },
                 "responses": {
                     "200": { "description": "Updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SubChangeOrder" } } }] } } } },
-                    "400": { "description": "Not in DRAFT / project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
@@ -164,12 +164,12 @@
         "/sub-change-order/attachment/add": {
             "patch": {
                 "tags": ["Sub Change Order"],
-                "summary": "Attach a file to a DRAFT SCO (moved to PRIME_CO subfolder)",
+                "summary": "Attach a file to a SCO (moved to PRIME_CO subfolder)",
                 "operationId": "addScoAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddScoAttachmentRequest" } } } },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "SCO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
@@ -177,12 +177,12 @@
         "/sub-change-order/attachment/remove": {
             "patch": {
                 "tags": ["Sub Change Order"],
-                "summary": "Remove an SCO attachment (DRAFT only)",
+                "summary": "Remove an SCO attachment",
                 "operationId": "removeScoAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveScoAttachmentRequest" } } } },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }

@@ -1,6 +1,6 @@
 import { success, zValidator } from '@utils';
 import { Hono } from 'hono';
-import { requirePermission } from 'src/middleware/auth';
+import { requireAdminMiddleware, requirePermission } from 'src/middleware/auth';
 import { paginationMiddleware } from 'src/middleware/pagination';
 import z from 'zod';
 
@@ -8,8 +8,11 @@ import {
     QuickBooksAutoDailySyncSchema,
     QuickBooksCreateVendorSchema,
     QuickBooksReferenceListQuerySchema,
+    QuickBooksRegisterAccountParamSchema,
+    QuickBooksRegisterTransactionsQuerySchema,
     QuickBooksVendorMappingSchema,
 } from './models';
+import { QuickBooksRegisterService } from './quickbooks-register-service';
 import { QuickBooksReferenceSyncService } from './reference-sync-service';
 import { QuickBooksService } from './service';
 
@@ -40,6 +43,26 @@ app.get(
     async (c) => {
         const status = await QuickBooksReferenceSyncService.getStatus();
         return success(c, status);
+    }
+);
+
+app.get('/quickbooks/register/accounts', requireAdminMiddleware, async (c) => {
+    const result = await QuickBooksRegisterService.listAccounts();
+    return success(c, result);
+});
+
+app.get(
+    '/quickbooks/register/accounts/:accountId/transactions',
+    requireAdminMiddleware,
+    zValidator('param', QuickBooksRegisterAccountParamSchema),
+    zValidator('query', QuickBooksRegisterTransactionsQuerySchema),
+    async (c) => {
+        const { accountId } = c.req.valid('param');
+        const result = await QuickBooksRegisterService.listTransactions(
+            accountId,
+            c.req.valid('query')
+        );
+        return success(c, result);
     }
 );
 

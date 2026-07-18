@@ -10,6 +10,8 @@ import {
   quickBooksReferenceAutoDailySyncSchema,
   quickBooksReferenceSyncResultSchema,
   quickBooksReferenceSyncStatusSchema,
+  quickBooksRegisterAccountsSchema,
+  quickBooksRegisterTransactionsResponseSchema,
   quickBooksStatusSchema,
   quickBooksUnmapVendorResultSchema,
   quickBooksVendorMappingSchema,
@@ -25,6 +27,9 @@ import {
   type QuickBooksReferenceAutoDailySync,
   type QuickBooksReferenceSyncResult,
   type QuickBooksReferenceSyncStatus,
+  type QuickBooksRegisterAccount,
+  type QuickBooksRegisterClr,
+  type QuickBooksRegisterTransactionsResponse,
   type QuickBooksStatus,
   type QuickBooksUnmapVendorResult,
   type QuickBooksVendorMapping,
@@ -37,6 +42,17 @@ export interface ListQuickBooksVendorOptionsParams {
   size?: number;
   search?: string;
   includeInactive?: boolean;
+}
+
+export interface ListQuickBooksRegisterTransactionsParams {
+  accountId: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  clr?: QuickBooksRegisterClr;
+  transactionType?: string;
+  page?: number;
+  size?: number;
 }
 
 export const quickBooksApi = {
@@ -73,6 +89,32 @@ export const quickBooksApi = {
   async listBankAccounts(): Promise<QuickBooksBankAccount[]> {
     const res = await api.get(`${BASE}/bank-accounts`);
     return quickBooksBankAccountsSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async listRegisterAccounts(): Promise<QuickBooksRegisterAccount[]> {
+    const res = await api.get(`${BASE}/register/accounts`);
+    return quickBooksRegisterAccountsSchema.parse(res.data?.data ?? res.data);
+  },
+
+  async listRegisterTransactions(
+    params: ListQuickBooksRegisterTransactionsParams
+  ): Promise<QuickBooksRegisterTransactionsResponse> {
+    const { accountId, ...filters } = params;
+    const query: Record<string, string | number> = {};
+
+    if (filters.startDate) query.startDate = filters.startDate;
+    if (filters.endDate) query.endDate = filters.endDate;
+    if (filters.search) query.search = filters.search;
+    if (filters.clr) query.clr = filters.clr;
+    if (filters.transactionType) query.transactionType = filters.transactionType;
+    if (filters.page != null) query.page = filters.page;
+    if (filters.size != null) query.size = filters.size;
+
+    const res = await api.get(
+      `${BASE}/register/accounts/${encodeURIComponent(accountId)}/transactions`,
+      { params: query }
+    );
+    return quickBooksRegisterTransactionsResponseSchema.parse(res.data?.data ?? res.data);
   },
 
   async listCategories(): Promise<QuickBooksLineItemCategory[]> {

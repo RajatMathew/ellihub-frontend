@@ -24,8 +24,11 @@ import {
     ProjectUpdateSchema,
     PromoteTeamMemberSchema,
     RemoveScheduleSchema,
+    RemoveProjectMasterScheduleSchema,
     RemoveTeamMemberSchema,
     SetPrimeContractPrimarySchema,
+    SetProjectMasterScheduleBodySchema,
+    SetProjectMasterScheduleSchema,
     UnpinPrimeContractsSchema,
     UpdateScheduleSchema,
     UpdateTeamMemberRoleSchema,
@@ -153,6 +156,48 @@ app.get(
     }
 );
 
+app.get(
+    '/:projectId/master-schedule',
+    requirePermission({ projectMasterSchedule: ['read'] }),
+    async (c) => {
+        const projectId = c.req.param('projectId')!;
+        await assertProjectActionAccess(c, 'projectMasterSchedule', 'read', projectId);
+        const masterSchedule = await ProjectService.getProjectMasterSchedule(projectId);
+        return success(c, masterSchedule);
+    }
+);
+
+app.patch(
+    '/:projectId/master-schedule',
+    requirePermission({ projectMasterSchedule: ['update'] }),
+    zValidator('json', SetProjectMasterScheduleBodySchema),
+    async (c) => {
+        const body = c.req.valid('json');
+        const data = SetProjectMasterScheduleSchema.parse({
+            projectId: c.req.param('projectId'),
+            ...body,
+        });
+        await assertProjectActionAccess(c, 'projectMasterSchedule', 'update', data.projectId);
+        const masterSchedule = await ProjectService.setProjectMasterSchedule(
+            data,
+            c.get('user')!.id
+        );
+        return success(c, masterSchedule);
+    }
+);
+
+app.delete(
+    '/:projectId/master-schedule',
+    requirePermission({ projectMasterSchedule: ['delete'] }),
+    async (c) => {
+        const data = RemoveProjectMasterScheduleSchema.parse({
+            projectId: c.req.param('projectId'),
+        });
+        await assertProjectActionAccess(c, 'projectMasterSchedule', 'delete', data.projectId);
+        await ProjectService.removeProjectMasterSchedule(data, c.get('user')!.id);
+        return success(c, null);
+    }
+);
 app.get(
     '/fieldwire/projects',
     requirePermission({ primeChangeOrder: ['fieldwire-projects'] }),

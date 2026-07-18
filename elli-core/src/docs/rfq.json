@@ -68,7 +68,7 @@
             },
             "put": {
                 "tags": ["RFQ"],
-                "summary": "Update RFQ (DRAFT only, replaces deliverables)",
+                "summary": "Update RFQ (replaces deliverables)",
                 "operationId": "updateRfq",
                 "requestBody": {
                     "required": true,
@@ -88,7 +88,7 @@
                             }
                         }
                     },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
@@ -191,7 +191,7 @@
         "/rfq/attachment/add": {
             "patch": {
                 "tags": ["RFQ"],
-                "summary": "Attach a file to the RFQ (DRAFT only)",
+                "summary": "Attach a file to the RFQ",
                 "operationId": "addRfqAttachment",
                 "requestBody": {
                     "required": true,
@@ -199,7 +199,7 @@
                 },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "409": { "description": "File already attached to an RFQ", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
@@ -207,7 +207,7 @@
         "/rfq/attachment/remove": {
             "patch": {
                 "tags": ["RFQ"],
-                "summary": "Remove an RFQ attachment (DRAFT only)",
+                "summary": "Remove an RFQ attachment",
                 "operationId": "removeRfqAttachment",
                 "requestBody": {
                     "required": true,
@@ -215,7 +215,7 @@
                 },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }
         },

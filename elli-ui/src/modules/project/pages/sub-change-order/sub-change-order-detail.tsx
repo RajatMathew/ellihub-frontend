@@ -45,9 +45,10 @@ import {
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
   DocumentEmailWizardDialog,
+  FeatureEmailSentBadge,
   InfoRow,
-  ProjectActivityPanel,
   PdfGenerateDialog,
+  ProjectActivityPanel,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
 import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
@@ -173,7 +174,7 @@ export function SCODetailPage() {
   const { projectId = '', scoId = '' } = useParams<{ projectId: string; scoId: string }>();
   const { can } = useAccess();
 
-  const { data: sco, isLoading } = useSCODetailQuery(scoId);
+  const { data: sco, isLoading, refetch: refetchScoDetail } = useSCODetailQuery(scoId);
   const { data: project } = useProjectDetailQuery(projectId);
   const purchaseOrderId = sco?.purchaseOrderId ?? sco?.purchaseOrder?.id ?? '';
   const { data: purchaseOrderDetail, isFetching: isPurchaseOrderFetching } =
@@ -256,8 +257,6 @@ export function SCODetailPage() {
   const [activeAction, setActiveAction] = useState<WorkflowAction | null>(null);
   const [actionReason, setActionReason] = useState('');
 
-
-
   const statusName = typeof sco?.status === 'string' ? sco.status : (sco?.status?.name ?? '');
   const statusLabel =
     typeof sco?.status === 'string' ? sco.status : (sco?.status?.label ?? statusName);
@@ -270,7 +269,7 @@ export function SCODetailPage() {
   const canApprove = projectActions?.subChangeOrder?.approve === true && isDraft;
   const canReject = projectActions?.subChangeOrder?.reject === true && isDraft;
   const canVoid = projectActions?.subChangeOrder?.void === true && isApproved;
-  const canEdit = projectActions?.subChangeOrder?.update === true && isDraft;
+  const canEdit = projectActions?.subChangeOrder?.update === true;
   const canSavePdf = projectActions?.subChangeOrder?.update === true;
   const canEmailSCO = can('mail', 'send') && isApproved;
 
@@ -560,6 +559,7 @@ export function SCODetailPage() {
                   <span className="text-sm text-muted-foreground">{statusLabel}</span>
                 </div>
               )}
+              <FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />
               {sco.changeType && (
                 <Badge variant="primary" appearance="outline" size="sm">
                   {lookupLabel(sco.changeType)}
@@ -632,8 +632,6 @@ export function SCODetailPage() {
                 Void
               </Button>
             )}
-
-            {/* Edit - only on DRAFT */}
             {canEdit && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
@@ -1354,6 +1352,7 @@ export function SCODetailPage() {
             draft: payload,
             pdfOptions,
           });
+          await refetchScoDetail();
           handleEmailOpenChange(false);
         }}
       />

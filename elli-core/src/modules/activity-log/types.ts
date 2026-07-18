@@ -15,6 +15,7 @@ export type ActivityEntityType =
     | 'primeChangeOrder'
     | 'subChangeOrder'
     | 'invoice'
+    | 'recurringBill'
     | 'template';
 
 export type ActivityAction =

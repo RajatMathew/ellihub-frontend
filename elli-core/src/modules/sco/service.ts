@@ -17,7 +17,12 @@ import {
     calculateSubChangeOrderTotalAmount,
 } from '@modules/commercial-document/totals';
 import { FileService } from '@modules/file/services';
-import { logFailedMailAttempt, sendLoggedMail, type LoggedMailContext } from '@modules/mail';
+import {
+    findLatestSentEmailLog,
+    logFailedMailAttempt,
+    sendLoggedMail,
+    type LoggedMailContext,
+} from '@modules/mail';
 import { type MailAttachment, type SendMailInput } from '@modules/mail/mail-service';
 import {
     buildDefaultFeatureMailDraft,
@@ -745,23 +750,47 @@ export const ScoService = {
     },
 
     getSco: async (id: string): Promise<SubChangeOrder> => {
-        const sco = await prisma.subChangeOrder.findUnique({
-            where: { id },
-            include: {
-                project: true,
-                purchaseOrder: true,
-                changeType: true,
-                lineItems: {
-                    where: { deletedAt: null },
-                    orderBy: { sequenceNumber: 'asc' },
-                    include: { unit: true },
+        const [sco, latestEmailLog] = await Promise.all([
+            prisma.subChangeOrder.findUnique({
+                where: { id },
+                include: {
+                    project: true,
+                    purchaseOrder: true,
+                    changeType: true,
+                    lineItems: {
+                        where: { deletedAt: null },
+                        orderBy: { sequenceNumber: 'asc' },
+                        include: { unit: true },
+                    },
+                    attachments: { include: { document: true } },
                 },
-                attachments: { include: { document: true } },
-            },
-        });
+            }),
+            findLatestSentEmailLog({
+                entityType: 'subChangeOrder',
+                entityId: id,
+                feature: SUB_CHANGE_ORDER_VENDOR_MAIL_FEATURE,
+            }),
+        ]);
         if (!sco) throw new NotFoundError('Sub change order not found');
         checkDeletedAt(sco);
-        return (await hydrateScoLineItemCostCodes(sco)) as unknown as SubChangeOrder;
+
+        const hydrated = await hydrateScoLineItemCostCodes(sco);
+        return {
+            ...hydrated,
+            sentAt: latestEmailLog?.sentAt ?? null,
+            latestEmailLog: latestEmailLog
+                ? {
+                      id: latestEmailLog.id,
+                      from: latestEmailLog.from,
+                      to: latestEmailLog.to,
+                      cc: latestEmailLog.cc,
+                      bcc: latestEmailLog.bcc,
+                      subject: latestEmailLog.subject,
+                      status: latestEmailLog.status,
+                      sentAt: latestEmailLog.sentAt,
+                  }
+                : null,
+        } as unknown as SubChangeOrder;
     },
 
     getVendorEmailDraft: async (
@@ -1234,9 +1263,6 @@ export const ScoService = {
         const existing = await prisma.subChangeOrder.findUnique({ where: { id } });
         if (!existing) throw new NotFoundError('Sub change order not found');
         checkDeletedAt(existing);
-        if (existing.status !== 'DRAFT') {
-            throw new BadRequestError('SCO can only be updated while in DRAFT');
-        }
         if (existing.projectId !== projectId) {
             throw new BadRequestError('SCO project cannot be changed');
         }
@@ -1247,7 +1273,9 @@ export const ScoService = {
         const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
         if (!po) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(po);
-        assertPurchaseOrderCanReceiveSco(po, projectId);
+        if (po.projectId !== projectId) {
+            throw new BadRequestError('Purchase order does not belong to this project');
+        }
 
         if (changeTypeId) {
             const changeType = await prisma.lookup.findUnique({ where: { id: changeTypeId } });
@@ -1531,9 +1559,6 @@ export const ScoService = {
         });
         if (!sco) throw new NotFoundError('Sub change order not found');
         checkDeletedAt(sco);
-        if (sco.status !== 'DRAFT') {
-            throw new BadRequestError('Attachments can only be added while SCO is in DRAFT');
-        }
 
         const file = await prisma.file.findUnique({ where: { id: documentId } });
         if (!file) throw new NotFoundError('File not found');
@@ -1585,9 +1610,6 @@ export const ScoService = {
         });
         if (!attachment) throw new NotFoundError('Attachment not found');
         checkDeletedAt(attachment.sco);
-        if (attachment.sco.status !== 'DRAFT') {
-            throw new BadRequestError('Attachments can only be removed while SCO is in DRAFT');
-        }
 
         await prisma.sCOAttachment.delete({ where: { id } });
 

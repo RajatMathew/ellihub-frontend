@@ -145,3 +145,20 @@ export const RemoveScheduleSchema = z.object({
 });
 
 export type RemoveScheduleRequest = z.infer<typeof RemoveScheduleSchema>;
+
+export const SetProjectMasterScheduleSchema = z.object({
+    projectId: nanoIdSchema,
+    fileId: nanoIdSchema,
+});
+
+export const SetProjectMasterScheduleBodySchema = SetProjectMasterScheduleSchema.omit({
+    projectId: true,
+});
+
+export type SetProjectMasterScheduleRequest = z.infer<typeof SetProjectMasterScheduleSchema>;
+
+export const RemoveProjectMasterScheduleSchema = z.object({
+    projectId: nanoIdSchema,
+});
+
+export type RemoveProjectMasterScheduleRequest = z.infer<typeof RemoveProjectMasterScheduleSchema>;

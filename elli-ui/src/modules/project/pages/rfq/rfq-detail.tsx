@@ -442,8 +442,8 @@ export default function RFQDetailPage() {
   const isTerminal = statusName === 'CANCELLED' || statusName === 'VOID';
   const draftPublishedStatuses = RFQ_MUTABLE_STATUS_OPTIONS;
   const projectActions = project?.capabilities?.actions;
-  const canEditDraftRfq = projectActions?.rfq?.update === true && isDraft;
-  const canUploadRfqAttachment = projectActions?.rfq?.update === true && !isTerminal;
+  const canEditRfq = projectActions?.rfq?.update === true;
+  const canUploadRfqAttachment = projectActions?.rfq?.update === true;
   const canManagePublishedRfq = projectActions?.rfq?.update === true && isPublished;
   const canStateRfq = projectActions?.rfq?.state === true;
   const canChangeDraftPublishedState = canStateRfq && (isDraft || isPublished);
@@ -1074,7 +1074,7 @@ export default function RFQDetailPage() {
             </div>
           </ToolbarHeading>
           <ToolbarActions>
-            {canEditDraftRfq && (
+            {canEditRfq && (
               <Button variant="outline" size="sm" asChild>
                 <Link to="edit">
                   <Pencil className="size-4" />
@@ -1236,7 +1236,7 @@ export default function RFQDetailPage() {
           <RFQDetailAttachmentsCard
             attachments={attachments}
             canUpload={canUploadRfqAttachment && !!rfqUploadFolderId}
-            canRemove={canEditDraftRfq}
+            canRemove={canEditRfq}
             isRemoving={removeAttachmentMutation.isPending}
             onUpload={() => setUploadOpen(true)}
             onRemove={(attachmentId) => {

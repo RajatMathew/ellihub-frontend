@@ -8,6 +8,7 @@ export const statement = {
     role: ['list', 'create', 'update', 'delete'],
     project: ['create', 'update', 'delete', 'view-assigned-projects', 'view-all'],
     projectSchedule: ['create', 'update', 'delete', 'read'],
+    projectMasterSchedule: ['read', 'update', 'delete'],
     monthlyBills: ['list', 'update', 'mark-payment'],
     projectTeam: ['add', 'remove', 'promote', 'assign-role', 'transfer-lead'],
     primeContract: ['read', 'pin', 'unpin', 'primary'],
@@ -62,6 +63,7 @@ export type ProjectTeamActionScope = 'project-manager' | 'lead-only' | 'admin-on
 export type ProjectActionResource =
     | 'projectTeam'
     | 'projectSchedule'
+    | 'projectMasterSchedule'
     | 'primeContract'
     | 'rfq'
     | 'purchaseOrder'
@@ -91,6 +93,11 @@ export const projectActionScopes = {
         update: 'manager',
         delete: 'manager',
         read: 'any-access',
+    },
+    projectMasterSchedule: {
+        read: 'any-access',
+        update: 'manager',
+        delete: 'manager',
     },
     primeContract: {
         read: 'any-access',
@@ -196,6 +203,14 @@ const fullProjectSchedulePermissions = [
     'read',
 ] satisfies ResourceActions<'projectSchedule'>[];
 const readProjectSchedulePermissions = ['read'] satisfies ResourceActions<'projectSchedule'>[];
+const fullProjectMasterSchedulePermissions = [
+    'read',
+    'update',
+    'delete',
+] satisfies ResourceActions<'projectMasterSchedule'>[];
+const readProjectMasterSchedulePermissions = [
+    'read',
+] satisfies ResourceActions<'projectMasterSchedule'>[];
 
 const fullRfqPermissions = [
     'create',
@@ -270,6 +285,7 @@ export const dev = ac.newRole({
     role: ['list', 'create', 'update', 'delete'],
     project: adminProjectPermissions,
     projectSchedule: fullProjectSchedulePermissions,
+    projectMasterSchedule: fullProjectMasterSchedulePermissions,
     projectTeam: fullProjectTeamPermissions,
     employee: ['create', 'update', 'delete', 'read', 'read-own', 'link-user'],
     monthlyBills: ['list', 'update', 'mark-payment'],
@@ -304,6 +320,7 @@ export const adminRole = ac.newRole({
     role: ['list', 'create', 'update', 'delete'],
     project: adminProjectPermissions,
     projectSchedule: fullProjectSchedulePermissions,
+    projectMasterSchedule: fullProjectMasterSchedulePermissions,
     projectTeam: fullProjectTeamPermissions,
     employee: ['create', 'update', 'delete', 'read', 'read-own', 'link-user'],
     monthlyBills: ['list', 'update', 'mark-payment'],
@@ -339,6 +356,7 @@ export const accountant = ac.newRole({
     role: [],
     project: allProjectReadPermissions,
     projectSchedule: readProjectSchedulePermissions,
+    projectMasterSchedule: readProjectMasterSchedulePermissions,
     projectTeam: [],
     employee: ['read-own'],
     leave: ['create', 'view'],
@@ -374,6 +392,7 @@ export const ap = ac.newRole({
     role: [],
     project: allProjectReadPermissions,
     projectSchedule: fullProjectSchedulePermissions,
+    projectMasterSchedule: fullProjectMasterSchedulePermissions,
     projectTeam: [],
     employee: ['read-own'],
     leave: ['create', 'view'],
@@ -409,6 +428,7 @@ export const pm = ac.newRole({
     role: [],
     project: pmProjectPermissions,
     projectSchedule: fullProjectSchedulePermissions,
+    projectMasterSchedule: fullProjectMasterSchedulePermissions,
     projectTeam: fullProjectTeamPermissions,
     employee: ['read-own'],
     leave: ['create', 'view'],
@@ -444,6 +464,7 @@ export const user = ac.newRole({
     role: [],
     project: managerProjectPermissions,
     projectSchedule: fullProjectSchedulePermissions,
+    projectMasterSchedule: fullProjectMasterSchedulePermissions,
     projectTeam: [],
     employee: ['read-own'],
     leave: ['create', 'view'],

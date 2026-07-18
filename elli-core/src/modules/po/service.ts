@@ -17,7 +17,12 @@ import {
     calculateSubChangeOrderTotalAmount,
 } from '@modules/commercial-document/totals';
 import { FileService } from '@modules/file/services';
-import { logFailedMailAttempt, sendLoggedMail, type LoggedMailContext } from '@modules/mail';
+import {
+    findLatestSentEmailLog,
+    logFailedMailAttempt,
+    sendLoggedMail,
+    type LoggedMailContext,
+} from '@modules/mail';
 import { type MailAttachment, type SendMailInput } from '@modules/mail/mail-service';
 import {
     buildDefaultFeatureMailDraft,
@@ -914,27 +919,51 @@ export const PoService = {
         };
     },
     getPurchaseOrder: async (id: string): Promise<PurchaseOrder> => {
-        const po = await prisma.purchaseOrder.findUnique({
-            where: { id },
-            include: {
-                project: true,
-                vendor: true,
-                rfq: true,
-                tradeCategory: true,
-                lineItems: {
-                    where: { deletedAt: null },
-                    orderBy: { lineNumber: 'asc' },
-                    include: { unit: true },
+        const [po, latestEmailLog] = await Promise.all([
+            prisma.purchaseOrder.findUnique({
+                where: { id },
+                include: {
+                    project: true,
+                    vendor: true,
+                    rfq: true,
+                    tradeCategory: true,
+                    lineItems: {
+                        where: { deletedAt: null },
+                        orderBy: { lineNumber: 'asc' },
+                        include: { unit: true },
+                    },
+                    attachments: { include: { document: true } },
+                    poPayments: {
+                        orderBy: { txnDate: 'desc' },
+                    },
                 },
-                attachments: { include: { document: true } },
-                poPayments: {
-                    orderBy: { txnDate: 'desc' },
-                },
-            },
-        });
+            }),
+            findLatestSentEmailLog({
+                entityType: 'purchaseOrder',
+                entityId: id,
+                feature: PURCHASE_ORDER_VENDOR_MAIL_FEATURE,
+            }),
+        ]);
         if (!po) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(po);
-        return (await hydratePurchaseOrderLineItemCostCodes(po)) as unknown as PurchaseOrder;
+
+        const hydrated = await hydratePurchaseOrderLineItemCostCodes(po);
+        return {
+            ...hydrated,
+            sentAt: latestEmailLog?.sentAt ?? null,
+            latestEmailLog: latestEmailLog
+                ? {
+                      id: latestEmailLog.id,
+                      from: latestEmailLog.from,
+                      to: latestEmailLog.to,
+                      cc: latestEmailLog.cc,
+                      bcc: latestEmailLog.bcc,
+                      subject: latestEmailLog.subject,
+                      status: latestEmailLog.status,
+                      sentAt: latestEmailLog.sentAt,
+                  }
+                : null,
+        } as unknown as PurchaseOrder;
     },
 
     getDefaultPdfTerms: async (): Promise<{ html: string }> => {
@@ -1584,9 +1613,6 @@ export const PoService = {
         const existing = await prisma.purchaseOrder.findUnique({ where: { id } });
         if (!existing) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(existing);
-        if (existing.status !== 'DRAFT') {
-            throw new BadRequestError('PO can only be updated while in DRAFT');
-        }
         if (existing.projectId !== projectId) {
             throw new BadRequestError('PO project cannot be changed');
         }
@@ -1606,8 +1632,17 @@ export const PoService = {
             });
             if (!rfq) throw new NotFoundError('RFQ not found');
             checkDeletedAt(rfq);
-            assertRfqCanBeLinkedToPurchaseOrder(rfq, projectId);
-            assertPurchaseOrderVendorMatchesAwardedRfq(rfq, vendorId);
+            if (rfqId !== existing.rfqId) {
+                assertRfqCanBeLinkedToPurchaseOrder(rfq, projectId);
+                assertPurchaseOrderVendorMatchesAwardedRfq(rfq, vendorId);
+            } else {
+                if (rfq.projectId !== projectId) {
+                    throw new BadRequestError('RFQ does not belong to the given project');
+                }
+                if (rfq.awardedVendorId) {
+                    assertPurchaseOrderVendorMatchesAwardedRfq(rfq, vendorId);
+                }
+            }
             assertRfqDeliverableLineItems(rfq, lineItems);
         }
 
@@ -1987,9 +2022,6 @@ export const PoService = {
         const po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId } });
         if (!po) throw new NotFoundError('Purchase order not found');
         checkDeletedAt(po);
-        if (po.status === 'CANCELLED') {
-            throw new BadRequestError('Attachments cannot be added to a cancelled PO');
-        }
 
         const file = await prisma.file.findUnique({ where: { id: documentId } });
         if (!file) throw new NotFoundError('File not found');
@@ -2033,9 +2065,6 @@ export const PoService = {
         });
         if (!attachment) throw new NotFoundError('Attachment not found');
         checkDeletedAt(attachment.purchaseOrder);
-        if (attachment.purchaseOrder.status !== 'DRAFT') {
-            throw new BadRequestError('Attachments can only be removed while PO is in DRAFT');
-        }
 
         await prisma.pOAttachment.delete({ where: { id } });
 

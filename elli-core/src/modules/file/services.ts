@@ -127,6 +127,7 @@ type ProjectSubFolderType = Extract<
     | 'PRIME_CO'
     | 'SUB_CHANGE_ORDER'
     | 'PRIME_CONTRACT'
+    | 'MASTER_SCHEDULE'
     | 'SCHEDULE'
 >;
 
@@ -189,6 +190,11 @@ const PROJECT_SUBFOLDERS: ProjectSubFolderConfig[] = [
         name: 'prime contract',
         displayName: 'Prime Contract',
         protectedFolderType: 'PRIME_CONTRACT',
+    },
+    {
+        name: 'master schedule',
+        displayName: 'Master Schedule',
+        protectedFolderType: 'MASTER_SCHEDULE',
     },
     { name: 'schedule', displayName: 'Schedule', protectedFolderType: 'SCHEDULE' },
 ];

@@ -33,7 +33,8 @@ model File {
   employeeDocuments EmployeeDocument[]
   primeContracts    PrimeContract[]
 
-  projectSchedules ProjectSchedule[]
+  projectMasterSchedules ProjectMasterSchedule[]
+  projectSchedules       ProjectSchedule[]
 
   rfqattachments RFQAttachment[]
 
@@ -62,6 +63,7 @@ enum ProtectedFolderType {
   PRIME_CO
   SUB_CHANGE_ORDER
   PRIME_CONTRACT
+  MASTER_SCHEDULE
   SCHEDULE
 }
 

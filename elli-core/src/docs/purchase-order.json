@@ -62,7 +62,7 @@
             },
             "put": {
                 "tags": ["Purchase Order"],
-                "summary": "Update a DRAFT purchase order, including optional manual PO number changes",
+                "summary": "Update a purchase order, including optional manual PO number changes",
                 "operationId": "updatePurchaseOrder",
                 "requestBody": {
                     "required": true,
@@ -70,7 +70,7 @@
                 },
                 "responses": {
                     "200": { "description": "Updated", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/SuccessResponse" }, { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/PurchaseOrder" } } }] } } } },
-                    "400": { "description": "Not in DRAFT / project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Project change attempted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "409": { "description": "Manual PO number already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
@@ -165,12 +165,12 @@
         "/purchase-order/attachment/add": {
             "patch": {
                 "tags": ["Purchase Order"],
-                "summary": "Attach a file to a DRAFT PO (moved to PURCHASE_ORDER subfolder)",
+                "summary": "Attach a file to a PO (moved to PURCHASE_ORDER subfolder)",
                 "operationId": "addPoAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddPoAttachmentRequest" } } } },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "PO / file not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "409": { "description": "File already attached to a PO", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
@@ -179,12 +179,12 @@
         "/purchase-order/attachment/remove": {
             "patch": {
                 "tags": ["Purchase Order"],
-                "summary": "Remove a PO attachment (DRAFT only)",
+                "summary": "Remove a PO attachment",
                 "operationId": "removePoAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemovePoAttachmentRequest" } } } },
                 "responses": {
                     "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SuccessResponse" } } } },
-                    "400": { "description": "Not in DRAFT", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+                    "400": { "description": "Invalid attachment request", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
                     "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
                 }
             }

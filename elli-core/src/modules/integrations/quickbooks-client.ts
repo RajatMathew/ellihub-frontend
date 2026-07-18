@@ -114,6 +114,15 @@ export type QuickBooksVendorInput = {
     primaryPhone?: string | null;
 };
 
+export type QuickBooksReportName =
+    | 'GeneralLedger'
+    | 'TransactionList'
+    | 'TransactionListWithSplits';
+
+export type QuickBooksReportParams = Record<string, string | number | boolean | null | undefined>;
+
+export type QuickBooksReportResponse = Record<string, unknown>;
+
 export type QuickBooksTokenResponse = {
     accessToken: string;
     refreshToken: string;
@@ -441,6 +450,41 @@ export const QuickBooksClient = {
         const rows = parsed.QueryResponse?.[entity];
 
         return Array.isArray(rows) ? rows.filter(isRecord) : [];
+    },
+
+    getReport: async (
+        realmId: string,
+        accessToken: string,
+        reportName: QuickBooksReportName,
+        params: QuickBooksReportParams = {}
+    ): Promise<QuickBooksReportResponse> => {
+        const config = getQuickBooksConfig();
+        const cleanParams = Object.fromEntries(
+            Object.entries(params).filter(
+                ([, value]) => value !== undefined && value !== null && value !== ''
+            )
+        );
+        const response = await requestWithRateLimitRetry(() =>
+            axios.get(
+                `${config.apiBaseUrl}/v3/company/${encodeURIComponent(realmId)}/reports/${encodeURIComponent(reportName)}`,
+                {
+                    headers: {
+                        accept: 'application/json',
+                        authorization: `Bearer ${accessToken}`,
+                    },
+                    params: {
+                        ...cleanParams,
+                        minorversion: config.minorVersion,
+                    },
+                }
+            )
+        );
+
+        if (!isRecord(response.data)) {
+            throw new BadRequestError('QuickBooks report returned an invalid response.');
+        }
+
+        return response.data;
     },
 
     createPurchase: async (

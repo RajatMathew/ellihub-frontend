@@ -18,6 +18,7 @@ export const ActivityEntityTypeSchema = z.enum([
     'primeChangeOrder',
     'subChangeOrder',
     'invoice',
+    'recurringBill',
     'template',
 ]);
 

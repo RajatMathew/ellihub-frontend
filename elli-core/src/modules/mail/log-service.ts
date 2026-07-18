@@ -37,6 +37,38 @@ export type LoggedMailContext = {
     metadata?: Prisma.InputJsonValue;
     activity?: LoggedMailActivityContext;
 };
+export type LatestSentEmailLogQuery = {
+    entityType: string;
+    entityId: string;
+    feature?: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+};
+
+export async function findLatestSentEmailLog(query: LatestSentEmailLogQuery) {
+    return prisma.sentEmailLog.findFirst({
+        where: {
+            entityType: query.entityType,
+            entityId: query.entityId,
+            feature: query.feature,
+            relatedEntityType: query.relatedEntityType,
+            relatedEntityId: query.relatedEntityId,
+            status: 'SENT',
+        },
+        orderBy: [{ sentAt: 'desc' }, { createdAt: 'desc' }],
+        select: {
+            id: true,
+            from: true,
+            to: true,
+            cc: true,
+            bcc: true,
+            subject: true,
+            status: true,
+            sentAt: true,
+            createdAt: true,
+        },
+    });
+}
 
 type SerializedMailAttachment = {
     name: string;

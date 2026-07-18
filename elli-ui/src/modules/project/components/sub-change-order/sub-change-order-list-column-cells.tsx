@@ -146,8 +146,7 @@ export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
 export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
-  const canEdit =
-    project?.capabilities?.actions?.subChangeOrder?.update === true && sco.status === 'DRAFT';
+  const canEdit = project?.capabilities?.actions?.subChangeOrder?.update === true;
 
   return (
     <DropdownMenu>

@@ -21,7 +21,11 @@ import {
   getMonthlyBillMonthSearch,
   getMonthlyBillYear,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
-import { MonthlyBillsSubcontractorPage, MonthlyBillsTabPage } from '@/modules/monthly-bills/pages';
+import {
+  MonthlyBillsRecurringPage,
+  MonthlyBillsSubcontractorPage,
+  MonthlyBillsTabPage,
+} from '@/modules/monthly-bills/pages';
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 
 export default function MonthlyBillsRoute() {
@@ -70,7 +74,9 @@ export default function MonthlyBillsRoute() {
               key={tab.path}
               path={tab.path}
               element={
-                tab.path === 'subcontractor' ? (
+                tab.path === 'recurring' ? (
+                  <MonthlyBillsRecurringPage selectedDate={selectedDate} />
+                ) : tab.path === 'subcontractor' ? (
                   <MonthlyBillsSubcontractorPage
                     selectedDate={selectedDate}
                     enabled={canAccess && !isLoading}

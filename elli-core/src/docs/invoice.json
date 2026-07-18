@@ -34,7 +34,7 @@
             },
             "put": {
                 "tags": ["Invoice"],
-                "summary": "Update an invoice (unpaid only; project/vendor immutable)",
+                "summary": "Update an invoice (project/vendor immutable)",
                 "operationId": "updateInvoice",
                 "requestBody": {
                     "required": true,
@@ -167,7 +167,7 @@
         "/invoice/attachment/add": {
             "patch": {
                 "tags": ["Invoice"],
-                "summary": "Attach a file to an unpaid invoice (moved to project INVOICE subfolder)",
+                "summary": "Attach a file to an invoice (moved to project INVOICE subfolder)",
                 "operationId": "addInvoiceAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddInvoiceAttachmentRequest" } } } },
                 "responses": {
@@ -180,7 +180,7 @@
         "/invoice/attachment/remove": {
             "patch": {
                 "tags": ["Invoice"],
-                "summary": "Remove an invoice attachment (unpaid invoice; must leave at least one unless vendor coupon is enabled)",
+                "summary": "Remove an invoice attachment (must leave at least one unless vendor coupon is enabled)",
                 "operationId": "removeInvoiceAttachment",
                 "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RemoveInvoiceAttachmentRequest" } } } },
                 "responses": {

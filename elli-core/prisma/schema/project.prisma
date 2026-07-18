@@ -45,6 +45,7 @@ model Project {
 
   teamMembers                ProjectTeamMember[]
   primeContract              PrimeContract[]
+  projectMasterSchedules     ProjectMasterSchedule[]
   projectSchedules           ProjectSchedule[]
   primeChangeOrders          PrimeChangeOrder[]
   primeChangeOrderSyncStatus PrimeChangeOrderSyncStatus?
@@ -97,6 +98,28 @@ model PrimeContract {
   @@index([projectId, isPrimary])
 }
 
+model ProjectMasterSchedule {
+  id          String   @id
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  projectId   String
+  file        File     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  fileId      String
+  fileName    String
+  displayName String?
+  mimeType    String?
+  size        Int?
+  objectId    String?
+  uploadedAt  DateTime @default(now())
+  createdBy   String?
+  deletedBy   String?
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([fileId])
+  @@index([deletedAt])
+}
 model ProjectSchedule {
   id                 String            @id
   project            Project           @relation(fields: [projectId], references: [id])

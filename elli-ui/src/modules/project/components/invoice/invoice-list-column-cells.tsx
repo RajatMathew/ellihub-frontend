@@ -144,7 +144,7 @@ export function CreatedAtCell({ invoice }: { invoice: InvoiceListItem }) {
 export function InvoiceActionsCell({ invoice }: { invoice: InvoiceListItem }) {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
-  const canEdit = project?.capabilities?.actions?.invoice?.update === true && !invoice.isPaid;
+  const canEdit = project?.capabilities?.actions?.invoice?.update === true;
 
   return (
     <DropdownMenu>
