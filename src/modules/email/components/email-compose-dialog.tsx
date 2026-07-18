@@ -16,13 +16,23 @@ import { Paperclip, Send, Trash2 } from 'lucide-react';
 interface EmailComposeDialogProps {
   open: boolean;
   mailboxAddress: string;
+  isSending?: boolean;
   onOpenChange: (open: boolean) => void;
+  onSend?: (payload: {
+    to: string;
+    cc: string;
+    bcc: string;
+    subject: string;
+    body: string;
+  }) => Promise<void> | void;
 }
 
 export function EmailComposeDialog({
   open,
   mailboxAddress,
+  isSending = false,
   onOpenChange,
+  onSend,
 }: EmailComposeDialogProps) {
   const toId = useId();
   const ccId = useId();
@@ -38,7 +48,8 @@ export function EmailComposeDialog({
   });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
-  const canSend = form.to.trim().length > 0 && form.subject.trim().length > 0;
+  const canSend =
+    form.to.trim().length > 0 && form.subject.trim().length > 0 && form.body.trim().length > 0;
 
   function resetForm() {
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
@@ -61,9 +72,10 @@ export function EmailComposeDialog({
 
         <form
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            if (!canSend) return;
+            if (!canSend || isSending) return;
+            await onSend?.(form);
             handleOpenChange(false);
           }}
         >
@@ -153,9 +165,9 @@ export function EmailComposeDialog({
 
           <DialogFooter className="border-t border-border px-5 py-3 pt-3">
             <div className="flex w-full flex-wrap items-center gap-2">
-              <Button type="submit" size="sm" disabled={!canSend}>
+              <Button type="submit" size="sm" disabled={!canSend || isSending}>
                 <Send aria-hidden="true" className="size-3.5" />
-                Send
+                {isSending ? 'Sending' : 'Send'}
               </Button>
               <Button
                 type="button"

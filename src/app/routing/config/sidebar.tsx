@@ -1,4 +1,5 @@
 import type { MenuConfig } from '@/app/config/types';
+import { EmailSidebarMenu } from '@/modules/email/components/email-sidebar-menu';
 import { ProjectSidebarSwitcher } from '@/modules/project/components/project-sidebar-switcher';
 import { ArrowLeft } from 'lucide-react';
 
@@ -6,13 +7,8 @@ const isDev = import.meta.env.DEV;
 
 export const mainSidebarMenu: MenuConfig = [
   {
-    type: 'group-collapsed',
-    title: 'Emails',
-    children: [
-      { title: 'procurement@ellicorp.com', path: '../email/procurement' },
-      { title: 'requisitions@ellicorp.com', path: '../email/requisitions' },
-      { title: 'contracts@ellicorp.com', path: '../email/contracts' },
-    ],
+    type: 'custom',
+    render: () => <EmailSidebarMenu />,
   },
   {
     type: 'menu',
