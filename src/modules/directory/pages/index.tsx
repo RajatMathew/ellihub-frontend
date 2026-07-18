@@ -1,0 +1,9 @@
+export { ContactsListPage } from './contacts';
+export { ContactFormPage } from './contact-form';
+export { ContactDetailPage } from './contact-detail';
+export { GCListPage } from './gc-list';
+export { GCFormPage } from './gc-form';
+export { GCDetailPage } from './gc-detail';
+export { VendorListPage } from './vendor-list';
+export { VendorFormPage } from './vendor-form';
+export { VendorDetailPage } from './vendor-detail';
