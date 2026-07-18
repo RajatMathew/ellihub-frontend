@@ -1,0 +1,129 @@
+{
+    "defaultFrom": "bidding@ellicorp.com",
+    "email": {
+        "senders": {
+            "auth": {
+                "allowed": ["hello@cofount.onmicrosoft.com"],
+                "default": "hello@cofount.onmicrosoft.com"
+            },
+            "rfq": {
+                "allowed": [
+                    "hello@cofount.onmicrosoft.com",
+                    "adithya@cofount.onmicrosoft.com",
+                    "purchasing@ellicorp.com"
+                ],
+                "default": "hello@cofount.onmicrosoft.com"
+            },
+            "po": {
+                "allowed": [
+                    "procurement@ellicorp.com",
+                    "purchasing@ellicorp.com",
+                    "ap@ellicorp.com"
+                ],
+                "default": "purchasing@ellicorp.com"
+            },
+            "changeOrder": {
+                "allowed": ["projects@ellicorp.com", "contracts@ellicorp.com"],
+                "default": "projects@ellicorp.com"
+            }
+        }
+    },
+    "signature": {
+        "name": "Lissette Olivo",
+        "role": "Chief Executive Officer",
+        "email": "lissette@ellicorp.com",
+        "address": "50-01 Metropolitan Ave, Ridgewood, NY 11385",
+        "phone": "718-418-9002",
+        "fax": "718-418-4629",
+        "certificationLine": "M/WBE Certified      Elli NY Design is An Equal Opportunity Employer.",
+        "images": [
+            {
+                "fileName": "elli-logo.png",
+                "contentId": "elli-logo",
+                "width": 135,
+                "height": 41,
+                "alt": "Elli NY Design Corp",
+                "line": 1
+            },
+            {
+                "fileName": "signature-ribbon.png",
+                "contentId": "signature-ribbon",
+                "width": 67,
+                "height": 47,
+                "alt": "Certification ribbon",
+                "line": 1
+            },
+            {
+                "fileName": "mwbe-certified.png",
+                "contentId": "mwbe-certified",
+                "width": 110,
+                "height": 28,
+                "alt": "M/WBE Certified",
+                "line": 2
+            },
+            {
+                "fileName": "equal-opportunity.png",
+                "contentId": "equal-opportunity",
+                "width": 179,
+                "height": 26,
+                "alt": "Equal Opportunity Employer",
+                "line": 2
+            },
+            {
+                "fileName": "nycsca.png",
+                "contentId": "nycsca",
+                "width": 226,
+                "height": 30,
+                "alt": "NYCSCA",
+                "line": 2
+            }
+        ]
+    },
+    "pdfProfiles": {
+        "elliDefault": {
+            "company": {
+                "name": "ELLI N.Y. DESIGN CORP.",
+                "addressLines": ["50-01 METROPOLITAN AVE", "RIDGEWOOD, NY 11385"],
+                "phone": "718-418-9002",
+                "logoPath": "assets/logo.png"
+            },
+            "shipToName": "Elli NY Design Corp"
+        }
+    },
+    "features": {
+        "auth.passwordReset": {
+            "senderGroup": "auth",
+            "subject": "Reset your ElliHub password",
+            "body": "Hello {{userName}},\n\nWe received a request to reset your ElliHub password.\n\nUse this secure link to choose a new password:\n{{resetUrl}}\n\nThis link expires in {{expiresInMinutes}} minutes. If you did not request this, you can ignore this email."
+        },
+        "rfq.vendorRequest": {
+            "senderGroup": "rfq",
+            "subject": "RFQ {{rfqNumber}} - {{projectName}} - {{rfqTitle}}",
+            "body": "Hello {{vendorName}},\n\nPlease review the attached Request for Quote for {{projectName}}.\n\nRFQ: {{rfqNumber}}\nTitle: {{rfqTitle}}\nRFQ Date: {{rfqDate}}\n\nPlease send your proposal by the RFQ date. Let us know if you have any questions.",
+            "pdfProfile": "elliDefault"
+        },
+        "rfq.vendorRequestAll": {
+            "senderGroup": "rfq",
+            "subject": "RFQ {{rfqNumber}} - {{projectName}} - {{rfqTitle}}",
+            "body": "Hello,\n\nPlease review the attached Request for Quote for {{projectName}}.\n\nRFQ: {{rfqNumber}}\nTitle: {{rfqTitle}}\nRFQ Date: {{rfqDate}}\n\nPlease send your proposal by the RFQ date. Let us know if you have any questions.",
+            "pdfProfile": "elliDefault"
+        },
+        "rfq.awardNotice": {
+            "senderGroup": "rfq",
+            "subject": "Award Notice - RFQ {{rfqNumber}} - {{projectName}}",
+            "body": "Hello {{vendorName}},\n\nWe are pleased to inform you that your quote for {{rfqNumber}} - {{rfqTitle}} has been awarded.\n\nProject: {{projectName}}\nAwarded Amount: {{awardedAmount}}\nRFQ Date: {{rfqDate}}\n\nOur team will follow up with the purchase order and next steps. Please let us know if you have any questions."
+        },
+        "purchaseOrder.vendorIssue": {
+            "senderGroup": "po",
+            "subject": "Purchase Order {{poNumber}} - {{projectName}}",
+            "body": "Hello {{vendorName}},\n\nPlease review the attached Purchase Order for {{projectName}}.\n\nPO: {{poNumber}}\nDescription: {{poDescription}}\nExpected Delivery: {{expectedDate}}\nTotal: {{total}}\n\nPlease confirm receipt and let us know if you have any questions.",
+            "pdfProfile": "elliDefault"
+        },
+        "subChangeOrder.vendorApproval": {
+            "senderGroup": "changeOrder",
+            "subject": "Sub Change Order {{scoNumber}} - {{projectName}}",
+            "body": "Hello {{vendorName}},\n\nPlease review the attached approved Sub Change Order for {{projectName}}.\n\nSCO: {{scoNumber}}\nPO: {{poNumber}}\nTitle: {{scoTitle}}\nChange Type: {{changeType}}\nTotal: {{total}}\n\nPlease confirm receipt and let us know if you have any questions.",
+            "pdfProfile": "elliDefault"
+        }
+    }
+}
