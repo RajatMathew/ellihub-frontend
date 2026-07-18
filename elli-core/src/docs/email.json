@@ -1,0 +1,391 @@
+{
+    "paths": {
+        "/email/accounts": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "List connected email accounts",
+                "responses": {
+                    "200": {
+                        "description": "Connected accounts with cache freshness",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/EmailAccount" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/email/auth/start": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "Start an email provider authorization flow",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "query",
+                        "required": true,
+                        "schema": { "type": "string", "enum": ["gmail", "outlook"] }
+                    },
+                    { "name": "redirectTo", "in": "query", "schema": { "type": "string" } }
+                ],
+                "responses": {
+                    "200": { "description": "Authorization URL" },
+                    "400": { "$ref": "#/components/responses/EmailBadRequest" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/sync": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Run one bounded, resumable email sync step",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    {
+                        "name": "daysWithin",
+                        "in": "query",
+                        "schema": { "type": "integer", "minimum": 1, "maximum": 365, "default": 30 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync step result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": { "data": { "$ref": "#/components/schemas/EmailSyncResult" } }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/EmailReconnectRequired" },
+                    "429": { "$ref": "#/components/responses/EmailRateLimited" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" },
+                    "504": { "$ref": "#/components/responses/EmailProviderTimeout" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/folders": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "List cached email folders",
+                "parameters": [{ "$ref": "#/components/parameters/EmailAccountId" }],
+                "responses": { "200": { "description": "Cached folders" } }
+            },
+            "post": {
+                "tags": ["Email"],
+                "summary": "Create a provider folder or label",
+                "parameters": [{ "$ref": "#/components/parameters/EmailAccountId" }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["name"],
+                                "properties": {
+                                    "name": { "type": "string" },
+                                    "parentId": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": { "description": "Folder created" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/tags": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "List cached provider tags",
+                "parameters": [{ "$ref": "#/components/parameters/EmailAccountId" }],
+                "responses": { "200": { "description": "Cached tags" } }
+            },
+            "post": {
+                "tags": ["Email"],
+                "summary": "Create a provider tag",
+                "parameters": [{ "$ref": "#/components/parameters/EmailAccountId" }],
+                "responses": {
+                    "201": { "description": "Tag created" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/messages": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "List cached conversations",
+                "description": "This cache-only endpoint never waits for Aurinko. It returns freshness metadata when the latest sync is stale or failed.",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    {
+                        "name": "folderKey",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["inbox", "drafts", "sent", "deleted", "junk", "archive"],
+                            "default": "inbox"
+                        }
+                    },
+                    { "name": "folderId", "in": "query", "schema": { "type": "string" } },
+                    { "name": "search", "in": "query", "schema": { "type": "string" } },
+                    { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+                    { "name": "size", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 } }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cached conversation page",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": { "data": { "$ref": "#/components/schemas/EmailMessagePage" } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/messages/{messageId}": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "Get cached message detail",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": { "200": { "description": "Cached message detail" }, "404": { "description": "Message not found" } }
+            },
+            "delete": {
+                "tags": ["Email"],
+                "summary": "Move a message to deleted items",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": {
+                    "200": { "description": "Message moved" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/conversations/{threadId}/messages": {
+            "get": {
+                "tags": ["Email"],
+                "summary": "Get cached conversation messages",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string" } }
+                ],
+                "responses": { "200": { "description": "Cached thread messages" } }
+            }
+        },
+        "/email/accounts/{accountId}/messages/send": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Send an email",
+                "parameters": [{ "$ref": "#/components/parameters/EmailAccountId" }],
+                "responses": {
+                    "201": { "description": "Provider accepted the message" },
+                    "401": { "$ref": "#/components/responses/EmailReconnectRequired" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" },
+                    "504": { "$ref": "#/components/responses/EmailProviderTimeout" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/messages/{messageId}/reply": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Reply to an email",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": {
+                    "200": { "description": "Provider accepted the reply" },
+                    "503": { "$ref": "#/components/responses/EmailProviderUnavailable" }
+                }
+            }
+        },
+        "/email/accounts/{accountId}/messages/{messageId}/move": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Move a message",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": { "200": { "description": "Message moved and cache updated" } }
+            }
+        },
+        "/email/accounts/{accountId}/messages/{messageId}/archive": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Archive a message",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": { "200": { "description": "Message archived" } }
+            }
+        },
+        "/email/accounts/{accountId}/messages/{messageId}/unarchive": {
+            "post": {
+                "tags": ["Email"],
+                "summary": "Unarchive a message",
+                "parameters": [
+                    { "$ref": "#/components/parameters/EmailAccountId" },
+                    { "$ref": "#/components/parameters/EmailMessageId" }
+                ],
+                "responses": { "200": { "description": "Message restored to inbox" } }
+            }
+        }
+    },
+    "components": {
+        "parameters": {
+            "EmailAccountId": {
+                "name": "accountId",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" }
+            },
+            "EmailMessageId": {
+                "name": "messageId",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" }
+            }
+        },
+        "schemas": {
+            "EmailFreshness": {
+                "type": "object",
+                "required": ["state", "lastSyncedAt", "staleSince", "reason", "errorCode", "syncing"],
+                "properties": {
+                    "state": { "type": "string", "enum": ["fresh", "stale", "syncing", "error"] },
+                    "lastSyncedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "staleSince": { "type": "string", "format": "date-time", "nullable": true },
+                    "reason": { "type": "string", "nullable": true },
+                    "errorCode": { "type": "string", "nullable": true },
+                    "syncing": { "type": "boolean" }
+                }
+            },
+            "EmailAccount": {
+                "type": "object",
+                "required": ["id", "email", "mailboxAddress", "displayName", "provider", "freshness"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "mailboxAddress": { "type": "string", "format": "email" },
+                    "displayName": { "type": "string" },
+                    "provider": { "type": "string", "enum": ["gmail", "outlook"] },
+                    "lastSyncedAt": { "type": "string", "format": "date-time", "nullable": true },
+                    "freshness": { "$ref": "#/components/schemas/EmailFreshness" }
+                }
+            },
+            "EmailMessageSummary": {
+                "type": "object",
+                "required": ["id", "conversationKey", "senderName", "senderEmail", "subject", "preview", "receivedAt", "unread", "threadMessageCount"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "providerId": { "type": "string" },
+                    "threadId": { "type": "string", "nullable": true },
+                    "conversationKey": { "type": "string" },
+                    "senderName": { "type": "string" },
+                    "senderEmail": { "type": "string" },
+                    "subject": { "type": "string" },
+                    "preview": { "type": "string" },
+                    "receivedAt": { "type": "string", "format": "date-time" },
+                    "unread": { "type": "boolean" },
+                    "threadMessageCount": { "type": "integer" },
+                    "attachmentCount": { "type": "integer" },
+                    "keywords": { "type": "array", "items": { "type": "string" } }
+                }
+            },
+            "EmailPagination": {
+                "type": "object",
+                "required": ["currentPage", "totalPages", "hasNextPage", "hasPreviousPage", "totalItems", "itemsPerPage"],
+                "properties": {
+                    "currentPage": { "type": "integer" },
+                    "totalPages": { "type": "integer" },
+                    "hasNextPage": { "type": "boolean" },
+                    "hasPreviousPage": { "type": "boolean" },
+                    "totalItems": { "type": "integer" },
+                    "itemsPerPage": { "type": "integer" }
+                }
+            },
+            "EmailMessagePage": {
+                "type": "object",
+                "required": ["records", "count", "pagination", "freshness"],
+                "properties": {
+                    "records": { "type": "array", "items": { "$ref": "#/components/schemas/EmailMessageSummary" } },
+                    "count": { "type": "integer" },
+                    "pagination": { "$ref": "#/components/schemas/EmailPagination" },
+                    "freshness": { "$ref": "#/components/schemas/EmailFreshness" }
+                }
+            },
+            "EmailSyncResult": {
+                "type": "object",
+                "required": ["synced", "status", "processed", "hasMore", "lastSyncedAt"],
+                "properties": {
+                    "synced": { "type": "boolean" },
+                    "status": { "type": "string", "enum": ["ready", "partial"] },
+                    "processed": { "type": "integer" },
+                    "hasMore": { "type": "boolean" },
+                    "lastSyncedAt": { "type": "string", "format": "date-time", "nullable": true }
+                }
+            },
+            "EmailError": {
+                "type": "object",
+                "required": ["success", "message"],
+                "properties": {
+                    "success": { "type": "boolean", "const": false },
+                    "message": { "type": "string" },
+                    "details": {
+                        "type": "object",
+                        "properties": {
+                            "code": { "type": "string" },
+                            "retryAfterSeconds": { "type": "integer" }
+                        }
+                    }
+                }
+            }
+        },
+        "responses": {
+            "EmailBadRequest": {
+                "description": "Invalid email request",
+                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailError" } } }
+            },
+            "EmailReconnectRequired": {
+                "description": "Email provider authorization must be renewed",
+                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailError" } } }
+            },
+            "EmailRateLimited": {
+                "description": "Provider rate limit reached",
+                "headers": { "Retry-After": { "schema": { "type": "integer" } } },
+                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailError" } } }
+            },
+            "EmailProviderUnavailable": {
+                "description": "Email provider temporarily unavailable",
+                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailError" } } }
+            },
+            "EmailProviderTimeout": {
+                "description": "Email provider timed out",
+                "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailError" } } }
+            }
+        }
+    }
+}

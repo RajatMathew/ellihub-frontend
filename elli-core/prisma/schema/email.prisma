@@ -1,0 +1,223 @@
+model EmailAccount {
+  id               String             @id
+  organizationId   String
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  aurinkoAccountId String             @unique
+  aurinkoUserId    String?
+  serviceType      EmailServiceType
+  status           EmailAccountStatus @default(CONNECTED)
+  email            String
+  mailboxAddress   String?
+  displayName      String?
+  scope            String
+  accessToken      String             @db.Text
+  tokenType        String             @default("bearer")
+  connectedById    String?
+  connectedBy      User?              @relation("EmailAccountConnectedBy", fields: [connectedById], references: [id], onDelete: SetNull)
+  lastSyncedAt     DateTime?
+  disconnectedAt   DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  folders       EmailFolderCache[]
+  messages      EmailMessageCache[]
+  tags          EmailTagCache[]
+  syncState     EmailSyncState?
+  subscriptions EmailWebhookSubscription[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([email])
+  @@index([connectedById])
+}
+
+model EmailOAuthState {
+  id             String           @id
+  state          String           @unique
+  organizationId String
+  userId         String
+  user           User             @relation("EmailOAuthStates", fields: [userId], references: [id], onDelete: Cascade)
+  serviceType    EmailServiceType
+  redirectTo     String?
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailSyncState {
+  id                    String       @id
+  accountId             String       @unique
+  account               EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  syncUpdatedToken      String?
+  syncUpdatedPageToken  String?
+  syncUpdatedNextToken  String?
+  syncDeletedToken      String?
+  syncDeletedPageToken  String?
+  syncDeletedNextToken  String?
+  lastSyncStatus        EmailSyncStatus?
+  lastSyncError         String?      @db.Text
+  lastSyncErrorCode     String?
+  consecutiveFailures   Int          @default(0)
+  lastStartedAt         DateTime?
+  lastCompletedAt       DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([lastSyncStatus])
+}
+
+model EmailFolderCache {
+  id             String       @id
+  accountId      String
+  account        EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  providerId     String
+  name           String
+  fullName       String?
+  parentId       String?
+  sysLabel       String?
+  wellKnownKey   EmailFolderWellKnown?
+  isFolder       Boolean     @default(true)
+  isLabel        Boolean     @default(false)
+  totalCount     Int         @default(0)
+  unreadCount    Int         @default(0)
+  raw            Json?
+  lastSyncedAt   DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  messages EmailMessageCache[]
+
+  @@unique([accountId, providerId])
+  @@index([accountId])
+  @@index([wellKnownKey])
+  @@index([parentId])
+}
+
+model EmailTagCache {
+  id         String       @id
+  accountId  String
+  account    EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  providerId String
+  name       String
+  color      String?
+  source     String       @default("provider")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([accountId, providerId])
+  @@index([accountId, name])
+}
+
+model EmailMessageCache {
+  id                String            @id
+  accountId         String
+  account           EmailAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  providerId        String
+  threadId          String?
+  conversationKey   String
+  folderId          String?
+  folder            EmailFolderCache? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  internetMessageId String?
+  subject           String?
+  preview           String?           @db.Text
+  bodyHtml          String?           @db.Text
+  bodyText          String?           @db.Text
+  fromName          String?
+  fromEmail         String?
+  to                Json
+  cc                Json
+  bcc               Json
+  replyTo           Json
+  sentAt            DateTime?
+  receivedAt        DateTime?
+  providerCreatedAt DateTime?
+  providerUpdatedAt DateTime?
+  unread            Boolean           @default(false)
+  hasAttachments    Boolean           @default(false)
+  attachmentCount   Int               @default(0)
+  sysLabels         String[]          @default([])
+  keywords          String[]          @default([])
+  webLink           String?
+  raw               Json?
+  deletedAt         DateTime?
+  lastSyncedAt      DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  attachments EmailAttachmentCache[]
+
+  @@unique([accountId, providerId])
+  @@index([accountId, receivedAt(sort: Desc)])
+  @@index([accountId, folderId, receivedAt(sort: Desc)])
+  @@index([accountId, threadId])
+  @@index([accountId, folderId, deletedAt, receivedAt(sort: Desc)])
+  @@index([accountId, conversationKey, deletedAt, receivedAt(sort: Desc)], map: "EmailMessageCache_accountId_conversationKey_deletedAt_receivedA")
+  @@index([deletedAt])
+}
+
+model EmailAttachmentCache {
+  id          String            @id
+  messageId   String
+  message     EmailMessageCache @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  providerId  String
+  name        String
+  mimeType    String?
+  size        Int?
+  inline      Boolean           @default(false)
+  contentId   String?
+  raw         Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([messageId, providerId])
+  @@index([messageId])
+}
+
+model EmailWebhookSubscription {
+  id                     String       @id
+  accountId              String
+  account                EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  aurinkoSubscriptionId  String       @unique
+  resource               String
+  notificationUrl        String
+  active                 Boolean      @default(true)
+  failSince              DateTime?
+  failDescription        String?      @db.Text
+  raw                    Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  @@index([accountId])
+  @@index([active])
+}
+
+enum EmailServiceType {
+  GOOGLE
+  OFFICE365
+}
+
+enum EmailAccountStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum EmailSyncStatus {
+  IDLE
+  SYNCING
+  PARTIAL
+  READY
+  ERROR
+}
+
+enum EmailFolderWellKnown {
+  INBOX
+  DRAFTS
+  SENT
+  DELETED
+  JUNK
+  ARCHIVE
+}
