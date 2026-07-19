@@ -232,7 +232,7 @@ export const emailApi = {
     };
   },
 
-  async syncAccount(accountId: string, daysWithin = 30): Promise<EmailSyncResult> {
+  async syncAccount(accountId: string, daysWithin = 3650): Promise<EmailSyncResult> {
     const res = await api.post(`${BASE}/accounts/${accountId}/sync`, undefined, {
       params: { daysWithin },
     });
