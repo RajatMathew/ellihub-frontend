@@ -8,10 +8,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/app/components/ui/breadcrumb';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
 import { cn } from '@/app/lib/utils';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { CalendarDays, CheckSquare, ChevronDown, Eye, Mail, SunMedium } from 'lucide-react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 const ROUTE_LABELS: Record<string, string> = {
   hr: 'HR',
@@ -46,6 +54,59 @@ const DYNAMIC_SEGMENT_PENDING_LABELS: Record<string, string> = {
 };
 
 const STATIC_DETAIL_ACTION_SEGMENTS = new Set(['create', 'edit', 'new']);
+
+const WORKSPACE_ITEMS = [
+  { label: 'My Day', icon: SunMedium },
+  { label: 'Mail', icon: Mail },
+  { label: 'Calendar', icon: CalendarDays },
+  { label: 'Tasks', icon: CheckSquare },
+  { label: 'Peak', icon: Eye },
+] as const;
+
+function EmailWorkspaceSwitcher() {
+  const navigate = useNavigate();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-100 hover:bg-surface-hover hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label="Switch workspace. Current workspace: Mail"
+        >
+          <Mail aria-hidden="true" className="size-4 text-current" />
+          <span>Mail</span>
+          <ChevronDown aria-hidden="true" className="size-3.5 text-current/80" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56 p-1.5">
+        <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          Workspace
+        </DropdownMenuLabel>
+        {WORKSPACE_ITEMS.map(({ label, icon: Icon }) => {
+          const isMail = label === 'Mail';
+
+          return (
+            <DropdownMenuItem
+              key={label}
+              disabled={!isMail}
+              className={cn('min-h-10 gap-2 px-2', isMail && 'font-semibold')}
+              onSelect={isMail ? () => navigate('/app/email') : undefined}
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              <span className="font-medium">{label}</span>
+              {isMail ? (
+                <span className="ml-auto text-xs text-muted-foreground"></span>
+              ) : (
+                <span className="ml-auto text-xs text-muted-foreground"></span>
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function HeaderBreadcrumbs() {
   const location = useLocation();
@@ -136,6 +197,7 @@ export function HeaderBreadcrumbs() {
     <Breadcrumb className="min-w-0 max-w-full overflow-hidden">
       <BreadcrumbList className="min-w-0 flex-nowrap gap-0.5 overflow-hidden text-sm font-medium">
         {breadcrumbs.map((crumb, index) => {
+          const isEmailWorkspaceRoot = pathSegments[0] === 'email' && index === 0;
           const itemWidthClassName = crumb.isLast
             ? 'max-w-[min(28rem,42vw)]'
             : 'max-w-[min(16rem,24vw)]';
@@ -146,7 +208,9 @@ export function HeaderBreadcrumbs() {
                 <BreadcrumbSeparator className="mx-0 shrink-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
               )}
               <BreadcrumbItem className="min-w-0 gap-0.5">
-                {crumb.isLast ? (
+                {isEmailWorkspaceRoot ? (
+                  <EmailWorkspaceSwitcher />
+                ) : crumb.isLast ? (
                   <BreadcrumbPage
                     className={cn(
                       crumb.label ? breadcrumbItemClassName : 'block min-w-0 truncate py-1',
