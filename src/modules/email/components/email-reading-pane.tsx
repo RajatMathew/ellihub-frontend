@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
+import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
-import { EmailAttachmentViewerDialog } from '@/modules/email/components/email-attachment-viewer-dialog';
+import { FilePreviewDialog, type FilePreviewItem } from '@/modules/files/components/file-preview-dialog';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
@@ -71,6 +72,11 @@ export function EmailReadingPane({
     messageId: string;
     attachment: EmailAttachment;
   } | null>(null);
+  const loadEmailAttachment = useCallback(
+    (file: FilePreviewItem) =>
+      emailApi.getAttachment(accountId!, previewAttachment!.messageId, file.id),
+    [accountId, previewAttachment]
+  );
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -230,14 +236,19 @@ export function EmailReadingPane({
         </div>
       </div>
 
-      <EmailAttachmentViewerDialog
+      <FilePreviewDialog
         open={Boolean(accountId && previewAttachment)}
         onOpenChange={(open) => {
           if (!open) setPreviewAttachment(null);
         }}
-        accountId={accountId ?? ''}
-        messageId={previewAttachment?.messageId ?? ''}
-        attachment={previewAttachment?.attachment ?? null}
+        file={previewAttachment ? ({
+          id: previewAttachment.attachment.id,
+          name: previewAttachment.attachment.name,
+          displayName: previewAttachment.attachment.name,
+          mimeType: previewAttachment.attachment.mimeType,
+          type: 'FILE',
+        } satisfies FilePreviewItem) : null}
+        loadFile={loadEmailAttachment}
       />
     </section>
   );

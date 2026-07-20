@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -305,6 +305,7 @@ interface FilePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: FilePreviewItem | null;
+  loadFile?: (file: FilePreviewItem) => Promise<Blob>;
 }
 
 function PreviewActions({
@@ -360,7 +361,9 @@ function FallbackPreview({ file, type }: { file: FilePreviewItem | null; type: s
         </div>
         <p className="text-sm font-semibold text-foreground">Preview not available</p>
         <p className="mt-1 max-w-sm text-sm leading-5 text-muted-foreground">
-          This {type.toLowerCase()} can be downloaded.
+          {type === 'Document'
+            ? 'DOCX content cannot be previewed here. Download the file to open it.'
+            : `This ${type.toLowerCase()} can be downloaded.`}
         </p>
 
         <div className="mt-4">
@@ -444,7 +447,7 @@ function SpreadsheetPreview({ rows }: { rows: string[][] }) {
   );
 }
 
-export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialogProps) {
+export function FilePreviewDialog({ open, onOpenChange, file, loadFile }: FilePreviewDialogProps) {
   const isFile = open && !!file && file.type !== 'FOLDER';
   const previewType = file ? getPreviewType(file) : 'generic';
   const previewTypeLabel = getPreviewTypeLabel(previewType);
@@ -452,7 +455,18 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
   const [loadedFilePreviewKey, setLoadedFilePreviewKey] = useState<string | null>(null);
   const [previewLargeFileId, setPreviewLargeFileId] = useState<string | null>(null);
   const [downloadTooltipOpen, setDownloadTooltipOpen] = useState(false);
-  const url = isFile && file ? filesApi.getFileReadUrl(file.id) : undefined;
+  const [loadedBlob, setLoadedBlob] = useState<Blob | null>(null);
+  useEffect(() => {
+    setLoadedBlob(null);
+    if (!open || !file || !loadFile) return;
+    let active = true;
+    const fetchBlob = loadFile(file);
+    fetchBlob.then((blob) => active && setLoadedBlob(blob));
+    return () => { active = false; };
+  }, [file, loadFile, open]);
+  const blobUrl = useMemo(() => (loadedBlob ? URL.createObjectURL(loadedBlob) : undefined), [loadedBlob]);
+  useEffect(() => () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }, [blobUrl]);
+  const url = isFile ? (blobUrl ?? (loadFile ? undefined : filesApi.getFileReadUrl(file.id))) : undefined;
   const previewLargeFile = open && previewLargeFileId === file?.id;
   const shouldGateLargePreview = isLargeEmbeddedPreview(file, previewType) && !previewLargeFile;
   const {
@@ -484,7 +498,15 @@ export function FilePreviewDialog({ open, onOpenChange, file }: FilePreviewDialo
       : null;
   const displayName = getDisplayNameWithExtension(file);
   const handleDownload = () => {
-    if (file) downloadFile.mutate(file);
+    if (!file) return;
+    if (loadedBlob) {
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl ?? URL.createObjectURL(loadedBlob);
+      anchor.download = getDisplayNameWithExtension(file) || 'download';
+      anchor.click();
+      return;
+    }
+    downloadFile.mutate(file);
   };
 
   const markEmbeddedPreviewLoaded = () => {
