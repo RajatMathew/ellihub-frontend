@@ -390,6 +390,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         ) : null}
         <EmailReadingPane
           email={visibleEmail}
+          accountId={connectedAccount?.id}
           mailboxAddress={address}
           isLoading={isReadingLoading}
           isError={isReadingError}
@@ -514,7 +515,13 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             to: parseEmailAddresses(payload.to),
             cc: parseEmailAddresses(payload.cc),
             bcc: parseEmailAddresses(payload.bcc),
+            attachments: payload.attachments,
           });
+          if (selectedFolder === 'sent') {
+            await refreshMessagesMutation
+              .mutateAsync({ accountId: connectedAccount.id })
+              .catch(() => undefined);
+          }
         }}
       />
     </div>
