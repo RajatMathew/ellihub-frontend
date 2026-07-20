@@ -22,10 +22,11 @@ import {
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export const useQuickBooksStatusQuery = () =>
+export const useQuickBooksStatusQuery = (enabled = true) =>
   useQuery({
     queryKey: integrationsKeys.quickBooksStatus(),
     queryFn: quickBooksApi.getStatus,
+    enabled,
   });
 
 export const useQuickBooksReferenceSyncStatusQuery = (enabled = true) =>
@@ -74,6 +75,16 @@ export const useQuickBooksVendorsQuery = (enabled = true) =>
     enabled,
   });
 
+export const useQuickBooksSuggestedVendorMatchQuery = (name: string, enabled = true) =>
+  useQuery({
+    queryKey: [
+      ...integrationsKeys.quickBooksVendorOptions({ search: name, pageSize: 1 }),
+      'suggested-match',
+    ],
+    queryFn: () => quickBooksApi.suggestVendorMatch(name),
+    enabled: enabled && Boolean(name.trim()),
+    staleTime: 60_000,
+  });
 interface UseQuickBooksVendorOptionsParams {
   search: string;
   selectedOption?: InfiniteSearchSelectOption;
