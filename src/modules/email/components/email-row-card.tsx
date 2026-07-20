@@ -31,6 +31,9 @@ export type EmailAttachment = {
   name: string;
   size?: string;
   mimeType?: string | null;
+  inline?: boolean;
+  contentId?: string | null;
+  contentUrl?: string;
 };
 
 export type EmailThreadMessage = {

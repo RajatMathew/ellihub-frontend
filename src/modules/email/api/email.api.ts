@@ -46,6 +46,9 @@ const emailAttachmentSchema = z.object({
   name: z.string(),
   size: z.string().optional(),
   mimeType: z.string().nullable().optional(),
+  inline: z.boolean().optional(),
+  contentId: z.string().nullable().optional(),
+  contentUrl: z.string().optional(),
 });
 
 const emailTagSchema = z.object({
