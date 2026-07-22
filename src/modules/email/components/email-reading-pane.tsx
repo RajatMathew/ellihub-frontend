@@ -15,6 +15,7 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
+import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
@@ -100,7 +101,10 @@ export function EmailReadingPane({
   const latestMessage = messages[messages.length - 1] ?? null;
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
   const totalAttachments = messages.reduce(
-    (total, message) => total + (message.attachments?.length ?? 0),
+    (total, message) =>
+      total +
+      (message.attachments?.filter((attachment) => !isInlineEmailAttachment(attachment)).length ??
+        0),
     0
   );
 

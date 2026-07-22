@@ -1,19 +1,20 @@
+import { useEffect, useRef } from 'react';
+
+import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import { getEmailCid, getInlineEmailImageSources } from '@/modules/email/lib/email-attachments';
+
 type EmailMessageBodyProps = {
   body: string[];
+  attachments?: EmailAttachment[];
 };
 
-export function EmailMessageBody({ body }: EmailMessageBodyProps) {
+export function EmailMessageBody({ body, attachments = [] }: EmailMessageBodyProps) {
   const content = body.filter(Boolean);
   const html = content.some(looksLikeHtml) ? content.join('\n') : null;
-  const sanitizedHtml = html ? sanitizeEmailHtml(html) : '';
+  const emailDocument = html ? sanitizeEmailDocument(html, attachments) : '';
 
   if (html) {
-    return (
-      <div
-        className="email-message-html w-full max-w-none overflow-hidden break-words text-sm leading-6 text-foreground [&>*]:!max-w-full [&_a]:break-words [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_div]:!max-w-full [&_img]:h-auto [&_img]:max-w-full [&_p]:mb-3 [&_table]:max-w-full [&_table]:border-collapse [&_td]:!max-w-full"
-        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-      />
-    );
+    return <EmailHtmlBody documentHtml={emailDocument} />;
   }
 
   return (
@@ -29,13 +30,59 @@ function looksLikeHtml(value: string) {
   return /<\/?[a-z][\s\S]*>/i.test(value);
 }
 
-function sanitizeEmailHtml(value: string) {
+function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
+    const parsedDocument = new DOMParser().parseFromString(documentHtml, 'text/html');
+    const emailRoot = document.importNode(parsedDocument.documentElement, true);
+    const baseStyles = document.createElement('style');
+    baseStyles.textContent = `
+      :host {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        color: inherit;
+        font: inherit;
+        isolation: isolate;
+        contain: layout paint;
+      }
+      html,
+      body {
+        min-width: 0;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        color: inherit;
+        font: inherit;
+      }
+    `;
+
+    shadowRoot.replaceChildren(baseStyles, emailRoot);
+
+    return () => {
+      shadowRoot.replaceChildren();
+    };
+  }, [documentHtml]);
+
+  return <div ref={hostRef} className="w-full min-w-0 overflow-x-auto" />;
+}
+
+function sanitizeEmailDocument(value: string, attachments: EmailAttachment[]) {
   if (typeof window === 'undefined') return value;
 
   const document = new DOMParser().parseFromString(value, 'text/html');
+  const inlineImageSources = getInlineEmailImageSources(
+    attachments,
+    import.meta.env.VITE_API_BASE_URL
+  );
   document
     .querySelectorAll(
-      'script, style, iframe, object, embed, link, meta, base, form, input, button, textarea, select'
+      'script, iframe, object, embed, link, base, form, input, button, textarea, select, meta[http-equiv]'
     )
     .forEach((node) => node.remove());
 
@@ -57,48 +104,27 @@ function sanitizeEmailHtml(value: string) {
         element.removeAttribute(attribute.name);
       }
     });
-
-    normalizeEmailElement(element);
   });
 
-  return document.body.innerHTML;
-}
+  document.body.querySelectorAll<HTMLAnchorElement>('a[href]').forEach((link) => {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+  });
 
-function normalizeEmailElement(element: HTMLElement) {
-  element.style.maxWidth = '100%';
-  element.style.boxSizing = 'border-box';
+  document.body
+    .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img[src], source[src]')
+    .forEach((element) => {
+      const cid = getEmailCid(element.getAttribute('src'));
+      if (!cid) return;
 
-  if (element.tagName === 'TABLE') {
-    element.style.width = '100%';
-    element.style.tableLayout = 'auto';
-  }
+      const contentUrl = inlineImageSources.get(cid);
+      if (contentUrl) {
+        element.setAttribute('src', contentUrl);
+      } else {
+        element.removeAttribute('src');
+        element.setAttribute('data-missing-inline-image', cid);
+      }
+    });
 
-  if (element.tagName === 'IMG') {
-    element.style.height = 'auto';
-    element.style.maxWidth = '100%';
-  }
-
-  const fontSize = getFontSizeInPixels(element.style.fontSize);
-  if (!fontSize) return;
-
-  const tagName = element.tagName.toLowerCase();
-  const maxFontSize = ['h1', 'h2', 'h3'].includes(tagName) ? 34 : 18;
-
-  if (fontSize > maxFontSize) {
-    element.style.fontSize = `${maxFontSize}px`;
-    element.style.lineHeight = tagName === 'h1' ? '1.15' : '1.35';
-  }
-}
-
-function getFontSizeInPixels(value: string) {
-  const match = value.trim().match(/^([\d.]+)(px|pt|rem|em)$/i);
-  if (!match) return null;
-
-  const size = Number(match[1]);
-  const unit = match[2].toLowerCase();
-
-  if (!Number.isFinite(size)) return null;
-  if (unit === 'px') return size;
-  if (unit === 'pt') return size * 1.333;
-  return size * 16;
+  return document.documentElement.outerHTML;
 }

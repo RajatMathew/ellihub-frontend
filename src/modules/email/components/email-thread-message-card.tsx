@@ -7,6 +7,7 @@ import type {
   EmailAttachment,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
+import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
@@ -31,6 +32,9 @@ export function EmailThreadMessageCard({
   onOpenAttachment,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
+  const visibleAttachments = attachments.filter(
+    (attachment) => !isInlineEmailAttachment(attachment)
+  );
   const tags = message.keywords ?? [];
   const handleReply = () => onReply(message.id);
 
@@ -92,16 +96,12 @@ export function EmailThreadMessageCard({
       </div>
 
       <div className="space-y-4 px-4 py-4">
-        <EmailMessageBody body={message.body} />
+        <EmailMessageBody body={message.body} attachments={attachments} />
 
-        {attachments.length > 0 && (
+        {visibleAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
-            {attachments.map((attachment) => (
-              <EmailAttachmentChip
-                key={attachment.id}
-                attachment={attachment}
-                onClick={() => onOpenAttachment?.(attachment)}
-              />
+            {visibleAttachments.map((attachment) => (
+              <EmailAttachmentChip key={attachment.id} attachment={attachment} />
             ))}
           </div>
         )}
