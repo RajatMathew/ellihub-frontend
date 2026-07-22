@@ -1,6 +1,7 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import {
   EmailAgentPanel,
@@ -48,7 +49,7 @@ interface MailboxPageProps {
 }
 
 const emails = emailData as EmailListItem[];
-const CONNECTED_EMAIL_PAGE_SIZE = 30;
+const CONNECTED_EMAIL_PAGE_SIZE = 100;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
   'drafts',
@@ -67,9 +68,9 @@ const DEFAULT_AGENT_LAYOUT: EmailAgentLayout = {
 export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const navigate = useNavigate();
   const [selectedFolder, setSelectedFolder] = useState<string>('inbox');
-  const [messagePage, setMessagePage] = useState(1);
   const [messageSearch, setMessageSearch] = useState('');
-  const deferredMessageSearch = useDeferredValue(messageSearch.trim());
+  const [emailPageIndex, setEmailPageIndex] = useState(0);
+  const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), 300);
   const attemptedInitialSyncs = useRef(new Set<string>());
   const [composeOpen, setComposeOpen] = useState(false);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
@@ -99,9 +100,8 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     ? { key: selectedFolder }
     : { id: selectedConnectedFolder?.id ?? selectedFolder };
   const messagesQuery = useEmailMessagesQuery(connectedAccount?.id, selectedFolderQuery, {
-    page: messagePage,
     size: CONNECTED_EMAIL_PAGE_SIZE,
-    search: deferredMessageSearch || undefined,
+    search: debouncedMessageSearch || undefined,
   });
   const startAuthMutation = useStartEmailAuthMutation();
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
@@ -115,16 +115,25 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const unarchiveMessageMutation = useUnarchiveEmailMessageMutation();
   const deleteMessageMutation = useDeleteEmailMessageMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
-  const connectedEmails = useMemo<EmailListItem[]>(
-    () =>
-      (messagesQuery.data?.records ?? []).map<EmailListItem>((email) => ({
+  const loadedEmailPages = messagesQuery.data?.pages ?? [];
+  const activeEmailPage = loadedEmailPages[emailPageIndex];
+  const providerTotalCount = loadedEmailPages.find(
+    (page) => page.totalCount !== null && page.totalCount !== undefined
+  )?.totalCount;
+  const connectedEmails = useMemo<EmailListItem[]>(() => {
+    const conversations = new Map<string, EmailListItem>();
+    for (const email of activeEmailPage?.records ?? []) {
+      const key = email.conversationKey ?? email.threadId ?? email.id;
+      if (conversations.has(key)) continue;
+      conversations.set(key, {
         ...email,
         mailbox: connectedAccount?.id ?? 'connected',
         folder: email.folderId ?? selectedFolder,
         latestMessageId: email.id,
-      })),
-    [connectedAccount?.id, messagesQuery.data?.records, selectedFolder]
-  );
+      });
+    }
+    return Array.from(conversations.values());
+  }, [activeEmailPage?.records, connectedAccount?.id, selectedFolder]);
   const mailboxEmails = useMemo(
     () =>
       isConnected
@@ -146,7 +155,6 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         : getFolderCounts(mailboxEmails),
     [foldersQuery.data, isConnected, mailboxEmails]
   );
-  const messagePagination = messagesQuery.data?.pagination;
   const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
   const viewKey = connectedAccount
     ? `account:${connectedAccount.id}`
@@ -183,8 +191,8 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
-  const activeFreshness = messagesQuery.data?.freshness ?? connectedAccount?.freshness;
-  const hasCachedMessages = Boolean(messagesQuery.data?.records.length);
+  const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
+  const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
   const isInitialSyncing =
     isConnected &&
     refreshMessagesMutation.isPending &&
@@ -228,7 +236,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     const timeout = window.setTimeout(() => {
       setSelectedFolder('inbox');
       setSelectedTarget(null);
-      setMessagePage(1);
+      setEmailPageIndex(0);
       setMessageSearch('');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -237,14 +245,30 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSelectedTarget(null);
-      setMessagePage(1);
+      setEmailPageIndex(0);
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [selectedFolder]);
+  }, [connectedAccount?.id, debouncedMessageSearch, selectedFolder]);
+
+  const handleNextEmailPage = async () => {
+    const nextPageIndex = emailPageIndex + 1;
+    if (nextPageIndex < loadedEmailPages.length) {
+      setSelectedTarget(null);
+      setEmailPageIndex(nextPageIndex);
+      return;
+    }
+
+    if (!messagesQuery.hasNextPage || messagesQuery.isFetchingNextPage) return;
+    const result = await messagesQuery.fetchNextPage();
+    if (!result.isError && (result.data?.pages.length ?? 0) > nextPageIndex) {
+      setSelectedTarget(null);
+      setEmailPageIndex(nextPageIndex);
+    }
+  };
 
   useEffect(() => {
     const accountId = connectedAccount?.id;
-    const freshness = messagesQuery.data?.freshness ?? connectedAccount?.freshness;
+    const freshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
     if (!accountId || !freshness || freshness.state === 'fresh' || freshness.syncing) return;
     if (attemptedInitialSyncs.current.has(accountId) || refreshMessagesMutation.isPending) return;
 
@@ -253,7 +277,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   }, [
     connectedAccount?.freshness,
     connectedAccount?.id,
-    messagesQuery.data?.freshness,
+    messagesQuery.data?.pages,
     refreshMessagesMutation,
   ]);
 
@@ -366,26 +390,29 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
 
               refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
             }}
-            page={isConnected ? messagePage : undefined}
+            page={isConnected ? emailPageIndex + 1 : undefined}
             pageSize={isConnected ? CONNECTED_EMAIL_PAGE_SIZE : undefined}
-            hasPreviousPage={isConnected ? messagePage > 1 : false}
+            totalCount={isConnected ? providerTotalCount : undefined}
+            hasPreviousPage={isConnected && emailPageIndex > 0}
             hasNextPage={
-              isConnected
-                ? (messagePagination?.hasNextPage ??
-                  folderEmails.length >= CONNECTED_EMAIL_PAGE_SIZE)
-                : false
+              isConnected &&
+              (emailPageIndex + 1 < loadedEmailPages.length || Boolean(messagesQuery.hasNextPage))
             }
-            isPageChanging={
-              (messagesQuery.isFetching && !messagesQuery.isLoading) ||
-              refreshMessagesMutation.isPending
+            isPageChanging={messagesQuery.isFetchingNextPage}
+            isRefreshing={
+              refreshMessagesMutation.isPending ||
+              (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
             }
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
-              setMessagePage(1);
+              setEmailPageIndex(0);
             }}
-            onPreviousPage={() => setMessagePage((page) => Math.max(1, page - 1))}
-            onNextPage={() => setMessagePage((page) => page + 1)}
+            onPreviousPage={() => {
+              setSelectedTarget(null);
+              setEmailPageIndex((current) => Math.max(0, current - 1));
+            }}
+            onNextPage={() => void handleNextEmailPage()}
           />
         ) : null}
         <EmailReadingPane
