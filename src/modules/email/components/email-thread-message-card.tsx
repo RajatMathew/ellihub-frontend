@@ -18,6 +18,7 @@ interface EmailThreadMessageCardProps {
   onReply: (messageId: string) => void;
   onSendReply: (messageId: string, body: string) => Promise<void> | void;
   onCancelReply: () => void;
+  onOpenAttachment?: (attachment: EmailAttachment) => void;
 }
 
 export function EmailThreadMessageCard({
@@ -28,6 +29,7 @@ export function EmailThreadMessageCard({
   onReply,
   onSendReply,
   onCancelReply,
+  onOpenAttachment,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
   const visibleAttachments = attachments.filter(
@@ -205,11 +207,18 @@ function MessageIconAction({
   );
 }
 
-function EmailAttachmentChip({ attachment }: { attachment: EmailAttachment }) {
+function EmailAttachmentChip({
+  attachment,
+  onClick,
+}: {
+  attachment: EmailAttachment;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       className="inline-flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+      onClick={onClick}
     >
       <FileText aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="min-w-0 truncate">{attachment.name}</span>

@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -11,7 +11,9 @@ import {
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
-import { Paperclip, Send, Trash2 } from 'lucide-react';
+import { AlertCircle, FileText, Paperclip, Send, Trash2, X } from 'lucide-react';
+
+const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
 
 interface EmailComposeDialogProps {
   open: boolean;
@@ -24,6 +26,7 @@ interface EmailComposeDialogProps {
     bcc: string;
     subject: string;
     body: string;
+    attachments: Array<{ name: string; mimeType?: string; content: string }>;
   }) => Promise<void> | void;
 }
 
@@ -39,6 +42,8 @@ export function EmailComposeDialog({
   const bccId = useId();
   const subjectId = useId();
   const bodyId = useId();
+  const attachmentInputId = useId();
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     to: '',
     cc: '',
@@ -48,6 +53,10 @@ export function EmailComposeDialog({
   });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isPreparingAttachments, setIsPreparingAttachments] = useState(false);
   const canSend =
     form.to.trim().length > 0 && form.subject.trim().length > 0 && form.body.trim().length > 0;
 
@@ -55,6 +64,9 @@ export function EmailComposeDialog({
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
     setShowCc(false);
     setShowBcc(false);
+    setAttachments([]);
+    setAttachmentError(null);
+    setIsDragging(false);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -75,11 +87,44 @@ export function EmailComposeDialog({
           onSubmit={async (event) => {
             event.preventDefault();
             if (!canSend || isSending) return;
-            await onSend?.(form);
+            setIsPreparingAttachments(true);
+            try {
+              const encodedAttachments = await Promise.all(attachments.map(fileToAttachment));
+              await onSend?.({ ...form, attachments: encodedAttachments });
+            } finally {
+              setIsPreparingAttachments(false);
+            }
             handleOpenChange(false);
           }}
         >
-          <DialogBody className="min-h-0 flex-1 overflow-auto">
+          <DialogBody
+            className={`relative min-h-0 flex-1 overflow-auto ${
+              isDragging ? 'bg-primary/5 ring-2 ring-inset ring-primary/40' : ''
+            }`}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => {
+              if (event.currentTarget === event.target) setIsDragging(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              addAttachments(
+                event.dataTransfer.files,
+                attachments,
+                setAttachments,
+                setAttachmentError
+              );
+            }}
+          >
+            {isDragging && (
+              <div className="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-background/85 text-sm font-medium text-primary">
+                Drop files to attach
+              </div>
+            )}
             <div className="divide-y divide-border">
               <EmailAddressField
                 id={toId}
@@ -161,22 +206,32 @@ export function EmailComposeDialog({
                 }
               />
             </div>
+
+            <AttachmentDropzone
+              inputId={attachmentInputId}
+              inputRef={attachmentInputRef}
+              attachments={attachments}
+              error={attachmentError}
+              onClear={() => setAttachments([])}
+              onSelect={(event) => {
+                addAttachments(event.target.files, attachments, setAttachments, setAttachmentError);
+                event.target.value = '';
+              }}
+              onRemove={(file) =>
+                setAttachments((current) => current.filter((item) => item !== file))
+              }
+            />
           </DialogBody>
 
           <DialogFooter className="border-t border-border px-5 py-3 pt-3">
             <div className="flex w-full flex-wrap items-center gap-2">
-              <Button type="submit" size="sm" disabled={!canSend || isSending}>
-                <Send aria-hidden="true" className="size-3.5" />
-                {isSending ? 'Sending' : 'Send'}
-              </Button>
               <Button
-                type="button"
-                variant="ghost"
+                type="submit"
                 size="sm"
-                className="bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground"
+                disabled={!canSend || isSending || isPreparingAttachments}
               >
-                <Paperclip aria-hidden="true" className="size-3.5" />
-                Attach
+                <Send aria-hidden="true" className="size-3.5" />
+                {isPreparingAttachments ? 'Preparing' : isSending ? 'Sending' : 'Send'}
               </Button>
               <Button
                 type="button"
@@ -194,6 +249,156 @@ export function EmailComposeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function AttachmentDropzone({
+  inputId,
+  inputRef,
+  attachments,
+  error,
+  onClear,
+  onSelect,
+  onRemove,
+}: {
+  inputId: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  attachments: File[];
+  error: string | null;
+  onClear: () => void;
+  onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemove: (file: File) => void;
+}) {
+  return (
+    <div className="px-5 pb-5">
+      <input
+        ref={inputRef}
+        id={inputId}
+        type="file"
+        multiple
+        className="sr-only"
+        onChange={onSelect}
+      />
+      <div className="rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
+              <Paperclip className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Drop files here</p>
+              <p className="text-xs text-muted-foreground">Up to 25 MB per file</p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+          >
+            <Paperclip className="size-3.5" aria-hidden="true" />
+            Choose files
+          </Button>
+        </div>
+
+        {attachments.length > 0 && (
+          <div className="mt-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                {attachments.length} {attachments.length === 1 ? 'attachment' : 'attachments'}
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={onClear}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+                Remove all
+              </button>
+            </div>
+            <ul className="grid gap-2 sm:grid-cols-2" aria-label="Selected attachments">
+              {attachments.map((file) => (
+                <li
+                  key={`${file.name}-${file.lastModified}`}
+                  className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2"
+                >
+                  <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                    {file.name}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {formatFileSize(file.size)}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Remove ${file.name}`}
+                    onClick={() => onRemove(file)}
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {error && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0 text-xs leading-5">
+            <p className="font-semibold">Attachment wasn’t added</p>
+            <p className="text-destructive/85">{error} Choose a smaller file and try again.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function addAttachments(
+  files: FileList | null,
+  current: File[],
+  setFiles: (files: File[]) => void,
+  setError: (error: string | null) => void
+) {
+  if (!files?.length) return;
+  const incoming = Array.from(files);
+  const tooLarge = incoming.find((file) => file.size > MAX_ATTACHMENT_SIZE_BYTES);
+  if (tooLarge) {
+    setError(`${tooLarge.name} is larger than 25 MB.`);
+    return;
+  }
+  const existing = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+  const next = incoming.filter(
+    (file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`)
+  );
+  setFiles([...current, ...next]);
+  setError(null);
+}
+
+function fileToAttachment(file: File) {
+  return new Promise<{ name: string; mimeType?: string; content: string }>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve({
+        name: file.name,
+        mimeType: file.type || undefined,
+        content: result.split(',')[1] || result,
+      });
+    };
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function EmailAddressField({
