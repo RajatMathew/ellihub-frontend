@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
+import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
+import { FilePreviewDialog, type FilePreviewItem } from '@/modules/files/components/file-preview-dialog';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
   EmailReadingPaneSkeleton,
 } from '@/modules/email/components/email-reading-pane-states';
-import type { EmailListItem, EmailThreadMessage } from '@/modules/email/components/email-row-card';
+import type {
+  EmailAttachment,
+  EmailListItem,
+  EmailThreadMessage,
+} from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
 import { Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
   email: EmailListItem | null;
+  accountId?: string;
   mailboxAddress: string;
   isLoading?: boolean;
   isError?: boolean;
@@ -39,6 +46,7 @@ type PendingReply = {
 
 export function EmailReadingPane({
   email,
+  accountId,
   mailboxAddress,
   isLoading = false,
   isError = false,
@@ -60,6 +68,15 @@ export function EmailReadingPane({
     null
   );
   const [pendingReplies, setPendingReplies] = useState<PendingReply[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    messageId: string;
+    attachment: EmailAttachment;
+  } | null>(null);
+  const loadEmailAttachment = useCallback(
+    (file: FilePreviewItem) =>
+      emailApi.getAttachment(accountId!, previewAttachment!.messageId, file.id),
+    [accountId, previewAttachment]
+  );
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -209,10 +226,30 @@ export function EmailReadingPane({
                   });
               }}
               onCancelReply={() => setReplyTarget(null)}
+              onOpenAttachment={
+                accountId
+                  ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
+                  : undefined
+              }
             />
           ))}
         </div>
       </div>
+
+      <FilePreviewDialog
+        open={Boolean(accountId && previewAttachment)}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(null);
+        }}
+        file={previewAttachment ? ({
+          id: previewAttachment.attachment.id,
+          name: previewAttachment.attachment.name,
+          displayName: previewAttachment.attachment.name,
+          mimeType: previewAttachment.attachment.mimeType,
+          type: 'FILE',
+        } satisfies FilePreviewItem) : null}
+        loadFile={loadEmailAttachment}
+      />
     </section>
   );
 }

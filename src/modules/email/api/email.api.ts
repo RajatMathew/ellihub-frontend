@@ -153,6 +153,11 @@ export type SendConnectedEmailPayload = {
   to: Array<{ address: string; name?: string }>;
   cc?: Array<{ address: string; name?: string }>;
   bcc?: Array<{ address: string; name?: string }>;
+  attachments?: Array<{
+    name: string;
+    mimeType?: string;
+    content: string;
+  }>;
 };
 
 export type ReplyConnectedEmailPayload = {
@@ -242,6 +247,14 @@ export const emailApi = {
   async getMessage(accountId: string, messageId: string): Promise<ConnectedEmailListItem> {
     const res = await api.get(`${BASE}/accounts/${accountId}/messages/${messageId}`);
     return emailListItemSchema.parse(unwrapData(res.data, 'message'));
+  },
+
+  async getAttachment(accountId: string, messageId: string, attachmentId: string): Promise<Blob> {
+    const res = await api.get(
+      `${BASE}/accounts/${accountId}/messages/${messageId}/attachments/${attachmentId}`,
+      { responseType: 'blob' }
+    );
+    return res.data as Blob;
   },
 
   async listConversation(

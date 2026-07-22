@@ -300,6 +300,7 @@ export const useSendConnectedEmailMutation = () => {
     mutationFn: (payload: SendConnectedEmailPayload) => emailApi.sendMessage(payload),
     onSuccess: async (_result, payload) => {
       await queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+      await queryClient.invalidateQueries({ queryKey: emailKeys.folders(payload.accountId) });
       toast.success('Email sent.');
     },
     onError: (error) => toastApiError(error, 'Failed to send email.'),
