@@ -1,5 +1,6 @@
 import { cn } from '@/app/lib/utils';
 import { Paperclip } from 'lucide-react';
+import { formatEmailDate } from '@/modules/email/lib/email-date';
 
 export type EmailListItem = {
   id: string;
@@ -103,7 +104,9 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
               {email.threadMessageCount}
             </span>
           )}
-          <span className="shrink-0 text-xs text-muted-foreground">{email.receivedAt}</span>
+          <span className="shrink-0 text-xs text-muted-foreground" title={email.receivedAt}>
+            {formatEmailDate(email.receivedAt)}
+          </span>
         </span>
 
         <span

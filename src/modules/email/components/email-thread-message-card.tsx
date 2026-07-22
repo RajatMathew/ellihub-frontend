@@ -9,6 +9,7 @@ import type {
 } from '@/modules/email/components/email-row-card';
 import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
+import { formatEmailDate } from '@/modules/email/lib/email-date';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -80,7 +81,9 @@ export function EmailThreadMessageCard({
                       : 'Sent'}
                 </span>
               )}
-              <time className="mr-2 text-xs text-muted-foreground">{message.sentAt}</time>
+              <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
+                {formatEmailDate(message.sentAt)}
+              </time>
               <MessageIconAction
                 label={`Reply to ${message.senderName}`}
                 icon={Reply}
