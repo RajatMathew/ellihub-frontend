@@ -1,10 +1,17 @@
-import { useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
-import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
+import type { EmailListItem } from '@/modules/email/components/email-row-card';
+import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import emailData from '@/modules/email/data/emails.json';
 import { ChevronLeft, ChevronRight, Inbox, RefreshCcw, Search, X } from 'lucide-react';
@@ -19,9 +26,11 @@ interface EmailListPaneProps {
   selectedEmailId?: string;
   page?: number;
   pageSize?: number;
+  totalCount?: number | null;
   hasPreviousPage?: boolean;
   hasNextPage?: boolean;
   isPageChanging?: boolean;
+  isRefreshing?: boolean;
   search?: string;
   onSelectEmail?: (emailId: string) => void;
   onPreviousPage?: () => void;
@@ -45,9 +54,11 @@ export function EmailListPane({
   selectedEmailId,
   page,
   pageSize,
+  totalCount,
   hasPreviousPage = false,
   hasNextPage = false,
   isPageChanging = false,
+  isRefreshing = false,
   search: controlledSearch,
   onSelectEmail,
   onPreviousPage,
@@ -60,6 +71,7 @@ export function EmailListPane({
   const setSearch = onSearchChange ?? setLocalSearch;
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
 
   const mailboxEmails = useMemo(
@@ -80,6 +92,18 @@ export function EmailListPane({
         .some((value) => value.toLowerCase().includes(query))
     );
   }, [mailboxEmails, onSearchChange, search]);
+  const emailRangeLabel = getEmailRangeLabel({
+    count: mailboxEmails.length,
+    page,
+    pageSize,
+    totalCount,
+    hasNextPage,
+    hasSearch: Boolean(search.trim()),
+  });
+
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [folder, mailbox, page, search]);
 
   const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const startX = event.clientX;
@@ -121,9 +145,7 @@ export function EmailListPane({
           <h1 className="truncate font-sans text-base font-semibold normal-case tracking-normal text-foreground">
             {folderLabel}
           </h1>
-          <p className="whitespace-nowrap text-xs text-muted-foreground">
-            {mailboxEmails.length} emails
-          </p>
+          <p className="whitespace-nowrap text-xs text-muted-foreground">{emailRangeLabel}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {onRetry && (
@@ -133,18 +155,18 @@ export function EmailListPane({
               mode="icon"
               size="icon"
               className="size-8"
-              disabled={isLoading || isPageChanging}
-              aria-busy={isPageChanging}
+              disabled={isLoading || isRefreshing}
+              aria-busy={isRefreshing}
               aria-label="Refresh emails"
               onClick={onRetry}
             >
               <RefreshCcw
                 aria-hidden="true"
-                className={cn('size-4', isPageChanging && 'motion-safe:animate-spin')}
+                className={cn('size-4', isRefreshing && 'motion-safe:animate-spin')}
               />
             </Button>
           )}
-          {page && pageSize && (
+          {page && (
             <div
               className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5"
               role="group"
@@ -157,7 +179,7 @@ export function EmailListPane({
                 size="icon"
                 className="size-8"
                 disabled={!hasPreviousPage || isPageChanging}
-                aria-label="Previous email page"
+                aria-label="Previous 100 emails"
                 onClick={onPreviousPage}
               >
                 <ChevronLeft aria-hidden="true" className="size-4" />
@@ -172,7 +194,7 @@ export function EmailListPane({
                 size="icon"
                 className="size-8"
                 disabled={!hasNextPage || isPageChanging}
-                aria-label="Next email page"
+                aria-label="Next 100 emails"
                 onClick={onNextPage}
               >
                 <ChevronRight aria-hidden="true" className="size-4" />
@@ -190,7 +212,8 @@ export function EmailListPane({
           <Search aria-hidden="true" className="size-4" />
           <Input
             id="email-list-search"
-            type="search"
+            type="text"
+            enterKeyHint="search"
             value={search}
             placeholder="Search"
             autoComplete="off"
@@ -210,7 +233,7 @@ export function EmailListPane({
         </InputWrapper>
       </div>
 
-      <div className="kt-scrollable-y-auto min-h-0 flex-1">
+      <div ref={scrollContainerRef} className="kt-scrollable-y-auto min-h-0 flex-1">
         {isLoading && <EmailListSkeleton />}
 
         {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
@@ -224,16 +247,12 @@ export function EmailListPane({
         )}
 
         {!isLoading && !isError && filteredEmails.length > 0 && (
-          <div>
-            {filteredEmails.map((email) => (
-              <EmailRowCard
-                key={email.id}
-                email={email}
-                selected={email.id === selectedEmailId}
-                onSelect={() => onSelectEmail?.(email.id)}
-              />
-            ))}
-          </div>
+          <VirtualizedEmailList
+            emails={filteredEmails}
+            scrollContainerRef={scrollContainerRef}
+            selectedEmailId={selectedEmailId}
+            onSelectEmail={onSelectEmail}
+          />
         )}
       </div>
 
@@ -245,6 +264,40 @@ export function EmailListPane({
       />
     </section>
   );
+}
+
+const emailCountFormatter = new Intl.NumberFormat();
+
+function getEmailRangeLabel({
+  count,
+  page,
+  pageSize,
+  totalCount,
+  hasNextPage,
+  hasSearch,
+}: {
+  count: number;
+  page?: number;
+  pageSize?: number;
+  totalCount?: number | null;
+  hasNextPage: boolean;
+  hasSearch: boolean;
+}) {
+  if (!page || !pageSize) return `${emailCountFormatter.format(count)} emails`;
+  const suffix = hasSearch ? 'results' : 'emails';
+  if (count === 0 || totalCount === 0) return `0 ${suffix}`;
+
+  const start = (page - 1) * pageSize + 1;
+  const end =
+    totalCount !== null && totalCount !== undefined
+      ? Math.min(page * pageSize, totalCount)
+      : hasNextPage
+        ? page * pageSize
+        : start + Math.max(0, count - 1);
+  if (totalCount !== null && totalCount !== undefined) {
+    return `${emailCountFormatter.format(start)}–${emailCountFormatter.format(end)} of ${emailCountFormatter.format(totalCount)} ${suffix}`;
+  }
+  return `${emailCountFormatter.format(start)}–${emailCountFormatter.format(end)} ${suffix}`;
 }
 
 function EmailListSkeleton() {

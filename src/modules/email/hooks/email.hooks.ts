@@ -17,7 +17,7 @@ import {
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import {
-  keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -35,8 +35,8 @@ export const emailKeys = {
   folders: (accountId?: string) => [...emailKeys.all, 'folders', accountId] as const,
   tags: (accountId?: string) => [...emailKeys.all, 'tags', accountId] as const,
   messagesRoot: (accountId?: string) => [...emailKeys.all, 'messages', accountId] as const,
-  messages: (accountId?: string, folder?: string, page?: number, size?: number, search?: string) =>
-    [...emailKeys.messagesRoot(accountId), folder, page, size, search] as const,
+  messages: (accountId?: string, folder?: string, size?: number, search?: string) =>
+    [...emailKeys.messagesRoot(accountId), folder, size, search] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
@@ -82,29 +82,29 @@ export const useEmailTagsQuery = (accountId?: string) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { page?: number; size?: number; search?: string }
+  pagination?: { size?: number; search?: string }
 ) =>
-  useQuery({
+  useInfiniteQuery({
     queryKey: emailKeys.messages(
       accountId,
       folder.id ?? folder.key,
-      pagination?.page,
       pagination?.size,
       pagination?.search
     ),
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       emailApi.listMessages({
         accountId: accountId!,
         folderKey: folder.key,
         folderId: folder.id,
-        page: pagination?.page,
+        pageToken: pageParam ?? undefined,
         size: pagination?.size,
         search: pagination?.search,
       }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     enabled: Boolean(accountId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
-    placeholderData: keepPreviousData,
     refetchOnMount: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -115,14 +115,7 @@ export const useRefreshEmailMessagesMutation = () => {
 
   return useMutation({
     mutationFn: (payload: { accountId: string; daysWithin?: number }) => {
-      const run = async () => {
-        let result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
-        for (let step = 1; result.hasMore && step < 5; step += 1) {
-          result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
-        }
-        return result;
-      };
-      return run();
+      return emailApi.syncAccount(payload.accountId, payload.daysWithin);
     },
     onSuccess: async (result, payload) => {
       await Promise.all([
@@ -141,7 +134,7 @@ export const useRefreshEmailMessagesMutation = () => {
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
       if (result.hasMore) {
-        toast.info('More email is available. Refresh again to continue syncing.');
+        toast.info('Recent email changes are still catching up. Refresh again to continue.');
       }
     },
     onError: (error) => toastApiError(error, 'Failed to refresh emails.'),

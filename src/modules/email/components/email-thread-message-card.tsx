@@ -8,8 +8,8 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
-import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -104,7 +104,11 @@ export function EmailThreadMessageCard({
         {visibleAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
             {visibleAttachments.map((attachment) => (
-              <EmailAttachmentChip key={attachment.id} attachment={attachment} />
+              <EmailAttachmentChip
+                key={attachment.id}
+                attachment={attachment}
+                onClick={() => onOpenAttachment?.(attachment)}
+              />
             ))}
           </div>
         )}

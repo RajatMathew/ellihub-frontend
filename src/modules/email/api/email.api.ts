@@ -98,25 +98,13 @@ const emailAuthStartSchema = z.object({
   authorizationUrl: z.string().url(),
 });
 
-const emailListResponseSchema = z.union([
-  z.array(emailListItemSchema),
-  z.object({
-    records: z.array(emailListItemSchema),
-    count: z.number().optional(),
-    pagination: z
-      .object({
-        currentPage: z.number(),
-        totalPages: z.number(),
-        hasNextPage: z.boolean(),
-        hasPreviousPage: z.boolean(),
-        totalItems: z.number(),
-        itemsPerPage: z.number(),
-      })
-      .nullable()
-      .optional(),
-    freshness: emailFreshnessSchema.optional(),
-  }),
-]);
+const emailListResponseSchema = z.object({
+  records: z.array(emailListItemSchema),
+  nextPageToken: z.string().nullable().optional(),
+  pageSize: z.number().optional(),
+  totalCount: z.number().int().nonnegative().nullable().optional(),
+  freshness: emailFreshnessSchema.optional(),
+});
 
 const emailSyncResultSchema = z.object({
   synced: z.boolean(),
@@ -136,15 +124,9 @@ export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
 export type EmailProvider = 'gmail' | 'outlook';
 export type EmailMessagePage = {
   records: ConnectedEmailListItem[];
-  count?: number;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-    totalItems: number;
-    itemsPerPage: number;
-  } | null;
+  nextPageToken: string | null;
+  pageSize?: number;
+  totalCount?: number | null;
   freshness?: EmailFreshness;
 };
 
@@ -213,7 +195,7 @@ export const emailApi = {
     accountId: string;
     folderKey?: EmailFolderKey;
     folderId?: string;
-    page?: number;
+    pageToken?: string;
     size?: number;
     search?: string;
   }): Promise<EmailMessagePage> {
@@ -221,26 +203,22 @@ export const emailApi = {
       params: {
         folderKey: params.folderKey,
         folderId: params.folderId,
-        page: params.page,
-        size: params.size ?? 30,
+        pageToken: params.pageToken,
+        size: params.size ?? 100,
         search: params.search || undefined,
       },
     });
-    const response = res.data as Record<string, unknown>;
-    const data = response.data as Record<string, unknown> | undefined;
-    const payload = response.messages ?? (data?.records ? data : response.data) ?? response;
-    const parsed = emailListResponseSchema.parse(payload);
+    const parsed = emailListResponseSchema.parse(unwrapData(res.data));
     return {
-      records: Array.isArray(parsed) ? parsed : parsed.records,
-      count: Array.isArray(parsed) ? undefined : parsed.count,
-      pagination: Array.isArray(parsed)
-        ? ((response.pagination as EmailMessagePage['pagination']) ?? null)
-        : (parsed.pagination ?? (response.pagination as EmailMessagePage['pagination']) ?? null),
-      freshness: Array.isArray(parsed) ? undefined : parsed.freshness,
+      records: parsed.records,
+      nextPageToken: parsed.nextPageToken ?? null,
+      pageSize: parsed.pageSize,
+      totalCount: parsed.totalCount ?? null,
+      freshness: parsed.freshness,
     };
   },
 
-  async syncAccount(accountId: string, daysWithin = 3650): Promise<EmailSyncResult> {
+  async syncAccount(accountId: string, daysWithin = 1): Promise<EmailSyncResult> {
     const res = await api.post(`${BASE}/accounts/${accountId}/sync`, undefined, {
       params: { daysWithin },
     });
