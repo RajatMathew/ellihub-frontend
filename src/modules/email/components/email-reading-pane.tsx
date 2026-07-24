@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
-import { FilePreviewDialog, type FilePreviewItem } from '@/modules/files/components/file-preview-dialog';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
@@ -15,7 +14,11 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
-import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
@@ -45,6 +48,8 @@ type PendingReply = {
   message: EmailThreadMessage;
 };
 
+const MAX_CACHED_ATTACHMENT_PREVIEWS = 6;
+
 export function EmailReadingPane({
   email,
   accountId,
@@ -73,11 +78,43 @@ export function EmailReadingPane({
     messageId: string;
     attachment: EmailAttachment;
   } | null>(null);
+  const attachmentBlobCacheRef = useRef(new Map<string, Promise<Blob>>());
   const loadEmailAttachment = useCallback(
-    (file: FilePreviewItem) =>
-      emailApi.getAttachment(accountId!, previewAttachment!.messageId, file.id),
-    [accountId, previewAttachment]
+    (messageId: string, attachmentId: string) => {
+      if (!accountId) return Promise.reject(new Error('Email account is unavailable'));
+
+      const cacheKey = `${accountId}:${messageId}:${attachmentId}`;
+      const cached = attachmentBlobCacheRef.current.get(cacheKey);
+      if (cached) return cached;
+
+      const request = emailApi.getAttachment(accountId, messageId, attachmentId);
+      attachmentBlobCacheRef.current.set(cacheKey, request);
+
+      if (attachmentBlobCacheRef.current.size > MAX_CACHED_ATTACHMENT_PREVIEWS) {
+        const oldestKey = attachmentBlobCacheRef.current.keys().next().value;
+        if (oldestKey) attachmentBlobCacheRef.current.delete(oldestKey);
+      }
+
+      void request.catch(() => {
+        if (attachmentBlobCacheRef.current.get(cacheKey) === request) {
+          attachmentBlobCacheRef.current.delete(cacheKey);
+        }
+      });
+      return request;
+    },
+    [accountId]
   );
+  const loadPreviewAttachment = useCallback(
+    (file: FilePreviewItem) => {
+      if (!previewAttachment) return Promise.reject(new Error('No attachment selected'));
+      return loadEmailAttachment(previewAttachment.messageId, file.id);
+    },
+    [loadEmailAttachment, previewAttachment]
+  );
+
+  useEffect(() => {
+    attachmentBlobCacheRef.current.clear();
+  }, [accountId, email?.id]);
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -103,8 +140,9 @@ export function EmailReadingPane({
   const totalAttachments = messages.reduce(
     (total, message) =>
       total +
-      (message.attachments?.filter((attachment) => !isInlineEmailAttachment(attachment)).length ??
-        0),
+      (message.attachments?.filter(
+        (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
+      ).length ?? 0),
     0
   );
 
@@ -235,6 +273,7 @@ export function EmailReadingPane({
                   ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
                   : undefined
               }
+              onLoadAttachment={accountId ? loadEmailAttachment : undefined}
             />
           ))}
         </div>
@@ -245,14 +284,19 @@ export function EmailReadingPane({
         onOpenChange={(open) => {
           if (!open) setPreviewAttachment(null);
         }}
-        file={previewAttachment ? ({
-          id: previewAttachment.attachment.id,
-          name: previewAttachment.attachment.name,
-          displayName: previewAttachment.attachment.name,
-          mimeType: previewAttachment.attachment.mimeType,
-          type: 'FILE',
-        } satisfies FilePreviewItem) : null}
-        loadFile={loadEmailAttachment}
+        file={
+          previewAttachment
+            ? ({
+                id: previewAttachment.attachment.id,
+                name: previewAttachment.attachment.name,
+                displayName: previewAttachment.attachment.name,
+                mimeType: previewAttachment.attachment.mimeType,
+                size: previewAttachment.attachment.sizeBytes,
+                type: 'FILE',
+              } satisfies FilePreviewItem)
+            : null
+        }
+        loadFile={loadPreviewAttachment}
       />
     </section>
   );

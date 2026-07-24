@@ -1,15 +1,16 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
-import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
+import { Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -20,6 +21,7 @@ interface EmailThreadMessageCardProps {
   onSendReply: (messageId: string, body: string) => Promise<void> | void;
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
+  onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
 }
 
 export function EmailThreadMessageCard({
@@ -31,11 +33,13 @@ export function EmailThreadMessageCard({
   onSendReply,
   onCancelReply,
   onOpenAttachment,
+  onLoadAttachment,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
   const visibleAttachments = attachments.filter(
-    (attachment) => !isInlineEmailAttachment(attachment)
+    (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
   );
+  const hasBodyContent = message.body.some((content) => Boolean(content.trim()));
   const tags = message.keywords ?? [];
   const handleReply = () => onReply(message.id);
 
@@ -99,15 +103,17 @@ export function EmailThreadMessageCard({
       </div>
 
       <div className="space-y-4 px-4 py-4">
-        <EmailMessageBody body={message.body} attachments={attachments} />
+        {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
 
         {visibleAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
             {visibleAttachments.map((attachment) => (
-              <EmailAttachmentChip
+              <EmailAttachmentHoverCard
                 key={attachment.id}
                 attachment={attachment}
-                onClick={() => onOpenAttachment?.(attachment)}
+                messageId={message.id}
+                loadAttachment={onLoadAttachment}
+                onOpen={() => onOpenAttachment?.(attachment)}
               />
             ))}
           </div>
@@ -211,26 +217,6 @@ function MessageIconAction({
     >
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
-  );
-}
-
-function EmailAttachmentChip({
-  attachment,
-  onClick,
-}: {
-  attachment: EmailAttachment;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="inline-flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-      onClick={onClick}
-    >
-      <FileText aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 truncate">{attachment.name}</span>
-      {attachment.size && <span className="shrink-0 text-muted-foreground">{attachment.size}</span>}
-    </button>
   );
 }
 

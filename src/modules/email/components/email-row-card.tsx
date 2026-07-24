@@ -1,6 +1,6 @@
 import { cn } from '@/app/lib/utils';
-import { Paperclip } from 'lucide-react';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { Paperclip } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -31,6 +31,7 @@ export type EmailAttachment = {
   providerId?: string;
   name: string;
   size?: string;
+  sizeBytes?: number;
   mimeType?: string | null;
   inline?: boolean;
   contentId?: string | null;

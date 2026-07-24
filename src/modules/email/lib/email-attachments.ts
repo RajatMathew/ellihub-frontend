@@ -31,6 +31,27 @@ export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): bo
   return attachment.inline === true || normalizeEmailContentId(attachment.contentId) !== null;
 }
 
+export function isReferencedInlineEmailAttachment(
+  attachment: EmailAttachmentMetadata,
+  body: readonly string[]
+): boolean {
+  if (body.length === 0 || !isInlineEmailAttachment(attachment)) return false;
+
+  const attachmentIdentifiers = [attachment.contentId, attachment.name]
+    .map(normalizeEmailContentId)
+    .filter((value): value is string => Boolean(value));
+  if (attachmentIdentifiers.length === 0) return false;
+
+  for (const content of body) {
+    for (const match of content.matchAll(/\bcid\s*:\s*([^"'\s)]+)/gi)) {
+      const reference = normalizeEmailContentId(match[1]);
+      if (reference && attachmentIdentifiers.includes(reference)) return true;
+    }
+  }
+
+  return false;
+}
+
 export function getInlineEmailImageSources(
   attachments: readonly EmailAttachmentMetadata[],
   apiBaseUrl = ''
