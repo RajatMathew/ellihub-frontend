@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
-import { getEmailCid, getInlineEmailImageSources } from '@/modules/email/lib/email-attachments';
+import {
+  getEmailInlineImageCid,
+  getInlineEmailImageSources,
+} from '@/modules/email/lib/email-attachments';
 
 type EmailMessageBodyProps = {
   body: string[];
@@ -60,11 +63,44 @@ function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
         color: inherit;
         font: inherit;
       }
+      img[data-email-image-hidden="true"] {
+        display: none !important;
+      }
+      [data-email-image-fallback] {
+        display: inline-block;
+        max-width: 100%;
+        color: inherit;
+        font: inherit;
+        opacity: 0.65;
+      }
     `;
 
     shadowRoot.replaceChildren(baseStyles, emailRoot);
+    const images = Array.from(shadowRoot.querySelectorAll<HTMLImageElement>('img'));
+    const cleanups = images.map((image) => {
+      const showFallback = () => {
+        if (image.dataset.emailImageHidden === 'true') return;
+        image.dataset.emailImageHidden = 'true';
+        image.setAttribute('aria-hidden', 'true');
+
+        const label = image.alt.trim();
+        if (!label) return;
+
+        const fallback = document.createElement('span');
+        fallback.dataset.emailImageFallback = 'true';
+        fallback.textContent = `[Image unavailable: ${label}]`;
+        image.after(fallback);
+      };
+
+      image.addEventListener('error', showFallback);
+      if (image.dataset.missingInlineImage || (image.complete && image.naturalWidth === 0)) {
+        showFallback();
+      }
+      return () => image.removeEventListener('error', showFallback);
+    });
 
     return () => {
+      cleanups.forEach((cleanup) => cleanup());
       shadowRoot.replaceChildren();
     };
   }, [documentHtml]);
@@ -112,16 +148,29 @@ function sanitizeEmailDocument(value: string, attachments: EmailAttachment[]) {
   });
 
   document.body
-    .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img[src], source[src]')
+    .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img, source')
     .forEach((element) => {
-      const cid = getEmailCid(element.getAttribute('src'));
+      const cid = getEmailInlineImageCid({
+        src: element.getAttribute('src'),
+        srcset: element.getAttribute('srcset'),
+        originalSrc: element.getAttribute('originalsrc'),
+        dataOriginalSrc:
+          element.getAttribute('data-originalsrc') ?? element.getAttribute('data-original-src'),
+      });
       if (!cid) return;
 
       const contentUrl = inlineImageSources.get(cid);
       if (contentUrl) {
-        element.setAttribute('src', contentUrl);
+        if (element instanceof HTMLSourceElement) {
+          element.setAttribute('srcset', contentUrl);
+          element.removeAttribute('src');
+        } else {
+          element.setAttribute('src', contentUrl);
+          element.removeAttribute('srcset');
+        }
       } else {
         element.removeAttribute('src');
+        element.removeAttribute('srcset');
         element.setAttribute('data-missing-inline-image', cid);
       }
     });
