@@ -99,6 +99,7 @@ export function SidebarGroupMenu({
   return (
     <AccordionMenu
       key={pathname}
+      data-sidebar-menu="group"
       selectedValue={undefined}
       matchPath={matchPath}
       type="single"

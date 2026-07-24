@@ -47,6 +47,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
 
   return (
     <AccordionMenu
+      data-sidebar-menu="primary"
       selectedValue={pathname}
       matchPath={matchPath}
       type="multiple"
