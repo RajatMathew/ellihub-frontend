@@ -32,6 +32,7 @@ import {
   useEmailMessagesQuery,
   useEmailTagsQuery,
   useMoveEmailMessageMutation,
+  usePermanentlyDeleteEmailMessageMutation,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
   useSendConnectedEmailMutation,
@@ -114,6 +115,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const archiveMessageMutation = useArchiveEmailMessageMutation();
   const unarchiveMessageMutation = useUnarchiveEmailMessageMutation();
   const deleteMessageMutation = useDeleteEmailMessageMutation();
+  const permanentlyDeleteMessageMutation = usePermanentlyDeleteEmailMessageMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
   const loadedEmailPages = messagesQuery.data?.pages ?? [];
   const activeEmailPage = loadedEmailPages[emailPageIndex];
@@ -188,6 +190,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     selectedConnectedFolder?.name ??
     foldersQuery.data?.find((folder) => folder.key === selectedFolder)?.name;
   const isArchiveFolder = selectedConnectedFolder?.key === 'archive';
+  const isDeletedFolder = selectedFolderKey === 'deleted';
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
@@ -482,17 +485,31 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
               : undefined
           }
           onDelete={
-            connectedAccount
+            connectedAccount && !isDeletedFolder
               ? (messageId) => {
-                  setSelectedTarget(null);
-                  deleteMessageMutation.mutate({
-                    accountId: connectedAccount.id,
-                    messageId,
-                    targetFolderId: deletedFolderId,
-                  });
+                  deleteMessageMutation.mutate(
+                    {
+                      accountId: connectedAccount.id,
+                      messageId,
+                      targetFolderId: deletedFolderId,
+                    },
+                    { onSuccess: () => setSelectedTarget(null) }
+                  );
                 }
               : undefined
           }
+          onPermanentDelete={
+            connectedAccount && isDeletedFolder
+              ? async (messageId) => {
+                  await permanentlyDeleteMessageMutation.mutateAsync({
+                    accountId: connectedAccount.id,
+                    messageId,
+                  });
+                  setSelectedTarget(null);
+                }
+              : undefined
+          }
+          isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}
           onReply={
             connectedAccount
               ? (messageId, body) =>

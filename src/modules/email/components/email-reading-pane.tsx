@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react';
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
-import { FilePreviewDialog, type FilePreviewItem } from '@/modules/files/components/file-preview-dialog';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
@@ -16,6 +15,10 @@ import type {
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
 import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
@@ -35,6 +38,8 @@ interface EmailReadingPaneProps {
   onCreateTag?: (name: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onPermanentDelete?: (messageId: string) => Promise<void> | void;
+  isPermanentlyDeleting?: boolean;
   isSendingReply?: boolean;
   onReply?: (messageId: string, body: string) => Promise<void> | void;
 }
@@ -62,6 +67,8 @@ export function EmailReadingPane({
   onCreateTag,
   onArchive,
   onDelete,
+  onPermanentDelete,
+  isPermanentlyDeleting = false,
   isSendingReply = false,
   onReply,
 }: EmailReadingPaneProps) {
@@ -152,6 +159,10 @@ export function EmailReadingPane({
             onCreateTag={onCreateTag}
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onPermanentDelete={
+              onPermanentDelete ? () => onPermanentDelete(actionMessageId) : undefined
+            }
+            isPermanentlyDeleting={isPermanentlyDeleting}
             onReply={
               latestMessage
                 ? () => setReplyTarget({ emailId: email.id, messageId: latestMessage.id })
@@ -245,13 +256,17 @@ export function EmailReadingPane({
         onOpenChange={(open) => {
           if (!open) setPreviewAttachment(null);
         }}
-        file={previewAttachment ? ({
-          id: previewAttachment.attachment.id,
-          name: previewAttachment.attachment.name,
-          displayName: previewAttachment.attachment.name,
-          mimeType: previewAttachment.attachment.mimeType,
-          type: 'FILE',
-        } satisfies FilePreviewItem) : null}
+        file={
+          previewAttachment
+            ? ({
+                id: previewAttachment.attachment.id,
+                name: previewAttachment.attachment.name,
+                displayName: previewAttachment.attachment.name,
+                mimeType: previewAttachment.attachment.mimeType,
+                type: 'FILE',
+              } satisfies FilePreviewItem)
+            : null
+        }
         loadFile={loadEmailAttachment}
       />
     </section>

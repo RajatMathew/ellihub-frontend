@@ -575,6 +575,20 @@ export const useDeleteEmailMessageMutation = () => {
   });
 };
 
+export const usePermanentlyDeleteEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; messageId: string }) =>
+      emailApi.permanentlyDeleteMessage(payload.accountId, payload.messageId),
+    onSuccess: async (_result, payload) => {
+      toast.success('Email permanently deleted.');
+      await refreshEmailActionQueries(queryClient, payload.accountId);
+    },
+    onError: (error) => toastApiError(error, 'Failed to permanently delete email.'),
+  });
+};
+
 export const useUpdateEmailMessageTagsMutation = () => {
   const queryClient = useQueryClient();
 
