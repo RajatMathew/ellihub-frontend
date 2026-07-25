@@ -38,6 +38,8 @@ interface EmailReadingPaneProps {
   onCreateTag?: (name: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onPermanentDelete?: (messageId: string) => Promise<void> | void;
+  isPermanentlyDeleting?: boolean;
   onMarkUnread?: (messageId: string) => void;
   isUpdatingReadStatus?: boolean;
   isSendingReply?: boolean;
@@ -67,6 +69,8 @@ export function EmailReadingPane({
   onCreateTag,
   onArchive,
   onDelete,
+  onPermanentDelete,
+  isPermanentlyDeleting = false,
   onMarkUnread,
   isUpdatingReadStatus = false,
   isSendingReply = false,
@@ -159,6 +163,10 @@ export function EmailReadingPane({
             onCreateTag={onCreateTag}
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onPermanentDelete={
+              onPermanentDelete ? () => onPermanentDelete(actionMessageId) : undefined
+            }
+            isPermanentlyDeleting={isPermanentlyDeleting}
             onMarkUnread={onMarkUnread ? () => onMarkUnread(actionMessageId) : undefined}
             isUpdatingReadStatus={isUpdatingReadStatus}
             onReply={
