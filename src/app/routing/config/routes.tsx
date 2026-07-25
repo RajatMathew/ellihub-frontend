@@ -88,8 +88,10 @@ export const routeTree: RouteDef[] = [
         path: 'finance/*',
         component: FinanceRoute,
         title: 'Finance',
-        access: 'admin',
-        children: [{ path: 'checking-register', title: 'Checking Register' }],
+        children: [
+          { path: 'checking-register', title: 'Checking Register' },
+          { path: 'payment-conflicts', title: 'Payment Conflicts' },
+        ],
       },
       {
         path: 'email/*',

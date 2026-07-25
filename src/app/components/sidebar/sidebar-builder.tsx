@@ -92,6 +92,7 @@ function filterMenuForAccess(
 
       const children = item.children
         .filter((child) => {
+          if (child.access) return access.can(child.access.resource, child.access.action);
           const path = child.path ?? '';
           if (path.includes('projects')) return access.access?.projectScope !== 'none';
           if (path.includes('monthly-bills')) {

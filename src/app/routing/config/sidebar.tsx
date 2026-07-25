@@ -32,6 +32,11 @@ export const mainSidebarMenu: MenuConfig = [
         title: 'Checking Register',
         path: '../finance/checking-register',
       },
+      {
+        title: 'Payment Conflicts',
+        path: '../finance/payment-conflicts',
+        access: { resource: 'quickBooksPaymentConflict', action: 'read' },
+      },
     ],
   },
   {
