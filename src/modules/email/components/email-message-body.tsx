@@ -99,8 +99,6 @@ function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
       return () => image.removeEventListener('error', showFallback);
     });
 
-    return () => {
-      cleanups.forEach((cleanup) => cleanup());
     let restoreReadableColors = keepEmailTextReadable(shadowRoot, host);
     const themeObserver = new MutationObserver(() => {
       restoreReadableColors();
@@ -112,6 +110,7 @@ function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
     });
 
     return () => {
+      cleanups.forEach((cleanup) => cleanup());
       themeObserver.disconnect();
       restoreReadableColors();
       shadowRoot.replaceChildren();
