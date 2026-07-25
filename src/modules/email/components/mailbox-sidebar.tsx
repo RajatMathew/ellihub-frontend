@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { ConnectedEmailFolder } from '@/modules/email/api';
 import {
@@ -36,6 +37,7 @@ import {
   Send,
   Trash2,
 } from 'lucide-react';
+import { Tooltip as TooltipPrimitive } from 'radix-ui';
 
 const COLLAPSED_WIDTH = 60;
 const DEFAULT_WIDTH = 280;
@@ -440,7 +442,7 @@ function MailboxFolderButton({
 }) {
   const Icon = folder.icon;
 
-  return (
+  const folderButton = (
     <button
       type="button"
       className={cn(
@@ -451,8 +453,8 @@ function MailboxFolderButton({
         collapsed && 'justify-center px-0'
       )}
       aria-current={selected ? 'page' : undefined}
+      aria-label={collapsed ? folder.label : undefined}
       onClick={onSelect}
-      title={collapsed ? folder.label : undefined}
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
       {!collapsed && (
@@ -466,6 +468,19 @@ function MailboxFolderButton({
         </>
       )}
     </button>
+  );
+
+  if (!collapsed) return folderButton;
+
+  return (
+    <Tooltip delayDuration={75}>
+      <TooltipTrigger asChild>{folderButton}</TooltipTrigger>
+      <TooltipPrimitive.Portal>
+        <TooltipContent side="right" sideOffset={8}>
+          {folder.label}
+        </TooltipContent>
+      </TooltipPrimitive.Portal>
+    </Tooltip>
   );
 }
 

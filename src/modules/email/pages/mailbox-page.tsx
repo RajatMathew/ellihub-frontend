@@ -37,6 +37,7 @@ import {
   useSendConnectedEmailMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
+  useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
@@ -114,6 +115,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const archiveMessageMutation = useArchiveEmailMessageMutation();
   const unarchiveMessageMutation = useUnarchiveEmailMessageMutation();
   const deleteMessageMutation = useDeleteEmailMessageMutation();
+  const updateMessageStatusMutation = useUpdateEmailMessageStatusMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
   const loadedEmailPages = messagesQuery.data?.pages ?? [];
   const activeEmailPage = loadedEmailPages[emailPageIndex];
@@ -225,6 +227,24 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         (messageDetailQuery.isError && !messageDetailQuery.data))
     );
   const showEmailList = emailListVisible || !agentLayout.hidesEmailList;
+  const lastOpenedMessageKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!connectedAccount || !selectedEmail) return;
+
+    const messageId = selectedEmail.latestMessageId ?? selectedEmail.id;
+    const openedMessageKey = `${connectedAccount.id}:${selectedFolder}:${messageId}`;
+    if (lastOpenedMessageKey.current === openedMessageKey) return;
+
+    lastOpenedMessageKey.current = openedMessageKey;
+    if (!selectedEmail.unread) return;
+
+    updateMessageStatusMutation.mutate({
+      accountId: connectedAccount.id,
+      messageId,
+      unread: false,
+    });
+  }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
 
   useEffect(() => {
     if (accountSlug) {
@@ -493,6 +513,17 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
                 }
               : undefined
           }
+          onMarkUnread={
+            connectedAccount
+              ? (messageId) =>
+                  updateMessageStatusMutation.mutate({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    unread: true,
+                  })
+              : undefined
+          }
+          isUpdatingReadStatus={updateMessageStatusMutation.isPending}
           onReply={
             connectedAccount
               ? (messageId, body) =>
