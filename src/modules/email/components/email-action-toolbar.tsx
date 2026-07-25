@@ -18,7 +18,7 @@ import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/ap
 import {
   Archive,
   FolderInput,
-  MailOpen,
+  Mail,
   MoreHorizontal,
   Plus,
   Printer,
@@ -41,6 +41,8 @@ type EmailActionToolbarProps = {
   onArchive?: () => void;
   onDelete?: () => void;
   onReply?: () => void;
+  onMarkUnread?: () => void;
+  isUpdatingReadStatus?: boolean;
 };
 
 export function EmailActionToolbar({
@@ -57,6 +59,8 @@ export function EmailActionToolbar({
   onArchive,
   onDelete,
   onReply,
+  onMarkUnread,
+  isUpdatingReadStatus = false,
 }: EmailActionToolbarProps) {
   const [newTagName, setNewTagName] = useState('');
   const movableFolders = folders.filter((folder) => folder.id !== currentFolderId);
@@ -172,8 +176,8 @@ export function EmailActionToolbar({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuItem>
-            <MailOpen aria-hidden="true" />
+          <DropdownMenuItem disabled={!onMarkUnread || isUpdatingReadStatus} onClick={onMarkUnread}>
+            <Mail aria-hidden="true" />
             Mark as unread
           </DropdownMenuItem>
           <DropdownMenuItem>
