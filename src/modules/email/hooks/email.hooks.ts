@@ -118,8 +118,8 @@ export const useRefreshEmailMessagesMutation = () => {
     mutationFn: (payload: { accountId: string; daysWithin?: number }) => {
       return emailApi.syncAccount(payload.accountId, payload.daysWithin);
     },
-    onSuccess: async (result, payload) => {
-      await Promise.all([
+    onSuccess: (result, payload) => {
+      void Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: emailKeys.messagesRoot(payload.accountId),
           refetchType: 'active',
@@ -306,8 +306,8 @@ export const useReplyConnectedEmailMutation = () => {
 
   return useMutation({
     mutationFn: (payload: ReplyConnectedEmailPayload) => emailApi.replyMessage(payload),
-    onSuccess: async (_result, payload) => {
-      await Promise.all([
+    onSuccess: (_result, payload) => {
+      void Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
         queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
       ]);

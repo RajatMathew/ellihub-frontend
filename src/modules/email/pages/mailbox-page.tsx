@@ -21,6 +21,7 @@ import { EMAIL_MAILBOXES, type EmailMailboxKey } from '@/modules/email/constants
 import emailData from '@/modules/email/data/emails.json';
 import {
   useArchiveEmailMessageMutation,
+  useBoundedEmailSyncIndicator,
   useCreateEmailFolderMutation,
   useCreateEmailTagMutation,
   useDeleteEmailMessageMutation,
@@ -201,11 +202,12 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
   const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
   const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
+  const showEmailSyncIndicator = useBoundedEmailSyncIndicator(
+    refreshMessagesMutation.isPending,
+    `${connectedAccount?.id ?? 'no-account'}:${refreshMessagesMutation.submittedAt}`
+  );
   const isInitialSyncing =
-    isConnected &&
-    refreshMessagesMutation.isPending &&
-    !activeFreshness?.lastSyncedAt &&
-    !hasCachedMessages;
+    isConnected && showEmailSyncIndicator && !activeFreshness?.lastSyncedAt && !hasCachedMessages;
   const isMailboxLoading = isConnectedRoute
     ? accountsQuery.isLoading || messagesQuery.isLoading || isInitialSyncing
     : false;
@@ -403,10 +405,8 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             isLoadingMore={messagesQuery.isFetchingNextPage}
             loadMoreError={messagesQuery.isFetchNextPageError}
             onLoadMore={messagesQuery.fetchNextPage}
-            isRefreshing={
-              refreshMessagesMutation.isPending ||
-              (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
-            }
+            isRefreshing={showEmailSyncIndicator}
+            isRefreshPending={refreshMessagesMutation.isPending}
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
