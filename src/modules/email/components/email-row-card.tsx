@@ -31,6 +31,7 @@ export type EmailAttachment = {
   providerId?: string;
   name: string;
   size?: string;
+  sizeBytes?: number;
   mimeType?: string | null;
   inline?: boolean;
   contentId?: string | null;

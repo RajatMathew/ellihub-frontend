@@ -45,6 +45,7 @@ const emailAttachmentSchema = z.object({
   providerId: z.string().optional(),
   name: z.string(),
   size: z.string().optional(),
+  sizeBytes: z.number().nonnegative().optional(),
   mimeType: z.string().nullable().optional(),
   inline: z.boolean().optional(),
   contentId: z.string().nullable().optional(),
