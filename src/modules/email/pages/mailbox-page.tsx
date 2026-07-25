@@ -38,6 +38,7 @@ import {
   useSendConnectedEmailMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
+  useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
@@ -70,7 +71,6 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const navigate = useNavigate();
   const [selectedFolder, setSelectedFolder] = useState<string>('inbox');
   const [messageSearch, setMessageSearch] = useState('');
-  const [emailPageIndex, setEmailPageIndex] = useState(0);
   const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), 300);
   const attemptedInitialSyncs = useRef(new Set<string>());
   const [composeOpen, setComposeOpen] = useState(false);
@@ -116,26 +116,31 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const unarchiveMessageMutation = useUnarchiveEmailMessageMutation();
   const deleteMessageMutation = useDeleteEmailMessageMutation();
   const permanentlyDeleteMessageMutation = usePermanentlyDeleteEmailMessageMutation();
+  const updateMessageStatusMutation = useUpdateEmailMessageStatusMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
-  const loadedEmailPages = messagesQuery.data?.pages ?? [];
-  const activeEmailPage = loadedEmailPages[emailPageIndex];
+  const loadedEmailPages = useMemo(
+    () => messagesQuery.data?.pages ?? [],
+    [messagesQuery.data?.pages]
+  );
   const providerTotalCount = loadedEmailPages.find(
     (page) => page.totalCount !== null && page.totalCount !== undefined
   )?.totalCount;
   const connectedEmails = useMemo<EmailListItem[]>(() => {
     const conversations = new Map<string, EmailListItem>();
-    for (const email of activeEmailPage?.records ?? []) {
-      const key = email.conversationKey ?? email.threadId ?? email.id;
-      if (conversations.has(key)) continue;
-      conversations.set(key, {
-        ...email,
-        mailbox: connectedAccount?.id ?? 'connected',
-        folder: email.folderId ?? selectedFolder,
-        latestMessageId: email.id,
-      });
+    for (const page of loadedEmailPages) {
+      for (const email of page.records) {
+        const key = email.conversationKey ?? email.threadId ?? email.id;
+        if (conversations.has(key)) continue;
+        conversations.set(key, {
+          ...email,
+          mailbox: connectedAccount?.id ?? 'connected',
+          folder: email.folderId ?? selectedFolder,
+          latestMessageId: email.id,
+        });
+      }
     }
     return Array.from(conversations.values());
-  }, [activeEmailPage?.records, connectedAccount?.id, selectedFolder]);
+  }, [connectedAccount?.id, loadedEmailPages, selectedFolder]);
   const mailboxEmails = useMemo(
     () =>
       isConnected
@@ -228,6 +233,24 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         (messageDetailQuery.isError && !messageDetailQuery.data))
     );
   const showEmailList = emailListVisible || !agentLayout.hidesEmailList;
+  const lastOpenedMessageKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!connectedAccount || !selectedEmail) return;
+
+    const messageId = selectedEmail.latestMessageId ?? selectedEmail.id;
+    const openedMessageKey = `${connectedAccount.id}:${selectedFolder}:${messageId}`;
+    if (lastOpenedMessageKey.current === openedMessageKey) return;
+
+    lastOpenedMessageKey.current = openedMessageKey;
+    if (!selectedEmail.unread) return;
+
+    updateMessageStatusMutation.mutate({
+      accountId: connectedAccount.id,
+      messageId,
+      unread: false,
+    });
+  }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
 
   useEffect(() => {
     if (accountSlug) {
@@ -239,7 +262,6 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     const timeout = window.setTimeout(() => {
       setSelectedFolder('inbox');
       setSelectedTarget(null);
-      setEmailPageIndex(0);
       setMessageSearch('');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -248,26 +270,9 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSelectedTarget(null);
-      setEmailPageIndex(0);
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [connectedAccount?.id, debouncedMessageSearch, selectedFolder]);
-
-  const handleNextEmailPage = async () => {
-    const nextPageIndex = emailPageIndex + 1;
-    if (nextPageIndex < loadedEmailPages.length) {
-      setSelectedTarget(null);
-      setEmailPageIndex(nextPageIndex);
-      return;
-    }
-
-    if (!messagesQuery.hasNextPage || messagesQuery.isFetchingNextPage) return;
-    const result = await messagesQuery.fetchNextPage();
-    if (!result.isError && (result.data?.pages.length ?? 0) > nextPageIndex) {
-      setSelectedTarget(null);
-      setEmailPageIndex(nextPageIndex);
-    }
-  };
 
   useEffect(() => {
     const accountId = connectedAccount?.id;
@@ -393,15 +398,11 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
 
               refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
             }}
-            page={isConnected ? emailPageIndex + 1 : undefined}
-            pageSize={isConnected ? CONNECTED_EMAIL_PAGE_SIZE : undefined}
             totalCount={isConnected ? providerTotalCount : undefined}
-            hasPreviousPage={isConnected && emailPageIndex > 0}
-            hasNextPage={
-              isConnected &&
-              (emailPageIndex + 1 < loadedEmailPages.length || Boolean(messagesQuery.hasNextPage))
-            }
-            isPageChanging={messagesQuery.isFetchingNextPage}
+            hasNextPage={isConnected && Boolean(messagesQuery.hasNextPage)}
+            isLoadingMore={messagesQuery.isFetchingNextPage}
+            loadMoreError={messagesQuery.isFetchNextPageError}
+            onLoadMore={messagesQuery.fetchNextPage}
             isRefreshing={
               refreshMessagesMutation.isPending ||
               (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
@@ -409,13 +410,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
-              setEmailPageIndex(0);
             }}
-            onPreviousPage={() => {
-              setSelectedTarget(null);
-              setEmailPageIndex((current) => Math.max(0, current - 1));
-            }}
-            onNextPage={() => void handleNextEmailPage()}
           />
         ) : null}
         <EmailReadingPane
@@ -510,6 +505,17 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
               : undefined
           }
           isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}
+          onMarkUnread={
+            connectedAccount
+              ? (messageId) =>
+                  updateMessageStatusMutation.mutate({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    unread: true,
+                  })
+              : undefined
+          }
+          isUpdatingReadStatus={updateMessageStatusMutation.isPending}
           onReply={
             connectedAccount
               ? (messageId, body) =>

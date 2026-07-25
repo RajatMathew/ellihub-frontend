@@ -19,7 +19,7 @@ import { EmailPermanentDeleteDialog } from '@/modules/email/components/email-per
 import {
   Archive,
   FolderInput,
-  MailOpen,
+  Mail,
   MoreHorizontal,
   Plus,
   Printer,
@@ -44,6 +44,8 @@ type EmailActionToolbarProps = {
   onPermanentDelete?: () => Promise<void> | void;
   isPermanentlyDeleting?: boolean;
   onReply?: () => void;
+  onMarkUnread?: () => void;
+  isUpdatingReadStatus?: boolean;
 };
 
 export function EmailActionToolbar({
@@ -62,6 +64,8 @@ export function EmailActionToolbar({
   onPermanentDelete,
   isPermanentlyDeleting = false,
   onReply,
+  onMarkUnread,
+  isUpdatingReadStatus = false,
 }: EmailActionToolbarProps) {
   const [newTagName, setNewTagName] = useState('');
   const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
@@ -191,8 +195,8 @@ export function EmailActionToolbar({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuItem>
-            <MailOpen aria-hidden="true" />
+          <DropdownMenuItem disabled={!onMarkUnread || isUpdatingReadStatus} onClick={onMarkUnread}>
+            <Mail aria-hidden="true" />
             Mark as unread
           </DropdownMenuItem>
           <DropdownMenuItem>
