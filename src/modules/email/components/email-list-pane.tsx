@@ -31,6 +31,7 @@ interface EmailListPaneProps {
   hasNextPage?: boolean;
   isPageChanging?: boolean;
   isRefreshing?: boolean;
+  groupByMonth?: boolean;
   search?: string;
   onSelectEmail?: (emailId: string) => void;
   onPreviousPage?: () => void;
@@ -59,6 +60,7 @@ export function EmailListPane({
   hasNextPage = false,
   isPageChanging = false,
   isRefreshing = false,
+  groupByMonth = false,
   search: controlledSearch,
   onSelectEmail,
   onPreviousPage,
@@ -248,9 +250,11 @@ export function EmailListPane({
 
         {!isLoading && !isError && filteredEmails.length > 0 && (
           <VirtualizedEmailList
+            key={`${mailbox}:${folder}:${search}`}
             emails={filteredEmails}
             scrollContainerRef={scrollContainerRef}
             selectedEmailId={selectedEmailId}
+            groupByMonth={groupByMonth}
             onSelectEmail={onSelectEmail}
           />
         )}

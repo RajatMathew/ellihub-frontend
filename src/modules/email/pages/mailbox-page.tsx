@@ -403,6 +403,9 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
               refreshMessagesMutation.isPending ||
               (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
             }
+            groupByMonth={
+              isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
+            }
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
