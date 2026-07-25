@@ -14,7 +14,7 @@ import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import emailData from '@/modules/email/data/emails.json';
-import { ChevronLeft, ChevronRight, Inbox, RefreshCcw, Search, X } from 'lucide-react';
+import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: string;
@@ -24,17 +24,14 @@ interface EmailListPaneProps {
   isLoading?: boolean;
   isError?: boolean;
   selectedEmailId?: string;
-  page?: number;
-  pageSize?: number;
   totalCount?: number | null;
-  hasPreviousPage?: boolean;
   hasNextPage?: boolean;
-  isPageChanging?: boolean;
+  isLoadingMore?: boolean;
+  loadMoreError?: boolean;
   isRefreshing?: boolean;
   search?: string;
   onSelectEmail?: (emailId: string) => void;
-  onPreviousPage?: () => void;
-  onNextPage?: () => void;
+  onLoadMore?: () => void;
   onRetry?: () => void;
   onSearchChange?: (value: string) => void;
 }
@@ -52,17 +49,14 @@ export function EmailListPane({
   isLoading = false,
   isError = false,
   selectedEmailId,
-  page,
-  pageSize,
   totalCount,
-  hasPreviousPage = false,
   hasNextPage = false,
-  isPageChanging = false,
+  isLoadingMore = false,
+  loadMoreError = false,
   isRefreshing = false,
   search: controlledSearch,
   onSelectEmail,
-  onPreviousPage,
-  onNextPage,
+  onLoadMore,
   onRetry,
   onSearchChange,
 }: EmailListPaneProps) {
@@ -72,6 +66,7 @@ export function EmailListPane({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
 
   const mailboxEmails = useMemo(
@@ -92,10 +87,8 @@ export function EmailListPane({
         .some((value) => value.toLowerCase().includes(query))
     );
   }, [mailboxEmails, onSearchChange, search]);
-  const emailRangeLabel = getEmailRangeLabel({
+  const emailCountLabel = getEmailCountLabel({
     count: mailboxEmails.length,
-    page,
-    pageSize,
     totalCount,
     hasNextPage,
     hasSearch: Boolean(search.trim()),
@@ -103,7 +96,25 @@ export function EmailListPane({
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0 });
-  }, [folder, mailbox, page, search]);
+  }, [folder, mailbox, search]);
+
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!root || !sentinel || !hasNextPage || isLoadingMore || loadMoreError || !onLoadMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) onLoadMore();
+      },
+      { root, rootMargin: '320px 0px' }
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore]);
 
   const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const startX = event.clientX;
@@ -145,7 +156,7 @@ export function EmailListPane({
           <h1 className="truncate font-sans text-base font-semibold normal-case tracking-normal text-foreground">
             {folderLabel}
           </h1>
-          <p className="whitespace-nowrap text-xs text-muted-foreground">{emailRangeLabel}</p>
+          <p className="whitespace-nowrap text-xs text-muted-foreground">{emailCountLabel}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {onRetry && (
@@ -165,41 +176,6 @@ export function EmailListPane({
                 className={cn('size-4', isRefreshing && 'motion-safe:animate-spin')}
               />
             </Button>
-          )}
-          {page && (
-            <div
-              className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5"
-              role="group"
-              aria-label="Email pagination"
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                mode="icon"
-                size="icon"
-                className="size-8"
-                disabled={!hasPreviousPage || isPageChanging}
-                aria-label="Previous 100 emails"
-                onClick={onPreviousPage}
-              >
-                <ChevronLeft aria-hidden="true" className="size-4" />
-              </Button>
-              <span className="min-w-5 text-center font-mono text-xs font-medium tabular-nums text-foreground">
-                {page}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                mode="icon"
-                size="icon"
-                className="size-8"
-                disabled={!hasNextPage || isPageChanging}
-                aria-label="Next 100 emails"
-                onClick={onNextPage}
-              >
-                <ChevronRight aria-hidden="true" className="size-4" />
-              </Button>
-            </div>
           )}
         </div>
       </div>
@@ -254,6 +230,29 @@ export function EmailListPane({
             onSelectEmail={onSelectEmail}
           />
         )}
+
+        {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
+          <div
+            ref={loadMoreSentinelRef}
+            className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
+            aria-live="polite"
+          >
+            {loadMoreError ? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-xs text-muted-foreground">Couldn’t load more emails.</p>
+                <Button type="button" variant="secondary" size="sm" onClick={() => onLoadMore?.()}>
+                  Try again
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
+                role="status"
+                aria-label={isLoadingMore ? 'Loading more emails' : 'Preparing more emails'}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <button
@@ -268,36 +267,24 @@ export function EmailListPane({
 
 const emailCountFormatter = new Intl.NumberFormat();
 
-function getEmailRangeLabel({
+function getEmailCountLabel({
   count,
-  page,
-  pageSize,
   totalCount,
   hasNextPage,
   hasSearch,
 }: {
   count: number;
-  page?: number;
-  pageSize?: number;
   totalCount?: number | null;
   hasNextPage: boolean;
   hasSearch: boolean;
 }) {
-  if (!page || !pageSize) return `${emailCountFormatter.format(count)} emails`;
   const suffix = hasSearch ? 'results' : 'emails';
   if (count === 0 || totalCount === 0) return `0 ${suffix}`;
 
-  const start = (page - 1) * pageSize + 1;
-  const end =
-    totalCount !== null && totalCount !== undefined
-      ? Math.min(page * pageSize, totalCount)
-      : hasNextPage
-        ? page * pageSize
-        : start + Math.max(0, count - 1);
   if (totalCount !== null && totalCount !== undefined) {
-    return `${emailCountFormatter.format(start)}–${emailCountFormatter.format(end)} of ${emailCountFormatter.format(totalCount)} ${suffix}`;
+    return `${emailCountFormatter.format(totalCount)} ${suffix}`;
   }
-  return `${emailCountFormatter.format(start)}–${emailCountFormatter.format(end)} ${suffix}`;
+  return `${emailCountFormatter.format(count)}${hasNextPage ? '+' : ''} ${suffix}`;
 }
 
 function EmailListSkeleton() {
