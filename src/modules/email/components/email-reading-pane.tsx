@@ -272,7 +272,13 @@ export function EmailReadingPane({
 }
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {
-  if (email.threadMessages?.length) return email.threadMessages;
+  if (email.threadMessages?.length) {
+    return email.threadMessages.map((message) => ({
+      ...message,
+      recipientName: message.recipientName === 'Elli Team' ? '' : message.recipientName,
+      recipientEmail: message.recipientEmail || mailboxAddress,
+    }));
+  }
   const messageId = email.latestMessageId ?? email.id;
 
   return [
@@ -281,7 +287,7 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       providerId: email.providerId,
       senderName: email.senderName,
       senderEmail: email.senderEmail,
-      recipientName: 'Elli Team',
+      recipientName: '',
       recipientEmail: mailboxAddress,
       sentAt: email.receivedAt,
       body: email.body?.length ? email.body : [email.preview],
