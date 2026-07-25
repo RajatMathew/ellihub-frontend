@@ -21,6 +21,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
   type QueryKey,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -575,6 +576,20 @@ export const useDeleteEmailMessageMutation = () => {
   });
 };
 
+export const usePermanentlyDeleteEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; messageId: string }) =>
+      emailApi.permanentlyDeleteMessage(payload.accountId, payload.messageId),
+    onSuccess: async (_result, payload) => {
+      toast.success('Email permanently deleted.');
+      await refreshEmailActionQueries(queryClient, payload.accountId);
+    },
+    onError: (error) => toastApiError(error, 'Failed to permanently delete email.'),
+  });
+};
+
 export const useUpdateEmailMessageTagsMutation = () => {
   const queryClient = useQueryClient();
 
@@ -598,5 +613,132 @@ export const useUpdateEmailMessageTagsMutation = () => {
       toast.success('Tags updated.');
     },
     onError: (error) => toastApiError(error, 'Failed to update tags.'),
+  });
+};
+
+type EmailStatusPayload = {
+  accountId: string;
+  messageId: string;
+  unread: boolean;
+};
+
+type EmailMessagePages = InfiniteData<EmailMessagePage, string | null>;
+
+type EmailStatusSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  folders: ConnectedEmailFolder[] | undefined;
+  message: ConnectedEmailListItem | undefined;
+};
+
+function findMessageInPages(
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>,
+  messageId: string
+) {
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => item.id === messageId);
+      if (message) return message;
+    }
+  }
+  return undefined;
+}
+
+export const useUpdateEmailMessageStatusMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: EmailStatusPayload) =>
+      emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
+        unread: payload.unread,
+      }),
+    onMutate: async (payload): Promise<EmailStatusSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.cancelQueries({ queryKey: emailKeys.folders(payload.accountId) }),
+        queryClient.cancelQueries({
+          queryKey: emailKeys.message(payload.accountId, payload.messageId),
+        }),
+      ]);
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const folders = queryClient.getQueryData<ConnectedEmailFolder[]>(
+        emailKeys.folders(payload.accountId)
+      );
+      const message = queryClient.getQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId)
+      );
+      const cachedMessage = findMessageInPages(messages, payload.messageId) ?? message;
+      const unreadDelta =
+        cachedMessage && cachedMessage.unread !== payload.unread ? (payload.unread ? 1 : -1) : 0;
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  records: page.records.map((item) =>
+                    item.id === payload.messageId ? { ...item, unread: payload.unread } : item
+                  ),
+                })),
+              }
+            : current
+      );
+
+      queryClient.setQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId),
+        (current) => (current ? { ...current, unread: payload.unread } : current)
+      );
+
+      if (cachedMessage?.folderId && unreadDelta !== 0) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.id === cachedMessage.folderId
+                ? {
+                    ...folder,
+                    unreadCount: Math.max(0, folder.unreadCount + unreadDelta),
+                  }
+                : folder
+            )
+        );
+      }
+
+      return { messages, folders, message };
+    },
+    onSuccess: (_result, payload) => {
+      if (payload.unread) toast.success('Email marked as unread.');
+    },
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      queryClient.setQueryData(emailKeys.folders(payload.accountId), snapshot?.folders);
+      queryClient.setQueryData(
+        emailKeys.message(payload.accountId, payload.messageId),
+        snapshot?.message
+      );
+      toastApiError(
+        error,
+        payload.unread ? 'Failed to mark email as unread.' : 'Failed to mark email as read.'
+      );
+    },
+    onSettled: async (_result, _error, payload) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'active',
+        }),
+      ]);
+    },
   });
 };

@@ -38,6 +38,10 @@ interface EmailReadingPaneProps {
   onCreateTag?: (name: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onPermanentDelete?: (messageId: string) => Promise<void> | void;
+  isPermanentlyDeleting?: boolean;
+  onMarkUnread?: (messageId: string) => void;
+  isUpdatingReadStatus?: boolean;
   isSendingReply?: boolean;
   onReply?: (messageId: string, body: string) => Promise<void> | void;
 }
@@ -67,6 +71,10 @@ export function EmailReadingPane({
   onCreateTag,
   onArchive,
   onDelete,
+  onPermanentDelete,
+  isPermanentlyDeleting = false,
+  onMarkUnread,
+  isUpdatingReadStatus = false,
   isSendingReply = false,
   onReply,
 }: EmailReadingPaneProps) {
@@ -190,6 +198,12 @@ export function EmailReadingPane({
             onCreateTag={onCreateTag}
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onPermanentDelete={
+              onPermanentDelete ? () => onPermanentDelete(actionMessageId) : undefined
+            }
+            isPermanentlyDeleting={isPermanentlyDeleting}
+            onMarkUnread={onMarkUnread ? () => onMarkUnread(actionMessageId) : undefined}
+            isUpdatingReadStatus={isUpdatingReadStatus}
             onReply={
               latestMessage
                 ? () => setReplyTarget({ emailId: email.id, messageId: latestMessage.id })
@@ -303,7 +317,13 @@ export function EmailReadingPane({
 }
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {
-  if (email.threadMessages?.length) return email.threadMessages;
+  if (email.threadMessages?.length) {
+    return email.threadMessages.map((message) => ({
+      ...message,
+      recipientName: message.recipientName === 'Elli Team' ? '' : message.recipientName,
+      recipientEmail: message.recipientEmail || mailboxAddress,
+    }));
+  }
   const messageId = email.latestMessageId ?? email.id;
 
   return [
@@ -312,7 +332,7 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       providerId: email.providerId,
       senderName: email.senderName,
       senderEmail: email.senderEmail,
-      recipientName: 'Elli Team',
+      recipientName: '',
       recipientEmail: mailboxAddress,
       sentAt: email.receivedAt,
       body: email.body?.length ? email.body : [email.preview],

@@ -5,6 +5,13 @@ export type EmailAttachmentMetadata = {
   contentUrl?: string;
 };
 
+export type EmailImageSourceMetadata = {
+  src?: string | null;
+  srcset?: string | null;
+  originalSrc?: string | null;
+  dataOriginalSrc?: string | null;
+};
+
 export function normalizeEmailContentId(value: string | null | undefined): string | null {
   if (!value) return null;
 
@@ -25,6 +32,26 @@ export function normalizeEmailContentId(value: string | null | undefined): strin
 export function getEmailCid(value: string | null | undefined): string | null {
   if (!value || !/^\s*cid:/i.test(value)) return null;
   return normalizeEmailContentId(value);
+}
+
+function getEmailSrcsetCid(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const firstSource = value.split(',')[0]?.trim().split(/\s+/)[0];
+  return getEmailCid(firstSource);
+}
+
+export function getEmailInlineImageCid({
+  src,
+  srcset,
+  originalSrc,
+  dataOriginalSrc,
+}: EmailImageSourceMetadata): string | null {
+  return (
+    getEmailCid(src) ??
+    getEmailSrcsetCid(srcset) ??
+    getEmailCid(originalSrc) ??
+    getEmailCid(dataOriginalSrc)
+  );
 }
 
 export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {

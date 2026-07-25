@@ -297,6 +297,10 @@ export const emailApi = {
     await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}`);
   },
 
+  async permanentlyDeleteMessage(accountId: string, messageId: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}/permanent`);
+  },
+
   async updateMessageTags(
     accountId: string,
     messageId: string,
