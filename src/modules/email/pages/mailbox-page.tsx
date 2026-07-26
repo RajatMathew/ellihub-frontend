@@ -405,8 +405,13 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             isLoadingMore={messagesQuery.isFetchingNextPage}
             loadMoreError={messagesQuery.isFetchNextPageError}
             onLoadMore={messagesQuery.fetchNextPage}
-            isRefreshing={showEmailSyncIndicator}
-            isRefreshPending={refreshMessagesMutation.isPending}
+            isRefreshing={
+              refreshMessagesMutation.isPending ||
+              (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
+            }
+            groupByMonth={
+              isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
+            }
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
