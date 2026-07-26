@@ -16,6 +16,13 @@ import type {
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
+  isReplyableEmailMessage,
+  markPendingReplyFailed,
+  markPendingReplySent,
+  OPTIMISTIC_EMAIL_REPLY_PREFIX,
+  type PendingEmailReply,
+} from '@/modules/email/lib/email-reply-state';
+import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
@@ -43,14 +50,11 @@ interface EmailReadingPaneProps {
   onMarkUnread?: (messageId: string) => void;
   isUpdatingReadStatus?: boolean;
   isSendingReply?: boolean;
-  onReply?: (messageId: string, body: string) => Promise<void> | void;
+  onReply?: (
+    messageId: string,
+    body: string
+  ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
 }
-
-type PendingReply = {
-  emailId: string;
-  plainBody: string;
-  message: EmailThreadMessage;
-};
 
 const MAX_CACHED_ATTACHMENT_PREVIEWS = 6;
 
@@ -81,7 +85,7 @@ export function EmailReadingPane({
   const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
     null
   );
-  const [pendingReplies, setPendingReplies] = useState<PendingReply[]>([]);
+  const [pendingReplies, setPendingReplies] = useState<PendingEmailReply[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<{
     messageId: string;
     attachment: EmailAttachment;
@@ -144,6 +148,8 @@ export function EmailReadingPane({
     .map((reply) => reply.message);
   const messages = [...baseMessages, ...visiblePendingReplies];
   const latestMessage = messages[messages.length - 1] ?? null;
+  const latestReplyableMessage =
+    latestMessage && isReplyableEmailMessage(latestMessage) ? latestMessage : null;
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
   const totalAttachments = messages.reduce(
     (total, message) =>
@@ -205,8 +211,12 @@ export function EmailReadingPane({
             onMarkUnread={onMarkUnread ? () => onMarkUnread(actionMessageId) : undefined}
             isUpdatingReadStatus={isUpdatingReadStatus}
             onReply={
-              latestMessage
-                ? () => setReplyTarget({ emailId: email.id, messageId: latestMessage.id })
+              latestReplyableMessage
+                ? () =>
+                    setReplyTarget({
+                      emailId: email.id,
+                      messageId: latestReplyableMessage.id,
+                    })
                 : undefined
             }
           />
@@ -226,7 +236,7 @@ export function EmailReadingPane({
               onSendReply={(messageId, body) => {
                 if (!onReply) return;
                 const targetMessage = messages.find((message) => message.id === messageId);
-                const optimisticId = `optimistic-reply-${Date.now()}`;
+                const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
                 const optimisticMessage: EmailThreadMessage = {
                   id: optimisticId,
                   senderName: mailboxAddress,
@@ -248,37 +258,13 @@ export function EmailReadingPane({
                 ]);
                 setReplyTarget(null);
                 Promise.resolve(onReply(messageId, body))
-                  .then(() => {
+                  .then((sentMessage) => {
                     setPendingReplies((current) =>
-                      current.map((reply) =>
-                        reply.message.id === optimisticId
-                          ? {
-                              ...reply,
-                              message: {
-                                ...reply.message,
-                                sentAt: 'Just now',
-                                deliveryStatus: 'sent',
-                              },
-                            }
-                          : reply
-                      )
+                      markPendingReplySent(current, optimisticId, sentMessage ? sentMessage : null)
                     );
                   })
                   .catch(() => {
-                    setPendingReplies((current) =>
-                      current.map((reply) =>
-                        reply.message.id === optimisticId
-                          ? {
-                              ...reply,
-                              message: {
-                                ...reply.message,
-                                sentAt: 'Failed',
-                                deliveryStatus: 'failed',
-                              },
-                            }
-                          : reply
-                      )
-                    );
+                    setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
                   });
               }}
               onCancelReply={() => setReplyTarget(null)}

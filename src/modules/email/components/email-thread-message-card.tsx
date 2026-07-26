@@ -10,6 +10,7 @@ import type {
 } from '@/modules/email/components/email-row-card';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
@@ -41,7 +42,10 @@ export function EmailThreadMessageCard({
   );
   const hasBodyContent = message.body.some((content) => Boolean(content.trim()));
   const tags = message.keywords ?? [];
-  const handleReply = () => onReply(message.id);
+  const canReply = isReplyableEmailMessage(message);
+  const handleReply = () => {
+    if (canReply) onReply(message.id);
+  };
   const recipient = formatRecipient(message);
 
   return (
@@ -90,6 +94,7 @@ export function EmailThreadMessageCard({
               <MessageIconAction
                 label={`Reply to ${message.senderName}`}
                 icon={Reply}
+                disabled={!canReply}
                 onClick={handleReply}
               />
               <MessageIconAction
@@ -129,7 +134,13 @@ export function EmailThreadMessageCard({
 
         {latest && !replyOpen && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            <Button type="button" variant="outline" size="sm" onClick={handleReply}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canReply}
+              onClick={handleReply}
+            >
               <Reply aria-hidden="true" className="size-3.5" />
               Reply
             </Button>
@@ -209,10 +220,12 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
 function MessageIconAction({
   label,
   icon: Icon,
+  disabled = false,
   onClick,
 }: {
   label: string;
   icon: typeof Reply;
+  disabled?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -223,6 +236,7 @@ function MessageIconAction({
       size="icon"
       className="size-7"
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
     >
       <Icon aria-hidden="true" className="size-3.5" />

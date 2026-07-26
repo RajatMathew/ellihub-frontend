@@ -95,6 +95,10 @@ const emailThreadMessageSchema = z.object({
   attachments: z.array(emailAttachmentSchema).optional(),
 });
 
+const emailReplyResponseSchema = z.object({
+  message: emailThreadMessageSchema.nullable().optional(),
+});
+
 const emailAuthStartSchema = z.object({
   authorizationUrl: z.string().url(),
 });
@@ -260,15 +264,18 @@ export const emailApi = {
     });
   },
 
-  async replyMessage(payload: ReplyConnectedEmailPayload): Promise<void> {
+  async replyMessage(
+    payload: ReplyConnectedEmailPayload
+  ): Promise<ConnectedEmailThreadMessage | null> {
     const { accountId, messageId, ...message } = payload;
-    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
+    const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
       bodyType: 'html',
       cc: [],
       bcc: [],
       attachments: [],
       ...message,
     });
+    return emailReplyResponseSchema.parse(unwrapData(res.data)).message ?? null;
   },
 
   async createFolder(accountId: string, payload: { name: string; parentId?: string }) {

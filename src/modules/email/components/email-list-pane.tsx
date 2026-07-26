@@ -29,6 +29,7 @@ interface EmailListPaneProps {
   isLoadingMore?: boolean;
   loadMoreError?: boolean;
   isRefreshing?: boolean;
+  isRefreshPending?: boolean;
   groupByMonth?: boolean;
   search?: string;
   onSelectEmail?: (emailId: string) => void;
@@ -55,6 +56,7 @@ export function EmailListPane({
   isLoadingMore = false,
   loadMoreError = false,
   isRefreshing = false,
+  isRefreshPending = false,
   groupByMonth = false,
   search: controlledSearch,
   onSelectEmail,
@@ -168,9 +170,18 @@ export function EmailListPane({
               mode="icon"
               size="icon"
               className="size-8"
-              disabled={isLoading || isRefreshing}
-              aria-busy={isRefreshing}
-              aria-label="Refresh emails"
+              disabled={isLoading || isRefreshPending}
+              aria-busy={isRefreshPending}
+              aria-label={
+                isRefreshPending && !isRefreshing
+                  ? 'Email sync continues in the background'
+                  : 'Refresh emails'
+              }
+              title={
+                isRefreshPending && !isRefreshing
+                  ? 'Email sync continues in the background'
+                  : 'Refresh emails'
+              }
               onClick={onRetry}
             >
               <RefreshCcw
