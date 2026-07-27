@@ -3,13 +3,15 @@ import {
   acceptQuickBooksPaymentResultSchema,
   paymentConflictListResponseSchema,
   paymentConflictSchema,
-  paymentConflictSyncResultSchema,
+  paymentConflictSyncStartResultSchema,
+  paymentConflictSyncStatusResponseSchema,
   type AcceptQuickBooksPaymentResult,
   type PaymentConflict,
   type PaymentConflictListResponse,
   type PaymentConflictSeverity,
   type PaymentConflictStatus,
-  type PaymentConflictSyncResult,
+  type PaymentConflictSyncStartResult,
+  type PaymentConflictSyncStatusResponse,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
 
 const BASE = '/integrations/quickbooks/payment-conflicts';
@@ -43,8 +45,13 @@ export const paymentConflictsApi = {
     return acceptQuickBooksPaymentResultSchema.parse(response.data?.data ?? response.data);
   },
 
-  async sync(): Promise<PaymentConflictSyncResult> {
-    const response = await api.patch(`${BASE}/sync`);
-    return paymentConflictSyncResultSchema.parse(response.data?.data ?? response.data);
+  async getSyncStatus(): Promise<PaymentConflictSyncStatusResponse> {
+    const response = await api.get(`${BASE}/sync-status`);
+    return paymentConflictSyncStatusResponseSchema.parse(response.data?.data ?? response.data);
+  },
+
+  async sync(): Promise<PaymentConflictSyncStartResult> {
+    const response = await api.post(`${BASE}/sync-runs`);
+    return paymentConflictSyncStartResultSchema.parse(response.data?.data ?? response.data);
   },
 };

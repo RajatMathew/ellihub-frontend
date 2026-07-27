@@ -22,26 +22,19 @@ import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { PaymentConflictsList } from '@/modules/finance/payment-conflicts/components/payment-conflicts-list';
+import { PaymentSyncOverviewCard } from '@/modules/finance/payment-conflicts/components/payment-sync-overview-card';
 import {
   useAcceptQuickBooksPaymentMutation,
   usePaymentConflictsQuery,
+  usePaymentConflictSyncStatusQuery,
   useRecheckPaymentConflictMutation,
   useSyncPaymentConflictsMutation,
 } from '@/modules/finance/payment-conflicts/hooks/payment-conflicts.hooks';
-import { formatConflictDate } from '@/modules/finance/payment-conflicts/lib/payment-conflicts.utils';
 import type {
   PaymentConflictSeverity,
   PaymentConflictStatus,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
-import {
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Landmark,
-  Loader2,
-  RefreshCcw,
-  Search,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Landmark, Loader2, RefreshCcw, Search } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 const PAGE_SIZE = 10;
@@ -94,6 +87,7 @@ export default function PaymentConflictsPage() {
     page,
     size: PAGE_SIZE,
   });
+  const syncStatusQuery = usePaymentConflictSyncStatusQuery();
   const recheckMutation = useRecheckPaymentConflictMutation();
   const acceptMutation = useAcceptQuickBooksPaymentMutation();
   const syncMutation = useSyncPaymentConflictsMutation();
@@ -103,6 +97,16 @@ export default function PaymentConflictsPage() {
   const canResolve = can('quickBooksPaymentConflict', 'resolve');
   const canSync = can('quickBooksPaymentConflict', 'sync');
   const isTabLoading = conflictsQuery.isLoading || conflictsQuery.isPlaceholderData;
+  const syncStatus = syncStatusQuery.data;
+  const syncRun = syncStatus?.run;
+  const isSyncActive = Boolean(syncStatus?.isActive || syncMutation.isPending);
+  const syncButtonLabel = isSyncActive
+    ? syncRun?.status === 'QUEUED'
+      ? 'Waiting to check...'
+      : 'Checking QuickBooks...'
+    : syncRun?.status === 'FAILED' || syncRun?.status === 'INTERRUPTED'
+      ? 'Retry QuickBooks check'
+      : 'Check QuickBooks now';
 
   return (
     <div className="container-fluid py-7.5">
@@ -127,10 +131,10 @@ export default function PaymentConflictsPage() {
               <Button
                 variant="outline"
                 onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending || response?.connection === null}
+                disabled={isSyncActive || response?.connection === null}
               >
-                {syncMutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-                Check QuickBooks now
+                {isSyncActive ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+                {syncButtonLabel}
               </Button>
             )}
           </ToolbarActions>
@@ -141,52 +145,15 @@ export default function PaymentConflictsPage() {
         <QuickBooksDisconnectedState />
       ) : (
         <>
-          <Card className="mb-4 overflow-hidden">
-            <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Landmark className="size-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {response?.connection?.companyName ?? 'QuickBooks company'}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {response?.sync?.lastCompletedAt
-                      ? `Last checked ${formatConflictDate(response.sync.lastCompletedAt)}`
-                      : 'Payment reconciliation has not run yet'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-destructive" />
-                  {response?.counts.active ?? 0} active
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-success" />
-                  {response?.counts.resolved ?? 0} resolved
-                </span>
-                {conflictsQuery.isFetching && !conflictsQuery.isLoading && (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 className="size-3 animate-spin" /> Refreshing
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {response?.sync?.status === 'FAILED' && response.sync.error && (
-            <div className="mb-4 flex gap-2 rounded-md border border-destructive-alpha bg-destructive-soft px-4 py-3 text-sm text-destructive-soft-foreground">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <div>
-                <p className="font-semibold">The last QuickBooks check failed</p>
-                <p className="mt-0.5 text-xs">{response.sync.error}</p>
-              </div>
-            </div>
-          )}
-
+          <PaymentSyncOverviewCard
+            status={syncStatus}
+            companyName={response?.connection?.companyName ?? 'QuickBooks company'}
+            activeCount={response?.counts.active ?? 0}
+            resolvedCount={response?.counts.resolved ?? 0}
+            isRefreshing={conflictsQuery.isFetching && !conflictsQuery.isLoading}
+            hasStatusError={syncStatusQuery.isError}
+            isStatusLoading={syncStatusQuery.isLoading}
+          />
           <div className="mb-4 border-b border-rule-strong">
             <Tabs value={tab} onValueChange={(value) => updateParams({ tab: value, page: 1 })}>
               <TabsList variant="line" className="border-b-0">
@@ -241,7 +208,7 @@ export default function PaymentConflictsPage() {
             status={status}
             isLoading={isTabLoading}
             isError={conflictsQuery.isError}
-            canResolve={canResolve}
+            canResolve={canResolve && !isSyncActive}
             recheckingId={recheckMutation.isPending ? recheckMutation.variables : null}
             acceptingId={acceptMutation.isPending ? acceptMutation.variables : null}
             onRetry={() => void conflictsQuery.refetch()}

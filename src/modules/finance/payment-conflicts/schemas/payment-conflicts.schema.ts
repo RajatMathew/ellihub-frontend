@@ -110,6 +110,13 @@ export const paymentConflictSchema = z.object({
   referenceLabels: z.record(z.string(), z.string()),
 });
 
+const paymentConflictConnectionSchema = z.object({
+  id: z.string(),
+  companyName: z.string().nullable(),
+  realmId: z.string(),
+  status: z.literal('CONNECTED'),
+});
+
 export const paymentConflictListResponseSchema = z.object({
   data: z.array(paymentConflictSchema),
   count: z.number(),
@@ -119,14 +126,7 @@ export const paymentConflictListResponseSchema = z.object({
     active: z.number(),
     resolved: z.number(),
   }),
-  connection: z
-    .object({
-      id: z.string(),
-      companyName: z.string().nullable(),
-      realmId: z.string(),
-      status: z.literal('CONNECTED'),
-    })
-    .nullable(),
+  connection: paymentConflictConnectionSchema.nullable(),
   sync: z
     .object({
       status: z.enum(['SUCCESS', 'FAILED', 'PARTIAL']).nullable(),
@@ -138,16 +138,59 @@ export const paymentConflictListResponseSchema = z.object({
     .nullable(),
 });
 
-export const paymentConflictSyncResultSchema = z.object({
+export const paymentConflictSyncRunStatusSchema = z.enum([
+  'QUEUED',
+  'RUNNING',
+  'SUCCESS',
+  'PARTIAL',
+  'FAILED',
+  'INTERRUPTED',
+]);
+
+export const paymentConflictSyncRunSchema = z.object({
+  id: z.string(),
   trigger: z.enum(['MANUAL', 'SCHEDULED']),
-  status: z.literal('SUCCESS'),
-  startedAt: z.string(),
-  finishedAt: z.string(),
-  performedFullReconciliation: z.boolean(),
-  totalReceived: z.number(),
-  conflictCount: z.number(),
-  resolvedCount: z.number(),
-  missingCount: z.number(),
+  status: paymentConflictSyncRunStatusSchema,
+  phase: z.string().nullable(),
+  queuedAt: z.string(),
+  startedAt: z.string().nullable(),
+  heartbeatAt: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+  progress: z.object({
+    completed: z.number(),
+    total: z.number().nullable(),
+  }),
+  counts: z.object({
+    totalReceived: z.number(),
+    conflictCount: z.number(),
+    resolvedCount: z.number(),
+    missingCount: z.number(),
+    failedCount: z.number(),
+  }),
+  performedFullReconciliation: z.boolean().nullable(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      retryable: z.boolean(),
+      retryAt: z.string().nullable(),
+    })
+    .nullable(),
+});
+
+export const paymentConflictSyncStatusResponseSchema = z.object({
+  connection: paymentConflictConnectionSchema.nullable(),
+  run: paymentConflictSyncRunSchema.nullable(),
+  isActive: z.boolean(),
+  lastCompletedAt: z.string().nullable(),
+  lastSuccessfulAt: z.string().nullable(),
+  pollAfterMs: z.number(),
+});
+
+export const paymentConflictSyncStartResultSchema = z.object({
+  alreadyRunning: z.boolean(),
+  pollAfterMs: z.number(),
+  run: paymentConflictSyncRunSchema,
 });
 
 export const acceptQuickBooksPaymentResultSchema = z.object({
@@ -162,5 +205,9 @@ export type PaymentConflictSeverity = z.infer<typeof paymentConflictSeveritySche
 export type PaymentConflictDiff = z.infer<typeof paymentConflictDiffSchema>;
 export type PaymentConflict = z.infer<typeof paymentConflictSchema>;
 export type PaymentConflictListResponse = z.infer<typeof paymentConflictListResponseSchema>;
-export type PaymentConflictSyncResult = z.infer<typeof paymentConflictSyncResultSchema>;
+export type PaymentConflictSyncRun = z.infer<typeof paymentConflictSyncRunSchema>;
+export type PaymentConflictSyncStatusResponse = z.infer<
+  typeof paymentConflictSyncStatusResponseSchema
+>;
+export type PaymentConflictSyncStartResult = z.infer<typeof paymentConflictSyncStartResultSchema>;
 export type AcceptQuickBooksPaymentResult = z.infer<typeof acceptQuickBooksPaymentResultSchema>;
