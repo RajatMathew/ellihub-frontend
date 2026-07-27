@@ -24,6 +24,14 @@ export interface ListPaymentConflictsParams {
   size?: number;
 }
 
+export interface AcceptQuickBooksConflictItemsInput {
+  conflictId: string;
+  items: Array<{
+    id: string;
+    version: number;
+  }>;
+}
+
 export const paymentConflictsApi = {
   async list(params: ListPaymentConflictsParams): Promise<PaymentConflictListResponse> {
     const response = await api.get(BASE, { params });
@@ -40,8 +48,13 @@ export const paymentConflictsApi = {
     return paymentConflictSchema.parse(response.data?.data ?? response.data);
   },
 
-  async acceptQuickBooks(conflictId: string): Promise<AcceptQuickBooksPaymentResult> {
-    const response = await api.post(`${BASE}/${encodeURIComponent(conflictId)}/accept-quickbooks`);
+  async acceptQuickBooksItems({
+    conflictId,
+    items,
+  }: AcceptQuickBooksConflictItemsInput): Promise<AcceptQuickBooksPaymentResult> {
+    const response = await api.post(`${BASE}/${encodeURIComponent(conflictId)}/accept-items`, {
+      items,
+    });
     return acceptQuickBooksPaymentResultSchema.parse(response.data?.data ?? response.data);
   },
 

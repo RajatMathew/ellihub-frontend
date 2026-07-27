@@ -15,10 +15,11 @@ interface PaymentConflictsListProps {
   isError: boolean;
   canResolve: boolean;
   recheckingId: string | null;
-  acceptingId: string | null;
+  acceptingConflictId: string | null;
+  acceptingItemIds: string[];
   onRetry: () => void;
   onRecheck: (conflictId: string) => void;
-  onAccept: (conflictId: string) => void;
+  onAccept: (conflictId: string, items: Array<{ id: string; version: number }>) => void;
 }
 
 export function PaymentConflictsList({
@@ -28,7 +29,8 @@ export function PaymentConflictsList({
   isError,
   canResolve,
   recheckingId,
-  acceptingId,
+  acceptingConflictId,
+  acceptingItemIds,
   onRetry,
   onRecheck,
   onAccept,
@@ -77,8 +79,9 @@ export function PaymentConflictsList({
           key={conflict.id}
           conflict={conflict}
           canResolve={canResolve}
+          itemStatus={status}
           isRechecking={recheckingId === conflict.id}
-          isAccepting={acceptingId === conflict.id}
+          acceptingItemIds={acceptingConflictId === conflict.id ? acceptingItemIds : []}
           onRecheck={onRecheck}
           onAccept={onAccept}
         />

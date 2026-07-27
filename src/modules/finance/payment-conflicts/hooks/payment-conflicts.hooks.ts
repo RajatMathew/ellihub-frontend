@@ -82,13 +82,15 @@ export const useAcceptQuickBooksPaymentMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: paymentConflictsApi.acceptQuickBooks,
+    mutationFn: paymentConflictsApi.acceptQuickBooksItems,
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: paymentConflictKeys.all });
       if (result.accepted) {
-        toast.success('QuickBooks values accepted into Elli.');
+        toast.success(
+          `${result.acceptedItemIds.length} QuickBooks ${result.acceptedItemIds.length === 1 ? 'change' : 'changes'} accepted into Elli.`
+        );
       } else if (result.alreadyResolved) {
-        toast.success('This conflict was already resolved.');
+        toast.success('The selected conflict was already resolved.');
       } else {
         toast.error(result.blockedReasons?.[0] ?? 'These QuickBooks values cannot be accepted.');
       }

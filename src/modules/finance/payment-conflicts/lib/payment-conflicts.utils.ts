@@ -1,11 +1,12 @@
 import type {
   PaymentConflict,
   PaymentConflictDiff,
+  PaymentConflictItem,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export function formatConflictMoney(value: string | null | undefined, currency = 'USD') {
-  if (value == null) return '?';
+  if (value == null) return 'Not set';
   const amount = Number(value);
   if (!Number.isFinite(amount)) return value;
 
@@ -17,7 +18,7 @@ export function formatConflictMoney(value: string | null | undefined, currency =
 }
 
 export function formatConflictDate(value: string | null | undefined) {
-  if (!value) return '?';
+  if (!value) return 'Not set';
   const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
   return Number.isNaN(date.getTime()) ? value : format(date, 'MMM d, yyyy');
 }
@@ -46,14 +47,14 @@ function formatGenericValue(value: unknown): string {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, item]) => item != null && item !== '')
       .map(([key, item]) => `${key === 'currencyCode' ? 'Currency' : 'Rate'}: ${String(item)}`);
-    return entries.join(' ? ') || 'Not set';
+    return entries.join(' / ') || 'Not set';
   }
   return String(value);
 }
 
 export function formatDiffValue(
   conflict: PaymentConflict,
-  diff: PaymentConflictDiff,
+  diff: PaymentConflictDiff | PaymentConflictItem,
   side: 'elli' | 'quickbooks'
 ) {
   const value = side === 'elli' ? diff.elliValue : diff.quickBooksValue;

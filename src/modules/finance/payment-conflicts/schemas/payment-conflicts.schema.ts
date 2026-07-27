@@ -64,6 +64,33 @@ export const paymentConflictDiffSchema = z.object({
   lineId: z.string().nullable().optional(),
 });
 
+export const paymentConflictItemSchema = z.object({
+  id: z.string(),
+  diffKey: z.string(),
+  field: paymentConflictFieldSchema,
+  path: z.string(),
+  lineId: z.string().nullable(),
+  label: z.string(),
+  status: paymentConflictStatusSchema,
+  priority: paymentConflictSeveritySchema,
+  elliValue: z.unknown().nullable(),
+  quickBooksValue: z.unknown().nullable(),
+  firstDetectedAt: z.string(),
+  lastDetectedAt: z.string(),
+  resolvedAt: z.string().nullable(),
+  resolutionAction: paymentConflictResolutionActionSchema.nullable(),
+  resolutionNote: z.string().nullable(),
+  resolvedBy: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+    })
+    .nullable(),
+  version: z.number().int().positive(),
+  canAcceptQuickBooks: z.boolean(),
+  acceptBlockedReasons: z.array(z.string()),
+});
 export const paymentConflictSchema = z.object({
   id: z.string(),
   status: paymentConflictStatusSchema,
@@ -106,6 +133,7 @@ export const paymentConflictSchema = z.object({
   }),
   baseline: paymentComparableSchema,
   latestQuickBooks: paymentComparableSchema.nullable(),
+  items: z.array(paymentConflictItemSchema),
   diffs: z.array(paymentConflictDiffSchema),
   referenceLabels: z.record(z.string(), z.string()),
 });
@@ -125,6 +153,8 @@ export const paymentConflictListResponseSchema = z.object({
   counts: z.object({
     active: z.number(),
     resolved: z.number(),
+    activePayments: z.number(),
+    resolvedPayments: z.number(),
   }),
   connection: paymentConflictConnectionSchema.nullable(),
   sync: z
@@ -197,6 +227,7 @@ export const acceptQuickBooksPaymentResultSchema = z.object({
   accepted: z.boolean(),
   alreadyResolved: z.boolean(),
   blockedReasons: z.array(z.string()).optional(),
+  acceptedItemIds: z.array(z.string()),
   conflict: paymentConflictSchema,
 });
 
@@ -204,6 +235,7 @@ export type PaymentConflictStatus = z.infer<typeof paymentConflictStatusSchema>;
 export type PaymentConflictSeverity = z.infer<typeof paymentConflictSeveritySchema>;
 export type PaymentConflictDiff = z.infer<typeof paymentConflictDiffSchema>;
 export type PaymentConflict = z.infer<typeof paymentConflictSchema>;
+export type PaymentConflictItem = z.infer<typeof paymentConflictItemSchema>;
 export type PaymentConflictListResponse = z.infer<typeof paymentConflictListResponseSchema>;
 export type PaymentConflictSyncRun = z.infer<typeof paymentConflictSyncRunSchema>;
 export type PaymentConflictSyncStatusResponse = z.infer<

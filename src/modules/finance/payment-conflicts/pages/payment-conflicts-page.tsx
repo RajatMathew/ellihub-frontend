@@ -92,7 +92,7 @@ export default function PaymentConflictsPage() {
   const acceptMutation = useAcceptQuickBooksPaymentMutation();
   const syncMutation = useSyncPaymentConflictsMutation();
   const response = conflictsQuery.data;
-  const conflicts = (response?.data ?? []).filter((conflict) => conflict.status === status);
+  const conflicts = response?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((response?.count ?? 0) / PAGE_SIZE));
   const canResolve = can('quickBooksPaymentConflict', 'resolve');
   const canSync = can('quickBooksPaymentConflict', 'sync');
@@ -208,18 +208,25 @@ export default function PaymentConflictsPage() {
             status={status}
             isLoading={isTabLoading}
             isError={conflictsQuery.isError}
-            canResolve={canResolve && !isSyncActive}
+            canResolve={
+              canResolve && !isSyncActive && !recheckMutation.isPending && !acceptMutation.isPending
+            }
             recheckingId={recheckMutation.isPending ? recheckMutation.variables : null}
-            acceptingId={acceptMutation.isPending ? acceptMutation.variables : null}
+            acceptingConflictId={
+              acceptMutation.isPending ? acceptMutation.variables.conflictId : null
+            }
+            acceptingItemIds={
+              acceptMutation.isPending ? acceptMutation.variables.items.map((item) => item.id) : []
+            }
             onRetry={() => void conflictsQuery.refetch()}
             onRecheck={(conflictId) => recheckMutation.mutate(conflictId)}
-            onAccept={(conflictId) => acceptMutation.mutate(conflictId)}
+            onAccept={(conflictId, items) => acceptMutation.mutate({ conflictId, items })}
           />
 
           {!isTabLoading && !conflictsQuery.isError && (response?.count ?? 0) > 0 && (
             <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}?
+                Showing {(page - 1) * PAGE_SIZE + 1} to{' '}
                 {Math.min(page * PAGE_SIZE, response?.count ?? 0)} of {response?.count ?? 0}
               </p>
               <div className="flex items-center gap-2">
