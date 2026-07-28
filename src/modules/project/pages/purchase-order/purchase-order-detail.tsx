@@ -54,6 +54,7 @@ import {
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import {
   DocumentEmailWizardDialog,
+  FeatureEmailSentBadge,
   InfoRow,
   ProjectActivityPanel,
   ProjectDetailDocumentsCard,
@@ -370,7 +371,6 @@ export function PODetailPage() {
     setPdfDefaultTermsApplied(true);
   }
 
-
   const statusName = (po?.status?.name ?? '') as POStatusName;
   const isDraft = statusName === 'DRAFT';
   const isIssued = statusName === 'ISSUED';
@@ -475,6 +475,7 @@ export function PODetailPage() {
                   <span className="text-sm text-muted-foreground">{po.status.label}</span>
                 </div>
               )}
+              <FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />
               {po.tradeCategory && (
                 <Badge
                   variant={TRADE_CATEGORY_BADGE_VARIANTS[po.tradeCategory] ?? 'primary'}
@@ -590,9 +591,7 @@ export function PODetailPage() {
                       Purchase Alert
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">
-                    Purchase Order is Overdue
-                  </h3>
+                  <h3 className="text-lg font-bold text-foreground">Purchase Order is Overdue</h3>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     Expected delivery was{' '}
                     <span className="font-semibold text-foreground">

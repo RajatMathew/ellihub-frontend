@@ -27,6 +27,7 @@ import { formatCurrency } from '@/app/lib/helpers';
 import {
   useQuickBooksBankAccountsQuery,
   useQuickBooksCategoriesQuery,
+  useQuickBooksSuggestedVendorMatchQuery,
   useQuickBooksVendorOptions,
   useUnmapQuickBooksVendorMutation,
 } from '@/modules/integrations/hooks/quickbooks.hooks';
@@ -119,7 +120,16 @@ export function MarkPaymentDialog({
     () => quickBooksMappingToOption(currentMapping),
     [currentMapping]
   );
-  const selectedVendorOption = selectedMappingOption ?? createdVendorOption;
+  const suggestedVendorMatchQuery = useQuickBooksSuggestedVendorMatchQuery(
+    vendorName,
+    open && !currentMapping
+  );
+  const suggestedVendorOption = useMemo(() => {
+    if (currentMapping || !suggestedVendorMatchQuery.data) return undefined;
+    return quickBooksPayeeToOption(suggestedVendorMatchQuery.data.vendor);
+  }, [currentMapping, suggestedVendorMatchQuery.data]);
+  const selectedVendorOption =
+    selectedMappingOption ?? createdVendorOption ?? suggestedVendorOption;
   const dateRange = useMemo(
     () => ({
       min: period.minTxnDate,
@@ -137,10 +147,11 @@ export function MarkPaymentDialog({
     selectedOption: selectedVendorOption,
     enabled: open,
   });
-  const vendorMatch = useMemo(
+  const loadedVendorMatch = useMemo(
     () => (currentMapping ? null : findVendorMatch(vendorOptions.vendors, vendorName)),
     [currentMapping, vendorOptions.vendors, vendorName]
   );
+  const vendorMatch = suggestedVendorMatchQuery.data ?? loadedVendorMatch;
 
   const markPayment = useMarkPaymentMutation();
   const unmapVendor = useUnmapQuickBooksVendorMutation();
@@ -162,6 +173,9 @@ export function MarkPaymentDialog({
   useEffect(() => {
     if (!open) return;
 
+    setCreatedVendorOption(undefined);
+    setMappingOverride(undefined);
+    setVendorSearchInput('');
     form.reset({
       qbVendorId: sourceMapping?.qbVendorId ?? '',
       bankAccountId: '',

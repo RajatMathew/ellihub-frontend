@@ -44,13 +44,15 @@ const activityCollectionSchema = z.object({
   ),
 });
 
+const activityDetailsSubjectSchema = z.object({
+  label: z.string().optional(),
+  displayName: z.string(),
+});
+
 export const activityFieldDiffDetailsSchema = z.object({
   kind: z.literal('field-diff'),
   schemaVersion: z.literal(1),
-  subject: z.object({
-    label: z.string().optional(),
-    displayName: z.string(),
-  }),
+  subject: activityDetailsSubjectSchema,
   revision: z.number(),
   changes: z.array(
     z.object({
@@ -65,14 +67,36 @@ export const activityFieldDiffDetailsSchema = z.object({
   ),
 });
 
+export const activityFieldSnapshotDetailsSchema = z.object({
+  kind: z.literal('field-snapshot'),
+  schemaVersion: z.literal(1),
+  subject: activityDetailsSubjectSchema,
+  fields: z.array(
+    z.object({
+      key: z.string(),
+      label: z.string(),
+      section: z.string(),
+      valueType: activityValueTypeSchema.optional(),
+      value: activityChangeValueSchema,
+    })
+  ),
+});
+
+export const activityDetailsSchema = z.union([
+  activityFieldDiffDetailsSchema,
+  activityFieldSnapshotDetailsSchema,
+]);
+
 export type ActivityFieldDiffDetails = z.infer<typeof activityFieldDiffDetailsSchema>;
+export type ActivityFieldSnapshotDetails = z.infer<typeof activityFieldSnapshotDetailsSchema>;
+export type ActivityLogDetails = z.infer<typeof activityDetailsSchema>;
 
 const activityLogDetailsSchema = z
   .unknown()
   .optional()
   .nullable()
-  .transform((value): ActivityFieldDiffDetails | null => {
-    const parsed = activityFieldDiffDetailsSchema.safeParse(value);
+  .transform((value): ActivityLogDetails | null => {
+    const parsed = activityDetailsSchema.safeParse(value);
     return parsed.success ? parsed.data : null;
   });
 const activityUserSchema = z

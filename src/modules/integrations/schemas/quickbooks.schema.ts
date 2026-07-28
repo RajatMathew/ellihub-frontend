@@ -128,6 +128,13 @@ export const quickBooksBankAccountsSchema = z.array(quickBooksBankAccountSchema)
 export const quickBooksLineItemCategoriesSchema = z.array(quickBooksLineItemCategorySchema);
 export const quickBooksPayeesSchema = z.array(quickBooksPayeeSchema);
 
+export const quickBooksSuggestedVendorMatchSchema = z
+  .object({
+    vendor: quickBooksPayeeSchema,
+    reason: z.string(),
+    score: z.number(),
+  })
+  .nullable();
 export const quickBooksPayeePaginatedResponseSchema = z.object({
   data: z.array(quickBooksPayeeSchema),
   pagination: z.object({
@@ -257,6 +264,7 @@ export type QuickBooksCreateVendorPayload = z.infer<typeof quickBooksCreateVendo
 export type QuickBooksCreateVendorResult = z.infer<typeof quickBooksCreateVendorResultSchema>;
 export type QuickBooksMapVendorPayload = z.infer<typeof quickBooksMapVendorPayloadSchema>;
 export type QuickBooksUnmapVendorResult = z.infer<typeof quickBooksUnmapVendorResultSchema>;
+export type QuickBooksSuggestedVendorMatch = z.infer<typeof quickBooksSuggestedVendorMatchSchema>;
 
 export type QuickBooksStatus = z.infer<typeof quickBooksStatusSchema>;
 export type QuickBooksConnection = z.infer<typeof quickBooksConnectionSchema>;

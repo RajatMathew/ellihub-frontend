@@ -2,6 +2,7 @@ export * from './project.hooks';
 export * from './project-stage.hooks';
 export * from './project-team.hooks';
 export * from './project-schedule.hooks';
+export * from './project-master-schedule.hooks';
 export * from './prime-change-order';
 export * from './sub-change-order';
 export * from './contract-attachment.hooks';

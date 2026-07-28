@@ -13,6 +13,7 @@ import {
   quickBooksRegisterAccountsSchema,
   quickBooksRegisterTransactionsResponseSchema,
   quickBooksStatusSchema,
+  quickBooksSuggestedVendorMatchSchema,
   quickBooksUnmapVendorResultSchema,
   quickBooksVendorMappingSchema,
   type QuickBooksAuthorization,
@@ -31,6 +32,7 @@ import {
   type QuickBooksRegisterClr,
   type QuickBooksRegisterTransactionsResponse,
   type QuickBooksStatus,
+  type QuickBooksSuggestedVendorMatch,
   type QuickBooksUnmapVendorResult,
   type QuickBooksVendorMapping,
 } from '@/modules/integrations/schemas/quickbooks.schema';
@@ -127,6 +129,10 @@ export const quickBooksApi = {
     return quickBooksPayeesSchema.parse(res.data?.data ?? res.data);
   },
 
+  async suggestVendorMatch(name: string): Promise<QuickBooksSuggestedVendorMatch> {
+    const res = await api.get(`${BASE}/vendor-options/suggested-match`, { params: { name } });
+    return quickBooksSuggestedVendorMatchSchema.parse(res.data?.data ?? res.data ?? null);
+  },
   async listVendorOptions(
     params?: ListQuickBooksVendorOptionsParams
   ): Promise<QuickBooksPayeePaginatedResponse> {
