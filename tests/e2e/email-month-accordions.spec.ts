@@ -2,23 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 
 type Provider = 'gmail' | 'outlook';
 
+const TEST_NOW = new Date('2026-07-25T12:00:00+05:30');
+
 const freshState = {
   state: 'fresh',
-  lastSyncedAt: new Date().toISOString(),
+  lastSyncedAt: TEST_NOW.toISOString(),
   staleSince: null,
   reason: null,
   errorCode: null,
   syncing: false,
 };
-
-function dateInMonth(monthOffset: number, day: number) {
-  const date = new Date();
-  date.setDate(1);
-  date.setHours(12, 0, 0, 0);
-  date.setMonth(date.getMonth() + monthOffset);
-  date.setDate(day);
-  return date.toISOString();
-}
 
 function createMessage(id: string, folder: string, subject: string, receivedAt: string) {
   return {
@@ -40,20 +33,32 @@ function createMessage(id: string, folder: string, subject: string, receivedAt: 
 function messagesForFolder(folder: string) {
   if (folder === 'inbox') {
     return [
-      createMessage('inbox-current', folder, 'Current inbox subject', dateInMonth(0, 10)),
-      createMessage('inbox-last', folder, 'Last month inbox subject', dateInMonth(-1, 10)),
-      createMessage('inbox-older', folder, 'Older inbox subject', dateInMonth(-2, 10)),
+      createMessage('inbox-today', folder, 'Today inbox subject', '2026-07-25T08:00:00+05:30'),
+      createMessage(
+        'inbox-this-week',
+        folder,
+        'This week inbox subject',
+        '2026-07-22T10:00:00+05:30'
+      ),
+      createMessage(
+        'inbox-this-month',
+        folder,
+        'This month inbox subject',
+        '2026-07-10T10:00:00+05:30'
+      ),
+      createMessage('inbox-last', folder, 'Last month inbox subject', '2026-06-10T10:00:00+05:30'),
+      createMessage('inbox-older', folder, 'Older inbox subject', '2026-05-10T10:00:00+05:30'),
     ];
   }
 
   if (folder === 'sent') {
     return [
-      createMessage('sent-current', folder, 'Current sent subject', dateInMonth(0, 9)),
-      createMessage('sent-last', folder, 'Last month sent subject', dateInMonth(-1, 9)),
+      createMessage('sent-current', folder, 'Current sent subject', '2026-07-09T10:00:00+05:30'),
+      createMessage('sent-last', folder, 'Last month sent subject', '2026-06-09T10:00:00+05:30'),
     ];
   }
 
-  return [createMessage('deleted-current', folder, 'Deleted subject', dateInMonth(0, 8))];
+  return [createMessage('deleted-current', folder, 'Deleted subject', '2026-07-08T10:00:00+05:30')];
 }
 
 async function setupEmailApi(page: Page, provider: Provider) {
@@ -174,28 +179,33 @@ async function setupEmailApi(page: Page, provider: Provider) {
 
 for (const provider of ['gmail', 'outlook'] as const) {
   test(`${provider} Inbox and Sent use independent month accordions`, async ({ page }) => {
+    await page.clock.setFixedTime(TEST_NOW);
     await setupEmailApi(page, provider);
     await page.goto(`/app/email/accounts/${provider}-account`);
 
+    const today = page.getByRole('button', { name: /^Today \d+ emails?$/ });
+    const thisWeek = page.getByRole('button', { name: /^This week \d+ emails?$/ });
     const thisMonth = page.getByRole('button', { name: /^This month \d+ emails?$/ });
     const lastMonth = page.getByRole('button', { name: /^Last month \d+ emails?$/ });
-    const currentInbox = page.getByRole('button', { name: /Current inbox subject/ });
+    const todayInbox = page.getByRole('button', { name: /Today inbox subject/ });
     const lastMonthInbox = page.getByRole('button', { name: /Last month inbox subject/ });
 
+    await expect(today).toHaveAttribute('aria-expanded', 'true');
+    await expect(thisWeek).toHaveAttribute('aria-expanded', 'true');
     await expect(thisMonth).toHaveAttribute('aria-expanded', 'true');
     await expect(lastMonth).toHaveAttribute('aria-expanded', 'true');
-    await expect(currentInbox).toBeVisible();
+    await expect(todayInbox).toBeVisible();
     await expect(lastMonthInbox).toBeVisible();
 
-    await thisMonth.focus();
+    await today.focus();
     await page.keyboard.press('Enter');
-    await expect(thisMonth).toHaveAttribute('aria-expanded', 'false');
-    await expect(currentInbox).toBeHidden();
+    await expect(today).toHaveAttribute('aria-expanded', 'false');
+    await expect(todayInbox).toBeHidden();
     await expect(lastMonthInbox).toBeVisible();
 
     await page.keyboard.press('Space');
-    await expect(thisMonth).toHaveAttribute('aria-expanded', 'true');
-    await expect(currentInbox).toBeVisible();
+    await expect(today).toHaveAttribute('aria-expanded', 'true');
+    await expect(todayInbox).toBeVisible();
 
     await page.getByRole('button', { name: 'Sent Items' }).first().click();
     await expect(page.getByRole('heading', { name: 'Sent Items' })).toBeVisible();
