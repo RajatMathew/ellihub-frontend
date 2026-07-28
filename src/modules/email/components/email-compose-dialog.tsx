@@ -1,4 +1,13 @@
-import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -11,31 +20,62 @@ import {
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
+import type { EmailAttachment } from '@/modules/email/components/email-row-card';
 import { AlertCircle, FileText, Paperclip, Send, Trash2, X } from 'lucide-react';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
+const DRAFT_AUTOSAVE_DELAY_MS = 1_200;
+
+type ComposeForm = {
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+};
+
+export type ComposeDraftIdentity = {
+  draftId: string;
+  messageId: string;
+};
+
+export type EditableComposeDraft = ComposeDraftIdentity &
+  ComposeForm & {
+    attachments: EmailAttachment[];
+  };
+
+export type ComposeDraftPayload = ComposeForm & {
+  attachments?: Array<{ name: string; mimeType?: string; content: string }>;
+  removedAttachmentIds?: string[];
+};
+
+export type ComposeDraftSaveResult = ComposeDraftIdentity & {
+  attachments?: EmailAttachment[];
+};
 
 interface EmailComposeDialogProps {
   open: boolean;
   mailboxAddress: string;
+  initialDraft?: EditableComposeDraft | null;
   isSending?: boolean;
   onOpenChange: (open: boolean) => void;
-  onSend?: (payload: {
-    to: string;
-    cc: string;
-    bcc: string;
-    subject: string;
-    body: string;
-    attachments: Array<{ name: string; mimeType?: string; content: string }>;
-  }) => Promise<void> | void;
+  onSaveDraft?: (
+    payload: ComposeDraftPayload,
+    draft?: ComposeDraftIdentity
+  ) => Promise<ComposeDraftSaveResult>;
+  onSendDraft?: (payload: ComposeDraftPayload, draft: ComposeDraftIdentity) => Promise<void>;
+  onDiscardDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
 }
 
 export function EmailComposeDialog({
   open,
   mailboxAddress,
+  initialDraft,
   isSending = false,
   onOpenChange,
-  onSend,
+  onSaveDraft,
+  onSendDraft,
+  onDiscardDraft,
 }: EmailComposeDialogProps) {
   const toId = useId();
   const ccId = useId();
@@ -44,7 +84,7 @@ export function EmailComposeDialog({
   const bodyId = useId();
   const attachmentInputId = useId();
   const attachmentInputRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ComposeForm>({
     to: '',
     cc: '',
     bcc: '',
@@ -54,32 +94,215 @@ export function EmailComposeDialog({
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<EmailAttachment[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isPreparingAttachments, setIsPreparingAttachments] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const initializedDraftRef = useRef<string | null>(null);
+  const draftRef = useRef<ComposeDraftIdentity | undefined>(undefined);
+  const lastSavedSignatureRef = useRef('');
+  const autosaveTimerRef = useRef<number | null>(null);
+  const saveQueueRef = useRef<Promise<ComposeDraftSaveResult | undefined>>(
+    Promise.resolve(undefined)
+  );
   const canSend =
     form.to.trim().length > 0 && form.subject.trim().length > 0 && form.body.trim().length > 0;
+  const hasContent = Boolean(
+    form.to.trim() ||
+    form.cc.trim() ||
+    form.bcc.trim() ||
+    form.subject.trim() ||
+    form.body.trim() ||
+    attachments.length ||
+    existingAttachments.length
+  );
+  const signature = useMemo(
+    () =>
+      JSON.stringify({
+        form,
+        files: attachments.map(fileKey),
+        existing: existingAttachments.map((attachment) => attachment.id),
+        removed: removedAttachmentIds,
+      }),
+    [attachments, existingAttachments, form, removedAttachmentIds]
+  );
 
   function resetForm() {
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
     setShowCc(false);
     setShowBcc(false);
     setAttachments([]);
+    setExistingAttachments([]);
+    setRemovedAttachmentIds([]);
+    draftRef.current = undefined;
+    setSaveStatus('idle');
     setAttachmentError(null);
     setIsDragging(false);
+    setIsClosing(false);
+    initializedDraftRef.current = null;
+    lastSavedSignatureRef.current = '';
+    saveQueueRef.current = Promise.resolve(undefined);
   }
 
-  function handleOpenChange(nextOpen: boolean) {
-    onOpenChange(nextOpen);
-    if (!nextOpen) resetForm();
+  function finishClose() {
+    onOpenChange(false);
+    resetForm();
+  }
+
+  const saveDraft = useCallback(
+    async (payloadSignature = signature) => {
+      if (!hasContent || !onSaveDraft) return draftRef.current;
+      if (payloadSignature === lastSavedSignatureRef.current && draftRef.current) {
+        return draftRef.current;
+      }
+
+      const currentForm = form;
+      const currentFiles = attachments;
+      const currentRemovedIds = removedAttachmentIds;
+      setSaveStatus('saving');
+
+      const operation = saveQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          if (payloadSignature === lastSavedSignatureRef.current && draftRef.current) {
+            return { ...draftRef.current };
+          }
+          const encodedAttachments = currentFiles.length
+            ? await Promise.all(currentFiles.map(fileToAttachment))
+            : undefined;
+          const result = await onSaveDraft(
+            {
+              ...currentForm,
+              attachments: encodedAttachments,
+              removedAttachmentIds: currentRemovedIds,
+            },
+            draftRef.current
+          );
+          const nextDraft = { draftId: result.draftId, messageId: result.messageId };
+          draftRef.current = nextDraft;
+          if (result.attachments) {
+            setExistingAttachments(result.attachments);
+            setAttachments([]);
+            setRemovedAttachmentIds([]);
+            lastSavedSignatureRef.current = JSON.stringify({
+              form: currentForm,
+              files: [],
+              existing: result.attachments.map((attachment) => attachment.id),
+              removed: [],
+            });
+          } else {
+            lastSavedSignatureRef.current = payloadSignature;
+          }
+          return result;
+        });
+      saveQueueRef.current = operation;
+
+      try {
+        const result = await operation;
+        if (!result) return draftRef.current;
+        setSaveStatus('saved');
+        return { draftId: result.draftId, messageId: result.messageId };
+      } catch (error) {
+        setSaveStatus('error');
+        throw error;
+      }
+    },
+    [attachments, form, hasContent, onSaveDraft, removedAttachmentIds, signature]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const initialKey = initialDraft?.draftId ?? 'new';
+    if (initializedDraftRef.current === initialKey) return;
+    initializedDraftRef.current = initialKey;
+
+    const nextForm = initialDraft
+      ? {
+          to: initialDraft.to,
+          cc: initialDraft.cc,
+          bcc: initialDraft.bcc,
+          subject: initialDraft.subject,
+          body: initialDraft.body,
+        }
+      : { to: '', cc: '', bcc: '', subject: '', body: '' };
+    const nextAttachments = initialDraft?.attachments ?? [];
+    setForm(nextForm);
+    setShowCc(Boolean(initialDraft?.cc));
+    setShowBcc(Boolean(initialDraft?.bcc));
+    setAttachments([]);
+    setExistingAttachments(nextAttachments);
+    setRemovedAttachmentIds([]);
+    draftRef.current = initialDraft
+      ? { draftId: initialDraft.draftId, messageId: initialDraft.messageId }
+      : undefined;
+    setSaveStatus(initialDraft ? 'saved' : 'idle');
+    lastSavedSignatureRef.current = JSON.stringify({
+      form: nextForm,
+      files: [],
+      existing: nextAttachments.map((attachment) => attachment.id),
+      removed: [],
+    });
+  }, [initialDraft, open]);
+
+  useEffect(() => {
+    if (!open || !hasContent || signature === lastSavedSignatureRef.current) return;
+    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = window.setTimeout(() => {
+      void saveDraft(signature).catch(() => undefined);
+    }, DRAFT_AUTOSAVE_DELAY_MS);
+    return () => {
+      if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+    };
+  }, [hasContent, open, saveDraft, signature]);
+
+  async function handleRequestClose() {
+    if (isClosing || isSending) return;
+    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+    if (!hasContent) {
+      finishClose();
+      return;
+    }
+    setIsClosing(true);
+    try {
+      await saveDraft();
+      finishClose();
+    } catch {
+      setIsClosing(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) void handleRequestClose();
+      }}
+    >
       <DialogContent className="max-h-[min(760px,calc(100dvh-3rem))] max-w-3xl gap-0 overflow-hidden p-0">
         <DialogHeader className="mb-0 border-b border-border px-5 py-4 pe-14">
-          <DialogTitle className="text-base">New email</DialogTitle>
-          <p className="text-xs text-muted-foreground">From {mailboxAddress}</p>
+          <DialogTitle className="text-base">
+            {initialDraft ? 'Edit draft' : 'New email'}
+          </DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-xs text-muted-foreground">From {mailboxAddress}</p>
+            <p
+              className={`shrink-0 text-xs ${
+                saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
+              }`}
+              role={saveStatus === 'error' ? 'alert' : 'status'}
+            >
+              {saveStatus === 'saving' || isClosing
+                ? 'Saving draft…'
+                : saveStatus === 'saved'
+                  ? 'Saved to Drafts'
+                  : saveStatus === 'error'
+                    ? 'Draft not saved — try again'
+                    : ''}
+            </p>
+          </div>
         </DialogHeader>
 
         <form
@@ -87,14 +310,42 @@ export function EmailComposeDialog({
           onSubmit={async (event) => {
             event.preventDefault();
             if (!canSend || isSending) return;
+            if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
             setIsPreparingAttachments(true);
             try {
-              const encodedAttachments = await Promise.all(attachments.map(fileToAttachment));
-              await onSend?.({ ...form, attachments: encodedAttachments });
+              const queuedResult = await saveQueueRef.current.catch(() => undefined);
+              let activeDraft = queuedResult
+                ? { draftId: queuedResult.draftId, messageId: queuedResult.messageId }
+                : draftRef.current;
+              const unsavedAttachments = attachments.filter(
+                (file) =>
+                  !queuedResult?.attachments?.some(
+                    (attachment) =>
+                      attachment.name === file.name && attachment.sizeBytes === file.size
+                  )
+              );
+              let finalPayload: ComposeDraftPayload = {
+                ...form,
+                attachments: unsavedAttachments.length
+                  ? await Promise.all(unsavedAttachments.map(fileToAttachment))
+                  : undefined,
+                removedAttachmentIds,
+              };
+
+              if (!activeDraft) {
+                activeDraft = await saveDraft(signature);
+                finalPayload = { ...form };
+              } else if (lastSavedSignatureRef.current === signature) {
+                finalPayload = { ...form };
+              }
+              if (!activeDraft) throw new Error('Draft could not be saved before sending');
+              await onSendDraft?.(finalPayload, activeDraft);
+              finishClose();
+            } catch {
+              // The mutation owns the user-facing error toast; keep the draft open for retry.
             } finally {
               setIsPreparingAttachments(false);
             }
-            handleOpenChange(false);
           }}
         >
           <DialogBody
@@ -211,8 +462,18 @@ export function EmailComposeDialog({
               inputId={attachmentInputId}
               inputRef={attachmentInputRef}
               attachments={attachments}
+              existingAttachments={existingAttachments}
               error={attachmentError}
-              onClear={() => setAttachments([])}
+              onClear={() => {
+                setAttachments([]);
+                setRemovedAttachmentIds((current) => [
+                  ...new Set([
+                    ...current,
+                    ...existingAttachments.map((attachment) => attachment.id),
+                  ]),
+                ]);
+                setExistingAttachments([]);
+              }}
               onSelect={(event) => {
                 addAttachments(event.target.files, attachments, setAttachments, setAttachmentError);
                 event.target.value = '';
@@ -220,6 +481,12 @@ export function EmailComposeDialog({
               onRemove={(file) =>
                 setAttachments((current) => current.filter((item) => item !== file))
               }
+              onRemoveExisting={(attachment) => {
+                setExistingAttachments((current) =>
+                  current.filter((item) => item.id !== attachment.id)
+                );
+                setRemovedAttachmentIds((current) => [...current, attachment.id]);
+              }}
             />
           </DialogBody>
 
@@ -228,7 +495,7 @@ export function EmailComposeDialog({
               <Button
                 type="submit"
                 size="sm"
-                disabled={!canSend || isSending || isPreparingAttachments}
+                disabled={!canSend || isSending || isPreparingAttachments || isClosing}
               >
                 <Send aria-hidden="true" className="size-3.5" />
                 {isPreparingAttachments ? 'Preparing' : isSending ? 'Sending' : 'Send'}
@@ -238,7 +505,19 @@ export function EmailComposeDialog({
                 variant="ghost"
                 size="sm"
                 className="ml-auto bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground"
-                onClick={() => handleOpenChange(false)}
+                disabled={isSending || isClosing}
+                onClick={async () => {
+                  if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+                  setIsClosing(true);
+                  try {
+                    const activeDraft =
+                      draftRef.current ?? (await saveQueueRef.current.catch(() => undefined));
+                    if (activeDraft) await onDiscardDraft?.(activeDraft);
+                    finishClose();
+                  } catch {
+                    setIsClosing(false);
+                  }
+                }}
               >
                 <Trash2 aria-hidden="true" className="size-3.5" />
                 Discard
@@ -255,19 +534,25 @@ function AttachmentDropzone({
   inputId,
   inputRef,
   attachments,
+  existingAttachments,
   error,
   onClear,
   onSelect,
   onRemove,
+  onRemoveExisting,
 }: {
   inputId: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   attachments: File[];
+  existingAttachments: EmailAttachment[];
   error: string | null;
   onClear: () => void;
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: (file: File) => void;
+  onRemoveExisting: (attachment: EmailAttachment) => void;
 }) {
+  const attachmentCount = attachments.length + existingAttachments.length;
+
   return (
     <div className="px-5 pb-5">
       <input
@@ -300,11 +585,11 @@ function AttachmentDropzone({
           </Button>
         </div>
 
-        {attachments.length > 0 && (
+        {attachmentCount > 0 && (
           <div className="mt-3">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-xs font-medium text-muted-foreground">
-                {attachments.length} {attachments.length === 1 ? 'attachment' : 'attachments'}
+                {attachmentCount} {attachmentCount === 1 ? 'attachment' : 'attachments'}
               </p>
               <button
                 type="button"
@@ -316,6 +601,28 @@ function AttachmentDropzone({
               </button>
             </div>
             <ul className="grid gap-2 sm:grid-cols-2" aria-label="Selected attachments">
+              {existingAttachments.map((attachment) => (
+                <li
+                  key={attachment.id}
+                  className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2"
+                >
+                  <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                    {attachment.name}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {attachment.size}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Remove ${attachment.name}`}
+                    onClick={() => onRemoveExisting(attachment)}
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
               {attachments.map((file) => (
                 <li
                   key={`${file.name}-${file.lastModified}`}
@@ -377,6 +684,10 @@ function addAttachments(
   );
   setFiles([...current, ...next]);
   setError(null);
+}
+
+function fileKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
 }
 
 function fileToAttachment(file: File) {
