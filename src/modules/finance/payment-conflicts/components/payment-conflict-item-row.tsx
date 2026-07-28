@@ -1,7 +1,8 @@
-import { Badge } from '@/app/components/ui/badge';
+import { Badge, BadgeDot } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
+import { cn } from '@/app/lib/utils';
 import {
-  formatConflictRelativeTime,
+  formatConflictTimestamp,
   formatDiffValue,
   resolutionActionLabels,
 } from '@/modules/finance/payment-conflicts/lib/payment-conflicts.utils';
@@ -9,7 +10,7 @@ import type {
   PaymentConflict,
   PaymentConflictItem,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
-import { Check, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock3, ExternalLink, Loader2 } from 'lucide-react';
 
 interface PaymentConflictItemRowProps {
   conflict: PaymentConflict;
@@ -28,91 +29,103 @@ export function PaymentConflictItemRow({
 }: PaymentConflictItemRowProps) {
   const isActive = item.status === 'ACTIVE';
   const blockedReason = item.acceptBlockedReasons[0];
+  const elliValue = formatDiffValue(conflict, item, 'elli');
+  const quickBooksValue = formatDiffValue(conflict, item, 'quickbooks');
 
   return (
-    <div className="grid gap-3 px-4 py-3.5 lg:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1.6fr)_auto] lg:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-foreground">{item.label}</p>
-          <Badge
-            variant={item.priority === 'HIGH' ? 'destructive' : 'secondary'}
-            appearance="light"
-            size="xs"
-          >
-            {item.priority === 'HIGH' ? 'High' : 'Review'}
-          </Badge>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {isActive
-            ? `Detected ${formatConflictRelativeTime(item.lastDetectedAt)}`
-            : `Resolved ${formatConflictRelativeTime(item.resolvedAt ?? item.lastDetectedAt)}`}
-        </p>
-      </div>
+    <article className="rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
+      <header className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground">{item.label}</h3>
+        <Badge
+          variant={item.priority === 'HIGH' ? 'destructive' : 'warning'}
+          appearance="outline"
+          size="sm"
+          shape="circle"
+          className="font-normal"
+        >
+          <BadgeDot />
+          {item.priority === 'HIGH' ? 'High' : 'Review'}
+        </Badge>
+      </header>
 
-      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="min-w-0 border-l-2 border-border pl-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-0">
+        <div className="min-w-0 sm:pr-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Elli
           </p>
           <p
-            className="mt-0.5 truncate text-sm text-foreground"
-            title={formatDiffValue(conflict, item, 'elli')}
+            className={cn(
+              'mt-2 break-words text-sm',
+              isActive ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'
+            )}
+            title={elliValue}
           >
-            {formatDiffValue(conflict, item, 'elli')}
+            {elliValue}
           </p>
         </div>
-        <div className="min-w-0 border-l-2 border-primary/40 pl-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">QuickBooks</p>
-          <p
-            className="mt-0.5 truncate text-sm text-foreground"
-            title={formatDiffValue(conflict, item, 'quickbooks')}
-          >
-            {formatDiffValue(conflict, item, 'quickbooks')}
+        <div className="min-w-0 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            QuickBooks
+          </p>
+          <p className="mt-2 break-words text-sm font-medium text-primary" title={quickBooksValue}>
+            {quickBooksValue}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {isActive ? (
-          <>
-            <span title={blockedReason}>
+      {isActive ? (
+        <>
+          <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
+            <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Last changed in QB</span>
+            <time className="font-medium text-foreground" dateTime={item.lastDetectedAt}>
+              {formatConflictTimestamp(item.lastDetectedAt)}
+            </time>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="w-full sm:w-auto" title={blockedReason}>
               <Button
-                variant="outline"
-                size="sm"
+                size="md"
+                className="w-full sm:w-auto"
                 disabled={!canResolve || !item.canAcceptQuickBooks || isAccepting}
                 onClick={() => onAccept(item)}
                 aria-label={`Accept QuickBooks change for ${item.label}`}
               >
-                {isAccepting ? <Loader2 className="animate-spin" /> : <Check />}
-                Accept
+                {isAccepting ? <Loader2 className="animate-spin" /> : null}
+                Accept QB
               </Button>
             </span>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="md" className="w-full sm:w-auto" asChild>
               <a
                 href={conflict.payment.transactionUrl}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`Fix ${item.label} in QuickBooks`}
+                aria-label={`Open ${item.label} in QuickBooks`}
               >
-                Fix in QuickBooks <ExternalLink />
+                Open in QuickBooks <ExternalLink />
               </a>
             </Button>
-          </>
-        ) : (
-          <div className="text-right text-xs text-muted-foreground">
+          </div>
+
+          {blockedReason ? (
+            <p className="mt-3 text-xs text-warning-foreground">{blockedReason}</p>
+          ) : null}
+        </>
+      ) : (
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
+          <div>
             <p className="font-medium text-foreground">
               {item.resolutionAction ? resolutionActionLabels[item.resolutionAction] : 'Resolved'}
             </p>
-            {item.resolvedBy && <p>By {item.resolvedBy.name}</p>}
+            <p>
+              {item.resolvedBy ? `By ${item.resolvedBy.name} - ` : ''}
+              {formatConflictTimestamp(item.resolvedAt ?? item.lastDetectedAt)}
+            </p>
           </div>
-        )}
-      </div>
-
-      {isActive && blockedReason && (
-        <p className="text-xs text-warning-foreground lg:col-start-2 lg:col-span-2">
-          {blockedReason}
-        </p>
+        </div>
       )}
-    </div>
+    </article>
   );
 }

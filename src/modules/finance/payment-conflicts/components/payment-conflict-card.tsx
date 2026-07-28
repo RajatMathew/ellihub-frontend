@@ -10,21 +10,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import { PaymentConflictItemRow } from '@/modules/finance/payment-conflicts/components/payment-conflict-item-row';
 import {
-  detectionSourceLabels,
-  formatConflictDate,
   formatConflictMoney,
+  formatConflictShortDate,
+  getReferenceLabel,
 } from '@/modules/finance/payment-conflicts/lib/payment-conflicts.utils';
 import type {
   PaymentConflict,
   PaymentConflictItem,
   PaymentConflictStatus,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
-import { CheckCheck, ExternalLink, Loader2, RefreshCcw } from 'lucide-react';
+import { CheckCheck, Loader2, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PaymentConflictCardProps {
@@ -52,7 +51,16 @@ export function PaymentConflictCard({
   const isActive = itemStatus === 'ACTIVE';
   const canAcceptAll =
     activeItems.length > 0 && activeItems.every((item) => item.canAcceptQuickBooks);
-  const currency = conflict.baseline.currencyCode ?? 'USD';
+  const currency =
+    conflict.latestQuickBooks?.currencyCode ?? conflict.baseline.currencyCode ?? 'USD';
+  const displayedAmount = conflict.latestQuickBooks?.totalAmount ?? conflict.payment.amount;
+  const displayedDate = conflict.latestQuickBooks?.paymentDate ?? conflict.payment.txnDate;
+  const displayedVendor =
+    getReferenceLabel(conflict, conflict.latestQuickBooks?.vendorId) ??
+    conflict.purchaseOrder.vendor.name;
+  const poNumber = conflict.purchaseOrder.poNumber.startsWith('#')
+    ? conflict.purchaseOrder.poNumber
+    : `#${conflict.purchaseOrder.poNumber}`;
   const purchaseOrderPath = `/app/project/${encodeURIComponent(
     conflict.purchaseOrder.project.id
   )}/purchase-orders/${encodeURIComponent(conflict.purchaseOrder.id)}/edit`;
@@ -67,50 +75,64 @@ export function PaymentConflictCard({
   };
 
   return (
-    <Card className="overflow-hidden border-border/80 shadow-none">
-      <div className="flex flex-col gap-3 border-b border-border/80 px-4 py-3.5 lg:flex-row lg:items-center lg:justify-between">
+    <Card className="overflow-hidden rounded-xl border-border bg-card shadow-none">
+      <header className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-lg font-semibold tracking-tight text-foreground">
+              {formatConflictMoney(displayedAmount, currency)}
+            </p>
+            <p className="text-sm font-medium text-foreground">{displayedVendor}</p>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <span>{conflict.purchaseOrder.project.name}</span>
+            <span aria-hidden="true">&middot;</span>
             <Link
               to={purchaseOrderPath}
-              className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+              className="underline-offset-4 hover:text-primary hover:underline"
             >
-              PO {conflict.purchaseOrder.poNumber}
+              PO {poNumber}
             </Link>
-            <span className="text-sm text-muted-foreground">
-              {conflict.purchaseOrder.vendor.name}
-            </span>
-            <Badge variant={isActive ? 'warning' : 'success'} appearance="light" size="xs">
-              {visibleItems.length} {visibleItems.length === 1 ? 'conflict' : 'conflicts'}
-            </Badge>
-          </div>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {conflict.purchaseOrder.project.name}
-            {conflict.purchaseOrder.project.jobNumber
-              ? ` - Job ${conflict.purchaseOrder.project.jobNumber}`
-              : ''}
-            {' - '}
-            {detectionSourceLabels[conflict.detectionSource]}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-          <div>
-            <span className="text-muted-foreground">Payment </span>
-            <span className="font-medium text-foreground">
-              {formatConflictMoney(conflict.payment.amount, currency)}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Date </span>
-            <span className="font-medium text-foreground">
-              {formatConflictDate(conflict.payment.txnDate)}
-            </span>
+            <span aria-hidden="true">&middot;</span>
+            <time dateTime={displayedDate}>{formatConflictShortDate(displayedDate)}</time>
           </div>
         </div>
-      </div>
 
-      <div className="divide-y divide-border/70">
+        {isActive ? (
+          <div className="flex w-full items-center gap-2 sm:w-auto sm:shrink-0">
+            <Button
+              variant="dim"
+              size="sm"
+              className="flex-1 sm:flex-none"
+              disabled={!canResolve || isRechecking || acceptingItemIds.length > 0}
+              onClick={() => onRecheck(conflict.id)}
+            >
+              {isRechecking ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+              Recheck
+            </Button>
+            <span
+              className="flex-1 sm:flex-none"
+              title={canAcceptAll ? undefined : conflict.acceptBlockedReasons[0]}
+            >
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={!canResolve || !canAcceptAll || acceptingItemIds.length > 0}
+                onClick={() => setPendingItems(activeItems)}
+              >
+                {acceptingItemIds.length > 0 ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <CheckCheck />
+                )}
+                Accept all
+              </Button>
+            </span>
+          </div>
+        ) : null}
+      </header>
+
+      <div className="space-y-2 border-t border-border p-3">
         {visibleItems.map((item) => (
           <PaymentConflictItemRow
             key={item.id}
@@ -123,49 +145,11 @@ export function PaymentConflictCard({
         ))}
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-border/80 bg-muted/10 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="truncate text-xs text-muted-foreground">
-          QuickBooks transaction {conflict.payment.transactionId}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <a href={conflict.payment.transactionUrl} target="_blank" rel="noreferrer">
-              Fix in QuickBooks <ExternalLink />
-            </a>
-          </Button>
-          {isActive && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!canResolve || isRechecking || acceptingItemIds.length > 0}
-                onClick={() => onRecheck(conflict.id)}
-              >
-                {isRechecking ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-                Recheck
-              </Button>
-              <span title={canAcceptAll ? undefined : conflict.acceptBlockedReasons[0]}>
-                <Button
-                  size="sm"
-                  disabled={!canResolve || !canAcceptAll || acceptingItemIds.length > 0}
-                  onClick={() => setPendingItems(activeItems)}
-                >
-                  {acceptingItemIds.length > 0 ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <CheckCheck />
-                  )}
-                  Accept all
-                </Button>
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
       <AlertDialog
         open={pendingItems !== null}
-        onOpenChange={(open) => !open && setPendingItems(null)}
+        onOpenChange={(open) => {
+          if (!open) setPendingItems(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

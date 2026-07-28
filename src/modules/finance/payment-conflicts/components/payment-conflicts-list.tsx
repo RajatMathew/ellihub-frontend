@@ -39,7 +39,7 @@ export function PaymentConflictsList({
 
   if (isError) {
     return (
-      <Card>
+      <Card className="rounded-xl shadow-none">
         <QueryErrorState
           title="Failed to load payment conflicts"
           description="Elli could not load the QuickBooks reconciliation queue."
@@ -54,7 +54,7 @@ export function PaymentConflictsList({
     const isActive = status === 'ACTIVE';
     const Icon = isActive ? CheckCircle2 : History;
     return (
-      <Card>
+      <Card className="rounded-xl shadow-none">
         <CardContent className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
           <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted">
             <Icon className="size-6 text-muted-foreground" />
@@ -94,17 +94,17 @@ function PaymentConflictsSkeleton() {
   return (
     <div className="space-y-3" aria-label="Loading payment conflicts">
       {[0, 1, 2].map((item) => (
-        <Card key={item} className="overflow-hidden">
-          <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <Card key={item} className="overflow-hidden rounded-xl shadow-none">
+          <div className="flex items-center justify-between px-5 py-4">
             <div className="space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-3 w-56 max-w-full" />
             </div>
-            <Skeleton className="h-9 w-40" />
+            <Skeleton className="h-7 w-36" />
           </div>
-          <div className="space-y-3 px-5 py-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-16 w-full" />
+          <div className="space-y-2 border-t border-border p-3">
+            <Skeleton className="h-44 w-full rounded-lg" />
+            <Skeleton className="h-44 w-full rounded-lg" />
           </div>
         </Card>
       ))}

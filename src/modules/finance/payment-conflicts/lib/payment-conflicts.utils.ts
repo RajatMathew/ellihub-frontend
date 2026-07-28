@@ -23,6 +23,19 @@ export function formatConflictDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? value : format(date, 'MMM d, yyyy');
 }
 
+export function formatConflictShortDate(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : format(date, 'MMM d');
+}
+
+export function formatConflictTimestamp(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Unknown time'
+    : `${format(date, 'MMM d')} \u00b7 ${format(date, 'h:mm a')}`;
+}
+
 export function formatConflictRelativeTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
