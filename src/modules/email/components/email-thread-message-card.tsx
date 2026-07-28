@@ -106,7 +106,7 @@ export function EmailThreadMessageCard({
         </div>
       </div>
 
-      <div className="space-y-4 px-4 py-4">
+      <div className="space-y-4 bg-card px-4 py-4">
         {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
 
         {visibleAttachments.length > 0 && (
