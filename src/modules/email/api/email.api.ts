@@ -60,6 +60,11 @@ const emailTagSchema = z.object({
   source: z.enum(['provider', 'cache']),
 });
 
+const emailAddressSchema = z.object({
+  address: z.string(),
+  name: z.string().optional(),
+});
+
 const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
@@ -74,6 +79,9 @@ const emailListItemSchema = z.object({
   folder: z.string(),
   mailbox: z.string(),
   unread: z.boolean(),
+  to: z.array(emailAddressSchema).optional(),
+  cc: z.array(emailAddressSchema).optional(),
+  bcc: z.array(emailAddressSchema).optional(),
   keywords: z.array(z.string()).optional(),
   attachmentCount: z.number().optional(),
   threadMessageCount: z.number().optional(),
@@ -97,6 +105,12 @@ const emailThreadMessageSchema = z.object({
 
 const emailReplyResponseSchema = z.object({
   message: emailThreadMessageSchema.nullable().optional(),
+});
+
+const emailDraftResultSchema = z.object({
+  draftId: z.string(),
+  messageId: z.string(),
+  message: emailListItemSchema.nullable(),
 });
 
 const emailAuthStartSchema = z.object({
@@ -134,6 +148,26 @@ export type EmailMessagePage = {
   totalCount?: number | null;
   freshness?: EmailFreshness;
 };
+
+export type EmailDraftMessagePayload = {
+  accountId: string;
+  draftId?: string;
+  messageId?: string;
+  subject: string;
+  body: string;
+  bodyType?: 'html' | 'text';
+  to: Array<{ address: string; name?: string }>;
+  cc?: Array<{ address: string; name?: string }>;
+  bcc?: Array<{ address: string; name?: string }>;
+  attachments?: Array<{
+    name: string;
+    mimeType?: string;
+    content: string;
+  }>;
+  removedAttachmentIds?: string[];
+};
+
+export type EmailDraftResult = z.infer<typeof emailDraftResultSchema>;
 
 export type SendConnectedEmailPayload = {
   accountId: string;
@@ -233,6 +267,36 @@ export const emailApi = {
   async getMessage(accountId: string, messageId: string): Promise<ConnectedEmailListItem> {
     const res = await api.get(`${BASE}/accounts/${accountId}/messages/${messageId}`);
     return emailListItemSchema.parse(unwrapData(res.data, 'message'));
+  },
+
+  async getDraft(accountId: string, messageId: string): Promise<EmailDraftResult> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/drafts/${messageId}`);
+    return emailDraftResultSchema.parse(unwrapData(res.data));
+  },
+
+  async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
+    const { accountId, draftId, ...draft } = payload;
+    const config = { timeout: 0 };
+    const res = draftId
+      ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
+      : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);
+    return emailDraftResultSchema.parse(unwrapData(res.data));
+  },
+
+  async sendDraft(payload: {
+    accountId: string;
+    draftId: string;
+    messageId?: string;
+  }): Promise<void> {
+    await api.post(`${BASE}/accounts/${payload.accountId}/drafts/${payload.draftId}/send`, {
+      messageId: payload.messageId,
+    });
+  },
+
+  async deleteDraft(accountId: string, draftId: string, messageId?: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}/drafts/${draftId}`, {
+      params: { messageId },
+    });
   },
 
   async getAttachment(accountId: string, messageId: string, attachmentId: string): Promise<Blob> {

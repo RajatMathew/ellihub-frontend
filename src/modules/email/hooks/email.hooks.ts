@@ -5,6 +5,7 @@ import {
   type ConnectedEmailListItem,
   type ConnectedEmailTag,
   type EmailAccount,
+  type EmailDraftMessagePayload,
   type EmailMessagePage,
   type EmailProvider,
   type ReplyConnectedEmailPayload,
@@ -298,6 +299,74 @@ export const useSendConnectedEmailMutation = () => {
       toast.success('Email sent.');
     },
     onError: (error) => toastApiError(error, 'Failed to send email.'),
+  });
+};
+
+export const useOpenEmailDraftMutation = () =>
+  useMutation({
+    mutationFn: (payload: { accountId: string; messageId: string }) =>
+      emailApi.getDraft(payload.accountId, payload.messageId),
+    onError: (error) => toastApiError(error, 'Failed to open draft.'),
+  });
+
+export const useSaveEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: EmailDraftMessagePayload) => emailApi.saveDraft(payload),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.folders(payload.accountId),
+        refetchType: 'none',
+      });
+    },
+    onError: (error) => toastApiError(error, 'Failed to prepare the draft.'),
+  });
+};
+
+export const useSendEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; draftId: string; messageId?: string }) =>
+      emailApi.sendDraft(payload),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.folders(payload.accountId),
+        refetchType: 'none',
+      });
+      toast.success('Email sent.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to send email.'),
+  });
+};
+
+export const useDeleteEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; draftId: string; messageId?: string }) =>
+      emailApi.deleteDraft(payload.accountId, payload.draftId, payload.messageId),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.folders(payload.accountId),
+        refetchType: 'none',
+      });
+      toast.success('Draft discarded.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to discard draft.'),
   });
 };
 
