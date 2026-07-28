@@ -10,6 +10,7 @@ import {
 import { EmailComposeDialog } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
+import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { MailboxSidebar } from '@/modules/email/components/mailbox-sidebar';
 import {
@@ -42,6 +43,7 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -78,6 +80,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailboxSidebarCollapsed, setMailboxSidebarCollapsed] = useState(false);
+  const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<{
     viewKey: string;
     folder: string;
@@ -91,8 +94,15 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       ) ?? null)
     : null;
   const isConnected = Boolean(connectedAccount);
-  const foldersQuery = useEmailFoldersQuery(connectedAccount?.id);
-  const tagsQuery = useEmailTagsQuery(connectedAccount?.id);
+  const hasPersistedReconnectState =
+    connectedAccount?.status.toUpperCase() === 'ERROR' ||
+    connectedAccount?.freshness?.errorCode === 'EMAIL_RECONNECT_REQUIRED';
+  const canLoadConnectedMailbox =
+    Boolean(connectedAccount) &&
+    !hasPersistedReconnectState &&
+    reconnectRequiredAccountId !== connectedAccount?.id;
+  const foldersQuery = useEmailFoldersQuery(connectedAccount?.id, canLoadConnectedMailbox);
+  const tagsQuery = useEmailTagsQuery(connectedAccount?.id, canLoadConnectedMailbox);
   const selectedConnectedFolder = isConnected
     ? (foldersQuery.data?.find((folder) => folder.id === selectedFolder) ??
       foldersQuery.data?.find((folder) => folder.key === selectedFolder) ??
@@ -101,10 +111,15 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const selectedFolderQuery = isConnectedWellKnownFolderKey(selectedFolder)
     ? { key: selectedFolder }
     : { id: selectedConnectedFolder?.id ?? selectedFolder };
-  const messagesQuery = useEmailMessagesQuery(connectedAccount?.id, selectedFolderQuery, {
-    size: CONNECTED_EMAIL_PAGE_SIZE,
-    search: debouncedMessageSearch || undefined,
-  });
+  const messagesQuery = useEmailMessagesQuery(
+    connectedAccount?.id,
+    selectedFolderQuery,
+    {
+      size: CONNECTED_EMAIL_PAGE_SIZE,
+      search: debouncedMessageSearch || undefined,
+    },
+    canLoadConnectedMailbox
+  );
   const startAuthMutation = useStartEmailAuthMutation();
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
   const disconnectAccountMutation = useDisconnectEmailAccountMutation();
@@ -177,12 +192,29 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const selectedEmail = folderEmails.find((email) => email.id === selectedEmailId) ?? null;
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
-    isConnected ? selectedEmail?.threadId : null
+    isConnected ? selectedEmail?.threadId : null,
+    canLoadConnectedMailbox
   );
   const messageDetailQuery = useEmailMessageQuery(
     connectedAccount?.id,
     selectedEmail?.latestMessageId ?? selectedEmail?.id,
-    isConnected && !selectedEmail?.threadId
+    canLoadConnectedMailbox && isConnected && !selectedEmail?.threadId
+  );
+  const hasReconnectRequiredResponse =
+    [
+      foldersQuery.error,
+      tagsQuery.error,
+      messagesQuery.error,
+      conversationQuery.error,
+      messageDetailQuery.error,
+    ].some(isEmailReconnectRequiredError) ||
+    (refreshMessagesMutation.variables?.accountId === connectedAccount?.id &&
+      isEmailReconnectRequiredError(refreshMessagesMutation.error));
+  const isReconnectRequired = Boolean(
+    connectedAccount &&
+    (hasPersistedReconnectState ||
+      reconnectRequiredAccountId === connectedAccount.id ||
+      hasReconnectRequiredResponse)
   );
   const visibleEmail =
     isConnected && selectedEmail && conversationQuery.data?.length
@@ -238,6 +270,14 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const lastOpenedMessageKey = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!connectedAccount || !hasReconnectRequiredResponse) return;
+    const timeout = window.setTimeout(() => {
+      setReconnectRequiredAccountId(connectedAccount.id);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [connectedAccount, hasReconnectRequiredResponse]);
+
+  useEffect(() => {
     if (!connectedAccount || !selectedEmail) return;
 
     const messageId = selectedEmail.latestMessageId ?? selectedEmail.id;
@@ -279,7 +319,16 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   useEffect(() => {
     const accountId = connectedAccount?.id;
     const freshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
-    if (!accountId || !freshness || freshness.state === 'fresh' || freshness.syncing) return;
+    if (
+      !accountId ||
+      isReconnectRequired ||
+      !messagesQuery.isSuccess ||
+      !freshness ||
+      freshness.state === 'fresh' ||
+      freshness.syncing
+    ) {
+      return;
+    }
     if (attemptedInitialSyncs.current.has(accountId) || refreshMessagesMutation.isPending) return;
 
     attemptedInitialSyncs.current.add(accountId);
@@ -287,7 +336,9 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   }, [
     connectedAccount?.freshness,
     connectedAccount?.id,
+    isReconnectRequired,
     messagesQuery.data?.pages,
+    messagesQuery.isSuccess,
     refreshMessagesMutation,
   ]);
 
@@ -342,6 +393,34 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     navigate(nextPath, { replace: true });
     disconnectAccountMutation.mutate({ accountId: connectedAccount.id });
   }, [accountsQuery.data, connectedAccount, disconnectAccountMutation, navigate]);
+
+  if (isReconnectRequired && connectedAccount) {
+    return (
+      <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+        <div className="flex h-full min-w-0">
+          <MailboxSidebar
+            mailboxAddress={address}
+            selectedFolder={selectedFolder}
+            folderCounts={{}}
+            collapsed={mailboxSidebarCollapsed}
+            isAddingAccount={startAuthMutation.isPending}
+            isDisconnectingAccount={disconnectAccountMutation.isPending}
+            onSelectFolder={setSelectedFolder}
+            onCompose={() => undefined}
+            onDisconnectAccount={handleDisconnectAccount}
+            onAddAccount={(provider) => startAuthMutation.mutate(provider)}
+            onCollapsedChange={setMailboxSidebarCollapsed}
+          />
+          <EmailReconnectRequiredState
+            provider={connectedAccount.provider}
+            email={connectedAccount.mailboxAddress ?? connectedAccount.email}
+            isReconnecting={startAuthMutation.isPending}
+            onReconnect={() => startAuthMutation.mutate(connectedAccount.provider)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
