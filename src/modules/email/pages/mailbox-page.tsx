@@ -3,11 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
+import type { EmailDraftResult } from '@/modules/email/api';
 import {
   EmailAgentPanel,
   type EmailAgentLayout,
 } from '@/modules/email/components/email-agent-panel';
-import { EmailComposeDialog } from '@/modules/email/components/email-compose-dialog';
+import {
+  EmailComposeDialog,
+  type EditableComposeDraft,
+} from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
@@ -36,12 +40,17 @@ import {
   usePermanentlyDeleteEmailMessageMutation,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
-  useSendConnectedEmailMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import {
+  useDeleteEmailDraftMutation,
+  useOpenEmailDraftMutation,
+  useSaveEmailDraftMutation,
+  useSendEmailDraftMutation,
+} from '@/modules/email/hooks/email.hooks';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
@@ -76,6 +85,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), 300);
   const attemptedInitialSyncs = useRef(new Set<string>());
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailboxSidebarCollapsed, setMailboxSidebarCollapsed] = useState(false);
@@ -109,7 +119,10 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const startAuthMutation = useStartEmailAuthMutation();
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
   const disconnectAccountMutation = useDisconnectEmailAccountMutation();
-  const sendMutation = useSendConnectedEmailMutation();
+  const openDraftMutation = useOpenEmailDraftMutation();
+  const saveDraftMutation = useSaveEmailDraftMutation();
+  const sendDraftMutation = useSendEmailDraftMutation();
+  const deleteDraftMutation = useDeleteEmailDraftMutation();
   const replyMutation = useReplyConnectedEmailMutation();
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
@@ -131,7 +144,10 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     const conversations = new Map<string, EmailListItem>();
     for (const page of loadedEmailPages) {
       for (const email of page.records) {
-        const key = email.conversationKey ?? email.threadId ?? email.id;
+        const key =
+          selectedFolderQuery.key === 'drafts'
+            ? email.id
+            : (email.conversationKey ?? email.threadId ?? email.id);
         if (conversations.has(key)) continue;
         conversations.set(key, {
           ...email,
@@ -142,7 +158,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       }
     }
     return Array.from(conversations.values());
-  }, [connectedAccount?.id, loadedEmailPages, selectedFolder]);
+  }, [connectedAccount?.id, loadedEmailPages, selectedFolder, selectedFolderQuery.key]);
   const mailboxEmails = useMemo(
     () =>
       isConnected
@@ -365,7 +381,10 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
           isCreatingFolder={createFolderMutation.isPending}
           isDisconnectingAccount={disconnectAccountMutation.isPending}
           onSelectFolder={setSelectedFolder}
-          onCompose={() => setComposeOpen(true)}
+          onCompose={() => {
+            setComposeDraft(null);
+            setComposeOpen(true);
+          }}
           onCreateFolder={
             connectedAccount
               ? (name) =>
@@ -390,9 +409,22 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             isLoading={isMailboxLoading}
             isError={isMailboxError}
             selectedEmailId={selectedEmailId}
-            onSelectEmail={(emailId) =>
-              setSelectedTarget({ viewKey, folder: selectedFolder, emailId })
-            }
+            onSelectEmail={(emailId) => {
+              if (connectedAccount && selectedFolderKey === 'drafts') {
+                openDraftMutation.mutate(
+                  { accountId: connectedAccount.id, messageId: emailId },
+                  {
+                    onSuccess: (result) => {
+                      if (!result.message) return;
+                      setComposeDraft(toEditableComposeDraft(result));
+                      setComposeOpen(true);
+                    },
+                  }
+                );
+                return;
+              }
+              setSelectedTarget({ viewKey, folder: selectedFolder, emailId });
+            }}
             onRetry={() => {
               if (!connectedAccount) {
                 messagesQuery.refetch();
@@ -557,24 +589,104 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       <EmailComposeDialog
         open={composeOpen}
         mailboxAddress={address}
-        isSending={sendMutation.isPending}
-        onOpenChange={setComposeOpen}
-        onSend={async (payload) => {
-          if (!connectedAccount) return;
-          await sendMutation.mutateAsync({
-            accountId: connectedAccount.id,
-            subject: payload.subject,
-            body: plainTextToEmailHtml(payload.body),
-            bodyType: 'html',
-            to: parseEmailAddresses(payload.to),
-            cc: parseEmailAddresses(payload.cc),
-            bcc: parseEmailAddresses(payload.bcc),
-            attachments: payload.attachments,
-          });
+        initialDraft={composeDraft}
+        isSending={sendDraftMutation.isPending}
+        onOpenChange={(nextOpen) => {
+          setComposeOpen(nextOpen);
+          if (!nextOpen) {
+            setComposeDraft(null);
+            if (selectedFolderKey === 'drafts') {
+              void messagesQuery.refetch();
+              void foldersQuery.refetch();
+            }
+          }
         }}
+        onSaveDraft={
+          connectedAccount
+            ? async (payload, draft) => {
+                const result = await saveDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft?.draftId,
+                  messageId: draft?.messageId,
+                  subject: payload.subject,
+                  body: textToHtml(payload.body),
+                  bodyType: 'html',
+                  to: parseEmailAddresses(payload.to),
+                  cc: parseEmailAddresses(payload.cc),
+                  bcc: parseEmailAddresses(payload.bcc),
+                  attachments: payload.attachments,
+                  removedAttachmentIds: payload.removedAttachmentIds,
+                });
+                return {
+                  draftId: result.draftId,
+                  messageId: result.messageId,
+                  attachments: result.message?.attachments,
+                };
+              }
+            : undefined
+        }
+        onSendDraft={
+          connectedAccount
+            ? async (payload, draft) => {
+                await sendDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft.draftId,
+                  messageId: draft.messageId,
+                  subject: payload.subject,
+                  body: textToHtml(payload.body),
+                  bodyType: 'html',
+                  to: parseEmailAddresses(payload.to),
+                  cc: parseEmailAddresses(payload.cc),
+                  bcc: parseEmailAddresses(payload.bcc),
+                  attachments: payload.attachments,
+                  removedAttachmentIds: payload.removedAttachmentIds,
+                });
+              }
+            : undefined
+        }
+        onDiscardDraft={
+          connectedAccount
+            ? (draft) =>
+                deleteDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft.draftId,
+                  messageId: draft.messageId,
+                })
+            : undefined
+        }
       />
     </div>
   );
+}
+
+function toEditableComposeDraft(result: EmailDraftResult): EditableComposeDraft {
+  const message = result.message!;
+  return {
+    draftId: result.draftId,
+    messageId: result.messageId,
+    to: formatEmailAddresses(message.to),
+    cc: formatEmailAddresses(message.cc),
+    bcc: formatEmailAddresses(message.bcc),
+    subject: message.subject === '(No subject)' ? '' : message.subject,
+    body: htmlToPlainText(message.body?.[0] ?? ''),
+    attachments: message.attachments ?? [],
+  };
+}
+
+function formatEmailAddresses(addresses?: Array<{ address: string; name?: string }>) {
+  return (addresses ?? [])
+    .map((recipient) =>
+      recipient.name ? `${recipient.name} <${recipient.address}>` : recipient.address
+    )
+    .join(', ');
+}
+
+function htmlToPlainText(value: string) {
+  if (!value) return '';
+  const document = new DOMParser().parseFromString(value, 'text/html');
+  document.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
+  document.querySelectorAll('p,div,li').forEach((block) => block.append('\n'));
+  return (document.body.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
 }
 
 function getFolderCounts(mailboxEmails: EmailListItem[]) {
@@ -605,5 +717,12 @@ function parseEmailAddresses(value: string) {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-    .map((address) => ({ address }));
+    .map((recipient) => {
+      const match = recipient.match(/^(.*?)\s*<([^<>]+)>$/);
+      if (!match) return { address: recipient };
+      return {
+        address: match[2].trim(),
+        name: match[1].trim().replace(/^["']|["']$/g, '') || undefined,
+      };
+    });
 }
