@@ -60,6 +60,11 @@ export function PaymentMarkedDialog({
                   <p className="text-sm leading-5 text-muted-foreground">
                     You can review the transaction in QuickBooks from the link below.
                   </p>
+                  <p className="text-sm leading-5 text-muted-foreground">
+                    {payment?.checkNumber
+                      ? `Check no. ${payment.checkNumber}`
+                      : 'QuickBooks has not assigned a check number yet.'}
+                  </p>
                 </div>
 
                 {payment?.transactionUrl ? (

@@ -34,6 +34,7 @@ export const monthlyBillPaymentSchema = z.object({
   id: z.string(),
   txnDate: z.string().nullable().optional(),
   amount: z.coerce.number().optional(),
+  checkNumber: z.string().nullable().optional(),
   transactionId: z.string().nullable().optional(),
   transactionUrl: z.string().nullable().optional(),
 });
@@ -175,6 +176,7 @@ export const markPaymentResultSchema = z.object({
   qbVendorId: z.string(),
   bankAccountId: z.string(),
   txnDate: z.string().nullable().optional(),
+  checkNumber: z.string().nullable().optional(),
   transactionId: z.string(),
   transactionUrl: z.string(),
 });

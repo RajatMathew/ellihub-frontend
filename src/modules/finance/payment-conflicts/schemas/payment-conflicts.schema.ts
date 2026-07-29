@@ -29,6 +29,7 @@ export const paymentConflictFieldSchema = z.enum([
   'LINE_STRUCTURE',
   'PAYMENT_TYPE',
   'CURRENCY',
+  'CHECK_NUMBER',
   'TRANSACTION_MISSING',
 ]);
 
@@ -47,6 +48,7 @@ export const paymentComparableSchema = z.object({
   vendorId: z.string().nullable(),
   bankAccountId: z.string().nullable(),
   paymentDate: z.string().nullable(),
+  checkNumber: z.string().nullable().default(null),
   currencyCode: z.string().nullable(),
   exchangeRate: z.string().nullable(),
   totalAmount: z.string(),
@@ -126,6 +128,7 @@ export const paymentConflictSchema = z.object({
   payment: z.object({
     id: z.string(),
     amount: z.string(),
+    checkNumber: z.string().nullable(),
     txnDate: z.string(),
     transactionId: z.string(),
     transactionUrl: z.string(),

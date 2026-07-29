@@ -45,6 +45,11 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
                   <span className="text-xs text-muted-foreground">
                     {payment.txnDate || 'No date'}
                   </span>
+                  {payment.checkNumber ? (
+                    <span className="text-xs text-muted-foreground">
+                      Check no. {payment.checkNumber}
+                    </span>
+                  ) : null}
                 </div>
                 {payment.transactionUrl ? (
                   <a
