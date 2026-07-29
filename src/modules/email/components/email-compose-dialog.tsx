@@ -108,8 +108,7 @@ export function EmailComposeDialog({
   const saveQueueRef = useRef<Promise<ComposeDraftSaveResult | undefined>>(
     Promise.resolve(undefined)
   );
-  const canSend =
-    form.to.trim().length > 0 && form.subject.trim().length > 0 && form.body.trim().length > 0;
+  const canSend = form.to.trim().length > 0 && form.subject.trim().length > 0;
   const hasContent = Boolean(
     form.to.trim() ||
     form.cc.trim() ||

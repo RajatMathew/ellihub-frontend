@@ -95,11 +95,6 @@ async function setupMockApi(page: Page) {
     }
 
     if (method === 'GET' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages`) {
-      if (emailSent) {
-        postSendMessageRequests += 1;
-        await new Promise((resolve) => setTimeout(resolve, 7_000));
-      }
-
       await route.fulfill({
         json: {
           data: {
@@ -129,13 +124,6 @@ async function setupMockApi(page: Page) {
           },
         },
       });
-      return;
-    }
-
-    if (method === 'POST' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages/send`) {
-      sendRequests += 1;
-      emailSent = true;
-      await route.fulfill({ json: { data: { accepted: true } } });
       return;
     }
 
