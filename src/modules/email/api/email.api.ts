@@ -276,15 +276,21 @@ export const emailApi = {
 
   async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
     const { accountId, draftId, ...draft } = payload;
+    const config = { timeout: 0 };
     const res = draftId
-      ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft)
-      : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft);
+      ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
+      : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);
     return emailDraftResultSchema.parse(unwrapData(res.data));
   },
 
-  async sendDraft(payload: EmailDraftMessagePayload & { draftId: string }): Promise<void> {
-    const { accountId, draftId, ...draft } = payload;
-    await api.post(`${BASE}/accounts/${accountId}/drafts/${draftId}/send`, draft);
+  async sendDraft(payload: {
+    accountId: string;
+    draftId: string;
+    messageId?: string;
+  }): Promise<void> {
+    await api.post(`${BASE}/accounts/${payload.accountId}/drafts/${payload.draftId}/send`, {
+      messageId: payload.messageId,
+    });
   },
 
   async deleteDraft(accountId: string, draftId: string, messageId?: string): Promise<void> {

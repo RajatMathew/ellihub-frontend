@@ -29,6 +29,7 @@ import {
   useBoundedEmailSyncIndicator,
   useCreateEmailFolderMutation,
   useCreateEmailTagMutation,
+  useDeleteEmailDraftMutation,
   useDeleteEmailMessageMutation,
   useDisconnectEmailAccountMutation,
   useEmailAccountsQuery,
@@ -38,9 +39,12 @@ import {
   useEmailMessagesQuery,
   useEmailTagsQuery,
   useMoveEmailMessageMutation,
+  useOpenEmailDraftMutation,
   usePermanentlyDeleteEmailMessageMutation,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
+  useSaveEmailDraftMutation,
+  useSendEmailDraftMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
   useUpdateEmailMessageStatusMutation,
@@ -706,21 +710,12 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         }
         onSendDraft={
           connectedAccount
-            ? async (payload, draft) => {
-                await sendDraftMutation.mutateAsync({
+            ? (draft) =>
+                sendDraftMutation.mutateAsync({
                   accountId: connectedAccount.id,
                   draftId: draft.draftId,
                   messageId: draft.messageId,
-                  subject: payload.subject,
-                  body: textToHtml(payload.body),
-                  bodyType: 'html',
-                  to: parseEmailAddresses(payload.to),
-                  cc: parseEmailAddresses(payload.cc),
-                  bcc: parseEmailAddresses(payload.bcc),
-                  attachments: payload.attachments,
-                  removedAttachmentIds: payload.removedAttachmentIds,
-                });
-              }
+                })
             : undefined
         }
         onDiscardDraft={
@@ -804,4 +799,19 @@ function parseEmailAddresses(value: string) {
         name: match[1].trim().replace(/^["']|["']$/g, '') || undefined,
       };
     });
+}
+
+function textToHtml(value: string) {
+  const escaped = value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  return escaped
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.replace(/\n/g, '<br />'))
+    .map((paragraph) => `<p>${paragraph || '<br />'}</p>`)
+    .join('');
 }

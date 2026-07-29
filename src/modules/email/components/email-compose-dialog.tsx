@@ -63,7 +63,7 @@ interface EmailComposeDialogProps {
     payload: ComposeDraftPayload,
     draft?: ComposeDraftIdentity
   ) => Promise<ComposeDraftSaveResult>;
-  onSendDraft?: (payload: ComposeDraftPayload, draft: ComposeDraftIdentity) => Promise<void>;
+  onSendDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
   onDiscardDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
 }
 
@@ -99,11 +99,11 @@ export function EmailComposeDialog({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isPreparingAttachments, setIsPreparingAttachments] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const initializedDraftRef = useRef<string | null>(null);
   const draftRef = useRef<ComposeDraftIdentity | undefined>(undefined);
   const lastSavedSignatureRef = useRef('');
+  const lastQueuedSignatureRef = useRef('');
   const autosaveTimerRef = useRef<number | null>(null);
   const saveQueueRef = useRef<Promise<ComposeDraftSaveResult | undefined>>(
     Promise.resolve(undefined)
@@ -129,6 +129,11 @@ export function EmailComposeDialog({
       }),
     [attachments, existingAttachments, form, removedAttachmentIds]
   );
+  const draftIsReady =
+    Boolean(draftRef.current) &&
+    attachments.length === 0 &&
+    saveStatus === 'saved' &&
+    signature === lastSavedSignatureRef.current;
 
   function resetForm() {
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
@@ -144,6 +149,7 @@ export function EmailComposeDialog({
     setIsClosing(false);
     initializedDraftRef.current = null;
     lastSavedSignatureRef.current = '';
+    lastQueuedSignatureRef.current = '';
     saveQueueRef.current = Promise.resolve(undefined);
   }
 
@@ -158,10 +164,15 @@ export function EmailComposeDialog({
       if (payloadSignature === lastSavedSignatureRef.current && draftRef.current) {
         return draftRef.current;
       }
+      if (payloadSignature === lastQueuedSignatureRef.current) {
+        const queued = await saveQueueRef.current;
+        return queued ? { draftId: queued.draftId, messageId: queued.messageId } : draftRef.current;
+      }
 
       const currentForm = form;
       const currentFiles = attachments;
       const currentRemovedIds = removedAttachmentIds;
+      lastQueuedSignatureRef.current = payloadSignature;
       setSaveStatus('saving');
 
       const operation = saveQueueRef.current
@@ -183,14 +194,18 @@ export function EmailComposeDialog({
           );
           const nextDraft = { draftId: result.draftId, messageId: result.messageId };
           draftRef.current = nextDraft;
-          if (result.attachments) {
-            setExistingAttachments(result.attachments);
+          const readyAttachments = result.attachments;
+          if (currentFiles.length && !readyAttachments) {
+            throw new Error('The provider saved the draft but did not confirm its attachments');
+          }
+          if (readyAttachments) {
+            setExistingAttachments(readyAttachments);
             setAttachments([]);
             setRemovedAttachmentIds([]);
             lastSavedSignatureRef.current = JSON.stringify({
               form: currentForm,
               files: [],
-              existing: result.attachments.map((attachment) => attachment.id),
+              existing: readyAttachments.map((attachment) => attachment.id),
               removed: [],
             });
           } else {
@@ -206,6 +221,9 @@ export function EmailComposeDialog({
         setSaveStatus('saved');
         return { draftId: result.draftId, messageId: result.messageId };
       } catch (error) {
+        if (lastQueuedSignatureRef.current === payloadSignature) {
+          lastQueuedSignatureRef.current = '';
+        }
         setSaveStatus('error');
         throw error;
       }
@@ -250,13 +268,14 @@ export function EmailComposeDialog({
   useEffect(() => {
     if (!open || !hasContent || signature === lastSavedSignatureRef.current) return;
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = window.setTimeout(() => {
-      void saveDraft(signature).catch(() => undefined);
-    }, DRAFT_AUTOSAVE_DELAY_MS);
+    autosaveTimerRef.current = window.setTimeout(
+      () => void saveDraft(signature).catch(() => undefined),
+      attachments.length ? 0 : DRAFT_AUTOSAVE_DELAY_MS
+    );
     return () => {
       if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
     };
-  }, [hasContent, open, saveDraft, signature]);
+  }, [attachments.length, hasContent, open, saveDraft, signature]);
 
   async function handleRequestClose() {
     if (isClosing || isSending) return;
@@ -288,20 +307,33 @@ export function EmailComposeDialog({
           </DialogTitle>
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-xs text-muted-foreground">From {mailboxAddress}</p>
-            <p
-              className={`shrink-0 text-xs ${
-                saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
-              }`}
-              role={saveStatus === 'error' ? 'alert' : 'status'}
-            >
-              {saveStatus === 'saving' || isClosing
-                ? 'Saving draft…'
-                : saveStatus === 'saved'
-                  ? 'Saved to Drafts'
-                  : saveStatus === 'error'
-                    ? 'Draft not saved — try again'
-                    : ''}
-            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <p
+                className={`text-xs ${
+                  saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
+                }`}
+                role={saveStatus === 'error' ? 'alert' : 'status'}
+              >
+                {saveStatus === 'saving' || isClosing
+                  ? attachments.length
+                    ? 'Preparing attachments…'
+                    : 'Saving draft…'
+                  : saveStatus === 'saved'
+                    ? 'Saved to Drafts'
+                    : saveStatus === 'error'
+                      ? 'Draft not saved'
+                      : ''}
+              </p>
+              {saveStatus === 'error' && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={() => void saveDraft().catch(() => undefined)}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -309,42 +341,15 @@ export function EmailComposeDialog({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={async (event) => {
             event.preventDefault();
-            if (!canSend || isSending) return;
+            if (!canSend || !draftIsReady || isSending) return;
             if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-            setIsPreparingAttachments(true);
             try {
-              const queuedResult = await saveQueueRef.current.catch(() => undefined);
-              let activeDraft = queuedResult
-                ? { draftId: queuedResult.draftId, messageId: queuedResult.messageId }
-                : draftRef.current;
-              const unsavedAttachments = attachments.filter(
-                (file) =>
-                  !queuedResult?.attachments?.some(
-                    (attachment) =>
-                      attachment.name === file.name && attachment.sizeBytes === file.size
-                  )
-              );
-              let finalPayload: ComposeDraftPayload = {
-                ...form,
-                attachments: unsavedAttachments.length
-                  ? await Promise.all(unsavedAttachments.map(fileToAttachment))
-                  : undefined,
-                removedAttachmentIds,
-              };
-
-              if (!activeDraft) {
-                activeDraft = await saveDraft(signature);
-                finalPayload = { ...form };
-              } else if (lastSavedSignatureRef.current === signature) {
-                finalPayload = { ...form };
-              }
-              if (!activeDraft) throw new Error('Draft could not be saved before sending');
-              await onSendDraft?.(finalPayload, activeDraft);
+              const activeDraft = await saveDraft(signature);
+              if (!activeDraft) throw new Error('Draft could not be prepared before sending');
+              await onSendDraft?.(activeDraft);
               finishClose();
             } catch {
-              // The mutation owns the user-facing error toast; keep the draft open for retry.
-            } finally {
-              setIsPreparingAttachments(false);
+              // Mutations provide the user-facing error and the prepared draft remains open.
             }
           }}
         >
@@ -463,6 +468,7 @@ export function EmailComposeDialog({
               inputRef={attachmentInputRef}
               attachments={attachments}
               existingAttachments={existingAttachments}
+              pendingStatus={saveStatus}
               error={attachmentError}
               onClear={() => {
                 setAttachments([]);
@@ -495,10 +501,16 @@ export function EmailComposeDialog({
               <Button
                 type="submit"
                 size="sm"
-                disabled={!canSend || isSending || isPreparingAttachments || isClosing}
+                disabled={!canSend || !draftIsReady || isSending || isClosing}
               >
                 <Send aria-hidden="true" className="size-3.5" />
-                {isPreparingAttachments ? 'Preparing' : isSending ? 'Sending' : 'Send'}
+                {saveStatus === 'saving'
+                  ? attachments.length
+                    ? 'Preparing'
+                    : 'Saving'
+                  : isSending
+                    ? 'Sending'
+                    : 'Send'}
               </Button>
               <Button
                 type="button"
@@ -535,6 +547,7 @@ function AttachmentDropzone({
   inputRef,
   attachments,
   existingAttachments,
+  pendingStatus,
   error,
   onClear,
   onSelect,
@@ -545,6 +558,7 @@ function AttachmentDropzone({
   inputRef: React.RefObject<HTMLInputElement | null>;
   attachments: File[];
   existingAttachments: EmailAttachment[];
+  pendingStatus: 'idle' | 'saving' | 'saved' | 'error';
   error: string | null;
   onClear: () => void;
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -610,9 +624,7 @@ function AttachmentDropzone({
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">
                     {attachment.name}
                   </span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {attachment.size}
-                  </span>
+                  <span className="shrink-0 text-[11px] font-medium text-emerald-600">Ready</span>
                   <button
                     type="button"
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
@@ -632,8 +644,16 @@ function AttachmentDropzone({
                   <span className="min-w-0 flex-1 truncate text-xs text-foreground">
                     {file.name}
                   </span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {formatFileSize(file.size)}
+                  <span
+                    className={`shrink-0 text-[11px] font-medium ${
+                      pendingStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {pendingStatus === 'saving'
+                      ? 'Preparing…'
+                      : pendingStatus === 'error'
+                        ? 'Failed'
+                        : formatFileSize(file.size)}
                   </span>
                   <button
                     type="button"
