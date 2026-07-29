@@ -107,7 +107,7 @@ export const useEmailMessagesQuery = (
     enabled: Boolean(accountId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -293,10 +293,33 @@ export const useSendConnectedEmailMutation = () => {
 
   return useMutation({
     mutationFn: (payload: SendConnectedEmailPayload) => emailApi.sendMessage(payload),
-    onSuccess: async (_result, payload) => {
-      await queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
-      await queryClient.invalidateQueries({ queryKey: emailKeys.folders(payload.accountId) });
+    onSuccess: (_result, payload) => {
       toast.success('Email sent.');
+
+      // Sending is complete once the provider accepts the message. Keep cache
+      // reconciliation in the background so a slow mailbox fetch cannot leave
+      // the composer stuck in its sending state.
+      void Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'none',
+        }),
+      ]).then(() =>
+        Promise.allSettled([
+          queryClient.refetchQueries({
+            queryKey: emailKeys.messagesRoot(payload.accountId),
+            type: 'active',
+          }),
+          queryClient.refetchQueries({
+            queryKey: emailKeys.folders(payload.accountId),
+            type: 'active',
+          }),
+        ])
+      );
     },
     onError: (error) => toastApiError(error, 'Failed to send email.'),
   });
