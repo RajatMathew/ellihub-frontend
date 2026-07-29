@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
@@ -9,6 +10,7 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { Forward, Mail, Reply, Star } from 'lucide-react';
@@ -40,7 +42,9 @@ export function EmailThreadMessageCard({
   const visibleAttachments = attachments.filter(
     (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
   );
-  const hasBodyContent = message.body.some((content) => Boolean(content.trim()));
+  const hasBodyContent = hasVisibleEmailBodyContent(message.body);
+  const isSingleAttachmentOnly =
+    visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   const tags = message.keywords ?? [];
   const canReply = isReplyableEmailMessage(message);
   const handleReply = () => {
@@ -106,11 +110,14 @@ export function EmailThreadMessageCard({
         </div>
       </div>
 
-      <div className="space-y-4 bg-card px-4 py-4">
+      <div className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
         {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
 
         {visibleAttachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
+          <div
+            className={cn('flex flex-wrap gap-2', hasBodyContent && 'pt-1')}
+            aria-label="Message attachments"
+          >
             {visibleAttachments.map((attachment) => (
               <EmailAttachmentHoverCard
                 key={attachment.id}
