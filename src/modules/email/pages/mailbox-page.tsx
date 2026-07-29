@@ -50,14 +50,8 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
-import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
-import {
-  useDeleteEmailDraftMutation,
-  useOpenEmailDraftMutation,
-  useSaveEmailDraftMutation,
-  useSendEmailDraftMutation,
-} from '@/modules/email/hooks/email.hooks';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
+import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -692,7 +686,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
                   draftId: draft?.draftId,
                   messageId: draft?.messageId,
                   subject: payload.subject,
-                  body: textToHtml(payload.body),
+                  body: plainTextToEmailHtml(payload.body),
                   bodyType: 'html',
                   to: parseEmailAddresses(payload.to),
                   cc: parseEmailAddresses(payload.cc),
@@ -799,19 +793,4 @@ function parseEmailAddresses(value: string) {
         name: match[1].trim().replace(/^["']|["']$/g, '') || undefined,
       };
     });
-}
-
-function textToHtml(value: string) {
-  const escaped = value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  return escaped
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.replace(/\n/g, '<br />'))
-    .map((paragraph) => `<p>${paragraph || '<br />'}</p>`)
-    .join('');
 }
