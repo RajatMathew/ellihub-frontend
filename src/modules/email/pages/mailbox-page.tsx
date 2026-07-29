@@ -42,6 +42,7 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -405,10 +406,8 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             isLoadingMore={messagesQuery.isFetchingNextPage}
             loadMoreError={messagesQuery.isFetchNextPageError}
             onLoadMore={messagesQuery.fetchNextPage}
-            isRefreshing={
-              refreshMessagesMutation.isPending ||
-              (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
-            }
+            isRefreshing={showEmailSyncIndicator}
+            isRefreshPending={refreshMessagesMutation.isPending}
             groupByMonth={
               isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
             }
@@ -527,7 +526,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
                   replyMutation.mutateAsync({
                     accountId: connectedAccount.id,
                     messageId,
-                    body: textToHtml(body),
+                    body: plainTextToEmailHtml(body),
                     bodyType: 'html',
                     subject: selectedEmail?.subject,
                   })
@@ -565,18 +564,13 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
           await sendMutation.mutateAsync({
             accountId: connectedAccount.id,
             subject: payload.subject,
-            body: payload.body,
+            body: plainTextToEmailHtml(payload.body),
             bodyType: 'html',
             to: parseEmailAddresses(payload.to),
             cc: parseEmailAddresses(payload.cc),
             bcc: parseEmailAddresses(payload.bcc),
             attachments: payload.attachments,
           });
-          if (selectedFolder === 'sent') {
-            await refreshMessagesMutation
-              .mutateAsync({ accountId: connectedAccount.id })
-              .catch(() => undefined);
-          }
         }}
       />
     </div>
@@ -612,19 +606,4 @@ function parseEmailAddresses(value: string) {
     .map((part) => part.trim())
     .filter(Boolean)
     .map((address) => ({ address }));
-}
-
-function textToHtml(value: string) {
-  const escaped = value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  return escaped
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.replace(/\n/g, '<br />'))
-    .map((paragraph) => `<p>${paragraph || '<br />'}</p>`)
-    .join('');
 }
