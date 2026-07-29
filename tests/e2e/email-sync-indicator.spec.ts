@@ -15,6 +15,9 @@ const freshness = {
 
 async function setupMockApi(page: Page) {
   let syncRequests = 0;
+  let sendRequests = 0;
+  let postSendMessageRequests = 0;
+  let emailSent = false;
 
   await page.route('**/api/v1/**', async (route, request) => {
     const url = new URL(request.url());
@@ -39,7 +42,7 @@ async function setupMockApi(page: Page) {
             role: 'admin',
             isDev: false,
             isAdmin: true,
-            permissions: { mail: ['read'] },
+            permissions: { mail: ['read', 'send'] },
           },
         },
       });
@@ -93,6 +96,11 @@ async function setupMockApi(page: Page) {
     }
 
     if (method === 'GET' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages`) {
+      if (emailSent) {
+        postSendMessageRequests += 1;
+        await new Promise((resolve) => setTimeout(resolve, 7_000));
+      }
+
       await route.fulfill({
         json: {
           data: {
@@ -122,6 +130,13 @@ async function setupMockApi(page: Page) {
           },
         },
       });
+      return;
+    }
+
+    if (method === 'POST' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages/send`) {
+      sendRequests += 1;
+      emailSent = true;
+      await route.fulfill({ json: { data: { accepted: true } } });
       return;
     }
 
@@ -176,6 +191,8 @@ async function setupMockApi(page: Page) {
 
   return {
     getSyncRequests: () => syncRequests,
+    getSendRequests: () => sendRequests,
+    getPostSendMessageRequests: () => postSendMessageRequests,
   };
 }
 
@@ -196,4 +213,24 @@ test('stops animating a slow email sync while it continues in the background', a
   });
   await expect(backgroundSyncButton).toBeVisible({ timeout: 6_000 });
   await expect(backgroundSyncButton.locator('svg')).not.toHaveClass(/animate-spin/);
+});
+
+test('finishes sending while a post-send mailbox refetch is still pending', async ({ page }) => {
+  const api = await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+  await page.getByRole('button', { name: 'New email' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New email' });
+  await dialog.getByLabel('To').fill('recipient@example.com');
+  await dialog.getByLabel('Subject').fill('Status update');
+  await dialog.getByLabel('Email body').fill('The message has been sent.');
+  await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+
+  await expect.poll(api.getSendRequests).toBe(1);
+  await expect(dialog).toBeHidden({ timeout: 2_000 });
+  await expect.poll(api.getPostSendMessageRequests).toBe(1);
+
+  const refreshButton = page.getByRole('button', { name: 'Refresh emails' });
+  await expect(refreshButton).toBeEnabled();
+  await expect(refreshButton.locator('svg')).not.toHaveClass(/animate-spin/);
 });

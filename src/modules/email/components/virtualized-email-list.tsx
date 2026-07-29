@@ -122,7 +122,7 @@ function VirtualizedMonthGroups({
 
   return (
     <div
-      aria-label="Emails grouped by month"
+      aria-label="Emails grouped by date"
       className="relative w-full"
       style={{ height: virtualizer.getTotalSize() }}
     >
