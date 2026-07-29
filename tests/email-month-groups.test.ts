@@ -20,16 +20,36 @@ function createEmail(id: string, receivedAt: string): EmailListItem {
 }
 
 describe('email month groups', () => {
-  test('uses relative labels for this month and last month', () => {
+  test('uses relative labels for today, this week, this month, and last month', () => {
     const groups = groupEmailsByMonth(
       [
-        createEmail('july', '2026-07-04T10:00:00+05:30'),
+        createEmail('today', '2026-07-25T08:00:00+05:30'),
+        createEmail('this-week', '2026-07-22T10:00:00+05:30'),
+        createEmail('this-month', '2026-07-04T10:00:00+05:30'),
         createEmail('june', '2026-06-30T10:00:00+05:30'),
       ],
       NOW
     );
 
-    expect(groups.map((group) => group.label)).toEqual(['This month', 'Last month']);
+    expect(groups.map((group) => group.label)).toEqual([
+      'Today',
+      'This week',
+      'This month',
+      'Last month',
+    ]);
+  });
+
+  test('keeps the current week together across a month boundary', () => {
+    const groups = groupEmailsByMonth(
+      [
+        createEmail('today', '2026-08-02T08:00:00+05:30'),
+        createEmail('this-week', '2026-07-31T10:00:00+05:30'),
+        createEmail('last-month', '2026-07-15T10:00:00+05:30'),
+      ],
+      new Date('2026-08-02T12:00:00+05:30')
+    );
+
+    expect(groups.map((group) => group.label)).toEqual(['Today', 'This week', 'Last month']);
   });
 
   test('handles the previous month across a year boundary', () => {
