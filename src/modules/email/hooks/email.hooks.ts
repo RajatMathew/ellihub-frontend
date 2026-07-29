@@ -16,6 +16,10 @@ import {
   EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
 } from '@/modules/email/constants/email-account-storage';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
+import {
+  isEmailReconnectRequiredError,
+  shouldRetryEmailRequest,
+} from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import {
   useInfiniteQuery,
@@ -57,25 +61,27 @@ export const useEmailAccountsQuery = () =>
     refetchOnReconnect: false,
   });
 
-export const useEmailFoldersQuery = (accountId?: string) =>
+export const useEmailFoldersQuery = (accountId?: string, enabled = true) =>
   useQuery({
     queryKey: emailKeys.folders(accountId),
     queryFn: () => emailApi.listFolders(accountId!),
-    enabled: Boolean(accountId),
+    enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_METADATA_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
 
-export const useEmailTagsQuery = (accountId?: string) =>
+export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
   useQuery({
     queryKey: emailKeys.tags(accountId),
     queryFn: () => emailApi.listTags(accountId!),
-    enabled: Boolean(accountId),
+    enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_METADATA_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -84,7 +90,8 @@ export const useEmailTagsQuery = (accountId?: string) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { size?: number; search?: string }
+  pagination?: { size?: number; search?: string },
+  enabled = true
 ) =>
   useInfiniteQuery({
     queryKey: emailKeys.messages(
@@ -104,10 +111,11 @@ export const useEmailMessagesQuery = (
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
-    enabled: Boolean(accountId),
+    enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
-    refetchOnMount: true,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -139,20 +147,25 @@ export const useRefreshEmailMessagesMutation = () => {
         toast.info('Recent email changes are still catching up. Refresh again to continue.');
       }
     },
-    onError: (error) => toastApiError(error, 'Failed to refresh emails.'),
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Failed to refresh emails.');
+    },
   });
 };
 
 export const useEmailConversationQuery = (
   accountId: string | undefined,
-  threadId: string | null | undefined
+  threadId: string | null | undefined,
+  enabled = true
 ) =>
   useQuery({
     queryKey: emailKeys.conversation(accountId, threadId),
     queryFn: () => emailApi.listConversation(accountId!, threadId!),
-    enabled: Boolean(accountId && threadId),
+    enabled: enabled && Boolean(accountId && threadId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -169,6 +182,7 @@ export const useEmailMessageQuery = (
     enabled: enabled && Boolean(accountId && messageId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });

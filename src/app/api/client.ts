@@ -2,6 +2,8 @@ import { openPwaUpdateModal } from '@/core/pwa/pwaEvents';
 import { forceCheckForUpdate, forceUpdateApp } from '@/core/pwa/usePwaUpdater';
 import axios, { type AxiosError } from 'axios';
 
+import { getApiErrorCode, shouldRedirectToSignIn } from './api-error-code';
+
 export const APP_VERSION = __APP_VERSION__;
 
 export const api = axios.create({
@@ -43,19 +45,19 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
 
-  async (error: AxiosError<any>) => {
+  async (error: AxiosError<unknown>) => {
     // Unpack blob error if present
     if (error.response?.data instanceof Blob && error.response.data.type === 'application/json') {
       try {
         const text = await error.response.data.text();
         error.response.data = JSON.parse(text);
-      } catch (e) {
+      } catch {
         // ignore parsing error
       }
     }
 
     const status = error.response?.status;
-    const code = error.response?.data?.code;
+    const code = getApiErrorCode(error.response?.data);
 
     // Force update handling
     if (status === 426 || code === 'APP_UPDATE_REQUIRED') {
@@ -84,7 +86,7 @@ api.interceptors.response.use(
         forceUpdating = false;
       }
     }
-    if (status === 401) {
+    if (shouldRedirectToSignIn(status, error.response?.data)) {
       redirectToSignIn();
     }
 
@@ -104,7 +106,10 @@ export async function debugForceUpdate() {
     },
   };
 
-  const rejectedHandler = (api.interceptors.response as any).handlers[0]?.rejected;
+  const responseInterceptors = api.interceptors.response as unknown as {
+    handlers?: Array<{ rejected?: (error: unknown) => Promise<unknown> }>;
+  };
+  const rejectedHandler = responseInterceptors.handlers?.[0]?.rejected;
 
   if (rejectedHandler) {
     await rejectedHandler(fakeError);
