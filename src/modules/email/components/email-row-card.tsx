@@ -7,6 +7,7 @@ export type EmailListItem = {
   latestMessageId?: string;
   providerId?: string;
   threadId?: string | null;
+  conversationKey?: string;
   senderName: string;
   senderEmail: string;
   subject: string;

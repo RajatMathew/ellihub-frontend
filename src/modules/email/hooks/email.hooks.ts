@@ -809,36 +809,88 @@ export const useUpdateEmailMessageTagsMutation = () => {
 type EmailStatusPayload = {
   accountId: string;
   messageId: string;
+  conversationKey?: string;
+  threadId?: string;
   unread: boolean;
 };
 
 type EmailStatusSnapshot = {
-  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
-  folders: ConnectedEmailFolder[] | undefined;
-  message: ConnectedEmailListItem | undefined;
+  messages: Array<{
+    queryKey: QueryKey;
+    items: Array<{ id: string; unread: boolean }>;
+  }>;
+  folderId?: string | null;
+  unreadDelta: number;
+  messageUnread?: boolean;
 };
+
+const EMAIL_STATUS_MUTATION_KEY = [...emailKeys.all, 'message-status'] as const;
+
+function isEmailStatusTarget(item: ConnectedEmailListItem, payload: EmailStatusPayload) {
+  return (
+    item.id === payload.messageId ||
+    Boolean(
+      payload.conversationKey &&
+      (item.conversationKey === payload.conversationKey ||
+        item.threadId === payload.conversationKey)
+    )
+  );
+}
 
 function findMessageInPages(
   messages: Array<[QueryKey, EmailMessagePages | undefined]>,
-  messageId: string
+  payload: EmailStatusPayload
 ) {
   for (const [, data] of messages) {
     for (const page of data?.pages ?? []) {
-      const message = page.records.find((item) => item.id === messageId);
+      const message = page.records.find((item) => item.id === payload.messageId);
+      if (message) return message;
+    }
+  }
+
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => isEmailStatusTarget(item, payload));
       if (message) return message;
     }
   }
   return undefined;
 }
 
+function updateMessageStatusInPages(
+  current: EmailMessagePages | undefined,
+  payload: EmailStatusPayload
+) {
+  return current
+    ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.map((item) =>
+            isEmailStatusTarget(item, payload) ? { ...item, unread: payload.unread } : item
+          ),
+        })),
+      }
+    : current;
+}
+
 export const useUpdateEmailMessageStatusMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: EmailStatusPayload) =>
-      emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
+    mutationKey: EMAIL_STATUS_MUTATION_KEY,
+    mutationFn: async (payload: EmailStatusPayload) => {
+      if (!payload.unread && payload.threadId) {
+        await queryClient.ensureQueryData({
+          queryKey: emailKeys.conversation(payload.accountId, payload.threadId),
+          queryFn: () => emailApi.listConversation(payload.accountId, payload.threadId!),
+          staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+        });
+      }
+      return emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
         unread: payload.unread,
-      }),
+      });
+    },
     onMutate: async (payload): Promise<EmailStatusSnapshot> => {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
@@ -851,30 +903,24 @@ export const useUpdateEmailMessageStatusMutation = () => {
       const messages = queryClient.getQueriesData<EmailMessagePages>({
         queryKey: emailKeys.messagesRoot(payload.accountId),
       });
-      const folders = queryClient.getQueryData<ConnectedEmailFolder[]>(
-        emailKeys.folders(payload.accountId)
-      );
       const message = queryClient.getQueryData<ConnectedEmailListItem>(
         emailKeys.message(payload.accountId, payload.messageId)
       );
-      const cachedMessage = findMessageInPages(messages, payload.messageId) ?? message;
+      const cachedMessage = findMessageInPages(messages, payload) ?? message;
       const unreadDelta =
         cachedMessage && cachedMessage.unread !== payload.unread ? (payload.unread ? 1 : -1) : 0;
+      const messageSnapshots = messages.map(([queryKey, data]) => ({
+        queryKey,
+        items: (data?.pages ?? []).flatMap((page) =>
+          page.records
+            .filter((item) => isEmailStatusTarget(item, payload))
+            .map((item) => ({ id: item.id, unread: item.unread }))
+        ),
+      }));
 
       queryClient.setQueriesData<EmailMessagePages>(
         { queryKey: emailKeys.messagesRoot(payload.accountId) },
-        (current) =>
-          current
-            ? {
-                ...current,
-                pages: current.pages.map((page) => ({
-                  ...page,
-                  records: page.records.map((item) =>
-                    item.id === payload.messageId ? { ...item, unread: payload.unread } : item
-                  ),
-                })),
-              }
-            : current
+        (current) => updateMessageStatusInPages(current, payload)
       );
 
       queryClient.setQueryData<ConnectedEmailListItem>(
@@ -897,19 +943,61 @@ export const useUpdateEmailMessageStatusMutation = () => {
         );
       }
 
-      return { messages, folders, message };
+      return {
+        messages: messageSnapshots,
+        folderId: cachedMessage?.folderId,
+        unreadDelta,
+        messageUnread: message?.unread,
+      };
     },
     onSuccess: (_result, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageStatusInPages(current, payload)
+      );
+      queryClient.setQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId),
+        (current) => (current ? { ...current, unread: payload.unread } : current)
+      );
       if (payload.unread) toast.success('Email marked as unread.');
     },
     onError: (error, payload, snapshot) => {
-      for (const [queryKey, messages] of snapshot?.messages ?? []) {
-        queryClient.setQueryData(queryKey, messages);
+      for (const { queryKey, items } of snapshot?.messages ?? []) {
+        const unreadById = new Map(items.map((item) => [item.id, item.unread]));
+        queryClient.setQueryData<EmailMessagePages>(queryKey, (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  records: page.records.map((item) =>
+                    unreadById.has(item.id) ? { ...item, unread: unreadById.get(item.id)! } : item
+                  ),
+                })),
+              }
+            : current
+        );
       }
-      queryClient.setQueryData(emailKeys.folders(payload.accountId), snapshot?.folders);
-      queryClient.setQueryData(
+      if (snapshot?.folderId && snapshot.unreadDelta !== 0) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.id === snapshot.folderId
+                ? {
+                    ...folder,
+                    unreadCount: Math.max(0, folder.unreadCount - snapshot.unreadDelta),
+                  }
+                : folder
+            )
+        );
+      }
+      queryClient.setQueryData<ConnectedEmailListItem>(
         emailKeys.message(payload.accountId, payload.messageId),
-        snapshot?.message
+        (current) =>
+          current && snapshot?.messageUnread !== undefined
+            ? { ...current, unread: snapshot.messageUnread }
+            : current
       );
       toastApiError(
         error,
@@ -917,14 +1005,22 @@ export const useUpdateEmailMessageStatusMutation = () => {
       );
     },
     onSettled: async (_result, _error, payload) => {
+      const isLastAccountStatusMutation =
+        queryClient.isMutating({
+          mutationKey: EMAIL_STATUS_MUTATION_KEY,
+          predicate: (mutation) =>
+            (mutation.state.variables as EmailStatusPayload | undefined)?.accountId ===
+            payload.accountId,
+        }) <= 1;
+
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: emailKeys.messagesRoot(payload.accountId),
-          refetchType: 'active',
+          refetchType: 'none',
         }),
         queryClient.invalidateQueries({
           queryKey: emailKeys.folders(payload.accountId),
-          refetchType: 'active',
+          refetchType: isLastAccountStatusMutation ? 'active' : 'none',
         }),
       ]);
     },
