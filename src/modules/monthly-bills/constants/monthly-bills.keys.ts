@@ -3,7 +3,8 @@ import type { RecurringBillsQueryParams } from '@/modules/monthly-bills/api/recu
 
 export const monthlyBillsKeys = {
   all: ['monthly-bills'] as const,
-  list: (params: MonthlyBillsQueryParams) => [...monthlyBillsKeys.all, 'list', params] as const,
+  lists: () => [...monthlyBillsKeys.all, 'list'] as const,
+  list: (params: MonthlyBillsQueryParams) => [...monthlyBillsKeys.lists(), params] as const,
   recurring: () => [...monthlyBillsKeys.all, 'recurring'] as const,
   recurringList: (params: RecurringBillsQueryParams) =>
     [...monthlyBillsKeys.recurring(), 'list', params] as const,
