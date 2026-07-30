@@ -108,8 +108,6 @@
   --sidebar-paper: #faf9f5;
   --sidebar-nav-link: #e8a317;
   --sidebar-nav-link-hover: #ffc24a;
-  --sidebar-nav-glow: rgba(255, 170, 50, 0.55);
-  --sidebar-nav-glow-hover: rgba(255, 180, 60, 0.8);
   --sidebar-popover-bg: var(--sidebar-bg);
   --sidebar-popover-foreground: #ffffff;
   --sidebar-popover-muted: rgba(255, 255, 255, 0.62);
@@ -325,7 +323,7 @@
   margin-block: 0;
 }
 
-/* Expanded group items: glowing gold links, flat until hover (Editorial reference). */
+/* Expanded group items: flat gold links (Editorial reference). */
 .editorial
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
@@ -341,11 +339,10 @@
   letter-spacing: 0;
   line-height: 1.25rem;
   padding: 0.4375rem 0.875rem 0.4375rem 1.75rem;
-  text-shadow: 0 0 10px var(--sidebar-nav-glow);
+  text-shadow: none;
   transition:
     color 150ms ease,
-    background-color 150ms ease,
-    text-shadow 150ms ease;
+    background-color 150ms ease;
 }
 
 .editorial
@@ -360,7 +357,6 @@
   [data-slot='accordion-menu-link-item'][data-selected='true'] {
   background: color-mix(in srgb, var(--sidebar-paper) 5%, transparent);
   color: var(--sidebar-nav-link-hover);
-  text-shadow: 0 0 14px var(--sidebar-nav-glow-hover);
 }
 
 /* Non-color cue for the active route, since hover shares its colors. */
