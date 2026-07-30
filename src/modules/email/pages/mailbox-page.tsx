@@ -306,6 +306,8 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     updateMessageStatusMutation.mutate({
       accountId: connectedAccount.id,
       messageId,
+      conversationKey: selectedEmail.conversationKey ?? selectedEmail.threadId ?? undefined,
+      threadId: selectedEmail.threadId ?? undefined,
       unread: false,
     });
   }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
@@ -625,6 +627,9 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
                   updateMessageStatusMutation.mutate({
                     accountId: connectedAccount.id,
                     messageId,
+                    conversationKey:
+                      selectedEmail?.conversationKey ?? selectedEmail?.threadId ?? undefined,
+                    threadId: selectedEmail?.threadId ?? undefined,
                     unread: true,
                   })
               : undefined
