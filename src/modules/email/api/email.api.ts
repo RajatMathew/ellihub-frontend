@@ -45,6 +45,7 @@ const emailAttachmentSchema = z.object({
   providerId: z.string().optional(),
   name: z.string(),
   size: z.string().optional(),
+  sizeBytes: z.number().nonnegative().optional(),
   mimeType: z.string().nullable().optional(),
   inline: z.boolean().optional(),
   contentId: z.string().nullable().optional(),
@@ -57,6 +58,11 @@ const emailTagSchema = z.object({
   name: z.string(),
   color: z.string().nullable().optional(),
   source: z.enum(['provider', 'cache']),
+});
+
+const emailAddressSchema = z.object({
+  address: z.string(),
+  name: z.string().optional(),
 });
 
 const emailListItemSchema = z.object({
@@ -73,6 +79,9 @@ const emailListItemSchema = z.object({
   folder: z.string(),
   mailbox: z.string(),
   unread: z.boolean(),
+  to: z.array(emailAddressSchema).optional(),
+  cc: z.array(emailAddressSchema).optional(),
+  bcc: z.array(emailAddressSchema).optional(),
   keywords: z.array(z.string()).optional(),
   attachmentCount: z.number().optional(),
   threadMessageCount: z.number().optional(),
@@ -92,6 +101,16 @@ const emailThreadMessageSchema = z.object({
   keywords: z.array(z.string()).optional(),
   body: z.array(z.string()),
   attachments: z.array(emailAttachmentSchema).optional(),
+});
+
+const emailReplyResponseSchema = z.object({
+  message: emailThreadMessageSchema.nullable().optional(),
+});
+
+const emailDraftResultSchema = z.object({
+  draftId: z.string(),
+  messageId: z.string(),
+  message: emailListItemSchema.nullable(),
 });
 
 const emailAuthStartSchema = z.object({
@@ -129,6 +148,26 @@ export type EmailMessagePage = {
   totalCount?: number | null;
   freshness?: EmailFreshness;
 };
+
+export type EmailDraftMessagePayload = {
+  accountId: string;
+  draftId?: string;
+  messageId?: string;
+  subject: string;
+  body: string;
+  bodyType?: 'html' | 'text';
+  to: Array<{ address: string; name?: string }>;
+  cc?: Array<{ address: string; name?: string }>;
+  bcc?: Array<{ address: string; name?: string }>;
+  attachments?: Array<{
+    name: string;
+    mimeType?: string;
+    content: string;
+  }>;
+  removedAttachmentIds?: string[];
+};
+
+export type EmailDraftResult = z.infer<typeof emailDraftResultSchema>;
 
 export type SendConnectedEmailPayload = {
   accountId: string;
@@ -230,6 +269,36 @@ export const emailApi = {
     return emailListItemSchema.parse(unwrapData(res.data, 'message'));
   },
 
+  async getDraft(accountId: string, messageId: string): Promise<EmailDraftResult> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/drafts/${messageId}`);
+    return emailDraftResultSchema.parse(unwrapData(res.data));
+  },
+
+  async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
+    const { accountId, draftId, ...draft } = payload;
+    const config = { timeout: 0 };
+    const res = draftId
+      ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
+      : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);
+    return emailDraftResultSchema.parse(unwrapData(res.data));
+  },
+
+  async sendDraft(payload: {
+    accountId: string;
+    draftId: string;
+    messageId?: string;
+  }): Promise<void> {
+    await api.post(`${BASE}/accounts/${payload.accountId}/drafts/${payload.draftId}/send`, {
+      messageId: payload.messageId,
+    });
+  },
+
+  async deleteDraft(accountId: string, draftId: string, messageId?: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}/drafts/${draftId}`, {
+      params: { messageId },
+    });
+  },
+
   async getAttachment(accountId: string, messageId: string, attachmentId: string): Promise<Blob> {
     const res = await api.get(
       `${BASE}/accounts/${accountId}/messages/${messageId}/attachments/${attachmentId}`,
@@ -259,15 +328,18 @@ export const emailApi = {
     });
   },
 
-  async replyMessage(payload: ReplyConnectedEmailPayload): Promise<void> {
+  async replyMessage(
+    payload: ReplyConnectedEmailPayload
+  ): Promise<ConnectedEmailThreadMessage | null> {
     const { accountId, messageId, ...message } = payload;
-    await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
+    const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
       bodyType: 'html',
       cc: [],
       bcc: [],
       attachments: [],
       ...message,
     });
+    return emailReplyResponseSchema.parse(unwrapData(res.data)).message ?? null;
   },
 
   async createFolder(accountId: string, payload: { name: string; parentId?: string }) {
@@ -294,6 +366,10 @@ export const emailApi = {
 
   async deleteMessage(accountId: string, messageId: string): Promise<void> {
     await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}`);
+  },
+
+  async permanentlyDeleteMessage(accountId: string, messageId: string): Promise<void> {
+    await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}/permanent`);
   },
 
   async updateMessageTags(

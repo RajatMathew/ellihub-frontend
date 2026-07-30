@@ -3,13 +3,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
+import type { EmailDraftResult } from '@/modules/email/api';
 import {
   EmailAgentPanel,
   type EmailAgentLayout,
 } from '@/modules/email/components/email-agent-panel';
-import { EmailComposeDialog } from '@/modules/email/components/email-compose-dialog';
+import {
+  EmailComposeDialog,
+  type EditableComposeDraft,
+} from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
+import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { MailboxSidebar } from '@/modules/email/components/mailbox-sidebar';
 import {
@@ -21,8 +26,10 @@ import { EMAIL_MAILBOXES, type EmailMailboxKey } from '@/modules/email/constants
 import emailData from '@/modules/email/data/emails.json';
 import {
   useArchiveEmailMessageMutation,
+  useBoundedEmailSyncIndicator,
   useCreateEmailFolderMutation,
   useCreateEmailTagMutation,
+  useDeleteEmailDraftMutation,
   useDeleteEmailMessageMutation,
   useDisconnectEmailAccountMutation,
   useEmailAccountsQuery,
@@ -32,13 +39,19 @@ import {
   useEmailMessagesQuery,
   useEmailTagsQuery,
   useMoveEmailMessageMutation,
+  useOpenEmailDraftMutation,
+  usePermanentlyDeleteEmailMessageMutation,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
-  useSendConnectedEmailMutation,
+  useSaveEmailDraftMutation,
+  useSendEmailDraftMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
+  useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
+import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -69,13 +82,14 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const navigate = useNavigate();
   const [selectedFolder, setSelectedFolder] = useState<string>('inbox');
   const [messageSearch, setMessageSearch] = useState('');
-  const [emailPageIndex, setEmailPageIndex] = useState(0);
   const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), 300);
   const attemptedInitialSyncs = useRef(new Set<string>());
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailboxSidebarCollapsed, setMailboxSidebarCollapsed] = useState(false);
+  const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<{
     viewKey: string;
     folder: string;
@@ -89,8 +103,15 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       ) ?? null)
     : null;
   const isConnected = Boolean(connectedAccount);
-  const foldersQuery = useEmailFoldersQuery(connectedAccount?.id);
-  const tagsQuery = useEmailTagsQuery(connectedAccount?.id);
+  const hasPersistedReconnectState =
+    connectedAccount?.status.toUpperCase() === 'ERROR' ||
+    connectedAccount?.freshness?.errorCode === 'EMAIL_RECONNECT_REQUIRED';
+  const canLoadConnectedMailbox =
+    Boolean(connectedAccount) &&
+    !hasPersistedReconnectState &&
+    reconnectRequiredAccountId !== connectedAccount?.id;
+  const foldersQuery = useEmailFoldersQuery(connectedAccount?.id, canLoadConnectedMailbox);
+  const tagsQuery = useEmailTagsQuery(connectedAccount?.id, canLoadConnectedMailbox);
   const selectedConnectedFolder = isConnected
     ? (foldersQuery.data?.find((folder) => folder.id === selectedFolder) ??
       foldersQuery.data?.find((folder) => folder.key === selectedFolder) ??
@@ -99,14 +120,22 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const selectedFolderQuery = isConnectedWellKnownFolderKey(selectedFolder)
     ? { key: selectedFolder }
     : { id: selectedConnectedFolder?.id ?? selectedFolder };
-  const messagesQuery = useEmailMessagesQuery(connectedAccount?.id, selectedFolderQuery, {
-    size: CONNECTED_EMAIL_PAGE_SIZE,
-    search: debouncedMessageSearch || undefined,
-  });
+  const messagesQuery = useEmailMessagesQuery(
+    connectedAccount?.id,
+    selectedFolderQuery,
+    {
+      size: CONNECTED_EMAIL_PAGE_SIZE,
+      search: debouncedMessageSearch || undefined,
+    },
+    canLoadConnectedMailbox
+  );
   const startAuthMutation = useStartEmailAuthMutation();
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
   const disconnectAccountMutation = useDisconnectEmailAccountMutation();
-  const sendMutation = useSendConnectedEmailMutation();
+  const openDraftMutation = useOpenEmailDraftMutation();
+  const saveDraftMutation = useSaveEmailDraftMutation();
+  const sendDraftMutation = useSendEmailDraftMutation();
+  const deleteDraftMutation = useDeleteEmailDraftMutation();
   const replyMutation = useReplyConnectedEmailMutation();
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
@@ -114,26 +143,35 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const archiveMessageMutation = useArchiveEmailMessageMutation();
   const unarchiveMessageMutation = useUnarchiveEmailMessageMutation();
   const deleteMessageMutation = useDeleteEmailMessageMutation();
+  const permanentlyDeleteMessageMutation = usePermanentlyDeleteEmailMessageMutation();
+  const updateMessageStatusMutation = useUpdateEmailMessageStatusMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
-  const loadedEmailPages = messagesQuery.data?.pages ?? [];
-  const activeEmailPage = loadedEmailPages[emailPageIndex];
+  const loadedEmailPages = useMemo(
+    () => messagesQuery.data?.pages ?? [],
+    [messagesQuery.data?.pages]
+  );
   const providerTotalCount = loadedEmailPages.find(
     (page) => page.totalCount !== null && page.totalCount !== undefined
   )?.totalCount;
   const connectedEmails = useMemo<EmailListItem[]>(() => {
     const conversations = new Map<string, EmailListItem>();
-    for (const email of activeEmailPage?.records ?? []) {
-      const key = email.conversationKey ?? email.threadId ?? email.id;
-      if (conversations.has(key)) continue;
-      conversations.set(key, {
-        ...email,
-        mailbox: connectedAccount?.id ?? 'connected',
-        folder: email.folderId ?? selectedFolder,
-        latestMessageId: email.id,
-      });
+    for (const page of loadedEmailPages) {
+      for (const email of page.records) {
+        const key =
+          selectedFolderQuery.key === 'drafts'
+            ? email.id
+            : (email.conversationKey ?? email.threadId ?? email.id);
+        if (conversations.has(key)) continue;
+        conversations.set(key, {
+          ...email,
+          mailbox: connectedAccount?.id ?? 'connected',
+          folder: email.folderId ?? selectedFolder,
+          latestMessageId: email.id,
+        });
+      }
     }
     return Array.from(conversations.values());
-  }, [activeEmailPage?.records, connectedAccount?.id, selectedFolder]);
+  }, [connectedAccount?.id, loadedEmailPages, selectedFolder, selectedFolderQuery.key]);
   const mailboxEmails = useMemo(
     () =>
       isConnected
@@ -169,12 +207,29 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   const selectedEmail = folderEmails.find((email) => email.id === selectedEmailId) ?? null;
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
-    isConnected ? selectedEmail?.threadId : null
+    isConnected ? selectedEmail?.threadId : null,
+    canLoadConnectedMailbox
   );
   const messageDetailQuery = useEmailMessageQuery(
     connectedAccount?.id,
     selectedEmail?.latestMessageId ?? selectedEmail?.id,
-    isConnected && !selectedEmail?.threadId
+    canLoadConnectedMailbox && isConnected && !selectedEmail?.threadId
+  );
+  const hasReconnectRequiredResponse =
+    [
+      foldersQuery.error,
+      tagsQuery.error,
+      messagesQuery.error,
+      conversationQuery.error,
+      messageDetailQuery.error,
+    ].some(isEmailReconnectRequiredError) ||
+    (refreshMessagesMutation.variables?.accountId === connectedAccount?.id &&
+      isEmailReconnectRequiredError(refreshMessagesMutation.error));
+  const isReconnectRequired = Boolean(
+    connectedAccount &&
+    (hasPersistedReconnectState ||
+      reconnectRequiredAccountId === connectedAccount.id ||
+      hasReconnectRequiredResponse)
   );
   const visibleEmail =
     isConnected && selectedEmail && conversationQuery.data?.length
@@ -188,16 +243,18 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     selectedConnectedFolder?.name ??
     foldersQuery.data?.find((folder) => folder.key === selectedFolder)?.name;
   const isArchiveFolder = selectedConnectedFolder?.key === 'archive';
+  const isDeletedFolder = selectedFolderKey === 'deleted';
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
   const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
   const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
+  const showEmailSyncIndicator = useBoundedEmailSyncIndicator(
+    refreshMessagesMutation.isPending,
+    `${connectedAccount?.id ?? 'no-account'}:${refreshMessagesMutation.submittedAt}`
+  );
   const isInitialSyncing =
-    isConnected &&
-    refreshMessagesMutation.isPending &&
-    !activeFreshness?.lastSyncedAt &&
-    !hasCachedMessages;
+    isConnected && showEmailSyncIndicator && !activeFreshness?.lastSyncedAt && !hasCachedMessages;
   const isMailboxLoading = isConnectedRoute
     ? accountsQuery.isLoading || messagesQuery.isLoading || isInitialSyncing
     : false;
@@ -225,6 +282,32 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         (messageDetailQuery.isError && !messageDetailQuery.data))
     );
   const showEmailList = emailListVisible || !agentLayout.hidesEmailList;
+  const lastOpenedMessageKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!connectedAccount || !hasReconnectRequiredResponse) return;
+    const timeout = window.setTimeout(() => {
+      setReconnectRequiredAccountId(connectedAccount.id);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [connectedAccount, hasReconnectRequiredResponse]);
+
+  useEffect(() => {
+    if (!connectedAccount || !selectedEmail) return;
+
+    const messageId = selectedEmail.latestMessageId ?? selectedEmail.id;
+    const openedMessageKey = `${connectedAccount.id}:${selectedFolder}:${messageId}`;
+    if (lastOpenedMessageKey.current === openedMessageKey) return;
+
+    lastOpenedMessageKey.current = openedMessageKey;
+    if (!selectedEmail.unread) return;
+
+    updateMessageStatusMutation.mutate({
+      accountId: connectedAccount.id,
+      messageId,
+      unread: false,
+    });
+  }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
 
   useEffect(() => {
     if (accountSlug) {
@@ -236,7 +319,6 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     const timeout = window.setTimeout(() => {
       setSelectedFolder('inbox');
       setSelectedTarget(null);
-      setEmailPageIndex(0);
       setMessageSearch('');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -245,31 +327,23 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSelectedTarget(null);
-      setEmailPageIndex(0);
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [connectedAccount?.id, debouncedMessageSearch, selectedFolder]);
 
-  const handleNextEmailPage = async () => {
-    const nextPageIndex = emailPageIndex + 1;
-    if (nextPageIndex < loadedEmailPages.length) {
-      setSelectedTarget(null);
-      setEmailPageIndex(nextPageIndex);
-      return;
-    }
-
-    if (!messagesQuery.hasNextPage || messagesQuery.isFetchingNextPage) return;
-    const result = await messagesQuery.fetchNextPage();
-    if (!result.isError && (result.data?.pages.length ?? 0) > nextPageIndex) {
-      setSelectedTarget(null);
-      setEmailPageIndex(nextPageIndex);
-    }
-  };
-
   useEffect(() => {
     const accountId = connectedAccount?.id;
     const freshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
-    if (!accountId || !freshness || freshness.state === 'fresh' || freshness.syncing) return;
+    if (
+      !accountId ||
+      isReconnectRequired ||
+      !messagesQuery.isSuccess ||
+      !freshness ||
+      freshness.state === 'fresh' ||
+      freshness.syncing
+    ) {
+      return;
+    }
     if (attemptedInitialSyncs.current.has(accountId) || refreshMessagesMutation.isPending) return;
 
     attemptedInitialSyncs.current.add(accountId);
@@ -277,7 +351,9 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
   }, [
     connectedAccount?.freshness,
     connectedAccount?.id,
+    isReconnectRequired,
     messagesQuery.data?.pages,
+    messagesQuery.isSuccess,
     refreshMessagesMutation,
   ]);
 
@@ -333,6 +409,34 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     disconnectAccountMutation.mutate({ accountId: connectedAccount.id });
   }, [accountsQuery.data, connectedAccount, disconnectAccountMutation, navigate]);
 
+  if (isReconnectRequired && connectedAccount) {
+    return (
+      <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+        <div className="flex h-full min-w-0">
+          <MailboxSidebar
+            mailboxAddress={address}
+            selectedFolder={selectedFolder}
+            folderCounts={{}}
+            collapsed={mailboxSidebarCollapsed}
+            isAddingAccount={startAuthMutation.isPending}
+            isDisconnectingAccount={disconnectAccountMutation.isPending}
+            onSelectFolder={setSelectedFolder}
+            onCompose={() => undefined}
+            onDisconnectAccount={handleDisconnectAccount}
+            onAddAccount={(provider) => startAuthMutation.mutate(provider)}
+            onCollapsedChange={setMailboxSidebarCollapsed}
+          />
+          <EmailReconnectRequiredState
+            provider={connectedAccount.provider}
+            email={connectedAccount.mailboxAddress ?? connectedAccount.email}
+            isReconnecting={startAuthMutation.isPending}
+            onReconnect={() => startAuthMutation.mutate(connectedAccount.provider)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
       <div
@@ -354,7 +458,10 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
           isCreatingFolder={createFolderMutation.isPending}
           isDisconnectingAccount={disconnectAccountMutation.isPending}
           onSelectFolder={setSelectedFolder}
-          onCompose={() => setComposeOpen(true)}
+          onCompose={() => {
+            setComposeDraft(null);
+            setComposeOpen(true);
+          }}
           onCreateFolder={
             connectedAccount
               ? (name) =>
@@ -379,9 +486,22 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             isLoading={isMailboxLoading}
             isError={isMailboxError}
             selectedEmailId={selectedEmailId}
-            onSelectEmail={(emailId) =>
-              setSelectedTarget({ viewKey, folder: selectedFolder, emailId })
-            }
+            onSelectEmail={(emailId) => {
+              if (connectedAccount && selectedFolderKey === 'drafts') {
+                openDraftMutation.mutate(
+                  { accountId: connectedAccount.id, messageId: emailId },
+                  {
+                    onSuccess: (result) => {
+                      if (!result.message) return;
+                      setComposeDraft(toEditableComposeDraft(result));
+                      setComposeOpen(true);
+                    },
+                  }
+                );
+                return;
+              }
+              setSelectedTarget({ viewKey, folder: selectedFolder, emailId });
+            }}
             onRetry={() => {
               if (!connectedAccount) {
                 messagesQuery.refetch();
@@ -390,29 +510,20 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
 
               refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
             }}
-            page={isConnected ? emailPageIndex + 1 : undefined}
-            pageSize={isConnected ? CONNECTED_EMAIL_PAGE_SIZE : undefined}
             totalCount={isConnected ? providerTotalCount : undefined}
-            hasPreviousPage={isConnected && emailPageIndex > 0}
-            hasNextPage={
-              isConnected &&
-              (emailPageIndex + 1 < loadedEmailPages.length || Boolean(messagesQuery.hasNextPage))
-            }
-            isPageChanging={messagesQuery.isFetchingNextPage}
-            isRefreshing={
-              refreshMessagesMutation.isPending ||
-              (messagesQuery.isFetching && !messagesQuery.isFetchingNextPage)
+            hasNextPage={isConnected && Boolean(messagesQuery.hasNextPage)}
+            isLoadingMore={messagesQuery.isFetchingNextPage}
+            loadMoreError={messagesQuery.isFetchNextPageError}
+            onLoadMore={messagesQuery.fetchNextPage}
+            isRefreshing={showEmailSyncIndicator}
+            isRefreshPending={refreshMessagesMutation.isPending}
+            groupByMonth={
+              isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
             }
             search={messageSearch}
             onSearchChange={(value) => {
               setMessageSearch(value);
-              setEmailPageIndex(0);
             }}
-            onPreviousPage={() => {
-              setSelectedTarget(null);
-              setEmailPageIndex((current) => Math.max(0, current - 1));
-            }}
-            onNextPage={() => void handleNextEmailPage()}
           />
         ) : null}
         <EmailReadingPane
@@ -482,24 +593,49 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
               : undefined
           }
           onDelete={
-            connectedAccount
+            connectedAccount && !isDeletedFolder
               ? (messageId) => {
-                  setSelectedTarget(null);
-                  deleteMessageMutation.mutate({
-                    accountId: connectedAccount.id,
-                    messageId,
-                    targetFolderId: deletedFolderId,
-                  });
+                  deleteMessageMutation.mutate(
+                    {
+                      accountId: connectedAccount.id,
+                      messageId,
+                      targetFolderId: deletedFolderId,
+                    },
+                    { onSuccess: () => setSelectedTarget(null) }
+                  );
                 }
               : undefined
           }
+          onPermanentDelete={
+            connectedAccount && isDeletedFolder
+              ? async (messageId) => {
+                  await permanentlyDeleteMessageMutation.mutateAsync({
+                    accountId: connectedAccount.id,
+                    messageId,
+                  });
+                  setSelectedTarget(null);
+                }
+              : undefined
+          }
+          isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}
+          onMarkUnread={
+            connectedAccount
+              ? (messageId) =>
+                  updateMessageStatusMutation.mutate({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    unread: true,
+                  })
+              : undefined
+          }
+          isUpdatingReadStatus={updateMessageStatusMutation.isPending}
           onReply={
             connectedAccount
               ? (messageId, body) =>
                   replyMutation.mutateAsync({
                     accountId: connectedAccount.id,
                     messageId,
-                    body: textToHtml(body),
+                    body: plainTextToEmailHtml(body),
                     bodyType: 'html',
                     subject: selectedEmail?.subject,
                   })
@@ -530,29 +666,95 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       <EmailComposeDialog
         open={composeOpen}
         mailboxAddress={address}
-        isSending={sendMutation.isPending}
-        onOpenChange={setComposeOpen}
-        onSend={async (payload) => {
-          if (!connectedAccount) return;
-          await sendMutation.mutateAsync({
-            accountId: connectedAccount.id,
-            subject: payload.subject,
-            body: payload.body,
-            bodyType: 'html',
-            to: parseEmailAddresses(payload.to),
-            cc: parseEmailAddresses(payload.cc),
-            bcc: parseEmailAddresses(payload.bcc),
-            attachments: payload.attachments,
-          });
-          if (selectedFolder === 'sent') {
-            await refreshMessagesMutation
-              .mutateAsync({ accountId: connectedAccount.id })
-              .catch(() => undefined);
+        initialDraft={composeDraft}
+        isSending={sendDraftMutation.isPending}
+        onOpenChange={(nextOpen) => {
+          setComposeOpen(nextOpen);
+          if (!nextOpen) {
+            setComposeDraft(null);
+            if (selectedFolderKey === 'drafts') {
+              void messagesQuery.refetch();
+              void foldersQuery.refetch();
+            }
           }
         }}
+        onSaveDraft={
+          connectedAccount
+            ? async (payload, draft) => {
+                const result = await saveDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft?.draftId,
+                  messageId: draft?.messageId,
+                  subject: payload.subject,
+                  body: plainTextToEmailHtml(payload.body),
+                  bodyType: 'html',
+                  to: parseEmailAddresses(payload.to),
+                  cc: parseEmailAddresses(payload.cc),
+                  bcc: parseEmailAddresses(payload.bcc),
+                  attachments: payload.attachments,
+                  removedAttachmentIds: payload.removedAttachmentIds,
+                });
+                return {
+                  draftId: result.draftId,
+                  messageId: result.messageId,
+                  attachments: result.message?.attachments,
+                };
+              }
+            : undefined
+        }
+        onSendDraft={
+          connectedAccount
+            ? (draft) =>
+                sendDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft.draftId,
+                  messageId: draft.messageId,
+                })
+            : undefined
+        }
+        onDiscardDraft={
+          connectedAccount
+            ? (draft) =>
+                deleteDraftMutation.mutateAsync({
+                  accountId: connectedAccount.id,
+                  draftId: draft.draftId,
+                  messageId: draft.messageId,
+                })
+            : undefined
+        }
       />
     </div>
   );
+}
+
+function toEditableComposeDraft(result: EmailDraftResult): EditableComposeDraft {
+  const message = result.message!;
+  return {
+    draftId: result.draftId,
+    messageId: result.messageId,
+    to: formatEmailAddresses(message.to),
+    cc: formatEmailAddresses(message.cc),
+    bcc: formatEmailAddresses(message.bcc),
+    subject: message.subject === '(No subject)' ? '' : message.subject,
+    body: htmlToPlainText(message.body?.[0] ?? ''),
+    attachments: message.attachments ?? [],
+  };
+}
+
+function formatEmailAddresses(addresses?: Array<{ address: string; name?: string }>) {
+  return (addresses ?? [])
+    .map((recipient) =>
+      recipient.name ? `${recipient.name} <${recipient.address}>` : recipient.address
+    )
+    .join(', ');
+}
+
+function htmlToPlainText(value: string) {
+  if (!value) return '';
+  const document = new DOMParser().parseFromString(value, 'text/html');
+  document.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
+  document.querySelectorAll('p,div,li').forEach((block) => block.append('\n'));
+  return (document.body.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
 }
 
 function getFolderCounts(mailboxEmails: EmailListItem[]) {
@@ -583,20 +785,12 @@ function parseEmailAddresses(value: string) {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-    .map((address) => ({ address }));
-}
-
-function textToHtml(value: string) {
-  const escaped = value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  return escaped
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.replace(/\n/g, '<br />'))
-    .map((paragraph) => `<p>${paragraph || '<br />'}</p>`)
-    .join('');
+    .map((recipient) => {
+      const match = recipient.match(/^(.*?)\s*<([^<>]+)>$/);
+      if (!match) return { address: recipient };
+      return {
+        address: match[2].trim(),
+        name: match[1].trim().replace(/^["']|["']$/g, '') || undefined,
+      };
+    });
 }

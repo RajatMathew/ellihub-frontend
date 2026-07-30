@@ -1,15 +1,19 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { cn } from '@/app/lib/utils';
+import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
-import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { FileText, Forward, Mail, Reply, Star } from 'lucide-react';
+import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
+import { Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -20,6 +24,7 @@ interface EmailThreadMessageCardProps {
   onSendReply: (messageId: string, body: string) => Promise<void> | void;
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
+  onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
 }
 
 export function EmailThreadMessageCard({
@@ -31,13 +36,21 @@ export function EmailThreadMessageCard({
   onSendReply,
   onCancelReply,
   onOpenAttachment,
+  onLoadAttachment,
 }: EmailThreadMessageCardProps) {
   const attachments = message.attachments ?? [];
   const visibleAttachments = attachments.filter(
-    (attachment) => !isInlineEmailAttachment(attachment)
+    (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
   );
+  const hasBodyContent = hasVisibleEmailBodyContent(message.body);
+  const isSingleAttachmentOnly =
+    visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   const tags = message.keywords ?? [];
-  const handleReply = () => onReply(message.id);
+  const canReply = isReplyableEmailMessage(message);
+  const handleReply = () => {
+    if (canReply) onReply(message.id);
+  };
+  const recipient = formatRecipient(message);
 
   return (
     <article className="rounded-md border border-border bg-background">
@@ -55,9 +68,7 @@ export function EmailThreadMessageCard({
                   {message.senderEmail}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                To: {message.recipientName} &lt;{message.recipientEmail}&gt;
-              </p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">To: {recipient}</p>
               {tags.length > 0 && (
                 <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                   {tags.map((tag) => (
@@ -87,6 +98,7 @@ export function EmailThreadMessageCard({
               <MessageIconAction
                 label={`Reply to ${message.senderName}`}
                 icon={Reply}
+                disabled={!canReply}
                 onClick={handleReply}
               />
               <MessageIconAction
@@ -98,16 +110,21 @@ export function EmailThreadMessageCard({
         </div>
       </div>
 
-      <div className="space-y-4 px-4 py-4">
-        <EmailMessageBody body={message.body} attachments={attachments} />
+      <div className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
+        {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
 
         {visibleAttachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1" aria-label="Message attachments">
+          <div
+            className={cn('flex flex-wrap gap-2', hasBodyContent && 'pt-1')}
+            aria-label="Message attachments"
+          >
             {visibleAttachments.map((attachment) => (
-              <EmailAttachmentChip
+              <EmailAttachmentHoverCard
                 key={attachment.id}
                 attachment={attachment}
-                onClick={() => onOpenAttachment?.(attachment)}
+                messageId={message.id}
+                loadAttachment={onLoadAttachment}
+                onOpen={() => onOpenAttachment?.(attachment)}
               />
             ))}
           </div>
@@ -124,7 +141,13 @@ export function EmailThreadMessageCard({
 
         {latest && !replyOpen && (
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            <Button type="button" variant="outline" size="sm" onClick={handleReply}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canReply}
+              onClick={handleReply}
+            >
               <Reply aria-hidden="true" className="size-3.5" />
               Reply
             </Button>
@@ -137,6 +160,17 @@ export function EmailThreadMessageCard({
       </div>
     </article>
   );
+}
+
+function formatRecipient(message: EmailThreadMessage) {
+  const name = message.recipientName.trim();
+  const email = message.recipientEmail.trim();
+
+  if (!name || name === 'Elli Team' || name.toLowerCase() === email.toLowerCase()) {
+    return email || name;
+  }
+
+  return email ? `${name} <${email}>` : name;
 }
 
 function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
@@ -193,10 +227,12 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
 function MessageIconAction({
   label,
   icon: Icon,
+  disabled = false,
   onClick,
 }: {
   label: string;
   icon: typeof Reply;
+  disabled?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -207,30 +243,11 @@ function MessageIconAction({
       size="icon"
       className="size-7"
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
     >
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
-  );
-}
-
-function EmailAttachmentChip({
-  attachment,
-  onClick,
-}: {
-  attachment: EmailAttachment;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="inline-flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-      onClick={onClick}
-    >
-      <FileText aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 truncate">{attachment.name}</span>
-      {attachment.size && <span className="shrink-0 text-muted-foreground">{attachment.size}</span>}
-    </button>
   );
 }
 

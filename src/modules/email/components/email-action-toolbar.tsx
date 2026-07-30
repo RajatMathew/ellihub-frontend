@@ -15,10 +15,11 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
+import { EmailPermanentDeleteDialog } from '@/modules/email/components/email-permanent-delete-dialog';
 import {
   Archive,
   FolderInput,
-  MailOpen,
+  Mail,
   MoreHorizontal,
   Plus,
   Printer,
@@ -40,7 +41,11 @@ type EmailActionToolbarProps = {
   onCreateTag?: (name: string) => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  onPermanentDelete?: () => Promise<void> | void;
+  isPermanentlyDeleting?: boolean;
   onReply?: () => void;
+  onMarkUnread?: () => void;
+  isUpdatingReadStatus?: boolean;
 };
 
 export function EmailActionToolbar({
@@ -56,9 +61,14 @@ export function EmailActionToolbar({
   onCreateTag,
   onArchive,
   onDelete,
+  onPermanentDelete,
+  isPermanentlyDeleting = false,
   onReply,
+  onMarkUnread,
+  isUpdatingReadStatus = false,
 }: EmailActionToolbarProps) {
   const [newTagName, setNewTagName] = useState('');
+  const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
   const movableFolders = folders.filter((folder) => folder.id !== currentFolderId);
   const keywordSet = new Set(keywords.map((keyword) => keyword.toLowerCase()));
 
@@ -79,6 +89,19 @@ export function EmailActionToolbar({
         <Archive aria-hidden="true" className="size-3.5" />
         {archiveActionLabel}
       </Button>
+      {onPermanentDelete && (
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          disabled={isPermanentlyDeleting}
+          aria-busy={isPermanentlyDeleting}
+          onClick={() => setPermanentDeleteDialogOpen(true)}
+        >
+          <Trash2 aria-hidden="true" className="size-3.5" />
+          Delete permanently
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="ghost" mode="icon" size="icon" aria-label="More actions">
@@ -172,21 +195,31 @@ export function EmailActionToolbar({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuItem>
-            <MailOpen aria-hidden="true" />
+          <DropdownMenuItem disabled={!onMarkUnread || isUpdatingReadStatus} onClick={onMarkUnread}>
+            <Mail aria-hidden="true" />
             Mark as unread
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Printer aria-hidden="true" />
             Print thread
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" disabled={!onDelete} onClick={onDelete}>
-            <Trash2 aria-hidden="true" />
-            Delete
-          </DropdownMenuItem>
+          {onDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                <Trash2 aria-hidden="true" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <EmailPermanentDeleteDialog
+        open={permanentDeleteDialogOpen}
+        isPending={isPermanentlyDeleting}
+        onOpenChange={setPermanentDeleteDialogOpen}
+        onConfirm={() => onPermanentDelete?.()}
+      />
     </div>
   );
 }

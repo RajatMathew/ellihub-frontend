@@ -1,6 +1,6 @@
 import { cn } from '@/app/lib/utils';
-import { Paperclip } from 'lucide-react';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { Paperclip } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -31,6 +31,7 @@ export type EmailAttachment = {
   providerId?: string;
   name: string;
   size?: string;
+  sizeBytes?: number;
   mimeType?: string | null;
   inline?: boolean;
   contentId?: string | null;
@@ -68,12 +69,14 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
     <button
       type="button"
       className={cn(
-        'flex w-full cursor-pointer gap-3 border-b border-border px-3 py-4 text-left',
+        'flex w-full cursor-pointer gap-3 border-b border-border bg-background px-3 py-4 text-left',
         'hover:bg-accent/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
         'motion-safe:transition-colors motion-safe:duration-150',
+        email.unread && 'bg-muted/35',
         isSelected && 'border-l-2 border-l-primary bg-primary/10 hover:bg-primary/15'
       )}
       aria-current={isSelected ? 'true' : undefined}
+      aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
       onClick={onSelect}
     >
       <span
@@ -104,7 +107,13 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
               {email.threadMessageCount}
             </span>
           )}
-          <span className="shrink-0 text-xs text-muted-foreground" title={email.receivedAt}>
+          <span
+            className={cn(
+              'shrink-0 text-xs',
+              email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
+            )}
+            title={email.receivedAt}
+          >
             {formatEmailDate(email.receivedAt)}
           </span>
         </span>
@@ -118,7 +127,12 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
           {email.subject}
         </span>
 
-        <span className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+        <span
+          className={cn(
+            'mt-1 line-clamp-2 text-sm leading-5',
+            email.unread ? 'text-foreground/80' : 'text-muted-foreground'
+          )}
+        >
           {email.preview}
         </span>
 

@@ -5,6 +5,13 @@ export type EmailAttachmentMetadata = {
   contentUrl?: string;
 };
 
+export type EmailImageSourceMetadata = {
+  src?: string | null;
+  srcset?: string | null;
+  originalSrc?: string | null;
+  dataOriginalSrc?: string | null;
+};
+
 export function normalizeEmailContentId(value: string | null | undefined): string | null {
   if (!value) return null;
 
@@ -27,8 +34,49 @@ export function getEmailCid(value: string | null | undefined): string | null {
   return normalizeEmailContentId(value);
 }
 
+function getEmailSrcsetCid(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const firstSource = value.split(',')[0]?.trim().split(/\s+/)[0];
+  return getEmailCid(firstSource);
+}
+
+export function getEmailInlineImageCid({
+  src,
+  srcset,
+  originalSrc,
+  dataOriginalSrc,
+}: EmailImageSourceMetadata): string | null {
+  return (
+    getEmailCid(src) ??
+    getEmailSrcsetCid(srcset) ??
+    getEmailCid(originalSrc) ??
+    getEmailCid(dataOriginalSrc)
+  );
+}
+
 export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {
   return attachment.inline === true || normalizeEmailContentId(attachment.contentId) !== null;
+}
+
+export function isReferencedInlineEmailAttachment(
+  attachment: EmailAttachmentMetadata,
+  body: readonly string[]
+): boolean {
+  if (body.length === 0 || !isInlineEmailAttachment(attachment)) return false;
+
+  const attachmentIdentifiers = [attachment.contentId, attachment.name]
+    .map(normalizeEmailContentId)
+    .filter((value): value is string => Boolean(value));
+  if (attachmentIdentifiers.length === 0) return false;
+
+  for (const content of body) {
+    for (const match of content.matchAll(/\bcid\s*:\s*([^"'\s)]+)/gi)) {
+      const reference = normalizeEmailContentId(match[1]);
+      if (reference && attachmentIdentifiers.includes(reference)) return true;
+    }
+  }
+
+  return false;
 }
 
 export function getInlineEmailImageSources(

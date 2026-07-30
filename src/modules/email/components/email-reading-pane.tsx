@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
-import { FilePreviewDialog, type FilePreviewItem } from '@/modules/files/components/file-preview-dialog';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
@@ -15,7 +14,18 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
-import { isInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import {
+  isReplyableEmailMessage,
+  markPendingReplyFailed,
+  markPendingReplySent,
+  OPTIMISTIC_EMAIL_REPLY_PREFIX,
+  type PendingEmailReply,
+} from '@/modules/email/lib/email-reply-state';
+import {
+  FilePreviewDialog,
+  type FilePreviewItem,
+} from '@/modules/files/components/file-preview-dialog';
 import { Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
@@ -35,15 +45,18 @@ interface EmailReadingPaneProps {
   onCreateTag?: (name: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onPermanentDelete?: (messageId: string) => Promise<void> | void;
+  isPermanentlyDeleting?: boolean;
+  onMarkUnread?: (messageId: string) => void;
+  isUpdatingReadStatus?: boolean;
   isSendingReply?: boolean;
-  onReply?: (messageId: string, body: string) => Promise<void> | void;
+  onReply?: (
+    messageId: string,
+    body: string
+  ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
 }
 
-type PendingReply = {
-  emailId: string;
-  plainBody: string;
-  message: EmailThreadMessage;
-};
+const MAX_CACHED_ATTACHMENT_PREVIEWS = 6;
 
 export function EmailReadingPane({
   email,
@@ -62,22 +75,58 @@ export function EmailReadingPane({
   onCreateTag,
   onArchive,
   onDelete,
+  onPermanentDelete,
+  isPermanentlyDeleting = false,
+  onMarkUnread,
+  isUpdatingReadStatus = false,
   isSendingReply = false,
   onReply,
 }: EmailReadingPaneProps) {
   const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
     null
   );
-  const [pendingReplies, setPendingReplies] = useState<PendingReply[]>([]);
+  const [pendingReplies, setPendingReplies] = useState<PendingEmailReply[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<{
     messageId: string;
     attachment: EmailAttachment;
   } | null>(null);
+  const attachmentBlobCacheRef = useRef(new Map<string, Promise<Blob>>());
   const loadEmailAttachment = useCallback(
-    (file: FilePreviewItem) =>
-      emailApi.getAttachment(accountId!, previewAttachment!.messageId, file.id),
-    [accountId, previewAttachment]
+    (messageId: string, attachmentId: string) => {
+      if (!accountId) return Promise.reject(new Error('Email account is unavailable'));
+
+      const cacheKey = `${accountId}:${messageId}:${attachmentId}`;
+      const cached = attachmentBlobCacheRef.current.get(cacheKey);
+      if (cached) return cached;
+
+      const request = emailApi.getAttachment(accountId, messageId, attachmentId);
+      attachmentBlobCacheRef.current.set(cacheKey, request);
+
+      if (attachmentBlobCacheRef.current.size > MAX_CACHED_ATTACHMENT_PREVIEWS) {
+        const oldestKey = attachmentBlobCacheRef.current.keys().next().value;
+        if (oldestKey) attachmentBlobCacheRef.current.delete(oldestKey);
+      }
+
+      void request.catch(() => {
+        if (attachmentBlobCacheRef.current.get(cacheKey) === request) {
+          attachmentBlobCacheRef.current.delete(cacheKey);
+        }
+      });
+      return request;
+    },
+    [accountId]
   );
+  const loadPreviewAttachment = useCallback(
+    (file: FilePreviewItem) => {
+      if (!previewAttachment) return Promise.reject(new Error('No attachment selected'));
+      return loadEmailAttachment(previewAttachment.messageId, file.id);
+    },
+    [loadEmailAttachment, previewAttachment]
+  );
+
+  useEffect(() => {
+    attachmentBlobCacheRef.current.clear();
+  }, [accountId, email?.id]);
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -99,12 +148,15 @@ export function EmailReadingPane({
     .map((reply) => reply.message);
   const messages = [...baseMessages, ...visiblePendingReplies];
   const latestMessage = messages[messages.length - 1] ?? null;
+  const latestReplyableMessage =
+    latestMessage && isReplyableEmailMessage(latestMessage) ? latestMessage : null;
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
   const totalAttachments = messages.reduce(
     (total, message) =>
       total +
-      (message.attachments?.filter((attachment) => !isInlineEmailAttachment(attachment)).length ??
-        0),
+      (message.attachments?.filter(
+        (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
+      ).length ?? 0),
     0
   );
 
@@ -152,9 +204,19 @@ export function EmailReadingPane({
             onCreateTag={onCreateTag}
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onPermanentDelete={
+              onPermanentDelete ? () => onPermanentDelete(actionMessageId) : undefined
+            }
+            isPermanentlyDeleting={isPermanentlyDeleting}
+            onMarkUnread={onMarkUnread ? () => onMarkUnread(actionMessageId) : undefined}
+            isUpdatingReadStatus={isUpdatingReadStatus}
             onReply={
-              latestMessage
-                ? () => setReplyTarget({ emailId: email.id, messageId: latestMessage.id })
+              latestReplyableMessage
+                ? () =>
+                    setReplyTarget({
+                      emailId: email.id,
+                      messageId: latestReplyableMessage.id,
+                    })
                 : undefined
             }
           />
@@ -174,7 +236,7 @@ export function EmailReadingPane({
               onSendReply={(messageId, body) => {
                 if (!onReply) return;
                 const targetMessage = messages.find((message) => message.id === messageId);
-                const optimisticId = `optimistic-reply-${Date.now()}`;
+                const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
                 const optimisticMessage: EmailThreadMessage = {
                   id: optimisticId,
                   senderName: mailboxAddress,
@@ -196,37 +258,13 @@ export function EmailReadingPane({
                 ]);
                 setReplyTarget(null);
                 Promise.resolve(onReply(messageId, body))
-                  .then(() => {
+                  .then((sentMessage) => {
                     setPendingReplies((current) =>
-                      current.map((reply) =>
-                        reply.message.id === optimisticId
-                          ? {
-                              ...reply,
-                              message: {
-                                ...reply.message,
-                                sentAt: 'Just now',
-                                deliveryStatus: 'sent',
-                              },
-                            }
-                          : reply
-                      )
+                      markPendingReplySent(current, optimisticId, sentMessage ? sentMessage : null)
                     );
                   })
                   .catch(() => {
-                    setPendingReplies((current) =>
-                      current.map((reply) =>
-                        reply.message.id === optimisticId
-                          ? {
-                              ...reply,
-                              message: {
-                                ...reply.message,
-                                sentAt: 'Failed',
-                                deliveryStatus: 'failed',
-                              },
-                            }
-                          : reply
-                      )
-                    );
+                    setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
                   });
               }}
               onCancelReply={() => setReplyTarget(null)}
@@ -235,6 +273,7 @@ export function EmailReadingPane({
                   ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
                   : undefined
               }
+              onLoadAttachment={accountId ? loadEmailAttachment : undefined}
             />
           ))}
         </div>
@@ -245,21 +284,32 @@ export function EmailReadingPane({
         onOpenChange={(open) => {
           if (!open) setPreviewAttachment(null);
         }}
-        file={previewAttachment ? ({
-          id: previewAttachment.attachment.id,
-          name: previewAttachment.attachment.name,
-          displayName: previewAttachment.attachment.name,
-          mimeType: previewAttachment.attachment.mimeType,
-          type: 'FILE',
-        } satisfies FilePreviewItem) : null}
-        loadFile={loadEmailAttachment}
+        file={
+          previewAttachment
+            ? ({
+                id: previewAttachment.attachment.id,
+                name: previewAttachment.attachment.name,
+                displayName: previewAttachment.attachment.name,
+                mimeType: previewAttachment.attachment.mimeType,
+                size: previewAttachment.attachment.sizeBytes,
+                type: 'FILE',
+              } satisfies FilePreviewItem)
+            : null
+        }
+        loadFile={loadPreviewAttachment}
       />
     </section>
   );
 }
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {
-  if (email.threadMessages?.length) return email.threadMessages;
+  if (email.threadMessages?.length) {
+    return email.threadMessages.map((message) => ({
+      ...message,
+      recipientName: message.recipientName === 'Elli Team' ? '' : message.recipientName,
+      recipientEmail: message.recipientEmail || mailboxAddress,
+    }));
+  }
   const messageId = email.latestMessageId ?? email.id;
 
   return [
@@ -268,7 +318,7 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       providerId: email.providerId,
       senderName: email.senderName,
       senderEmail: email.senderEmail,
-      recipientName: 'Elli Team',
+      recipientName: '',
       recipientEmail: mailboxAddress,
       sentAt: email.receivedAt,
       body: email.body?.length ? email.body : [email.preview],

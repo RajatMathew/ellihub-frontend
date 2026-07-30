@@ -34,7 +34,7 @@ export function EmailReplyComposer({
       onSubmit={async (event) => {
         event.preventDefault();
         if (!canSend) return;
-        await onSend(body.trim());
+        await onSend(body);
         setBody('');
       }}
     >
