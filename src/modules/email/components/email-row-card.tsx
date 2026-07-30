@@ -22,8 +22,16 @@ export type EmailListItem = {
   category?: string;
   body?: string[];
   attachments?: EmailAttachment[];
+  to?: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
   threadMessages?: EmailThreadMessage[];
   threadMessageCount?: number;
+};
+
+export type EmailAddress = {
+  address: string;
+  name?: string;
 };
 
 export type EmailAttachment = {
@@ -45,6 +53,9 @@ export type EmailThreadMessage = {
   senderEmail: string;
   recipientName: string;
   recipientEmail: string;
+  to?: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
   sentAt: string;
   folderId?: string | null;
   keywords?: string[];

@@ -4,6 +4,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/
 import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
+import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
@@ -50,7 +51,6 @@ export function EmailThreadMessageCard({
   const handleReply = () => {
     if (canReply) onReply(message.id);
   };
-  const recipient = formatRecipient(message);
 
   return (
     <article className="rounded-md border border-border bg-background">
@@ -68,7 +68,7 @@ export function EmailThreadMessageCard({
                   {message.senderEmail}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">To: {recipient}</p>
+              <EmailRecipientDetails message={message} />
               {tags.length > 0 && (
                 <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                   {tags.map((tag) => (
@@ -160,17 +160,6 @@ export function EmailThreadMessageCard({
       </div>
     </article>
   );
-}
-
-function formatRecipient(message: EmailThreadMessage) {
-  const name = message.recipientName.trim();
-  const email = message.recipientEmail.trim();
-
-  if (!name || name === 'Elli Team' || name.toLowerCase() === email.toLowerCase()) {
-    return email || name;
-  }
-
-  return email ? `${name} <${email}>` : name;
 }
 
 function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
