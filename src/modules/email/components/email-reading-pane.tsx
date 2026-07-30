@@ -229,6 +229,7 @@ export function EmailReadingPane({
             <EmailThreadMessageCard
               key={message.id}
               message={message}
+              singleMessage={messages.length === 1}
               latest={index === messages.length - 1}
               replyOpen={replyMessageId === message.id}
               isSendingReply={isSendingReply}
