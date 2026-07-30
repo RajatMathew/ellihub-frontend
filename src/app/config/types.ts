@@ -11,6 +11,8 @@ export interface MenuItem {
   img?: string;
   icon?: LucideIcon;
   path?: string;
+  /** Renders the item as an external link (new tab) with a trailing arrow indicator. */
+  external?: boolean;
   createPath?: string | true;
   createTitle?: string;
   access?: MenuAccessRule;

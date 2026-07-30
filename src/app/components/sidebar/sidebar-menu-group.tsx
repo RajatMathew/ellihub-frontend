@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import { ArrowUpRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import {
@@ -138,19 +139,41 @@ export function SidebarGroupMenu({
                     ) : undefined
                   }
                 >
-                  <Link to={to}>
-                    {child.icon && <child.icon />}
-                    <span>{child.title}</span>
-                    {child.badge && (
-                      <Badge
-                        size="sm"
-                        variant={child.badge.variant}
-                        appearance={child.badge.appearance}
-                      >
-                        {child.badge.text}
-                      </Badge>
-                    )}
-                  </Link>
+                  {child.external ? (
+                    <a href={child.path} target="_blank" rel="noopener noreferrer">
+                      {child.icon && <child.icon />}
+                      <span>{child.title}</span>
+                      {child.badge && (
+                        <Badge
+                          size="sm"
+                          variant={child.badge.variant}
+                          appearance={child.badge.appearance}
+                        >
+                          {child.badge.text}
+                        </Badge>
+                      )}
+                      <ArrowUpRight
+                        data-slot="sidebar-external-indicator"
+                        className="ms-auto shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    <Link to={to}>
+                      {child.icon && <child.icon />}
+                      <span>{child.title}</span>
+                      {child.badge && (
+                        <Badge
+                          size="sm"
+                          variant={child.badge.variant}
+                          appearance={child.badge.appearance}
+                        >
+                          {child.badge.text}
+                        </Badge>
+                      )}
+                    </Link>
+                  )}
                 </AccordionMenuLinkItem>
               );
             })}
