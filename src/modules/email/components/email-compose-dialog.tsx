@@ -21,10 +21,10 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import { getEmailAddressListError } from '@/modules/email/lib/email-addresses';
 import { AlertCircle, FileText, Paperclip, Send, Trash2, X } from 'lucide-react';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
-const DRAFT_AUTOSAVE_DELAY_MS = 1_200;
 
 type ComposeForm = {
   to: string;
@@ -33,6 +33,9 @@ type ComposeForm = {
   subject: string;
   body: string;
 };
+
+type AddressField = 'to' | 'cc' | 'bcc';
+type AddressErrors = Partial<Record<AddressField, string>>;
 
 export type ComposeDraftIdentity = {
   draftId: string;
@@ -64,7 +67,7 @@ interface EmailComposeDialogProps {
     draft?: ComposeDraftIdentity
   ) => Promise<ComposeDraftSaveResult>;
   onSendDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
-  onDiscardDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
+  onDiscardDraft?: (draft: ComposeDraftIdentity, options?: { silent?: boolean }) => Promise<void>;
 }
 
 export function EmailComposeDialog({
@@ -96,19 +99,28 @@ export function EmailComposeDialog({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<EmailAttachment[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [addressErrors, setAddressErrors] = useState<AddressErrors>({});
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const initializedDraftRef = useRef<string | null>(null);
   const draftRef = useRef<ComposeDraftIdentity | undefined>(undefined);
+  const attachmentsRef = useRef<File[]>([]);
+  const attachmentPreparationRef = useRef<Promise<void>>(Promise.resolve());
+  const lastPersistedFormRef = useRef<ComposeForm>({
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: '',
+    body: '',
+  });
   const lastSavedSignatureRef = useRef('');
-  const lastQueuedSignatureRef = useRef('');
-  const autosaveTimerRef = useRef<number | null>(null);
-  const saveQueueRef = useRef<Promise<ComposeDraftSaveResult | undefined>>(
-    Promise.resolve(undefined)
-  );
   const canSend = form.to.trim().length > 0 && form.subject.trim().length > 0;
+  const isBusy = isClosing || isSubmitting || isDiscarding || isSending;
+  const isPreparingAttachments = saveStatus === 'saving' && attachments.length > 0;
   const hasContent = Boolean(
     form.to.trim() ||
     form.cc.trim() ||
@@ -128,28 +140,25 @@ export function EmailComposeDialog({
       }),
     [attachments, existingAttachments, form, removedAttachmentIds]
   );
-  const draftIsReady =
-    Boolean(draftRef.current) &&
-    attachments.length === 0 &&
-    saveStatus === 'saved' &&
-    signature === lastSavedSignatureRef.current;
-
   function resetForm() {
     setForm({ to: '', cc: '', bcc: '', subject: '', body: '' });
     setShowCc(false);
     setShowBcc(false);
     setAttachments([]);
+    attachmentsRef.current = [];
     setExistingAttachments([]);
     setRemovedAttachmentIds([]);
     draftRef.current = undefined;
     setSaveStatus('idle');
+    setAddressErrors({});
     setAttachmentError(null);
     setIsDragging(false);
     setIsClosing(false);
+    setIsSubmitting(false);
+    setIsDiscarding(false);
     initializedDraftRef.current = null;
+    lastPersistedFormRef.current = { to: '', cc: '', bcc: '', subject: '', body: '' };
     lastSavedSignatureRef.current = '';
-    lastQueuedSignatureRef.current = '';
-    saveQueueRef.current = Promise.resolve(undefined);
   }
 
   function finishClose() {
@@ -157,78 +166,46 @@ export function EmailComposeDialog({
     resetForm();
   }
 
-  const saveDraft = useCallback(
-    async (payloadSignature = signature) => {
-      if (!hasContent || !onSaveDraft) return draftRef.current;
-      if (payloadSignature === lastSavedSignatureRef.current && draftRef.current) {
-        return draftRef.current;
-      }
-      if (payloadSignature === lastQueuedSignatureRef.current) {
-        const queued = await saveQueueRef.current;
-        return queued ? { draftId: queued.draftId, messageId: queued.messageId } : draftRef.current;
-      }
+  const saveDraft = useCallback(async () => {
+    if (!hasContent || !onSaveDraft) return draftRef.current;
+    await attachmentPreparationRef.current;
+    if (signature === lastSavedSignatureRef.current && draftRef.current) {
+      return draftRef.current;
+    }
 
-      const currentForm = form;
-      const currentFiles = attachments;
-      const currentRemovedIds = removedAttachmentIds;
-      lastQueuedSignatureRef.current = payloadSignature;
-      setSaveStatus('saving');
+    const currentForm = form;
+    const currentFiles = attachmentsRef.current;
+    const currentRemovedIds = removedAttachmentIds;
+    setSaveStatus('saving');
 
-      const operation = saveQueueRef.current
-        .catch(() => undefined)
-        .then(async () => {
-          if (payloadSignature === lastSavedSignatureRef.current && draftRef.current) {
-            return { ...draftRef.current };
-          }
-          const encodedAttachments = currentFiles.length
-            ? await Promise.all(currentFiles.map(fileToAttachment))
-            : undefined;
-          const result = await onSaveDraft(
-            {
-              ...currentForm,
-              attachments: encodedAttachments,
-              removedAttachmentIds: currentRemovedIds,
-            },
-            draftRef.current
-          );
-          const nextDraft = { draftId: result.draftId, messageId: result.messageId };
-          draftRef.current = nextDraft;
-          const readyAttachments = result.attachments;
-          if (currentFiles.length && !readyAttachments) {
-            throw new Error('The provider saved the draft but did not confirm its attachments');
-          }
-          if (readyAttachments) {
-            setExistingAttachments(readyAttachments);
-            setAttachments([]);
-            setRemovedAttachmentIds([]);
-            lastSavedSignatureRef.current = JSON.stringify({
-              form: currentForm,
-              files: [],
-              existing: readyAttachments.map((attachment) => attachment.id),
-              removed: [],
-            });
-          } else {
-            lastSavedSignatureRef.current = payloadSignature;
-          }
-          return result;
-        });
-      saveQueueRef.current = operation;
-
-      try {
-        const result = await operation;
-        if (!result) return draftRef.current;
-        setSaveStatus('saved');
-        return { draftId: result.draftId, messageId: result.messageId };
-      } catch (error) {
-        if (lastQueuedSignatureRef.current === payloadSignature) {
-          lastQueuedSignatureRef.current = '';
-        }
-        setSaveStatus('error');
-        throw error;
+    try {
+      const encodedAttachments = currentFiles.length
+        ? await Promise.all(currentFiles.map(fileToAttachment))
+        : undefined;
+      const result = await onSaveDraft(
+        {
+          ...currentForm,
+          attachments: encodedAttachments,
+          removedAttachmentIds: currentRemovedIds,
+        },
+        draftRef.current
+      );
+      const nextDraft = { draftId: result.draftId, messageId: result.messageId };
+      draftRef.current = nextDraft;
+      lastPersistedFormRef.current = currentForm;
+      if (result.attachments) {
+        setExistingAttachments(result.attachments);
+        attachmentsRef.current = [];
+        setAttachments([]);
       }
-    },
-    [attachments, form, hasContent, onSaveDraft, removedAttachmentIds, signature]
-  );
+      lastSavedSignatureRef.current = signature;
+      setSaveStatus('idle');
+      return nextDraft;
+    } catch (error) {
+      setSaveStatus('error');
+      throw error;
+    }
+  }, [form, hasContent, onSaveDraft, removedAttachmentIds, signature]);
 
   useEffect(() => {
     if (!open) return;
@@ -250,12 +227,15 @@ export function EmailComposeDialog({
     setShowCc(Boolean(initialDraft?.cc));
     setShowBcc(Boolean(initialDraft?.bcc));
     setAttachments([]);
+    attachmentsRef.current = [];
     setExistingAttachments(nextAttachments);
     setRemovedAttachmentIds([]);
     draftRef.current = initialDraft
       ? { draftId: initialDraft.draftId, messageId: initialDraft.messageId }
       : undefined;
-    setSaveStatus(initialDraft ? 'saved' : 'idle');
+    lastPersistedFormRef.current = nextForm;
+    setSaveStatus('idle');
+    setAddressErrors({});
     lastSavedSignatureRef.current = JSON.stringify({
       form: nextForm,
       files: [],
@@ -264,23 +244,20 @@ export function EmailComposeDialog({
     });
   }, [initialDraft, open]);
 
-  useEffect(() => {
-    if (!open || !hasContent || signature === lastSavedSignatureRef.current) return;
-    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = window.setTimeout(
-      () => void saveDraft(signature).catch(() => undefined),
-      attachments.length ? 0 : DRAFT_AUTOSAVE_DELAY_MS
-    );
-    return () => {
-      if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-    };
-  }, [attachments.length, hasContent, open, saveDraft, signature]);
-
   async function handleRequestClose() {
-    if (isClosing || isSending) return;
-    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+    if (isBusy) return;
     if (!hasContent) {
       finishClose();
+      return;
+    }
+    if (hasInvalidRecipients(form)) {
+      setIsClosing(true);
+      await attachmentPreparationRef.current;
+      const preparedNewDraft = initialDraft ? undefined : draftRef.current;
+      finishClose();
+      if (preparedNewDraft) {
+        void onDiscardDraft?.(preparedNewDraft, { silent: true });
+      }
       return;
     }
     setIsClosing(true);
@@ -290,6 +267,83 @@ export function EmailComposeDialog({
     } catch {
       setIsClosing(false);
     }
+  }
+
+  function validateAddresses(requireTo: boolean) {
+    const nextErrors: AddressErrors = {
+      to: getEmailAddressListError(form.to, 'To', requireTo) ?? undefined,
+      cc: getEmailAddressListError(form.cc, 'Cc') ?? undefined,
+      bcc: getEmailAddressListError(form.bcc, 'Bcc') ?? undefined,
+    };
+    setAddressErrors(nextErrors);
+
+    const firstInvalidField = (['to', 'cc', 'bcc'] as const).find((field) => nextErrors[field]);
+    if (!firstInvalidField) return true;
+
+    const fieldIds = { to: toId, cc: ccId, bcc: bccId };
+    window.requestAnimationFrame(() =>
+      document.getElementById(fieldIds[firstInvalidField])?.focus()
+    );
+    return false;
+  }
+
+  function updateAddressField(field: AddressField, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
+    if (saveStatus === 'error') setSaveStatus('idle');
+    setAddressErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function replacePendingAttachments(next: File[]) {
+    attachmentsRef.current = next;
+    setAttachments(next);
+  }
+
+  function startAttachmentPreparation(files: File[]) {
+    if (!files.length || !onSaveDraft) return;
+
+    const formSnapshot = { ...lastPersistedFormRef.current };
+    const removedIdsSnapshot = [...removedAttachmentIds];
+    const uploadedKeys = new Set(files.map(fileKey));
+    setSaveStatus('saving');
+
+    const preparation = (async () => {
+      try {
+        const encodedAttachments = await Promise.all(files.map(fileToAttachment));
+        const result = await onSaveDraft(
+          {
+            ...formSnapshot,
+            attachments: encodedAttachments,
+            removedAttachmentIds: removedIdsSnapshot,
+          },
+          draftRef.current
+        );
+        draftRef.current = { draftId: result.draftId, messageId: result.messageId };
+        if (result.attachments) {
+          setExistingAttachments(result.attachments);
+          replacePendingAttachments(
+            attachmentsRef.current.filter((file) => !uploadedKeys.has(fileKey(file)))
+          );
+        }
+        setSaveStatus('idle');
+      } catch {
+        setSaveStatus('error');
+      }
+    })();
+
+    attachmentPreparationRef.current = preparation;
+  }
+
+  function handleAttachmentSelection(files: FileList | null) {
+    const addedFiles = getNewAttachments(files, attachmentsRef.current, setAttachmentError);
+    if (!addedFiles.length) return;
+
+    replacePendingAttachments([...attachmentsRef.current, ...addedFiles]);
+    startAttachmentPreparation(addedFiles);
   }
 
   return (
@@ -317,17 +371,21 @@ export function EmailComposeDialog({
                   ? attachments.length
                     ? 'Preparing attachments…'
                     : 'Saving draft…'
-                  : saveStatus === 'saved'
-                    ? 'Saved to Drafts'
-                    : saveStatus === 'error'
-                      ? 'Draft not saved'
-                      : ''}
+                  : saveStatus === 'error'
+                    ? 'Draft wasn’t saved. Your message is still here.'
+                    : ''}
               </p>
               {saveStatus === 'error' && (
                 <button
                   type="button"
-                  className="text-xs font-medium text-primary hover:underline"
-                  onClick={() => void saveDraft().catch(() => undefined)}
+                  className="inline-flex min-h-10 items-center rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    if (attachmentsRef.current.length) {
+                      startAttachmentPreparation(attachmentsRef.current);
+                      return;
+                    }
+                    void handleRequestClose();
+                  }}
                 >
                   Retry
                 </button>
@@ -340,15 +398,18 @@ export function EmailComposeDialog({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={async (event) => {
             event.preventDefault();
-            if (!canSend || !draftIsReady || isSending) return;
-            if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+            if (!canSend || isBusy || !validateAddresses(true)) return;
+            setIsSubmitting(true);
             try {
-              const activeDraft = await saveDraft(signature);
+              const activeDraft = await saveDraft();
               if (!activeDraft) throw new Error('Draft could not be prepared before sending');
-              await onSendDraft?.(activeDraft);
+              if (!onSendDraft) throw new Error('Email sending is unavailable');
+              await onSendDraft(activeDraft);
               finishClose();
             } catch {
               // Mutations provide the user-facing error and the prepared draft remains open.
+            } finally {
+              setIsSubmitting(false);
             }
           }}
         >
@@ -367,12 +428,9 @@ export function EmailComposeDialog({
             onDrop={(event) => {
               event.preventDefault();
               setIsDragging(false);
-              addAttachments(
-                event.dataTransfer.files,
-                attachments,
-                setAttachments,
-                setAttachmentError
-              );
+              if (!isPreparingAttachments) {
+                handleAttachmentSelection(event.dataTransfer.files);
+              }
             }}
           >
             {isDragging && (
@@ -387,7 +445,8 @@ export function EmailComposeDialog({
                 value={form.to}
                 required
                 placeholder="recipient@example.com"
-                onChange={(to) => setForm((current) => ({ ...current, to }))}
+                error={addressErrors.to}
+                onChange={(to) => updateAddressField('to', to)}
               >
                 {!showCc && (
                   <button
@@ -414,7 +473,8 @@ export function EmailComposeDialog({
                   label="Cc"
                   value={form.cc}
                   placeholder="Optional"
-                  onChange={(cc) => setForm((current) => ({ ...current, cc }))}
+                  error={addressErrors.cc}
+                  onChange={(cc) => updateAddressField('cc', cc)}
                 />
               )}
               {showBcc && (
@@ -423,7 +483,8 @@ export function EmailComposeDialog({
                   label="Bcc"
                   value={form.bcc}
                   placeholder="Optional"
-                  onChange={(bcc) => setForm((current) => ({ ...current, bcc }))}
+                  error={addressErrors.bcc}
+                  onChange={(bcc) => updateAddressField('bcc', bcc)}
                 />
               )}
               <div className="flex items-center gap-3 px-5 py-2.5">
@@ -439,9 +500,10 @@ export function EmailComposeDialog({
                   required
                   placeholder="Add a subject"
                   className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, subject: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setForm((current) => ({ ...current, subject: event.target.value }));
+                    if (saveStatus === 'error') setSaveStatus('idle');
+                  }}
                 />
               </div>
             </div>
@@ -456,9 +518,10 @@ export function EmailComposeDialog({
                 rows={14}
                 placeholder="Write your message..."
                 className="min-h-72 resize-y border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, body: event.target.value }))
-                }
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, body: event.target.value }));
+                  if (saveStatus === 'error') setSaveStatus('idle');
+                }}
               />
             </div>
 
@@ -469,8 +532,9 @@ export function EmailComposeDialog({
               existingAttachments={existingAttachments}
               pendingStatus={saveStatus}
               error={attachmentError}
+              disabled={isPreparingAttachments}
               onClear={() => {
-                setAttachments([]);
+                replacePendingAttachments([]);
                 setRemovedAttachmentIds((current) => [
                   ...new Set([
                     ...current,
@@ -480,11 +544,11 @@ export function EmailComposeDialog({
                 setExistingAttachments([]);
               }}
               onSelect={(event) => {
-                addAttachments(event.target.files, attachments, setAttachments, setAttachmentError);
+                handleAttachmentSelection(event.target.files);
                 event.target.value = '';
               }}
               onRemove={(file) =>
-                setAttachments((current) => current.filter((item) => item !== file))
+                replacePendingAttachments(attachmentsRef.current.filter((item) => item !== file))
               }
               onRemoveExisting={(attachment) => {
                 setExistingAttachments((current) =>
@@ -500,38 +564,31 @@ export function EmailComposeDialog({
               <Button
                 type="submit"
                 size="sm"
-                disabled={!canSend || !draftIsReady || isSending || isClosing}
+                disabled={!canSend || isBusy || isPreparingAttachments}
+                aria-busy={isSubmitting || isSending}
               >
                 <Send aria-hidden="true" className="size-3.5" />
-                {saveStatus === 'saving'
-                  ? attachments.length
-                    ? 'Preparing'
-                    : 'Saving'
-                  : isSending
-                    ? 'Sending'
-                    : 'Send'}
+                {isSubmitting || isSending ? 'Sending' : 'Send'}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="ml-auto bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground"
-                disabled={isSending || isClosing}
+                disabled={isBusy || isPreparingAttachments}
                 onClick={async () => {
-                  if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-                  setIsClosing(true);
+                  setIsDiscarding(true);
                   try {
-                    const activeDraft =
-                      draftRef.current ?? (await saveQueueRef.current.catch(() => undefined));
+                    const activeDraft = draftRef.current;
                     if (activeDraft) await onDiscardDraft?.(activeDraft);
                     finishClose();
                   } catch {
-                    setIsClosing(false);
+                    setIsDiscarding(false);
                   }
                 }}
               >
                 <Trash2 aria-hidden="true" className="size-3.5" />
-                Discard
+                {isDiscarding ? 'Discarding' : 'Discard'}
               </Button>
             </div>
           </DialogFooter>
@@ -548,6 +605,7 @@ function AttachmentDropzone({
   existingAttachments,
   pendingStatus,
   error,
+  disabled,
   onClear,
   onSelect,
   onRemove,
@@ -557,8 +615,9 @@ function AttachmentDropzone({
   inputRef: React.RefObject<HTMLInputElement | null>;
   attachments: File[];
   existingAttachments: EmailAttachment[];
-  pendingStatus: 'idle' | 'saving' | 'saved' | 'error';
+  pendingStatus: 'idle' | 'saving' | 'error';
   error: string | null;
+  disabled: boolean;
   onClear: () => void;
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: (file: File) => void;
@@ -567,12 +626,13 @@ function AttachmentDropzone({
   const attachmentCount = attachments.length + existingAttachments.length;
 
   return (
-    <div className="px-5 pb-5">
+    <div className="px-5 pb-5" aria-busy={disabled}>
       <input
         ref={inputRef}
         id={inputId}
         type="file"
         multiple
+        disabled={disabled}
         className="sr-only"
         onChange={onSelect}
       />
@@ -591,6 +651,7 @@ function AttachmentDropzone({
             type="button"
             variant="outline"
             size="sm"
+            disabled={disabled}
             onClick={() => inputRef.current?.click()}
           >
             <Paperclip className="size-3.5" aria-hidden="true" />
@@ -607,6 +668,7 @@ function AttachmentDropzone({
               <button
                 type="button"
                 className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={disabled}
                 onClick={onClear}
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
@@ -628,6 +690,7 @@ function AttachmentDropzone({
                     type="button"
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Remove ${attachment.name}`}
+                    disabled={disabled}
                     onClick={() => onRemoveExisting(attachment)}
                   >
                     <X className="size-3.5" aria-hidden="true" />
@@ -658,6 +721,7 @@ function AttachmentDropzone({
                     type="button"
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Remove ${file.name}`}
+                    disabled={disabled}
                     onClick={() => onRemove(file)}
                   >
                     <X className="size-3.5" aria-hidden="true" />
@@ -684,25 +748,24 @@ function AttachmentDropzone({
   );
 }
 
-function addAttachments(
+function getNewAttachments(
   files: FileList | null,
   current: File[],
-  setFiles: (files: File[]) => void,
   setError: (error: string | null) => void
-) {
-  if (!files?.length) return;
+): File[] {
+  if (!files?.length) return [];
   const incoming = Array.from(files);
   const tooLarge = incoming.find((file) => file.size > MAX_ATTACHMENT_SIZE_BYTES);
   if (tooLarge) {
     setError(`${tooLarge.name} is larger than 25 MB.`);
-    return;
+    return [];
   }
   const existing = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
   const next = incoming.filter(
     (file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`)
   );
-  setFiles([...current, ...next]);
   setError(null);
+  return next;
 }
 
 function fileKey(file: File) {
@@ -725,6 +788,14 @@ function fileToAttachment(file: File) {
   });
 }
 
+function hasInvalidRecipients(form: ComposeForm) {
+  return Boolean(
+    getEmailAddressListError(form.to, 'To') ||
+    getEmailAddressListError(form.cc, 'Cc') ||
+    getEmailAddressListError(form.bcc, 'Bcc')
+  );
+}
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -737,6 +808,7 @@ function EmailAddressField({
   value,
   placeholder,
   required,
+  error,
   onChange,
   children,
 }: {
@@ -745,27 +817,40 @@ function EmailAddressField({
   value: string;
   placeholder: string;
   required?: boolean;
+  error?: string;
   onChange: (value: string) => void;
   children?: ReactNode;
 }) {
+  const errorId = `${id}-error`;
+
   return (
-    <div className="flex items-center gap-3 px-5 py-2.5">
-      <label htmlFor={id} className="w-16 shrink-0 text-xs font-medium text-muted-foreground">
-        {label}
-        {required && <span className="text-destructive"> *</span>}
-      </label>
-      <Input
-        id={id}
-        type="email"
-        value={value}
-        required={required}
-        autoComplete="email"
-        spellCheck={false}
-        placeholder={placeholder}
-        className="min-w-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
+    <div>
+      <div className="flex items-center gap-3 px-5 py-2.5">
+        <label htmlFor={id} className="w-16 shrink-0 text-xs font-medium text-muted-foreground">
+          {label}
+          {required && <span className="text-destructive"> *</span>}
+        </label>
+        <Input
+          id={id}
+          type="text"
+          inputMode="email"
+          value={value}
+          required={required}
+          autoComplete="email"
+          spellCheck={false}
+          placeholder={placeholder}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className="min-w-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
+      </div>
+      {error && (
+        <p id={errorId} className="px-5 pb-2.5 pl-24 text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

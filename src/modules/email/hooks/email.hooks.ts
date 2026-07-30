@@ -346,6 +346,30 @@ export const useOpenEmailDraftMutation = () =>
     onError: (error) => toastApiError(error, 'Failed to open draft.'),
   });
 
+type EmailMessagePages = InfiniteData<EmailMessagePage, string | null>;
+
+type SendDraftPayload = {
+  accountId: string;
+  draftId: string;
+  messageId?: string;
+};
+
+type SendDraftSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  folders: ConnectedEmailFolder[] | undefined;
+};
+
+function isSentDraft(
+  message: ConnectedEmailListItem,
+  payload: Pick<SendDraftPayload, 'draftId' | 'messageId'>
+) {
+  return (
+    message.id === payload.messageId ||
+    message.providerId === payload.messageId ||
+    message.providerId === payload.draftId
+  );
+}
+
 export const useSaveEmailDraftMutation = () => {
   const queryClient = useQueryClient();
 
@@ -361,7 +385,6 @@ export const useSaveEmailDraftMutation = () => {
         refetchType: 'none',
       });
     },
-    onError: (error) => toastApiError(error, 'Failed to prepare the draft.'),
   });
 };
 
@@ -369,20 +392,77 @@ export const useSendEmailDraftMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { accountId: string; draftId: string; messageId?: string }) =>
-      emailApi.sendDraft(payload),
-    onSuccess: (_result, payload) => {
-      void queryClient.invalidateQueries({
+    mutationFn: (payload: SendDraftPayload) => emailApi.sendDraft(payload),
+    onMutate: async (payload): Promise<SendDraftSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.cancelQueries({ queryKey: emailKeys.folders(payload.accountId) }),
+      ]);
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
         queryKey: emailKeys.messagesRoot(payload.accountId),
-        refetchType: 'none',
       });
-      void queryClient.invalidateQueries({
-        queryKey: emailKeys.folders(payload.accountId),
-        refetchType: 'none',
-      });
+      const folders = queryClient.getQueryData<ConnectedEmailFolder[]>(
+        emailKeys.folders(payload.accountId)
+      );
+      const hadCachedDraft = messages.some(([, data]) =>
+        data?.pages.some((page) => page.records.some((message) => isSentDraft(message, payload)))
+      );
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  records: page.records.filter((message) => !isSentDraft(message, payload)),
+                  totalCount:
+                    page.totalCount === null || page.totalCount === undefined || !hadCachedDraft
+                      ? page.totalCount
+                      : Math.max(0, page.totalCount - 1),
+                })),
+              }
+            : current
+      );
+
+      if (hadCachedDraft) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.key === 'drafts'
+                ? { ...folder, totalCount: Math.max(0, folder.totalCount - 1) }
+                : folder
+            )
+        );
+      }
+
+      return { messages, folders };
+    },
+    onSuccess: (_result, _payload) => {
       toast.success('Email sent.');
     },
-    onError: (error) => toastApiError(error, 'Failed to send email.'),
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      queryClient.setQueryData(emailKeys.folders(payload.accountId), snapshot?.folders);
+      toastApiError(error, 'Failed to send email.');
+    },
+    onSettled: (_result, _error, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'active',
+        }),
+      ]);
+    },
   });
 };
 
@@ -390,8 +470,12 @@ export const useDeleteEmailDraftMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { accountId: string; draftId: string; messageId?: string }) =>
-      emailApi.deleteDraft(payload.accountId, payload.draftId, payload.messageId),
+    mutationFn: (payload: {
+      accountId: string;
+      draftId: string;
+      messageId?: string;
+      silent?: boolean;
+    }) => emailApi.deleteDraft(payload.accountId, payload.draftId, payload.messageId),
     onSuccess: (_result, payload) => {
       void queryClient.invalidateQueries({
         queryKey: emailKeys.messagesRoot(payload.accountId),
@@ -401,7 +485,7 @@ export const useDeleteEmailDraftMutation = () => {
         queryKey: emailKeys.folders(payload.accountId),
         refetchType: 'none',
       });
-      toast.success('Draft discarded.');
+      if (!payload.silent) toast.success('Draft discarded.');
     },
     onError: (error) => toastApiError(error, 'Failed to discard draft.'),
   });
@@ -727,8 +811,6 @@ type EmailStatusPayload = {
   messageId: string;
   unread: boolean;
 };
-
-type EmailMessagePages = InfiniteData<EmailMessagePage, string | null>;
 
 type EmailStatusSnapshot = {
   messages: Array<[QueryKey, EmailMessagePages | undefined]>;
