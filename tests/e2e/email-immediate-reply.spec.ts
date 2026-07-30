@@ -141,6 +141,12 @@ async function setupMockApi(page: Page) {
               senderEmail: 'client@example.com',
               recipientName: 'Mailbox',
               recipientEmail: 'mailbox@example.com',
+              to: [{ name: 'Mailbox', address: 'mailbox@example.com' }],
+              cc: [
+                { name: 'Project Manager', address: 'project.manager@example.com' },
+                { address: 'accounts@example.com' },
+              ],
+              bcc: [{ name: 'Project Archive', address: 'archive@example.com' }],
               sentAt: NOW,
               folderId: 'folder-inbox',
               keywords: [],
@@ -215,4 +221,24 @@ test('an immediate second reply targets the first reply real cache id', async ({
     .poll(() => api.getReplyMessageIds())
     .toEqual([ORIGINAL_MESSAGE_ID, 'cached-reply-1']);
   await expect(page.getByText('Reply 2', { exact: true })).toBeVisible();
+});
+
+test('shows Cc and Bcc recipients in the message header and recipient details', async ({
+  page,
+}) => {
+  await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+
+  const message = page.getByRole('article').first();
+  await expect(message.getByText('Cc:', { exact: true })).toBeVisible();
+  await expect(message.getByText('Bcc:', { exact: true })).toBeVisible();
+
+  await message.getByRole('button', { name: /View message recipients/ }).click();
+
+  await expect(page.getByText('Message recipients', { exact: true })).toBeVisible();
+  await expect(page.getByText('project.manager@example.com', { exact: true })).toBeVisible();
+  await expect(page.getByText('accounts@example.com', { exact: true })).toBeVisible();
+  await expect(page.getByText('archive@example.com', { exact: true })).toBeVisible();
+  await expect(page.getByText('Hidden from other recipients', { exact: true })).toBeVisible();
 });
