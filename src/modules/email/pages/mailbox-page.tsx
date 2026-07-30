@@ -50,6 +50,7 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
@@ -714,11 +715,12 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
         }
         onDiscardDraft={
           connectedAccount
-            ? (draft) =>
+            ? (draft, options) =>
                 deleteDraftMutation.mutateAsync({
                   accountId: connectedAccount.id,
                   draftId: draft.draftId,
                   messageId: draft.messageId,
+                  silent: options?.silent,
                 })
             : undefined
         }
@@ -778,19 +780,4 @@ function getConnectedFolderCounts(
 
 function isConnectedWellKnownFolderKey(folder: string): folder is EmailFolderKey {
   return CONNECTED_WELL_KNOWN_FOLDER_KEYS.has(folder);
-}
-
-function parseEmailAddresses(value: string) {
-  return value
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((recipient) => {
-      const match = recipient.match(/^(.*?)\s*<([^<>]+)>$/);
-      if (!match) return { address: recipient };
-      return {
-        address: match[2].trim(),
-        name: match[1].trim().replace(/^["']|["']$/g, '') || undefined,
-      };
-    });
 }

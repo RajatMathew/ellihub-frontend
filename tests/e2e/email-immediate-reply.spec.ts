@@ -4,6 +4,9 @@ const ACCOUNT_ID = 'account-1';
 const ORIGINAL_MESSAGE_ID = 'cached-original-message';
 const THREAD_ID = 'provider-thread-1';
 const NOW = '2026-07-25T10:00:00.000Z';
+const DRAFT_CACHE_ID = 'cached-draft-message';
+const DRAFT_MESSAGE_ID = 'provider-draft-message-1';
+const DRAFT_ID = 'provider-draft-1';
 
 const freshness = {
   state: 'fresh',
@@ -14,8 +17,19 @@ const freshness = {
   syncing: false,
 };
 
-async function setupMockApi(page: Page) {
+async function setupMockApi(page: Page, options: { holdDraftSend?: boolean } = {}) {
   const replyMessageIds: string[] = [];
+  let draftSaveRequests = 0;
+  let draftSendRequests = 0;
+  let draftDiscardRequests = 0;
+  let draftWasSent = false;
+  const draftSavePayloads: Array<Record<string, unknown>> = [];
+  let releaseDraftSendRequest: (() => void) | undefined;
+  const draftSendGate = options.holdDraftSend
+    ? new Promise<void>((resolve) => {
+        releaseDraftSendRequest = resolve;
+      })
+    : Promise.resolve();
 
   await page.route('**/api/v1/**', async (route, request) => {
     const url = new URL(request.url());
@@ -82,6 +96,15 @@ async function setupMockApi(page: Page) {
               totalCount: 1,
               unreadCount: 0,
             },
+            {
+              id: 'folder-drafts',
+              providerId: 'DRAFTS',
+              name: 'Drafts',
+              fullName: 'Drafts',
+              key: 'drafts',
+              totalCount: draftWasSent ? 0 : 1,
+              unreadCount: 0,
+            },
           ],
         },
       });
@@ -94,32 +117,39 @@ async function setupMockApi(page: Page) {
     }
 
     if (method === 'GET' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages`) {
+      const isDraftFolder =
+        url.searchParams.get('folderKey') === 'drafts' ||
+        url.searchParams.get('folderId') === 'folder-drafts';
       await route.fulfill({
         json: {
           data: {
-            records: [
-              {
-                id: ORIGINAL_MESSAGE_ID,
-                providerId: 'provider-original-message',
-                threadId: THREAD_ID,
-                conversationKey: THREAD_ID,
-                senderName: 'Client',
-                senderEmail: 'client@example.com',
-                subject: 'Project update',
-                preview: 'Can you review this?',
-                receivedAt: NOW,
-                folderId: 'folder-inbox',
-                folder: 'inbox',
-                mailbox: ACCOUNT_ID,
-                unread: false,
-                keywords: [],
-                attachmentCount: 0,
-                threadMessageCount: 1,
-              },
-            ],
+            records: isDraftFolder
+              ? draftWasSent
+                ? []
+                : [createDraftMessage()]
+              : [
+                  {
+                    id: ORIGINAL_MESSAGE_ID,
+                    providerId: 'provider-original-message',
+                    threadId: THREAD_ID,
+                    conversationKey: THREAD_ID,
+                    senderName: 'Client',
+                    senderEmail: 'client@example.com',
+                    subject: 'Project update',
+                    preview: 'Can you review this?',
+                    receivedAt: NOW,
+                    folderId: 'folder-inbox',
+                    folder: 'inbox',
+                    mailbox: ACCOUNT_ID,
+                    unread: false,
+                    keywords: [],
+                    attachmentCount: 0,
+                    threadMessageCount: 1,
+                  },
+                ],
             nextPageToken: null,
             pageSize: 100,
-            totalCount: 1,
+            totalCount: isDraftFolder ? (draftWasSent ? 0 : 1) : 1,
             freshness,
           },
         },
@@ -156,6 +186,69 @@ async function setupMockApi(page: Page) {
           ],
         },
       });
+      return;
+    }
+
+    if (
+      method === 'GET' &&
+      path === `/api/v1/email/accounts/${ACCOUNT_ID}/drafts/${DRAFT_CACHE_ID}`
+    ) {
+      await route.fulfill({
+        json: {
+          data: {
+            draftId: DRAFT_ID,
+            messageId: DRAFT_MESSAGE_ID,
+            message: createDraftMessage(),
+          },
+        },
+      });
+      return;
+    }
+
+    if (
+      (method === 'POST' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/drafts`) ||
+      (method === 'PUT' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/drafts/${DRAFT_ID}`)
+    ) {
+      draftSaveRequests += 1;
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      draftSavePayloads.push(payload);
+      const attachments = (Array.isArray(payload.attachments) ? payload.attachments : []) as Array<{
+        name?: string;
+        mimeType?: string;
+      }>;
+      await route.fulfill({
+        json: {
+          data: {
+            draftId: DRAFT_ID,
+            messageId: DRAFT_MESSAGE_ID,
+            message: createDraftMessage(
+              attachments.map((attachment, index) => ({
+                id: `cached-attachment-${index + 1}`,
+                providerId: `provider-attachment-${index + 1}`,
+                name: attachment.name ?? `attachment-${index + 1}`,
+                mimeType: attachment.mimeType,
+              }))
+            ),
+          },
+        },
+      });
+      return;
+    }
+
+    if (
+      method === 'POST' &&
+      path === `/api/v1/email/accounts/${ACCOUNT_ID}/drafts/${DRAFT_ID}/send`
+    ) {
+      draftSendRequests += 1;
+      await draftSendGate;
+      draftWasSent = true;
+      await route.fulfill({ json: { data: { sent: true } } });
+      return;
+    }
+
+    if (method === 'DELETE' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/drafts/${DRAFT_ID}`) {
+      draftDiscardRequests += 1;
+      await route.fulfill({ json: { data: { deleted: true } } });
       return;
     }
 
@@ -197,6 +290,41 @@ async function setupMockApi(page: Page) {
 
   return {
     getReplyMessageIds: () => replyMessageIds,
+    getDraftSaveRequests: () => draftSaveRequests,
+    getDraftSavePayloads: () => draftSavePayloads,
+    getDraftSendRequests: () => draftSendRequests,
+    getDraftDiscardRequests: () => draftDiscardRequests,
+    releaseDraftSend: () => releaseDraftSendRequest?.(),
+  };
+}
+
+function createDraftMessage(
+  attachments: Array<{
+    id: string;
+    providerId?: string;
+    name: string;
+    mimeType?: string;
+  }> = []
+) {
+  return {
+    id: DRAFT_CACHE_ID,
+    providerId: DRAFT_MESSAGE_ID,
+    senderName: 'Mailbox',
+    senderEmail: 'mailbox@example.com',
+    subject: 'Draft ready',
+    preview: 'Ready to send',
+    receivedAt: NOW,
+    folderId: 'folder-drafts',
+    folder: 'drafts',
+    mailbox: ACCOUNT_ID,
+    unread: false,
+    to: [{ address: 'client@example.com' }],
+    cc: [],
+    bcc: [],
+    keywords: [],
+    attachmentCount: attachments.length,
+    body: ['Ready to send'],
+    attachments,
   };
 }
 
@@ -241,4 +369,91 @@ test('shows Cc and Bcc recipients in the message header and recipient details', 
   await expect(page.getByText('accounts@example.com', { exact: true })).toBeVisible();
   await expect(page.getByText('archive@example.com', { exact: true })).toBeVisible();
   await expect(page.getByText('Hidden from other recipients', { exact: true })).toBeVisible();
+});
+
+test('does not autosave while composing and saves once when an unsent email is closed', async ({
+  page,
+}) => {
+  const api = await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+  await page.getByRole('button', { name: 'New email' }).click();
+  await page.getByPlaceholder('Add a subject').fill('Quarterly update');
+
+  await page.waitForTimeout(1_600);
+  expect(api.getDraftSaveRequests()).toBe(0);
+
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+
+  await expect.poll(() => api.getDraftSaveRequests()).toBe(1);
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('closes an unfinished new email without saving it as a draft', async ({ page }) => {
+  const api = await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+  await page.getByRole('button', { name: 'New email' }).click();
+  await page.getByPlaceholder('recipient@example.com').fill('someone@outlook');
+  await page.getByPlaceholder('Add a subject').fill('Quarterly update');
+
+  await page.waitForTimeout(1_600);
+  expect(api.getDraftSaveRequests()).toBe(0);
+
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
+  expect(api.getDraftSaveRequests()).toBe(0);
+  expect(api.getDraftDiscardRequests()).toBe(0);
+});
+
+test('removes a sent draft from the Drafts list before the send request finishes', async ({
+  page,
+}) => {
+  const api = await setupMockApi(page, { holdDraftSend: true });
+
+  await page.goto('/app/email/accounts/mailbox');
+  await page
+    .getByRole('button', { name: /^Drafts/ })
+    .first()
+    .click();
+
+  const draftRow = page.getByRole('button', { name: /Mailbox: Draft ready/ });
+  await expect(draftRow).toBeVisible();
+  await draftRow.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Send', exact: true }).click();
+
+  await expect.poll(() => api.getDraftSendRequests()).toBe(1);
+  await expect(draftRow).toBeHidden();
+
+  api.releaseDraftSend();
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('prepares and uploads an attachment immediately without validating partial recipients', async ({
+  page,
+}) => {
+  const api = await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+  await page.getByRole('button', { name: 'New email' }).click();
+  await page.getByPlaceholder('recipient@example.com').fill('someone@outlook');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'proposal.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('Proposal'),
+  });
+
+  await expect.poll(() => api.getDraftSaveRequests()).toBe(1);
+  const [payload] = api.getDraftSavePayloads();
+  expect(payload?.to).toEqual([]);
+  expect(payload?.attachments).toEqual([
+    expect.objectContaining({ name: 'proposal.txt', mimeType: 'text/plain' }),
+  ]);
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible();
+  await expect(page.getByText(/invalid email/i)).toHaveCount(0);
+
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect.poll(() => api.getDraftDiscardRequests()).toBe(1);
 });
