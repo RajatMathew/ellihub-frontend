@@ -8,7 +8,6 @@ export const RECURRING_BILLS_QA_DATE_PARAM = 'recurringQaDate';
 export const RECURRING_BILLS_QA_DATE_HEADER = 'x-elli-recurring-qa-date';
 
 export const RECURRING_BILLS_QA_CLOCK_ENABLED =
-  import.meta.env.DEV &&
   import.meta.env.VITE_ENABLE_RECURRING_BILLS_QA_CLOCK?.trim().toLowerCase() === 'true';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;

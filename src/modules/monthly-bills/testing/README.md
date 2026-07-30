@@ -2,8 +2,11 @@
 
 `TEMP_RECURRING_BILLS_QA_CLOCK` is a sandbox-only date override for recurring-bill QA.
 
-Enable it locally with `VITE_ENABLE_RECURRING_BILLS_QA_CLOCK=true`. The control is shown only in
-development builds to dev/admin users while QuickBooks is configured for the sandbox environment.
+Enable it locally with `VITE_ENABLE_RECURRING_BILLS_QA_CLOCK=true`. The control is shown to
+dev/admin users while QuickBooks is configured for the sandbox environment.
+
+The control is available in a deployment only when the Vite build-time flag is enabled. It remains
+restricted to dev/admin users while QuickBooks is configured for the sandbox environment.
 
 The selected date is stored only in the `recurringQaDate` URL parameter and sent as the
 `X-Elli-Recurring-QA-Date` request header. The API response must confirm the override before the UI
