@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 
+import { QueryErrorState } from '@/app/components/query-error-state';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { CreateRecurringRuleDialog } from '@/modules/monthly-bills/components/recurring-bills/create-recurring-rule-dialog';
 import { RecurringBillsStats } from '@/modules/monthly-bills/components/recurring-bills/recurring-bills-stats';
-import { RecurringPayDialog } from '@/modules/monthly-bills/components/recurring-bills/recurring-pay-dialog';
 import { RecurringBillsWorkspace } from '@/modules/monthly-bills/components/recurring-bills/recurring-bills-workspace';
+import { RecurringPayDialog } from '@/modules/monthly-bills/components/recurring-bills/recurring-pay-dialog';
 import {
   useCreateRecurringBillRuleMutation,
   useDeleteRecurringBillRuleMutation,
@@ -27,9 +29,12 @@ import type {
   RecurringBillItem,
   RecurringBillsSummary,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
+import { RecurringBillsQaClockBanner } from '@/modules/monthly-bills/testing/recurring-bills-qa-clock-control';
 
 interface MonthlyBillsRecurringPageProps {
   selectedDate: Date;
+  // TEMP_RECURRING_BILLS_QA_CLOCK: undefined preserves production behavior.
+  qaDate?: string;
 }
 
 type RecurringStatusFilter = 'all' | 'due' | 'paid' | 'skipped';
@@ -43,7 +48,10 @@ const emptySummary: RecurringBillsSummary = {
   paidCount: 0,
 };
 
-export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurringPageProps) {
+export function MonthlyBillsRecurringPage({
+  selectedDate,
+  qaDate,
+}: MonthlyBillsRecurringPageProps) {
   const selectedMonth = getMonthlyBillMonthNumber(selectedDate);
   const selectedYear = getMonthlyBillYear(selectedDate);
   const [search, setSearch] = useState('');
@@ -54,13 +62,13 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
   const [skipOccurrence, setSkipOccurrence] = useState<RecurringBillItem | null>(null);
   const [skipMonthRule, setSkipMonthRule] = useState<RecurringBillGroup | null>(null);
   const [deleteRule, setDeleteRule] = useState<RecurringBillGroup | null>(null);
-  const createRule = useCreateRecurringBillRuleMutation();
+  const createRule = useCreateRecurringBillRuleMutation(qaDate);
   const updateRule = useUpdateRecurringBillRuleMutation();
   const toggleRule = useToggleRecurringBillRuleMutation();
   const skipRecurringBill = useSkipRecurringBillMutation();
   const skipRecurringBillMonth = useSkipRecurringBillMonthMutation();
   const deleteRecurringBill = useDeleteRecurringBillRuleMutation();
-  const payRecurringBill = usePayRecurringBillMutation();
+  const payRecurringBill = usePayRecurringBillMutation(qaDate);
   const queryParams = useMemo(
     () => ({
       month: selectedMonth,
@@ -68,8 +76,9 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
       size: 25,
       search: search.trim() || undefined,
       status: status === 'all' ? undefined : [status],
+      qaDate,
     }),
-    [search, selectedMonth, selectedYear, status]
+    [qaDate, search, selectedMonth, selectedYear, status]
   );
   const recurringBillsQuery = useInfiniteRecurringBillsQuery(queryParams);
   const pages = recurringBillsQuery.data?.pages ?? [];
@@ -80,8 +89,25 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
     return <RecurringBillsLoading />;
   }
 
+  if (recurringBillsQuery.isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load recurring bills"
+        description={getApiErrorMessage(
+          recurringBillsQuery.error,
+          'The recurring-bills request could not be completed.'
+        )}
+        onRetry={() => void recurringBillsQuery.refetch()}
+      />
+    );
+  }
+
   return (
     <>
+      {qaDate ? (
+        <RecurringBillsQaClockBanner requestedDate={qaDate} confirmedClock={meta?.qaClock} />
+      ) : null}
+
       <RecurringBillsStats summary={meta?.summary ?? emptySummary} />
 
       <RecurringBillsWorkspace
@@ -89,7 +115,9 @@ export function MonthlyBillsRecurringPage({ selectedDate }: MonthlyBillsRecurrin
         search={search}
         status={status}
         canUpdateBills={meta?.capabilities.canUpdateBills ?? false}
-        canMarkPayment={(meta?.capabilities.canMarkPayment ?? false) && (meta?.period.isCurrent ?? false)}
+        canMarkPayment={
+          (meta?.capabilities.canMarkPayment ?? false) && (meta?.period.isCurrent ?? false)
+        }
         hasNextPage={recurringBillsQuery.hasNextPage}
         isFetchingNextPage={recurringBillsQuery.isFetchingNextPage}
         onSearchChange={setSearch}

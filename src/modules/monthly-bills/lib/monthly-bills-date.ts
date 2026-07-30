@@ -57,8 +57,9 @@ export function getMonthlyBillPeriod(date: Date): MonthlyBillPeriod {
   return { month: date.getUTCMonth() + 1, year: date.getUTCFullYear() };
 }
 
-export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
-  const initialDate = getInitialMonthlyBillDate();
+export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams, now = new Date()) {
+  // TEMP_RECURRING_BILLS_QA_CLOCK: optional request-local reference date; real time remains default.
+  const initialDate = getInitialMonthlyBillDate(now);
   const month = Number(searchParams.get('month'));
   const year = Number(searchParams.get('year'));
 
@@ -70,7 +71,7 @@ export function getMonthlyBillDateFromSearch(searchParams: URLSearchParams) {
     year >= 1970
   ) {
     const parsed = { month, year };
-    const current = getCurrentMonthlyBillPeriod();
+    const current = getCurrentMonthlyBillPeriod(now);
     if (isMonthlyBillPeriodAfter(parsed, current)) return initialDate;
 
     return createMonthlyBillDate(year, month);

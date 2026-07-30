@@ -21,9 +21,7 @@ import { TextMorph } from 'torph/react';
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
 function isAfterMonth(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
-  return (
-    left.year > right.year || (left.year === right.year && left.month > right.month)
-  );
+  return left.year > right.year || (left.year === right.year && left.month > right.month);
 }
 
 function isSameMonth(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
@@ -33,20 +31,21 @@ function isSameMonth(left: MonthlyBillPeriod, right: MonthlyBillPeriod) {
 interface MonthYearPickerProps {
   date: Date;
   onChange: (date: Date) => void;
+  /** TEMP_RECURRING_BILLS_QA_CLOCK: optional QA-only upper bound. */
+  currentPeriod?: MonthlyBillPeriod;
 }
 
-export function MonthYearPicker({ date, onChange }: MonthYearPickerProps) {
-  const today = useMemo(() => getCurrentMonthlyBillPeriod(), []);
+export function MonthYearPicker({ date, onChange, currentPeriod }: MonthYearPickerProps) {
+  const actualPeriod = useMemo(() => getCurrentMonthlyBillPeriod(), []);
+  const today = currentPeriod ?? actualPeriod;
 
   const years = useMemo(() => {
     return Array.from({ length: today.year - 1969 }, (_, index) => today.year - index);
-  }, [today]);
+  }, [today.year]);
 
   const selectedPeriod = getMonthlyBillPeriod(date);
   const availableMonths =
-    selectedPeriod.year === today.year
-      ? MONTHS.filter((month) => month <= today.month)
-      : MONTHS;
+    selectedPeriod.year === today.year ? MONTHS.filter((month) => month <= today.month) : MONTHS;
   const isAtCurrent = isSameMonth(selectedPeriod, today);
 
   const update = (next: MonthlyBillPeriod) => {

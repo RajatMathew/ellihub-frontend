@@ -19,6 +19,8 @@ import {
 } from '@/modules/monthly-bills/constants/monthly-bills.constants';
 import {
   formatMonthlyBillMonthNumber,
+  getCurrentMonthlyBillPeriod,
+  getInitialMonthlyBillDate,
   getMonthlyBillDateFromSearch,
   getMonthlyBillMonthSearch,
   getMonthlyBillYear,
@@ -28,16 +30,34 @@ import {
   MonthlyBillsSubcontractorPage,
   MonthlyBillsTabPage,
 } from '@/modules/monthly-bills/pages';
+import {
+  getRecurringBillsQaDate,
+  parseRecurringBillsQaDate,
+  RECURRING_BILLS_QA_CLOCK_ENABLED,
+  RECURRING_BILLS_QA_DATE_PARAM,
+} from '@/modules/monthly-bills/testing/recurring-bills-qa-clock';
+import { RecurringBillsQaClockControl } from '@/modules/monthly-bills/testing/recurring-bills-qa-clock-control';
 import { Landmark } from 'lucide-react';
-import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 
 export default function MonthlyBillsRoute() {
   const { access, isAdmin, isLoading } = useAccess();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const canAccess = isAdmin || MONTHLY_BILLS_ALLOWED_ROLES.has(access?.role ?? '');
   const statusQuery = useQuickBooksStatusQuery(canAccess && !isLoading);
   const isQuickBooksConnected = statusQuery.data?.connection?.status === 'CONNECTED';
-  const selectedDate = getMonthlyBillDateFromSearch(searchParams);
+  const isRecurringRoute = location.pathname.endsWith('/recurring');
+  // TEMP_RECURRING_BILLS_QA_CLOCK: UI gate mirrors the backend's role/environment safeguards.
+  const qaClockAvailable =
+    RECURRING_BILLS_QA_CLOCK_ENABLED &&
+    isAdmin &&
+    isRecurringRoute &&
+    statusQuery.data?.environment === 'sandbox';
+  const qaDate = qaClockAvailable ? getRecurringBillsQaDate(searchParams) : undefined;
+  const qaNow = qaDate ? parseRecurringBillsQaDate(qaDate) : undefined;
+  const currentPeriod = qaNow ? getCurrentMonthlyBillPeriod(qaNow) : undefined;
+  const selectedDate = getMonthlyBillDateFromSearch(searchParams, qaNow);
   const selectedMonthSearch = getMonthlyBillMonthSearch(selectedDate);
   const defaultTabPath = `${MONTHLY_BILLS_DEFAULT_PATH}${selectedMonthSearch}`;
 
@@ -47,6 +67,26 @@ export default function MonthlyBillsRoute() {
         const next = new URLSearchParams(current);
         next.set('month', formatMonthlyBillMonthNumber(date));
         next.set('year', String(getMonthlyBillYear(date)));
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  // TEMP_RECURRING_BILLS_QA_CLOCK: URL-only state makes reset and removal deterministic.
+  const handleQaDateChange = (value: string | undefined) => {
+    const requestedDate = value ? parseRecurringBillsQaDate(value) : undefined;
+    const nextDate = requestedDate ?? getInitialMonthlyBillDate();
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value && requestedDate) {
+          next.set(RECURRING_BILLS_QA_DATE_PARAM, value);
+        } else {
+          next.delete(RECURRING_BILLS_QA_DATE_PARAM);
+        }
+        next.set('month', formatMonthlyBillMonthNumber(nextDate));
+        next.set('year', String(getMonthlyBillYear(nextDate)));
         return next;
       },
       { replace: true }
@@ -64,7 +104,14 @@ export default function MonthlyBillsRoute() {
             <ToolbarPageTitle>Monthly Bills</ToolbarPageTitle>
           </ToolbarHeading>
           <ToolbarActions className="w-full justify-start sm:w-auto sm:justify-end">
-            <MonthYearPicker date={selectedDate} onChange={handleMonthChange} />
+            {qaClockAvailable ? (
+              <RecurringBillsQaClockControl value={qaDate} onChange={handleQaDateChange} />
+            ) : null}
+            <MonthYearPicker
+              date={selectedDate}
+              onChange={handleMonthChange}
+              currentPeriod={currentPeriod}
+            />
           </ToolbarActions>
         </ToolbarWrapper>
 
@@ -85,7 +132,7 @@ export default function MonthlyBillsRoute() {
                 path={tab.path}
                 element={
                   tab.path === 'recurring' ? (
-                    <MonthlyBillsRecurringPage selectedDate={selectedDate} />
+                    <MonthlyBillsRecurringPage selectedDate={selectedDate} qaDate={qaDate} />
                   ) : tab.path === 'subcontractor' ? (
                     <MonthlyBillsSubcontractorPage
                       selectedDate={selectedDate}

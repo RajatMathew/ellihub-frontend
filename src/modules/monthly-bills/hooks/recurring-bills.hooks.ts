@@ -13,27 +13,24 @@ import type {
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export const useInfiniteRecurringBillsQuery = (
-  params: RecurringBillsQueryParams,
-  enabled = true
-) =>
+export const useInfiniteRecurringBillsQuery = (params: RecurringBillsQueryParams, enabled = true) =>
   useInfiniteQuery({
     queryKey: monthlyBillsKeys.recurringList(params),
     initialPageParam: 1,
     queryFn: ({ pageParam }) => recurringBillsApi.list({ ...params, page: Number(pageParam) }),
     getNextPageParam: (lastPage) =>
-      lastPage.meta.pagination.hasNextPage
-        ? lastPage.meta.pagination.currentPage + 1
-        : undefined,
+      lastPage.meta.pagination.hasNextPage ? lastPage.meta.pagination.currentPage + 1 : undefined,
     enabled,
     staleTime: 60_000,
   });
 
-export const useCreateRecurringBillRuleMutation = () => {
+// TEMP_RECURRING_BILLS_QA_CLOCK: mutation uses the same request-local date as the list.
+export const useCreateRecurringBillRuleMutation = (qaDate?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CreateRecurringBillRulePayload) => recurringBillsApi.create(payload),
+    mutationFn: (payload: CreateRecurringBillRulePayload) =>
+      recurringBillsApi.create(payload, qaDate),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.recurring() });
       toast.success('Recurring bill added.');
@@ -46,8 +43,13 @@ export const useUpdateRecurringBillRuleMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ ruleId, payload }: { ruleId: string; payload: CreateRecurringBillRulePayload }) =>
-      recurringBillsApi.update(ruleId, payload),
+    mutationFn: ({
+      ruleId,
+      payload,
+    }: {
+      ruleId: string;
+      payload: CreateRecurringBillRulePayload;
+    }) => recurringBillsApi.update(ruleId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.recurring() });
       toast.success('Recurring bill updated.');
@@ -110,12 +112,13 @@ export const useDeleteRecurringBillRuleMutation = () => {
   });
 };
 
-export const usePayRecurringBillMutation = () => {
+// TEMP_RECURRING_BILLS_QA_CLOCK: payment validation uses the visible QA date.
+export const usePayRecurringBillMutation = (qaDate?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ ruleId, payload }: { ruleId: string; payload: PayRecurringBillPayload }) =>
-      recurringBillsApi.pay(ruleId, payload),
+      recurringBillsApi.pay(ruleId, payload, qaDate),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.recurring() });
       toast.success('Recurring bill payment saved.');

@@ -121,6 +121,14 @@ export const recurringBillsResponseSchema = z.object({
   meta: z.object({
     period: recurringBillsPeriodSchema,
     capabilities: recurringBillsCapabilitiesSchema,
+    // TEMP_RECURRING_BILLS_QA_CLOCK: server confirmation for the temporary override banner.
+    qaClock: z
+      .object({
+        active: z.literal(true),
+        effectiveDate: z.string(),
+        actualDate: z.string(),
+      })
+      .optional(),
     summary: recurringBillsSummarySchema,
     pagination: recurringBillsPaginationSchema,
   }),

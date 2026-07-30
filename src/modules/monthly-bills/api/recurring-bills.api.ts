@@ -1,7 +1,7 @@
 import api from '@/app/api';
 import {
-  recurringBillsResponseSchema,
   recurringBillPaymentSchema,
+  recurringBillsResponseSchema,
   type CreateRecurringBillRulePayload,
   type PayRecurringBillPayload,
   type RecurringBillPayment,
@@ -10,6 +10,7 @@ import {
   type SkipRecurringBillPayload,
   type ToggleRecurringBillRulePayload,
 } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
+import { RECURRING_BILLS_QA_DATE_HEADER } from '@/modules/monthly-bills/testing/recurring-bills-qa-clock';
 import { z } from 'zod';
 
 const BASE = '/monthly-bills/recurring';
@@ -22,28 +23,43 @@ export interface RecurringBillsQueryParams {
   search?: string;
   status?: string[];
   vendorId?: string[];
+  // TEMP_RECURRING_BILLS_QA_CLOCK: query-key input only; sent as a request header.
+  qaDate?: string;
 }
 
 function toQuery(params: RecurringBillsQueryParams): Record<string, string | number> {
-  const { search, status, vendorId, ...rest } = params;
-  const query: Record<string, string | number> = { ...rest };
+  const { month, year, page, size, search, status, vendorId } = params;
+  const query: Record<string, string | number> = { month, year };
+  if (page) query.page = page;
+  if (size) query.size = size;
   if (search) query.search = search;
   if (status?.length) query.status = status.join(',');
   if (vendorId?.length) query.vendorId = vendorId.join(',');
   return query;
 }
 
+// TEMP_RECURRING_BILLS_QA_CLOCK: isolated request header; no global Axios clock state.
+function withQaClock(qaDate?: string) {
+  return qaDate
+    ? {
+        headers: {
+          [RECURRING_BILLS_QA_DATE_HEADER]: qaDate,
+        },
+      }
+    : {};
+}
+
 export const recurringBillsApi = {
   async list(params: RecurringBillsQueryParams): Promise<RecurringBillsResponse> {
-    const res = await api.get(BASE, { params: toQuery(params) });
+    const res = await api.get(BASE, { params: toQuery(params), ...withQaClock(params.qaDate) });
     const raw = res.data?.data ?? res.data;
     const result = recurringBillsResponseSchema.safeParse(raw);
     if (!result.success) throw result.error;
     return result.data;
   },
 
-  async create(payload: CreateRecurringBillRulePayload): Promise<unknown> {
-    const res = await api.post(BASE, payload);
+  async create(payload: CreateRecurringBillRulePayload, qaDate?: string): Promise<unknown> {
+    const res = await api.post(BASE, payload, withQaClock(qaDate));
     return res.data?.data ?? res.data;
   },
 
@@ -72,8 +88,12 @@ export const recurringBillsApi = {
     return res.data?.data ?? res.data;
   },
 
-  async pay(ruleId: string, payload: PayRecurringBillPayload): Promise<RecurringBillPayment> {
-    const res = await api.post(`${BASE}/${ruleId}/pay`, payload);
+  async pay(
+    ruleId: string,
+    payload: PayRecurringBillPayload,
+    qaDate?: string
+  ): Promise<RecurringBillPayment> {
+    const res = await api.post(`${BASE}/${ruleId}/pay`, payload, withQaClock(qaDate));
     const raw = res.data?.data ?? res.data;
     const result = recurringBillPaymentSchema
       .extend({
